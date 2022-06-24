@@ -59,13 +59,32 @@ public class SenkyFXPropModeDrawer : BetterPropertyDrawer {
 }
 
 [CustomPropertyDrawer(typeof(SenkyFXProp))]
-public class SenkyFXPropDrawer : BetterPropertyDrawer {
-    private void advancedMenu(SerializedProperty prop) {
-        var menu = new GenericMenu();
-        menu.ShowAsContext();
-        prop.serializedObject.ApplyModifiedProperties();
+public class SenkyFXPropDrawer : PropertyDrawer {
+    public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+        var wrapper = new VisualElement();
+
+        var innerWrapper = new VisualElement();
+        wrapper.Add(innerWrapper);
+        innerWrapper.Add(render(prop));
+        Action update = () => {
+            innerWrapper.Clear();
+            innerWrapper.Add(render(prop));
+            innerWrapper.Bind(prop.serializedObject);
+        };
+
+        wrapper.Add(SenkyUIHelper.OnChange<string>(prop.FindPropertyRelative("type"), update));
+        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("saved"), update));
+        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("slider"), update));
+        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("lewdLocked"), update));
+        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("defaultOn"), update));
+        wrapper.Add(SenkyUIHelper.OnSizeChange(prop.FindPropertyRelative("resetPhysbones"), update));
+
+        return wrapper;
     }
-    protected override void render(SerializedProperty prop, GUIContent label) {
+
+    private VisualElement render(SerializedProperty prop) {
+        var form = new SenkyUIHelper(prop);
+
         var showSaved = false;
         var showSlider = false;
         var showLewd = false;
@@ -90,74 +109,84 @@ public class SenkyFXPropDrawer : BetterPropertyDrawer {
         if (showSaved) {
             var boolProp = prop.FindPropertyRelative("saved");
             if (boolProp.boolValue) tags.Add("Saved");
-            addToMenu(advMenu, "Saved Between Worlds", boolProp.boolValue, () => {
+            advMenu.AddItem(new GUIContent("Saved Between Worlds"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
+                form.Save();
             });
         }
         if (showSlider) {
             var boolProp = prop.FindPropertyRelative("slider");
             if (boolProp.boolValue) tags.Add("Slider");
-            addToMenu(advMenu, "Use Slider Wheel", boolProp.boolValue, () => {
+            advMenu.AddItem(new GUIContent("Use Slider Wheel"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
+                form.Save();
             });
         }
         if (showLewd) {
             var boolProp = prop.FindPropertyRelative("lewdLocked");
             if (boolProp.boolValue) tags.Add("Lewd");
-            addToMenu(advMenu, "Protect with Lewd Safety", boolProp.boolValue, () => {
+            advMenu.AddItem(new GUIContent("Protect with Lewd Safety"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
+                form.Save();
             });
         }
         if (showDefaultOn) {
             var boolProp = prop.FindPropertyRelative("defaultOn");
             if (boolProp.boolValue) tags.Add("Default On");
-            addToMenu(advMenu, "Default On", boolProp.boolValue, () => {
+            advMenu.AddItem(new GUIContent("Default On"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
+                form.Save();
             });
         }
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
-        var resetPhysboneList = makeList(resetPhysboneProp, getLabel: index => "");
         if (showResetPhysbones) {
-            addToMenu(advMenu, "Add PhysBone to Reset", false, () => {
-                addToList(resetPhysboneProp);
+            advMenu.AddItem(new GUIContent("Add PhysBone to Reset"), false, () => {
+                SenkyUIHelper.addToList(resetPhysboneProp);
             });
         }
+
+        var flex = new VisualElement();
+        flex.style.flexDirection = FlexDirection.Row;
+        flex.style.alignItems = Align.FlexStart;
+        flex.style.marginBottom = 10;
+        form.Add(flex);
+
+        var name = new PropertyField(prop.FindPropertyRelative("name"));
+        name.style.flexGrow = 1;
+        flex.Add(name);
 
         if (advMenu.GetItemCount() > 0) {
-            var rects = renderFlex(line, 1, line);
-            renderProp(rects[0], prop.FindPropertyRelative("name"));
-            renderButton(rects[1], "*", () => {
+            var button = new Button(() => {
                 advMenu.ShowAsContext();
             });
-        } else {
-            renderProp(prop.FindPropertyRelative("name"));
+            button.text = "*";
+            button.style.flexGrow = 0;
+            flex.Add(button);
         }
 
-        renderSpace();
-        EditorGUI.indentLevel++;
+        var content = new VisualElement();
+        content.style.paddingLeft = 20;
+        form.Add(content);
 
         var tagsStr = String.Join(" | ", tags.ToArray());
         if (tagsStr != "") {
-            renderLabel(tagsStr);
+            content.Add(new Label(tagsStr));
         }
 
         if (type == SenkyFXProp.TOGGLE) {
-            renderProp(prop.FindPropertyRelative("state"));
+            content.Add(new PropertyField(prop.FindPropertyRelative("state")));
         } else if (type == SenkyFXProp.MODES) {
-            var modeList = makeList(prop.FindPropertyRelative("modes"), getLabel: (index) => {
-                return "Mode "+(index+1);
-            });
-            renderList(modeList);
+            content.Add(form.List("modes"));
         } else {
-            renderLabel("Unknown type: " + type);
+            content.Add(new Label("Unknown type: " + type));
         }
 
         if (showResetPhysbones && resetPhysboneProp.arraySize > 0) {
-            renderLabel("Reset PhysBones:");
-            renderList(resetPhysboneList);
+            content.Add(new Label("Reset PhysBones:"));
+            content.Add(form.List("resetPhysbones"));
         }
 
-        EditorGUI.indentLevel--;
+        return form.Render();
     }
 }
 
@@ -167,23 +196,24 @@ public class SenkyFXProps {
 }
 
 [CustomPropertyDrawer(typeof(SenkyFXProps))]
-public class SenkyFXPropsDrawer : BetterPropertyDrawer {
-    private void newItem(SerializedProperty list) {
+public class SenkyFXPropsDrawer : PropertyDrawer {
+    public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+        var form = new SenkyUIHelper(prop);
+        form.Add(form.List("props", newItem));
+        return form.Render();
+    }
+
+    private void newItem(SerializedProperty list, Action<Action<SerializedProperty>> add) {
         var menu = new GenericMenu();
         menu.AddItem(new GUIContent("Toggle"), false, () => {
-            addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.TOGGLE);
+            add(entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.TOGGLE);
         });
         menu.AddItem(new GUIContent("Multi-Mode"), false, () => {
-            addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.MODES);
+            add(entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.MODES);
         });
         menu.AddItem(new GUIContent("Puppet"), false, () => {
-            addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.PUPPET);
+            add(entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.PUPPET);
         });
         menu.ShowAsContext();
-    }
-    protected override void render(SerializedProperty prop, GUIContent label) {
-        var listProp = prop.FindPropertyRelative("props");
-        var list = makeList(listProp, () => newItem(listProp));
-        renderList(list);
     }
 }

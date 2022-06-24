@@ -9,6 +9,15 @@ public class SenkyFXMotion {
         this.baseObject = baseObject;
     }
 
+    public ObjectReferenceKeyframe[] OneFrame(UnityEngine.Object obj) {
+        var f1 = new ObjectReferenceKeyframe();
+        f1.time = 0;
+        f1.value = obj;
+        var f2 = new ObjectReferenceKeyframe();
+        f2.time = 1/60f;
+        f2.value = obj;
+        return new ObjectReferenceKeyframe[]{ f1, f2 };
+    }
     public AnimationCurve OneFrame(float value) {
         return AnimationCurve.Constant(0, 1/60f, value);
     }

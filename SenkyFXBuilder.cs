@@ -46,7 +46,7 @@ public class SenkyFXBuilder {
         var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock");
         var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);
         var blinkTrigger = manager.NewTrigger("BlinkTrigger");
-        var blinkActive = manager.NewBool("BlinkActive");
+        var blinkActive = manager.NewBool("BlinkActive", def: true);
         var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
 
         // VISEMES
@@ -312,7 +312,7 @@ public class SenkyFXBuilder {
                     var clip = loadClip("prop_" + prop.name, prop.state, prefixObj);
                     var off = layer.NewState("Off");
                     var on = layer.NewState("On").WithAnimation(clip);
-                    var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved);
+                    var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved, def: prop.defaultOn);
                     if (prop.lewdLocked) {
                         off.TransitionsTo(on).When(param.IsTrue().And(paramLewdSync.IsTrue()));
                         on.TransitionsTo(off).When(param.IsFalse());
@@ -399,7 +399,15 @@ public class SenkyFXBuilder {
             foreach (var binding in AnimationUtility.GetCurveBindings(output)) {
                 var exists = AnimationUtility.GetFloatValue(gameObject, binding, out var value);
                 if (exists) {
-                    defaultClip.SetCurve(binding.path, binding.type, binding.propertyName, motions.OneFrame(value));
+                    AnimationUtility.SetEditorCurve(defaultClip, binding, motions.OneFrame(value));
+                } else {
+                    Debug.Log("Missing default value for: " + binding.path);
+                }
+            }
+            foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(output)) {
+                var exists = AnimationUtility.GetObjectReferenceValue(gameObject, binding, out var value);
+                if (exists) {
+                    AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, motions.OneFrame(value));
                 } else {
                     Debug.Log("Missing default value for: " + binding.path);
                 }

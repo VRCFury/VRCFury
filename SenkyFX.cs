@@ -45,79 +45,58 @@ public class SenkyFX : MonoBehaviour {
 
 [CustomEditor(typeof(SenkyFX), true)]
 public class SenkyFXEditor : Editor {
-    private Dictionary<string, Boolean> expanded = new Dictionary<string, Boolean>();
+    public override VisualElement CreateInspectorGUI() {
+        var form = new SenkyUIHelper(serializedObject);
 
-    public override void OnInspectorGUI() {
-        serializedObject.Update();
-        //DrawDefaultInspector();
+        form.Property("avatar");
 
-        var obj = serializedObject;
+        form.Property("stateBlink", "Blinking");
+        form.Property("stateTalkGlow", "Talk Glow");
+        form.Property("visemeFolder", "Viseme Folder");
 
-        EditorGUILayout.PropertyField(obj.FindProperty("avatar"));
-
-        renderProp("stateBlink", "Blinking");
-        renderProp("stateTalkGlow", "Talk Glow");
-        renderProp("visemeFolder", "Viseme Folder");
-
-        foldout("Breathing", () => {
-            renderProp("breatheObject", "Object");
-            renderProp("breatheBlendshape", "BlendShape");
-            renderProp("breatheScaleMin", "Min Scale");
-            renderProp("breatheScaleMax", "Max Scale");
+        form.Foldout("Breathing", () => {
+            form.Property("breatheObject", "Object");
+            form.Property("breatheBlendshape", "BlendShape");
+            form.Property("breatheScaleMin", "Min Scale");
+            form.Property("breatheScaleMax", "Max Scale");
         });
 
-        foldoutOpen("Face", () => {
-            foldoutOpen("Eyes", () => {
-                renderProp("stateEyesClosed", "Closed");
-                renderProp("stateEyesHappy", "Happy");
-                renderProp("stateEyesSad", "Sad");
-                renderProp("stateEyesAngry", "Angry");
+        form.FoldoutOpen("Face", () => {
+            form.FoldoutOpen("Eyes", () => {
+                form.Property("stateEyesClosed", "Closed");
+                form.Property("stateEyesHappy", "Happy");
+                form.Property("stateEyesSad", "Sad");
+                form.Property("stateEyesAngry", "Angry");
             });
-            foldoutOpen("Mouth", () => {
-                renderProp("stateMouthBlep", "Blep");
-                renderProp("stateMouthSuck", "Suck");
-                renderProp("stateMouthSad", "Sad");
-                renderProp("stateMouthAngry", "Angry");
-                renderProp("stateMouthHappy", "Happy");
+            form.FoldoutOpen("Mouth", () => {
+                form.Property("stateMouthBlep", "Blep");
+                form.Property("stateMouthSuck", "Suck");
+                form.Property("stateMouthSad", "Sad");
+                form.Property("stateMouthAngry", "Angry");
+                form.Property("stateMouthHappy", "Happy");
             });
-            foldoutOpen("Ears", () => {
-                renderProp("stateEarsBack", "Back");
+            form.FoldoutOpen("Ears", () => {
+                form.Property("stateEarsBack", "Back");
             });
         });
 
-        foldoutOpen("Toes", () => {
-            renderProp("stateToesDown", "Down");
-            renderProp("stateToesUp", "Up");
-            renderProp("stateToesSplay", "Splay");
+        form.FoldoutOpen("Toes", () => {
+            form.Property("stateToesDown", "Down");
+            form.Property("stateToesUp", "Up");
+            form.Property("stateToesSplay", "Splay");
         });
 
-        foldoutOpen("Props", () => {
-            renderProp("props");
+        form.FoldoutOpen("Props", () => {
+            form.Property("props");
         });
 
-        if (GUILayout.Button("Generate")) {
+        form.Button("Generate", () => {
             var builder = new SenkyFXBuilder();
             var inputs = (SenkyFX) target;
             builder.Run(inputs);
             Debug.Log("SenkyFX Finished!");
-        }
-        serializedObject.ApplyModifiedProperties();
-    }
+        });
 
-    private void foldoutOpen(string header, Action with) {
-        foldout(header, with, true);
-    }
-    private void foldout(string header, Action with, bool def = false) {
-        var oldExpanded = expanded.TryGetValue(header, out var dictVal) ? dictVal : def;
-        var newExpanded = EditorGUILayout.Foldout(oldExpanded, header);
-        expanded[header] = newExpanded;
-        if (newExpanded) {
-            EditorGUI.indentLevel++;
-            with();
-            EditorGUI.indentLevel--;
-        }
-    }
-    private void renderProp(string prop, string label="") {
-        EditorGUILayout.PropertyField(serializedObject.FindProperty(prop), new GUIContent(label));
+        return form.Render();
     }
 }
