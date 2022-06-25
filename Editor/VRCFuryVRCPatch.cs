@@ -15,7 +15,7 @@ public class Startup {
     {
         var whitelist = AvatarValidation.ComponentTypeWhiteListCommon;
         var updated = new List<string>(whitelist);
-        updated.Add("VRCFury");
+        updated.Add("VRCF.Model.VRCFury");
         typeof(AvatarValidation)
             .GetField("ComponentTypeWhiteListCommon",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic)
             .SetValue(null,updated.ToArray());

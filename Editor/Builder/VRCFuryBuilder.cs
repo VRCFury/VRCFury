@@ -11,28 +11,22 @@ namespace VRCF.Builder {
 
 public class VRCFuryBuilder {
     public void Run(VRCFury inputs) {
+        Debug.Log("VRCFury is running for " + inputs.gameObject.name + "...");
+        EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0);
+
         this.inputs = inputs;
         rootObject = inputs.gameObject;
         var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
         fxController = (AnimatorController)avatar.baseAnimationLayers[4].animatorController;
         var menu = avatar.expressionsMenu;
         var syncedParams = avatar.expressionParameters;
-        manager = new VRCFuryNameManager("Senky", menu, syncedParams, fxController);
+        manager = new VRCFuryNameManager("VRCFury", menu, syncedParams, fxController);
         baseFile = AssetDatabase.GetAssetPath(fxController);
         motions = new VRCFuryClipUtils(rootObject);
 
         // CLEANUP OLD DATA
         manager.Purge();
 
-        // UN-REMOVE SENKYFX FROM PREFAB INSTANCES
-        foreach (var child in rootObject.GetComponentsInChildren<Transform>(true)) {
-            if (!PrefabUtility.IsPartOfPrefabInstance(child.gameObject)) continue;
-            foreach (var removed in PrefabUtility.GetRemovedComponents(child.gameObject)) {
-                if (removed.assetComponent is VRCFury) {
-                    removed.Revert();
-                }
-            }
-        }
         // REMOVE ANIMATORS FROM PREFAB INSTANCES (often used for prop testing)
         foreach (var otherAnimator in rootObject.GetComponentsInChildren<Animator>(true)) {
             if (otherAnimator.gameObject != rootObject && PrefabUtility.IsPartOfPrefabInstance(otherAnimator.gameObject)) {
@@ -260,7 +254,7 @@ public class VRCFuryBuilder {
         allConfigs.Add(inputs);
         foreach (var otherConfig in rootObject.GetComponentsInChildren<VRCFury>(true)) {
             if (otherConfig == inputs) continue;
-            Debug.Log("Importing SenkyFX from " + otherConfig.gameObject.name);
+            Debug.Log("Importing config from " + otherConfig.gameObject.name);
             allConfigs.Add(otherConfig);
         }
         foreach (var conf in allConfigs) {
@@ -346,6 +340,9 @@ public class VRCFuryBuilder {
                 }
             }
         }
+
+        Debug.Log("VRCFury Finished!");
+        EditorUtility.ClearProgressBar();
     }
 
 
@@ -482,10 +479,6 @@ public class VRCFuryBuilder {
         var folderUri = new Uri(folder);
         return Uri.UnescapeDataString(folderUri.MakeRelativeUri(pathUri).ToString()
             .Replace('/', System.IO.Path.DirectorySeparatorChar));
-    }
-
-    private string newParamName(string name) {
-        return "SenkyFX/"+name;
     }
 
     private List<VRCFuryProp> getAllProps() {

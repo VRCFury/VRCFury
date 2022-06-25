@@ -31,14 +31,14 @@ public class VRCFuryNameManager {
         lastMenuNum = 0;
         // Clean up assets
         foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(ctrl))) {
-            if (subAsset.name.StartsWith("Senky")) {
+            if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith(prefix+"/")) {
                 AssetDatabase.RemoveObjectFromAsset(subAsset);
             }
         }
         // Clean up layers
         for (var i = 0; i < ctrl.layers.Length; i++) {
             var layer = ctrl.layers[i];
-            if (layer.name.StartsWith("Senky")) {
+            if (layer.name.StartsWith("Senky") || layer.name.StartsWith("["+prefix+"]")) {
                 ctrl.RemoveLayer(i);
                 i--;
             }
@@ -46,7 +46,7 @@ public class VRCFuryNameManager {
         // Clean up controller params
         for (var i = 0; i < ctrl.parameters.Length; i++) {
             var param = ctrl.parameters[i];
-            if (param.name.StartsWith("Senky")) {
+            if (param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__")) {
                 ctrl.RemoveParameter(param);
                 i--;
             }
@@ -54,20 +54,28 @@ public class VRCFuryNameManager {
         // Clean up synced params
         {
             var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
-            syncedParamsList.RemoveAll(param => param.name.StartsWith("Senky"));
+            syncedParamsList.RemoveAll(param => param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__"));
             syncedParams.parameters = syncedParamsList.ToArray();
             EditorUtility.SetDirty(syncedParams);
         }
         // Clean up menu
         {
             for (var i = 0; i < rootMenu.controls.Count; i++) {
-                if (rootMenu.controls[i].name == "SenkyFX") {
+                var remove = false;
+                if (rootMenu.controls[i].type == VRCExpressionsMenu.Control.ControlType.SubMenu
+                    && rootMenu.controls[i].subMenu.name.StartsWith(prefix+"/")) {
+                    remove = true;
+                }
+                if (rootMenu.controls[i].name == "SenkyFX" || rootMenu.controls[i].name == "VRCFury") {
+                    remove = true;
+                }
+                if (remove) {
                     rootMenu.controls.RemoveAt(i);
                     i--;
                 }
             }
             foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(rootMenu))) {
-                if (subAsset.name.StartsWith("Senky")) {
+                if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith(prefix+"/")) {
                     AssetDatabase.RemoveObjectFromAsset(subAsset);
                 }
             }
@@ -91,7 +99,7 @@ public class VRCFuryNameManager {
     }
 
     public VFALayer NewLayer(string name) {
-        return GetController().NewLayer(prefix + "/" + name);
+        return GetController().NewLayer("[" + prefix + "] " + name);
     }
 
     public AnimationClip NewClip(string name) {
@@ -112,14 +120,14 @@ public class VRCFuryNameManager {
     public VRCExpressionsMenu GetFxMenu() {
         if (fxMenu == null) {
             if (rootMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-                throw new Exception("Root menu can't fit SenkyFX!");
+                throw new Exception("Root menu can't fit any more controls!");
             }
             fxMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            fxMenu.name = "SenkyFX";
+            fxMenu.name = prefix + "/Main";
             AssetDatabase.AddObjectToAsset(fxMenu, rootMenu);
             var control = new VRCExpressionsMenu.Control();
             rootMenu.controls.Add(control);
-            control.name = "SenkyFX";
+            control.name = prefix;
             control.subMenu = fxMenu;
             control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
         }
@@ -133,7 +141,7 @@ public class VRCFuryNameManager {
             }
             lastMenuNum++;
             lastMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            lastMenu.name = "SenkyFX_" + lastMenuNum;
+            lastMenu.name = prefix + "/" + lastMenuNum;
             AssetDatabase.AddObjectToAsset(lastMenu, rootMenu);
             var control = new VRCExpressionsMenu.Control();
             fxMenu.controls.Add(control);
