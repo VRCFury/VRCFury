@@ -23,15 +23,13 @@ public class SenkyFXBuilder {
         // CLEANUP OLD DATA
         manager.Purge();
 
-        // DELETE SENKYFX AND ANIMATORS FROM PREFAB INSTANCES
-        foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
-            if (PrefabUtility.GetNearestPrefabInstanceRoot(otherSenkyFx.gameObject) != null) {
-                UnityEngine.Object.Destroy(otherSenkyFx);
-            }
-        }
-        foreach (var otherAnimator in rootObject.GetComponentsInChildren<Animator>(true)) {
-            if (otherAnimator.gameObject != rootObject && PrefabUtility.GetNearestPrefabInstanceRoot(otherAnimator.gameObject) != null) {
-                UnityEngine.Object.Destroy(otherAnimator);
+        // UN-REMOVE SENKYFX FROM PREFAB INSTANCES
+        foreach (var child in rootObject.GetComponentsInChildren<Transform>(true)) {
+            if (!PrefabUtility.IsPartOfPrefabInstance(child.gameObject)) continue;
+            foreach (var removed in PrefabUtility.GetRemovedComponents(child.gameObject)) {
+                if (removed.assetComponent is SenkyFX) {
+                    removed.Revert();
+                }
             }
         }
 
@@ -254,6 +252,7 @@ public class SenkyFXBuilder {
         var allSenkyFx = new List<SenkyFX>();
         allSenkyFx.Add(inputs);
         foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
+            Debug.Log("Importing SenkyFX from " + otherSenkyFx.gameObject.name);
             allSenkyFx.Add(otherSenkyFx);
         }
         foreach (var senkyfx in allSenkyFx) {
@@ -337,6 +336,18 @@ public class SenkyFXBuilder {
                     }
                     manager.NewMenuToggle(prop.name, param);
                 }
+            }
+        }
+
+        // REMOVE SENKYFX AND ANIMATORS FROM PREFAB INSTANCES
+        foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
+            if (PrefabUtility.IsPartOfPrefabInstance(otherSenkyFx.gameObject)) {
+                UnityEngine.Object.DestroyImmediate(otherSenkyFx);
+            }
+        }
+        foreach (var otherAnimator in rootObject.GetComponentsInChildren<Animator>(true)) {
+            if (otherAnimator.gameObject != rootObject && PrefabUtility.IsPartOfPrefabInstance(otherAnimator.gameObject)) {
+                UnityEngine.Object.DestroyImmediate(otherAnimator);
             }
         }
     }
