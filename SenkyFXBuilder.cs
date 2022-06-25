@@ -11,17 +11,29 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 public class SenkyFXBuilder {
     public void Run(SenkyFX inputs) {
         this.inputs = inputs;
-        gameObject = inputs.avatar;
-        var avatar = gameObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        rootObject = inputs.avatar;
+        var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
         fxController = (AnimatorController)avatar.baseAnimationLayers[4].animatorController;
         var menu = avatar.expressionsMenu;
         var syncedParams = avatar.expressionParameters;
         manager = new SenkyFXNameManager("Senky", menu, syncedParams, fxController);
         baseFile = AssetDatabase.GetAssetPath(fxController);
-        motions = new SenkyFXMotion(gameObject);
+        motions = new SenkyFXMotion(rootObject);
 
-        // CLEANUP
+        // CLEANUP OLD DATA
         manager.Purge();
+
+        // DELETE SENKYFX AND ANIMATORS FROM PREFAB INSTANCES
+        foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
+            if (PrefabUtility.GetNearestPrefabInstanceRoot(otherSenkyFx.gameObject) != null) {
+                UnityEngine.Object.Destroy(otherSenkyFx);
+            }
+        }
+        foreach (var otherAnimator in rootObject.GetComponentsInChildren<Animator>(true)) {
+            if (otherAnimator.gameObject != rootObject && PrefabUtility.GetNearestPrefabInstanceRoot(otherAnimator.gameObject) != null) {
+                UnityEngine.Object.Destroy(otherAnimator);
+            }
+        }
 
         // DEFAULTS
         noopClip = manager.GetNoopClip();
@@ -193,7 +205,7 @@ public class SenkyFXBuilder {
         // SCALE
         {
             var scaleClip = manager.NewClip("Scale");
-            motions.Scale(scaleClip, gameObject, motions.FromFrames(
+            motions.Scale(scaleClip, rootObject, motions.FromFrames(
                 new Keyframe(0,0.1f),
                 new Keyframe(2,1),
                 new Keyframe(3,2),
@@ -205,7 +217,7 @@ public class SenkyFXBuilder {
         }
 
         // LEWD LOCK
-        var paramLewdSync = manager.NewBool("LewdLockSync", synced: true);
+        var paramLewdSync = manager.NewBool("LewdLockSync", synced: true, defTrueInEditor: true);
         {
             // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
             var paramLewdMenu = manager.NewBool("LewdLockMenu", synced: true);
@@ -241,7 +253,7 @@ public class SenkyFXBuilder {
         // PROPS
         var allSenkyFx = new List<SenkyFX>();
         allSenkyFx.Add(inputs);
-        foreach (var otherSenkyFx in gameObject.GetComponentsInChildren<SenkyFX>(true)) {
+        foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
             allSenkyFx.Add(otherSenkyFx);
         }
         foreach (var senkyfx in allSenkyFx) {
@@ -354,7 +366,7 @@ public class SenkyFXBuilder {
     private SenkyFXNameManager manager;
     private SenkyFXMotion motions;
     private SenkyFX inputs;
-    private GameObject gameObject;
+    private GameObject rootObject;
     private string baseFile;
     private AnimationClip noopClip;
     private AnimationClip defaultClip;
@@ -362,7 +374,7 @@ public class SenkyFXBuilder {
     private SenkyAnimCondition always;
 
     private GameObject find(string path) {
-        var found = gameObject.transform.Find(path)?.gameObject;
+        var found = rootObject.transform.Find(path)?.gameObject;
         if (found == null) {
             throw new Exception("Failed to find path '" + path + "'");
         }
@@ -375,7 +387,7 @@ public class SenkyFXBuilder {
 
     private List<SkinnedMeshRenderer> getAllSkins() {
         List<SkinnedMeshRenderer> skins = new List<SkinnedMeshRenderer>();
-        foreach (Transform child in gameObject.transform) {
+        foreach (Transform child in rootObject.transform) {
             var skin = child.gameObject.GetComponent(typeof(SkinnedMeshRenderer)) as SkinnedMeshRenderer;
             if (skin != null) {
                 skins.Add(skin);
@@ -393,7 +405,7 @@ public class SenkyFXBuilder {
     private AnimationClip loadClip(string name, SenkyFXState state, GameObject prefixObj = null) {
         if (state.clip != null) {
             AnimationClip output = null;
-            if (prefixObj != null && prefixObj != gameObject) {
+            if (prefixObj != null && prefixObj != rootObject) {
                 var copy = manager.NewClip(name);
                 motions.CopyWithAdjustedPrefixes(state.clip, copy, prefixObj);
                 output = copy;
@@ -401,7 +413,7 @@ public class SenkyFXBuilder {
                 output = state.clip;
             }
             foreach (var binding in AnimationUtility.GetCurveBindings(output)) {
-                var exists = AnimationUtility.GetFloatValue(gameObject, binding, out var value);
+                var exists = AnimationUtility.GetFloatValue(rootObject, binding, out var value);
                 if (exists) {
                     AnimationUtility.SetEditorCurve(defaultClip, binding, motions.OneFrame(value));
                 } else {
@@ -409,7 +421,7 @@ public class SenkyFXBuilder {
                 }
             }
             foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(output)) {
-                var exists = AnimationUtility.GetObjectReferenceValue(gameObject, binding, out var value);
+                var exists = AnimationUtility.GetObjectReferenceValue(rootObject, binding, out var value);
                 if (exists) {
                     AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, motions.OneFrame(value));
                 } else {
@@ -719,7 +731,7 @@ public class SenkyFXNameManager {
         if (usePrefix) name = newParamName(name);
         return GetController().NewTrigger(name);
     }
-    public SenkyAnimParamBool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true) {
+    public SenkyAnimParamBool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
         if (usePrefix) name = newParamName(name);
         if (synced) {
             var param = new VRCExpressionParameters.Parameter();
@@ -729,7 +741,7 @@ public class SenkyFXNameManager {
             param.defaultValue = def ? 1 : 0;
             addSyncedParam(param);
         }
-        return GetController().NewBool(name, def);
+        return GetController().NewBool(name, def || defTrueInEditor);
     }
     public SenkyAnimParamNumber NewInt(string name, bool synced = false, int def = 0, bool saved = false, bool usePrefix = true) {
         if (usePrefix) name = newParamName(name);

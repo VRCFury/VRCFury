@@ -165,7 +165,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
 
         if (showResetPhysbones && resetPhysboneProp.arraySize > 0) {
             content.Add(new Label("Reset PhysBones:"));
-            content.Add(SenkyUIHelper.List(prop.FindPropertyRelative("resetPhysbones")));
+            content.Add(SenkyUIHelper.List(prop.FindPropertyRelative("resetPhysbones"), renderElement: (i,el) => SenkyUIHelper.PropWithoutLabel(el)));
         }
 
         return container;

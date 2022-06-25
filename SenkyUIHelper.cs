@@ -139,35 +139,47 @@ public class SenkyUIHelper {
     }
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {
+
+        switch(prop.propertyType) {
+            case SerializedPropertyType.Boolean:
+                return _OnChange(prop, () => prop.boolValue, changed, (a,b) => a==b);
+            case SerializedPropertyType.Integer:
+                return _OnChange(prop, () => prop.intValue, changed, (a,b) => a==b);
+            case SerializedPropertyType.String:
+                return _OnChange(prop, () => prop.stringValue, changed, (a,b) => a==b);
+            case SerializedPropertyType.ObjectReference:
+                return _OnChange(prop, () => prop.objectReferenceValue, changed, (a,b) => a==b);
+        }
         if (prop.isArray) {
             var fakeField = new IntegerField();
             fakeField.bindingPath = prop.propertyPath+".Array.size";
             fakeField.style.display = DisplayStyle.None;
+            int oldValue = prop.arraySize;
             fakeField.RegisterValueChangedCallback(e => {
+                if (prop.arraySize == oldValue) return;
+                oldValue = prop.arraySize;
+                Debug.Log("Detected change in " + prop.propertyPath);
                 changed();
             });
             return fakeField;
-        } else {
-            var fakeField = new PropertyField(prop);
-            fakeField.style.display = DisplayStyle.None;
-            switch(prop.propertyType) {
-                case SerializedPropertyType.Boolean:
-                    fakeField.RegisterCallback<ChangeEvent<bool>>(e => changed());
-                    break;
-                case SerializedPropertyType.Integer:
-                    fakeField.RegisterCallback<ChangeEvent<int>>(e => changed());
-                    break;
-                case SerializedPropertyType.String:
-                    fakeField.RegisterCallback<ChangeEvent<string>>(e => changed());
-                    break;
-                case SerializedPropertyType.ObjectReference:
-                    fakeField.RegisterCallback<ChangeEvent<UnityEngine.Object>>(e => changed());
-                    break;
-                default:
-                    throw new Exception("Type " + prop.propertyType + " not supported (yet) by OnChange");
-            }
-            return fakeField;
         }
+        throw new Exception("Type " + prop.propertyType + " not supported (yet) by OnChange");
+    }
+    private static VisualElement _OnChange<TYPE>(SerializedProperty prop, Func<TYPE> getValue, Action changed, Func<TYPE,TYPE,bool> equals) {
+        // The register events can sometimes randomly fire when binding / unbinding happens,
+        // with the oldValue being "null", so we have to do our own change detection by caching the old value.
+        var fakeField = new PropertyField();
+        fakeField.style.display = DisplayStyle.None;
+        TYPE oldValue = getValue();
+        Action check = () => {
+            var newValue = getValue();
+            if (equals(oldValue, newValue)) return;
+            oldValue = newValue;
+            Debug.Log("Detected change in " + prop.propertyPath);
+            changed();
+        };
+        fakeField.RegisterCallback<ChangeEvent<TYPE>>(e => check());
+        return fakeField;
     }
 
     public static VisualElement RefreshOnChange(Func<VisualElement> content, params SerializedProperty[] props) {
@@ -176,24 +188,20 @@ public class SenkyUIHelper {
         container.Add(inner);
         inner.Add(content());
         Action refresh = () => {
-            inner.RemoveAt(inner.childCount-1);
+            inner.Unbind();
+            inner.Clear();
             var newContent = content();
             inner.Add(newContent);
-            newContent.Bind(props[0].serializedObject);
+            inner.Bind(props[0].serializedObject);
         };
         foreach (var prop in props) {
-            container.Add(OnChange(prop, refresh));
+            var onChangeField = OnChange(prop, refresh);
+            container.Add(onChangeField);
         }
-        container.RegisterCallback<RefreshEvent>(e => {
-            refresh();
-        });
         return container;
     }
 
     public static int LABEL_WIDTH = 137;
-}
-
-public class RefreshEvent : EventBase<RefreshEvent> {
 }
 
 #endif

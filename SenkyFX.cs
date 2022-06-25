@@ -6,6 +6,7 @@ using UnityEditor;
 using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
+using VRC.SDK3.Avatars.Components;
 
 public class SenkyFX : MonoBehaviour {
     public GameObject avatar;
@@ -51,9 +52,12 @@ public class SenkyFXEditor : Editor {
             form = new Stack<VisualElement>();
             form.Push(new VisualElement());
 
-            AddProperty("avatar");
+            AddProperty("avatar", "Avatar / Object Root");
 
-            if (avatarProp.objectReferenceValue != null) {
+            var pointingToAvatar = avatarProp.objectReferenceValue != null
+                && ((GameObject)avatarProp.objectReferenceValue).GetComponent<VRCAvatarDescriptor>() != null;
+
+            if (pointingToAvatar) {
                 AddProperty("stateBlink", "Blinking");
                 AddState("stateTalkGlow", "Talk Glow");
                 AddProperty("visemeFolder", "Viseme Folder");
@@ -95,7 +99,7 @@ public class SenkyFXEditor : Editor {
                 AddProperty("props");
             });
 
-            if (avatarProp.objectReferenceValue != null) {
+            if (pointingToAvatar) {
                 var genButton = new Button(() => {
                     var builder = new SenkyFXBuilder();
                     var inputs = (SenkyFX) target;
