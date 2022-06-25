@@ -176,6 +176,7 @@ public class SenkyAnimState {
     }
     public SenkyAnimStateTransition TransitionsFromAny() {
         var trans = layer.stateMachine.AddAnyStateTransition(node.state);
+        trans.canTransitionToSelf = false;
         return new SenkyAnimStateTransition(trans);
     }
     public SenkyAnimStateTransition TransitionsTo(SenkyAnimState other) {

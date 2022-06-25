@@ -158,7 +158,7 @@ public class SenkyUIHelper {
             fakeField.RegisterValueChangedCallback(e => {
                 if (prop.arraySize == oldValue) return;
                 oldValue = prop.arraySize;
-                Debug.Log("Detected change in " + prop.propertyPath);
+                //Debug.Log("Detected change in " + prop.propertyPath);
                 changed();
             });
             return fakeField;
@@ -175,7 +175,7 @@ public class SenkyUIHelper {
             var newValue = getValue();
             if (equals(oldValue, newValue)) return;
             oldValue = newValue;
-            Debug.Log("Detected change in " + prop.propertyPath);
+            //Debug.Log("Detected change in " + prop.propertyPath);
             changed();
         };
         fakeField.RegisterCallback<ChangeEvent<TYPE>>(e => check());

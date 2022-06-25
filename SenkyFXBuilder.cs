@@ -447,6 +447,10 @@ public class SenkyFXBuilder {
         var clip = manager.NewClip(name);
         foreach (var action in state.actions) {
             if (action.type == SenkyFXAction.TOGGLE) {
+                if (action.obj == null) {
+                    Debug.LogWarning("Missing object in action: " + name);
+                    continue;
+                }
                 motions.Enable(clip, action.obj, !action.obj.activeSelf);
                 motions.Enable(defaultClip, action.obj, action.obj.activeSelf);
             }
@@ -460,7 +464,9 @@ public class SenkyFXBuilder {
                     motions.BlendShape(clip, skin, action.blendShape, 100);
                     motions.BlendShape(defaultClip, skin, action.blendShape, defValue);
                 }
-                if (!foundOne) throw new Exception(action.blendShape + " blendShape not found in avatar");
+                if (!foundOne) {
+                    Debug.LogWarning("BlendShape not found in avatar: " + action.blendShape);
+                }
             }
         }
         return clip;
