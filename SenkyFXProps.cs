@@ -1,15 +1,11 @@
+#if UNITY_EDITOR
+
 using System;
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using VRC.SDK3.Avatars.Components;
-using AnimatorAsCode.V0;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
-using UnityEditorInternal;
 
 [Serializable]
 public class SenkyFXProp {
@@ -49,41 +45,27 @@ public class SenkyFXPropMode {
     public SenkyFXPropMode(SenkyFXState state) {
         this.state = state;
     }
-}
 
-[CustomPropertyDrawer(typeof(SenkyFXPropMode))]
-public class SenkyFXPropModeDrawer : BetterPropertyDrawer {
-    protected override void render(SerializedProperty prop, GUIContent label) {
-        renderProp(prop.FindPropertyRelative("state"), label.text);
+    public static VisualElement render(SerializedProperty prop, string label) {
+        return SenkyFXState.render(prop.FindPropertyRelative("state"));
     }
 }
 
 [CustomPropertyDrawer(typeof(SenkyFXProp))]
 public class SenkyFXPropDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-        var wrapper = new VisualElement();
-
-        var innerWrapper = new VisualElement();
-        wrapper.Add(innerWrapper);
-        innerWrapper.Add(render(prop));
-        Action update = () => {
-            innerWrapper.Clear();
-            innerWrapper.Add(render(prop));
-            innerWrapper.Bind(prop.serializedObject);
-        };
-
-        wrapper.Add(SenkyUIHelper.OnChange<string>(prop.FindPropertyRelative("type"), update));
-        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("saved"), update));
-        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("slider"), update));
-        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("lewdLocked"), update));
-        wrapper.Add(SenkyUIHelper.OnChange<bool>(prop.FindPropertyRelative("defaultOn"), update));
-        wrapper.Add(SenkyUIHelper.OnSizeChange(prop.FindPropertyRelative("resetPhysbones"), update));
-
-        return wrapper;
+        return SenkyUIHelper.RefreshOnChange(() => render(prop),
+            prop.FindPropertyRelative("type"),
+            prop.FindPropertyRelative("saved"),
+            prop.FindPropertyRelative("slider"),
+            prop.FindPropertyRelative("lewdLocked"),
+            prop.FindPropertyRelative("defaultOn"),
+            prop.FindPropertyRelative("resetPhysbones")
+        );
     }
 
     private VisualElement render(SerializedProperty prop) {
-        var form = new SenkyUIHelper(prop);
+        var container = new VisualElement();
 
         var showSaved = false;
         var showSlider = false;
@@ -111,7 +93,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
             if (boolProp.boolValue) tags.Add("Saved");
             advMenu.AddItem(new GUIContent("Saved Between Worlds"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
-                form.Save();
+                prop.serializedObject.ApplyModifiedProperties();
             });
         }
         if (showSlider) {
@@ -119,7 +101,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
             if (boolProp.boolValue) tags.Add("Slider");
             advMenu.AddItem(new GUIContent("Use Slider Wheel"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
-                form.Save();
+                prop.serializedObject.ApplyModifiedProperties();
             });
         }
         if (showLewd) {
@@ -127,7 +109,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
             if (boolProp.boolValue) tags.Add("Lewd");
             advMenu.AddItem(new GUIContent("Protect with Lewd Safety"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
-                form.Save();
+                prop.serializedObject.ApplyModifiedProperties();
             });
         }
         if (showDefaultOn) {
@@ -135,7 +117,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
             if (boolProp.boolValue) tags.Add("Default On");
             advMenu.AddItem(new GUIContent("Default On"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
-                form.Save();
+                prop.serializedObject.ApplyModifiedProperties();
             });
         }
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
@@ -149,9 +131,9 @@ public class SenkyFXPropDrawer : PropertyDrawer {
         flex.style.flexDirection = FlexDirection.Row;
         flex.style.alignItems = Align.FlexStart;
         flex.style.marginBottom = 10;
-        form.Add(flex);
+        container.Add(flex);
 
-        var name = new PropertyField(prop.FindPropertyRelative("name"));
+        var name = SenkyUIHelper.PropWithoutLabel(prop.FindPropertyRelative("name"));
         name.style.flexGrow = 1;
         flex.Add(name);
 
@@ -166,7 +148,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
 
         var content = new VisualElement();
         content.style.paddingLeft = 20;
-        form.Add(content);
+        container.Add(content);
 
         var tagsStr = String.Join(" | ", tags.ToArray());
         if (tagsStr != "") {
@@ -174,19 +156,19 @@ public class SenkyFXPropDrawer : PropertyDrawer {
         }
 
         if (type == SenkyFXProp.TOGGLE) {
-            content.Add(new PropertyField(prop.FindPropertyRelative("state")));
+            content.Add(SenkyFXState.render(prop.FindPropertyRelative("state")));
         } else if (type == SenkyFXProp.MODES) {
-            content.Add(form.List("modes"));
+            content.Add(SenkyUIHelper.List(prop.FindPropertyRelative("modes"), renderElement: (i,e) => SenkyFXPropMode.render(e, "Mode " + (i+1))));
         } else {
             content.Add(new Label("Unknown type: " + type));
         }
 
         if (showResetPhysbones && resetPhysboneProp.arraySize > 0) {
             content.Add(new Label("Reset PhysBones:"));
-            content.Add(form.List("resetPhysbones"));
+            content.Add(SenkyUIHelper.List(prop.FindPropertyRelative("resetPhysbones")));
         }
 
-        return form.Render();
+        return container;
     }
 }
 
@@ -198,22 +180,23 @@ public class SenkyFXProps {
 [CustomPropertyDrawer(typeof(SenkyFXProps))]
 public class SenkyFXPropsDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-        var form = new SenkyUIHelper(prop);
-        form.Add(form.List("props", newItem));
-        return form.Render();
-    }
-
-    private void newItem(SerializedProperty list, Action<Action<SerializedProperty>> add) {
-        var menu = new GenericMenu();
-        menu.AddItem(new GUIContent("Toggle"), false, () => {
-            add(entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.TOGGLE);
-        });
-        menu.AddItem(new GUIContent("Multi-Mode"), false, () => {
-            add(entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.MODES);
-        });
-        menu.AddItem(new GUIContent("Puppet"), false, () => {
-            add(entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.PUPPET);
-        });
-        menu.ShowAsContext();
+        var listProp = prop.FindPropertyRelative("props");
+        var inspect = new VisualElement();
+        inspect.Add(SenkyUIHelper.List(listProp, onPlus: () => {
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Toggle"), false, () => {
+                SenkyUIHelper.addToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.TOGGLE);
+            });
+            menu.AddItem(new GUIContent("Multi-Mode"), false, () => {
+                SenkyUIHelper.addToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.MODES);
+            });
+            menu.AddItem(new GUIContent("Puppet"), false, () => {
+                SenkyUIHelper.addToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.PUPPET);
+            });
+            menu.ShowAsContext();
+        }));
+        return inspect;
     }
 }
+
+#endif

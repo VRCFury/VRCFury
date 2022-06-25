@@ -1,6 +1,10 @@
+#if UNITY_EDITOR
+
 using System;
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 
 [Serializable]
 public class SenkyFXAction {
@@ -13,20 +17,47 @@ public class SenkyFXAction {
 }
 
 [CustomPropertyDrawer(typeof(SenkyFXAction))]
-public class SenkyFXActionDrawer : BetterPropertyDrawer {
-    protected override void render(SerializedProperty prop, GUIContent label) {
-        var type = prop.FindPropertyRelative("type").stringValue;
+public class SenkyFXActionDrawer : PropertyDrawer {
+    public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+        var typeProp = prop.FindPropertyRelative("type");
 
-        if (type == SenkyFXAction.TOGGLE) {
-            var one = renderRect(line);
-            renderLabel(new Rect(one.x, one.y, one.width/2, one.height), "Object Toggle");
-            renderProp(new Rect(one.x+one.width/2, one.y, one.width/2, one.height), prop.FindPropertyRelative("obj"));
-        } else if (type == SenkyFXAction.BLENDSHAPE) {
-            var one = renderRect(line);
-            renderLabel(new Rect(one.x, one.y, one.width/2, one.height), "BlendShape");
-            renderProp(new Rect(one.x+one.width/2, one.y, one.width/2, one.height), prop.FindPropertyRelative("blendShape"));
-        } else {
-            renderLabel("Unknown action: " + type);
-        }
+        return SenkyUIHelper.RefreshOnChange(() => {
+            var type = typeProp.stringValue;
+            if (type == SenkyFXAction.TOGGLE) {
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.FlexStart;
+
+                var label = new Label("Object Toggle");
+                label.style.flexGrow = 0;
+                label.style.flexBasis = SenkyUIHelper.LABEL_WIDTH;
+                row.Add(label);
+
+                var propField = SenkyUIHelper.PropWithoutLabel(prop.FindPropertyRelative("obj"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+
+                return row;
+            } else if (type == SenkyFXAction.BLENDSHAPE) {
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.FlexStart;
+
+                var label = new Label("BlendShape");
+                label.style.flexGrow = 0;
+                label.style.flexBasis = SenkyUIHelper.LABEL_WIDTH;
+                row.Add(label);
+
+                var propField = SenkyUIHelper.PropWithoutLabel(prop.FindPropertyRelative("blendShape"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+
+                return row;
+            } else {
+                return new Label("Unknown action: " + type);
+            }
+        }, typeProp);
     }
 }
+
+#endif

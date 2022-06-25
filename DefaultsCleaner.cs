@@ -1,11 +1,8 @@
+#if UNITY_EDITOR
+
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Reflection;
-
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
 
 public class DefaultsCleaner {
     public static bool Cleanup(object obj) {
@@ -42,3 +39,5 @@ public class DefaultsCleaner {
         return false;
     }
 }
+
+#endif

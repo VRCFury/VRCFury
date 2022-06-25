@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using System;
 using UnityEngine;
 using UnityEditor;
@@ -6,119 +8,82 @@ using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 public class SenkyUIHelper {
-    private Stack<VisualElement> stack = new Stack<VisualElement>();
-    private VisualElement inspector = new VisualElement();
-    private Func<string,SerializedProperty> GetProp;
-    private SerializedObject root;
 
-    public SenkyUIHelper(SerializedObject obj)
-        : this(obj.FindProperty, obj) { }
-
-    public SenkyUIHelper(SerializedProperty prop)
-        : this(prop.FindPropertyRelative, prop.serializedObject) { }
-
-    private SenkyUIHelper(Func<string,SerializedProperty> GetProp, SerializedObject root) {
-        stack.Push(inspector);
-        this.GetProp = GetProp;
-        this.root = root;
-    }
-
-    private VisualElement getContainer() {
-        return stack.Peek();
-    }
-    private void Inside(VisualElement el, Action with) {
-        stack.Push(el);
-        with();
-        stack.Pop();
-    }
-
-    public void Add(VisualElement el) {
-        getContainer().Add(el);
-    }
-    public void FoldoutOpen(string header, Action with) {
-        Foldout(header, with, true);
-    }
-    public void Foldout(string header, Action with, bool def = false) {
-        var foldout = new Foldout();
-        foldout.text = header;
-        Add(foldout);
-        Inside(foldout.contentContainer, with);
-    }
-    public void Property(string prop, string label="") {
-        Property(GetProp(prop), label);
-    }
-    public void Property(SerializedProperty prop, string label="") {
-        Add(new PropertyField(prop, label));
-    }
-    public void Button(string label, Action onClick) {
-        var button = new Button(onClick);
-        button.text = label;
-        Add(button);
-    }
-    public VisualElement List(string propStr, Action<SerializedProperty, Action<Action<SerializedProperty>>> onPlus = null) {
+    public static VisualElement List(SerializedProperty list, Func<int, SerializedProperty, VisualElement> renderElement = null, Action onPlus = null) {
         var container = new VisualElement();
 
-        var list = GetProp(propStr);
         var entriesContainer = new VisualElement();
         container.Add(entriesContainer);
         Border(entriesContainer, 1);
         BorderColor(entriesContainer, Color.black);
         BorderRadius(entriesContainer, 5);
         entriesContainer.style.backgroundColor = new Color(0,0,0,0.1f);
+        entriesContainer.style.minHeight = 20;
 
-        Action refreshList = () => {
-            entriesContainer.Clear();
+        entriesContainer.Add(RefreshOnChange(() => {
+            var entries = new VisualElement();
             var size = list.arraySize;
             for (var i = 0; i < size; i++) {
                 var offset = i;
                 var el = list.GetArrayElementAtIndex(i);
                 var row = new VisualElement();
                 row.style.flexDirection = FlexDirection.Row;
-                row.style.borderBottomWidth = 1;
-                row.style.borderBottomColor = Color.black;
+                if (offset != size - 1) {
+                    row.style.borderBottomWidth = 1;
+                    row.style.borderBottomColor = Color.black;
+                }
                 row.style.alignItems = Align.FlexStart;
-                entriesContainer.Add(row);
+                entries.Add(row);
 
-                var data = new PropertyField(el, "");
+                var data = renderElement != null ? renderElement(offset, el) : new PropertyField(el);
                 Padding(data, 5);
                 data.style.flexGrow = 1;
                 row.Add(data);
 
-                var remove = new Button(() => {
+                var remove = new Label("x");
+                remove.AddManipulator(new Clickable(e => {
                     list.DeleteArrayElementAtIndex(offset);
-                    Save();
-                });
-                remove.text = "x";
+                    list.serializedObject.ApplyModifiedProperties();
+                }));
                 remove.style.flexGrow = 0;
+                remove.style.borderLeftColor = remove.style.borderBottomColor = Color.black;
+                remove.style.borderLeftWidth = remove.style.borderBottomWidth = 1;
+                remove.style.borderBottomLeftRadius = 5;
+                remove.style.paddingLeft = remove.style.paddingRight = 5;
+                remove.style.paddingBottom = 3;
                 row.Add(remove);
             }
-            entriesContainer.Bind(list.serializedObject);
-        };
+            return entries;
+        }, list));
 
-        refreshList();
-        container.Add(OnSizeChange(list, refreshList));
+        var buttonRow = new VisualElement();
+        buttonRow.style.flexDirection = FlexDirection.Row;
+        container.Add(buttonRow);
 
+        var buttonSpacer = new VisualElement();
+        buttonRow.Add(buttonSpacer);
+        buttonSpacer.style.flexGrow = 1;
+
+        entriesContainer.style.borderBottomRightRadius = 0;
         var buttons = new VisualElement();
-        container.Add(buttons);
-        buttons.style.paddingLeft = StyleKeyword.Auto;
-        var add = new Button(() => {
+        buttonRow.Add(buttons);
+        buttons.style.flexGrow = 0;
+        buttons.style.borderLeftColor = buttons.style.borderRightColor = buttons.style.borderBottomColor = Color.black;
+        buttons.style.borderLeftWidth = buttons.style.borderRightWidth = buttons.style.borderBottomWidth = 1;
+        buttons.style.borderBottomLeftRadius = buttons.style.borderBottomRightRadius = 5;
+        var add = new Label("+");
+        add.style.paddingLeft = add.style.paddingRight = 5;
+        add.style.paddingBottom = 3;
+        add.AddManipulator(new Clickable(e => {
             if (onPlus != null) {
-                onPlus(list, with => {
-                    var newEl = addToList(list, with);
-                });
+                onPlus();
             } else {
                 addToList(list);
             }
-        });
-        add.text = "+";
+        }));
         buttons.Add(add);
 
         return container;
-    }
-
-    public VisualElement Render() {
-        if (stack.Count != 1) throw new Exception("Wrong stack size?");
-        return stack.Peek();
     }
 
     public static SerializedProperty addToList(SerializedProperty list, Action<SerializedProperty> doWith = null) {
@@ -167,26 +132,68 @@ public class SenkyUIHelper {
         BorderColor(el, all, all);
     }
 
-    public void Save() {
-        root.ApplyModifiedProperties();
+    public static VisualElement PropWithoutLabel(SerializedProperty prop) {
+        var field = new PropertyField(prop, " ");
+        field.style.marginLeft = -LABEL_WIDTH;
+        return field;
     }
 
-    public static VisualElement OnChange<Type>(SerializedProperty prop, Action changed) {
-        var fakeField = new PropertyField(prop);
-        fakeField.style.display = DisplayStyle.None;
-        fakeField.RegisterCallback<ChangeEvent<Type>>(e => {
-            changed();
-        });
-        return fakeField;
-    }
-    public static VisualElement OnSizeChange(SerializedProperty prop, Action changed) {
-        var fakeField = new IntegerField();
-        fakeField.bindingPath = prop.propertyPath+".Array.size";
-        fakeField.style.display = DisplayStyle.None;
-        fakeField.RegisterValueChangedCallback(e => {
-            changed();
-        });
-        return fakeField;
+    public static VisualElement OnChange(SerializedProperty prop, Action changed) {
+        if (prop.isArray) {
+            var fakeField = new IntegerField();
+            fakeField.bindingPath = prop.propertyPath+".Array.size";
+            fakeField.style.display = DisplayStyle.None;
+            fakeField.RegisterValueChangedCallback(e => {
+                changed();
+            });
+            return fakeField;
+        } else {
+            var fakeField = new PropertyField(prop);
+            fakeField.style.display = DisplayStyle.None;
+            switch(prop.propertyType) {
+                case SerializedPropertyType.Boolean:
+                    fakeField.RegisterCallback<ChangeEvent<bool>>(e => changed());
+                    break;
+                case SerializedPropertyType.Integer:
+                    fakeField.RegisterCallback<ChangeEvent<int>>(e => changed());
+                    break;
+                case SerializedPropertyType.String:
+                    fakeField.RegisterCallback<ChangeEvent<string>>(e => changed());
+                    break;
+                case SerializedPropertyType.ObjectReference:
+                    fakeField.RegisterCallback<ChangeEvent<UnityEngine.Object>>(e => changed());
+                    break;
+                default:
+                    throw new Exception("Type " + prop.propertyType + " not supported (yet) by OnChange");
+            }
+            return fakeField;
+        }
     }
 
+    public static VisualElement RefreshOnChange(Func<VisualElement> content, params SerializedProperty[] props) {
+        var container = new VisualElement();
+        var inner = new VisualElement();
+        container.Add(inner);
+        inner.Add(content());
+        Action refresh = () => {
+            inner.RemoveAt(inner.childCount-1);
+            var newContent = content();
+            inner.Add(newContent);
+            newContent.Bind(props[0].serializedObject);
+        };
+        foreach (var prop in props) {
+            container.Add(OnChange(prop, refresh));
+        }
+        container.RegisterCallback<RefreshEvent>(e => {
+            refresh();
+        });
+        return container;
+    }
+
+    public static int LABEL_WIDTH = 137;
 }
+
+public class RefreshEvent : EventBase<RefreshEvent> {
+}
+
+#endif

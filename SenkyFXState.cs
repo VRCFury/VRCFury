@@ -1,15 +1,11 @@
+#if UNITY_EDITOR
+
 using System;
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using VRC.SDK3.Avatars.Components;
-using AnimatorAsCode.V0;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
-using UnityEditorInternal;
 
 [Serializable]
 public class SenkyFXState {
@@ -18,48 +14,71 @@ public class SenkyFXState {
     public bool isEmpty() {
         return clip == null && actions.Count == 0;
     }
-}
 
-[CustomPropertyDrawer(typeof(SenkyFXState))]
-public class SenkyFXStateDrawer : BetterPropertyDrawer {
-    private void newItem(SerializedProperty list) {
-        var menu = new GenericMenu();
-        menu.AddItem(new GUIContent("Object Toggle"), false, () => {
-            addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXAction.TOGGLE);
-        });
-        menu.AddItem(new GUIContent("BlendShape"), false, () => {
-            addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXAction.BLENDSHAPE);
-        });
-        menu.ShowAsContext();
-    }
+    public static VisualElement render(SerializedProperty prop, string myLabel = "") {
+        if (myLabel == null) myLabel = prop.name;
 
-    protected override void render(SerializedProperty prop, GUIContent label) {
-        var listProp = prop.FindPropertyRelative("actions");
-        var list = makeList(listProp, () => newItem(listProp));
+        var container = new VisualElement();
+
+        var list = prop.FindPropertyRelative("actions");
+
+        Action onPlus = () => {
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Object Toggle"), false, () => {
+                SenkyUIHelper.addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXAction.TOGGLE);
+            });
+            menu.AddItem(new GUIContent("BlendShape"), false, () => {
+                SenkyUIHelper.addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXAction.BLENDSHAPE);
+            });
+            menu.ShowAsContext();
+        };
 
         var clipProp = prop.FindPropertyRelative("clip");
-        var hasClip = clipProp.objectReferenceValue != null;
         var actions = prop.FindPropertyRelative("actions");
-        var hasActions = actions.arraySize > 0;
 
-        var showLabel = label.text != "";
-        var showClipBox = !hasActions || hasClip;
-        var showPlus = !hasActions && !hasClip;
-        var showActions = hasActions;
+        container.Add(SenkyUIHelper.RefreshOnChange(() => {
+            var body = new VisualElement();
+            var hasClip = clipProp.objectReferenceValue != null;
+            var hasActions = actions.arraySize > 0;
 
-        if (showLabel || showClipBox || showPlus) {
-            var segments = new List<float>();
-            if (showLabel) segments.Add(1);
-            if (showClipBox) segments.Add(1);
-            if (showPlus) segments.Add(line);
-            var rects = renderFlex(line, segments.ToArray());
-            var i = 0;
-            if (showLabel) renderLabel(rects[i++], label.text);
-            if (showClipBox) renderProp(rects[i++], clipProp);
-            if (showPlus) renderButton(rects[i++], "+", () => newItem(listProp));
-        }
-        if (showActions) {
-            renderList(list);
-        }
+            var showLabel = myLabel != "";
+            var showClipBox = !hasActions || hasClip;
+            var showPlus = !hasActions && !hasClip;
+            var showActions = hasActions;
+
+            if (showLabel || showClipBox || showPlus) {
+                var segments = new VisualElement();
+                body.Add(segments);
+                segments.style.flexDirection = FlexDirection.Row;
+                segments.style.alignItems = Align.FlexStart;
+
+                if (showLabel) {
+                    var label = new Label(myLabel);
+                    label.style.flexBasis = SenkyUIHelper.LABEL_WIDTH;
+                    label.style.flexGrow = 0;
+                    segments.Add(label);
+                }
+                if (showClipBox) {
+                    var clipBox = SenkyUIHelper.PropWithoutLabel(clipProp);
+                    clipBox.style.flexGrow = 1;
+                    segments.Add(clipBox);
+                }
+                if (showPlus) {
+                    var plus = new Button(onPlus);
+                    plus.style.flexGrow = 0;
+                    plus.text = "+";
+                    segments.Add(plus);
+                }
+            }
+            if (showActions) {
+                body.Add(SenkyUIHelper.List(list, onPlus: onPlus));
+            }
+
+            return body;
+        }, list, clipProp, actions));
+
+        return container;
     }
 }
+
+#endif

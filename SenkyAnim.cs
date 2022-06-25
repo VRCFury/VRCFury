@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using System.Collections.Generic;
 using System;
 using UnityEngine;
@@ -263,3 +265,5 @@ public class SenkyAnimStateTransition {
         return this;
     }
 }
+
+#endif

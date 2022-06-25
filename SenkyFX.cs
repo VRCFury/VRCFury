@@ -1,12 +1,9 @@
+#if UNITY_EDITOR
+
 using System;
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using VRC.SDK3.Avatars.Components;
-using AnimatorAsCode.V0;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
@@ -45,58 +42,91 @@ public class SenkyFX : MonoBehaviour {
 
 [CustomEditor(typeof(SenkyFX), true)]
 public class SenkyFXEditor : Editor {
+    private Stack<VisualElement> form;
+
     public override VisualElement CreateInspectorGUI() {
-        var form = new SenkyUIHelper(serializedObject);
+        var avatarProp = serializedObject.FindProperty("avatar");
+        return SenkyUIHelper.RefreshOnChange(() => {
+            var obj = serializedObject;
+            form = new Stack<VisualElement>();
+            form.Push(new VisualElement());
 
-        form.Property("avatar");
+            AddProperty("avatar");
 
-        form.Property("stateBlink", "Blinking");
-        form.Property("stateTalkGlow", "Talk Glow");
-        form.Property("visemeFolder", "Viseme Folder");
+            if (avatarProp.objectReferenceValue != null) {
+                AddProperty("stateBlink", "Blinking");
+                AddState("stateTalkGlow", "Talk Glow");
+                AddProperty("visemeFolder", "Viseme Folder");
 
-        form.Foldout("Breathing", () => {
-            form.Property("breatheObject", "Object");
-            form.Property("breatheBlendshape", "BlendShape");
-            form.Property("breatheScaleMin", "Min Scale");
-            form.Property("breatheScaleMax", "Max Scale");
-        });
+                Foldout("Breathing", () => {
+                    AddProperty("breatheObject", "Object");
+                    AddProperty("breatheBlendshape", "BlendShape");
+                    AddProperty("breatheScaleMin", "Min Scale");
+                    AddProperty("breatheScaleMax", "Max Scale");
+                });
 
-        form.FoldoutOpen("Face", () => {
-            form.FoldoutOpen("Eyes", () => {
-                form.Property("stateEyesClosed", "Closed");
-                form.Property("stateEyesHappy", "Happy");
-                form.Property("stateEyesSad", "Sad");
-                form.Property("stateEyesAngry", "Angry");
+                FoldoutOpen("Face", () => {
+                    FoldoutOpen("Eyes", () => {
+                        AddState("stateEyesClosed", "Closed");
+                        AddState("stateEyesHappy", "Happy");
+                        AddState("stateEyesSad", "Sad");
+                        AddState("stateEyesAngry", "Angry");
+                    });
+                    FoldoutOpen("Mouth", () => {
+                        AddState("stateMouthBlep", "Blep");
+                        AddState("stateMouthSuck", "Suck");
+                        AddState("stateMouthSad", "Sad");
+                        AddState("stateMouthAngry", "Angry");
+                        AddState("stateMouthHappy", "Happy");
+                    });
+                    FoldoutOpen("Ears", () => {
+                        AddState("stateEarsBack", "Back");
+                    });
+                });
+
+                FoldoutOpen("Toes", () => {
+                    AddState("stateToesDown", "Down");
+                    AddState("stateToesUp", "Up");
+                    AddState("stateToesSplay", "Splay");
+                });
+            }
+
+            FoldoutOpen("Props", () => {
+                AddProperty("props");
             });
-            form.FoldoutOpen("Mouth", () => {
-                form.Property("stateMouthBlep", "Blep");
-                form.Property("stateMouthSuck", "Suck");
-                form.Property("stateMouthSad", "Sad");
-                form.Property("stateMouthAngry", "Angry");
-                form.Property("stateMouthHappy", "Happy");
-            });
-            form.FoldoutOpen("Ears", () => {
-                form.Property("stateEarsBack", "Back");
-            });
-        });
 
-        form.FoldoutOpen("Toes", () => {
-            form.Property("stateToesDown", "Down");
-            form.Property("stateToesUp", "Up");
-            form.Property("stateToesSplay", "Splay");
-        });
+            if (avatarProp.objectReferenceValue != null) {
+                var genButton = new Button(() => {
+                    var builder = new SenkyFXBuilder();
+                    var inputs = (SenkyFX) target;
+                    builder.Run(inputs);
+                    Debug.Log("SenkyFX Finished!");
+                });
+                genButton.text = "Generate";
+                form.Peek().Add(genButton);
+            }
 
-        form.FoldoutOpen("Props", () => {
-            form.Property("props");
-        });
+            return form.Peek();
+        }, avatarProp);
+    }
 
-        form.Button("Generate", () => {
-            var builder = new SenkyFXBuilder();
-            var inputs = (SenkyFX) target;
-            builder.Run(inputs);
-            Debug.Log("SenkyFX Finished!");
-        });
-
-        return form.Render();
+    private void AddProperty(string prop, string label = null) {
+        form.Peek().Add(new PropertyField(serializedObject.FindProperty(prop), label));
+    }
+    private void AddState(string prop, string label) {
+        form.Peek().Add(SenkyFXState.render(serializedObject.FindProperty(prop), label));
+    }
+    public void FoldoutOpen(string header, Action with) {
+        Foldout(header, with, true);
+    }
+    public void Foldout(string header, Action with, bool def = false) {
+        var foldout = new Foldout();
+        foldout.text = header;
+        form.Peek().Add(foldout);
+        form.Push(foldout);
+        with();
+        form.Pop();
     }
 }
+
+#endif
