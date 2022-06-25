@@ -3,9 +3,11 @@ using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 
-public class SenkyFXMotion {
+namespace VRCF.Builder {
+
+public class VRCFuryClipUtils {
     private GameObject baseObject;
-    public SenkyFXMotion(GameObject baseObject) {
+    public VRCFuryClipUtils(GameObject baseObject) {
         this.baseObject = baseObject;
     }
 
@@ -83,5 +85,7 @@ public class SenkyFXMotion {
         }
         return String.Join("/", parts);
     }
+
+}
 
 }

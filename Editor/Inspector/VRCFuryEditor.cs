@@ -5,9 +5,13 @@ using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.Components;
+using VRCF.Builder;
+using VRCF.Model;
 
-[CustomEditor(typeof(SenkyFX), true)]
-public class SenkyFXEditor : Editor {
+namespace VRCF.Inspector {
+
+[CustomEditor(typeof(VRCFury), true)]
+public class VRCFuryEditor : Editor {
     private Stack<VisualElement> form;
 
     public override VisualElement CreateInspectorGUI() {
@@ -18,7 +22,7 @@ public class SenkyFXEditor : Editor {
         AddProperty("avatar", "Avatar / Object Root");
 
         var pointingToAvatar = false;
-        var self = (SenkyFX)target;
+        var self = (VRCFury)target;
         if (self.gameObject.GetComponent<VRCAvatarDescriptor>() != null) {
             pointingToAvatar = true;
         }
@@ -67,10 +71,9 @@ public class SenkyFXEditor : Editor {
 
         if (pointingToAvatar) {
             var genButton = new Button(() => {
-                var builder = new SenkyFXBuilder();
-                var inputs = (SenkyFX) target;
-                builder.Run(inputs);
-                Debug.Log("SenkyFX Finished!");
+                var builder = new VRCFuryBuilder();
+                builder.Run(self);
+                Debug.Log("VRCFury Finished!");
             });
             genButton.text = "Generate";
             form.Peek().Add(genButton);
@@ -83,7 +86,7 @@ public class SenkyFXEditor : Editor {
         form.Peek().Add(new PropertyField(serializedObject.FindProperty(prop), label));
     }
     private void AddState(string prop, string label) {
-        form.Peek().Add(SenkyFXStateEditor.render(serializedObject.FindProperty(prop), label));
+        form.Peek().Add(VRCFuryStateEditor.render(serializedObject.FindProperty(prop), label));
     }
     public void FoldoutOpen(string header, Action with) {
         Foldout(header, with, true);
@@ -96,4 +99,6 @@ public class SenkyFXEditor : Editor {
         with();
         form.Pop();
     }
+}
+
 }

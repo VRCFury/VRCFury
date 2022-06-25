@@ -4,8 +4,11 @@ using UnityEditor;
 using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
+using VRCF.Model;
 
-public class SenkyFXStateEditor {
+namespace VRCF.Inspector {
+
+public class VRCFuryStateEditor {
     public static VisualElement render(SerializedProperty prop, string myLabel = "") {
         if (myLabel == null) myLabel = prop.name;
 
@@ -16,10 +19,10 @@ public class SenkyFXStateEditor {
         Action onPlus = () => {
             var menu = new GenericMenu();
             menu.AddItem(new GUIContent("Object Toggle"), false, () => {
-                SenkyUIHelper.addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXAction.TOGGLE);
+                VRCFuryEditorUtils.AddToList(list, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryAction.TOGGLE);
             });
             menu.AddItem(new GUIContent("BlendShape"), false, () => {
-                SenkyUIHelper.addToList(list, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXAction.BLENDSHAPE);
+                VRCFuryEditorUtils.AddToList(list, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryAction.BLENDSHAPE);
             });
             menu.ShowAsContext();
         };
@@ -27,7 +30,7 @@ public class SenkyFXStateEditor {
         var clipProp = prop.FindPropertyRelative("clip");
         var actions = prop.FindPropertyRelative("actions");
 
-        container.Add(SenkyUIHelper.RefreshOnChange(() => {
+        container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var body = new VisualElement();
             var hasClip = clipProp.objectReferenceValue != null;
             var hasActions = actions.arraySize > 0;
@@ -45,12 +48,12 @@ public class SenkyFXStateEditor {
 
                 if (showLabel) {
                     var label = new Label(myLabel);
-                    label.style.flexBasis = SenkyUIHelper.LABEL_WIDTH;
+                    label.style.flexBasis = VRCFuryEditorUtils.LABEL_WIDTH;
                     label.style.flexGrow = 0;
                     segments.Add(label);
                 }
                 if (showClipBox) {
-                    var clipBox = SenkyUIHelper.PropWithoutLabel(clipProp);
+                    var clipBox = VRCFuryEditorUtils.PropWithoutLabel(clipProp);
                     clipBox.style.flexGrow = 1;
                     segments.Add(clipBox);
                 }
@@ -62,7 +65,7 @@ public class SenkyFXStateEditor {
                 }
             }
             if (showActions) {
-                body.Add(SenkyUIHelper.List(list, onPlus: onPlus));
+                body.Add(VRCFuryEditorUtils.List(list, onPlus: onPlus));
             }
 
             return body;
@@ -70,4 +73,6 @@ public class SenkyFXStateEditor {
 
         return container;
     }
+}
+
 }

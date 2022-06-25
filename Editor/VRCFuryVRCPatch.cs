@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using VRC.SDK3.Validation;
 using System.Reflection;
 using VRC.SDKBase.Editor.BuildPipeline;
+using VRCF.Builder;
+using VRCF.Model;
+
+namespace VRCF {
 
 [InitializeOnLoad]
 public class Startup {
@@ -11,21 +15,23 @@ public class Startup {
     {
         var whitelist = AvatarValidation.ComponentTypeWhiteListCommon;
         var updated = new List<string>(whitelist);
-        updated.Add("SenkyFX");
+        updated.Add("VRCFury");
         typeof(AvatarValidation)
             .GetField("ComponentTypeWhiteListCommon",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic)
             .SetValue(null,updated.ToArray());
     }
 }
 
-public class SenkyFXVRCPatch : IVRCSDKPreprocessAvatarCallback {
+public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
     public int callbackOrder => 0;
     public bool OnPreprocessAvatar(GameObject avatarGameObject) {
-        var senkyfx = avatarGameObject.GetComponent<SenkyFX>();
-        if (senkyfx != null) {
-            var builder = new SenkyFXBuilder();
-            builder.Run(senkyfx);
+        var vrcf = avatarGameObject.GetComponent<VRCFury>();
+        if (vrcf != null) {
+            var builder = new VRCFuryBuilder();
+            builder.Run(vrcf);
         }
         return true;
     }
+}
+
 }

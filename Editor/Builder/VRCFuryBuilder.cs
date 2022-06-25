@@ -5,18 +5,21 @@ using UnityEditor.Animations;
 using System.Collections.Generic;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRCF.Model;
 
-public class SenkyFXBuilder {
-    public void Run(SenkyFX inputs) {
+namespace VRCF.Builder {
+
+public class VRCFuryBuilder {
+    public void Run(VRCFury inputs) {
         this.inputs = inputs;
         rootObject = inputs.gameObject;
         var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
         fxController = (AnimatorController)avatar.baseAnimationLayers[4].animatorController;
         var menu = avatar.expressionsMenu;
         var syncedParams = avatar.expressionParameters;
-        manager = new SenkyFXNameManager("Senky", menu, syncedParams, fxController);
+        manager = new VRCFuryNameManager("Senky", menu, syncedParams, fxController);
         baseFile = AssetDatabase.GetAssetPath(fxController);
-        motions = new SenkyFXMotion(rootObject);
+        motions = new VRCFuryClipUtils(rootObject);
 
         // CLEANUP OLD DATA
         manager.Purge();
@@ -25,7 +28,7 @@ public class SenkyFXBuilder {
         foreach (var child in rootObject.GetComponentsInChildren<Transform>(true)) {
             if (!PrefabUtility.IsPartOfPrefabInstance(child.gameObject)) continue;
             foreach (var removed in PrefabUtility.GetRemovedComponents(child.gameObject)) {
-                if (removed.assetComponent is SenkyFX) {
+                if (removed.assetComponent is VRCFury) {
                     removed.Revert();
                 }
             }
@@ -253,35 +256,35 @@ public class SenkyFXBuilder {
         }
 
         // PROPS
-        var allSenkyFx = new List<SenkyFX>();
-        allSenkyFx.Add(inputs);
-        foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
-            if (otherSenkyFx == inputs) continue;
-            Debug.Log("Importing SenkyFX from " + otherSenkyFx.gameObject.name);
-            allSenkyFx.Add(otherSenkyFx);
+        var allConfigs = new List<VRCFury>();
+        allConfigs.Add(inputs);
+        foreach (var otherConfig in rootObject.GetComponentsInChildren<VRCFury>(true)) {
+            if (otherConfig == inputs) continue;
+            Debug.Log("Importing SenkyFX from " + otherConfig.gameObject.name);
+            allConfigs.Add(otherConfig);
         }
-        foreach (var senkyfx in allSenkyFx) {
-            var prefixObj = senkyfx == inputs ? null : senkyfx.gameObject;
-            var allProps = senkyfx == inputs ? getAllProps() : senkyfx.props.props;
+        foreach (var conf in allConfigs) {
+            var prefixObj = conf == inputs ? null : conf.gameObject;
+            var allProps = conf == inputs ? getAllProps() : conf.props.props;
             foreach (var prop in allProps) {
                 var layerName = "Prop - " + prop.name;
                 var layer = manager.NewLayer(layerName);
 
-                SenkyAnimParamBool physBoneResetter = null;
+                VFABool physBoneResetter = null;
                 if (prop.resetPhysbones.Count > 0) {
                     physBoneResetter = createPhysboneResetter(layerName, prop.resetPhysbones);
                 }
 
-                if (prop.type == SenkyFXProp.PUPPET || (prop.type == SenkyFXProp.TOGGLE && prop.slider)) {
+                if (prop.type == VRCFuryProp.PUPPET || (prop.type == VRCFuryProp.TOGGLE && prop.slider)) {
                     var tree = manager.NewBlendTree("prop_" + prop.name);
                     tree.blendType = BlendTreeType.FreeformDirectional2D;
                     tree.AddChild(noopClip, new Vector2(0,0));
                     int i = 0;
-                    var puppetStops = new List<SenkyFXPropPuppetStop>();
-                    if (prop.type == SenkyFXProp.PUPPET) {
+                    var puppetStops = new List<VRCFuryPropPuppetStop>();
+                    if (prop.type == VRCFuryProp.PUPPET) {
                         puppetStops = prop.puppetStops;
                     } else {
-                        puppetStops.Add(new SenkyFXPropPuppetStop(1,0,prop.state));
+                        puppetStops.Add(new VRCFuryPropPuppetStop(1,0,prop.state));
                     }
                     var usesX = false;
                     var usesY = false;
@@ -296,12 +299,12 @@ public class SenkyFXBuilder {
                     tree.blendParameter = x.Name();
                     var y = manager.NewFloat("Prop_" + prop.name + "_y", synced: usesY);
                     tree.blendParameterY = y.Name();
-                    if (prop.type == SenkyFXProp.TOGGLE) {
+                    if (prop.type == VRCFuryProp.TOGGLE) {
                         if (usesX) manager.NewMenuSlider(prop.name, x);
                     } else {
                         manager.NewMenuPuppet(prop.name, usesX ? x : null, usesY ? y : null);
                     }
-                } else if (prop.type == SenkyFXProp.MODES) {
+                } else if (prop.type == VRCFuryProp.MODES) {
                     var off = layer.NewState("Off");
                     if (physBoneResetter != null) off.Drives(physBoneResetter, true);
                     var param = manager.NewInt("Prop_" + prop.name, synced: true, saved: prop.saved);
@@ -322,7 +325,7 @@ public class SenkyFXBuilder {
                         }
                         manager.NewMenuToggle(prop.name + " - " + num, param, num);
                     }
-                } else if (prop.type == SenkyFXProp.TOGGLE) {
+                } else if (prop.type == VRCFuryProp.TOGGLE) {
                     var clip = loadClip("prop_" + prop.name, prop.state, prefixObj);
                     var off = layer.NewState("Off");
                     var on = layer.NewState("On").WithAnimation(clip);
@@ -347,7 +350,7 @@ public class SenkyFXBuilder {
 
 
 
-    private void createGestureTriggerLayer(string name, SenkyAnimParamBool lockParam, SenkyAnimParamBool triggerParam, int gestureNum) {
+    private void createGestureTriggerLayer(string name, VFABool lockParam, VFABool triggerParam, int gestureNum) {
         var layer = manager.NewLayer("Gesture - " + name);
         var off = layer.NewState("Off");
         var on = layer.NewState("On");
@@ -367,15 +370,15 @@ public class SenkyFXBuilder {
         on.Drives(triggerParam, true);
     }
 
-    private SenkyFXNameManager manager;
-    private SenkyFXMotion motions;
-    private SenkyFX inputs;
+    private VRCFuryNameManager manager;
+    private VRCFuryClipUtils motions;
+    private VRCFury inputs;
     private GameObject rootObject;
     private string baseFile;
     private AnimationClip noopClip;
     private AnimationClip defaultClip;
     private AnimatorController fxController;
-    private SenkyAnimCondition always;
+    private VFACondition always;
 
     private GameObject find(string path) {
         var found = rootObject.transform.Find(path)?.gameObject;
@@ -406,7 +409,7 @@ public class SenkyFXBuilder {
         return motion;
     }
 
-    private AnimationClip loadClip(string name, SenkyFXState state, GameObject prefixObj = null) {
+    private AnimationClip loadClip(string name, VRCFuryState state, GameObject prefixObj = null) {
         if (state.clip != null) {
             AnimationClip output = null;
             if (prefixObj != null && prefixObj != rootObject) {
@@ -439,7 +442,7 @@ public class SenkyFXBuilder {
         }
         var clip = manager.NewClip(name);
         foreach (var action in state.actions) {
-            if (action.type == SenkyFXAction.TOGGLE) {
+            if (action.type == VRCFuryAction.TOGGLE) {
                 if (action.obj == null) {
                     Debug.LogWarning("Missing object in action: " + name);
                     continue;
@@ -447,7 +450,7 @@ public class SenkyFXBuilder {
                 motions.Enable(clip, action.obj, !action.obj.activeSelf);
                 motions.Enable(defaultClip, action.obj, action.obj.activeSelf);
             }
-            if (action.type == SenkyFXAction.BLENDSHAPE) {
+            if (action.type == VRCFuryAction.BLENDSHAPE) {
                 var foundOne = false;
                 foreach (var skin in getAllSkins()) {
                     var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(action.blendShape);
@@ -485,20 +488,20 @@ public class SenkyFXBuilder {
         return "SenkyFX/"+name;
     }
 
-    private List<SenkyFXProp> getAllProps() {
-        var props = new List<SenkyFXProp>();
+    private List<VRCFuryProp> getAllProps() {
+        var props = new List<VRCFuryProp>();
         props.AddRange(inputs.props.props);
 
         // Toes
         {
-            SenkyFXProp toes = new SenkyFXProp();
+            VRCFuryProp toes = new VRCFuryProp();
             toes.name = "Toes";
-            toes.type = SenkyFXProp.PUPPET;
-            if (!inputs.stateToesDown.isEmpty()) toes.puppetStops.Add(new SenkyFXPropPuppetStop(0,-1,inputs.stateToesDown));
-            if (!inputs.stateToesUp.isEmpty()) toes.puppetStops.Add(new SenkyFXPropPuppetStop(0,1,inputs.stateToesUp));
+            toes.type = VRCFuryProp.PUPPET;
+            if (!inputs.stateToesDown.isEmpty()) toes.puppetStops.Add(new VRCFuryPropPuppetStop(0,-1,inputs.stateToesDown));
+            if (!inputs.stateToesUp.isEmpty()) toes.puppetStops.Add(new VRCFuryPropPuppetStop(0,1,inputs.stateToesUp));
             if (!inputs.stateToesSplay.isEmpty()) {
-                toes.puppetStops.Add(new SenkyFXPropPuppetStop(-1,0,inputs.stateToesSplay));
-                toes.puppetStops.Add(new SenkyFXPropPuppetStop(1,0,inputs.stateToesSplay));
+                toes.puppetStops.Add(new VRCFuryPropPuppetStop(-1,0,inputs.stateToesSplay));
+                toes.puppetStops.Add(new VRCFuryPropPuppetStop(1,0,inputs.stateToesSplay));
             }
             if (toes.puppetStops.Count > 0) {
                 props.Add(toes);
@@ -531,10 +534,10 @@ public class SenkyFXBuilder {
                 }
             }
 
-            var prop = new SenkyFXProp();
+            var prop = new VRCFuryProp();
             prop.name = "Breathing";
             prop.defaultOn = true;
-            prop.state = new SenkyFXState();
+            prop.state = new VRCFuryState();
             prop.state.clip = clip;
             props.Add(prop);
         }
@@ -542,7 +545,7 @@ public class SenkyFXBuilder {
         return props;
     }
 
-    private SenkyAnimParamBool createPhysboneResetter(string layerName, List<GameObject> physBones) {
+    private VFABool createPhysboneResetter(string layerName, List<GameObject> physBones) {
         var layer = manager.NewLayer(layerName + "_PhysBoneReset");
         var param = manager.NewTrigger(layerName + "_PhysBoneReset");
         var idle = layer.NewState("Idle");
@@ -567,224 +570,4 @@ public class SenkyFXBuilder {
     }
 }
 
-public class SenkyFXNameManager {
-    private string prefix;
-    private VRCExpressionsMenu rootMenu;
-    private VRCExpressionsMenu fxMenu;
-    private VRCExpressionsMenu lastMenu;
-    private int lastMenuNum;
-    private VRCExpressionParameters syncedParams;
-    private AnimatorController ctrl;
-
-    public SenkyFXNameManager(string prefix, VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller) {
-        this.prefix = prefix;
-        this.rootMenu = menu;
-        this.syncedParams = syncedParams;
-        this.ctrl = controller;
-    }
-
-    public void Purge() {
-        _noopClip = null;
-        _controller = null;
-        fxMenu = null;
-        lastMenu = null;
-        lastMenuNum = 0;
-        // Clean up assets
-        foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(ctrl))) {
-            if (subAsset.name.StartsWith("Senky")) {
-                AssetDatabase.RemoveObjectFromAsset(subAsset);
-            }
-        }
-        // Clean up layers
-        for (var i = 0; i < ctrl.layers.Length; i++) {
-            var layer = ctrl.layers[i];
-            if (layer.name.StartsWith("Senky")) {
-                ctrl.RemoveLayer(i);
-                i--;
-            }
-        }
-        // Clean up controller params
-        for (var i = 0; i < ctrl.parameters.Length; i++) {
-            var param = ctrl.parameters[i];
-            if (param.name.StartsWith("Senky")) {
-                ctrl.RemoveParameter(param);
-                i--;
-            }
-        }
-        // Clean up synced params
-        {
-            var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
-            syncedParamsList.RemoveAll(param => param.name.StartsWith("Senky"));
-            syncedParams.parameters = syncedParamsList.ToArray();
-            EditorUtility.SetDirty(syncedParams);
-        }
-        // Clean up menu
-        {
-            for (var i = 0; i < rootMenu.controls.Count; i++) {
-                if (rootMenu.controls[i].name == "SenkyFX") {
-                    rootMenu.controls.RemoveAt(i);
-                    i--;
-                }
-            }
-            foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(rootMenu))) {
-                if (subAsset.name.StartsWith("Senky")) {
-                    AssetDatabase.RemoveObjectFromAsset(subAsset);
-                }
-            }
-        }
-    }
-
-    private SenkyAnimController _controller = null;
-    private AnimationClip _noopClip = null;
-    private SenkyAnimController GetController() {
-        if (_controller == null) {
-            _noopClip = NewClip("noop");
-            _noopClip.SetCurve("_ignored", typeof(GameObject), "m_IsActive", AnimationCurve.Constant(0,1/60f,0));
-            _controller = new SenkyAnimController(ctrl, _noopClip);
-        }
-        return _controller;
-    }
-
-    public AnimationClip GetNoopClip() {
-        GetController();
-        return _noopClip;
-    }
-
-    public SenkyAnimLayer NewLayer(string name) {
-        return GetController().NewLayer(prefix + "/" + name);
-    }
-
-    public AnimationClip NewClip(string name) {
-        var clip = new AnimationClip();
-        clip.name = prefix + "/" + name;
-        clip.hideFlags = HideFlags.None;
-        AssetDatabase.AddObjectToAsset(clip, ctrl);
-        return clip;
-    }
-    public BlendTree NewBlendTree(string name) {
-        var tree = new BlendTree();
-        tree.name = prefix + "/" + name;
-        tree.hideFlags = HideFlags.None;
-        AssetDatabase.AddObjectToAsset(tree, ctrl);
-        return tree;
-    }
-
-    public VRCExpressionsMenu GetFxMenu() {
-        if (fxMenu == null) {
-            if (rootMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-                throw new Exception("Root menu can't fit SenkyFX!");
-            }
-            fxMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            fxMenu.name = "SenkyFX";
-            AssetDatabase.AddObjectToAsset(fxMenu, rootMenu);
-            var control = new VRCExpressionsMenu.Control();
-            rootMenu.controls.Add(control);
-            control.name = "SenkyFX";
-            control.subMenu = fxMenu;
-            control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
-        }
-        return fxMenu;
-    }
-    public VRCExpressionsMenu GetNumMenu() {
-        if (lastMenu == null || lastMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-            var fxMenu = GetFxMenu();
-            if (fxMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-                throw new Exception("Out of room for new menu pages!");
-            }
-            lastMenuNum++;
-            lastMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            lastMenu.name = "SenkyFX_" + lastMenuNum;
-            AssetDatabase.AddObjectToAsset(lastMenu, rootMenu);
-            var control = new VRCExpressionsMenu.Control();
-            fxMenu.controls.Add(control);
-            control.name = ""+lastMenuNum;
-            control.subMenu = lastMenu;
-            control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
-        }
-        return lastMenu;
-    }
-    public VRCExpressionsMenu.Control NewMenuItem() {
-        var menu = GetNumMenu();
-        var control = new VRCExpressionsMenu.Control();
-        menu.controls.Add(control);
-        return control;
-    }
-    public void NewMenuToggle(string name, SenkyAnimParam param, float value = 1) {
-        var control = NewMenuItem();
-        control.name = name;
-        control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
-        var menuParam = new VRCExpressionsMenu.Control.Parameter();
-        menuParam.name = param.Name();
-        control.parameter = menuParam;
-        control.value = value;
-    }
-    public void NewMenuSlider(string name, SenkyAnimParamNumber param) {
-        var control = NewMenuItem();
-        control.name = name;
-        control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
-        var menuParam = new VRCExpressionsMenu.Control.Parameter();
-        menuParam.name = param.Name();
-        control.subParameters = new VRCExpressionsMenu.Control.Parameter[]{menuParam};
-    }
-    public void NewMenuPuppet(string name, SenkyAnimParamNumber x, SenkyAnimParamNumber y) {
-        var control = NewMenuItem();
-        control.name = name;
-        control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
-        var menuParamX = new VRCExpressionsMenu.Control.Parameter();
-        menuParamX.name = (x != null) ? x.Name() : "";
-        var menuParamY = new VRCExpressionsMenu.Control.Parameter();
-        menuParamY.name = (y != null) ? y.Name() : "";
-        control.subParameters = new VRCExpressionsMenu.Control.Parameter[]{menuParamX, menuParamY};
-    }
-
-    public SenkyAnimParamBool NewTrigger(string name, bool usePrefix = true) {
-        if (usePrefix) name = newParamName(name);
-        return GetController().NewTrigger(name);
-    }
-    public SenkyAnimParamBool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
-        if (usePrefix) name = newParamName(name);
-        if (synced) {
-            var param = new VRCExpressionParameters.Parameter();
-            param.name = name;
-            param.valueType = VRCExpressionParameters.ValueType.Bool;
-            param.saved = saved;
-            param.defaultValue = def ? 1 : 0;
-            addSyncedParam(param);
-        }
-        return GetController().NewBool(name, def || defTrueInEditor);
-    }
-    public SenkyAnimParamNumber NewInt(string name, bool synced = false, int def = 0, bool saved = false, bool usePrefix = true) {
-        if (usePrefix) name = newParamName(name);
-        if (synced) {
-            var param = new VRCExpressionParameters.Parameter();
-            param.name = name;
-            param.valueType = VRCExpressionParameters.ValueType.Int;
-            param.saved = saved;
-            param.defaultValue = def;
-            addSyncedParam(param);
-        }
-        return GetController().NewInt(name, def);
-    }
-    public SenkyAnimParamNumber NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
-        if (usePrefix) name = newParamName(name);
-        if (synced) {
-            var param = new VRCExpressionParameters.Parameter();
-            param.name = name;
-            param.valueType = VRCExpressionParameters.ValueType.Float;
-            param.saved = saved;
-            param.defaultValue = def;
-            addSyncedParam(param);
-        }
-        return GetController().NewFloat(name, def);
-    }
-    private string newParamName(string name) {
-        return prefix + "__" + name;
-    }
-
-    private void addSyncedParam(VRCExpressionParameters.Parameter param) {
-        var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
-        syncedParamsList.Add(param);
-        syncedParams.parameters = syncedParamsList.ToArray();
-        EditorUtility.SetDirty(syncedParams);
-    }
 }

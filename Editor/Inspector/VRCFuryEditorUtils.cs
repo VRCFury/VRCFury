@@ -4,8 +4,12 @@ using UnityEditor;
 using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
+using System.Reflection;
+using System.Collections;
 
-public class SenkyUIHelper {
+namespace VRCF.Inspector {
+
+public class VRCFuryEditorUtils {
 
     public static VisualElement List(SerializedProperty list, Func<int, SerializedProperty, VisualElement> renderElement = null, Action onPlus = null) {
         var container = new VisualElement();
@@ -76,7 +80,7 @@ public class SenkyUIHelper {
             if (onPlus != null) {
                 onPlus();
             } else {
-                addToList(list);
+                AddToList(list);
             }
         }));
         buttons.Add(add);
@@ -84,7 +88,7 @@ public class SenkyUIHelper {
         return container;
     }
 
-    public static SerializedProperty addToList(SerializedProperty list, Action<SerializedProperty> doWith = null) {
+    public static SerializedProperty AddToList(SerializedProperty list, Action<SerializedProperty> doWith = null) {
         list.serializedObject.Update();
         list.InsertArrayElementAtIndex(list.arraySize);
         var newEntry = list.GetArrayElementAtIndex(list.arraySize-1);
@@ -94,7 +98,7 @@ public class SenkyUIHelper {
         if (resetFlag != null) {
             resetFlag.boolValue = true;
             list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            DefaultsCleaner.Cleanup(list.serializedObject.targetObject);
+            FindAndResetMarkedFields(list.serializedObject.targetObject);
             list.serializedObject.Update();
         }
 
@@ -200,4 +204,40 @@ public class SenkyUIHelper {
     }
 
     public static int LABEL_WIDTH = 137;
+
+    public static bool FindAndResetMarkedFields(object obj) {
+        if (obj == null) return false;
+        Type objType = obj.GetType();
+        if (!objType.FullName.StartsWith("VRCFury")) return false;
+        FieldInfo[] fields = objType.GetFields();
+        foreach (FieldInfo field in fields) {
+            object value = field.GetValue(obj);
+            if (value is IList) {
+                var list = value as IList;
+                for (var i = 0; i < list.Count; i++) {
+                    bool remove = FindAndResetMarkedFields(list[i]);
+                    if (remove) {
+                        var elemType = list[i].GetType();
+                        var newInst = Activator.CreateInstance(elemType);
+                        list.RemoveAt(i);
+                        list.Insert(i, newInst);
+                    }
+                }
+            } else {
+                if (field.Name == "ResetMePlease") {
+                    if ((bool)value) {
+                        return true;
+                    }
+                } else {
+                    var type = field.FieldType;
+                    if (type.IsClass) {
+                        FindAndResetMarkedFields(value);
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+
 }

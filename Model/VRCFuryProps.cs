@@ -2,32 +2,34 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 
+namespace VRCF.Model {
+
 [Serializable]
-public class SenkyFXProp {
+public class VRCFuryProp {
     public const string TOGGLE = "toggle";
     public const string MODES = "modes";
     public const string PUPPET = "puppet";
 
     public string type;
     public string name;
-    public SenkyFXState state;
+    public VRCFuryState state;
     public bool saved;
     public bool slider;
     public bool lewdLocked;
     public bool defaultOn;
-    public List<SenkyFXPropPuppetStop> puppetStops = new List<SenkyFXPropPuppetStop>();
-    public List<SenkyFXPropMode> modes = new List<SenkyFXPropMode>();
+    public List<VRCFuryPropPuppetStop> puppetStops = new List<VRCFuryPropPuppetStop>();
+    public List<VRCFuryPropMode> modes = new List<VRCFuryPropMode>();
     public List<GameObject> resetPhysbones = new List<GameObject>();
 
     public bool ResetMePlease;
 }
 
 [Serializable]
-public class SenkyFXPropPuppetStop {
+public class VRCFuryPropPuppetStop {
     public float x;
     public float y;
-    public SenkyFXState state;
-    public SenkyFXPropPuppetStop(float x, float y, SenkyFXState state) {
+    public VRCFuryState state;
+    public VRCFuryPropPuppetStop(float x, float y, VRCFuryState state) {
         this.x = x;
         this.y = y;
         this.state = state;
@@ -35,14 +37,16 @@ public class SenkyFXPropPuppetStop {
 }
 
 [Serializable]
-public class SenkyFXPropMode {
-    public SenkyFXState state;
-    public SenkyFXPropMode(SenkyFXState state) {
+public class VRCFuryPropMode {
+    public VRCFuryState state;
+    public VRCFuryPropMode(VRCFuryState state) {
         this.state = state;
     }
 }
 
 [Serializable]
-public class SenkyFXProps {
-    public List<SenkyFXProp> props = new List<SenkyFXProp>();
+public class VRCFuryProps {
+    public List<VRCFuryProp> props = new List<VRCFuryProp>();
+}
+
 }

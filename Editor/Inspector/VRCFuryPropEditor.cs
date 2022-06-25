@@ -4,11 +4,14 @@ using UnityEditor;
 using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
+using VRCF.Model;
 
-[CustomPropertyDrawer(typeof(SenkyFXProp))]
-public class SenkyFXPropDrawer : PropertyDrawer {
+namespace VRCF.Inspector {
+
+[CustomPropertyDrawer(typeof(VRCFuryProp))]
+public class VRCFuryPropDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-        return SenkyUIHelper.RefreshOnChange(() => render(prop),
+        return VRCFuryEditorUtils.RefreshOnChange(() => render(prop),
             prop.FindPropertyRelative("type"),
             prop.FindPropertyRelative("saved"),
             prop.FindPropertyRelative("slider"),
@@ -28,13 +31,13 @@ public class SenkyFXPropDrawer : PropertyDrawer {
         var showResetPhysbones = false;
 
         var type = prop.FindPropertyRelative("type").stringValue;
-        if (type == SenkyFXProp.TOGGLE) {
+        if (type == VRCFuryProp.TOGGLE) {
             showSaved = true;
             showSlider = true;
             showLewd = true;
             showDefaultOn = true;
             showResetPhysbones = true;
-        } else if (type == SenkyFXProp.MODES) {
+        } else if (type == VRCFuryProp.MODES) {
             showSaved = true;
             showLewd = true;
             showResetPhysbones = true;
@@ -77,7 +80,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
         if (showResetPhysbones) {
             advMenu.AddItem(new GUIContent("Add PhysBone to Reset"), false, () => {
-                SenkyUIHelper.addToList(resetPhysboneProp);
+                VRCFuryEditorUtils.AddToList(resetPhysboneProp);
             });
         }
 
@@ -87,7 +90,7 @@ public class SenkyFXPropDrawer : PropertyDrawer {
         flex.style.marginBottom = 10;
         container.Add(flex);
 
-        var name = SenkyUIHelper.PropWithoutLabel(prop.FindPropertyRelative("name"));
+        var name = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("name"));
         name.style.flexGrow = 1;
         flex.Add(name);
 
@@ -109,47 +112,49 @@ public class SenkyFXPropDrawer : PropertyDrawer {
             content.Add(new Label(tagsStr));
         }
 
-        if (type == SenkyFXProp.TOGGLE) {
-            content.Add(SenkyFXStateEditor.render(prop.FindPropertyRelative("state")));
-        } else if (type == SenkyFXProp.MODES) {
-            content.Add(SenkyUIHelper.List(prop.FindPropertyRelative("modes"), renderElement: (i,e) => SenkyFXPropModeEditor.render(e, "Mode " + (i+1))));
+        if (type == VRCFuryProp.TOGGLE) {
+            content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state")));
+        } else if (type == VRCFuryProp.MODES) {
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("modes"), renderElement: (i,e) => VRCFuryPropModeDrawer.render(e, "Mode " + (i+1))));
         } else {
             content.Add(new Label("Unknown type: " + type));
         }
 
         if (showResetPhysbones && resetPhysboneProp.arraySize > 0) {
             content.Add(new Label("Reset PhysBones:"));
-            content.Add(SenkyUIHelper.List(prop.FindPropertyRelative("resetPhysbones"), renderElement: (i,el) => SenkyUIHelper.PropWithoutLabel(el)));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("resetPhysbones"), renderElement: (i,el) => VRCFuryEditorUtils.PropWithoutLabel(el)));
         }
 
         return container;
     }
 }
 
-public class SenkyFXPropModeEditor {
+public class VRCFuryPropModeDrawer {
     public static VisualElement render(SerializedProperty prop, string label) {
-        return SenkyFXStateEditor.render(prop.FindPropertyRelative("state"));
+        return VRCFuryStateEditor.render(prop.FindPropertyRelative("state"));
     }
 }
 
-[CustomPropertyDrawer(typeof(SenkyFXProps))]
-public class SenkyFXPropsDrawer : PropertyDrawer {
+[CustomPropertyDrawer(typeof(VRCFuryProps))]
+public class VRCFuryPropsDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
         var listProp = prop.FindPropertyRelative("props");
         var inspect = new VisualElement();
-        inspect.Add(SenkyUIHelper.List(listProp, onPlus: () => {
+        inspect.Add(VRCFuryEditorUtils.List(listProp, onPlus: () => {
             var menu = new GenericMenu();
             menu.AddItem(new GUIContent("Toggle"), false, () => {
-                SenkyUIHelper.addToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.TOGGLE);
+                VRCFuryEditorUtils.AddToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryProp.TOGGLE);
             });
             menu.AddItem(new GUIContent("Multi-Mode"), false, () => {
-                SenkyUIHelper.addToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.MODES);
+                VRCFuryEditorUtils.AddToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryProp.MODES);
             });
             menu.AddItem(new GUIContent("Puppet"), false, () => {
-                SenkyUIHelper.addToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = SenkyFXProp.PUPPET);
+                VRCFuryEditorUtils.AddToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryProp.PUPPET);
             });
             menu.ShowAsContext();
         }));
         return inspect;
     }
+}
+
 }
