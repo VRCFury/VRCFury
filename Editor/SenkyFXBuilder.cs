@@ -1,5 +1,3 @@
-#if UNITY_EDITOR
-
 using System;
 using UnityEngine;
 using UnityEditor;
@@ -11,7 +9,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 public class SenkyFXBuilder {
     public void Run(SenkyFX inputs) {
         this.inputs = inputs;
-        rootObject = inputs.avatar;
+        rootObject = inputs.gameObject;
         var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
         fxController = (AnimatorController)avatar.baseAnimationLayers[4].animatorController;
         var menu = avatar.expressionsMenu;
@@ -30,6 +28,12 @@ public class SenkyFXBuilder {
                 if (removed.assetComponent is SenkyFX) {
                     removed.Revert();
                 }
+            }
+        }
+        // REMOVE ANIMATORS FROM PREFAB INSTANCES (often used for prop testing)
+        foreach (var otherAnimator in rootObject.GetComponentsInChildren<Animator>(true)) {
+            if (otherAnimator.gameObject != rootObject && PrefabUtility.IsPartOfPrefabInstance(otherAnimator.gameObject)) {
+                UnityEngine.Object.DestroyImmediate(otherAnimator);
             }
         }
 
@@ -252,6 +256,7 @@ public class SenkyFXBuilder {
         var allSenkyFx = new List<SenkyFX>();
         allSenkyFx.Add(inputs);
         foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
+            if (otherSenkyFx == inputs) continue;
             Debug.Log("Importing SenkyFX from " + otherSenkyFx.gameObject.name);
             allSenkyFx.Add(otherSenkyFx);
         }
@@ -338,18 +343,6 @@ public class SenkyFXBuilder {
                 }
             }
         }
-
-        // REMOVE SENKYFX AND ANIMATORS FROM PREFAB INSTANCES
-        foreach (var otherSenkyFx in rootObject.GetComponentsInChildren<SenkyFX>(true)) {
-            if (PrefabUtility.IsPartOfPrefabInstance(otherSenkyFx.gameObject)) {
-                UnityEngine.Object.DestroyImmediate(otherSenkyFx);
-            }
-        }
-        foreach (var otherAnimator in rootObject.GetComponentsInChildren<Animator>(true)) {
-            if (otherAnimator.gameObject != rootObject && PrefabUtility.IsPartOfPrefabInstance(otherAnimator.gameObject)) {
-                UnityEngine.Object.DestroyImmediate(otherAnimator);
-            }
-        }
     }
 
 
@@ -428,7 +421,7 @@ public class SenkyFXBuilder {
                 if (exists) {
                     AnimationUtility.SetEditorCurve(defaultClip, binding, motions.OneFrame(value));
                 } else {
-                    Debug.Log("Missing default value for: " + binding.path);
+                    Debug.LogWarning("Missing default value for: " + binding.path);
                 }
             }
             foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(output)) {
@@ -436,7 +429,7 @@ public class SenkyFXBuilder {
                 if (exists) {
                     AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, motions.OneFrame(value));
                 } else {
-                    Debug.Log("Missing default value for: " + binding.path);
+                    Debug.LogWarning("Missing default value for: " + binding.path);
                 }
             }
             return output;
@@ -795,5 +788,3 @@ public class SenkyFXNameManager {
         EditorUtility.SetDirty(syncedParams);
     }
 }
-
-#endif

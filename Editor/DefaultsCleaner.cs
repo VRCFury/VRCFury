@@ -1,5 +1,3 @@
-#if UNITY_EDITOR
-
 using System;
 using System.Collections;
 using System.Reflection;
@@ -39,5 +37,3 @@ public class DefaultsCleaner {
         return false;
     }
 }
-
-#endif

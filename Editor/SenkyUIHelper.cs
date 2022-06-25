@@ -1,5 +1,3 @@
-#if UNITY_EDITOR
-
 using System;
 using UnityEngine;
 using UnityEditor;
@@ -203,5 +201,3 @@ public class SenkyUIHelper {
 
     public static int LABEL_WIDTH = 137;
 }
-
-#endif
