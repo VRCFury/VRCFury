@@ -74,3 +74,15 @@ Distributing your own prefab with animations?
 Got an animation that changes parameters on a physbone?
 
 Click the advanced `*` button on the VRC Fury prop for the animation, then click `Add PhysBone to Reset`. Drag the object for the physbone into the box (it should be on an empty by itself). VRC Fury will automatically flip the bone off and on any time your animation is run or reset, causing the physbone to reload your changed settings.
+
+# Idle Animations
+
+Want to add an idle animation to your avatar? Create a new prop, click the `*` and select `Default On`. Your idle animation will now play all the time (but you can also trigger it back off in game!)
+
+# Sliders
+
+Select `Slider` from the `*` menu, and VRC Fury will make the prop into a slider rather than a toggle. 0 will be the avatar default state, and 100% will be your "enabled" state.
+
+# Saved Parameters
+
+Not everything in VRC Fury has to be a prop. Want to save your clothes (or anything else?) across worlds? Select `Saved between worlds` in the `*` menu.
