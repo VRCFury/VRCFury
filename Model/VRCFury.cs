@@ -7,6 +7,10 @@ public class VRCFury : MonoBehaviour {
     public VRCFuryState stateBlink;
     public string visemeFolder;
 
+    public bool scaleEnabled;
+    public int securityCodeLeft;
+    public int securityCodeRight;
+
     public GameObject breatheObject;
     public string breatheBlendshape;
     public float breatheScaleMin;
@@ -29,7 +33,7 @@ public class VRCFury : MonoBehaviour {
 
     public VRCFuryState stateEarsBack;
 
-    public VRCFuryState stateTalkGlow;
+    public VRCFuryState stateTalking;
 
     public VRCFuryProps props;
 }

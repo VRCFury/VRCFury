@@ -28,9 +28,13 @@ public class VRCFuryEditor : Editor {
         }
 
         if (pointingToAvatar) {
-            AddProperty("stateBlink", "Blinking");
-            AddState("stateTalkGlow", "Talk Glow");
+            AddState("stateBlink", "Blinking");
+            AddState("stateTalking", "Talking");
             AddProperty("visemeFolder", "Viseme Folder");
+            AddProperty("scaleEnabled", "Enable Avatar Scale Slider");
+
+            AddProperty("securityCodeLeft", "Security Left");
+            AddProperty("securityCodeRight", "Security Right");
 
             Foldout("Breathing", () => {
                 AddProperty("breatheObject", "Object");

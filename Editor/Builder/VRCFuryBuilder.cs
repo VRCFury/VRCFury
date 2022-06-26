@@ -75,19 +75,7 @@ public class VRCFuryBuilder {
         always = paramTrue.IsTrue();
         var paramOrifaceMouthRing = manager.NewBool("OrifaceMouthRing", synced: true);
         var paramOrifaceMouthHole = manager.NewBool("OrifaceMouthHole", synced: true);
-        var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
-        var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);
-        var paramEmoteAngry = manager.NewBool("EmoteAngry", synced: true);
-        var paramEmoteTongue = manager.NewBool("EmoteTongue", synced: true);
-        // These don't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-        var paramEmoteHappyLock = manager.NewBool("EmoteHappyLock", synced: true);
-        manager.NewMenuToggle("Lock Happy", paramEmoteHappyLock);
-        var paramEmoteSadLock = manager.NewBool("EmoteSadLock", synced: true);
-        manager.NewMenuToggle("Lock Sad", paramEmoteSadLock);
-        var paramEmoteAngryLock = manager.NewBool("EmoteAngryLock", synced: true);
-        manager.NewMenuToggle("Lock Angry", paramEmoteAngryLock);
-        var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock", synced: true);
-        manager.NewMenuToggle("Lock Tongue", paramEmoteTongueLock);
+
         var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);
         var blinkTrigger = manager.NewTrigger("BlinkTrigger");
         var blinkActive = manager.NewBool("BlinkActive", def: true);
@@ -124,111 +112,140 @@ public class VRCFuryBuilder {
             addViseme(14, "U");
         }
 
-        {
-            var layer = manager.NewLayer("Eyes");
-            var idle = layer.NewState("Idle").Drives(blinkActive, true);
-            var closed = layer.NewState("Closed").WithAnimation(loadClip("eyesClosed", inputs.stateEyesClosed)).Drives(blinkActive, false);
-            var happy = layer.NewState("Happy").WithAnimation(loadClip("eyesHappy", inputs.stateEyesHappy)).Drives(blinkActive, false);
-            //var bedroom = layer.NewState("Bedroom").WithAnimation(loadClip("eyesBedroom", inputs.stateEyesBedroom)).Drives(blinkActive, false)
-            var sad = layer.NewState("Sad").WithAnimation(loadClip("eyesSad", inputs.stateEyesSad)).Drives(blinkActive, false);
-            var angry = layer.NewState("Angry").WithAnimation(loadClip("eyesAngry", inputs.stateEyesAngry)).Drives(blinkActive, false);
+        var enableGestures = !inputs.stateEyesClosed.isEmpty()
+            || !inputs.stateEyesHappy.isEmpty()
+            || !inputs.stateEyesSad.isEmpty()
+            || !inputs.stateEyesAngry.isEmpty()
+            || !inputs.stateMouthBlep.isEmpty()
+            || !inputs.stateMouthSuck.isEmpty()
+            || !inputs.stateMouthSad.isEmpty()
+            || !inputs.stateMouthAngry.isEmpty()
+            || !inputs.stateMouthHappy.isEmpty()
+            || !inputs.stateEarsBack.isEmpty();
 
-            closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
-            closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
-            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
-            //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(bedroom.IsTrue());
-            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+        if (enableGestures) {
+            var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
+            var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);
+            var paramEmoteAngry = manager.NewBool("EmoteAngry", synced: true);
+            var paramEmoteTongue = manager.NewBool("EmoteTongue", synced: true);
+            // These don't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
+            var paramEmoteHappyLock = manager.NewBool("EmoteHappyLock", synced: true);
+            manager.NewMenuToggle("Lock Happy", paramEmoteHappyLock);
+            var paramEmoteSadLock = manager.NewBool("EmoteSadLock", synced: true);
+            manager.NewMenuToggle("Lock Sad", paramEmoteSadLock);
+            var paramEmoteAngryLock = manager.NewBool("EmoteAngryLock", synced: true);
+            manager.NewMenuToggle("Lock Angry", paramEmoteAngryLock);
+            var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock", synced: true);
+            manager.NewMenuToggle("Lock Tongue", paramEmoteTongueLock);
+
+            {
+                var layer = manager.NewLayer("Eyes");
+                var idle = layer.NewState("Idle").Drives(blinkActive, true);
+                var closed = layer.NewState("Closed").WithAnimation(loadClip("eyesClosed", inputs.stateEyesClosed)).Drives(blinkActive, false);
+                var happy = layer.NewState("Happy").WithAnimation(loadClip("eyesHappy", inputs.stateEyesHappy)).Drives(blinkActive, false);
+                //var bedroom = layer.NewState("Bedroom").WithAnimation(loadClip("eyesBedroom", inputs.stateEyesBedroom)).Drives(blinkActive, false)
+                var sad = layer.NewState("Sad").WithAnimation(loadClip("eyesSad", inputs.stateEyesSad)).Drives(blinkActive, false);
+                var angry = layer.NewState("Angry").WithAnimation(loadClip("eyesAngry", inputs.stateEyesAngry)).Drives(blinkActive, false);
+
+                closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
+                closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
+                happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
+                //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(bedroom.IsTrue());
+                sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
+                angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+            }
+
+            {
+                var layer = manager.NewLayer("Mouth");
+                var idle = layer.NewState("Idle");
+                var blep = layer.NewState("Blep").WithAnimation(loadClip("mouthBlep", inputs.stateMouthBlep));
+                var suck = layer.NewState("Suck").WithAnimation(loadClip("mouthSuck", inputs.stateMouthSuck));
+                var sad = layer.NewState("Sad").WithAnimation(loadClip("mouthSad", inputs.stateMouthSad));
+                var angry = layer.NewState("Angry").WithAnimation(loadClip("mouthAngry", inputs.stateMouthAngry));
+                var happy = layer.NewState("Happy").WithAnimation(loadClip("mouthHappy", inputs.stateMouthHappy));
+
+                suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
+                suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
+                blep.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteTongue.IsTrue());
+                happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
+                sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
+                angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+            }
+
+            {
+                var layer = manager.NewLayer("Ears");
+                var idle = layer.NewState("Idle");
+                var back = layer.NewState("Back").WithAnimation(loadClip("earsBack", inputs.stateEarsBack));
+
+                back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
+                back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+            }
+
+            createGestureTriggerLayer("Tongue", paramEmoteTongueLock, paramEmoteTongue, 4);
+            createGestureTriggerLayer("Happy", paramEmoteHappyLock, paramEmoteHappy, 7);
+            createGestureTriggerLayer("Sad", paramEmoteSadLock, paramEmoteSad, 6);
+            createGestureTriggerLayer("Angry", paramEmoteAngryLock, paramEmoteAngry, 5);
         }
-
-        {
-            var layer = manager.NewLayer("Mouth");
-            var idle = layer.NewState("Idle");
-            var blep = layer.NewState("Blep").WithAnimation(loadClip("mouthBlep", inputs.stateMouthBlep));
-            var suck = layer.NewState("Suck").WithAnimation(loadClip("mouthSuck", inputs.stateMouthSuck));
-            var sad = layer.NewState("Sad").WithAnimation(loadClip("mouthSad", inputs.stateMouthSad));
-            var angry = layer.NewState("Angry").WithAnimation(loadClip("mouthAngry", inputs.stateMouthAngry));
-            var happy = layer.NewState("Happy").WithAnimation(loadClip("mouthHappy", inputs.stateMouthHappy));
-
-            suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
-            suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
-            blep.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteTongue.IsTrue());
-            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
-            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
-        }
-
-        {
-            var layer = manager.NewLayer("Ears");
-            var idle = layer.NewState("Idle");
-            var back = layer.NewState("Back").WithAnimation(loadClip("earsBack", inputs.stateEarsBack));
-
-            back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-            back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
-        }
-
-        createGestureTriggerLayer("Tongue", paramEmoteTongueLock, paramEmoteTongue, 4);
-        createGestureTriggerLayer("Happy", paramEmoteHappyLock, paramEmoteHappy, 7);
-        createGestureTriggerLayer("Sad", paramEmoteSadLock, paramEmoteSad, 6);
-        createGestureTriggerLayer("Angry", paramEmoteAngryLock, paramEmoteAngry, 5);
 
         // BLINKING
-        {
-            var blinkCounter = manager.NewInt("BlinkCounter");
-            var layer = manager.NewLayer("Blink - Generator");
-            var idle = layer.NewState("Idle");
-            var subtract = layer.NewState("Subtract");
-            var trigger0 = layer.NewState("Trigger 0").Move(subtract, 1, 0);
-            var trigger1 = layer.NewState("Trigger 1").Move(trigger0, 1, 0);
-            var randomize = layer.NewState("Randomize").Move(idle, 1, 0);
-            layer.AddRemoteEntry();
+        if (!inputs.stateBlink.isEmpty()) {
+            {
+                var blinkCounter = manager.NewInt("BlinkCounter");
+                var layer = manager.NewLayer("Blink - Generator");
+                var idle = layer.NewState("Idle");
+                var subtract = layer.NewState("Subtract");
+                var trigger0 = layer.NewState("Trigger 0").Move(subtract, 1, 0);
+                var trigger1 = layer.NewState("Trigger 1").Move(trigger0, 1, 0);
+                var randomize = layer.NewState("Randomize").Move(idle, 1, 0);
+                layer.AddRemoteEntry();
 
-            idle.TransitionsTo(trigger0).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsTrue()));
-            trigger0.Drives(blinkTriggerSynced, false);
-            trigger0.TransitionsTo(randomize).When(always);
+                idle.TransitionsTo(trigger0).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsTrue()));
+                trigger0.Drives(blinkTriggerSynced, false);
+                trigger0.TransitionsTo(randomize).When(always);
 
-            idle.TransitionsTo(trigger1).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsFalse()));
-            trigger1.Drives(blinkTriggerSynced, true);
-            trigger1.TransitionsTo(randomize).When(always);
+                idle.TransitionsTo(trigger1).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsFalse()));
+                trigger1.Drives(blinkTriggerSynced, true);
+                trigger1.TransitionsTo(randomize).When(always);
 
-            randomize.DrivesRandom(blinkCounter, 2, 10);
-            randomize.TransitionsTo(idle).When(always);
+                randomize.DrivesRandom(blinkCounter, 2, 10);
+                randomize.TransitionsTo(idle).When(always);
 
-            idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(always);
-            subtract.DrivesDelta(blinkCounter, -1);
-            subtract.TransitionsTo(idle).When(always);
-        }
+                idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(always);
+                subtract.DrivesDelta(blinkCounter, -1);
+                subtract.TransitionsTo(idle).When(always);
+            }
 
-        {
-            var layer = manager.NewLayer("Blink - Receiver");
-            var blink0 = layer.NewState("Trigger == false");
-            var blink1 = layer.NewState("Trigger == true");
+            {
+                var layer = manager.NewLayer("Blink - Receiver");
+                var blink0 = layer.NewState("Trigger == false");
+                var blink1 = layer.NewState("Trigger == true");
 
-            blink0.TransitionsTo(blink1).When(blinkTriggerSynced.IsTrue());
-            blink0.Drives(blinkTrigger, true);
-            blink1.TransitionsTo(blink0).When(blinkTriggerSynced.IsFalse());
-            blink1.Drives(blinkTrigger, true);
-        }
+                blink0.TransitionsTo(blink1).When(blinkTriggerSynced.IsTrue());
+                blink0.Drives(blinkTrigger, true);
+                blink1.TransitionsTo(blink0).When(blinkTriggerSynced.IsFalse());
+                blink1.Drives(blinkTrigger, true);
+            }
 
-        {
-            var blinkClip = loadClip("blink", inputs.stateBlink);
-            var blinkDuration = 0.07f;
-            var layer = manager.NewLayer("Blink - Animate");
-            var idle = layer.NewState("Idle");
-            var checkActive = layer.NewState("Check Active");
-            var blink = layer.NewState("Blink").WithAnimation(blinkClip);
+            {
+                var blinkClip = loadClip("blink", inputs.stateBlink);
+                var blinkDuration = 0.07f;
+                var layer = manager.NewLayer("Blink - Animate");
+                var idle = layer.NewState("Idle");
+                var checkActive = layer.NewState("Check Active");
+                var blink = layer.NewState("Blink").WithAnimation(blinkClip);
 
-            idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
-            checkActive.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(blinkActive.IsTrue());
-            checkActive.TransitionsTo(idle).When(always);
-            blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(always);
+                idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
+                checkActive.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(blinkActive.IsTrue());
+                checkActive.TransitionsTo(idle).When(always);
+                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(always);
+            }
         }
 
         // SCALE
-        {
+        if (inputs.scaleEnabled) {
             var scaleClip = manager.NewClip("Scale");
             motions.Scale(scaleClip, rootObject, motions.FromFrames(
                 new Keyframe(0,0.1f),
@@ -242,8 +259,9 @@ public class VRCFuryBuilder {
         }
 
         // SECURITY LOCK
-        var paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
-        {
+        VFABool paramSecuritySync = null;
+        if (inputs.securityCodeLeft > 0 && inputs.securityCodeRight > 0) {
+            paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
             // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
             var paramSecurityMenu = manager.NewBool("SecurityLockMenu", synced: true);
             manager.NewMenuToggle("Security", paramSecurityMenu);
@@ -257,7 +275,7 @@ public class VRCFuryBuilder {
             locked.Drives(paramSecuritySync, false);
             locked.TransitionsTo(check).When(paramSecurityMenu.IsTrue());
 
-            check.TransitionsTo(unlocked).When(GestureLeft.IsEqualTo(4).And(GestureRight.IsEqualTo(4)));
+            check.TransitionsTo(unlocked).When(GestureLeft.IsEqualTo(inputs.securityCodeLeft).And(GestureRight.IsEqualTo(inputs.securityCodeRight)));
             check.TransitionsTo(locked).When(always);
 
             unlocked.Drives(paramSecuritySync, true);
@@ -265,9 +283,9 @@ public class VRCFuryBuilder {
         }
 
         // TALK GLOW
-        if (!inputs.stateTalkGlow.isEmpty()) {
+        if (!inputs.stateTalking.isEmpty()) {
             var layer = manager.NewLayer("Talk Glow");
-            var clip = loadClip("TalkGlow", inputs.stateTalkGlow);
+            var clip = loadClip("TalkGlow", inputs.stateTalking);
             var off = layer.NewState("Off");
             var on = layer.NewState("On").WithAnimation(clip);
 
@@ -335,7 +353,7 @@ public class VRCFuryBuilder {
                         var clip = loadClip("prop_" + prop.name+"_"+num, mode.state, prefixObj);
                         var state = layer.NewState(""+num).WithAnimation(clip);
                         if (physBoneResetter != null) state.Drives(physBoneResetter, true);
-                        if (prop.securityEnabled) {
+                        if (prop.securityEnabled && paramSecuritySync != null) {
                             state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
                             state.TransitionsToExit().When(param.IsNotEqualTo(num));
                             state.TransitionsToExit().When(paramSecuritySync.IsFalse());
@@ -350,7 +368,7 @@ public class VRCFuryBuilder {
                     var off = layer.NewState("Off");
                     var on = layer.NewState("On").WithAnimation(clip);
                     var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved, def: prop.defaultOn);
-                    if (prop.securityEnabled) {
+                    if (prop.securityEnabled && paramSecuritySync != null) {
                         off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
                         on.TransitionsTo(off).When(param.IsFalse());
                         on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
