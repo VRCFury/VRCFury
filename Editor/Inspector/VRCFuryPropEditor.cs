@@ -15,7 +15,7 @@ public class VRCFuryPropDrawer : PropertyDrawer {
             prop.FindPropertyRelative("type"),
             prop.FindPropertyRelative("saved"),
             prop.FindPropertyRelative("slider"),
-            prop.FindPropertyRelative("lewdLocked"),
+            prop.FindPropertyRelative("securityEnabled"),
             prop.FindPropertyRelative("defaultOn"),
             prop.FindPropertyRelative("resetPhysbones")
         );
@@ -26,7 +26,7 @@ public class VRCFuryPropDrawer : PropertyDrawer {
 
         var showSaved = false;
         var showSlider = false;
-        var showLewd = false;
+        var showSecurity = false;
         var showDefaultOn = false;
         var showResetPhysbones = false;
 
@@ -34,12 +34,12 @@ public class VRCFuryPropDrawer : PropertyDrawer {
         if (type == VRCFuryProp.TOGGLE) {
             showSaved = true;
             showSlider = true;
-            showLewd = true;
+            showSecurity = true;
             showDefaultOn = true;
             showResetPhysbones = true;
         } else if (type == VRCFuryProp.MODES) {
             showSaved = true;
-            showLewd = true;
+            showSecurity = true;
             showResetPhysbones = true;
         }
 
@@ -61,10 +61,10 @@ public class VRCFuryPropDrawer : PropertyDrawer {
                 prop.serializedObject.ApplyModifiedProperties();
             });
         }
-        if (showLewd) {
-            var boolProp = prop.FindPropertyRelative("lewdLocked");
-            if (boolProp.boolValue) tags.Add("Lewd");
-            advMenu.AddItem(new GUIContent("Protect with Lewd Safety"), boolProp.boolValue, () => {
+        if (showSecurity) {
+            var boolProp = prop.FindPropertyRelative("securityEnabled");
+            if (boolProp.boolValue) tags.Add("Security");
+            advMenu.AddItem(new GUIContent("Protect with Security"), boolProp.boolValue, () => {
                 boolProp.boolValue = !boolProp.boolValue;
                 prop.serializedObject.ApplyModifiedProperties();
             });

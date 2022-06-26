@@ -215,27 +215,27 @@ public class VRCFuryBuilder {
             var main = layer.NewState("Scale").WithAnimation(scaleClip).MotionTime(paramScale);
         }
 
-        // LEWD LOCK
-        var paramLewdSync = manager.NewBool("LewdLockSync", synced: true, defTrueInEditor: true);
+        // SECURITY LOCK
+        var paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
         {
             // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-            var paramLewdMenu = manager.NewBool("LewdLockMenu", synced: true);
-            manager.NewMenuToggle("Lewd Lock", paramLewdMenu);
-            var layer = manager.NewLayer("LewdLock");
+            var paramSecurityMenu = manager.NewBool("SecurityLockMenu", synced: true);
+            manager.NewMenuToggle("Security", paramSecurityMenu);
+            var layer = manager.NewLayer("SecurityLock");
             var locked = layer.NewState("Locked");
             var check = layer.NewState("Check");
             var unlocked = layer.NewState("Unlocked").Move(check, 1, 0);
             layer.AddRemoteEntry();
 
-            locked.Drives(paramLewdMenu, false);
-            locked.Drives(paramLewdSync, false);
-            locked.TransitionsTo(check).When(paramLewdMenu.IsTrue());
+            locked.Drives(paramSecurityMenu, false);
+            locked.Drives(paramSecuritySync, false);
+            locked.TransitionsTo(check).When(paramSecurityMenu.IsTrue());
 
             check.TransitionsTo(unlocked).When(GestureLeft.IsEqualTo(4).And(GestureRight.IsEqualTo(4)));
             check.TransitionsTo(locked).When(always);
 
-            unlocked.Drives(paramLewdSync, true);
-            unlocked.TransitionsTo(locked).When(paramLewdMenu.IsFalse());
+            unlocked.Drives(paramSecuritySync, true);
+            unlocked.TransitionsTo(locked).When(paramSecurityMenu.IsFalse());
         }
 
         // TALK GLOW
@@ -309,10 +309,10 @@ public class VRCFuryBuilder {
                         var clip = loadClip("prop_" + prop.name+"_"+num, mode.state, prefixObj);
                         var state = layer.NewState(""+num).WithAnimation(clip);
                         if (physBoneResetter != null) state.Drives(physBoneResetter, true);
-                        if (prop.lewdLocked) {
-                            state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramLewdSync.IsTrue()));
+                        if (prop.securityEnabled) {
+                            state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
                             state.TransitionsToExit().When(param.IsNotEqualTo(num));
-                            state.TransitionsToExit().When(paramLewdSync.IsFalse());
+                            state.TransitionsToExit().When(paramSecuritySync.IsFalse());
                         } else {
                             state.TransitionsFromAny().When(param.IsEqualTo(num));
                             state.TransitionsToExit().When(param.IsNotEqualTo(num));
@@ -324,10 +324,10 @@ public class VRCFuryBuilder {
                     var off = layer.NewState("Off");
                     var on = layer.NewState("On").WithAnimation(clip);
                     var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved, def: prop.defaultOn);
-                    if (prop.lewdLocked) {
-                        off.TransitionsTo(on).When(param.IsTrue().And(paramLewdSync.IsTrue()));
+                    if (prop.securityEnabled) {
+                        off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
                         on.TransitionsTo(off).When(param.IsFalse());
-                        on.TransitionsTo(off).When(paramLewdSync.IsFalse());
+                        on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
                     } else {
                         off.TransitionsTo(on).When(param.IsTrue());
                         on.TransitionsTo(off).When(param.IsFalse());

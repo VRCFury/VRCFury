@@ -15,7 +15,7 @@ public class VRCFuryProp {
     public VRCFuryState state;
     public bool saved;
     public bool slider;
-    public bool lewdLocked;
+    public bool securityEnabled;
     public bool defaultOn;
     public List<VRCFuryPropPuppetStop> puppetStops = new List<VRCFuryPropPuppetStop>();
     public List<VRCFuryPropMode> modes = new List<VRCFuryPropMode>();
