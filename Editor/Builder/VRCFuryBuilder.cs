@@ -10,16 +10,42 @@ using VRCF.Model;
 namespace VRCF.Builder {
 
 public class VRCFuryBuilder {
-    public void Run(VRCFury inputs) {
+    public bool SafeRun(VRCFury inputs) {
+        EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
+        bool result;
+        try {
+            result = Run(inputs);
+        } catch(Exception e) {
+            EditorUtility.ClearProgressBar();
+            EditorUtility.DisplayDialog("VRCFury Error", "An exception was thrown. Check the unity console.", "Ok");
+            throw;
+        }
+        EditorUtility.ClearProgressBar();
+        return result;
+    }
+
+    public bool Run(VRCFury inputs) {
         Debug.Log("VRCFury is running for " + inputs.gameObject.name + "...");
-        EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0);
 
         this.inputs = inputs;
         rootObject = inputs.gameObject;
         var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
-        fxController = (AnimatorController)avatar.baseAnimationLayers[4].animatorController;
+        var ctrl = avatar.baseAnimationLayers[4].animatorController;
+        if (ctrl == null) {
+            EditorUtility.DisplayDialog("VRCFury Error", "Avatar Descriptor is missing an FX controller", "Ok");
+            return false;
+        }
+        fxController = (AnimatorController)ctrl;
         var menu = avatar.expressionsMenu;
+        if (menu == null) {
+            EditorUtility.DisplayDialog("VRCFury Error", "Avatar Descriptor is missing Expression -> Menu", "Ok");
+            return false;
+        }
         var syncedParams = avatar.expressionParameters;
+        if (syncedParams == null) {
+            EditorUtility.DisplayDialog("VRCFury Error", "Avatar is missing Expression -> Parameters", "Ok");
+            return false;
+        }
         manager = new VRCFuryNameManager("VRCFury", menu, syncedParams, fxController);
         baseFile = AssetDatabase.GetAssetPath(fxController);
         motions = new VRCFuryClipUtils(rootObject);
@@ -342,7 +368,8 @@ public class VRCFuryBuilder {
         }
 
         Debug.Log("VRCFury Finished!");
-        EditorUtility.ClearProgressBar();
+
+        return true;
     }
 
 

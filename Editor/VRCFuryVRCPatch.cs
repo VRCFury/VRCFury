@@ -28,7 +28,7 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
         var vrcf = avatarGameObject.GetComponent<VRCFury>();
         if (vrcf != null) {
             var builder = new VRCFuryBuilder();
-            builder.Run(vrcf);
+            return builder.Run(vrcf);
         }
         return true;
     }
