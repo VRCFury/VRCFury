@@ -68,3 +68,9 @@ Distributing your own prefab with animations?
 * Instruct them to install VRCFury in their own project.
 * Ship the prefab to your clients, and tell them to drag the prefab onto whatever bone on their avatar.
 * When they upload their avatar, your prefab's props will be imported to their menu automatically! Any animation clip paths will be adjusted automatically to work properly, no matter where they've placed it in their avatar.
+
+### Physbone Reset
+
+Got an animation that changes parameters on a physbone?
+
+Click the advanced `*` button on the VRC Fury prop for the animation, then click `Add PhysBone to Reset`. Drag the object for the physbone into the box (it should be on an empty by itself). VRC Fury will automatically flip the bone off and on any time your animation is run or reset, causing the physbone to reload your changed settings.
