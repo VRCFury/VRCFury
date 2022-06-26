@@ -170,7 +170,7 @@ public class VRCFuryEditorUtils {
     private static VisualElement _OnChange<TYPE>(SerializedProperty prop, Func<TYPE> getValue, Action changed, Func<TYPE,TYPE,bool> equals) {
         // The register events can sometimes randomly fire when binding / unbinding happens,
         // with the oldValue being "null", so we have to do our own change detection by caching the old value.
-        var fakeField = new PropertyField();
+        var fakeField = new PropertyField(prop);
         fakeField.style.display = DisplayStyle.None;
         TYPE oldValue = getValue();
         Action check = () => {
