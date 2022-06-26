@@ -60,3 +60,11 @@ Benefits:
 
 * You can use bone transforms in your visemes, meaning you can open your jaw rather than using an A blend shape.
 * This can enhance some features, such as tongue movement, while your mouth is open during speech.
+
+### Prefab artists
+
+Distributing your own prefab with animations? 
+* Add the VRC Fury component to the root object of your prefab, and add the props like normal. 
+* Instruct them to install VRCFury in their own project.
+* Ship the prefab to your clients, and tell them to drag the prefab onto whatever bone on their avatar.
+* When they upload their avatar, your prefab's props will be imported to their menu automatically! Any animation clip paths will be adjusted automatically to work properly, no matter where they've placed it in their avatar.
