@@ -247,11 +247,12 @@ public class VRCFuryBuilder {
         // SCALE
         if (inputs.scaleEnabled) {
             var scaleClip = manager.NewClip("Scale");
+            var baseScale = rootObject.transform.localScale.x;
             motions.Scale(scaleClip, rootObject, motions.FromFrames(
-                new Keyframe(0,0.1f),
-                new Keyframe(2,1),
-                new Keyframe(3,2),
-                new Keyframe(4,10)
+                new Keyframe(0,baseScale*0.1f),
+                new Keyframe(2,baseScale*1),
+                new Keyframe(3,baseScale*2),
+                new Keyframe(4,baseScale*10)
             ));
 
             var layer = manager.NewLayer("Scale");
