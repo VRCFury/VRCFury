@@ -80,6 +80,7 @@ public class VRCFuryBuilder {
         }
         Directory.CreateDirectory(tmpDir);
 
+        var thirdPartyIntegrations = false;
         if (fxController == null) {
             fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatarObject.name + ".controller");
             avatar.customizeAnimationLayers = true;
@@ -88,7 +89,7 @@ public class VRCFuryBuilder {
             fxLayer.animatorController = fxController;
             saveFxLayer();
             if (animator != null) animator.runtimeAnimatorController = fxController;
-            VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
+            thirdPartyIntegrations = true;
         }
         var useMenuRoot = false;
         if (menu == null) {
@@ -103,6 +104,11 @@ public class VRCFuryBuilder {
             syncedParams = avatar.expressionParameters = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             syncedParams.parameters = new VRCExpressionParameters.Parameter[]{};
             AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + avatarObject.name + ".asset");
+        }
+
+        if (thirdPartyIntegrations) {
+            VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
+            VRCFuryLensIntegration.Run(avatarObject);
         }
 
         manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, useMenuRoot);
