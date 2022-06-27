@@ -86,8 +86,8 @@ public class VFALayer {
 
     public VFALayer AddRemoteEntry() {
         var remote = NewState("Remote").Move(layer.stateMachine.entryPosition, -1, 0);
-        var IsRemote = ctrl.NewBool("IsRemote");
-        remote.TransitionsFromEntry().When(IsRemote.IsTrue());
+        var IsLocal = ctrl.NewBool("IsLocal");
+        remote.TransitionsFromEntry().When(IsLocal.IsFalse());
         return this;
     }
 }

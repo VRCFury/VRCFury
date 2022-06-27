@@ -31,7 +31,7 @@ VRC Fury is new. Things may be broken. Beware. If you find any issues, please re
 
 ## How to install and use
 
-* Delete VRCFury from your project (if upgrading).
+* Delete the VRCFury directory from your project (if upgrading).
 * Click [here](https://gitlab.com/senky/VRCFury/-/archive/master/SenkyFX-master.zip) to download the latest release.
 * Extract the zip somewhere into your avatar project (this is not a unity package file, so you can't just drag it in).
 * If you are using just VRCFury because an artist said you needed if for their prefab:
@@ -65,8 +65,8 @@ Benefits:
 
 Distributing your own prefab with animations? 
 * Add the VRC Fury component to the root object of your prefab, and add the props like normal. 
-* Instruct them to install VRCFury in their own project.
-* Ship the prefab to your clients, and tell them to drag the prefab onto whatever bone on their avatar.
+* Instruct your clients to install VRCFury in their own project.
+* Ship the prefab to them, and instruct them to drag the prefab onto whatever bone on their avatar.
 * When they upload their avatar, your prefab's props will be imported to their menu automatically! Any animation clip paths will be adjusted automatically to work properly, no matter where they've placed it in their avatar.
 
 ### Physbone Reset

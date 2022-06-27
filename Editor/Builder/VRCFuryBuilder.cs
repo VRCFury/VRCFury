@@ -70,6 +70,7 @@ public class VRCFuryBuilder {
         var GestureLeft = manager.NewInt("GestureLeft", usePrefix: false);
         var GestureRight = manager.NewInt("GestureRight", usePrefix: false);
         var Viseme = manager.NewInt("Viseme", usePrefix: false);
+        var IsLocal = manager.NewBool("IsLocal", usePrefix: false);
 
         var paramTrue = manager.NewBool("True", def: true);
         always = paramTrue.IsTrue();
@@ -195,12 +196,16 @@ public class VRCFuryBuilder {
             {
                 var blinkCounter = manager.NewInt("BlinkCounter");
                 var layer = manager.NewLayer("Blink - Generator");
-                var idle = layer.NewState("Idle");
+                var entry = layer.NewState("Entry");
+                var remote = layer.NewState("Remote").Move(entry, 0, -1);
+                var idle = layer.NewState("Idle").Move(entry, 0, 1);
                 var subtract = layer.NewState("Subtract");
                 var trigger0 = layer.NewState("Trigger 0").Move(subtract, 1, 0);
                 var trigger1 = layer.NewState("Trigger 1").Move(trigger0, 1, 0);
                 var randomize = layer.NewState("Randomize").Move(idle, 1, 0);
-                layer.AddRemoteEntry();
+
+                entry.TransitionsTo(remote).When(IsLocal.IsFalse());
+                entry.TransitionsTo(idle).When(always);
 
                 idle.TransitionsTo(trigger0).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsTrue()));
                 trigger0.Drives(blinkTriggerSynced, false);
@@ -235,7 +240,7 @@ public class VRCFuryBuilder {
                 var layer = manager.NewLayer("Blink - Animate");
                 var idle = layer.NewState("Idle");
                 var checkActive = layer.NewState("Check Active");
-                var blink = layer.NewState("Blink").WithAnimation(blinkClip);
+                var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(checkActive, 1, 0);
 
                 idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
                 checkActive.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(blinkActive.IsTrue());
@@ -266,11 +271,15 @@ public class VRCFuryBuilder {
             // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
             var paramSecurityMenu = manager.NewBool("SecurityLockMenu", synced: true);
             manager.NewMenuToggle("Security", paramSecurityMenu);
-            var layer = manager.NewLayer("SecurityLock");
-            var locked = layer.NewState("Locked");
+            var layer = manager.NewLayer("Security Lock");
+            var entry = layer.NewState("Entry");
+            var remote = layer.NewState("Remote").Move(entry, 0, -1);
+            var locked = layer.NewState("Locked").Move(entry, 0, 1);
             var check = layer.NewState("Check");
             var unlocked = layer.NewState("Unlocked").Move(check, 1, 0);
-            layer.AddRemoteEntry();
+
+            entry.TransitionsTo(remote).When(IsLocal.IsFalse());
+            entry.TransitionsTo(locked).When(always);
 
             locked.Drives(paramSecurityMenu, false);
             locked.Drives(paramSecuritySync, false);
@@ -550,8 +559,6 @@ public class VRCFuryBuilder {
         // Breathing
         if (inputs.breatheObject != null || inputs.breatheBlendshape != "") {
             var clip = manager.NewClip("Breathing");
-            var layer = manager.NewLayer("Breathing");
-            var main = layer.NewState("Breathe").WithAnimation(clip);
 
             if (inputs.breatheObject != null) {
                 motions.Scale(clip, inputs.breatheObject, motions.FromSeconds(
@@ -574,6 +581,7 @@ public class VRCFuryBuilder {
             }
 
             var prop = new VRCFuryProp();
+            prop.type = VRCFuryProp.TOGGLE;
             prop.name = "Breathing";
             prop.defaultOn = true;
             prop.state = new VRCFuryState();
@@ -598,6 +606,10 @@ public class VRCFuryBuilder {
 
         var resetClip = manager.NewClip(layerName + "_PhysBoneReset");
         foreach (var physBone in physBones) {
+            if (physBone == null) {
+                Debug.LogWarning("Physbone object in physboneResetter is missing!: " + layerName);
+                continue;
+            }
             motions.Enable(resetClip, physBone, false);
             motions.Enable(defaultClip, physBone, true);
         }
