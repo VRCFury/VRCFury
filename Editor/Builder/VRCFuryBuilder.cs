@@ -79,6 +79,7 @@ public class VRCFuryBuilder {
             fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatarObject.name + ".controller");
             avatar.customizeAnimationLayers = true;
             fxLayer.isEnabled = true;
+            fxLayer.isDefault = false;
             fxLayer.type = VRCAvatarDescriptor.AnimLayerType.FX;
             fxLayer.animatorController = fxController;
             saveFxLayer();
