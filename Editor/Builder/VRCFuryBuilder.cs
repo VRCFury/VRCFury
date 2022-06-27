@@ -42,21 +42,27 @@ public class VRCFuryBuilder {
                 animator.runtimeAnimatorController = null;
             }
         }
+        AnimatorController fxController = null;
         if (IsVrcfAsset(fxLayer.animatorController)) {
             fxLayer.animatorController = null;
             saveFxLayer();
-        } else if (fxLayer.animatorController != null) {
-            VRCFuryNameManager.PurgeFromAnimator((AnimatorController)fxLayer.animatorController);
+        } else if (avatar.customizeAnimationLayers && fxLayer.isEnabled && !fxLayer.isDefault && fxLayer.animatorController != null) {
+            fxController = (AnimatorController)fxLayer.animatorController;
+            VRCFuryNameManager.PurgeFromAnimator(fxController);
         }
+        VRCExpressionsMenu menu = null;
         if (IsVrcfAsset(avatar.expressionsMenu)) {
             avatar.expressionsMenu = null;
-        } else if (avatar.expressionsMenu != null) {
-            VRCFuryNameManager.PurgeFromMenu(avatar.expressionsMenu);
+        } else if (avatar.customExpressions && avatar.expressionsMenu != null) {
+            menu = avatar.expressionsMenu;
+            VRCFuryNameManager.PurgeFromMenu(menu);
         }
+        VRCExpressionParameters syncedParams = null;
         if (IsVrcfAsset(avatar.expressionParameters)) {
             avatar.expressionParameters = null;
-        } else if (avatar.expressionParameters != null) {
-            VRCFuryNameManager.PurgeFromParams(avatar.expressionParameters);
+        } else if (avatar.customExpressions && avatar.expressionParameters != null) {
+            syncedParams = avatar.expressionParameters;
+            VRCFuryNameManager.PurgeFromParams(syncedParams);
         }
 
         // Nuke all our old generated assets
@@ -74,8 +80,7 @@ public class VRCFuryBuilder {
         }
         Directory.CreateDirectory(tmpDir);
 
-        AnimatorController fxController;
-        if (fxLayer.animatorController == null || avatar.customizeAnimationLayers == false) {
+        if (fxController == null) {
             fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatarObject.name + ".controller");
             avatar.customizeAnimationLayers = true;
             fxLayer.isEnabled = true;
@@ -85,21 +90,15 @@ public class VRCFuryBuilder {
             saveFxLayer();
             if (animator != null) animator.runtimeAnimatorController = fxController;
             VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
-        } else {
-            fxController = (AnimatorController)fxLayer.animatorController;
         }
-
-        VRCExpressionsMenu menu = avatar.expressionsMenu;
         var useMenuRoot = false;
-        if (menu == null || !avatar.customExpressions) {
+        if (menu == null) {
             useMenuRoot = true;
             avatar.customExpressions = true;
             menu = avatar.expressionsMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             menu.controls = new List<VRCExpressionsMenu.Control>();
             AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + avatarObject.name + ".asset");
         }
-
-        VRCExpressionParameters syncedParams = avatar.expressionParameters;
         if (syncedParams == null) {
             avatar.customExpressions = true;
             syncedParams = avatar.expressionParameters = ScriptableObject.CreateInstance<VRCExpressionParameters>();
@@ -164,7 +163,7 @@ public class VRCFuryBuilder {
             var VisemeParam = manager.NewInt("Viseme", usePrefix: false);
             Action<int, string> addViseme = (index, text) => {
                 var animFileName = "Viseme-" + text;
-                var clip = getClip(visemeFolder + "/" + animFileName);
+                var clip = AssetDatabase.LoadMainAssetAtPath(visemeFolder + "/" + animFileName + ".anim") as AnimationClip;
                 if (clip == null) throw new Exception("Missing animation for viseme " + animFileName);
                 var state = visemes.NewState(text).WithAnimation(clip);
                 if (text == "sil") state.Move(0, -8);
@@ -511,12 +510,6 @@ public class VRCFuryBuilder {
             }
         }
         return skins;
-    }
-
-    private AnimationClip getClip(string path) {
-        var absPath = Path.GetDirectoryName(baseFile) + "/" + path + ".anim";
-        var motion = AssetDatabase.LoadMainAssetAtPath(absPath) as AnimationClip;
-        return motion;
     }
 
     private AnimationClip loadClip(string name, VRCFuryState state, GameObject prefixObj = null) {
