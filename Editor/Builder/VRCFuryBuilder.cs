@@ -13,7 +13,6 @@ namespace VRCF.Builder {
 public class VRCFuryBuilder {
     public bool SafeRun(VRCFury config, GameObject avatarObject) {
         EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
-        AssetDatabase.StartAssetEditing();
         bool result;
         try {
             result = Run(config, avatarObject);
@@ -23,8 +22,6 @@ public class VRCFuryBuilder {
             EditorUtility.DisplayDialog("VRCFury Error", "An exception was thrown by VRCFury. Check the unity console.", "Ok");
         }
 
-        AssetDatabase.StopAssetEditing();
-        AssetDatabase.Refresh();
         AssetDatabase.SaveAssets();
         EditorUtility.ClearProgressBar();
         return result;
