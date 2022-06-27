@@ -8,7 +8,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace VRCF.Builder {
 
 public class VRCFuryNameManager {
-    private string prefix;
+    private static string prefix = "VRCFury";
     private VRCExpressionsMenu rootMenu;
     private VRCExpressionsMenu fxMenu;
     private VRCExpressionsMenu lastMenu;
@@ -19,8 +19,7 @@ public class VRCFuryNameManager {
     private bool useMenuRoot;
     private UnityEngine.Object clipStorage;
 
-    public VRCFuryNameManager(string prefix, VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller, string tmpDir, bool useMenuRoot) {
-        this.prefix = prefix;
+    public VRCFuryNameManager(VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller, string tmpDir, bool useMenuRoot) {
         this.rootMenu = menu;
         this.syncedParams = syncedParams;
         this.ctrl = controller;
@@ -28,13 +27,8 @@ public class VRCFuryNameManager {
         this.useMenuRoot = useMenuRoot;
     }
 
-    public void Purge() {
-        _noopClip = null;
-        _controller = null;
-        fxMenu = null;
-        lastMenu = null;
-        lastMenuNum = 0;
-
+    public static void PurgeFromAnimator(AnimatorController ctrl) {
+        if (ctrl == null) return;
         // Clean up layers
         for (var i = 0; i < ctrl.layers.Length; i++) {
             var layer = ctrl.layers[i];
@@ -43,7 +37,7 @@ public class VRCFuryNameManager {
                 i--;
             }
         }
-        // Clean up controller params
+        // Clean up parameters
         for (var i = 0; i < ctrl.parameters.Length; i++) {
             var param = ctrl.parameters[i];
             if (param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__")) {
@@ -51,38 +45,39 @@ public class VRCFuryNameManager {
                 i--;
             }
         }
-        // Clean up synced params
-        {
-            var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
-            syncedParamsList.RemoveAll(param => param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__"));
-            syncedParams.parameters = syncedParamsList.ToArray();
-            EditorUtility.SetDirty(syncedParams);
-        }
-        // Clean up menu
-        {
-            for (var i = 0; i < rootMenu.controls.Count; i++) {
-                var remove = false;
-                var control = rootMenu.controls[i];
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
-                    if (control.subMenu.name.StartsWith("VRCFury")) {
-                        remove = true;
-                    }
-                    if (VRCFuryBuilder.IsVrcfAsset(control.subMenu)) {
-                        remove = true;
-                    }
-                }
-                if (control.name == "SenkyFX" || control.name == "VRCFury") {
+    }
+    public static void PurgeFromParams(VRCExpressionParameters syncedParams) {
+        if (syncedParams == null) return;
+        var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
+        syncedParamsList.RemoveAll(param => param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__"));
+        syncedParams.parameters = syncedParamsList.ToArray();
+        EditorUtility.SetDirty(syncedParams);
+    }
+
+    public static void PurgeFromMenu(VRCExpressionsMenu rootMenu) {
+        if (rootMenu == null) return;
+        for (var i = 0; i < rootMenu.controls.Count; i++) {
+            var remove = false;
+            var control = rootMenu.controls[i];
+            if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
+                if (control.subMenu.name.StartsWith("VRCFury")) {
                     remove = true;
                 }
-                if (remove) {
-                    rootMenu.controls.RemoveAt(i);
-                    i--;
+                if (VRCFuryBuilder.IsVrcfAsset(control.subMenu)) {
+                    remove = true;
                 }
             }
-            foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(rootMenu))) {
-                if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith("VRCFury")) {
-                    AssetDatabase.RemoveObjectFromAsset(subAsset);
-                }
+            if (control.name == "SenkyFX" || control.name == "VRCFury") {
+                remove = true;
+            }
+            if (remove) {
+                rootMenu.controls.RemoveAt(i);
+                i--;
+            }
+        }
+        foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(rootMenu))) {
+            if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith("VRCFury")) {
+                AssetDatabase.RemoveObjectFromAsset(subAsset);
             }
         }
     }

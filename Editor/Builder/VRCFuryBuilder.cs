@@ -31,15 +31,35 @@ public class VRCFuryBuilder {
         this.avatarObject = avatarObject;
 
         Debug.Log("VRCFury is running for " + avatarObject.name + "...");
+        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        var fxLayer = avatar.baseAnimationLayers[4];
+        Action saveFxLayer = () => { avatar.baseAnimationLayers[4] = fxLayer; };
 
-        // If we don't do this before nuking our assets, unity gets mad and dumps a bunch of errors into the log
+        // Unhook everything from our assets before we delete them
         var animator = avatarObject.GetComponent<Animator>();
         if (animator != null) {
             if (IsVrcfAsset(animator.runtimeAnimatorController)) {
                 animator.runtimeAnimatorController = null;
             }
         }
+        if (IsVrcfAsset(fxLayer.animatorController)) {
+            fxLayer.animatorController = null;
+            saveFxLayer();
+        } else if (fxLayer.animatorController != null) {
+            VRCFuryNameManager.PurgeFromAnimator((AnimatorController)fxLayer.animatorController);
+        }
+        if (IsVrcfAsset(avatar.expressionsMenu)) {
+            avatar.expressionsMenu = null;
+        } else if (avatar.expressionsMenu != null) {
+            VRCFuryNameManager.PurgeFromMenu(avatar.expressionsMenu);
+        }
+        if (IsVrcfAsset(avatar.expressionParameters)) {
+            avatar.expressionParameters = null;
+        } else if (avatar.expressionParameters != null) {
+            VRCFuryNameManager.PurgeFromParams(avatar.expressionParameters);
+        }
 
+        // Nuke all our old generated assets
         var avatarPath = avatarObject.scene.path;
         if (string.IsNullOrEmpty(avatarPath)) {
             EditorUtility.DisplayDialog("VRCFury Error", "Failed to find file path to avatar scene", "Ok");
@@ -54,44 +74,41 @@ public class VRCFuryBuilder {
         }
         Directory.CreateDirectory(tmpDir);
 
-        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
-        var ctrl = avatar.baseAnimationLayers[4].animatorController;
-        var managedFxController = ctrl == null || IsVrcfAsset(ctrl) || avatar.customizeAnimationLayers == false;
-        if (managedFxController) {
+        AnimatorController fxController;
+        if (fxLayer.animatorController == null || avatar.customizeAnimationLayers == false) {
             fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatarObject.name + ".controller");
             avatar.customizeAnimationLayers = true;
-            avatar.baseAnimationLayers[4] = new VRCAvatarDescriptor.CustomAnimLayer {
-                isEnabled = true,
-                type = VRCAvatarDescriptor.AnimLayerType.FX,
-                animatorController = fxController
-            };
+            fxLayer.isEnabled = true;
+            fxLayer.type = VRCAvatarDescriptor.AnimLayerType.FX;
+            fxLayer.animatorController = fxController;
+            saveFxLayer();
             if (animator != null) animator.runtimeAnimatorController = fxController;
             VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
         } else {
-            fxController = (AnimatorController)ctrl;
+            fxController = (AnimatorController)fxLayer.animatorController;
         }
-        var menu = avatar.expressionsMenu;
+
+        VRCExpressionsMenu menu = avatar.expressionsMenu;
         var useMenuRoot = false;
-        if (menu == null || IsVrcfAsset(menu)) {
+        if (menu == null || !avatar.customExpressions) {
             useMenuRoot = true;
             avatar.customExpressions = true;
             menu = avatar.expressionsMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             menu.controls = new List<VRCExpressionsMenu.Control>();
             AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + avatarObject.name + ".asset");
         }
-        var syncedParams = avatar.expressionParameters;
-        if (syncedParams == null || IsVrcfAsset(syncedParams)) {
+
+        VRCExpressionParameters syncedParams = avatar.expressionParameters;
+        if (syncedParams == null) {
             avatar.customExpressions = true;
             syncedParams = avatar.expressionParameters = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             syncedParams.parameters = new VRCExpressionParameters.Parameter[]{};
             AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + avatarObject.name + ".asset");
         }
-        manager = new VRCFuryNameManager("VRCFury", menu, syncedParams, fxController, tmpDir, useMenuRoot);
+
+        manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, useMenuRoot);
         baseFile = AssetDatabase.GetAssetPath(fxController);
         motions = new VRCFuryClipUtils(avatarObject);
-
-        // CLEANUP OLD DATA
-        manager.Purge();
 
         // REMOVE ANIMATORS FROM PREFAB INSTANCES (often used for prop testing)
         foreach (var otherAnimator in avatarObject.GetComponentsInChildren<Animator>(true)) {
@@ -470,7 +487,6 @@ public class VRCFuryBuilder {
     private string baseFile;
     private AnimationClip noopClip;
     private AnimationClip defaultClip;
-    private AnimatorController fxController;
     private VFACondition always;
 
     private GameObject find(string path) {
