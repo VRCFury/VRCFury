@@ -28,7 +28,6 @@ public class VRCFuryNameManager {
     }
 
     public static void PurgeFromAnimator(AnimatorController ctrl) {
-        if (ctrl == null) return;
         // Clean up layers
         for (var i = 0; i < ctrl.layers.Length; i++) {
             var layer = ctrl.layers[i];
@@ -47,7 +46,6 @@ public class VRCFuryNameManager {
         }
     }
     public static void PurgeFromParams(VRCExpressionParameters syncedParams) {
-        if (syncedParams == null) return;
         var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
         syncedParamsList.RemoveAll(param => param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__"));
         syncedParams.parameters = syncedParamsList.ToArray();
@@ -55,7 +53,6 @@ public class VRCFuryNameManager {
     }
 
     public static void PurgeFromMenu(VRCExpressionsMenu rootMenu) {
-        if (rootMenu == null) return;
         for (var i = 0; i < rootMenu.controls.Count; i++) {
             var remove = false;
             var control = rootMenu.controls[i];

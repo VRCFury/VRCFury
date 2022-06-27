@@ -46,7 +46,7 @@ public class VRCFuryBuilder {
         if (IsVrcfAsset(fxLayer.animatorController)) {
             fxLayer.animatorController = null;
             saveFxLayer();
-        } else if (avatar.customizeAnimationLayers && fxLayer.isEnabled && !fxLayer.isDefault && fxLayer.animatorController != null) {
+        } else if (avatar.customizeAnimationLayers && !fxLayer.isDefault && fxLayer.animatorController != null) {
             fxController = (AnimatorController)fxLayer.animatorController;
             VRCFuryNameManager.PurgeFromAnimator(fxController);
         }
@@ -83,7 +83,6 @@ public class VRCFuryBuilder {
         if (fxController == null) {
             fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatarObject.name + ".controller");
             avatar.customizeAnimationLayers = true;
-            fxLayer.isEnabled = true;
             fxLayer.isDefault = false;
             fxLayer.type = VRCAvatarDescriptor.AnimLayerType.FX;
             fxLayer.animatorController = fxController;
