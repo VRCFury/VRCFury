@@ -54,7 +54,7 @@ Benefits:
 
 ### Visemes using Animation Clips
 
-This feature is in very early testing. If you provide a folder name in the Viseme field (relative to your fx controller path), and fill it with animation clips named `Viseme-??` (where ?? is the oculus viseme code), VRC Fury will build a layer to use these animations as visemes.
+This feature is in very very early alpha testing. Fill a folder with animation clips named `Viseme-??` (where ?? is the oculus viseme code), then drop one of those animations into the VRCFury `Advanced Visemes` field. VRC Fury will build a layer to use these animations as visemes.
 
 Benefits:
 

@@ -15,12 +15,17 @@ public class VRCFuryNameManager {
     private int lastMenuNum;
     private VRCExpressionParameters syncedParams;
     private AnimatorController ctrl;
+    private string tmpDir;
+    private bool useMenuRoot;
+    private UnityEngine.Object clipStorage;
 
-    public VRCFuryNameManager(string prefix, VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller) {
+    public VRCFuryNameManager(string prefix, VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller, string tmpDir, bool useMenuRoot) {
         this.prefix = prefix;
         this.rootMenu = menu;
         this.syncedParams = syncedParams;
         this.ctrl = controller;
+        this.tmpDir = tmpDir;
+        this.useMenuRoot = useMenuRoot;
     }
 
     public void Purge() {
@@ -29,16 +34,11 @@ public class VRCFuryNameManager {
         fxMenu = null;
         lastMenu = null;
         lastMenuNum = 0;
-        // Clean up assets
-        foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(ctrl))) {
-            if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith(prefix+"/")) {
-                AssetDatabase.RemoveObjectFromAsset(subAsset);
-            }
-        }
+
         // Clean up layers
         for (var i = 0; i < ctrl.layers.Length; i++) {
             var layer = ctrl.layers[i];
-            if (layer.name.StartsWith("Senky") || layer.name.StartsWith("["+prefix+"]")) {
+            if (layer.name.StartsWith("["+prefix+"]")) {
                 ctrl.RemoveLayer(i);
                 i--;
             }
@@ -62,11 +62,16 @@ public class VRCFuryNameManager {
         {
             for (var i = 0; i < rootMenu.controls.Count; i++) {
                 var remove = false;
-                if (rootMenu.controls[i].type == VRCExpressionsMenu.Control.ControlType.SubMenu
-                    && rootMenu.controls[i].subMenu.name.StartsWith(prefix+"/")) {
-                    remove = true;
+                var control = rootMenu.controls[i];
+                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
+                    if (control.subMenu.name.StartsWith("VRCFury")) {
+                        remove = true;
+                    }
+                    if (AssetDatabase.GetAssetPath(control.subMenu).Contains("_VRCFury")) {
+                        remove = true;
+                    }
                 }
-                if (rootMenu.controls[i].name == "SenkyFX" || rootMenu.controls[i].name == "VRCFury") {
+                if (control.name == "SenkyFX" || control.name == "VRCFury") {
                     remove = true;
                 }
                 if (remove) {
@@ -75,7 +80,7 @@ public class VRCFuryNameManager {
                 }
             }
             foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(rootMenu))) {
-                if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith(prefix+"/")) {
+                if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith("VRCFury")) {
                     AssetDatabase.RemoveObjectFromAsset(subAsset);
                 }
             }
@@ -102,29 +107,40 @@ public class VRCFuryNameManager {
         return GetController().NewLayer("[" + prefix + "] " + name);
     }
 
+    public void AddToClipStorage(UnityEngine.Object asset) {
+        if (clipStorage == null) {
+            clipStorage = new AnimationClip();
+            clipStorage.hideFlags = HideFlags.None;
+            AssetDatabase.CreateAsset(clipStorage, tmpDir + "/VRCF_Clips.anim");
+        }
+        AssetDatabase.AddObjectToAsset(asset, clipStorage);
+    }
+
     public AnimationClip NewClip(string name) {
         var clip = new AnimationClip();
         clip.name = prefix + "/" + name;
         clip.hideFlags = HideFlags.None;
-        AssetDatabase.AddObjectToAsset(clip, ctrl);
+        AddToClipStorage(clip);
         return clip;
     }
     public BlendTree NewBlendTree(string name) {
         var tree = new BlendTree();
         tree.name = prefix + "/" + name;
         tree.hideFlags = HideFlags.None;
-        AssetDatabase.AddObjectToAsset(tree, ctrl);
+        AddToClipStorage(tree);
         return tree;
     }
 
     public VRCExpressionsMenu GetFxMenu() {
+        if (useMenuRoot) {
+            return rootMenu;
+        }
         if (fxMenu == null) {
             if (rootMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
                 throw new Exception("Root menu can't fit any more controls!");
             }
             fxMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            fxMenu.name = prefix + "/Main";
-            AssetDatabase.AddObjectToAsset(fxMenu, rootMenu);
+            AssetDatabase.CreateAsset(fxMenu, tmpDir + "/VRCF_Menu.asset");
             var control = new VRCExpressionsMenu.Control();
             rootMenu.controls.Add(control);
             control.name = prefix;
@@ -141,8 +157,7 @@ public class VRCFuryNameManager {
             }
             lastMenuNum++;
             lastMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            lastMenu.name = prefix + "/" + lastMenuNum;
-            AssetDatabase.AddObjectToAsset(lastMenu, rootMenu);
+            AssetDatabase.CreateAsset(lastMenu, tmpDir + "/VRCF_Menu_" + lastMenuNum + ".asset");
             var control = new VRCExpressionsMenu.Control();
             fxMenu.controls.Add(control);
             control.name = ""+lastMenuNum;

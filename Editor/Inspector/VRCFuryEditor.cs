@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.Components;
 using VRCF.Builder;
 using VRCF.Model;
+using UnityEditor.Animations;
 
 namespace VRCF.Inspector {
 
@@ -30,7 +31,7 @@ public class VRCFuryEditor : Editor {
         if (pointingToAvatar) {
             AddState("stateBlink", "Blinking");
             AddState("stateTalking", "Talking");
-            AddProperty("visemeFolder", "Viseme Folder");
+            AddProperty("viseme", "Advanced Visemes");
             AddProperty("scaleEnabled", "Enable Avatar Scale Slider");
 
             AddProperty("securityCodeLeft", "Security Left");
@@ -80,14 +81,6 @@ public class VRCFuryEditor : Editor {
             });
             genButton.text = "Generate";
             form.Peek().Add(genButton);
-
-            /*
-            var testButton = new Button(() => {
-                VRCFuryBuilder.RerunTPS(self.gameObject);
-            });
-            testButton.text = "Test";
-            form.Peek().Add(testButton);
-            */
         }
 
         return form.Peek();

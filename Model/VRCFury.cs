@@ -5,7 +5,7 @@ namespace VRCF.Model {
 
 public class VRCFury : MonoBehaviour {
     public VRCFuryState stateBlink;
-    public string visemeFolder;
+    public AnimationClip viseme;
 
     public bool scaleEnabled;
     public int securityCodeLeft;

@@ -6,13 +6,14 @@ using System.Collections.Generic;
 using VRC.SDK3.Avatars.Components;
 using VRCF.Model;
 using System.IO;
-using System.Reflection;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VRCF.Builder {
 
 public class VRCFuryBuilder {
     public bool SafeRun(VRCFury inputs) {
         EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
+        AssetDatabase.StartAssetEditing();
         bool result;
         try {
             result = Run(inputs);
@@ -20,64 +21,70 @@ public class VRCFuryBuilder {
             EditorUtility.ClearProgressBar();
             EditorUtility.DisplayDialog("VRCFury Error", "An exception was thrown. Check the unity console.", "Ok");
             throw;
+        } finally {
+            AssetDatabase.StopAssetEditing();
+            AssetDatabase.Refresh();
+            AssetDatabase.SaveAssets();
         }
         EditorUtility.ClearProgressBar();
         return result;
     }
 
-    /*
-    public static void RerunTPS(GameObject obj) {
-        var tpsSetup = Type.GetType("Thry.TPS.TPS_Setup");
-        if (tpsSetup == null) return;
+    public bool Run(VRCFury inputs) {
+        Debug.Log("VRCFury is running for " + inputs.gameObject.name + "...");
 
-        var skins = obj.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-        var prefabInstancesWithSkins = new HashSet<GameObject>();
-        foreach (var skin in obj.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-            prefabInstancesWithSkins.Add(PrefabUtility.GetOutermostPrefabInstanceRoot(skin));
-        }
-        foreach (var prefabInstance in prefabInstancesWithSkins) {
-            foreach (var mod in PrefabUtility.GetPropertyModifications(prefabInstance)) {
-                if (mod.propertyPath.Contains("m_Materials") && mod.objectReference != null && mod.objectReference.name.StartsWith("Pen")) {
-                    Debug.Log("Reverting TPS material on " + mod.target.name);
-                    var sObj = new SerializedObject(mod.target);
-                    var sProp = sObj.FindProperty(mod.propertyPath);
-                    PrefabUtility.RevertPropertyOverride(sProp, InteractionMode.AutomatedAction);
-                }
+        var animator = inputs.gameObject.GetComponent<Animator>();
+        if (animator != null) {
+            if (animator.runtimeAnimatorController != null && AssetDatabase.GetAssetPath(animator.runtimeAnimatorController).Contains("_VRCFury")) {
+                animator.runtimeAnimatorController = null;
             }
         }
 
-        // Invoke TPS
-        Debug.Log("Invoking TPS...");
-        var setup = ScriptableObject.CreateInstance("Thry.TPS.TPS_Setup");
-        tpsSetup.GetField("_avatar", BindingFlags.NonPublic|BindingFlags.Instance).SetValue(setup, obj.transform);
-        tpsSetup.GetMethod("GUI_Setup", BindingFlags.NonPublic|BindingFlags.Instance).Invoke(setup, new object[]{});
-        tpsSetup.GetMethod("GUI_Button_Apply", BindingFlags.NonPublic|BindingFlags.Instance).Invoke(setup, new object[]{});
-    }
-    */
-
-    public bool Run(VRCFury inputs) {
-        Debug.Log("VRCFury is running for " + inputs.gameObject.name + "...");
+        var avatarPath = inputs.gameObject.scene.path;
+        if (string.IsNullOrEmpty(avatarPath)) {
+            EditorUtility.DisplayDialog("VRCFury Error", "Failed to find file path to avatar scene", "Ok");
+            return false;
+        }
+        var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + inputs.gameObject.name;
+        if (Directory.Exists(tmpDir)) {
+            foreach (var asset in AssetDatabase.FindAssets("", new string[] { tmpDir })) {
+                var path = AssetDatabase.GUIDToAssetPath(asset);
+                AssetDatabase.DeleteAsset(path);
+            }
+        }
+        Directory.CreateDirectory(tmpDir);
 
         this.inputs = inputs;
         rootObject = inputs.gameObject;
         var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
         var ctrl = avatar.baseAnimationLayers[4].animatorController;
-        if (ctrl == null) {
-            EditorUtility.DisplayDialog("VRCFury Error", "Avatar Descriptor is missing an FX controller", "Ok");
-            return false;
+        var managedFxController = ctrl == null || AssetDatabase.GetAssetPath(ctrl).Contains("_VRCFury");
+        if (managedFxController) {
+            fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + inputs.gameObject.name + ".controller");
+            avatar.customizeAnimationLayers = true;
+            avatar.baseAnimationLayers[4] = new VRCAvatarDescriptor.CustomAnimLayer {
+                isEnabled = true,
+                type = VRCAvatarDescriptor.AnimLayerType.FX,
+                animatorController = fxController
+            };
+            if (animator != null) animator.runtimeAnimatorController = fxController;
+            VRCFuryTPSIntegration.Run(inputs.gameObject, fxController, tmpDir);
+        } else {
+            fxController = (AnimatorController)ctrl;
         }
-        fxController = (AnimatorController)ctrl;
         var menu = avatar.expressionsMenu;
+        var useMenuRoot = false;
         if (menu == null) {
-            EditorUtility.DisplayDialog("VRCFury Error", "Avatar Descriptor is missing Expression -> Menu", "Ok");
-            return false;
+            useMenuRoot = true;
+            menu = avatar.expressionsMenu = (VRCExpressionsMenu)ScriptableObject.CreateInstance("VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu");
+            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + inputs.gameObject.name + ".asset");
         }
         var syncedParams = avatar.expressionParameters;
         if (syncedParams == null) {
-            EditorUtility.DisplayDialog("VRCFury Error", "Avatar is missing Expression -> Parameters", "Ok");
-            return false;
+            syncedParams = avatar.expressionParameters = (VRCExpressionParameters)ScriptableObject.CreateInstance("VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters");
+            AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + inputs.gameObject.name + ".asset");
         }
-        manager = new VRCFuryNameManager("VRCFury", menu, syncedParams, fxController);
+        manager = new VRCFuryNameManager("VRCFury", menu, syncedParams, fxController, tmpDir, useMenuRoot);
         baseFile = AssetDatabase.GetAssetPath(fxController);
         motions = new VRCFuryClipUtils(rootObject);
 
@@ -115,15 +122,16 @@ public class VRCFuryBuilder {
         manager.NewMenuSlider("Scale", paramScale);
 
         // VISEMES
-        if (inputs.visemeFolder != "") {
+        if (inputs.viseme != null) {
+            var visemeFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(inputs.viseme));
             var visemes = manager.NewLayer("Visemes");
             var VisemeParam = manager.NewInt("Viseme", usePrefix: false);
             Action<int, string> addViseme = (index, text) => {
                 var animFileName = "Viseme-" + text;
-                var clip = getClip(inputs.visemeFolder + "/" + animFileName);
+                var clip = getClip(visemeFolder + "/" + animFileName);
                 if (clip == null) throw new Exception("Missing animation for viseme " + animFileName);
                 var state = visemes.NewState(text).WithAnimation(clip);
-                if (text == "sil") state.Move(3, -8);
+                if (text == "sil") state.Move(0, -8);
                 state.TransitionsFromEntry().When(VisemeParam.IsEqualTo(index));
                 state.TransitionsToExit().When(VisemeParam.IsNotEqualTo(index));
             };
