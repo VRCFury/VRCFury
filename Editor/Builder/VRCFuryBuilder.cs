@@ -4,8 +4,9 @@ using UnityEditor;
 using UnityEditor.Animations;
 using System.Collections.Generic;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using VRCF.Model;
+using System.IO;
+using System.Reflection;
 
 namespace VRCF.Builder {
 
@@ -15,7 +16,7 @@ public class VRCFuryBuilder {
         bool result;
         try {
             result = Run(inputs);
-        } catch(Exception e) {
+        } catch(Exception) {
             EditorUtility.ClearProgressBar();
             EditorUtility.DisplayDialog("VRCFury Error", "An exception was thrown. Check the unity console.", "Ok");
             throw;
@@ -23,6 +24,36 @@ public class VRCFuryBuilder {
         EditorUtility.ClearProgressBar();
         return result;
     }
+
+    /*
+    public static void RerunTPS(GameObject obj) {
+        var tpsSetup = Type.GetType("Thry.TPS.TPS_Setup");
+        if (tpsSetup == null) return;
+
+        var skins = obj.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        var prefabInstancesWithSkins = new HashSet<GameObject>();
+        foreach (var skin in obj.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+            prefabInstancesWithSkins.Add(PrefabUtility.GetOutermostPrefabInstanceRoot(skin));
+        }
+        foreach (var prefabInstance in prefabInstancesWithSkins) {
+            foreach (var mod in PrefabUtility.GetPropertyModifications(prefabInstance)) {
+                if (mod.propertyPath.Contains("m_Materials") && mod.objectReference != null && mod.objectReference.name.StartsWith("Pen")) {
+                    Debug.Log("Reverting TPS material on " + mod.target.name);
+                    var sObj = new SerializedObject(mod.target);
+                    var sProp = sObj.FindProperty(mod.propertyPath);
+                    PrefabUtility.RevertPropertyOverride(sProp, InteractionMode.AutomatedAction);
+                }
+            }
+        }
+
+        // Invoke TPS
+        Debug.Log("Invoking TPS...");
+        var setup = ScriptableObject.CreateInstance("Thry.TPS.TPS_Setup");
+        tpsSetup.GetField("_avatar", BindingFlags.NonPublic|BindingFlags.Instance).SetValue(setup, obj.transform);
+        tpsSetup.GetMethod("GUI_Setup", BindingFlags.NonPublic|BindingFlags.Instance).Invoke(setup, new object[]{});
+        tpsSetup.GetMethod("GUI_Button_Apply", BindingFlags.NonPublic|BindingFlags.Instance).Invoke(setup, new object[]{});
+    }
+    */
 
     public bool Run(VRCFury inputs) {
         Debug.Log("VRCFury is running for " + inputs.gameObject.name + "...");
@@ -456,7 +487,7 @@ public class VRCFuryBuilder {
     }
 
     private AnimationClip getClip(string path) {
-        var absPath = Canonicalize(baseFile + "/../" + path + ".anim");
+        var absPath = Path.GetDirectoryName(baseFile) + "/" + path + ".anim";
         var motion = AssetDatabase.LoadMainAssetAtPath(absPath) as AnimationClip;
         return motion;
     }
@@ -518,22 +549,6 @@ public class VRCFuryBuilder {
             }
         }
         return clip;
-    }
-
-    private static string Canonicalize(string path) {
-        var fakeRoot = Environment.CurrentDirectory;
-        var combined = System.IO.Path.Combine(fakeRoot, path);
-        combined = System.IO.Path.GetFullPath(combined);
-        return RelativeTo(combined, fakeRoot);
-    }
-    private static string RelativeTo(string filespec, string folder)
-    {
-        var pathUri = new Uri(filespec);
-        // Folders must end in a slash
-        if (!folder.EndsWith(System.IO.Path.DirectorySeparatorChar.ToString())) folder += System.IO.Path.DirectorySeparatorChar;
-        var folderUri = new Uri(folder);
-        return Uri.UnescapeDataString(folderUri.MakeRelativeUri(pathUri).ToString()
-            .Replace('/', System.IO.Path.DirectorySeparatorChar));
     }
 
     private List<VRCFuryProp> getAllProps() {

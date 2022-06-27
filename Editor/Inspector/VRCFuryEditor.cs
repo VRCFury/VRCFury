@@ -80,6 +80,14 @@ public class VRCFuryEditor : Editor {
             });
             genButton.text = "Generate";
             form.Peek().Add(genButton);
+
+            /*
+            var testButton = new Button(() => {
+                VRCFuryBuilder.RerunTPS(self.gameObject);
+            });
+            testButton.text = "Test";
+            form.Peek().Add(testButton);
+            */
         }
 
         return form.Peek();

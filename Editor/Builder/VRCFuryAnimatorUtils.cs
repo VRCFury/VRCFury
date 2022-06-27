@@ -83,13 +83,6 @@ public class VFALayer {
         if (states.Length == 0) return null;
         return states[states.Length-1];
     }
-
-    public VFALayer AddRemoteEntry() {
-        var remote = NewState("Remote").Move(layer.stateMachine.entryPosition, -1, 0);
-        var IsLocal = ctrl.NewBool("IsLocal");
-        remote.TransitionsFromEntry().When(IsLocal.IsFalse());
-        return this;
-    }
 }
 
 public class VFAState {
