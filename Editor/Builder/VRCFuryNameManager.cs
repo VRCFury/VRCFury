@@ -67,7 +67,7 @@ public class VRCFuryNameManager {
                     if (control.subMenu.name.StartsWith("VRCFury")) {
                         remove = true;
                     }
-                    if (AssetDatabase.GetAssetPath(control.subMenu).Contains("_VRCFury")) {
+                    if (VRCFuryBuilder.IsVrcfAsset(control.subMenu)) {
                         remove = true;
                     }
                 }

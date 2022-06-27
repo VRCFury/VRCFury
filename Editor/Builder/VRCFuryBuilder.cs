@@ -33,9 +33,10 @@ public class VRCFuryBuilder {
     public bool Run(VRCFury inputs) {
         Debug.Log("VRCFury is running for " + inputs.gameObject.name + "...");
 
+        // If we don't do this before nuking our assets, unity gets mad and dumps a bunch of errors into the log
         var animator = inputs.gameObject.GetComponent<Animator>();
         if (animator != null) {
-            if (animator.runtimeAnimatorController != null && AssetDatabase.GetAssetPath(animator.runtimeAnimatorController).Contains("_VRCFury")) {
+            if (IsVrcfAsset(animator.runtimeAnimatorController)) {
                 animator.runtimeAnimatorController = null;
             }
         }
@@ -58,7 +59,7 @@ public class VRCFuryBuilder {
         rootObject = inputs.gameObject;
         var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
         var ctrl = avatar.baseAnimationLayers[4].animatorController;
-        var managedFxController = ctrl == null || AssetDatabase.GetAssetPath(ctrl).Contains("_VRCFury");
+        var managedFxController = ctrl == null || IsVrcfAsset(ctrl);
         if (managedFxController) {
             fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + inputs.gameObject.name + ".controller");
             avatar.customizeAnimationLayers = true;
@@ -74,13 +75,13 @@ public class VRCFuryBuilder {
         }
         var menu = avatar.expressionsMenu;
         var useMenuRoot = false;
-        if (menu == null) {
+        if (menu == null || IsVrcfAsset(menu)) {
             useMenuRoot = true;
             menu = avatar.expressionsMenu = (VRCExpressionsMenu)ScriptableObject.CreateInstance("VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu");
             AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + inputs.gameObject.name + ".asset");
         }
         var syncedParams = avatar.expressionParameters;
-        if (syncedParams == null) {
+        if (syncedParams == null || IsVrcfAsset(syncedParams)) {
             syncedParams = avatar.expressionParameters = (VRCExpressionParameters)ScriptableObject.CreateInstance("VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters");
             AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + inputs.gameObject.name + ".asset");
         }
@@ -641,6 +642,10 @@ public class VRCFuryBuilder {
         reset2.WithAnimation(resetClip);
 
         return param;
+    }
+
+    public static bool IsVrcfAsset(UnityEngine.Object obj) {
+        return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 }
 

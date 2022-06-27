@@ -86,3 +86,8 @@ Select `Slider` from the `*` menu, and VRC Fury will make the prop into a slider
 ### Saved Parameters
 
 Not everything in VRC Fury has to be a prop. Want to save your clothes (or anything else?) across worlds? Select `Saved between worlds` in the `*` menu.
+
+### Fully-Managed Controller
+
+Your avatar doesn't even need to have a FX layer, menu, or params! If these are unset, VRCFury will create them automatically, and manage them fully (meaning it will be deleted and recreated from scratch before each upload).
+Beware of this! If you want to make your own changes to your controller, menu, or params, then you should create one yourself outside of the vrcf temp directory.
