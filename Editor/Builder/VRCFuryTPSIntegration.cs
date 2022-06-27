@@ -26,6 +26,8 @@ public class VRCFuryTPSIntegration {
     private static void RevertTPSMats(GameObject avatar) {
         Debug.Log("Reverting TPS Materials ...");
         foreach (var skin in avatar.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+            var mods = PrefabUtility.GetPropertyModifications(skin);
+            if (mods == null) continue;
             foreach (var mod in PrefabUtility.GetPropertyModifications(skin)) {
                 if (!isMaterial.IsMatch(mod.propertyPath)) continue;
                 if (mod.objectReference != null && !mod.objectReference.name.StartsWith("Pen")) continue;

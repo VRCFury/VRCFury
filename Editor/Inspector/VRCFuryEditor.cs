@@ -77,7 +77,7 @@ public class VRCFuryEditor : Editor {
         if (pointingToAvatar) {
             var genButton = new Button(() => {
                 var builder = new VRCFuryBuilder();
-                builder.SafeRun(self);
+                builder.SafeRun(self, self.gameObject);
             });
             genButton.text = "Generate";
             form.Peek().Add(genButton);

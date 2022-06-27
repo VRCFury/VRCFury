@@ -11,42 +11,44 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace VRCF.Builder {
 
 public class VRCFuryBuilder {
-    public bool SafeRun(VRCFury inputs) {
+    public bool SafeRun(VRCFury config, GameObject avatarObject) {
         EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
         AssetDatabase.StartAssetEditing();
         bool result;
         try {
-            result = Run(inputs);
-        } catch(Exception) {
-            EditorUtility.ClearProgressBar();
-            EditorUtility.DisplayDialog("VRCFury Error", "An exception was thrown. Check the unity console.", "Ok");
-            throw;
-        } finally {
-            AssetDatabase.StopAssetEditing();
-            AssetDatabase.Refresh();
-            AssetDatabase.SaveAssets();
+            result = Run(config, avatarObject);
+        } catch(Exception e) {
+            result = false;
+            Debug.LogException(e);
+            EditorUtility.DisplayDialog("VRCFury Error", "An exception was thrown by VRCFury. Check the unity console.", "Ok");
         }
+
+        AssetDatabase.StopAssetEditing();
+        AssetDatabase.Refresh();
+        AssetDatabase.SaveAssets();
         EditorUtility.ClearProgressBar();
         return result;
     }
 
-    public bool Run(VRCFury inputs) {
-        Debug.Log("VRCFury is running for " + inputs.gameObject.name + "...");
+    private bool Run(VRCFury config, GameObject avatarObject) {
+        this.avatarObject = avatarObject;
+
+        Debug.Log("VRCFury is running for " + avatarObject.name + "...");
 
         // If we don't do this before nuking our assets, unity gets mad and dumps a bunch of errors into the log
-        var animator = inputs.gameObject.GetComponent<Animator>();
+        var animator = avatarObject.GetComponent<Animator>();
         if (animator != null) {
             if (IsVrcfAsset(animator.runtimeAnimatorController)) {
                 animator.runtimeAnimatorController = null;
             }
         }
 
-        var avatarPath = inputs.gameObject.scene.path;
+        var avatarPath = avatarObject.scene.path;
         if (string.IsNullOrEmpty(avatarPath)) {
             EditorUtility.DisplayDialog("VRCFury Error", "Failed to find file path to avatar scene", "Ok");
             return false;
         }
-        var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + inputs.gameObject.name;
+        var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + avatarObject.name;
         if (Directory.Exists(tmpDir)) {
             foreach (var asset in AssetDatabase.FindAssets("", new string[] { tmpDir })) {
                 var path = AssetDatabase.GUIDToAssetPath(asset);
@@ -55,13 +57,11 @@ public class VRCFuryBuilder {
         }
         Directory.CreateDirectory(tmpDir);
 
-        this.inputs = inputs;
-        rootObject = inputs.gameObject;
-        var avatar = rootObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
         var ctrl = avatar.baseAnimationLayers[4].animatorController;
-        var managedFxController = ctrl == null || IsVrcfAsset(ctrl);
+        var managedFxController = ctrl == null || IsVrcfAsset(ctrl) || avatar.customizeAnimationLayers == false;
         if (managedFxController) {
-            fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + inputs.gameObject.name + ".controller");
+            fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatarObject.name + ".controller");
             avatar.customizeAnimationLayers = true;
             avatar.baseAnimationLayers[4] = new VRCAvatarDescriptor.CustomAnimLayer {
                 isEnabled = true,
@@ -69,7 +69,7 @@ public class VRCFuryBuilder {
                 animatorController = fxController
             };
             if (animator != null) animator.runtimeAnimatorController = fxController;
-            VRCFuryTPSIntegration.Run(inputs.gameObject, fxController, tmpDir);
+            VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
         } else {
             fxController = (AnimatorController)ctrl;
         }
@@ -77,24 +77,28 @@ public class VRCFuryBuilder {
         var useMenuRoot = false;
         if (menu == null || IsVrcfAsset(menu)) {
             useMenuRoot = true;
-            menu = avatar.expressionsMenu = (VRCExpressionsMenu)ScriptableObject.CreateInstance("VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu");
-            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + inputs.gameObject.name + ".asset");
+            avatar.customExpressions = true;
+            menu = avatar.expressionsMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+            menu.controls = new List<VRCExpressionsMenu.Control>();
+            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + avatarObject.name + ".asset");
         }
         var syncedParams = avatar.expressionParameters;
         if (syncedParams == null || IsVrcfAsset(syncedParams)) {
-            syncedParams = avatar.expressionParameters = (VRCExpressionParameters)ScriptableObject.CreateInstance("VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters");
-            AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + inputs.gameObject.name + ".asset");
+            avatar.customExpressions = true;
+            syncedParams = avatar.expressionParameters = ScriptableObject.CreateInstance<VRCExpressionParameters>();
+            syncedParams.parameters = new VRCExpressionParameters.Parameter[]{};
+            AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + avatarObject.name + ".asset");
         }
         manager = new VRCFuryNameManager("VRCFury", menu, syncedParams, fxController, tmpDir, useMenuRoot);
         baseFile = AssetDatabase.GetAssetPath(fxController);
-        motions = new VRCFuryClipUtils(rootObject);
+        motions = new VRCFuryClipUtils(avatarObject);
 
         // CLEANUP OLD DATA
         manager.Purge();
 
         // REMOVE ANIMATORS FROM PREFAB INSTANCES (often used for prop testing)
-        foreach (var otherAnimator in rootObject.GetComponentsInChildren<Animator>(true)) {
-            if (otherAnimator.gameObject != rootObject && PrefabUtility.IsPartOfPrefabInstance(otherAnimator.gameObject)) {
+        foreach (var otherAnimator in avatarObject.GetComponentsInChildren<Animator>(true)) {
+            if (otherAnimator.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(otherAnimator.gameObject)) {
                 UnityEngine.Object.DestroyImmediate(otherAnimator);
             }
         }
@@ -105,6 +109,22 @@ public class VRCFuryBuilder {
         var defaultLayer = manager.NewLayer("Defaults");
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
 
+        if (config != null) {
+            handleBaseConfig(config);
+            handleProps(getAllBaseProps(config), null);
+        }
+        foreach (var otherConfig in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
+            if (otherConfig == config) continue;
+            Debug.Log("Importing config from " + otherConfig.gameObject.name);
+            handleProps(otherConfig.props.props, otherConfig.gameObject);
+        }
+
+        Debug.Log("VRCFury Finished!");
+
+        return true;
+    }
+
+    private void handleBaseConfig(VRCFury config) {
         // Common Params
         var GestureLeft = manager.NewInt("GestureLeft", usePrefix: false);
         var GestureRight = manager.NewInt("GestureRight", usePrefix: false);
@@ -123,8 +143,8 @@ public class VRCFuryBuilder {
         manager.NewMenuSlider("Scale", paramScale);
 
         // VISEMES
-        if (inputs.viseme != null) {
-            var visemeFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(inputs.viseme));
+        if (config.viseme != null) {
+            var visemeFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(config.viseme));
             var visemes = manager.NewLayer("Visemes");
             var VisemeParam = manager.NewInt("Viseme", usePrefix: false);
             Action<int, string> addViseme = (index, text) => {
@@ -153,16 +173,16 @@ public class VRCFuryBuilder {
             addViseme(14, "U");
         }
 
-        var enableGestures = !inputs.stateEyesClosed.isEmpty()
-            || !inputs.stateEyesHappy.isEmpty()
-            || !inputs.stateEyesSad.isEmpty()
-            || !inputs.stateEyesAngry.isEmpty()
-            || !inputs.stateMouthBlep.isEmpty()
-            || !inputs.stateMouthSuck.isEmpty()
-            || !inputs.stateMouthSad.isEmpty()
-            || !inputs.stateMouthAngry.isEmpty()
-            || !inputs.stateMouthHappy.isEmpty()
-            || !inputs.stateEarsBack.isEmpty();
+        var enableGestures = StateExists(config.stateEyesClosed)
+            || StateExists(config.stateEyesHappy)
+            || StateExists(config.stateEyesSad)
+            || StateExists(config.stateEyesAngry)
+            || StateExists(config.stateMouthBlep)
+            || StateExists(config.stateMouthSuck)
+            || StateExists(config.stateMouthSad)
+            || StateExists(config.stateMouthAngry)
+            || StateExists(config.stateMouthHappy)
+            || StateExists(config.stateEarsBack);
 
         if (enableGestures) {
             var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
@@ -182,11 +202,11 @@ public class VRCFuryBuilder {
             {
                 var layer = manager.NewLayer("Eyes");
                 var idle = layer.NewState("Idle").Drives(blinkActive, true);
-                var closed = layer.NewState("Closed").WithAnimation(loadClip("eyesClosed", inputs.stateEyesClosed)).Drives(blinkActive, false);
-                var happy = layer.NewState("Happy").WithAnimation(loadClip("eyesHappy", inputs.stateEyesHappy)).Drives(blinkActive, false);
+                var closed = layer.NewState("Closed").WithAnimation(loadClip("eyesClosed", config.stateEyesClosed)).Drives(blinkActive, false);
+                var happy = layer.NewState("Happy").WithAnimation(loadClip("eyesHappy", config.stateEyesHappy)).Drives(blinkActive, false);
                 //var bedroom = layer.NewState("Bedroom").WithAnimation(loadClip("eyesBedroom", inputs.stateEyesBedroom)).Drives(blinkActive, false)
-                var sad = layer.NewState("Sad").WithAnimation(loadClip("eyesSad", inputs.stateEyesSad)).Drives(blinkActive, false);
-                var angry = layer.NewState("Angry").WithAnimation(loadClip("eyesAngry", inputs.stateEyesAngry)).Drives(blinkActive, false);
+                var sad = layer.NewState("Sad").WithAnimation(loadClip("eyesSad", config.stateEyesSad)).Drives(blinkActive, false);
+                var angry = layer.NewState("Angry").WithAnimation(loadClip("eyesAngry", config.stateEyesAngry)).Drives(blinkActive, false);
 
                 closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
                 closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
@@ -200,11 +220,11 @@ public class VRCFuryBuilder {
             {
                 var layer = manager.NewLayer("Mouth");
                 var idle = layer.NewState("Idle");
-                var blep = layer.NewState("Blep").WithAnimation(loadClip("mouthBlep", inputs.stateMouthBlep));
-                var suck = layer.NewState("Suck").WithAnimation(loadClip("mouthSuck", inputs.stateMouthSuck));
-                var sad = layer.NewState("Sad").WithAnimation(loadClip("mouthSad", inputs.stateMouthSad));
-                var angry = layer.NewState("Angry").WithAnimation(loadClip("mouthAngry", inputs.stateMouthAngry));
-                var happy = layer.NewState("Happy").WithAnimation(loadClip("mouthHappy", inputs.stateMouthHappy));
+                var blep = layer.NewState("Blep").WithAnimation(loadClip("mouthBlep", config.stateMouthBlep));
+                var suck = layer.NewState("Suck").WithAnimation(loadClip("mouthSuck", config.stateMouthSuck));
+                var sad = layer.NewState("Sad").WithAnimation(loadClip("mouthSad", config.stateMouthSad));
+                var angry = layer.NewState("Angry").WithAnimation(loadClip("mouthAngry", config.stateMouthAngry));
+                var happy = layer.NewState("Happy").WithAnimation(loadClip("mouthHappy", config.stateMouthHappy));
 
                 suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
                 suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
@@ -218,7 +238,7 @@ public class VRCFuryBuilder {
             {
                 var layer = manager.NewLayer("Ears");
                 var idle = layer.NewState("Idle");
-                var back = layer.NewState("Back").WithAnimation(loadClip("earsBack", inputs.stateEarsBack));
+                var back = layer.NewState("Back").WithAnimation(loadClip("earsBack", config.stateEarsBack));
 
                 back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
                 back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
@@ -232,7 +252,7 @@ public class VRCFuryBuilder {
         }
 
         // BLINKING
-        if (!inputs.stateBlink.isEmpty()) {
+        if (StateExists(config.stateBlink)) {
             {
                 var blinkCounter = manager.NewInt("BlinkCounter");
                 var layer = manager.NewLayer("Blink - Generator");
@@ -275,7 +295,7 @@ public class VRCFuryBuilder {
             }
 
             {
-                var blinkClip = loadClip("blink", inputs.stateBlink);
+                var blinkClip = loadClip("blink", config.stateBlink);
                 var blinkDuration = 0.07f;
                 var layer = manager.NewLayer("Blink - Animate");
                 var idle = layer.NewState("Idle");
@@ -290,14 +310,14 @@ public class VRCFuryBuilder {
         }
 
         // SCALE
-        if (inputs.scaleEnabled) {
+        if (config.scaleEnabled) {
             var scaleClip = manager.NewClip("Scale");
-            var baseScale = rootObject.transform.localScale.x;
-            motions.Scale(scaleClip, rootObject, motions.FromFrames(
-                new Keyframe(0,baseScale*0.1f),
-                new Keyframe(2,baseScale*1),
-                new Keyframe(3,baseScale*2),
-                new Keyframe(4,baseScale*10)
+            var baseScale = avatarObject.transform.localScale.x;
+            motions.Scale(scaleClip, avatarObject, motions.FromFrames(
+                new Keyframe(0, baseScale * 0.1f),
+                new Keyframe(2, baseScale * 1),
+                new Keyframe(3, baseScale * 2),
+                new Keyframe(4, baseScale * 10)
             ));
 
             var layer = manager.NewLayer("Scale");
@@ -306,7 +326,7 @@ public class VRCFuryBuilder {
 
         // SECURITY LOCK
         VFABool paramSecuritySync = null;
-        if (inputs.securityCodeLeft > 0 && inputs.securityCodeRight > 0) {
+        if (config.securityCodeLeft > 0 && config.securityCodeRight > 0) {
             paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
             // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
             var paramSecurityMenu = manager.NewBool("SecurityLockMenu", synced: true);
@@ -325,7 +345,7 @@ public class VRCFuryBuilder {
             locked.Drives(paramSecuritySync, false);
             locked.TransitionsTo(check).When(paramSecurityMenu.IsTrue());
 
-            check.TransitionsTo(unlocked).When(GestureLeft.IsEqualTo(inputs.securityCodeLeft).And(GestureRight.IsEqualTo(inputs.securityCodeRight)));
+            check.TransitionsTo(unlocked).When(GestureLeft.IsEqualTo(config.securityCodeLeft).And(GestureRight.IsEqualTo(config.securityCodeRight)));
             check.TransitionsTo(locked).When(always);
 
             unlocked.Drives(paramSecuritySync, true);
@@ -333,114 +353,99 @@ public class VRCFuryBuilder {
         }
 
         // TALK GLOW
-        if (!inputs.stateTalking.isEmpty()) {
+        if (StateExists(config.stateTalking)) {
             var layer = manager.NewLayer("Talk Glow");
-            var clip = loadClip("TalkGlow", inputs.stateTalking);
+            var clip = loadClip("TalkGlow", config.stateTalking);
             var off = layer.NewState("Off");
             var on = layer.NewState("On").WithAnimation(clip);
 
             off.TransitionsTo(on).When(Viseme.IsGreaterThan(9));
             on.TransitionsTo(off).When(Viseme.IsLessThan(10));
         }
-
-        // PROPS
-        var allConfigs = new List<VRCFury>();
-        allConfigs.Add(inputs);
-        foreach (var otherConfig in rootObject.GetComponentsInChildren<VRCFury>(true)) {
-            if (otherConfig == inputs) continue;
-            Debug.Log("Importing config from " + otherConfig.gameObject.name);
-            allConfigs.Add(otherConfig);
-        }
-        foreach (var conf in allConfigs) {
-            var prefixObj = conf == inputs ? null : conf.gameObject;
-            var allProps = conf == inputs ? getAllProps() : conf.props.props;
-            foreach (var prop in allProps) {
-                var layerName = "Prop - " + prop.name;
-                var layer = manager.NewLayer(layerName);
-
-                VFABool physBoneResetter = null;
-                if (prop.resetPhysbones.Count > 0) {
-                    physBoneResetter = createPhysboneResetter(layerName, prop.resetPhysbones);
-                }
-
-                if (prop.type == VRCFuryProp.PUPPET || (prop.type == VRCFuryProp.TOGGLE && prop.slider)) {
-                    var tree = manager.NewBlendTree("prop_" + prop.name);
-                    tree.blendType = BlendTreeType.FreeformDirectional2D;
-                    tree.AddChild(noopClip, new Vector2(0,0));
-                    int i = 0;
-                    var puppetStops = new List<VRCFuryPropPuppetStop>();
-                    if (prop.type == VRCFuryProp.PUPPET) {
-                        puppetStops = prop.puppetStops;
-                    } else {
-                        puppetStops.Add(new VRCFuryPropPuppetStop(1,0,prop.state));
-                    }
-                    var usesX = false;
-                    var usesY = false;
-                    foreach (var stop in puppetStops) {
-                        if (stop.x != 0) usesX = true;
-                        if (stop.y != 0) usesY = true;
-                        tree.AddChild(loadClip("prop_" + prop.name + "_" + i++, stop.state, prefixObj), new Vector2(stop.x,stop.y));
-                    }
-                    var on = layer.NewState("Blend").WithAnimation(tree);
-
-                    var x = manager.NewFloat("Prop_" + prop.name + "_x", synced: usesX);
-                    tree.blendParameter = x.Name();
-                    var y = manager.NewFloat("Prop_" + prop.name + "_y", synced: usesY);
-                    tree.blendParameterY = y.Name();
-                    if (prop.type == VRCFuryProp.TOGGLE) {
-                        if (usesX) manager.NewMenuSlider(prop.name, x);
-                    } else {
-                        manager.NewMenuPuppet(prop.name, usesX ? x : null, usesY ? y : null);
-                    }
-                } else if (prop.type == VRCFuryProp.MODES) {
-                    var off = layer.NewState("Off");
-                    if (physBoneResetter != null) off.Drives(physBoneResetter, true);
-                    var param = manager.NewInt("Prop_" + prop.name, synced: true, saved: prop.saved);
-                    manager.NewMenuToggle(prop.name + " - Off", param, 0);
-                    var i = 1;
-                    foreach (var mode in prop.modes) {
-                        var num = i++;
-                        var clip = loadClip("prop_" + prop.name+"_"+num, mode.state, prefixObj);
-                        var state = layer.NewState(""+num).WithAnimation(clip);
-                        if (physBoneResetter != null) state.Drives(physBoneResetter, true);
-                        if (prop.securityEnabled && paramSecuritySync != null) {
-                            state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
-                            state.TransitionsToExit().When(param.IsNotEqualTo(num));
-                            state.TransitionsToExit().When(paramSecuritySync.IsFalse());
-                        } else {
-                            state.TransitionsFromAny().When(param.IsEqualTo(num));
-                            state.TransitionsToExit().When(param.IsNotEqualTo(num));
-                        }
-                        manager.NewMenuToggle(prop.name + " - " + num, param, num);
-                    }
-                } else if (prop.type == VRCFuryProp.TOGGLE) {
-                    var clip = loadClip("prop_" + prop.name, prop.state, prefixObj);
-                    var off = layer.NewState("Off");
-                    var on = layer.NewState("On").WithAnimation(clip);
-                    var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved, def: prop.defaultOn);
-                    if (prop.securityEnabled && paramSecuritySync != null) {
-                        off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
-                        on.TransitionsTo(off).When(param.IsFalse());
-                        on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
-                    } else {
-                        off.TransitionsTo(on).When(param.IsTrue());
-                        on.TransitionsTo(off).When(param.IsFalse());
-                    }
-                    if (physBoneResetter != null) {
-                        off.Drives(physBoneResetter, true);
-                        on.Drives(physBoneResetter, true);
-                    }
-                    manager.NewMenuToggle(prop.name, param);
-                }
-            }
-        }
-
-        Debug.Log("VRCFury Finished!");
-
-        return true;
     }
 
+    private void handleProps(List<VRCFuryProp> props, GameObject propBaseObject) {
+        var paramSecuritySync = manager.NewBool("SecurityLockSync");
+        foreach (var prop in props) {
+            var layerName = "Prop - " + prop.name;
+            var layer = manager.NewLayer(layerName);
 
+            VFABool physBoneResetter = null;
+            if (prop.resetPhysbones.Count > 0) {
+                physBoneResetter = createPhysboneResetter(layerName, prop.resetPhysbones);
+            }
+
+            if (prop.type == VRCFuryProp.PUPPET || (prop.type == VRCFuryProp.TOGGLE && prop.slider)) {
+                var tree = manager.NewBlendTree("prop_" + prop.name);
+                tree.blendType = BlendTreeType.FreeformDirectional2D;
+                tree.AddChild(noopClip, new Vector2(0,0));
+                int i = 0;
+                var puppetStops = new List<VRCFuryPropPuppetStop>();
+                if (prop.type == VRCFuryProp.PUPPET) {
+                    puppetStops = prop.puppetStops;
+                } else {
+                    puppetStops.Add(new VRCFuryPropPuppetStop(1,0,prop.state));
+                }
+                var usesX = false;
+                var usesY = false;
+                foreach (var stop in puppetStops) {
+                    if (stop.x != 0) usesX = true;
+                    if (stop.y != 0) usesY = true;
+                    tree.AddChild(loadClip("prop_" + prop.name + "_" + i++, stop.state, propBaseObject), new Vector2(stop.x,stop.y));
+                }
+                var on = layer.NewState("Blend").WithAnimation(tree);
+
+                var x = manager.NewFloat("Prop_" + prop.name + "_x", synced: usesX);
+                tree.blendParameter = x.Name();
+                var y = manager.NewFloat("Prop_" + prop.name + "_y", synced: usesY);
+                tree.blendParameterY = y.Name();
+                if (prop.type == VRCFuryProp.TOGGLE) {
+                    if (usesX) manager.NewMenuSlider(prop.name, x);
+                } else {
+                    manager.NewMenuPuppet(prop.name, usesX ? x : null, usesY ? y : null);
+                }
+            } else if (prop.type == VRCFuryProp.MODES) {
+                var off = layer.NewState("Off");
+                if (physBoneResetter != null) off.Drives(physBoneResetter, true);
+                var param = manager.NewInt("Prop_" + prop.name, synced: true, saved: prop.saved);
+                manager.NewMenuToggle(prop.name + " - Off", param, 0);
+                var i = 1;
+                foreach (var mode in prop.modes) {
+                    var num = i++;
+                    var clip = loadClip("prop_" + prop.name+"_"+num, mode.state, propBaseObject);
+                    var state = layer.NewState(""+num).WithAnimation(clip);
+                    if (physBoneResetter != null) state.Drives(physBoneResetter, true);
+                    if (prop.securityEnabled && paramSecuritySync != null) {
+                        state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
+                        state.TransitionsToExit().When(param.IsNotEqualTo(num));
+                        state.TransitionsToExit().When(paramSecuritySync.IsFalse());
+                    } else {
+                        state.TransitionsFromAny().When(param.IsEqualTo(num));
+                        state.TransitionsToExit().When(param.IsNotEqualTo(num));
+                    }
+                    manager.NewMenuToggle(prop.name + " - " + num, param, num);
+                }
+            } else if (prop.type == VRCFuryProp.TOGGLE) {
+                var clip = loadClip("prop_" + prop.name, prop.state, propBaseObject);
+                var off = layer.NewState("Off");
+                var on = layer.NewState("On").WithAnimation(clip);
+                var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved, def: prop.defaultOn);
+                if (prop.securityEnabled && paramSecuritySync != null) {
+                    off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
+                    on.TransitionsTo(off).When(param.IsFalse());
+                    on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
+                } else {
+                    off.TransitionsTo(on).When(param.IsTrue());
+                    on.TransitionsTo(off).When(param.IsFalse());
+                }
+                if (physBoneResetter != null) {
+                    off.Drives(physBoneResetter, true);
+                    on.Drives(physBoneResetter, true);
+                }
+                manager.NewMenuToggle(prop.name, param);
+            }
+        }
+    }
 
     private void createGestureTriggerLayer(string name, VFABool lockParam, VFABool triggerParam, int gestureNum) {
         var layer = manager.NewLayer("Gesture - " + name);
@@ -464,8 +469,7 @@ public class VRCFuryBuilder {
 
     private VRCFuryNameManager manager;
     private VRCFuryClipUtils motions;
-    private VRCFury inputs;
-    private GameObject rootObject;
+    private GameObject avatarObject;
     private string baseFile;
     private AnimationClip noopClip;
     private AnimationClip defaultClip;
@@ -473,7 +477,7 @@ public class VRCFuryBuilder {
     private VFACondition always;
 
     private GameObject find(string path) {
-        var found = rootObject.transform.Find(path)?.gameObject;
+        var found = avatarObject.transform.Find(path)?.gameObject;
         if (found == null) {
             throw new Exception("Failed to find path '" + path + "'");
         }
@@ -486,7 +490,7 @@ public class VRCFuryBuilder {
 
     private List<SkinnedMeshRenderer> getAllSkins() {
         List<SkinnedMeshRenderer> skins = new List<SkinnedMeshRenderer>();
-        foreach (Transform child in rootObject.transform) {
+        foreach (Transform child in avatarObject.transform) {
             var skin = child.gameObject.GetComponent(typeof(SkinnedMeshRenderer)) as SkinnedMeshRenderer;
             if (skin != null) {
                 skins.Add(skin);
@@ -504,7 +508,7 @@ public class VRCFuryBuilder {
     private AnimationClip loadClip(string name, VRCFuryState state, GameObject prefixObj = null) {
         if (state.clip != null) {
             AnimationClip output = null;
-            if (prefixObj != null && prefixObj != rootObject) {
+            if (prefixObj != null && prefixObj != avatarObject) {
                 var copy = manager.NewClip(name);
                 motions.CopyWithAdjustedPrefixes(state.clip, copy, prefixObj);
                 output = copy;
@@ -512,7 +516,7 @@ public class VRCFuryBuilder {
                 output = state.clip;
             }
             foreach (var binding in AnimationUtility.GetCurveBindings(output)) {
-                var exists = AnimationUtility.GetFloatValue(rootObject, binding, out var value);
+                var exists = AnimationUtility.GetFloatValue(avatarObject, binding, out var value);
                 if (exists) {
                     AnimationUtility.SetEditorCurve(defaultClip, binding, motions.OneFrame(value));
                 } else {
@@ -520,7 +524,7 @@ public class VRCFuryBuilder {
                 }
             }
             foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(output)) {
-                var exists = AnimationUtility.GetObjectReferenceValue(rootObject, binding, out var value);
+                var exists = AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out var value);
                 if (exists) {
                     AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, motions.OneFrame(value));
                 } else {
@@ -560,20 +564,20 @@ public class VRCFuryBuilder {
         return clip;
     }
 
-    private List<VRCFuryProp> getAllProps() {
+    private List<VRCFuryProp> getAllBaseProps(VRCFury config) {
         var props = new List<VRCFuryProp>();
-        props.AddRange(inputs.props.props);
+        props.AddRange(config.props.props);
 
         // Toes
         {
             VRCFuryProp toes = new VRCFuryProp();
             toes.name = "Toes";
             toes.type = VRCFuryProp.PUPPET;
-            if (!inputs.stateToesDown.isEmpty()) toes.puppetStops.Add(new VRCFuryPropPuppetStop(0,-1,inputs.stateToesDown));
-            if (!inputs.stateToesUp.isEmpty()) toes.puppetStops.Add(new VRCFuryPropPuppetStop(0,1,inputs.stateToesUp));
-            if (!inputs.stateToesSplay.isEmpty()) {
-                toes.puppetStops.Add(new VRCFuryPropPuppetStop(-1,0,inputs.stateToesSplay));
-                toes.puppetStops.Add(new VRCFuryPropPuppetStop(1,0,inputs.stateToesSplay));
+            if (StateExists(config.stateToesDown)) toes.puppetStops.Add(new VRCFuryPropPuppetStop(0,-1,config.stateToesDown));
+            if (StateExists(config.stateToesUp)) toes.puppetStops.Add(new VRCFuryPropPuppetStop(0,1,config.stateToesUp));
+            if (StateExists(config.stateToesSplay)) {
+                toes.puppetStops.Add(new VRCFuryPropPuppetStop(-1,0,config.stateToesSplay));
+                toes.puppetStops.Add(new VRCFuryPropPuppetStop(1,0,config.stateToesSplay));
             }
             if (toes.puppetStops.Count > 0) {
                 props.Add(toes);
@@ -581,21 +585,21 @@ public class VRCFuryBuilder {
         }
 
         // Breathing
-        if (inputs.breatheObject != null || inputs.breatheBlendshape != "") {
+        if (config.breatheObject != null || !string.IsNullOrEmpty(config.breatheBlendshape)) {
             var clip = manager.NewClip("Breathing");
 
-            if (inputs.breatheObject != null) {
-                motions.Scale(clip, inputs.breatheObject, motions.FromSeconds(
-                    new Keyframe(0, inputs.breatheScaleMin),
-                    new Keyframe(2.3f, inputs.breatheScaleMax),
-                    new Keyframe(2.7f, inputs.breatheScaleMax),
-                    new Keyframe(5, inputs.breatheScaleMin)
+            if (config.breatheObject != null) {
+                motions.Scale(clip, config.breatheObject, motions.FromSeconds(
+                    new Keyframe(0, config.breatheScaleMin),
+                    new Keyframe(2.3f, config.breatheScaleMax),
+                    new Keyframe(2.7f, config.breatheScaleMax),
+                    new Keyframe(5, config.breatheScaleMin)
                 ));
             }
-            if (inputs.breatheBlendshape != "") {
-                var breathingSkins = getAllSkins().FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(inputs.breatheBlendshape) != -1); 
+            if (!string.IsNullOrEmpty(config.breatheBlendshape)) {
+                var breathingSkins = getAllSkins().FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(config.breatheBlendshape) != -1); 
                 foreach (var skin in breathingSkins) {
-                    motions.BlendShape(clip, skin, inputs.breatheBlendshape, motions.FromSeconds(
+                    motions.BlendShape(clip, skin, config.breatheBlendshape, motions.FromSeconds(
                         new Keyframe(0, 0),
                         new Keyframe(2.3f, 100),
                         new Keyframe(2.7f, 100),
@@ -646,6 +650,10 @@ public class VRCFuryBuilder {
 
     public static bool IsVrcfAsset(UnityEngine.Object obj) {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
+    }
+
+    private static bool StateExists(VRCFuryState state) {
+        return state != null && !state.isEmpty();
     }
 }
 
