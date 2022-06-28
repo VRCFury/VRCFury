@@ -493,7 +493,7 @@ public class VRCFuryBuilder {
             manager.NewMenuToggle(prop.name, param);
         } else if (prop.type == VRCFuryProp.CONTROLLER) {
             if (prop.controller != null) {
-                DataCopier.Copy(prop.controller, manager.GetRawController(), "[" + VRCFuryNameManager.prefix + "] [" + prop.name + "] ", from => {
+                DataCopier.Copy((AnimatorController)prop.controller, manager.GetRawController(), "[" + VRCFuryNameManager.prefix + "] [" + prop.name + "] ", from => {
                     var copy = manager.NewClip(prop.name+"__"+from.name);
                     motions.CopyWithAdjustedPrefixes(from, copy, propBaseObject);
                     return copy;

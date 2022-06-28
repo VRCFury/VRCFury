@@ -24,7 +24,7 @@ public class VRCFuryProp {
     public List<VRCFuryPropMode> modes = new List<VRCFuryPropMode>();
     public List<GameObject> resetPhysbones = new List<GameObject>();
     
-    public AnimatorController controller;
+    public RuntimeAnimatorController controller;
     public VRCExpressionsMenu controllerMenu;
     public VRCExpressionParameters controllerParams;
 
