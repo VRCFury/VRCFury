@@ -152,14 +152,8 @@ public class VRCFuryBuilder {
 
         var paramTrue = manager.NewBool("True", def: true);
         always = paramTrue.IsTrue();
-        var paramOrifaceMouthRing = manager.NewBool("OrifaceMouthRing", synced: true);
-        var paramOrifaceMouthHole = manager.NewBool("OrifaceMouthHole", synced: true);
-
-        var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);
-        var blinkTrigger = manager.NewTrigger("BlinkTrigger");
-        var blinkActive = manager.NewBool("BlinkActive", def: true);
-        var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
-        manager.NewMenuSlider("Scale", paramScale);
+        //var paramOrifaceMouthRing = manager.NewBool("OrifaceMouthRing", synced: true);
+        //var paramOrifaceMouthHole = manager.NewBool("OrifaceMouthHole", synced: true);
 
         // VISEMES
         if (config.viseme != null) {
@@ -192,86 +186,13 @@ public class VRCFuryBuilder {
             addViseme(14, "U");
         }
 
-        var enableGestures = StateExists(config.stateEyesClosed)
-            || StateExists(config.stateEyesHappy)
-            || StateExists(config.stateEyesSad)
-            || StateExists(config.stateEyesAngry)
-            || StateExists(config.stateMouthBlep)
-            || StateExists(config.stateMouthSuck)
-            || StateExists(config.stateMouthSad)
-            || StateExists(config.stateMouthAngry)
-            || StateExists(config.stateMouthHappy)
-            || StateExists(config.stateEarsBack);
-
-        if (enableGestures) {
-            var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
-            var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);
-            var paramEmoteAngry = manager.NewBool("EmoteAngry", synced: true);
-            var paramEmoteTongue = manager.NewBool("EmoteTongue", synced: true);
-            // These don't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-            var paramEmoteHappyLock = manager.NewBool("EmoteHappyLock", synced: true);
-            manager.NewMenuToggle("Lock Happy", paramEmoteHappyLock);
-            var paramEmoteSadLock = manager.NewBool("EmoteSadLock", synced: true);
-            manager.NewMenuToggle("Lock Sad", paramEmoteSadLock);
-            var paramEmoteAngryLock = manager.NewBool("EmoteAngryLock", synced: true);
-            manager.NewMenuToggle("Lock Angry", paramEmoteAngryLock);
-            var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock", synced: true);
-            manager.NewMenuToggle("Lock Tongue", paramEmoteTongueLock);
-
-            {
-                var layer = manager.NewLayer("Eyes");
-                var idle = layer.NewState("Idle").Drives(blinkActive, true);
-                var closed = layer.NewState("Closed").WithAnimation(loadClip("eyesClosed", config.stateEyesClosed)).Drives(blinkActive, false);
-                var happy = layer.NewState("Happy").WithAnimation(loadClip("eyesHappy", config.stateEyesHappy)).Drives(blinkActive, false);
-                //var bedroom = layer.NewState("Bedroom").WithAnimation(loadClip("eyesBedroom", inputs.stateEyesBedroom)).Drives(blinkActive, false)
-                var sad = layer.NewState("Sad").WithAnimation(loadClip("eyesSad", config.stateEyesSad)).Drives(blinkActive, false);
-                var angry = layer.NewState("Angry").WithAnimation(loadClip("eyesAngry", config.stateEyesAngry)).Drives(blinkActive, false);
-
-                closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
-                closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
-                happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
-                //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(bedroom.IsTrue());
-                sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-                angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
-            }
-
-            {
-                var layer = manager.NewLayer("Mouth");
-                var idle = layer.NewState("Idle");
-                var blep = layer.NewState("Blep").WithAnimation(loadClip("mouthBlep", config.stateMouthBlep));
-                var suck = layer.NewState("Suck").WithAnimation(loadClip("mouthSuck", config.stateMouthSuck));
-                var sad = layer.NewState("Sad").WithAnimation(loadClip("mouthSad", config.stateMouthSad));
-                var angry = layer.NewState("Angry").WithAnimation(loadClip("mouthAngry", config.stateMouthAngry));
-                var happy = layer.NewState("Happy").WithAnimation(loadClip("mouthHappy", config.stateMouthHappy));
-
-                suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
-                suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
-                blep.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteTongue.IsTrue());
-                happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
-                sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-                angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
-            }
-
-            {
-                var layer = manager.NewLayer("Ears");
-                var idle = layer.NewState("Idle");
-                var back = layer.NewState("Back").WithAnimation(loadClip("earsBack", config.stateEarsBack));
-
-                back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-                back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
-            }
-
-            createGestureTriggerLayer("Tongue", paramEmoteTongueLock, paramEmoteTongue, 4);
-            createGestureTriggerLayer("Happy", paramEmoteHappyLock, paramEmoteHappy, 7);
-            createGestureTriggerLayer("Sad", paramEmoteSadLock, paramEmoteSad, 6);
-            createGestureTriggerLayer("Angry", paramEmoteAngryLock, paramEmoteAngry, 5);
-        }
-
         // BLINKING
+        VFABool blinkActive = null;
         if (StateExists(config.stateBlink)) {
+            var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);
+            var blinkTrigger = manager.NewTrigger("BlinkTrigger");
+            blinkActive = manager.NewBool("BlinkActive", def: true);
+
             {
                 var blinkCounter = manager.NewInt("BlinkCounter");
                 var layer = manager.NewLayer("Blink - Generator");
@@ -328,8 +249,97 @@ public class VRCFuryBuilder {
             }
         }
 
+        var enableGestures = StateExists(config.stateEyesClosed)
+            || StateExists(config.stateEyesHappy)
+            || StateExists(config.stateEyesSad)
+            || StateExists(config.stateEyesAngry)
+            || StateExists(config.stateMouthBlep)
+            || StateExists(config.stateMouthSuck)
+            || StateExists(config.stateMouthSad)
+            || StateExists(config.stateMouthAngry)
+            || StateExists(config.stateMouthHappy)
+            || StateExists(config.stateEarsBack);
+
+        if (enableGestures) {
+            var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
+            var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);
+            var paramEmoteAngry = manager.NewBool("EmoteAngry", synced: true);
+            var paramEmoteTongue = manager.NewBool("EmoteTongue", synced: true);
+            // These don't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
+            var paramEmoteHappyLock = manager.NewBool("EmoteHappyLock", synced: true);
+            manager.NewMenuToggle("Lock Happy", paramEmoteHappyLock);
+            var paramEmoteSadLock = manager.NewBool("EmoteSadLock", synced: true);
+            manager.NewMenuToggle("Lock Sad", paramEmoteSadLock);
+            var paramEmoteAngryLock = manager.NewBool("EmoteAngryLock", synced: true);
+            manager.NewMenuToggle("Lock Angry", paramEmoteAngryLock);
+            var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock", synced: true);
+            manager.NewMenuToggle("Lock Tongue", paramEmoteTongueLock);
+
+            {
+                var layer = manager.NewLayer("Eyes");
+                var idle = layer.NewState("Idle");
+                var closed = layer.NewState("Closed").WithAnimation(loadClip("eyesClosed", config.stateEyesClosed));
+                var happy = layer.NewState("Happy").WithAnimation(loadClip("eyesHappy", config.stateEyesHappy));
+                //var bedroom = layer.NewState("Bedroom").WithAnimation(loadClip("eyesBedroom", inputs.stateEyesBedroom));
+                var sad = layer.NewState("Sad").WithAnimation(loadClip("eyesSad", config.stateEyesSad));
+                var angry = layer.NewState("Angry").WithAnimation(loadClip("eyesAngry", config.stateEyesAngry));
+
+                if (blinkActive != null) {
+                    idle.Drives(blinkActive, true);
+                    closed.Drives(blinkActive, false);
+                    happy.Drives(blinkActive, false);
+                    //bedroom.Drives(blinkActive, false)
+                    sad.Drives(blinkActive, false);
+                    angry.Drives(blinkActive, false);
+                }
+
+                //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
+                //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
+                happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
+                //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(bedroom.IsTrue());
+                sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
+                angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+            }
+
+            {
+                var layer = manager.NewLayer("Mouth");
+                var idle = layer.NewState("Idle");
+                var blep = layer.NewState("Blep").WithAnimation(loadClip("mouthBlep", config.stateMouthBlep));
+                var suck = layer.NewState("Suck").WithAnimation(loadClip("mouthSuck", config.stateMouthSuck));
+                var sad = layer.NewState("Sad").WithAnimation(loadClip("mouthSad", config.stateMouthSad));
+                var angry = layer.NewState("Angry").WithAnimation(loadClip("mouthAngry", config.stateMouthAngry));
+                var happy = layer.NewState("Happy").WithAnimation(loadClip("mouthHappy", config.stateMouthHappy));
+
+                //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
+                //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
+                blep.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteTongue.IsTrue());
+                happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
+                sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
+                angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+            }
+
+            {
+                var layer = manager.NewLayer("Ears");
+                var idle = layer.NewState("Idle");
+                var back = layer.NewState("Back").WithAnimation(loadClip("earsBack", config.stateEarsBack));
+
+                back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
+                back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+            }
+
+            createGestureTriggerLayer("Tongue", paramEmoteTongueLock, paramEmoteTongue, 4);
+            createGestureTriggerLayer("Happy", paramEmoteHappyLock, paramEmoteHappy, 7);
+            createGestureTriggerLayer("Sad", paramEmoteSadLock, paramEmoteSad, 6);
+            createGestureTriggerLayer("Angry", paramEmoteAngryLock, paramEmoteAngry, 5);
+        }
+
         // SCALE
         if (config.scaleEnabled) {
+            var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
+            manager.NewMenuSlider("Scale", paramScale);
             var scaleClip = manager.NewClip("Scale");
             var baseScale = avatarObject.transform.localScale.x;
             motions.Scale(scaleClip, avatarObject, motions.FromFrames(
