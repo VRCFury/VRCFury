@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using UnityEditor.Animations;
 
 namespace VRCF.Model {
 
