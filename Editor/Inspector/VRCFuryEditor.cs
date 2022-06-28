@@ -18,7 +18,7 @@ public class VRCFuryMenuItem {
         var obj = Selection.activeTransform.gameObject;
         var vrcfury = obj.GetComponent<VRCFury>();
         var builder = new VRCFuryBuilder();
-        builder.SafeRun(vrcfury.GetConfig(), obj);
+        builder.SafeRun(VRCFuryConfigUpgrader.GetConfig(vrcfury), obj);
     }
 
     [MenuItem("Tools/Force Run VRCFury on Selection", true)]
@@ -39,7 +39,7 @@ public class VRCFuryEditor : Editor {
         var self = (VRCFury)target;
 
         // Just calling this will trigger an upgrade if it's needed
-        self.GetConfig();
+        VRCFuryConfigUpgrader.GetConfig(self);
         serializedObject.Update();
 
         var obj = serializedObject;
@@ -81,7 +81,7 @@ public class VRCFuryEditor : Editor {
 
             var genButton = new Button(() => {
                 var builder = new VRCFuryBuilder();
-                builder.SafeRun(self.GetConfig(), self.gameObject);
+                builder.SafeRun(VRCFuryConfigUpgrader.GetConfig(self), self.gameObject);
             });
             genButton.style.marginTop = 5;
             genButton.text = "Force Build Now";

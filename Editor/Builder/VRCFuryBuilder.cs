@@ -134,10 +134,10 @@ public class VRCFuryBuilder {
         if (config != null) {
             handleConfig(config, null);
         }
-        foreach (var otherConfig in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
-            if (otherConfig.gameObject == avatarObject) continue;
-            Debug.Log("Importing config from " + otherConfig.gameObject.name);
-            handleConfig(otherConfig.GetConfig(), otherConfig.gameObject);
+        foreach (var otherVrcfury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
+            if (otherVrcfury.gameObject == avatarObject) continue;
+            Debug.Log("Importing config from " + otherVrcfury.gameObject.name);
+            handleConfig(VRCFuryConfigUpgrader.GetConfig(otherVrcfury), otherVrcfury.gameObject);
         }
 
         Debug.Log("VRCFury Finished!");

@@ -40,12 +40,6 @@ public class VRCFury : MonoBehaviour {
     [Obsolete] public VRCFuryState stateTalking;
 
     [Obsolete] public VRCFuryProps props;
-
-    public VRCFuryConfig GetConfig() {
-        if (config == null) config = new VRCFuryConfig();
-        config.Upgrade(this);
-        return config;
-    }
 }
 
 }

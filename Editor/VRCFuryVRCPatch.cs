@@ -26,17 +26,18 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
     public int callbackOrder => 0;
     public bool OnPreprocessAvatar(GameObject avatarGameObject) {
         var vrcf = avatarGameObject.GetComponent<VRCFury>();
-
-        if (vrcf == null) {
-            if (avatarGameObject.GetComponentsInChildren<VRCFury>(true).Length > 0) {
-                // Avatar doesn't use VRCF itself, but has children that does, so let's run it anyways
-            } else {
-                return true;
-            }
+        VRCFuryConfig config = null;
+        if (vrcf != null) {
+            config = VRCFuryConfigUpgrader.GetConfig(vrcf);
+        } else if (avatarGameObject.GetComponentsInChildren<VRCFury>(true).Length > 0) {
+            // Avatar doesn't use VRCF itself, but has children that does, so let's run it anyways
+        } else {
+            // We don't do anything!
+            return true;
         }
 
         var builder = new VRCFuryBuilder();
-        return builder.SafeRun(vrcf.GetConfig(), avatarGameObject);
+        return builder.SafeRun(config, avatarGameObject);
     }
 }
 
