@@ -11,6 +11,27 @@ using UnityEditor.Animations;
 
 namespace VRCF.Inspector {
 
+public class VRCFuryMenuItem {
+    [MenuItem("Tools/Force Run VRCFury on Selection")]
+    static void Run() {
+        var obj = Selection.activeTransform.gameObject;
+        var vrcfury = obj.GetComponent<VRCFury>();
+        var builder = new VRCFuryBuilder();
+        builder.SafeRun(vrcfury, obj);
+    }
+
+    [MenuItem("Tools/Force Run VRCFury on Selection", true)]
+    static bool Check() {
+        var obj = Selection.activeTransform.gameObject;
+        if (obj == null) return false;
+        var avatar = obj.GetComponent<VRCAvatarDescriptor>();
+        if (avatar == null) return false;
+        if (obj.GetComponent<VRCFury>() != null) return true;
+        if (obj.GetComponentsInChildren<VRCFury>(true).Length > 0) return true;
+        return false;
+    }
+}
+
 [CustomEditor(typeof(VRCFury), true)]
 public class VRCFuryEditor : Editor {
     private Stack<VisualElement> form;
@@ -75,12 +96,22 @@ public class VRCFuryEditor : Editor {
         });
 
         if (pointingToAvatar) {
+            var box = new Box();
+            box.style.marginTop = box.style.marginBottom = 10;
+            form.Peek().Add(box);
+
+            var label = new Label("VRCFury builds automatically when your avatar uploads. You only need to click this button if you want to verify its changes in the editor or in play mode.");
+            VRCFuryEditorUtils.Padding(box, 5);
+            label.style.whiteSpace = WhiteSpace.Normal;
+            box.Add(label);
+
             var genButton = new Button(() => {
                 var builder = new VRCFuryBuilder();
                 builder.SafeRun(self, self.gameObject);
             });
-            genButton.text = "Generate";
-            form.Peek().Add(genButton);
+            genButton.style.marginTop = 5;
+            genButton.text = "Force Build Now";
+            box.Add(genButton);
         }
 
         return form.Peek();
