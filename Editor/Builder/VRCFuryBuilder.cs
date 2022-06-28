@@ -106,6 +106,8 @@ public class VRCFuryBuilder {
             AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + avatarObject.name + ".asset");
         }
 
+        EditorUtility.SetDirty(avatar);
+
         if (thirdPartyIntegrations) {
             VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
             VRCFuryLensIntegration.Run(avatarObject);
