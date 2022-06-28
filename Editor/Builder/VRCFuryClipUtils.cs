@@ -54,20 +54,38 @@ public class VRCFuryClipUtils {
         for (var i = 0; i < curvesBindings.Length; i++) {
             var binding = curvesBindings[i];
             AnimationCurve curve = AnimationUtility.GetEditorCurve(clip, binding);
-            binding.path = prefix + binding.path;
+            binding.path = ResolveRelativePath(prefix + binding.path);
             AnimationUtility.SetEditorCurve(copy, binding, curve);
         }
         var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
         for (var i = 0; i < objBindings.Length; i++) {
             var binding = objBindings[i];
             ObjectReferenceKeyframe[] objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
-            binding.path = prefix + binding.path;
+            binding.path = ResolveRelativePath(prefix + binding.path);
             AnimationUtility.SetObjectReferenceCurve(copy, binding, objectReferenceCurve);
         }
         var prev = new SerializedObject(clip);
         var next = new SerializedObject(copy);
         next.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = prev.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
         next.ApplyModifiedProperties();
+    }
+
+    private string ResolveRelativePath(string path)
+    {
+        var parts = path.Split('/');
+        var ret = new List<string>();
+        foreach (var part in parts)
+        {
+            if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1]))
+            {
+                ret.RemoveAt(ret.Count - 1);
+            }
+            else
+            {
+                ret.Add(part);
+            }
+        }
+        return string.Join("/", ret);
     }
 
     private string GetPath(GameObject obj) {
