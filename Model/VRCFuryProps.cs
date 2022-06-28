@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using System.Collections.Generic;
+using VRC.SDK3.Avatars.ScriptableObjects;
+using UnityEditor.Animations;
 
 namespace VRCF.Model {
 
@@ -9,6 +11,7 @@ public class VRCFuryProp {
     public const string TOGGLE = "toggle";
     public const string MODES = "modes";
     public const string PUPPET = "puppet";
+    public const string CONTROLLER = "controller";
 
     public string type;
     public string name;
@@ -20,6 +23,10 @@ public class VRCFuryProp {
     public List<VRCFuryPropPuppetStop> puppetStops = new List<VRCFuryPropPuppetStop>();
     public List<VRCFuryPropMode> modes = new List<VRCFuryPropMode>();
     public List<GameObject> resetPhysbones = new List<GameObject>();
+    
+    public AnimatorController controller;
+    public VRCExpressionsMenu controllerMenu;
+    public VRCExpressionParameters controllerParams;
 
     public bool ResetMePlease;
 }

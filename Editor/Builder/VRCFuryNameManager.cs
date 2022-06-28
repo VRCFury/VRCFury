@@ -8,7 +8,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace VRCF.Builder {
 
 public class VRCFuryNameManager {
-    private static string prefix = "VRCFury";
+    public static string prefix = "VRCFury";
     private VRCExpressionsMenu rootMenu;
     private VRCExpressionsMenu fxMenu;
     private VRCExpressionsMenu lastMenu;
@@ -77,6 +77,10 @@ public class VRCFuryNameManager {
                 AssetDatabase.RemoveObjectFromAsset(subAsset);
             }
         }
+    }
+
+    public AnimatorController GetRawController() {
+        return ctrl;
     }
 
     private VFAController _controller = null;
@@ -236,7 +240,9 @@ public class VRCFuryNameManager {
         return prefix + "__" + name;
     }
 
-    private void addSyncedParam(VRCExpressionParameters.Parameter param) {
+    public void addSyncedParam(VRCExpressionParameters.Parameter param) {
+        var exists = Array.FindIndex(syncedParams.parameters, p => p.name == param.name) >= 0;
+        if (exists) return;
         var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
         syncedParamsList.Add(param);
         syncedParams.parameters = syncedParamsList.ToArray();

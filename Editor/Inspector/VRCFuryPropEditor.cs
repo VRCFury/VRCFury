@@ -116,6 +116,10 @@ public class VRCFuryPropDrawer : PropertyDrawer {
             content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state")));
         } else if (type == VRCFuryProp.MODES) {
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("modes"), renderElement: (i,e) => VRCFuryPropModeDrawer.render(e, "Mode " + (i+1))));
+        } else if (type == VRCFuryProp.CONTROLLER) {
+            content.Add(new PropertyField(prop.FindPropertyRelative("controller"), "Controller"));
+            content.Add(new PropertyField(prop.FindPropertyRelative("controllerMenu"), "Menu"));
+            content.Add(new PropertyField(prop.FindPropertyRelative("controllerParams"), "Params"));
         } else {
             content.Add(new Label("Unknown type: " + type));
         }
@@ -148,8 +152,11 @@ public class VRCFuryPropsDrawer : PropertyDrawer {
             menu.AddItem(new GUIContent("Multi-Mode"), false, () => {
                 VRCFuryEditorUtils.AddToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryProp.MODES);
             });
-            menu.AddItem(new GUIContent("Puppet"), false, () => {
-                VRCFuryEditorUtils.AddToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryProp.PUPPET);
+            //menu.AddItem(new GUIContent("Puppet"), false, () => {
+            //    VRCFuryEditorUtils.AddToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryProp.PUPPET);
+            //});
+            menu.AddItem(new GUIContent("Full Controller"), false, () => {
+                VRCFuryEditorUtils.AddToList(listProp, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryProp.CONTROLLER);
             });
             menu.ShowAsContext();
         }));

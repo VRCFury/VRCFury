@@ -384,84 +384,109 @@ public class VRCFuryBuilder {
     }
 
     private void handleProps(List<VRCFuryProp> props, GameObject propBaseObject) {
-        var paramSecuritySync = manager.NewBool("SecurityLockSync");
         foreach (var prop in props) {
-            var layerName = "Prop - " + prop.name;
+            handleProp(prop, propBaseObject);
+        }
+    }
+
+    private void handleProp(VRCFuryProp prop, GameObject propBaseObject) {
+        var layerName = "Prop - " + prop.name;
+
+        VFABool physBoneResetter = null;
+        if (prop.resetPhysbones.Count > 0) {
+            physBoneResetter = createPhysboneResetter(layerName, prop.resetPhysbones);
+        }
+
+        if (prop.type == VRCFuryProp.PUPPET || (prop.type == VRCFuryProp.TOGGLE && prop.slider)) {
             var layer = manager.NewLayer(layerName);
-
-            VFABool physBoneResetter = null;
-            if (prop.resetPhysbones.Count > 0) {
-                physBoneResetter = createPhysboneResetter(layerName, prop.resetPhysbones);
+            var tree = manager.NewBlendTree("prop_" + prop.name);
+            tree.blendType = BlendTreeType.FreeformDirectional2D;
+            tree.AddChild(noopClip, new Vector2(0,0));
+            int i = 0;
+            var puppetStops = new List<VRCFuryPropPuppetStop>();
+            if (prop.type == VRCFuryProp.PUPPET) {
+                puppetStops = prop.puppetStops;
+            } else {
+                puppetStops.Add(new VRCFuryPropPuppetStop(1,0,prop.state));
             }
+            var usesX = false;
+            var usesY = false;
+            foreach (var stop in puppetStops) {
+                if (stop.x != 0) usesX = true;
+                if (stop.y != 0) usesY = true;
+                tree.AddChild(loadClip("prop_" + prop.name + "_" + i++, stop.state, propBaseObject), new Vector2(stop.x,stop.y));
+            }
+            var on = layer.NewState("Blend").WithAnimation(tree);
 
-            if (prop.type == VRCFuryProp.PUPPET || (prop.type == VRCFuryProp.TOGGLE && prop.slider)) {
-                var tree = manager.NewBlendTree("prop_" + prop.name);
-                tree.blendType = BlendTreeType.FreeformDirectional2D;
-                tree.AddChild(noopClip, new Vector2(0,0));
-                int i = 0;
-                var puppetStops = new List<VRCFuryPropPuppetStop>();
-                if (prop.type == VRCFuryProp.PUPPET) {
-                    puppetStops = prop.puppetStops;
+            var x = manager.NewFloat("Prop_" + prop.name + "_x", synced: usesX);
+            tree.blendParameter = x.Name();
+            var y = manager.NewFloat("Prop_" + prop.name + "_y", synced: usesY);
+            tree.blendParameterY = y.Name();
+            if (prop.type == VRCFuryProp.TOGGLE) {
+                if (usesX) manager.NewMenuSlider(prop.name, x);
+            } else {
+                manager.NewMenuPuppet(prop.name, usesX ? x : null, usesY ? y : null);
+            }
+        } else if (prop.type == VRCFuryProp.MODES) {
+            var layer = manager.NewLayer(layerName);
+            var off = layer.NewState("Off");
+            if (physBoneResetter != null) off.Drives(physBoneResetter, true);
+            var param = manager.NewInt("Prop_" + prop.name, synced: true, saved: prop.saved);
+            manager.NewMenuToggle(prop.name + " - Off", param, 0);
+            var i = 1;
+            foreach (var mode in prop.modes) {
+                var num = i++;
+                var clip = loadClip("prop_" + prop.name+"_"+num, mode.state, propBaseObject);
+                var state = layer.NewState(""+num).WithAnimation(clip);
+                if (physBoneResetter != null) state.Drives(physBoneResetter, true);
+                if (prop.securityEnabled) {
+                    var paramSecuritySync = manager.NewBool("SecurityLockSync");
+                    state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
+                    state.TransitionsToExit().When(param.IsNotEqualTo(num));
+                    state.TransitionsToExit().When(paramSecuritySync.IsFalse());
                 } else {
-                    puppetStops.Add(new VRCFuryPropPuppetStop(1,0,prop.state));
+                    state.TransitionsFromAny().When(param.IsEqualTo(num));
+                    state.TransitionsToExit().When(param.IsNotEqualTo(num));
                 }
-                var usesX = false;
-                var usesY = false;
-                foreach (var stop in puppetStops) {
-                    if (stop.x != 0) usesX = true;
-                    if (stop.y != 0) usesY = true;
-                    tree.AddChild(loadClip("prop_" + prop.name + "_" + i++, stop.state, propBaseObject), new Vector2(stop.x,stop.y));
+                manager.NewMenuToggle(prop.name + " - " + num, param, num);
+            }
+        } else if (prop.type == VRCFuryProp.TOGGLE) {
+            var layer = manager.NewLayer(layerName);
+            var clip = loadClip("prop_" + prop.name, prop.state, propBaseObject);
+            var off = layer.NewState("Off");
+            var on = layer.NewState("On").WithAnimation(clip);
+            var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved, def: prop.defaultOn);
+            if (prop.securityEnabled) {
+                var paramSecuritySync = manager.NewBool("SecurityLockSync");
+                off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
+                on.TransitionsTo(off).When(param.IsFalse());
+                on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
+            } else {
+                off.TransitionsTo(on).When(param.IsTrue());
+                on.TransitionsTo(off).When(param.IsFalse());
+            }
+            if (physBoneResetter != null) {
+                off.Drives(physBoneResetter, true);
+                on.Drives(physBoneResetter, true);
+            }
+            manager.NewMenuToggle(prop.name, param);
+        } else if (prop.type == VRCFuryProp.CONTROLLER) {
+            if (prop.controller != null) {
+                DataCopier.Copy(prop.controller, manager.GetRawController(), "[" + VRCFuryNameManager.prefix + "] [" + prop.name + "] ", from => {
+                    var copy = manager.NewClip(prop.name+"__"+from.name);
+                    motions.CopyWithAdjustedPrefixes(from, copy, propBaseObject);
+                    return copy;
+                });
+            }
+            if (prop.controllerMenu != null) {
+                foreach (var control in prop.controllerMenu.controls) {
+                    manager.GetFxMenu().controls.Add(control);
                 }
-                var on = layer.NewState("Blend").WithAnimation(tree);
-
-                var x = manager.NewFloat("Prop_" + prop.name + "_x", synced: usesX);
-                tree.blendParameter = x.Name();
-                var y = manager.NewFloat("Prop_" + prop.name + "_y", synced: usesY);
-                tree.blendParameterY = y.Name();
-                if (prop.type == VRCFuryProp.TOGGLE) {
-                    if (usesX) manager.NewMenuSlider(prop.name, x);
-                } else {
-                    manager.NewMenuPuppet(prop.name, usesX ? x : null, usesY ? y : null);
+            }
+            if (prop.controllerParams != null) {
+                foreach (var param in prop.controllerParams.parameters) {
+                    manager.addSyncedParam(param);
                 }
-            } else if (prop.type == VRCFuryProp.MODES) {
-                var off = layer.NewState("Off");
-                if (physBoneResetter != null) off.Drives(physBoneResetter, true);
-                var param = manager.NewInt("Prop_" + prop.name, synced: true, saved: prop.saved);
-                manager.NewMenuToggle(prop.name + " - Off", param, 0);
-                var i = 1;
-                foreach (var mode in prop.modes) {
-                    var num = i++;
-                    var clip = loadClip("prop_" + prop.name+"_"+num, mode.state, propBaseObject);
-                    var state = layer.NewState(""+num).WithAnimation(clip);
-                    if (physBoneResetter != null) state.Drives(physBoneResetter, true);
-                    if (prop.securityEnabled && paramSecuritySync != null) {
-                        state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
-                        state.TransitionsToExit().When(param.IsNotEqualTo(num));
-                        state.TransitionsToExit().When(paramSecuritySync.IsFalse());
-                    } else {
-                        state.TransitionsFromAny().When(param.IsEqualTo(num));
-                        state.TransitionsToExit().When(param.IsNotEqualTo(num));
-                    }
-                    manager.NewMenuToggle(prop.name + " - " + num, param, num);
-                }
-            } else if (prop.type == VRCFuryProp.TOGGLE) {
-                var clip = loadClip("prop_" + prop.name, prop.state, propBaseObject);
-                var off = layer.NewState("Off");
-                var on = layer.NewState("On").WithAnimation(clip);
-                var param = manager.NewBool("Prop_" + prop.name, synced: true, saved: prop.saved, def: prop.defaultOn);
-                if (prop.securityEnabled && paramSecuritySync != null) {
-                    off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
-                    on.TransitionsTo(off).When(param.IsFalse());
-                    on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
-                } else {
-                    off.TransitionsTo(on).When(param.IsTrue());
-                    on.TransitionsTo(off).When(param.IsFalse());
-                }
-                if (physBoneResetter != null) {
-                    off.Drives(physBoneResetter, true);
-                    on.Drives(physBoneResetter, true);
-                }
-                manager.NewMenuToggle(prop.name, param);
             }
         }
     }
