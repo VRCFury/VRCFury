@@ -145,20 +145,24 @@ public class VRCFuryNameManager {
         }
         return fxMenu;
     }
+    public VRCExpressionsMenu NewTopLevelMenu(string name) {
+        var fxMenu = GetFxMenu();
+        if (fxMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
+            throw new Exception("Out of room for new submenus!");
+        }
+        var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+        AssetDatabase.CreateAsset(newMenu, tmpDir + "/VRCF_Menu_" + name + ".asset");
+        var control = new VRCExpressionsMenu.Control();
+        fxMenu.controls.Add(control);
+        control.name = name;
+        control.subMenu = newMenu;
+        control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+        return newMenu;
+    }
     public VRCExpressionsMenu GetNumMenu() {
         if (lastMenu == null || lastMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-            var fxMenu = GetFxMenu();
-            if (fxMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-                throw new Exception("Out of room for new menu pages!");
-            }
             lastMenuNum++;
-            lastMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            AssetDatabase.CreateAsset(lastMenu, tmpDir + "/VRCF_Menu_" + lastMenuNum + ".asset");
-            var control = new VRCExpressionsMenu.Control();
-            fxMenu.controls.Add(control);
-            control.name = ""+lastMenuNum;
-            control.subMenu = lastMenu;
-            control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+            lastMenu = NewTopLevelMenu(""+lastMenuNum);
         }
         return lastMenu;
     }

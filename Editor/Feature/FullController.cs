@@ -15,21 +15,33 @@ namespace VRCF.Feature {
 
 public class FullController : BaseFeature {
     public void Generate(VRCF.Model.Feature.FullController config) {
+        var baseObject = config.rootObj != null ? config.rootObj : featureBaseObject;
+
         if (config.controller != null) {
-            DataCopier.Copy((AnimatorController)config.controller, manager.GetRawController(), "[" + VRCFuryNameManager.prefix + "] [" + featureBaseObject.name + "] ", from => {
-                var copy = manager.NewClip(featureBaseObject.name+"__"+from.name);
-                motions.CopyWithAdjustedPrefixes(from, copy, featureBaseObject);
+            DataCopier.Copy((AnimatorController)config.controller, manager.GetRawController(), "[" + VRCFuryNameManager.prefix + "] [" + baseObject.name + "] ", from => {
+                var copy = manager.NewClip(baseObject.name+"__"+from.name);
+                motions.CopyWithAdjustedPrefixes(from, copy, baseObject);
                 return copy;
             });
         }
         if (config.menu != null) {
+            var targetMenu = manager.GetFxMenu();
+            if (!string.IsNullOrEmpty(config.submenu)) {
+                targetMenu = manager.NewTopLevelMenu(config.submenu);
+            }
             foreach (var control in config.menu.controls) {
-                manager.GetFxMenu().controls.Add(control);
+                targetMenu.controls.Add(control);
             }
         }
         if (config.parameters != null) {
             foreach (var param in config.parameters.parameters) {
-                manager.addSyncedParam(param);
+                if (string.IsNullOrWhiteSpace(param.name)) continue;
+                var newParam = new VRCExpressionParameters.Parameter();
+                newParam.name = param.name;
+                newParam.valueType = param.valueType;
+                newParam.saved = param.saved && !config.ignoreSaved;
+                newParam.defaultValue = param.defaultValue;
+                manager.addSyncedParam(newParam);
             }
         }
     }
@@ -41,8 +53,8 @@ public class FullController : BaseFeature {
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
         content.Add(new PropertyField(prop.FindPropertyRelative("controller"), "Controller"));
-        content.Add(new PropertyField(prop.FindPropertyRelative("controllerMenu"), "Menu"));
-        content.Add(new PropertyField(prop.FindPropertyRelative("controllerParams"), "Params"));
+        content.Add(new PropertyField(prop.FindPropertyRelative("menu"), "Menu"));
+        content.Add(new PropertyField(prop.FindPropertyRelative("parameters"), "Params"));
         return content;
     }
 }

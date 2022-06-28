@@ -30,6 +30,13 @@ public class FullController : FeatureModel {
     public RuntimeAnimatorController controller;
     public VRCExpressionsMenu menu;
     public VRCExpressionParameters parameters;
+    [NonSerialized] public string submenu;
+    [NonSerialized] public GameObject rootObj;
+    [NonSerialized] public bool ignoreSaved;
+}
+
+[Serializable]
+public class LegacyPrefabSupport : FeatureModel {
 }
 
 [Serializable]
