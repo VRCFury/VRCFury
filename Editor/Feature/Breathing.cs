@@ -15,6 +15,9 @@ namespace VRCF.Feature {
 public class Breathing : BaseFeature {
     public void Generate(VRCF.Model.Feature.Breathing config) {
         var clip = manager.NewClip("Breathing");
+        var so = new SerializedObject(clip);
+        so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
+        so.ApplyModifiedProperties();
 
         if (config.obj != null) {
             motions.Scale(clip, config.obj, motions.FromSeconds(
