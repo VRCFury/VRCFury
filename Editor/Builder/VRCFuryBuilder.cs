@@ -144,14 +144,6 @@ public class VRCFuryBuilder {
     }
 
     private void handleBaseConfig(VRCFury config) {
-        // Common Params
-        var GestureLeft = manager.NewInt("GestureLeft", usePrefix: false);
-        var GestureRight = manager.NewInt("GestureRight", usePrefix: false);
-        var Viseme = manager.NewInt("Viseme", usePrefix: false);
-        var IsLocal = manager.NewBool("IsLocal", usePrefix: false);
-
-        var paramTrue = manager.NewBool("True", def: true);
-        always = paramTrue.IsTrue();
         //var paramOrifaceMouthRing = manager.NewBool("OrifaceMouthRing", synced: true);
         //var paramOrifaceMouthHole = manager.NewBool("OrifaceMouthHole", synced: true);
 
@@ -204,23 +196,23 @@ public class VRCFuryBuilder {
                 var trigger1 = layer.NewState("Trigger 1").Move(trigger0, 1, 0);
                 var randomize = layer.NewState("Randomize").Move(idle, 1, 0);
 
-                entry.TransitionsTo(remote).When(IsLocal.IsFalse());
-                entry.TransitionsTo(idle).When(always);
+                entry.TransitionsTo(remote).When(IsLocal().IsFalse());
+                entry.TransitionsTo(idle).When(Always());
 
                 idle.TransitionsTo(trigger0).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsTrue()));
                 trigger0.Drives(blinkTriggerSynced, false);
-                trigger0.TransitionsTo(randomize).When(always);
+                trigger0.TransitionsTo(randomize).When(Always());
 
                 idle.TransitionsTo(trigger1).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsFalse()));
                 trigger1.Drives(blinkTriggerSynced, true);
-                trigger1.TransitionsTo(randomize).When(always);
+                trigger1.TransitionsTo(randomize).When(Always());
 
                 randomize.DrivesRandom(blinkCounter, 2, 10);
-                randomize.TransitionsTo(idle).When(always);
+                randomize.TransitionsTo(idle).When(Always());
 
-                idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(always);
+                idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(Always());
                 subtract.DrivesDelta(blinkCounter, -1);
-                subtract.TransitionsTo(idle).When(always);
+                subtract.TransitionsTo(idle).When(Always());
             }
 
             {
@@ -244,8 +236,8 @@ public class VRCFuryBuilder {
 
                 idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
                 checkActive.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(blinkActive.IsTrue());
-                checkActive.TransitionsTo(idle).When(always);
-                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(always);
+                checkActive.TransitionsTo(idle).When(Always());
+                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(Always());
             }
         }
 
@@ -299,7 +291,7 @@ public class VRCFuryBuilder {
                 //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(bedroom.IsTrue());
                 sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
                 angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(Always());
             }
 
             {
@@ -317,7 +309,7 @@ public class VRCFuryBuilder {
                 happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
                 sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
                 angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(Always());
             }
 
             {
@@ -327,7 +319,7 @@ public class VRCFuryBuilder {
 
                 back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
                 back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(always);
+                idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(Always());
             }
 
             createGestureTriggerLayer("Tongue", paramEmoteTongueLock, paramEmoteTongue, 4);
@@ -367,15 +359,15 @@ public class VRCFuryBuilder {
             var check = layer.NewState("Check");
             var unlocked = layer.NewState("Unlocked").Move(check, 1, 0);
 
-            entry.TransitionsTo(remote).When(IsLocal.IsFalse());
-            entry.TransitionsTo(locked).When(always);
+            entry.TransitionsTo(remote).When(IsLocal().IsFalse());
+            entry.TransitionsTo(locked).When(Always());
 
             locked.Drives(paramSecurityMenu, false);
             locked.Drives(paramSecuritySync, false);
             locked.TransitionsTo(check).When(paramSecurityMenu.IsTrue());
 
-            check.TransitionsTo(unlocked).When(GestureLeft.IsEqualTo(config.securityCodeLeft).And(GestureRight.IsEqualTo(config.securityCodeRight)));
-            check.TransitionsTo(locked).When(always);
+            check.TransitionsTo(unlocked).When(GestureLeft().IsEqualTo(config.securityCodeLeft).And(GestureRight().IsEqualTo(config.securityCodeRight)));
+            check.TransitionsTo(locked).When(Always());
 
             unlocked.Drives(paramSecuritySync, true);
             unlocked.TransitionsTo(locked).When(paramSecurityMenu.IsFalse());
@@ -388,8 +380,8 @@ public class VRCFuryBuilder {
             var off = layer.NewState("Off");
             var on = layer.NewState("On").WithAnimation(clip);
 
-            off.TransitionsTo(on).When(Viseme.IsGreaterThan(9));
-            on.TransitionsTo(off).When(Viseme.IsLessThan(10));
+            off.TransitionsTo(on).When(Viseme().IsGreaterThan(9));
+            on.TransitionsTo(off).When(Viseme().IsLessThan(10));
         }
     }
 
@@ -397,6 +389,23 @@ public class VRCFuryBuilder {
         foreach (var prop in props) {
             handleProp(prop, propBaseObject);
         }
+    }
+
+    private VFACondition Always() {
+        var paramTrue = manager.NewBool("True", def: true);
+        return paramTrue.IsTrue();
+    }
+    private VFANumber GestureLeft() {
+        return manager.NewInt("GestureLeft", usePrefix: false);
+    }
+    private VFANumber GestureRight() {
+        return manager.NewInt("GestureRight", usePrefix: false);
+    }
+    private VFANumber Viseme() {
+        return manager.NewInt("Viseme", usePrefix: false);
+    }
+    private VFABool IsLocal() {
+        return manager.NewBool("IsLocal", usePrefix: false);
     }
 
     private void handleProp(VRCFuryProp prop, GameObject propBaseObject) {
@@ -527,7 +536,6 @@ public class VRCFuryBuilder {
     private string baseFile;
     private AnimationClip noopClip;
     private AnimationClip defaultClip;
-    private VFACondition always;
 
     private GameObject find(string path) {
         var found = avatarObject.transform.Find(path)?.gameObject;
@@ -675,9 +683,9 @@ public class VRCFuryBuilder {
         var reset1 = layer.NewState("Reset").Move(pause, 1, 0);
         var reset2 = layer.NewState("Reset").Move(idle, 1, 0);
         idle.TransitionsTo(pause).When(param.IsTrue());
-        pause.TransitionsTo(reset1).When(always);
-        reset1.TransitionsTo(reset2).When(always);
-        reset2.TransitionsTo(idle).When(always);
+        pause.TransitionsTo(reset1).When(Always());
+        reset1.TransitionsTo(reset2).When(Always());
+        reset2.TransitionsTo(idle).When(Always());
 
         var resetClip = manager.NewClip(layerName + "_PhysBoneReset");
         foreach (var physBone in physBones) {
