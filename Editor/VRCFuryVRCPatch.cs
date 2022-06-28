@@ -36,7 +36,7 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
         }
 
         var builder = new VRCFuryBuilder();
-        return builder.SafeRun(vrcf, avatarGameObject);
+        return builder.SafeRun(vrcf.GetConfig(), avatarGameObject);
     }
 }
 

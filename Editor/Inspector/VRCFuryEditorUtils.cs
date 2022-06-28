@@ -11,7 +11,12 @@ namespace VRCF.Inspector {
 
 public class VRCFuryEditorUtils {
 
-    public static VisualElement List(SerializedProperty list, Func<int, SerializedProperty, VisualElement> renderElement = null, Action onPlus = null) {
+    public static VisualElement List(
+        SerializedProperty list,
+        Func<int, SerializedProperty, VisualElement> renderElement = null,
+        Action onPlus = null,
+        Func<VisualElement> onEmpty = null
+    ) {
         var container = new VisualElement();
 
         var entriesContainer = new VisualElement();
@@ -54,6 +59,9 @@ public class VRCFuryEditorUtils {
                 remove.style.paddingLeft = remove.style.paddingRight = 5;
                 remove.style.paddingBottom = 3;
                 row.Add(remove);
+            }
+            if (size == 0 && onEmpty != null) {
+                entries.Add(onEmpty());
             }
             return entries;
         }, list));
@@ -197,13 +205,15 @@ public class VRCFuryEditorUtils {
             inner.Bind(props[0].serializedObject);
         };
         foreach (var prop in props) {
-            var onChangeField = OnChange(prop, refresh);
-            container.Add(onChangeField);
+            if (prop != null) {
+                var onChangeField = OnChange(prop, refresh);
+                container.Add(onChangeField);
+            }
         }
         return container;
     }
 
-    public static int LABEL_WIDTH = 137;
+    public static int LABEL_WIDTH = 150;
 
     public static bool FindAndResetMarkedFields(object obj) {
         if (obj == null) return false;

@@ -1,41 +1,51 @@
 using System;
 using UnityEngine;
+using VRCF.Model.Feature;
 
 namespace VRCF.Model {
 
 public class VRCFury : MonoBehaviour {
-    public VRCFuryState stateBlink;
-    public AnimationClip viseme;
 
-    public bool scaleEnabled;
-    public int securityCodeLeft;
-    public int securityCodeRight;
+    public VRCFuryConfig config;
 
-    public GameObject breatheObject;
-    public string breatheBlendshape;
-    public float breatheScaleMin;
-    public float breatheScaleMax;
+    [Obsolete] public VRCFuryState stateBlink;
+    [Obsolete] public AnimationClip viseme;
 
-    public VRCFuryState stateToesDown;
-    public VRCFuryState stateToesUp;
-    public VRCFuryState stateToesSplay;
+    [Obsolete] public bool scaleEnabled;
+    [Obsolete] public int securityCodeLeft;
+    [Obsolete] public int securityCodeRight;
 
-    public VRCFuryState stateEyesClosed;
-    public VRCFuryState stateEyesHappy;
-    public VRCFuryState stateEyesSad;
-    public VRCFuryState stateEyesAngry;
+    [Obsolete] public GameObject breatheObject;
+    [Obsolete] public string breatheBlendshape;
+    [Obsolete] public float breatheScaleMin;
+    [Obsolete] public float breatheScaleMax;
 
-    public VRCFuryState stateMouthBlep;
-    public VRCFuryState stateMouthSuck;
-    public VRCFuryState stateMouthSad;
-    public VRCFuryState stateMouthAngry;
-    public VRCFuryState stateMouthHappy;
+    [Obsolete] public VRCFuryState stateToesDown;
+    [Obsolete] public VRCFuryState stateToesUp;
+    [Obsolete] public VRCFuryState stateToesSplay;
 
-    public VRCFuryState stateEarsBack;
+    [Obsolete] public VRCFuryState stateEyesClosed;
+    [Obsolete] public VRCFuryState stateEyesHappy;
+    [Obsolete] public VRCFuryState stateEyesSad;
+    [Obsolete] public VRCFuryState stateEyesAngry;
 
-    public VRCFuryState stateTalking;
+    [Obsolete] public VRCFuryState stateMouthBlep;
+    [Obsolete] public VRCFuryState stateMouthSuck;
+    [Obsolete] public VRCFuryState stateMouthSad;
+    [Obsolete] public VRCFuryState stateMouthAngry;
+    [Obsolete] public VRCFuryState stateMouthHappy;
 
-    public VRCFuryProps props;
+    [Obsolete] public VRCFuryState stateEarsBack;
+
+    [Obsolete] public VRCFuryState stateTalking;
+
+    [Obsolete] public VRCFuryProps props;
+
+    public VRCFuryConfig GetConfig() {
+        if (config == null) config = new VRCFuryConfig();
+        config.Upgrade(this);
+        return config;
+    }
 }
 
 }

@@ -8,6 +8,7 @@ using VRC.SDK3.Avatars.Components;
 using VRCF.Builder;
 using VRCF.Model;
 using UnityEditor.Animations;
+using VRCF.Model.Feature;
 
 namespace VRCF.Inspector {
 
@@ -17,7 +18,7 @@ public class VRCFuryMenuItem {
         var obj = Selection.activeTransform.gameObject;
         var vrcfury = obj.GetComponent<VRCFury>();
         var builder = new VRCFuryBuilder();
-        builder.SafeRun(vrcfury, obj);
+        builder.SafeRun(vrcfury.GetConfig(), obj);
     }
 
     [MenuItem("Tools/Force Run VRCFury on Selection", true)]
@@ -34,71 +35,44 @@ public class VRCFuryMenuItem {
 
 [CustomEditor(typeof(VRCFury), true)]
 public class VRCFuryEditor : Editor {
-    private Stack<VisualElement> form;
-
     public override VisualElement CreateInspectorGUI() {
-        var obj = serializedObject;
-        form = new Stack<VisualElement>();
-        form.Push(new VisualElement());
-
-        AddProperty("avatar", "Avatar / Object Root");
-
-        var pointingToAvatar = false;
         var self = (VRCFury)target;
-        if (self.gameObject.GetComponent<VRCAvatarDescriptor>() != null) {
-            pointingToAvatar = true;
+
+        // Just calling this will trigger an upgrade if it's needed
+        self.GetConfig();
+        serializedObject.Update();
+
+        var obj = serializedObject;
+
+        var container = new VisualElement();
+
+        var pointingToAvatar = self.gameObject.GetComponent<VRCAvatarDescriptor>() != null;
+
+        var features = serializedObject.FindProperty("config.features");
+        if (features == null) {
+            container.Add(new Label("Feature list is missing? This is a bug."));
+        } else {
+            container.Add(VRCFuryEditorUtils.List(features,
+                renderElement: (i,prop) => renderFeature(self.config.features[i], prop),
+                onPlus: () => OnPlus(features),
+                onEmpty: () => {
+                    var c = new VisualElement();
+                    VRCFuryEditorUtils.Padding(c, 10);
+                    var l = new Label("You haven't added any VRCFury features yet.");
+                    l.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    c.Add(l);
+                    var l2 = new Label("Click the + to add your first one!");
+                    l2.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    c.Add(l2);
+                    return c;
+                }
+            ));
         }
-
-        if (pointingToAvatar) {
-            AddState("stateBlink", "Blinking");
-            AddState("stateTalking", "Talking");
-            AddProperty("viseme", "Advanced Visemes");
-            AddProperty("scaleEnabled", "Enable Avatar Scale Slider");
-
-            AddProperty("securityCodeLeft", "Security Left");
-            AddProperty("securityCodeRight", "Security Right");
-
-            Foldout("Breathing", () => {
-                AddProperty("breatheObject", "Object");
-                AddProperty("breatheBlendshape", "BlendShape");
-                AddProperty("breatheScaleMin", "Min Scale");
-                AddProperty("breatheScaleMax", "Max Scale");
-            });
-
-            FoldoutOpen("Face", () => {
-                FoldoutOpen("Eyes", () => {
-                    AddState("stateEyesClosed", "Closed");
-                    AddState("stateEyesHappy", "Happy");
-                    AddState("stateEyesSad", "Sad");
-                    AddState("stateEyesAngry", "Angry");
-                });
-                FoldoutOpen("Mouth", () => {
-                    AddState("stateMouthBlep", "Blep");
-                    AddState("stateMouthSuck", "Suck");
-                    AddState("stateMouthSad", "Sad");
-                    AddState("stateMouthAngry", "Angry");
-                    AddState("stateMouthHappy", "Happy");
-                });
-                FoldoutOpen("Ears", () => {
-                    AddState("stateEarsBack", "Back");
-                });
-            });
-
-            FoldoutOpen("Toes", () => {
-                AddState("stateToesDown", "Down");
-                AddState("stateToesUp", "Up");
-                AddState("stateToesSplay", "Splay");
-            });
-        }
-
-        FoldoutOpen("Props", () => {
-            AddProperty("props");
-        });
 
         if (pointingToAvatar) {
             var box = new Box();
             box.style.marginTop = box.style.marginBottom = 10;
-            form.Peek().Add(box);
+            container.Add(box);
 
             var label = new Label("VRCFury builds automatically when your avatar uploads. You only need to click this button if you want to verify its changes in the editor or in play mode.");
             VRCFuryEditorUtils.Padding(box, 5);
@@ -107,32 +81,33 @@ public class VRCFuryEditor : Editor {
 
             var genButton = new Button(() => {
                 var builder = new VRCFuryBuilder();
-                builder.SafeRun(self, self.gameObject);
+                builder.SafeRun(self.GetConfig(), self.gameObject);
             });
             genButton.style.marginTop = 5;
             genButton.text = "Force Build Now";
             box.Add(genButton);
         }
 
-        return form.Peek();
+        return container;
     }
 
-    private void AddProperty(string prop, string label = null) {
-        form.Peek().Add(new PropertyField(serializedObject.FindProperty(prop), label));
+    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop) {
+        return VRCF.Feature.FeatureFinder.RenderFeatureEditor(prop, model);
     }
-    private void AddState(string prop, string label) {
-        form.Peek().Add(VRCFuryStateEditor.render(serializedObject.FindProperty(prop), label));
-    }
-    public void FoldoutOpen(string header, Action with) {
-        Foldout(header, with, true);
-    }
-    public void Foldout(string header, Action with, bool def = false) {
-        var foldout = new Foldout();
-        foldout.text = header;
-        form.Peek().Add(foldout);
-        form.Push(foldout);
-        with();
-        form.Pop();
+
+    private void OnPlus(SerializedProperty listProp) {
+        var menu = new GenericMenu();
+        foreach (var feature in VRCF.Feature.FeatureFinder.GetAllFeatures()) {
+            var editorInst = (VRCF.Feature.BaseFeature) Activator.CreateInstance(feature.Value);
+            var title = editorInst.GetEditorTitle();
+            if (title != null) {
+                menu.AddItem(new GUIContent(title), false, () => {
+                    var modelInst = Activator.CreateInstance(feature.Key);
+                    VRCFuryEditorUtils.AddToList(listProp, entry => entry.managedReferenceValue = modelInst);
+                });
+            }
+        }
+        menu.ShowAsContext();
     }
 }
 
