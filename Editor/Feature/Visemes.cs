@@ -52,7 +52,7 @@ public class Visemes : BaseFeature {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("oneAnim")));
+        content.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("oneAnim")));
         return content;
     }
 }

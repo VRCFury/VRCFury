@@ -36,30 +36,41 @@ public class FeatureFinder {
         return allFeatures;
     }
     public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model) {
-        var feature = GetAllFeatures()[model.GetType()];
-        if (feature == null) {
-            return new Label("Failed to find editor: " + model.GetType().Name);
+        try {
+            var feature = GetAllFeatures()[model.GetType()];
+            if (feature == null) {
+                return new Label("Failed to find editor: " + model.GetType().Name);
+            }
+            var featureInstance = (BaseFeature)Activator.CreateInstance(feature);
+
+            var wrapper = new VisualElement();
+            var title = featureInstance.GetEditorTitle();
+            if (title == null) title = model.GetType().Name;
+
+            var header = new Label(title);
+            header.style.unityFontStyleAndWeight = FontStyle.Bold;
+            wrapper.Add(header);
+            
+            VisualElement bodyContent = null;
+            try {
+                bodyContent = featureInstance.CreateEditor(prop);
+            } catch(Exception e) {
+                Debug.LogException(e);
+                bodyContent = new Label("Editor threw an exception, check the unity console");
+            }
+            if (bodyContent != null) {
+                var body = new VisualElement();
+                body.Add(bodyContent);
+                body.style.marginLeft = 10;
+                body.style.marginTop = 5;
+                wrapper.Add(body);
+            }
+
+            return wrapper;
+        } catch(Exception e) {
+            Debug.LogException(e);
+            return new Label("Editor threw an exception, check the unity console");
         }
-        var featureInstance = (BaseFeature)Activator.CreateInstance(feature);
-
-        var wrapper = new VisualElement();
-        var title = featureInstance.GetEditorTitle();
-        if (title == null) title = model.GetType().Name;
-
-        var header = new Label(title);
-        header.style.unityFontStyleAndWeight = FontStyle.Bold;
-        wrapper.Add(header);
-        
-        var bodyContent = featureInstance.CreateEditor(prop);
-        if (bodyContent != null) {
-            var body = new VisualElement();
-            body.Add(bodyContent);
-            body.style.marginLeft = 10;
-            body.style.marginTop = 5;
-            wrapper.Add(body);
-        }
-
-        return wrapper;
     }
     public static void RunFeature(FeatureModel model, Action<BaseFeature> configure) {
         var feature = GetAllFeatures()[model.GetType()];
