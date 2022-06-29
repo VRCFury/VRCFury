@@ -9,6 +9,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using VRCF.Feature;
 using VRCF.Inspector;
 using VRCF.Model;
+using VRCF.Model.Feature;
 using Object = UnityEngine.Object;
 
 namespace VRCF.Builder {
@@ -22,7 +23,6 @@ public class VRCFuryBuilder {
             return true;
         }
 
-        EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
         var result = true;
         try {
             Run(avatarObject, vrcCloneObject);
@@ -39,10 +39,12 @@ public class VRCFuryBuilder {
 
     private void Run(GameObject avatarObject, GameObject vrcCloneObject) {
         // Unhook everything from our assets before we delete them
+        Progress(0, "Detaching from avatar");
         DetachFromAvatar(avatarObject);
         if (vrcCloneObject != null) DetachFromAvatar(vrcCloneObject);
 
         // Nuke all our old generated assets
+        Progress(0.1, "Clearing generated assets");
         var avatarPath = avatarObject.scene.path;
         if (string.IsNullOrEmpty(avatarPath)) {
             throw new Exception("Failed to find file path to avatar scene");
@@ -63,17 +65,20 @@ public class VRCFuryBuilder {
         var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir);
 
         // Attach our assets back to the avatar
+        Progress(0.2, "Attaching to avatar");
         AttachToAvatar(avatarObject, fxController, menu, syncedParams);
         if (vrcCloneObject != null) AttachToAvatar(vrcCloneObject, fxController, menu, syncedParams);
 
         // Third party integrations (if this is a fully-managed controller)
         if (IsVrcfAsset(fxController)) {
+            Progress(0.3, "Third-Party Integrations");
             VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
             // This is kinda broken, since it won't work right during upload with the clone object
             //VRCFuryLensIntegration.Run(avatarObject);
         }
 
         // Remove components that shouldn't be lying around
+        Progress(0.4, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
             if (c.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(c.gameObject)) {
                 Object.DestroyImmediate(c);
@@ -91,6 +96,7 @@ public class VRCFuryBuilder {
         // Do everything!
         ApplyFuryConfigs(fxController, menu, syncedParams, tmpDir, avatarObject);
 
+        Progress(1, "Finishing Up");
         EditorUtility.SetDirty(fxController);
         EditorUtility.SetDirty(menu);
         EditorUtility.SetDirty(syncedParams);
@@ -98,7 +104,7 @@ public class VRCFuryBuilder {
         Debug.Log("VRCFury Finished!");
     }
 
-    private void ApplyFuryConfigs(
+    private static void ApplyFuryConfigs(
         AnimatorController fxController,
         VRCExpressionsMenu menu,
         VRCExpressionParameters syncedParams,
@@ -115,26 +121,37 @@ public class VRCFuryBuilder {
         var defaultLayer = manager.NewLayer("Defaults");
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
 
+        Progress(0.5, "Scanning for features");
+        var features = new List<Tuple<GameObject, FeatureModel>>();
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
-            var isProp = configObject != avatarObject;
-            Debug.Log("Importing config from " + configObject.name);
             var config = VRCFuryConfigUpgrader.GetConfig(vrcFury);
             if (config.features != null) {
+                Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
                 foreach (var feature in config.features) {
-                    Action<BaseFeature> configureFeature = null;
-                    configureFeature = f => {
-                        f.manager = manager;
-                        f.motions = motions;
-                        f.defaultClip = defaultClip;
-                        f.noopClip = noopClip;
-                        f.avatarObject = avatarObject;
-                        f.featureBaseObject = configObject;
-                        f.addOtherFeature = model => FeatureFinder.RunFeature(model, configureFeature, isProp);
-                    };
-                    FeatureFinder.RunFeature(feature, configureFeature, isProp);
+                    features.Add(Tuple.Create(configObject, feature));
                 }
             }
+        }
+
+        var i = 0;
+        foreach (var featureTuple in features) {
+            i++;
+            var configObject = featureTuple.Item1;
+            Progress((0.5 + 0.5 * ((double)i/features.Count)), "Adding feature to " + configObject);
+            var feature = featureTuple.Item2;
+            var isProp = configObject != avatarObject;
+            Action<BaseFeature> configureFeature = null;
+            configureFeature = f => {
+                f.manager = manager;
+                f.motions = motions;
+                f.defaultClip = defaultClip;
+                f.noopClip = noopClip;
+                f.avatarObject = avatarObject;
+                f.featureBaseObject = configObject;
+                f.addOtherFeature = model => FeatureFinder.RunFeature(model, configureFeature, isProp);
+            };
+            FeatureFinder.RunFeature(feature, configureFeature, isProp);
         }
     }
 
@@ -229,7 +246,9 @@ public class VRCFuryBuilder {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 
-
+    private static void Progress(double progress, string info) {
+        EditorUtility.DisplayProgressBar("VRCFury is building ...", info, (float)progress);
+    }
 }
 
 }
