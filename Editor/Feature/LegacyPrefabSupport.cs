@@ -16,8 +16,6 @@ namespace VRCF.Feature {
 public class LegacyPrefabSupport : BaseFeature {
     public void Generate(VRCF.Model.Feature.LegacyPrefabSupport config) {
         foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
-            if (!PrefabUtility.IsAnyPrefabInstanceRoot(child.gameObject)) continue;
-
             var maybeValid = false;
             var isCanine = false;
             foreach (Transform c in child) {
