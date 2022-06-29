@@ -19,28 +19,37 @@ public class LegacyPrefabSupport : BaseFeature {
             if (!PrefabUtility.IsAnyPrefabInstanceRoot(child.gameObject)) continue;
 
             var maybeValid = false;
+            var isCanine = false;
             foreach (Transform c in child) {
-                if (c.gameObject.name.ToLower().Contains("zawoo") && c.gameObject.name.ToLower().Contains("peen")) {
+                var name = c.gameObject.name.ToLower();
+                if (name.Contains("constraint") && name.Contains("peen")) {
                     maybeValid = true;
+                    isCanine |= name.Contains("canine");
                 }
             }
             if (!maybeValid) continue;
 
             Debug.Log("Probably found zawoo prefab at " + child.gameObject.name);
 
-            var assetPath = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(child.gameObject);
-            if (assetPath == null) {
-                Debug.Log("Nope, not a prefab");
-                continue;
+            AnimatorController fx;
+            VRCExpressionsMenu menu;
+            VRCExpressionParameters prms;
+            if (isCanine) {
+                menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_caninePeen");
+                if (menu == null) return;
+                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+                fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX Template.controller");
+                prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_caninePeen.asset");
+            } else {
+                menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_hybridAnthroPeen");
+                if (menu == null) return;
+                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+                fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX_template.controller");
+                prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_hybridAnthroPeen.asset");
             }
-            var assetDir = System.IO.Path.GetDirectoryName(assetPath);
 
-            var fx = LoadAsset<AnimatorController>(assetDir+"/menuTemplates/FX Template.controller");
-            var menu = LoadAsset<VRCExpressionsMenu>(assetDir+"/menuTemplates/menu_zawoo_caninePeen.asset");
-            var prms = LoadAsset<VRCExpressionParameters>(assetDir+"/menuTemplates/param_zawoo_caninePeen.asset");
-
-            if (fx == null || menu == null || prms == null) {
-                Debug.Log("Nope. FX, menu, or params are missing from prefab directory.");
+            if (fx == null || prms == null) {
+                return;
             }
 
             addOtherFeature(new VRCF.Model.Feature.FullController {
@@ -55,11 +64,21 @@ public class LegacyPrefabSupport : BaseFeature {
         }
     }
 
-    private T LoadAsset<T>(string path) where T : UnityEngine.Object {
-        var asset = AssetDatabase.LoadAssetAtPath<T>(path);
-        if (asset == null) {
-            Debug.Log("Missing asset: " + path);
+    private T LoadAssetByName<T>(string name) where T : UnityEngine.Object {
+        var results = AssetDatabase.FindAssets(name);
+        foreach (var guid in results) {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path != null) {
+                var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+                if (asset != null) return asset;
+            }
         }
+        Debug.Log("Missing asset: " + name);
+        return null;
+    }
+    private T LoadAssetByPath<T>(string path) where T : UnityEngine.Object {
+        var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+        if (asset == null) Debug.Log("Missing asset: " + path);
         return asset;
     }
 
