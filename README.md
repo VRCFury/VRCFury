@@ -37,10 +37,10 @@ VRC Fury is new. Things may be broken. Beware. If you find any issues, please re
 * Click [here](https://gitlab.com/VRCFury/VRCFury/-/archive/main/VRCFury-main.zip) to download the latest release.
 * Extract the zip somewhere into your project's Assets folder (this is not a unity package file, so you can't just drag it in).
 * If you are using just VRCFury because an artist said you needed if for their prefab:
-  * You're done! Just follow their directions to add their prefab to your avatar, and VRC Fury will handle the rest.
+  * You can stop here! You're done! Just follow their directions to add their prefab to your avatar, and VRC Fury will handle the rest.
   * Otherwise, read on to add your own behaviors and props.
 * On your main avatar object, click `Add Component` -> `VRC Fury`.
-* All fields are optional. If you only want props, only fill out props! However, VRCFury also handles common gesture patterns and blinking animations.
+* Add props and other features using the `+` button on the component. See the `Feature Modules` section below for information about each type of feature.
 * You're done! There's no "building" to do. VRC Fury will update your FX layer, VRC menus and params automatically before each upload.
 
 ## Upgrading
