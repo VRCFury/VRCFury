@@ -44,6 +44,7 @@ public class DataCopier {
             toState.speed = fromState.speed;
             toState.timeParameter = fromState.timeParameter;
             toState.timeParameterActive = fromState.timeParameterActive;
+            toState.writeDefaultValues = fromState.writeDefaultValues;
             toState.motion = CopyMotion(fromState.motion, rewriteClip);
             foreach (var b in fromState.behaviours) {
                 if (b is VRCAvatarParameterDriver) {
