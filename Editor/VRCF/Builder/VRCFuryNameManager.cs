@@ -18,6 +18,7 @@ public class VRCFuryNameManager {
     private readonly AnimatorController ctrl;
     private readonly string tmpDir;
     private readonly bool useMenuRoot;
+    private readonly bool useWriteDefaults;
     private Object clipStorage;
 
     public VRCFuryNameManager(VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller, string tmpDir, bool useMenuRoot) {
@@ -26,6 +27,28 @@ public class VRCFuryNameManager {
         ctrl = controller;
         this.tmpDir = tmpDir;
         this.useMenuRoot = useMenuRoot;
+        useWriteDefaults = ShouldUseWriteDefaults();
+    }
+
+    public bool IsUsingWriteDefaults { get => useWriteDefaults; }
+
+    private bool ShouldUseWriteDefaults()
+    {
+        int totalStates = 0;
+        int writeDefaultStates = 0;
+        foreach (var layer in ctrl.layers) {
+            // Analyze only non-VRCF layers
+            if (!layer.name.StartsWith("[" + prefix + "]")) {
+                foreach (var state in layer.stateMachine.states) {
+                    totalStates++;
+                    if (state.state.writeDefaultValues) {
+                        writeDefaultStates++;
+                    }
+                }
+            }
+        }
+        // Half of the states use writeDefaults, safe to assume it should be used everywhere
+        return writeDefaultStates >= totalStates / 2f;
     }
 
     public static void PurgeFromAnimator(AnimatorController ctrl) {
@@ -90,7 +113,7 @@ public class VRCFuryNameManager {
         if (_controller == null) {
             _noopClip = NewClip("noop");
             _noopClip.SetCurve("_ignored", typeof(GameObject), "m_IsActive", AnimationCurve.Constant(0,1/60f,0));
-            _controller = new VFAController(ctrl, _noopClip);
+            _controller = new VFAController(ctrl, _noopClip, useWriteDefaults);
         }
         return _controller;
     }
