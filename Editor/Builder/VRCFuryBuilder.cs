@@ -12,11 +12,18 @@ using VRCF.Feature;
 namespace VRCF.Builder {
 
 public class VRCFuryBuilder {
-    public bool SafeRun(VRCFuryConfig config, GameObject avatarObject) {
+    public bool SafeRun(GameObject avatarObject) {
+        Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
+
+        if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length == 0) {
+            Debug.Log("VRCFury components not found in avatar. Skipping.");
+            return true;
+        }
+
         EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
-        bool result;
+        bool result = true;
         try {
-            result = Run(config, avatarObject);
+            Run(avatarObject);
         } catch(Exception e) {
             result = false;
             Debug.LogException(e);
@@ -28,49 +35,34 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    private bool Run(VRCFuryConfig config, GameObject avatarObject) {
-        this.avatarObject = avatarObject;
-
-        Debug.Log("VRCFury is running for " + avatarObject.name + "...");
-        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
-        var fxLayer = avatar.baseAnimationLayers[4];
-        Action saveFxLayer = () => { avatar.baseAnimationLayers[4] = fxLayer; };
+    private void Run(GameObject avatarObject) {
+        // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
+        // Let's get a reference to the original avatar, so we can apply our changes to it as well.
+        GameObject vrcCloneObject = null;
+        if (avatarObject.name.EndsWith("(Clone)")) {
+            GameObject original = null;
+            foreach (var desc in GameObject.FindObjectsOfType<VRCAvatarDescriptor>()) {
+                if (desc.gameObject.name+"(Clone)" == avatarObject.name && desc.gameObject.activeInHierarchy) {
+                    original = desc.gameObject;
+                    break;
+                }
+            }
+            if (original == null) {
+                throw new Exception("Failed to find original avatar object during vrchat upload");
+            }
+            Debug.Log("Found original avatar object for VRC upload: " + original);
+            vrcCloneObject = avatarObject;
+            avatarObject = original;
+        }
 
         // Unhook everything from our assets before we delete them
-        var animator = avatarObject.GetComponent<Animator>();
-        if (animator != null) {
-            if (IsVrcfAsset(animator.runtimeAnimatorController)) {
-                animator.runtimeAnimatorController = null;
-            }
-        }
-        AnimatorController fxController = null;
-        if (IsVrcfAsset(fxLayer.animatorController)) {
-            fxLayer.animatorController = null;
-            saveFxLayer();
-        } else if (avatar.customizeAnimationLayers && !fxLayer.isDefault && fxLayer.animatorController != null) {
-            fxController = (AnimatorController)fxLayer.animatorController;
-            VRCFuryNameManager.PurgeFromAnimator(fxController);
-        }
-        VRCExpressionsMenu menu = null;
-        if (IsVrcfAsset(avatar.expressionsMenu)) {
-            avatar.expressionsMenu = null;
-        } else if (avatar.customExpressions && avatar.expressionsMenu != null) {
-            menu = avatar.expressionsMenu;
-            VRCFuryNameManager.PurgeFromMenu(menu);
-        }
-        VRCExpressionParameters syncedParams = null;
-        if (IsVrcfAsset(avatar.expressionParameters)) {
-            avatar.expressionParameters = null;
-        } else if (avatar.customExpressions && avatar.expressionParameters != null) {
-            syncedParams = avatar.expressionParameters;
-            VRCFuryNameManager.PurgeFromParams(syncedParams);
-        }
+        DetachFromAvatar(avatarObject);
+        if (vrcCloneObject != null) DetachFromAvatar(vrcCloneObject);
 
         // Nuke all our old generated assets
         var avatarPath = avatarObject.scene.path;
         if (string.IsNullOrEmpty(avatarPath)) {
-            EditorUtility.DisplayDialog("VRCFury Error", "Failed to find file path to avatar scene", "Ok");
-            return false;
+            throw new Exception("Failed to find file path to avatar scene");
         }
         var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + avatarObject.name;
         if (Directory.Exists(tmpDir)) {
@@ -81,109 +73,170 @@ public class VRCFuryBuilder {
         }
         Directory.CreateDirectory(tmpDir);
 
-        var thirdPartyIntegrations = false;
-        if (fxController == null) {
-            fxController = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatarObject.name + ".controller");
-            avatar.customizeAnimationLayers = true;
-            fxLayer.isDefault = false;
-            fxLayer.type = VRCAvatarDescriptor.AnimLayerType.FX;
-            fxLayer.animatorController = fxController;
-            saveFxLayer();
-            if (animator != null) animator.runtimeAnimatorController = fxController;
-            thirdPartyIntegrations = true;
-        }
-        var useMenuRoot = false;
-        if (menu == null) {
-            useMenuRoot = true;
-            avatar.customExpressions = true;
-            menu = avatar.expressionsMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            menu.controls = new List<VRCExpressionsMenu.Control>();
-            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + avatarObject.name + ".asset");
-        }
-        if (syncedParams == null) {
-            avatar.customExpressions = true;
-            syncedParams = avatar.expressionParameters = ScriptableObject.CreateInstance<VRCExpressionParameters>();
-            syncedParams.parameters = new VRCExpressionParameters.Parameter[]{};
-            AssetDatabase.CreateAsset(syncedParams, tmpDir + "/VRCFury Params for " + avatarObject.name + ".asset");
-        }
+        // Figure out what assets we're going to be messing with
+        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        var fxController = GetOrCreateAvatarFx(avatar, tmpDir);
+        var menu = GetOrCreateAvatarMenu(avatar, tmpDir);
+        var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir);
 
-        EditorUtility.SetDirty(avatar);
+        // Attach our assets back to the avatar
+        AttachToAvatar(avatarObject, fxController, menu, syncedParams);
+        if (vrcCloneObject != null) AttachToAvatar(vrcCloneObject, fxController, menu, syncedParams);
 
-        if (thirdPartyIntegrations) {
+        // Third party integrations (if this is a fully-managed controller)
+        if (IsVrcfAsset(fxController)) {
             VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
-            VRCFuryLensIntegration.Run(avatarObject);
+            // This is kinda broken, since it won't work right during upload with the clone object
+            //VRCFuryLensIntegration.Run(avatarObject);
         }
 
-        manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, useMenuRoot);
-        baseFile = AssetDatabase.GetAssetPath(fxController);
-        motions = new VRCFuryClipUtils(avatarObject);
-
-        // REMOVE ANIMATORS FROM PREFAB INSTANCES (often used for prop testing)
-        foreach (var otherAnimator in avatarObject.GetComponentsInChildren<Animator>(true)) {
-            if (otherAnimator.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(otherAnimator.gameObject)) {
-                UnityEngine.Object.DestroyImmediate(otherAnimator);
+        // Remove components that shouldn't be lying around
+        foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
+            if (c.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(c.gameObject)) {
+                GameObject.DestroyImmediate(c);
+            }
+        }
+        if (vrcCloneObject != null) {
+            foreach (var c in vrcCloneObject.GetComponentsInChildren<VRCFury>(true)) {
+                GameObject.DestroyImmediate(c);
+            }
+            foreach (var c in vrcCloneObject.GetComponentsInChildren<Animator>(true)) {
+                if (c.gameObject != vrcCloneObject) GameObject.DestroyImmediate(c);
             }
         }
 
-        // DEFAULTS
-        noopClip = manager.GetNoopClip();
-        defaultClip = manager.NewClip("Defaults");
+        // Do everything!
+        ApplyFuryConfigs(fxController, menu, syncedParams, tmpDir, avatarObject);
+
+        EditorUtility.SetDirty(fxController);
+        EditorUtility.SetDirty(menu);
+        EditorUtility.SetDirty(syncedParams);
+
+        Debug.Log("VRCFury Finished!");
+    }
+
+    private void ApplyFuryConfigs(
+        AnimatorController fxController,
+        VRCExpressionsMenu menu,
+        VRCExpressionParameters syncedParams,
+        string tmpDir,
+        GameObject avatarObject
+    ) {
+        var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
+        var baseFile = AssetDatabase.GetAssetPath(fxController);
+        var motions = new VRCFuryClipUtils(avatarObject);
+        var noopClip = manager.GetNoopClip();
+        var defaultClip = manager.NewClip("Defaults");
         var defaultLayer = manager.NewLayer("Defaults");
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
 
-        if (config != null) {
-            handleConfig(config, null);
-        }
-        foreach (var otherVrcfury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
-            if (otherVrcfury.gameObject == avatarObject) continue;
-            Debug.Log("Importing config from " + otherVrcfury.gameObject.name);
-            handleConfig(VRCFuryConfigUpgrader.GetConfig(otherVrcfury), otherVrcfury.gameObject);
-        }
-
-        Debug.Log("VRCFury Finished!");
-
-        return true;
-    }
-
-    private void handleConfig(VRCFuryConfig config, GameObject featureBaseObject) {
-        if (config.features != null) {
-            foreach (var feature in config.features) {
-                handleFeature(feature, featureBaseObject);
+        foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
+            var configObject = vrcFury.gameObject;
+            Debug.Log("Importing config from " + configObject.name);
+            var config = VRCFuryConfigUpgrader.GetConfig(vrcFury);
+            if (config.features != null) {
+                foreach (var feature in config.features) {
+                    Action<BaseFeature> configureFeature = null;
+                    configureFeature = f => {
+                        f.manager = manager;
+                        f.motions = motions;
+                        f.defaultClip = defaultClip;
+                        f.noopClip = noopClip;
+                        f.avatarObject = avatarObject;
+                        f.featureBaseObject = configObject;
+                        f.addOtherFeature = model => FeatureFinder.RunFeature(model, configureFeature);
+                    };
+                    FeatureFinder.RunFeature(feature, configureFeature);
+                }
             }
         }
     }
 
-    private void handleFeature(VRCF.Model.Feature.FeatureModel feature, GameObject featureBaseObject) {
-        Action<BaseFeature> configureFeature = null;
-        configureFeature = f => {
-            f.manager = manager;
-            f.motions = motions;
-            f.defaultClip = defaultClip;
-            f.noopClip = noopClip;
-            f.avatarObject = avatarObject;
-            f.featureBaseObject = featureBaseObject;
-            f.addOtherFeature = model => FeatureFinder.RunFeature(model, configureFeature);
-        };
-        FeatureFinder.RunFeature(feature, configureFeature);
+    private static AnimatorController GetAvatarFx(VRCAvatarDescriptor avatar) {
+        var fxLayer = avatar.baseAnimationLayers[4];
+        return avatar.customizeAnimationLayers && !fxLayer.isDefault ? (AnimatorController)fxLayer.animatorController : null;
     }
-
-    private VRCFuryNameManager manager;
-    private VRCFuryClipUtils motions;
-    private GameObject avatarObject;
-    private string baseFile;
-    private AnimationClip noopClip;
-    private AnimationClip defaultClip;
-
-    private GameObject find(string path) {
-        var found = avatarObject.transform.Find(path)?.gameObject;
-        if (found == null) {
-            throw new Exception("Failed to find path '" + path + "'");
+    private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir) {
+        var fx = GetAvatarFx(avatar);
+        if (fx == null) fx = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatar.gameObject.name + ".controller");
+        return fx;
+    }
+    private static VRCExpressionsMenu GetAvatarMenu(VRCAvatarDescriptor avatar) {
+        return avatar.customExpressions ? avatar.expressionsMenu : null;
+    }
+    private static VRCExpressionsMenu GetOrCreateAvatarMenu(VRCAvatarDescriptor avatar, string tmpDir) {
+        var menu = GetAvatarMenu(avatar);
+        if (menu == null) {
+            menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+            menu.controls = new List<VRCExpressionsMenu.Control>();
+            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + avatar.gameObject.name + ".asset");
         }
-        return found;
+        return menu;
+    }
+    private static VRCExpressionParameters GetAvatarParams(VRCAvatarDescriptor avatar) {
+        return avatar.customExpressions ? avatar.expressionParameters : null;
+    }
+    private static VRCExpressionParameters GetOrCreateAvatarParams(VRCAvatarDescriptor avatar, string tmpDir) {
+        var prms = GetAvatarParams(avatar);
+        if (prms == null) {
+            prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
+            prms.parameters = new VRCExpressionParameters.Parameter[]{};
+            AssetDatabase.CreateAsset(prms, tmpDir + "/VRCFury Params for " + avatar.gameObject.name + ".asset");
+        }
+        return prms;
     }
 
-    private SkinnedMeshRenderer findSkin(string path) {
-        return find(path).GetComponent(typeof(SkinnedMeshRenderer)) as SkinnedMeshRenderer;
+    private static void DetachFromAvatar(GameObject avatarObject) {
+        var animator = avatarObject.GetComponent<Animator>();
+        if (animator != null) {
+            if (IsVrcfAsset(animator.runtimeAnimatorController)) {
+                animator.runtimeAnimatorController = null;
+            }
+        }
+
+        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        var fx = GetAvatarFx(avatar);
+        if (IsVrcfAsset(fx)) {
+            var fxLayer = avatar.baseAnimationLayers[4];
+            fxLayer.animatorController = null;
+            avatar.baseAnimationLayers[4] = fxLayer;
+        } else if (fx != null) {
+            VRCFuryNameManager.PurgeFromAnimator(fx);
+        }
+
+        var menu = GetAvatarMenu(avatar);
+        if (IsVrcfAsset(menu)) {
+            avatar.expressionsMenu = null;
+        } else if (menu != null) {
+            VRCFuryNameManager.PurgeFromMenu(menu);
+        }
+
+        var prms = GetAvatarParams(avatar);
+        if (IsVrcfAsset(prms)) {
+            avatar.expressionParameters = null;
+        } else if (prms != null) {
+            VRCFuryNameManager.PurgeFromParams(prms);
+        }
+
+        EditorUtility.SetDirty(avatar);
+    }
+
+    private static void AttachToAvatar(GameObject avatarObject, AnimatorController fx, VRCExpressionsMenu menu, VRCExpressionParameters prms) {
+        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        var animator = avatarObject.GetComponent<Animator>();
+
+        var fxLayer = avatar.baseAnimationLayers[4];
+        avatar.customizeAnimationLayers = true;
+        fxLayer.isDefault = false;
+        fxLayer.type = VRCAvatarDescriptor.AnimLayerType.FX;
+        fxLayer.animatorController = fx;
+        avatar.baseAnimationLayers[4] = fxLayer;
+        if (animator != null) animator.runtimeAnimatorController = fx;
+        avatar.customExpressions = true;
+        avatar.expressionsMenu = menu;
+        avatar.expressionParameters = prms;
+
+        EditorUtility.SetDirty(avatar);
     }
 
     public static bool IsVrcfAsset(UnityEngine.Object obj) {
