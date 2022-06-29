@@ -43,6 +43,11 @@ VRC Fury is new. Things may be broken. Beware. If you find any issues, please re
 * All fields are optional. If you only want props, only fill out props! However, VRCFury also handles common gesture patterns and blinking animations.
 * You're done! There's no "building" to do. VRC Fury will update your FX layer, VRC menus and params automatically before each upload.
 
+## Upgrading
+
+* In unity, choose `Tools` -> `Update VRCFury`.
+* If there is an error, delete the VRCFury folder from your project, then follow the instructions above to reinstall.
+
 ## Feature Modules
 
 Once you add a VRCFury component to your avatar (or prop), you can add any combination of these modules:

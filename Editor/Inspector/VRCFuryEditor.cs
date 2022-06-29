@@ -9,6 +9,9 @@ using VRCF.Builder;
 using VRCF.Model;
 using UnityEditor.Animations;
 using VRCF.Model.Feature;
+using System.Net;
+using System.ComponentModel;
+using System.IO;
 
 namespace VRCF.Inspector {
 
@@ -23,6 +26,7 @@ public class VRCFuryMenuItem {
 
     [MenuItem("Tools/Force Run VRCFury on Selection", true)]
     static bool Check() {
+        if (Selection.activeTransform == null) return false;
         var obj = Selection.activeTransform.gameObject;
         if (obj == null) return false;
         var avatar = obj.GetComponent<VRCAvatarDescriptor>();
