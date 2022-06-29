@@ -13,24 +13,26 @@ public class VRCFuryClipUtils {
     }
 
     public ObjectReferenceKeyframe[] OneFrame(Object obj) {
-        var f1 = new ObjectReferenceKeyframe();
-        f1.time = 0;
-        f1.value = obj;
-        var f2 = new ObjectReferenceKeyframe();
-        f2.time = 1/60f;
-        f2.value = obj;
+        var f1 = new ObjectReferenceKeyframe {
+            time = 0,
+            value = obj
+        };
+        var f2 = new ObjectReferenceKeyframe {
+            time = 1/60f,
+            value = obj
+        };
         return new[]{ f1, f2 };
     }
-    public AnimationCurve OneFrame(float value) {
+    public static AnimationCurve OneFrame(float value) {
         return AnimationCurve.Constant(0, 1/60f, value);
     }
-    public AnimationCurve FromFrames(params Keyframe[] keyframes) {
+    public static AnimationCurve FromFrames(params Keyframe[] keyframes) {
         for (var i = 0; i < keyframes.Length; i++) {
             keyframes[i].time /= 60f;
         }
         return new AnimationCurve(keyframes);
     }
-    public AnimationCurve FromSeconds(params Keyframe[] keyframes) {
+    public static AnimationCurve FromSeconds(params Keyframe[] keyframes) {
         return new AnimationCurve(keyframes);
     }
 
@@ -52,15 +54,15 @@ public class VRCFuryClipUtils {
     public void CopyWithAdjustedPrefixes(AnimationClip clip, AnimationClip copy, GameObject oldRoot) {
         var prefix = oldRoot == baseObject ? "" : GetPath(oldRoot) + "/";
         var curvesBindings = AnimationUtility.GetCurveBindings(clip);
-        for (var i = 0; i < curvesBindings.Length; i++) {
-            var binding = curvesBindings[i];
+        foreach (var b in curvesBindings) {
+            var binding = b;
             var curve = AnimationUtility.GetEditorCurve(clip, binding);
             binding.path = ResolveRelativePath(prefix + binding.path);
             AnimationUtility.SetEditorCurve(copy, binding, curve);
         }
         var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
-        for (var i = 0; i < objBindings.Length; i++) {
-            var binding = objBindings[i];
+        foreach (var b in objBindings) {
+            var binding = b;
             var objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
             binding.path = ResolveRelativePath(prefix + binding.path);
             AnimationUtility.SetObjectReferenceCurve(copy, binding, objectReferenceCurve);
@@ -71,7 +73,7 @@ public class VRCFuryClipUtils {
         next.ApplyModifiedProperties();
     }
 
-    private string ResolveRelativePath(string path)
+    private static string ResolveRelativePath(string path)
     {
         var parts = path.Split('/');
         var ret = new List<string>();

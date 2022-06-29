@@ -1,4 +1,5 @@
 using UnityEngine;
+using VRCF.Builder;
 
 namespace VRCF.Feature {
 
@@ -8,7 +9,7 @@ public class AvatarScale : BaseFeature {
         manager.NewMenuSlider("Scale", paramScale);
         var scaleClip = manager.NewClip("Scale");
         var baseScale = avatarObject.transform.localScale.x;
-        motions.Scale(scaleClip, avatarObject, motions.FromFrames(
+        motions.Scale(scaleClip, avatarObject, VRCFuryClipUtils.FromFrames(
             new Keyframe(0, baseScale * 0.1f),
             new Keyframe(2, baseScale * 1),
             new Keyframe(3, baseScale * 2),

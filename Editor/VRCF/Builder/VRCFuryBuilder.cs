@@ -124,7 +124,6 @@ public class VRCFuryBuilder {
         GameObject avatarObject
     ) {
         var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
-        var baseFile = AssetDatabase.GetAssetPath(fxController);
         var motions = new VRCFuryClipUtils(avatarObject);
         var noopClip = manager.GetNoopClip();
         var defaultClip = manager.NewClip("Defaults");

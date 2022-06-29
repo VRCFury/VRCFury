@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -8,8 +7,6 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace VRCF.Builder {
 
 public class VRCFuryLensIntegration {
-    private static BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
-
     public static void Run(GameObject avatar) {
         Type setupType = null;
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {

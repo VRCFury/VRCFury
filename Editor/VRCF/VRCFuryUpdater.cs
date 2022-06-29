@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace VRCF {
 
-public class VRCFuryUpdater {
+public static class VRCFuryUpdater {
     [MenuItem("Tools/Update VRCFury")]
     private static void Upgrade() {
         WithErrorPopup(() => {

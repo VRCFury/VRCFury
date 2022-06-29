@@ -5,7 +5,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VRCF.Builder {
 
-public class DataCopier {
+public static class DataCopier {
     public static void Copy(AnimatorController from, AnimatorController to, string layerPrefix, Func<AnimationClip,AnimationClip> rewriteClip) {
         foreach (var param in from.parameters) {
             var exists = Array.Find(to.parameters, other => other.name == param.name);
@@ -66,8 +66,9 @@ public class DataCopier {
         // Copy Substate Machines
         foreach (var fromMachineOuter in from.stateMachines) {
             var fromMachine = fromMachineOuter.stateMachine;
-            var toMachine = new AnimatorStateMachine();
-            toMachine.name = fromMachine.name;
+            var toMachine = new AnimatorStateMachine {
+                name = fromMachine.name
+            };
             to.AddStateMachine(toMachine.name, fromMachineOuter.position);
             CopyMachine(fromMachine, toMachine, toBase, rewriteClip);
         }
@@ -76,29 +77,31 @@ public class DataCopier {
     }
 
     private static Motion CopyMotion(Motion from, Func<AnimationClip,AnimationClip> rewriteClip) {
-        if (from == null) return null;
-        if (from is AnimationClip) {
-            return rewriteClip(from as AnimationClip);
-        }
-        if (from is BlendTree) {
-            var oldBlendTree = from as BlendTree;
-            var newBlendTree = new BlendTree();
+        switch (from) {
+            case AnimationClip clip:
+                return rewriteClip(clip);
+            case BlendTree tree:
+                var oldBlendTree = tree;
+                var newBlendTree = new BlendTree {
+                    useAutomaticThresholds = false,
+                    blendParameter = oldBlendTree.blendParameter,
+                    blendType = oldBlendTree.blendType
+                };
 
-            newBlendTree.useAutomaticThresholds = false;
-            newBlendTree.blendParameter = oldBlendTree.blendParameter;
-            newBlendTree.blendType = oldBlendTree.blendType;
+                foreach (var oldChild in oldBlendTree.children) {
+                    var newMotion = CopyMotion(oldChild.motion, rewriteClip);
+                    newBlendTree.AddChild(newMotion, oldChild.threshold);
+                    var newChild = newBlendTree.children[newBlendTree.children.Length-1];
+                    newChild.timeScale = oldChild.timeScale;
+                    newChild.position = oldChild.position;
+                    newChild.threshold = oldChild.threshold;
+                    newChild.directBlendParameter = oldChild.directBlendParameter;
+                }
 
-            foreach (var oldChild in oldBlendTree.children) {
-                var newMotion = CopyMotion(oldChild.motion, rewriteClip);
-                newBlendTree.AddChild(newMotion, oldChild.threshold);
-                var newChild = newBlendTree.children[newBlendTree.children.Length-1];
-                newChild.timeScale = oldChild.timeScale;
-                newChild.position = oldChild.position;
-                newChild.threshold = oldChild.threshold;
-                newChild.directBlendParameter = oldChild.directBlendParameter;
-            }
+                return newBlendTree;
+            default:
+                return null;
         }
-        return null;
     }
 
     private static void CopyTransition(
@@ -146,10 +149,22 @@ public class DataCopier {
 
     private static void CopyTransitions(AnimatorStateMachine from, AnimatorStateMachine to, AnimatorStateMachine toBase) {
         foreach (var oldTrans in from.anyStateTransitions) {
-            CopyTransition(oldTrans, to, toBase, s => to.AddAnyStateTransition(s), s => to.AddAnyStateTransition(s));
+            CopyTransition(
+                oldTrans,
+                to,
+                toBase,
+                to.AddAnyStateTransition,
+                to.AddAnyStateTransition
+            );
         }
         foreach (var oldTrans in from.entryTransitions) {
-            CopyTransition(oldTrans, to, toBase, s => to.AddEntryTransition(s), s => to.AddEntryTransition(s));
+            CopyTransition(
+                oldTrans,
+                to,
+                toBase,
+                to.AddEntryTransition,
+                to.AddEntryTransition
+            );
         }
         foreach (var fromState in from.states) {
             var toStateIdx = Array.FindIndex(to.states, s => s.state.name == fromState.state.name);
@@ -157,9 +172,21 @@ public class DataCopier {
             var toState = to.states[toStateIdx];
             foreach (var oldTrans in fromState.state.transitions) {
                 if (oldTrans.isExit) {
-                    CopyTransition(oldTrans, to, toBase, s => toState.state.AddExitTransition(), null);
+                    CopyTransition(
+                        oldTrans,
+                        to,
+                        toBase,
+                        s => toState.state.AddExitTransition(),
+                        null
+                    );
                 } else {
-                    CopyTransition(oldTrans, to, toBase, s => toState.state.AddTransition(s), s => toState.state.AddTransition(s));
+                    CopyTransition(
+                        oldTrans,
+                        to,
+                        toBase,
+                        toState.state.AddTransition,
+                        toState.state.AddTransition
+                    );
                 }
             }
         }

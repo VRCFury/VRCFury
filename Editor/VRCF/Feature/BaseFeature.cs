@@ -90,7 +90,7 @@ public abstract class BaseFeature {
             foreach (var binding in AnimationUtility.GetCurveBindings(output)) {
                 var exists = AnimationUtility.GetFloatValue(avatarObject, binding, out var value);
                 if (exists) {
-                    AnimationUtility.SetEditorCurve(defaultClip, binding, motions.OneFrame(value));
+                    AnimationUtility.SetEditorCurve(defaultClip, binding, VRCFuryClipUtils.OneFrame(value));
                 } else {
                     Debug.LogWarning("Missing default value for: " + binding.path);
                 }

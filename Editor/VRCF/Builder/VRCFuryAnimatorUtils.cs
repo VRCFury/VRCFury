@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
@@ -9,7 +8,7 @@ namespace VRCF.Builder {
 
 public class VFAController {
     private readonly AnimatorController ctrl;
-    internal AnimationClip noopClip;
+    internal readonly AnimationClip noopClip;
 
     public VFAController(AnimatorController ctrl, AnimationClip noopClip) {
         this.ctrl = ctrl;
@@ -53,7 +52,6 @@ public class VFAController {
 public class VFALayer {
     private readonly AnimatorControllerLayer layer;
     private readonly VFAController ctrl;
-    private List<string> statesIgnoredForPos = new List<string>();
 
     public VFALayer(AnimatorControllerLayer layer, VFAController ctrl) {
         this.layer = layer;
@@ -73,13 +71,14 @@ public class VFALayer {
         return state;
     }
 
-    public ChildAnimatorState? GetLastNodeForPositioning() {
+    private ChildAnimatorState? GetLastNodeForPositioning() {
         var states = layer.stateMachine.states;
         var index = Array.FindLastIndex(states, state => !state.state.name.StartsWith("_"));
         if (index < 0) return null;
         return states[index];
     }
-    public ChildAnimatorState? GetLastNode() {
+
+    private ChildAnimatorState? GetLastNode() {
         var states = layer.stateMachine.states;
         if (states.Length == 0) return null;
         return states[states.Length-1];
@@ -135,7 +134,10 @@ public class VFAState {
     }
 
     private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
-        if (driver == null) driver = node.state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+        if (driver == null) {
+            driver = node.state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            driver.localOnly = local;
+        }
         var p = new VRC_AvatarParameterDriver.Parameter();
         p.name = param;
         p.type = VRC_AvatarParameterDriver.ChangeType.Set;

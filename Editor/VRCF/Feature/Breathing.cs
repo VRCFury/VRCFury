@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VRCF.Builder;
 using VRCF.Model;
 
 namespace VRCF.Feature {
@@ -14,7 +15,7 @@ public class Breathing : BaseFeature {
         so.ApplyModifiedProperties();
 
         if (config.obj != null) {
-            motions.Scale(clip, config.obj, motions.FromSeconds(
+            motions.Scale(clip, config.obj, VRCFuryClipUtils.FromSeconds(
                 new Keyframe(0, config.scaleMin),
                 new Keyframe(2.3f, config.scaleMax),
                 new Keyframe(2.7f, config.scaleMax),
@@ -24,7 +25,7 @@ public class Breathing : BaseFeature {
         if (!string.IsNullOrEmpty(config.blendshape)) {
             var breathingSkins = getAllSkins().FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(config.blendshape) != -1); 
             foreach (var skin in breathingSkins) {
-                motions.BlendShape(clip, skin, config.blendshape, motions.FromSeconds(
+                motions.BlendShape(clip, skin, config.blendshape, VRCFuryClipUtils.FromSeconds(
                     new Keyframe(0, 0),
                     new Keyframe(2.3f, 100),
                     new Keyframe(2.7f, 100),
