@@ -1,21 +1,12 @@
-using System;
-using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
-using VRCF.Builder;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
+using VRCF.Builder;
 using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
 public class SenkyGestureDriver : BaseFeature {
-    public void Generate(VRCF.Model.Feature.SenkyGestureDriver config) {
+    public void Generate(Model.Feature.SenkyGestureDriver config) {
         var blinkActive = manager.NewBool("BlinkActive", def: true);
         var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
         var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);

@@ -1,20 +1,14 @@
-using System;
-using UnityEngine;
+using System.IO;
 using UnityEditor;
 using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
-using VRCF.Builder;
+using UnityEngine;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VRCF.Feature {
 
 public class LegacyPrefabSupport : BaseFeature {
-    public void Generate(VRCF.Model.Feature.LegacyPrefabSupport config) {
+    public void Generate(Model.Feature.LegacyPrefabSupport config) {
         foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
             var maybeValid = false;
             var isCanine = false;
@@ -50,7 +44,7 @@ public class LegacyPrefabSupport : BaseFeature {
                 return;
             }
 
-            addOtherFeature(new VRCF.Model.Feature.FullController {
+            addOtherFeature(new Model.Feature.FullController {
                 controller = fx,
                 menu = menu,
                 parameters = prms,
@@ -62,7 +56,7 @@ public class LegacyPrefabSupport : BaseFeature {
         }
     }
 
-    private T LoadAssetByName<T>(string name) where T : UnityEngine.Object {
+    private T LoadAssetByName<T>(string name) where T : Object {
         var results = AssetDatabase.FindAssets(name);
         foreach (var guid in results) {
             var path = AssetDatabase.GUIDToAssetPath(guid);
@@ -74,7 +68,7 @@ public class LegacyPrefabSupport : BaseFeature {
         Debug.Log("Missing asset: " + name);
         return null;
     }
-    private T LoadAssetByPath<T>(string path) where T : UnityEngine.Object {
+    private T LoadAssetByPath<T>(string path) where T : Object {
         var asset = AssetDatabase.LoadAssetAtPath<T>(path);
         if (asset == null) Debug.Log("Missing asset: " + path);
         return asset;

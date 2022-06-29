@@ -1,21 +1,13 @@
-using System;
-using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 using VRCF.Inspector;
+using VRCF.Model;
 
 namespace VRCF.Feature {
 
 public class Toes : BaseFeature {
-    public void Generate(VRCF.Model.Feature.Toes config) {
-        var toes = new VRCF.Model.Feature.Puppet();
+    public void Generate(Model.Feature.Toes config) {
+        var toes = new Model.Feature.Puppet();
         toes.name = "Toes";
         if (StateExists(config.down)) toes.stops.Add(new VRCFuryPropPuppetStop(0,-1,config.down));
         if (StateExists(config.up)) toes.stops.Add(new VRCFuryPropPuppetStop(0,1,config.up));

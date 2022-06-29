@@ -1,23 +1,16 @@
-using System;
-using UnityEngine;
-using UnityEditor;
 using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
+using UnityEngine;
 
 namespace VRCF.Feature {
 
 public class Puppet : BaseFeature {
-    public void Generate(VRCF.Model.Feature.Puppet config) {
+    public void Generate(Model.Feature.Puppet config) {
         var layerName = config.name;
         var layer = manager.NewLayer(layerName);
         var tree = manager.NewBlendTree(config.name);
         tree.blendType = BlendTreeType.FreeformDirectional2D;
         tree.AddChild(noopClip, new Vector2(0,0));
-        int i = 0;
+        var i = 0;
         var usesX = false;
         var usesY = false;
         foreach (var stop in config.stops) {

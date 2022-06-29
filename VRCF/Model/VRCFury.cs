@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using VRCF.Model.Feature;
 
 namespace VRCF.Model {
 

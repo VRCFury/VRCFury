@@ -1,19 +1,11 @@
-using System;
-using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
-using UnityEngine.UIElements;
 using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 
 namespace VRCF.Feature {
 
 public class SecurityLock : BaseFeature {
-    public void Generate(VRCF.Model.Feature.SecurityLock config) {
+    public void Generate(Model.Feature.SecurityLock config) {
         if (config.leftCode == 0 || config.rightCode == 0) return;
 
         var paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);

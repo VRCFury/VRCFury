@@ -1,20 +1,14 @@
-using System;
-using UnityEngine;
 using UnityEditor;
 using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRCF.Builder;
-using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 
 namespace VRCF.Feature {
 
 public class FullController : BaseFeature {
-    public void Generate(VRCF.Model.Feature.FullController config) {
+    public void Generate(Model.Feature.FullController config) {
         var baseObject = config.rootObj != null ? config.rootObj : featureBaseObject;
 
         if (config.controller != null) {

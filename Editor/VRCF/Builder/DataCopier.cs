@@ -1,7 +1,6 @@
-using System.Collections.Generic;
 using System;
-using UnityEngine;
 using UnityEditor.Animations;
+using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 
 namespace VRCF.Builder {
@@ -82,8 +81,8 @@ public class DataCopier {
             return rewriteClip(from as AnimationClip);
         }
         if (from is BlendTree) {
-            BlendTree oldBlendTree = from as BlendTree;
-            BlendTree newBlendTree = new BlendTree();
+            var oldBlendTree = from as BlendTree;
+            var newBlendTree = new BlendTree();
 
             newBlendTree.useAutomaticThresholds = false;
             newBlendTree.blendParameter = oldBlendTree.blendParameter;

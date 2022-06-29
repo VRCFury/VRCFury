@@ -1,13 +1,14 @@
-using System.Collections.Generic;
 using System;
-using UnityEngine;
+using System.Collections.Generic;
 using UnityEditor.Animations;
+using UnityEngine;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace VRCF.Builder {
 
 public class VFAController {
-    private AnimatorController ctrl;
+    private readonly AnimatorController ctrl;
     internal AnimationClip noopClip;
 
     public VFAController(AnimatorController ctrl, AnimationClip noopClip) {
@@ -50,8 +51,8 @@ public class VFAController {
 }
 
 public class VFALayer {
-    private AnimatorControllerLayer layer;
-    private VFAController ctrl;
+    private readonly AnimatorControllerLayer layer;
+    private readonly VFAController ctrl;
     private List<string> statesIgnoredForPos = new List<string>();
 
     public VFALayer(AnimatorControllerLayer layer, VFAController ctrl) {
@@ -87,11 +88,11 @@ public class VFALayer {
 
 public class VFAState {
     private ChildAnimatorState node;
-    private AnimatorControllerLayer layer;
-    private VRCAvatarParameterDriver driver = null;
+    private readonly AnimatorControllerLayer layer;
+    private VRCAvatarParameterDriver driver;
 
-    private static float X_OFFSET = 250;
-    private static float Y_OFFSET = 80;
+    private static readonly float X_OFFSET = 250;
+    private static readonly float Y_OFFSET = 80;
 
     public VFAState(ChildAnimatorState node, AnimatorControllerLayer layer) {
         this.node = node;
@@ -133,11 +134,11 @@ public class VFAState {
         return this;
     }
 
-    private VRCAvatarParameterDriver.Parameter Drives(string param, bool local = false) {
+    private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
         if (driver == null) driver = node.state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
-        var p = new VRCAvatarParameterDriver.Parameter();
+        var p = new VRC_AvatarParameterDriver.Parameter();
         p.name = param;
-        p.type = VRCAvatarParameterDriver.ChangeType.Set;
+        p.type = VRC_AvatarParameterDriver.ChangeType.Set;
         driver.parameters.Add(p);
         return p;
     }
@@ -151,14 +152,14 @@ public class VFAState {
     }
     public VFAState DrivesRandom(VFANumber param, float min, float max) {
         var p = Drives(param.Name(), true);
-        p.type = VRCAvatarParameterDriver.ChangeType.Random;
+        p.type = VRC_AvatarParameterDriver.ChangeType.Random;
         p.valueMin = min;
         p.valueMax = max;
         return this;
     }
     public VFAState DrivesDelta(VFANumber param, float delta) {
         var p = Drives(param.Name(), true);
-        p.type = VRCAvatarParameterDriver.ChangeType.Add;
+        p.type = VRC_AvatarParameterDriver.ChangeType.Add;
         p.value = delta;
         return this;
     }
@@ -183,12 +184,12 @@ public class VFAState {
 }
 
 public class VFAParam {
-    private AnimatorControllerParameter param;
+    private readonly AnimatorControllerParameter param;
     public VFAParam(AnimatorControllerParameter param) {
         this.param = param;
     }
     public string Name() {
-        return this.param.name;
+        return param.name;
     }
 }
 public class VFABool : VFAParam {
@@ -224,12 +225,12 @@ public class VFACondition {
         this.apply = apply;
     }
     public VFACondition And(VFACondition other) {
-        return new VFACondition(trans => { this.apply(trans); other.apply(trans); });
+        return new VFACondition(trans => { apply(trans); other.apply(trans); });
     }
 }
 
 public class VFATransition {
-    private AnimatorTransition trans;
+    private readonly AnimatorTransition trans;
     public VFATransition(AnimatorTransition trans) {
         this.trans = trans;
     }
@@ -240,7 +241,7 @@ public class VFATransition {
     }
 }
 public class VFAAnyTransition {
-    private AnimatorStateTransition trans;
+    private readonly AnimatorStateTransition trans;
     public VFAAnyTransition(AnimatorStateTransition trans) {
         this.trans = trans;
         trans.duration = 0;

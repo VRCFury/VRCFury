@@ -1,9 +1,7 @@
 using System;
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
 using System.Collections.Generic;
 using System.Reflection;
+using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -14,7 +12,7 @@ public class VRCFuryLensIntegration {
 
     public static void Run(GameObject avatar) {
         Type setupType = null;
-        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
             setupType = assembly.GetType("Hirabiki.AV3.Works.VRCLens.VRCLensSetup");
             if (setupType != null) break;
         }

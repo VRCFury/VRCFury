@@ -1,20 +1,11 @@
-using System;
-using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
 public class Modes : BaseFeature {
-    public void Generate(VRCF.Model.Feature.Modes config) {
+    public void Generate(Model.Feature.Modes config) {
         var physBoneResetter = CreatePhysBoneResetter(config.resetPhysbones, config.name);
 
         var layerName = config.name;

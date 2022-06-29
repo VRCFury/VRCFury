@@ -1,28 +1,29 @@
 using System;
-using UnityEngine;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Animations;
-using System.Collections.Generic;
+using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using Object = UnityEngine.Object;
 
 namespace VRCF.Builder {
 
 public class VRCFuryNameManager {
     public static string prefix = "VRCFury";
-    private VRCExpressionsMenu rootMenu;
+    private readonly VRCExpressionsMenu rootMenu;
     private VRCExpressionsMenu fxMenu;
     private VRCExpressionsMenu lastMenu;
     private int lastMenuNum;
-    private VRCExpressionParameters syncedParams;
-    private AnimatorController ctrl;
-    private string tmpDir;
-    private bool useMenuRoot;
-    private UnityEngine.Object clipStorage;
+    private readonly VRCExpressionParameters syncedParams;
+    private readonly AnimatorController ctrl;
+    private readonly string tmpDir;
+    private readonly bool useMenuRoot;
+    private Object clipStorage;
 
     public VRCFuryNameManager(VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller, string tmpDir, bool useMenuRoot) {
-        this.rootMenu = menu;
+        rootMenu = menu;
         this.syncedParams = syncedParams;
-        this.ctrl = controller;
+        ctrl = controller;
         this.tmpDir = tmpDir;
         this.useMenuRoot = useMenuRoot;
     }
@@ -83,8 +84,8 @@ public class VRCFuryNameManager {
         return ctrl;
     }
 
-    private VFAController _controller = null;
-    private AnimationClip _noopClip = null;
+    private VFAController _controller;
+    private AnimationClip _noopClip;
     private VFAController GetController() {
         if (_controller == null) {
             _noopClip = NewClip("noop");
@@ -103,7 +104,7 @@ public class VRCFuryNameManager {
         return GetController().NewLayer("[" + prefix + "] " + name);
     }
 
-    public void AddToClipStorage(UnityEngine.Object asset) {
+    public void AddToClipStorage(Object asset) {
         if (clipStorage == null) {
             clipStorage = new AnimationClip();
             clipStorage.hideFlags = HideFlags.None;
@@ -187,7 +188,7 @@ public class VRCFuryNameManager {
         control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
         var menuParam = new VRCExpressionsMenu.Control.Parameter();
         menuParam.name = param.Name();
-        control.subParameters = new VRCExpressionsMenu.Control.Parameter[]{menuParam};
+        control.subParameters = new[]{menuParam};
     }
     public void NewMenuPuppet(string name, VFANumber x, VFANumber y) {
         var control = NewMenuItem();
@@ -197,7 +198,7 @@ public class VRCFuryNameManager {
         menuParamX.name = (x != null) ? x.Name() : "";
         var menuParamY = new VRCExpressionsMenu.Control.Parameter();
         menuParamY.name = (y != null) ? y.Name() : "";
-        control.subParameters = new VRCExpressionsMenu.Control.Parameter[]{menuParamX, menuParamY};
+        control.subParameters = new[]{menuParamX, menuParamY};
     }
 
     public VFABool NewTrigger(string name, bool usePrefix = true) {

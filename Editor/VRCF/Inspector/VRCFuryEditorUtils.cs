@@ -1,11 +1,9 @@
 using System;
-using UnityEngine;
-using UnityEditor;
-using System.Collections.Generic;
-using UnityEditor.UIElements;
-using UnityEngine.UIElements;
-using System.Reflection;
 using System.Collections;
+using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace VRCF.Inspector {
 
@@ -164,7 +162,7 @@ public class VRCFuryEditorUtils {
             var fakeField = new IntegerField();
             fakeField.bindingPath = prop.propertyPath+".Array.size";
             fakeField.style.display = DisplayStyle.None;
-            int oldValue = prop.arraySize;
+            var oldValue = prop.arraySize;
             fakeField.RegisterValueChangedCallback(e => {
                 if (prop.arraySize == oldValue) return;
                 oldValue = prop.arraySize;
@@ -180,7 +178,7 @@ public class VRCFuryEditorUtils {
         // with the oldValue being "null", so we have to do our own change detection by caching the old value.
         var fakeField = new PropertyField(prop);
         fakeField.style.display = DisplayStyle.None;
-        TYPE oldValue = getValue();
+        var oldValue = getValue();
         Action check = () => {
             var newValue = getValue();
             if (equals(oldValue, newValue)) return;
@@ -217,15 +215,15 @@ public class VRCFuryEditorUtils {
 
     public static bool FindAndResetMarkedFields(object obj) {
         if (obj == null) return false;
-        Type objType = obj.GetType();
+        var objType = obj.GetType();
         if (!objType.FullName.StartsWith("VRCFury")) return false;
-        FieldInfo[] fields = objType.GetFields();
-        foreach (FieldInfo field in fields) {
-            object value = field.GetValue(obj);
+        var fields = objType.GetFields();
+        foreach (var field in fields) {
+            var value = field.GetValue(obj);
             if (value is IList) {
                 var list = value as IList;
                 for (var i = 0; i < list.Count; i++) {
-                    bool remove = FindAndResetMarkedFields(list[i]);
+                    var remove = FindAndResetMarkedFields(list[i]);
                     if (remove) {
                         var elemType = list[i].GetType();
                         var newInst = Activator.CreateInstance(elemType);

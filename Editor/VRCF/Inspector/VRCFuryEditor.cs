@@ -1,23 +1,18 @@
 using System;
-using UnityEngine;
 using UnityEditor;
-using System.Collections.Generic;
-using UnityEditor.UIElements;
+using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.Components;
 using VRCF.Builder;
+using VRCF.Feature;
 using VRCF.Model;
-using UnityEditor.Animations;
 using VRCF.Model.Feature;
-using System.Net;
-using System.ComponentModel;
-using System.IO;
 
 namespace VRCF.Inspector {
 
 public class VRCFuryMenuItem {
     [MenuItem("Tools/Force Run VRCFury on Selection")]
-    static void Run() {
+    private static void Run() {
         var obj = Selection.activeTransform.gameObject;
         var vrcfury = obj.GetComponent<VRCFury>();
         var builder = new VRCFuryBuilder();
@@ -25,7 +20,7 @@ public class VRCFuryMenuItem {
     }
 
     [MenuItem("Tools/Force Run VRCFury on Selection", true)]
-    static bool Check() {
+    private static bool Check() {
         if (Selection.activeTransform == null) return false;
         var obj = Selection.activeTransform.gameObject;
         if (obj == null) return false;
@@ -96,13 +91,13 @@ public class VRCFuryEditor : Editor {
     }
 
     private VisualElement renderFeature(FeatureModel model, SerializedProperty prop) {
-        return VRCF.Feature.FeatureFinder.RenderFeatureEditor(prop, model);
+        return FeatureFinder.RenderFeatureEditor(prop, model);
     }
 
     private void OnPlus(SerializedProperty listProp) {
         var menu = new GenericMenu();
-        foreach (var feature in VRCF.Feature.FeatureFinder.GetAllFeatures()) {
-            var editorInst = (VRCF.Feature.BaseFeature) Activator.CreateInstance(feature.Value);
+        foreach (var feature in FeatureFinder.GetAllFeatures()) {
+            var editorInst = (BaseFeature) Activator.CreateInstance(feature.Value);
             var title = editorInst.GetEditorTitle();
             if (title != null) {
                 menu.AddItem(new GUIContent(title), false, () => {

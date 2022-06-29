@@ -1,19 +1,13 @@
-using System;
-using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
-using UnityEngine.UIElements;
 using UnityEditor.UIElements;
+using UnityEngine;
+using UnityEngine.UIElements;
+using VRCF.Model;
 
 namespace VRCF.Feature {
 
 public class Breathing : BaseFeature {
-    public void Generate(VRCF.Model.Feature.Breathing config) {
+    public void Generate(Model.Feature.Breathing config) {
         var clip = manager.NewClip("Breathing");
         var so = new SerializedObject(clip);
         so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
@@ -39,7 +33,7 @@ public class Breathing : BaseFeature {
             }
         }
 
-        var toggle = new VRCF.Model.Feature.Toggle();
+        var toggle = new Model.Feature.Toggle();
         toggle.name = "Breathing";
         toggle.defaultOn = true;
         toggle.state = new VRCFuryState();

@@ -1,24 +1,18 @@
 using System;
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
 using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
-using System.Reflection;
-using VRCF.Model.Feature;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
+using VRCF.Model.Feature;
 
 namespace VRCF.Feature {
 
 public class FeatureFinder {
-    private static Dictionary<Type,Type> allFeatures = null;
+    private static Dictionary<Type,Type> allFeatures;
     public static Dictionary<Type,Type> GetAllFeatures() {
         if (allFeatures == null) {
             allFeatures = new Dictionary<Type, Type>();
-            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
                 foreach (var type in assembly.GetTypes()) {
                     if (!type.IsAbstract && typeof(BaseFeature).IsAssignableFrom(type)) {
                         try {

@@ -1,8 +1,6 @@
 using System;
-using UnityEngine;
 using UnityEditor;
-using System.Collections.Generic;
-using UnityEditor.UIElements;
+using UnityEngine;
 using UnityEngine.UIElements;
 using VRCF.Model;
 

@@ -1,20 +1,14 @@
 using System;
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
 using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
 public class Visemes : BaseFeature {
-    public void Generate(VRCF.Model.Feature.Visemes config) {
+    public void Generate(Model.Feature.Visemes config) {
         if (config.oneAnim == null) return;
 
         var visemeFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(config.oneAnim));

@@ -1,8 +1,7 @@
-using System;
-using UnityEngine;
-using UnityEditor;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEditor.UIElements;
+using UnityEngine;
 using UnityEngine.UIElements;
 using VRCF.Model;
 
@@ -43,7 +42,7 @@ public class VRCFuryPropDrawer : PropertyDrawer {
             showResetPhysbones = true;
         }
 
-        List<string> tags = new List<string>();
+        var tags = new List<string>();
         var advMenu = new GenericMenu();
         if (showSaved) {
             var boolProp = prop.FindPropertyRelative("saved");
@@ -107,7 +106,7 @@ public class VRCFuryPropDrawer : PropertyDrawer {
         content.style.paddingLeft = 20;
         container.Add(content);
 
-        var tagsStr = String.Join(" | ", tags.ToArray());
+        var tagsStr = string.Join(" | ", tags.ToArray());
         if (tagsStr != "") {
             content.Add(new Label(tagsStr));
         }

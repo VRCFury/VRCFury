@@ -1,13 +1,14 @@
 using System;
-using UnityEngine;
+using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEditor.Animations;
-using System.Collections.Generic;
+using UnityEngine;
 using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRCF.Feature;
+using VRCF.Model;
+using Object = UnityEngine.Object;
 
 namespace VRCF.Builder {
 
@@ -21,7 +22,7 @@ public class VRCFuryBuilder {
         }
 
         EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
-        bool result = true;
+        var result = true;
         try {
             Run(avatarObject);
         } catch(Exception e) {
@@ -41,7 +42,7 @@ public class VRCFuryBuilder {
         GameObject vrcCloneObject = null;
         if (avatarObject.name.EndsWith("(Clone)")) {
             GameObject original = null;
-            foreach (var desc in GameObject.FindObjectsOfType<VRCAvatarDescriptor>()) {
+            foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
                 if (desc.gameObject.name+"(Clone)" == avatarObject.name && desc.gameObject.activeInHierarchy) {
                     original = desc.gameObject;
                     break;
@@ -66,7 +67,7 @@ public class VRCFuryBuilder {
         }
         var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + avatarObject.name;
         if (Directory.Exists(tmpDir)) {
-            foreach (var asset in AssetDatabase.FindAssets("", new string[] { tmpDir })) {
+            foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDir })) {
                 var path = AssetDatabase.GUIDToAssetPath(asset);
                 AssetDatabase.DeleteAsset(path);
             }
@@ -93,15 +94,15 @@ public class VRCFuryBuilder {
         // Remove components that shouldn't be lying around
         foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
             if (c.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(c.gameObject)) {
-                GameObject.DestroyImmediate(c);
+                Object.DestroyImmediate(c);
             }
         }
         if (vrcCloneObject != null) {
             foreach (var c in vrcCloneObject.GetComponentsInChildren<VRCFury>(true)) {
-                GameObject.DestroyImmediate(c);
+                Object.DestroyImmediate(c);
             }
             foreach (var c in vrcCloneObject.GetComponentsInChildren<Animator>(true)) {
-                if (c.gameObject != vrcCloneObject) GameObject.DestroyImmediate(c);
+                if (c.gameObject != vrcCloneObject) Object.DestroyImmediate(c);
             }
         }
 
@@ -239,7 +240,7 @@ public class VRCFuryBuilder {
         EditorUtility.SetDirty(avatar);
     }
 
-    public static bool IsVrcfAsset(UnityEngine.Object obj) {
+    public static bool IsVrcfAsset(Object obj) {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 

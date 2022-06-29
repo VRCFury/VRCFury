@@ -1,15 +1,16 @@
 using System;
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEngine;
 
 namespace VRCF.Builder {
 
 public class VRCFuryTPSIntegration {
-    private static BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
+    private static readonly BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
 
     public static void Run(GameObject avatar, AnimatorController animator, string tmpDir) {
         var tpsSetup = Type.GetType("Thry.TPS.TPS_Setup");
@@ -21,7 +22,7 @@ public class VRCFuryTPSIntegration {
         Debug.Log("TPS Done");
     }
 
-    private static Regex isMaterial = new Regex("^m_Materials\\.Array\\.data\\[\\d+\\]$");
+    private static readonly Regex isMaterial = new Regex("^m_Materials\\.Array\\.data\\[\\d+\\]$");
 
     private static void RevertTPSMats(GameObject avatar) {
         Debug.Log("Reverting TPS Materials ...");
@@ -51,16 +52,16 @@ public class VRCFuryTPSIntegration {
         tpsSetup.GetField("_animator", b).SetValue(setup, animator);
         tpsSetup.GetMethod("ScanForTPS", b).Invoke(setup, new object[]{});
         tpsSetup.GetMethod("RemoveTPSFromAnimator", b).Invoke(setup, new object[]{});
-        System.Collections.IList penetrators = (System.Collections.IList)tpsSetup.GetField("_penetrators", b).GetValue(setup);
-        System.Collections.IList orifices = (System.Collections.IList)tpsSetup.GetField("_orifices", b).GetValue(setup);
+        var penetrators = (IList)tpsSetup.GetField("_penetrators", b).GetValue(setup);
+        var orifices = (IList)tpsSetup.GetField("_orifices", b).GetValue(setup);
 
         Debug.Log("" + penetrators.Count + " Penetrators + " + orifices.Count + " Orifices");
 
-        for (int i = 0; i < penetrators.Count; i++)
+        for (var i = 0; i < penetrators.Count; i++)
         {
             callWithOptionalParams(tpsSetup.GetMethod("SetupPenetrator", b), null, avatar.transform, animator, penetrators[i], penetrators, i, tmpDir);
         }
-        for (int i = 0; i < orifices.Count; i++)
+        for (var i = 0; i < orifices.Count; i++)
         {
             var o = orifices[i];
             var otype = o.GetType();

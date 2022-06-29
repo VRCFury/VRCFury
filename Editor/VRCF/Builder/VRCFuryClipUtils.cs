@@ -1,24 +1,25 @@
 using System;
-using UnityEngine;
-using UnityEditor;
 using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VRCF.Builder {
 
 public class VRCFuryClipUtils {
-    private GameObject baseObject;
+    private readonly GameObject baseObject;
     public VRCFuryClipUtils(GameObject baseObject) {
         this.baseObject = baseObject;
     }
 
-    public ObjectReferenceKeyframe[] OneFrame(UnityEngine.Object obj) {
+    public ObjectReferenceKeyframe[] OneFrame(Object obj) {
         var f1 = new ObjectReferenceKeyframe();
         f1.time = 0;
         f1.value = obj;
         var f2 = new ObjectReferenceKeyframe();
         f2.time = 1/60f;
         f2.value = obj;
-        return new ObjectReferenceKeyframe[]{ f1, f2 };
+        return new[]{ f1, f2 };
     }
     public AnimationCurve OneFrame(float value) {
         return AnimationCurve.Constant(0, 1/60f, value);
@@ -37,7 +38,7 @@ public class VRCFuryClipUtils {
         clip.SetCurve(GetPath(obj), typeof(GameObject), "m_IsActive", OneFrame(active?1:0));
     }
     public void Scale(AnimationClip clip, GameObject obj, AnimationCurve curve) {
-        foreach (var axis in new string[]{"x","y","z"}) {
+        foreach (var axis in new[]{"x","y","z"}) {
             clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale." + axis, curve);
         }
     }
@@ -53,14 +54,14 @@ public class VRCFuryClipUtils {
         var curvesBindings = AnimationUtility.GetCurveBindings(clip);
         for (var i = 0; i < curvesBindings.Length; i++) {
             var binding = curvesBindings[i];
-            AnimationCurve curve = AnimationUtility.GetEditorCurve(clip, binding);
+            var curve = AnimationUtility.GetEditorCurve(clip, binding);
             binding.path = ResolveRelativePath(prefix + binding.path);
             AnimationUtility.SetEditorCurve(copy, binding, curve);
         }
         var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
         for (var i = 0; i < objBindings.Length; i++) {
             var binding = objBindings[i];
-            ObjectReferenceKeyframe[] objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            var objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
             binding.path = ResolveRelativePath(prefix + binding.path);
             AnimationUtility.SetObjectReferenceCurve(copy, binding, objectReferenceCurve);
         }
@@ -96,12 +97,12 @@ public class VRCFuryClipUtils {
         var current = transform;
         while (current != baseObject.transform) {
             if (current == null) {
-                throw new Exception("Animated object wasn't a child of the root GameObject: " + String.Join("/", parts));
+                throw new Exception("Animated object wasn't a child of the root GameObject: " + string.Join("/", parts));
             }
             parts.Insert(0, current.name);
             current = current.parent;
         }
-        return String.Join("/", parts);
+        return string.Join("/", parts);
     }
 
 }

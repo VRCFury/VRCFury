@@ -1,8 +1,7 @@
 using System;
-using UnityEngine;
-using System.Collections.Generic;
-using VRCF.Model.Feature;
 using UnityEditor;
+using UnityEngine;
+using VRCF.Model.Feature;
 
 namespace VRCF.Model {
 
@@ -36,8 +35,7 @@ public class VRCFuryConfigUpgrader {
             });
         }
         if (script.scaleEnabled) {
-            config.features.Add(new AvatarScale {
-            });
+            config.features.Add(new AvatarScale());
         }
         if (script.securityCodeLeft != 0 && script.securityCodeRight != 0) {
             config.features.Add(new SecurityLock {

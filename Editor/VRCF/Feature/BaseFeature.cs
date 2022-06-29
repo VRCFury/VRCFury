@@ -1,12 +1,11 @@
 using System;
-using UnityEngine;
-using UnityEditor;
 using System.Collections.Generic;
-using VRCF.Model;
-using VRCF.Builder;
-using VRCF.Model.Feature;
-using UnityEditor.UIElements;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
+using VRCF.Builder;
+using VRCF.Model;
+using VRCF.Model.Feature;
 
 namespace VRCF.Feature {
 
@@ -138,7 +137,7 @@ public abstract class BaseFeature {
     }
 
     protected List<SkinnedMeshRenderer> getAllSkins() {
-        List<SkinnedMeshRenderer> skins = new List<SkinnedMeshRenderer>();
+        var skins = new List<SkinnedMeshRenderer>();
         foreach (Transform child in avatarObject.transform) {
             var skin = child.gameObject.GetComponent(typeof(SkinnedMeshRenderer)) as SkinnedMeshRenderer;
             if (skin != null) {

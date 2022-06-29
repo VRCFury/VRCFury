@@ -1,17 +1,9 @@
-using System;
 using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
-using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VRCF.Feature {
 
 public class AvatarScale : BaseFeature {
-    public void Generate(VRCF.Model.Feature.AvatarScale config) {
+    public void Generate(Model.Feature.AvatarScale config) {
         var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
         manager.NewMenuSlider("Scale", paramScale);
         var scaleClip = manager.NewClip("Scale");

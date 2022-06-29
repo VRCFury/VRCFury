@@ -1,24 +1,20 @@
 using System;
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
 using System.Collections.Generic;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Model;
-using System.IO;
-using VRC.SDK3.Avatars.ScriptableObjects;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 using VRCF.Inspector;
+using VRCF.Model;
 
 namespace VRCF.Feature {
 
 public class Toggle : BaseFeature {
-    public void Generate(VRCF.Model.Feature.Toggle config) {
+    public void Generate(Model.Feature.Toggle config) {
         if (config.slider) {
             var stops = new List<VRCFuryPropPuppetStop>();
             stops.Add(new VRCFuryPropPuppetStop(1,0,config.state));
-            var puppet = new VRCF.Model.Feature.Puppet() {
+            var puppet = new Model.Feature.Puppet
+            {
                 name = config.name,
                 saved = config.saved,
                 slider = true,
@@ -132,12 +128,12 @@ public class Toggle : BaseFeature {
                 tags.Add("Security");
             if (defaultOnProp != null && defaultOnProp.boolValue)
                 tags.Add("Default On");
-            var tagsStr = String.Join(" | ", tags.ToArray());
+            var tagsStr = string.Join(" | ", tags.ToArray());
             if (tagsStr != "") {
                 return new Label(tagsStr);
-            } else {
-                return new VisualElement();
             }
+
+            return new VisualElement();
         },
             savedProp,
             sliderProp,

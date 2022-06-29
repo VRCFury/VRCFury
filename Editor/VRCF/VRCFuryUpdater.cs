@@ -1,36 +1,28 @@
 using System;
-using UnityEngine;
-using UnityEditor;
-using System.Collections.Generic;
-using UnityEditor.UIElements;
-using UnityEngine.UIElements;
-using VRC.SDK3.Avatars.Components;
-using VRCF.Builder;
-using VRCF.Model;
-using UnityEditor.Animations;
-using VRCF.Model.Feature;
-using System.Net;
 using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
+using System.Net;
+using UnityEditor;
+using UnityEngine;
 
 namespace VRCF {
 
 public class VRCFuryUpdater {
     [MenuItem("Tools/Update VRCFury")]
-    static void Upgrade() {
+    private static void Upgrade() {
         WithErrorPopup(() => {
-            WebClient client = new WebClient();
+            var client = new WebClient();
             var downloadUrl = "https://gitlab.com/VRCFury/VRCFury/-/archive/main/VRCFury-main.zip";
-            Uri uri = new Uri(downloadUrl);
-            client.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadFileCallback2);
+            var uri = new Uri(downloadUrl);
+            client.DownloadFileCompleted += DownloadFileCallback;
 
             Debug.Log("Downloading VRCFury from " + downloadUrl + " ...");
             client.DownloadFileAsync(uri, "VRCFury.zip");
         });
     }
 
-    private static void DownloadFileCallback2(object sender, AsyncCompletedEventArgs e) {
+    private static void DownloadFileCallback(object sender, AsyncCompletedEventArgs e) {
         WithErrorPopup(() => {
             if (e.Cancelled) {
                 throw new Exception("File download was cancelled");
@@ -60,13 +52,13 @@ public class VRCFuryUpdater {
             }
             using (var stream = File.OpenRead("VRCFury.zip")) {
                 using (var archive = new ZipArchive(stream)) {
-                    foreach (ZipArchiveEntry entry in archive.Entries) {
+                    foreach (var entry in archive.Entries) {
                         if (string.IsNullOrWhiteSpace(entry.Name)) continue;
                         var outPath = tmpDir+"/"+entry.FullName;
                         var outDir = Path.GetDirectoryName(outPath);
                         if (!Directory.Exists(outDir)) Directory.CreateDirectory(outDir);
-                        using (Stream entryStream = entry.Open()) {
-                            using (FileStream outFile = new FileStream(outPath, FileMode.Create, FileAccess.Write)) {
+                        using (var entryStream = entry.Open()) {
+                            using (var outFile = new FileStream(outPath, FileMode.Create, FileAccess.Write)) {
                                 entryStream.CopyTo(outFile);
                             }
                         }

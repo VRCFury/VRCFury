@@ -1,11 +1,10 @@
-using UnityEngine;
-using UnityEditor;
 using System.Collections.Generic;
-using VRC.SDK3.Validation;
 using System.Reflection;
+using UnityEditor;
+using UnityEngine;
+using VRC.SDK3.Validation;
 using VRC.SDKBase.Editor.BuildPipeline;
 using VRCF.Builder;
-using VRCF.Model;
 
 namespace VRCF {
 

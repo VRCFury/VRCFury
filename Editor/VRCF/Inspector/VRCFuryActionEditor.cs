@@ -1,7 +1,4 @@
-using System;
-using UnityEngine;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using VRCF.Model;
 
@@ -29,7 +26,9 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 row.Add(propField);
 
                 return row;
-            } else if (type == VRCFuryAction.BLENDSHAPE) {
+            }
+
+            if (type == VRCFuryAction.BLENDSHAPE) {
                 var row = new VisualElement();
                 row.style.flexDirection = FlexDirection.Row;
                 row.style.alignItems = Align.FlexStart;
@@ -44,9 +43,9 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 row.Add(propField);
 
                 return row;
-            } else {
-                return new Label("Unknown action: " + type);
             }
+
+            return new Label("Unknown action: " + type);
         }, typeProp);
     }
 }
