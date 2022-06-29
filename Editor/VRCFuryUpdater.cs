@@ -97,6 +97,7 @@ public class VRCFuryUpdater {
                 AssetDatabase.Refresh();
             }
 
+            Debug.Log("Upgrade complete");
             EditorUtility.DisplayDialog("VRCFury Updater", "VRCFury has been updated", "Ok");
         });
     }
