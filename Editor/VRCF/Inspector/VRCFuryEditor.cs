@@ -48,8 +48,8 @@ public class VRCFuryEditor : Editor {
             container.Add(new Label("Feature list is missing? This is a bug."));
         } else {
             container.Add(VRCFuryEditorUtils.List(features,
-                renderElement: (i,prop) => renderFeature(self.config.features[i], prop),
-                onPlus: () => OnPlus(features),
+                renderElement: (i,prop) => renderFeature(self.config.features[i], prop, pointingToAvatar),
+                onPlus: () => OnPlus(features, pointingToAvatar),
                 onEmpty: () => {
                     var c = new VisualElement();
                     VRCFuryEditorUtils.Padding(c, 10);
@@ -97,13 +97,13 @@ public class VRCFuryEditor : Editor {
         return container;
     }
 
-    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop) {
-        return FeatureFinder.RenderFeatureEditor(prop, model);
+    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, bool isEditorOnAvatar) {
+        return FeatureFinder.RenderFeatureEditor(prop, model, !isEditorOnAvatar);
     }
 
-    private void OnPlus(SerializedProperty listProp) {
+    private void OnPlus(SerializedProperty listProp, bool isEditorOnAvatar) {
         var menu = new GenericMenu();
-        foreach (var feature in FeatureFinder.GetAllFeatures()) {
+        foreach (var feature in FeatureFinder.GetAllFeaturesForMenu(!isEditorOnAvatar)) {
             var editorInst = (BaseFeature) Activator.CreateInstance(feature.Value);
             var title = editorInst.GetEditorTitle();
             if (title != null) {

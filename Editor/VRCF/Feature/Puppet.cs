@@ -16,7 +16,7 @@ public class Puppet : BaseFeature {
         foreach (var stop in config.stops) {
             if (stop.x != 0) usesX = true;
             if (stop.y != 0) usesY = true;
-            tree.AddChild(loadClip(config.name + "_" + i++, stop.state, featureBaseObject), new Vector2(stop.x,stop.y));
+            tree.AddChild(LoadState(config.name + "_" + i++, stop.state), new Vector2(stop.x,stop.y));
         }
         var on = layer.NewState("Blend").WithAnimation(tree);
 

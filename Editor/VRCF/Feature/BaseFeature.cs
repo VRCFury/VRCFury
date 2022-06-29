@@ -26,6 +26,10 @@ public abstract class BaseFeature {
         return null;
     }
 
+    public virtual bool AvailableOnProps() {
+        return true;
+    }
+
     protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {
         if (resetPhysbones == null || resetPhysbones.Count == 0) return null;
 
@@ -77,12 +81,12 @@ public abstract class BaseFeature {
         return state != null && !state.isEmpty();
     }
 
-    protected AnimationClip loadClip(string name, VRCFuryState state, GameObject prefixObj = null) {
+    protected AnimationClip LoadState(string name, VRCFuryState state) {
         if (state.clip != null) {
             AnimationClip output = null;
-            if (prefixObj != null && prefixObj != avatarObject) {
+            if (featureBaseObject != avatarObject) {
                 var copy = manager.NewClip(name);
-                motions.CopyWithAdjustedPrefixes(state.clip, copy, prefixObj);
+                motions.CopyWithAdjustedPrefixes(state.clip, copy, featureBaseObject);
                 output = copy;
             } else {
                 output = state.clip;
@@ -120,7 +124,7 @@ public abstract class BaseFeature {
             }
             if (action.type == VRCFuryAction.BLENDSHAPE) {
                 var foundOne = false;
-                foreach (var skin in getAllSkins()) {
+                foreach (var skin in GetAllSkins(featureBaseObject)) {
                     var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(action.blendShape);
                     if (blendShapeIndex < 0) continue;
                     foundOne = true;
@@ -136,15 +140,8 @@ public abstract class BaseFeature {
         return clip;
     }
 
-    protected List<SkinnedMeshRenderer> getAllSkins() {
-        var skins = new List<SkinnedMeshRenderer>();
-        foreach (Transform child in avatarObject.transform) {
-            var skin = child.gameObject.GetComponent(typeof(SkinnedMeshRenderer)) as SkinnedMeshRenderer;
-            if (skin != null) {
-                skins.Add(skin);
-            }
-        }
-        return skins;
+    protected static SkinnedMeshRenderer[] GetAllSkins(GameObject parent) {
+        return parent.GetComponentsInChildren<SkinnedMeshRenderer>(true);
     }
 }
 

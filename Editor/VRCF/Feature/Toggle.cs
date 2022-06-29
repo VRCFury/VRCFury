@@ -28,7 +28,7 @@ public class Toggle : BaseFeature {
 
         var layerName = config.name;
         var layer = manager.NewLayer(layerName);
-        var clip = loadClip(config.name, config.state, featureBaseObject);
+        var clip = LoadState(config.name, config.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
         var param = manager.NewBool(config.name, synced: true, saved: config.saved, def: config.defaultOn);

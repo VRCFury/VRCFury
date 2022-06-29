@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 namespace VRCF.Builder {
 
 public class VRCFuryBuilder {
-    public bool SafeRun(GameObject avatarObject) {
+    public bool SafeRun(GameObject avatarObject, GameObject vrcCloneObject = null) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length == 0) {
@@ -25,7 +25,7 @@ public class VRCFuryBuilder {
         EditorUtility.DisplayProgressBar("VRCFury is building ...", "", 0.5f);
         var result = true;
         try {
-            Run(avatarObject);
+            Run(avatarObject, vrcCloneObject);
         } catch(Exception e) {
             result = false;
             Debug.LogException(e);
@@ -37,26 +37,7 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    private void Run(GameObject avatarObject) {
-        // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
-        // Let's get a reference to the original avatar, so we can apply our changes to it as well.
-        GameObject vrcCloneObject = null;
-        if (avatarObject.name.EndsWith("(Clone)")) {
-            GameObject original = null;
-            foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
-                if (desc.gameObject.name+"(Clone)" == avatarObject.name && desc.gameObject.activeInHierarchy) {
-                    original = desc.gameObject;
-                    break;
-                }
-            }
-            if (original == null) {
-                throw new Exception("Failed to find original avatar object during vrchat upload");
-            }
-            Debug.Log("Found original avatar object for VRC upload: " + original);
-            vrcCloneObject = avatarObject;
-            avatarObject = original;
-        }
-
+    private void Run(GameObject avatarObject, GameObject vrcCloneObject) {
         // Unhook everything from our assets before we delete them
         DetachFromAvatar(avatarObject);
         if (vrcCloneObject != null) DetachFromAvatar(vrcCloneObject);
@@ -136,6 +117,7 @@ public class VRCFuryBuilder {
 
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
+            var isProp = configObject != avatarObject;
             Debug.Log("Importing config from " + configObject.name);
             var config = VRCFuryConfigUpgrader.GetConfig(vrcFury);
             if (config.features != null) {
@@ -148,9 +130,9 @@ public class VRCFuryBuilder {
                         f.noopClip = noopClip;
                         f.avatarObject = avatarObject;
                         f.featureBaseObject = configObject;
-                        f.addOtherFeature = model => FeatureFinder.RunFeature(model, configureFeature);
+                        f.addOtherFeature = model => FeatureFinder.RunFeature(model, configureFeature, isProp);
                     };
-                    FeatureFinder.RunFeature(feature, configureFeature);
+                    FeatureFinder.RunFeature(feature, configureFeature, isProp);
                 }
             }
         }

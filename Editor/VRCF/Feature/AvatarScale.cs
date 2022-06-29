@@ -23,6 +23,10 @@ public class AvatarScale : BaseFeature {
     public override string GetEditorTitle() {
         return "Avatar Scale Slider";
     }
+
+    public override bool AvailableOnProps() {
+        return false;
+    }
 }
 
 }

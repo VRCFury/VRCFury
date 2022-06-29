@@ -88,6 +88,10 @@ public class LegacyPrefabSupport : BaseFeature {
         });
         return content;
     }
+    
+    public override bool AvailableOnProps() {
+        return false;
+    }
 }
 
 }

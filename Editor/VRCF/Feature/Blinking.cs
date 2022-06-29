@@ -57,7 +57,7 @@ public class Blinking : BaseFeature {
 
         // Animator
         {
-            var blinkClip = loadClip("blink", config.state);
+            var blinkClip = LoadState("blink", config.state);
             var blinkDuration = 0.07f;
             var layer = manager.NewLayer("Blink - Animate");
             var idle = layer.NewState("Idle");
@@ -77,6 +77,10 @@ public class Blinking : BaseFeature {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         return VRCFuryStateEditor.render(prop.FindPropertyRelative("state"));
+    }
+    
+    public override bool AvailableOnProps() {
+        return false;
     }
 }
 

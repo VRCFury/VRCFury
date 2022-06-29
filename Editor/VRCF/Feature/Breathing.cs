@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -23,7 +24,8 @@ public class Breathing : BaseFeature {
             ));
         }
         if (!string.IsNullOrEmpty(config.blendshape)) {
-            var breathingSkins = getAllSkins().FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(config.blendshape) != -1); 
+            var breathingSkins = new List<SkinnedMeshRenderer>(GetAllSkins(avatarObject))
+                .FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(config.blendshape) != -1); 
             foreach (var skin in breathingSkins) {
                 motions.BlendShape(clip, skin, config.blendshape, VRCFuryClipUtils.FromSeconds(
                     new Keyframe(0, 0),
@@ -56,6 +58,10 @@ public class Breathing : BaseFeature {
         content.Add(new PropertyField(prop.FindPropertyRelative("scaleMin"), "Scale Object Min"));
         content.Add(new PropertyField(prop.FindPropertyRelative("scaleMax"), "Scale Object Max"));
         return content;
+    }
+    
+    public override bool AvailableOnProps() {
+        return false;
     }
 }
 

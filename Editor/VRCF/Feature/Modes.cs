@@ -17,7 +17,7 @@ public class Modes : BaseFeature {
         var i = 1;
         foreach (var mode in config.modes) {
             var num = i++;
-            var clip = loadClip(config.name+"_"+num, mode.state, featureBaseObject);
+            var clip = LoadState(config.name+"_"+num, mode.state);
             var state = layer.NewState(""+num).WithAnimation(clip);
             if (physBoneResetter != null) state.Drives(physBoneResetter, true);
             if (config.securityEnabled) {

@@ -7,7 +7,7 @@ namespace VRCF.Feature {
 public class Talking : BaseFeature {
     public void Generate(Model.Feature.Talking config) {
         var layer = manager.NewLayer("Talk Glow");
-        var clip = loadClip("TalkGlow", config.state);
+        var clip = LoadState("TalkGlow", config.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
 

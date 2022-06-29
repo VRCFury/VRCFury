@@ -32,6 +32,10 @@ public class Toes : BaseFeature {
         content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("splay"), "Splay"));
         return content;
     }
+    
+    public override bool AvailableOnProps() {
+        return false;
+    }
 }
 
 }

@@ -43,6 +43,10 @@ public class SecurityLock : BaseFeature {
         content.Add(new PropertyField(prop.FindPropertyRelative("rightCode"), "Right Hand Code"));
         return content;
     }
+    
+    public override bool AvailableOnProps() {
+        return false;
+    }
 }
 
 }

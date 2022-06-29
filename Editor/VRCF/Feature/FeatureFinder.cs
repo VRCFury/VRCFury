@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -9,7 +10,7 @@ namespace VRCF.Feature {
 
 public class FeatureFinder {
     private static Dictionary<Type,Type> allFeatures;
-    public static Dictionary<Type,Type> GetAllFeatures() {
+    private static Dictionary<Type,Type> GetAllFeatures() {
         if (allFeatures == null) {
             allFeatures = new Dictionary<Type, Type>();
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
@@ -29,28 +30,47 @@ public class FeatureFinder {
         }
         return allFeatures;
     }
-    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model) {
+
+    public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(bool isProp) {
+        if (isProp) {
+            return GetAllFeatures()
+                .Where(e => {
+                    var impl = (BaseFeature)Activator.CreateInstance(e.Value);
+                    return impl.AvailableOnProps();
+                });
+        } else {
+            return GetAllFeatures();
+        }
+    }
+
+    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, bool isProp) {
         try {
-            var feature = GetAllFeatures()[model.GetType()];
-            if (feature == null) {
-                return new Label("Failed to find editor: " + model.GetType().Name);
+            var modelType = model.GetType();
+            var implementationType = GetAllFeatures()[modelType];
+            if (implementationType == null) {
+                return new Label("Failed to find editor: " + modelType.Name);
             }
-            var featureInstance = (BaseFeature)Activator.CreateInstance(feature);
+            var featureInstance = (BaseFeature)Activator.CreateInstance(implementationType);
 
             var wrapper = new VisualElement();
             var title = featureInstance.GetEditorTitle();
-            if (title == null) title = model.GetType().Name;
+            if (title == null) title = modelType.Name;
 
             var header = new Label(title);
             header.style.unityFontStyleAndWeight = FontStyle.Bold;
             wrapper.Add(header);
             
-            VisualElement bodyContent = null;
-            try {
-                bodyContent = featureInstance.CreateEditor(prop);
-            } catch(Exception e) {
-                Debug.LogException(e);
-                bodyContent = new Label("Editor threw an exception, check the unity console");
+            VisualElement bodyContent;
+            if (isProp && !featureInstance.AvailableOnProps()) {
+                bodyContent = new Label("This feature is not allowed on props");
+            } else {
+                try {
+                    bodyContent = featureInstance.CreateEditor(prop);
+                }
+                catch (Exception e) {
+                    Debug.LogException(e);
+                    bodyContent = new Label("Editor threw an exception, check the unity console");
+                }
             }
             if (bodyContent != null) {
                 var body = new VisualElement();
@@ -66,13 +86,29 @@ public class FeatureFinder {
             return new Label("Editor threw an exception, check the unity console");
         }
     }
-    public static void RunFeature(FeatureModel model, Action<BaseFeature> configure) {
-        var feature = GetAllFeatures()[model.GetType()];
-        if (feature != null) {
-            var featureInstance = (BaseFeature)Activator.CreateInstance(feature);
-            configure(featureInstance);
-            featureInstance.GetType().GetMethod("Generate").Invoke(featureInstance, new object[]{model});
+    public static void RunFeature(FeatureModel model, Action<BaseFeature> configure, bool isProp) {
+        var modelType = model.GetType();
+        var implementationType = GetAllFeatures()[modelType];
+        if (implementationType == null) {
+            Debug.LogError("Failed to find feature implementation for " + modelType.Name + " while building");
+            return;
         }
+
+        var featureImpl = (BaseFeature)Activator.CreateInstance(implementationType);
+
+        if (isProp && !featureImpl.AvailableOnProps()) {
+            Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");
+            return;
+        }
+        
+        configure(featureImpl);
+        var genMethod = featureImpl.GetType().GetMethod("Generate");
+        if (genMethod == null) {
+            Debug.LogError("Failed to find Generate method in " + implementationType.Name + " while building");
+            return;
+        }
+
+        genMethod.Invoke(featureImpl, new object[]{model});
     }
 }
 
