@@ -1,4 +1,6 @@
-# VRC Fury - All in one VRChat Prop / Inventory Manager
+# VRC Fury - All in one VRChat Prop / Inventory / Gesture Manager
+
+Set up your avatar's props, gestures, and other animations without ever touching a layer or menu!
 
 ## Beta Notice
 
@@ -33,7 +35,7 @@ VRC Fury is new. Things may be broken. Beware. If you find any issues, please re
 
 * Delete the VRCFury directory from your project (if upgrading).
 * Click [here](https://gitlab.com/VRCFury/VRCFury/-/archive/main/VRCFury-main.zip) to download the latest release.
-* Extract the zip somewhere into your avatar project (this is not a unity package file, so you can't just drag it in).
+* Extract the zip somewhere into your project's Assets folder (this is not a unity package file, so you can't just drag it in).
 * If you are using just VRCFury because an artist said you needed if for their prefab:
   * You're done! Just follow their directions to add their prefab to your avatar, and VRC Fury will handle the rest.
   * Otherwise, read on to add your own behaviors and props.
@@ -41,16 +43,30 @@ VRC Fury is new. Things may be broken. Beware. If you find any issues, please re
 * All fields are optional. If you only want props, only fill out props! However, VRCFury also handles common gesture patterns and blinking animations.
 * You're done! There's no "building" to do. VRC Fury will update your FX layer, VRC menus and params automatically before each upload.
 
-## Advanced features
+## Modules
 
-### Blinking
+Once you add a VRCFury component to your avatar (or prop), you can add any combination of these modules:
 
-If you include a single-frame animation of your avatar with its eyes closed (or click the plus and give it the blend shape name), VRC Fury will drive your avatar's blink cycle. If you do this, be sure to disable blinking AND look up / look down support in your VRC Avatar Descriptor.
+### Toggleable Prop
+
+Use this for a normal "on / off" prop. For simple object props, click the plus, choose Object toggle, and then drag the object into the field. If you choose blendshape, the blendshape will be set to 100 when "on" (only works on root skinned meshes). For more advanced "on" states, you can provide a single-frame animation clip instead.
+
+### Prop with Modes
+
+Similar to a Toggleable Prop, but can have multiple separate "on" states instead of just one.
+
+### Blink Controller
+
+Include a single-frame animation of your avatar with its eyes closed (or click the plus and give it the blend shape name), and VRC Fury will drive your avatar's blink cycle. If you do this, be sure to disable blinking AND look up / look down support in your VRC Avatar Descriptor.
 
 Benefits:
 * Blinking will stop automatically when your avatar performs vrcfury gestures affecting its eyes. This means no more 'double-blinking'.
 * Unlike vrc's built-in eye tracking disable feature, your eyes will not freeze closed, partially closed, unfreeze unexpectedly due to combo-gestures.
 * Your eye blink will be synchronized with all other clients (I'm unsure if the default vrc eye blink is synced or not).
+
+### Breathing Controller
+
+Automatically creates an animation for your avatar's breathing cycle. Provide either a gameobject (which will be scaled between the provided "min" and "max" scale), or a blendshape, which will be animated between 0 and 1.
 
 ### Visemes using Animation Clips
 
