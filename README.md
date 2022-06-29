@@ -116,6 +116,8 @@ Distributing your own prefab with animations?
 * Ship the prefab to them, and instruct them to drag the prefab onto whatever bone on their avatar.
 * When they upload their avatar, your prefab's props will be imported to their menu automatically! Any animation clip paths will be adjusted automatically to work properly, no matter where they've placed it in their avatar.
 
+Note: If a client wishes to use your VRCFury-enabled prefab in a project WITHOUT VRCFury, they will need to remove the VRCFury component from the prefab instance after they drag it in. The VRCSDK will not allow an avatar to be uploaded containing a VRCFury component when VRCFury is not installed in the project.
+
 ## Controller-Less Setup
 
 Your avatar doesn't even need to have a FX layer, menu, or params! If these are unset, VRCFury will create them automatically, and manage them fully (meaning it will be deleted and recreated from scratch before each upload).
