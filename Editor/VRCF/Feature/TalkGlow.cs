@@ -4,8 +4,8 @@ using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
-public class Talking : BaseFeature {
-    public void Generate(Model.Feature.Talking config) {
+public class Talking : BaseFeature<Model.Feature.Talking> {
+    public override void Generate(Model.Feature.Talking config) {
         var layer = manager.NewLayer("Talk Glow");
         var clip = LoadState("TalkGlow", config.state);
         var off = layer.NewState("Off");

@@ -5,8 +5,8 @@ using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
-public class SenkyGestureDriver : BaseFeature {
-    public void Generate(Model.Feature.SenkyGestureDriver config) {
+public class SenkyGestureDriver : BaseFeature<Model.Feature.SenkyGestureDriver> {
+    public override void Generate(Model.Feature.SenkyGestureDriver config) {
         var blinkActive = manager.NewBool("BlinkActive", def: true);
         var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
         var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);

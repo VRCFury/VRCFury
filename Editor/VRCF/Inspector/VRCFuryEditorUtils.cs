@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 
 namespace VRCF.Inspector {
 
-public class VRCFuryEditorUtils {
+public static class VRCFuryEditorUtils {
 
     public static VisualElement List(
         SerializedProperty list,

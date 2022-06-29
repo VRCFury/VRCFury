@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace VRCF.Feature {
 
-public class Puppet : BaseFeature {
-    public void Generate(Model.Feature.Puppet config) {
+public class Puppet : BaseFeature<Model.Feature.Puppet> {
+    public override void Generate(Model.Feature.Puppet config) {
         var layerName = config.name;
         var layer = manager.NewLayer(layerName);
         var tree = manager.NewBlendTree(config.name);

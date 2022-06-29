@@ -8,7 +8,7 @@ using VRCF.Model.Feature;
 
 namespace VRCF.Feature {
 
-public class FeatureFinder {
+public static class FeatureFinder {
     private static Dictionary<Type,Type> allFeatures;
     private static Dictionary<Type,Type> GetAllFeatures() {
         if (allFeatures == null) {
@@ -20,7 +20,7 @@ public class FeatureFinder {
                             var genMethod = type.GetMethod("Generate");
                             var modelType = genMethod.GetParameters()[0].ParameterType;
                             allFeatures.Add(modelType, type);
-                        } catch(Exception e) {
+                        } catch(Exception e) { 
                             Debug.LogException(new Exception("VRCFury failed to load feature " + type.Name, e));
                         }
                     }
@@ -102,13 +102,7 @@ public class FeatureFinder {
         }
         
         configure(featureImpl);
-        var genMethod = featureImpl.GetType().GetMethod("Generate");
-        if (genMethod == null) {
-            Debug.LogError("Failed to find Generate method in " + implementationType.Name + " while building");
-            return;
-        }
-
-        genMethod.Invoke(featureImpl, new object[]{model});
+        featureImpl.GenerateUncasted(model);
     }
 }
 

@@ -4,8 +4,8 @@ using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
-public class Blinking : BaseFeature {
-    public void Generate(Model.Feature.Blinking config) {
+public class Blinking : BaseFeature<Model.Feature.Blinking> {
+    public override void Generate(Model.Feature.Blinking config) {
         if (!StateExists(config.state)) return;
 
         var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);

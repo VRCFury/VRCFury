@@ -8,8 +8,8 @@ using VRCF.Model;
 
 namespace VRCF.Feature {
 
-public class Toggle : BaseFeature {
-    public void Generate(Model.Feature.Toggle config) {
+public class Toggle : BaseFeature<Model.Feature.Toggle> {
+    public override void Generate(Model.Feature.Toggle config) {
         if (config.slider) {
             var stops = new List<VRCFuryPropPuppetStop> {
                 new VRCFuryPropPuppetStop(1,0,config.state)

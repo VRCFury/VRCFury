@@ -7,8 +7,8 @@ using VRCF.Builder;
 
 namespace VRCF.Feature {
 
-public class FullController : BaseFeature {
-    public void Generate(Model.Feature.FullController config) {
+public class FullController : BaseFeature<Model.Feature.FullController> {
+    public override void Generate(Model.Feature.FullController config) {
         var baseObject = config.rootObj != null ? config.rootObj : featureBaseObject;
 
         if (config.controller != null) {

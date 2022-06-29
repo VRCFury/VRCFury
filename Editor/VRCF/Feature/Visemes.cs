@@ -7,8 +7,8 @@ using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
-public class Visemes : BaseFeature {
-    public void Generate(Model.Feature.Visemes config) {
+public class Visemes : BaseFeature<Model.Feature.Visemes> {
+    public override void Generate(Model.Feature.Visemes config) {
         if (config.oneAnim == null) return;
 
         var visemeFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(config.oneAnim));

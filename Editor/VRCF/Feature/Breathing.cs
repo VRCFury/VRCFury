@@ -8,8 +8,8 @@ using VRCF.Model;
 
 namespace VRCF.Feature {
 
-public class Breathing : BaseFeature {
-    public void Generate(Model.Feature.Breathing config) {
+public class Breathing : BaseFeature<Model.Feature.Breathing> {
+    public override void Generate(Model.Feature.Breathing config) {
         var clip = manager.NewClip("Breathing");
         var so = new SerializedObject(clip);
         so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;

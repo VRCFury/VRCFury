@@ -3,8 +3,8 @@ using VRCF.Builder;
 
 namespace VRCF.Feature {
 
-public class AvatarScale : BaseFeature {
-    public void Generate(Model.Feature.AvatarScale config) {
+public class AvatarScale : BaseFeature<Model.Feature.AvatarScale> {
+    public override void Generate(Model.Feature.AvatarScale config) {
         var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
         manager.NewMenuSlider("Scale", paramScale);
         var scaleClip = manager.NewClip("Scale");

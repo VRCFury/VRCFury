@@ -4,8 +4,8 @@ using VRCF.Inspector;
 
 namespace VRCF.Feature {
 
-public class Modes : BaseFeature {
-    public void Generate(Model.Feature.Modes config) {
+public class Modes : BaseFeature<Model.Feature.Modes> {
+    public override void Generate(Model.Feature.Modes config) {
         var physBoneResetter = CreatePhysBoneResetter(config.resetPhysbones, config.name);
 
         var layerName = config.name;

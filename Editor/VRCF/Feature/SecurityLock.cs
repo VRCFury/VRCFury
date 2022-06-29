@@ -4,8 +4,8 @@ using UnityEngine.UIElements;
 
 namespace VRCF.Feature {
 
-public class SecurityLock : BaseFeature {
-    public void Generate(Model.Feature.SecurityLock config) {
+public class SecurityLock : BaseFeature<Model.Feature.SecurityLock> {
+    public override void Generate(Model.Feature.SecurityLock config) {
         if (config.leftCode == 0 || config.rightCode == 0) return;
 
         var paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);

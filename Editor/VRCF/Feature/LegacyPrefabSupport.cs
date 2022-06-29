@@ -7,8 +7,8 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VRCF.Feature {
 
-public class LegacyPrefabSupport : BaseFeature {
-    public void Generate(Model.Feature.LegacyPrefabSupport config) {
+public class LegacyPrefabSupport : BaseFeature<Model.Feature.LegacyPrefabSupport> {
+    public override void Generate(Model.Feature.LegacyPrefabSupport config) {
         foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
             var maybeValid = false;
             var isCanine = false;

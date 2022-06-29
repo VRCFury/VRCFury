@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VRCF.Builder;
+using VRCF.Feature;
 using VRCF.Model;
 using VRCF.Model.Feature;
 
@@ -17,6 +18,8 @@ public abstract class BaseFeature {
     public GameObject avatarObject;
     public GameObject featureBaseObject;
     public Action<FeatureModel> addOtherFeature;
+    
+    public abstract void GenerateUncasted(FeatureModel model);
 
     public virtual string GetEditorTitle() {
         return null;
@@ -142,6 +145,14 @@ public abstract class BaseFeature {
 
     protected static SkinnedMeshRenderer[] GetAllSkins(GameObject parent) {
         return parent.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+    }
+}
+
+public abstract class BaseFeature<ModelType> : BaseFeature where ModelType : FeatureModel {
+    public abstract void Generate(ModelType model);
+
+    public override void GenerateUncasted(FeatureModel model) {
+        Generate((ModelType)model);
     }
 }
 

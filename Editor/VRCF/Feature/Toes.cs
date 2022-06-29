@@ -5,8 +5,8 @@ using VRCF.Model;
 
 namespace VRCF.Feature {
 
-public class Toes : BaseFeature {
-    public void Generate(Model.Feature.Toes config) {
+public class Toes : BaseFeature<Model.Feature.Toes> {
+    public override void Generate(Model.Feature.Toes config) {
         var toes = new Model.Feature.Puppet {
             name = "Toes"
         };
