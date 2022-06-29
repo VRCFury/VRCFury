@@ -7,6 +7,7 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRCF.Feature;
+using VRCF.Inspector;
 using VRCF.Model;
 using Object = UnityEngine.Object;
 

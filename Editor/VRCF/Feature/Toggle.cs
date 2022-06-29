@@ -11,10 +11,10 @@ namespace VRCF.Feature {
 public class Toggle : BaseFeature {
     public void Generate(Model.Feature.Toggle config) {
         if (config.slider) {
-            var stops = new List<VRCFuryPropPuppetStop>();
-            stops.Add(new VRCFuryPropPuppetStop(1,0,config.state));
-            var puppet = new Model.Feature.Puppet
-            {
+            var stops = new List<VRCFuryPropPuppetStop> {
+                new VRCFuryPropPuppetStop(1,0,config.state)
+            };
+            var puppet = new Model.Feature.Puppet {
                 name = config.name,
                 saved = config.saved,
                 slider = true,
@@ -66,10 +66,13 @@ public class Toggle : BaseFeature {
         var defaultOnProp = prop.FindPropertyRelative("defaultOn");
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
 
-        var flex = new VisualElement();
-        flex.style.flexDirection = FlexDirection.Row;
-        flex.style.alignItems = Align.FlexStart;
-        flex.style.marginBottom = 10;
+        var flex = new VisualElement {
+            style = {
+                flexDirection = FlexDirection.Row,
+                alignItems = Align.FlexStart,
+                marginBottom = 10
+            }
+        };
         container.Add(flex);
 
         var name = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("name"));
@@ -108,9 +111,12 @@ public class Toggle : BaseFeature {
                 });
             }
             advMenu.ShowAsContext();
-        });
-        button.text = "*";
-        button.style.flexGrow = 0;
+        }) {
+            text = "*",
+            style = {
+                flexGrow = 0
+            }
+        };
         flex.Add(button);
 
         var content = new VisualElement();

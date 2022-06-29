@@ -30,11 +30,12 @@ public class FullController : BaseFeature {
         if (config.parameters != null) {
             foreach (var param in config.parameters.parameters) {
                 if (string.IsNullOrWhiteSpace(param.name)) continue;
-                var newParam = new VRCExpressionParameters.Parameter();
-                newParam.name = param.name;
-                newParam.valueType = param.valueType;
-                newParam.saved = param.saved && !config.ignoreSaved;
-                newParam.defaultValue = param.defaultValue;
+                var newParam = new VRCExpressionParameters.Parameter {
+                    name = param.name,
+                    valueType = param.valueType,
+                    saved = param.saved && !config.ignoreSaved,
+                    defaultValue = param.defaultValue
+                };
                 manager.addSyncedParam(newParam);
             }
         }

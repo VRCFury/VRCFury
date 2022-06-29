@@ -14,7 +14,6 @@ public class VRCFuryMenuItem {
     [MenuItem("Tools/Force Run VRCFury on Selection")]
     private static void Run() {
         var obj = Selection.activeTransform.gameObject;
-        var vrcfury = obj.GetComponent<VRCFury>();
         var builder = new VRCFuryBuilder();
         builder.SafeRun(obj);
     }
@@ -23,7 +22,6 @@ public class VRCFuryMenuItem {
     private static bool Check() {
         if (Selection.activeTransform == null) return false;
         var obj = Selection.activeTransform.gameObject;
-        if (obj == null) return false;
         var avatar = obj.GetComponent<VRCAvatarDescriptor>();
         if (avatar == null) return false;
         if (obj.GetComponent<VRCFury>() != null) return true;
@@ -41,8 +39,6 @@ public class VRCFuryEditor : Editor {
         VRCFuryConfigUpgrader.GetConfig(self);
         serializedObject.Update();
 
-        var obj = serializedObject;
-
         var container = new VisualElement();
 
         var pointingToAvatar = self.gameObject.GetComponent<VRCAvatarDescriptor>() != null;
@@ -57,11 +53,19 @@ public class VRCFuryEditor : Editor {
                 onEmpty: () => {
                     var c = new VisualElement();
                     VRCFuryEditorUtils.Padding(c, 10);
-                    var l = new Label("You haven't added any VRCFury features yet.");
-                    l.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    var l = new Label {
+                        text = "You haven't added any VRCFury features yet.",
+                        style = {
+                            unityTextAlign = TextAnchor.MiddleCenter
+                        }
+                    };
                     c.Add(l);
-                    var l2 = new Label("Click the + to add your first one!");
-                    l2.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    var l2 = new Label {
+                        text = "Click the + to add your first one!",
+                        style = {
+                            unityTextAlign = TextAnchor.MiddleCenter
+                        }
+                    };
                     c.Add(l2);
                     return c;
                 }
@@ -81,9 +85,12 @@ public class VRCFuryEditor : Editor {
             var genButton = new Button(() => {
                 var builder = new VRCFuryBuilder();
                 builder.SafeRun(self.gameObject);
-            });
-            genButton.style.marginTop = 5;
-            genButton.text = "Force Build Now";
+            }) {
+                style = {
+                    marginTop = 5
+                },
+                text = "Force Build Now"
+            };
             box.Add(genButton);
         }
 

@@ -34,11 +34,13 @@ public class Breathing : BaseFeature {
             }
         }
 
-        var toggle = new Model.Feature.Toggle();
-        toggle.name = "Breathing";
-        toggle.defaultOn = true;
-        toggle.state = new VRCFuryState();
-        toggle.state.clip = clip;
+        var toggle = new Model.Feature.Toggle {
+            name = "Breathing",
+            defaultOn = true,
+            state = new VRCFuryState {
+                clip = clip
+            }
+        };
         addOtherFeature(toggle);
     }
 

@@ -12,13 +12,19 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         return VRCFuryEditorUtils.RefreshOnChange(() => {
             var type = typeProp.stringValue;
             if (type == VRCFuryAction.TOGGLE) {
-                var row = new VisualElement();
-                row.style.flexDirection = FlexDirection.Row;
-                row.style.alignItems = Align.FlexStart;
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
 
-                var label = new Label("Object Toggle");
-                label.style.flexGrow = 0;
-                label.style.flexBasis = VRCFuryEditorUtils.LABEL_WIDTH;
+                var label = new Label("Object Toggle") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = VRCFuryEditorUtils.LABEL_WIDTH
+                    }
+                };
                 row.Add(label);
 
                 var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("obj"));
@@ -29,13 +35,20 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             }
 
             if (type == VRCFuryAction.BLENDSHAPE) {
-                var row = new VisualElement();
-                row.style.flexDirection = FlexDirection.Row;
-                row.style.alignItems = Align.FlexStart;
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
 
-                var label = new Label("BlendShape");
-                label.style.flexGrow = 0;
-                label.style.flexBasis = VRCFuryEditorUtils.LABEL_WIDTH;
+                var label = new Label {
+                    text = "BlendShape",
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = VRCFuryEditorUtils.LABEL_WIDTH
+                    }
+                };
                 row.Add(label);
 
                 var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("blendShape"));

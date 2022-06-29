@@ -80,9 +80,12 @@ public class LegacyPrefabSupport : BaseFeature {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
-        var label = new Label("This feature will automatically import some hand-picked legacy non-VRCFury prefabs into VRCFury.");
-        label.style.whiteSpace = WhiteSpace.Normal;
-        content.Add(label);
+        content.Add(new Label() {
+            text = "This feature will automatically import some hand-picked legacy non-VRCFury prefabs into VRCFury.",
+            style = {
+                whiteSpace = WhiteSpace.Normal
+            }
+        });
         return content;
     }
 }

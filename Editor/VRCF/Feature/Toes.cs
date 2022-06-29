@@ -7,8 +7,9 @@ namespace VRCF.Feature {
 
 public class Toes : BaseFeature {
     public void Generate(Model.Feature.Toes config) {
-        var toes = new Model.Feature.Puppet();
-        toes.name = "Toes";
+        var toes = new Model.Feature.Puppet {
+            name = "Toes"
+        };
         if (StateExists(config.down)) toes.stops.Add(new VRCFuryPropPuppetStop(0,-1,config.down));
         if (StateExists(config.up)) toes.stops.Add(new VRCFuryPropPuppetStop(0,1,config.up));
         if (StateExists(config.splay)) {

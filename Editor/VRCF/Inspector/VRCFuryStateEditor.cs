@@ -14,16 +14,12 @@ public class VRCFuryStateEditor {
 
         var list = prop.FindPropertyRelative("actions");
 
-        Action onPlus = () => {
+        void OnPlus() {
             var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Object Toggle"), false, () => {
-                VRCFuryEditorUtils.AddToList(list, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryAction.TOGGLE);
-            });
-            menu.AddItem(new GUIContent("BlendShape"), false, () => {
-                VRCFuryEditorUtils.AddToList(list, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryAction.BLENDSHAPE);
-            });
+            menu.AddItem(new GUIContent("Object Toggle"), false, () => { VRCFuryEditorUtils.AddToList(list, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryAction.TOGGLE); });
+            menu.AddItem(new GUIContent("BlendShape"), false, () => { VRCFuryEditorUtils.AddToList(list, entry => entry.FindPropertyRelative("type").stringValue = VRCFuryAction.BLENDSHAPE); });
             menu.ShowAsContext();
-        };
+        }
 
         var clipProp = prop.FindPropertyRelative("clip");
         var actions = prop.FindPropertyRelative("actions");
@@ -56,14 +52,14 @@ public class VRCFuryStateEditor {
                     segments.Add(clipBox);
                 }
                 if (showPlus) {
-                    var plus = new Button(onPlus);
+                    var plus = new Button(OnPlus);
                     plus.style.flexGrow = 0;
                     plus.text = "+";
                     segments.Add(plus);
                 }
             }
             if (showActions) {
-                body.Add(VRCFuryEditorUtils.List(list, onPlus: onPlus));
+                body.Add(VRCFuryEditorUtils.List(list, onPlus: OnPlus));
             }
 
             return body;

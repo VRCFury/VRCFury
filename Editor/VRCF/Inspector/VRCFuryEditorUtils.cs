@@ -31,8 +31,11 @@ public class VRCFuryEditorUtils {
             for (var i = 0; i < size; i++) {
                 var offset = i;
                 var el = list.GetArrayElementAtIndex(i);
-                var row = new VisualElement();
-                row.style.flexDirection = FlexDirection.Row;
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row
+                    }
+                };
                 if (offset != size - 1) {
                     row.style.borderBottomWidth = 1;
                     row.style.borderBottomColor = Color.black;
@@ -141,8 +144,11 @@ public class VRCFuryEditorUtils {
     }
 
     public static VisualElement PropWithoutLabel(SerializedProperty prop) {
-        var field = new PropertyField(prop, " ");
-        field.style.marginLeft = -LABEL_WIDTH;
+        var field = new PropertyField(prop, " ") {
+            style = {
+                marginLeft = -LABEL_WIDTH
+            }
+        };
         return field;
     }
 
@@ -173,20 +179,25 @@ public class VRCFuryEditorUtils {
         }
         throw new Exception("Type " + prop.propertyType + " not supported (yet) by OnChange");
     }
-    private static VisualElement _OnChange<TYPE>(SerializedProperty prop, Func<TYPE> getValue, Action changed, Func<TYPE,TYPE,bool> equals) {
+    private static VisualElement _OnChange<T>(SerializedProperty prop, Func<T> getValue, Action changed, Func<T,T,bool> equals) {
         // The register events can sometimes randomly fire when binding / unbinding happens,
         // with the oldValue being "null", so we have to do our own change detection by caching the old value.
-        var fakeField = new PropertyField(prop);
-        fakeField.style.display = DisplayStyle.None;
+        var fakeField = new PropertyField(prop) {
+            style = {
+                display = DisplayStyle.None
+            }
+        };
         var oldValue = getValue();
-        Action check = () => {
+
+        void Check() {
             var newValue = getValue();
             if (equals(oldValue, newValue)) return;
             oldValue = newValue;
             //Debug.Log("Detected change in " + prop.propertyPath);
             changed();
-        };
-        fakeField.RegisterCallback<ChangeEvent<TYPE>>(e => check());
+        }
+
+        fakeField.RegisterCallback<ChangeEvent<T>>(e => Check());
         return fakeField;
     }
 
@@ -195,16 +206,18 @@ public class VRCFuryEditorUtils {
         var inner = new VisualElement();
         container.Add(inner);
         inner.Add(content());
-        Action refresh = () => {
+
+        void Refresh() {
             inner.Unbind();
             inner.Clear();
             var newContent = content();
             inner.Add(newContent);
             inner.Bind(props[0].serializedObject);
-        };
+        }
+
         foreach (var prop in props) {
             if (prop != null) {
-                var onChangeField = OnChange(prop, refresh);
+                var onChangeField = OnChange(prop, Refresh);
                 container.Add(onChangeField);
             }
         }

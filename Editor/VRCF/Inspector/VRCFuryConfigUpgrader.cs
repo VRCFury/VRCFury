@@ -1,9 +1,10 @@
 using System;
 using UnityEditor;
 using UnityEngine;
+using VRCF.Model;
 using VRCF.Model.Feature;
 
-namespace VRCF.Model {
+namespace VRCF.Inspector {
 
 [Serializable]
 public class VRCFuryConfigUpgrader {
