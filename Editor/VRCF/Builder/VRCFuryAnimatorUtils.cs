@@ -9,10 +9,12 @@ namespace VRCF.Builder {
 public class VFAController {
     private readonly AnimatorController ctrl;
     internal readonly AnimationClip noopClip;
+    internal readonly bool useWriteDefaults;
 
-    public VFAController(AnimatorController ctrl, AnimationClip noopClip) {
+    public VFAController(AnimatorController ctrl, AnimationClip noopClip, bool useWriteDefaults) {
         this.ctrl = ctrl;
         this.noopClip = noopClip;
+        this.useWriteDefaults = useWriteDefaults;
     }
 
     public VFALayer NewLayer(string name) {
@@ -62,7 +64,7 @@ public class VFALayer {
         var lastNode = GetLastNodeForPositioning();
         layer.stateMachine.AddState(name);
         var node = GetLastNode().Value;
-        node.state.writeDefaultValues = false;
+        node.state.writeDefaultValues = ctrl.useWriteDefaults;
         node.state.motion = ctrl.noopClip;
 
         var state = new VFAState(node, layer);

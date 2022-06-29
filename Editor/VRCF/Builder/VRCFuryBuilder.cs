@@ -125,6 +125,9 @@ public class VRCFuryBuilder {
         GameObject avatarObject
     ) {
         var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
+        if (manager.IsUsingWriteDefaults) {
+            Debug.Log("Detected usage of 'Write Defaults', using it for generated states too.");
+        }
         var motions = new VRCFuryClipUtils(avatarObject);
         var noopClip = manager.GetNoopClip();
         var defaultClip = manager.NewClip("Defaults");
