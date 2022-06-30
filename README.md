@@ -100,6 +100,13 @@ Benefits:
 * You can use bone transforms in your visemes, meaning you can open your jaw rather than using an A blend shape.
 * This can enhance some features, such as tongue movement, while your mouth is open during speech.
 
+### Armature Link
+
+Is your prop a skinned mesh that "attaches" to the bones of the root avatar? Armature Link is what you need! Give it the
+root bone (hips) within your prop and the path to that same root bone in the avatar, and VRCFury will automatically
+parent constraint the entire hierarchy together. Just make sure the bones you want to link are all in the same order
+and have the same names!
+
 ### Full Controller
 
 This is usually only useful for prefab artists. Provide a controller, menu, and params, and it will be merged into your client's avatar automatically. If you're working on your own avatar, you should usually just add these things to your avatar's own controller, menu, and params instead.
