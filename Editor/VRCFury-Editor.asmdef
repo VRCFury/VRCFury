@@ -2,6 +2,6 @@
     "name": "VRCFury-Editor",
     "references": [
         "VRCFury",
-        "VRC.SDK3A"
+        "VRC.SDKBase.Editor.BuildPipeline"
     ]
 }

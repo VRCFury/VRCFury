@@ -4,7 +4,6 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Validation;
 using VRC.SDKBase.Editor.BuildPipeline;
 using VF.Builder;
 using Object = UnityEngine.Object;
@@ -13,14 +12,13 @@ namespace VF {
 
 [InitializeOnLoad]
 public class Startup {
-    static Startup()
-    {
-        var whitelist = AvatarValidation.ComponentTypeWhiteListCommon;
-        var updated = new List<string>(whitelist);
+    static Startup() {
+        var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Validation.AvatarValidation");
+        var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic);
+        var whitelist = whitelistField.GetValue(null);
+        var updated = new List<string>((string[])whitelist);
         updated.Add("VF.Model.VRCFury");
-        typeof(AvatarValidation)
-            .GetField("ComponentTypeWhiteListCommon",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic)
-            .SetValue(null,updated.ToArray());
+        whitelistField.SetValue(null,updated.ToArray());
     }
 }
 
