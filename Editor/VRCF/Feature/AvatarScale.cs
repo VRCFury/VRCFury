@@ -9,7 +9,7 @@ public class AvatarScale : BaseFeature<Model.Feature.AvatarScale> {
         manager.NewMenuSlider("Scale", paramScale);
         var scaleClip = manager.NewClip("Scale");
         var baseScale = avatarObject.transform.localScale.x;
-        motions.Scale(scaleClip, avatarObject, VRCFuryClipUtils.FromFrames(
+        motions.Scale(scaleClip, avatarObject, ClipBuilder.FromFrames(
             new Keyframe(0, baseScale * 0.1f),
             new Keyframe(2, baseScale * 1),
             new Keyframe(3, baseScale * 2),

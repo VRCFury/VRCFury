@@ -12,8 +12,7 @@ namespace VRCF.Feature {
 
 public abstract class BaseFeature {
     public VRCFuryNameManager manager;
-    public VRCFuryClipUtils motions;
-    public AnimationClip defaultClip;
+    public ClipBuilder motions;
     public AnimationClip noopClip;
     public GameObject avatarObject;
     public GameObject featureBaseObject;
@@ -54,7 +53,6 @@ public abstract class BaseFeature {
                 continue;
             }
             motions.Enable(resetClip, physBone, false);
-            motions.Enable(defaultClip, physBone, true);
         }
 
         reset1.WithAnimation(resetClip);
@@ -94,22 +92,6 @@ public abstract class BaseFeature {
             } else {
                 output = state.clip;
             }
-            foreach (var binding in AnimationUtility.GetCurveBindings(output)) {
-                var exists = AnimationUtility.GetFloatValue(avatarObject, binding, out var value);
-                if (exists) {
-                    AnimationUtility.SetEditorCurve(defaultClip, binding, VRCFuryClipUtils.OneFrame(value));
-                } else {
-                    Debug.LogWarning("Missing default value for: " + binding.path);
-                }
-            }
-            foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(output)) {
-                var exists = AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out var value);
-                if (exists) {
-                    AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, motions.OneFrame(value));
-                } else {
-                    Debug.LogWarning("Missing default value for: " + binding.path);
-                }
-            }
             return output;
         }
         if (state.actions.Count == 0) {
@@ -123,7 +105,6 @@ public abstract class BaseFeature {
                     continue;
                 }
                 motions.Enable(clip, action.obj, !action.obj.activeSelf);
-                motions.Enable(defaultClip, action.obj, action.obj.activeSelf);
             }
             if (action.type == VRCFuryAction.BLENDSHAPE) {
                 var foundOne = false;
@@ -133,7 +114,6 @@ public abstract class BaseFeature {
                     foundOne = true;
                     var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
                     motions.BlendShape(clip, skin, action.blendShape, 100);
-                    motions.BlendShape(defaultClip, skin, action.blendShape, defValue);
                 }
                 if (!foundOne) {
                     Debug.LogWarning("BlendShape not found in avatar: " + action.blendShape);

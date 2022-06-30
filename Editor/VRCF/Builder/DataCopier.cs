@@ -5,6 +5,9 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VRCF.Builder {
 
+/**
+ * Copies everything from one animator controller into another. Optionally rewriting all clips found along the way.
+ */
 public static class DataCopier {
     public static void Copy(AnimatorController from, AnimatorController to, string layerPrefix, Func<AnimationClip,AnimationClip> rewriteClip) {
         foreach (var param in from.parameters) {
@@ -44,7 +47,8 @@ public static class DataCopier {
             toState.speed = fromState.speed;
             toState.timeParameter = fromState.timeParameter;
             toState.timeParameterActive = fromState.timeParameterActive;
-            toState.writeDefaultValues = fromState.writeDefaultValues;
+            // We never use write defaults, because VRCFury will collect all the default values and handle them later
+            toState.writeDefaultValues = false;
             toState.motion = CopyMotion(fromState.motion, rewriteClip);
             foreach (var b in fromState.behaviours) {
                 if (b is VRCAvatarParameterDriver) {

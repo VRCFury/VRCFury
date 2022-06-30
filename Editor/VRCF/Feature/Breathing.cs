@@ -16,7 +16,7 @@ public class Breathing : BaseFeature<Model.Feature.Breathing> {
         so.ApplyModifiedProperties();
 
         if (config.obj != null) {
-            motions.Scale(clip, config.obj, VRCFuryClipUtils.FromSeconds(
+            motions.Scale(clip, config.obj, ClipBuilder.FromSeconds(
                 new Keyframe(0, config.scaleMin),
                 new Keyframe(2.3f, config.scaleMax),
                 new Keyframe(2.7f, config.scaleMax),
@@ -27,7 +27,7 @@ public class Breathing : BaseFeature<Model.Feature.Breathing> {
             var breathingSkins = new List<SkinnedMeshRenderer>(GetAllSkins(avatarObject))
                 .FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(config.blendshape) != -1); 
             foreach (var skin in breathingSkins) {
-                motions.BlendShape(clip, skin, config.blendshape, VRCFuryClipUtils.FromSeconds(
+                motions.BlendShape(clip, skin, config.blendshape, ClipBuilder.FromSeconds(
                     new Keyframe(0, 0),
                     new Keyframe(2.3f, 100),
                     new Keyframe(2.7f, 100),

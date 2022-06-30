@@ -6,13 +6,13 @@ using Object = UnityEngine.Object;
 
 namespace VRCF.Builder {
 
-public class VRCFuryClipUtils {
+public class ClipBuilder {
     private readonly GameObject baseObject;
-    public VRCFuryClipUtils(GameObject baseObject) {
+    public ClipBuilder(GameObject baseObject) {
         this.baseObject = baseObject;
     }
 
-    public ObjectReferenceKeyframe[] OneFrame(Object obj) {
+    public static ObjectReferenceKeyframe[] OneFrame(Object obj) {
         var f1 = new ObjectReferenceKeyframe {
             time = 0,
             value = obj

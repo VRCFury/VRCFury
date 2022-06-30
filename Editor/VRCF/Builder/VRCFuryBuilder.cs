@@ -72,6 +72,7 @@ public class VRCFuryBuilder {
         // Third party integrations (if this is a fully-managed controller)
         if (IsVrcfAsset(fxController)) {
             Progress(0.3, "Third-Party Integrations");
+            if (vrcCloneObject != null) VRCFuryTPSIntegration.Run(vrcCloneObject, fxController, tmpDir);
             VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
             // This is kinda broken, since it won't work right during upload with the clone object
             //VRCFuryLensIntegration.Run(avatarObject);
@@ -112,14 +113,8 @@ public class VRCFuryBuilder {
         GameObject avatarObject
     ) {
         var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
-        if (manager.IsUsingWriteDefaults) {
-            Debug.Log("Detected usage of 'Write Defaults', using it for generated states too.");
-        }
-        var motions = new VRCFuryClipUtils(avatarObject);
+        var motions = new ClipBuilder(avatarObject);
         var noopClip = manager.GetNoopClip();
-        var defaultClip = manager.NewClip("Defaults");
-        var defaultLayer = manager.NewLayer("Defaults");
-        defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
 
         Progress(0.5, "Scanning for features");
         var features = new List<Tuple<GameObject, FeatureModel>>();
@@ -138,14 +133,13 @@ public class VRCFuryBuilder {
         foreach (var featureTuple in features) {
             i++;
             var configObject = featureTuple.Item1;
-            Progress((0.5 + 0.5 * ((double)i/features.Count)), "Adding feature to " + configObject);
+            Progress((0.5 + 0.4 * ((double)i/features.Count)), "Adding feature to " + configObject);
             var feature = featureTuple.Item2;
             var isProp = configObject != avatarObject;
             Action<BaseFeature> configureFeature = null;
             configureFeature = f => {
                 f.manager = manager;
                 f.motions = motions;
-                f.defaultClip = defaultClip;
                 f.noopClip = noopClip;
                 f.avatarObject = avatarObject;
                 f.featureBaseObject = configObject;
@@ -153,6 +147,12 @@ public class VRCFuryBuilder {
             };
             FeatureFinder.RunFeature(feature, configureFeature, isProp);
         }
+
+        Progress(0.92, "Collecting default states");
+        AddDefaultsLayer(manager, avatarObject);
+
+        Progress(0.95, "Adjusting 'Write Defaults'");
+        UseWriteDefaultsIfNeeded(manager);
     }
 
     private static AnimatorController GetAvatarFx(VRCAvatarDescriptor avatar) {
@@ -248,6 +248,42 @@ public class VRCFuryBuilder {
 
     private static void Progress(double progress, string info) {
         EditorUtility.DisplayProgressBar("VRCFury is building ...", info, (float)progress);
+    }
+    
+    private static void AddDefaultsLayer(VRCFuryNameManager manager, GameObject avatarObject) {
+        var defaultClip = manager.NewClip("Defaults");
+        var defaultLayer = manager.NewLayer("Defaults", true);
+        defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
+        foreach (var layer in manager.GetManagedLayers()) {
+            DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject);
+        }
+    }
+    
+    private static void UseWriteDefaultsIfNeeded(VRCFuryNameManager manager) {
+        var offStates = 0;
+        var onStates = 0;
+        foreach (var layer in manager.GetUnmanagedLayers()) {
+            DefaultClipBuilder.ForEachState(layer, state => {
+                if (state.writeDefaultValues) onStates++;
+                else offStates++;
+            });
+        }
+
+        if (onStates > 0 && offStates > 0) {
+            Debug.LogWarning("Your animation controller contains a mix of Write Defaults ON and Write Defaults OFF states." +
+                           " (" + onStates + " on, " + offStates + " off)." +
+                           " Doing this may cause weird issues to happen with your animations in game." +
+                           " This is not an issue with VRCFury, but an issue with your avatar's custom animation controller.");
+        }
+        
+        // If half of the old states use writeDefaults, safe to assume it should be used everywhere
+        var shouldUseWriteDefaults = onStates >= offStates && onStates > 0;
+        if (shouldUseWriteDefaults) {
+            Debug.Log("Detected usage of 'Write Defaults', adjusting generated states to use it too.");
+            foreach (var layer in manager.GetManagedLayers()) {
+                DefaultClipBuilder.ForEachState(layer, state => state.writeDefaultValues = true);
+            }
+        }
     }
 }
 
