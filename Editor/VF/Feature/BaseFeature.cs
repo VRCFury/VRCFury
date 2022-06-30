@@ -29,9 +29,17 @@ public abstract class BaseFeature {
     public virtual VisualElement CreateEditor(SerializedProperty prop) {
         return null;
     }
+    
+    public virtual bool AvailableOnAvatar() {
+        return true;
+    }
 
     public virtual bool AvailableOnProps() {
         return true;
+    }
+    
+    public virtual bool ApplyToVrcClone() {
+        return false;
     }
 
     protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {

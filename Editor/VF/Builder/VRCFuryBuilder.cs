@@ -96,7 +96,7 @@ public class VRCFuryBuilder {
         }
 
         // Do everything!
-        ApplyFuryConfigs(fxController, menu, syncedParams, tmpDir, avatarObject);
+        ApplyFuryConfigs(fxController, menu, syncedParams, tmpDir, avatarObject, vrcCloneObject);
 
         Progress(1, "Finishing Up");
         EditorUtility.SetDirty(fxController);
@@ -111,7 +111,8 @@ public class VRCFuryBuilder {
         VRCExpressionsMenu menu,
         VRCExpressionParameters syncedParams,
         string tmpDir,
-        GameObject avatarObject
+        GameObject avatarObject,
+        GameObject vrcCloneObject
     ) {
         var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
         var motions = new ClipBuilder(avatarObject);
@@ -137,16 +138,20 @@ public class VRCFuryBuilder {
             Progress((0.5 + 0.4 * ((double)i/features.Count)), "Adding feature to " + configObject);
             var feature = featureTuple.Item2;
             var isProp = configObject != avatarObject;
-            Action<BaseFeature> configureFeature = null;
-            configureFeature = f => {
+            Action<BaseFeature> configureFeature = f => {
                 f.manager = manager;
                 f.motions = motions;
                 f.noopClip = noopClip;
                 f.avatarObject = avatarObject;
                 f.featureBaseObject = configObject;
-                f.addOtherFeature = model => FeatureFinder.RunFeature(model, configureFeature, isProp);
             };
-            FeatureFinder.RunFeature(feature, configureFeature, isProp);
+            FeatureFinder.RunFeature(feature, configureFeature, isProp, false);
+            if (vrcCloneObject != null) {
+                FeatureFinder.RunFeature(feature, f => {
+                    configureFeature(f);
+                    f.avatarObject = vrcCloneObject;
+                }, isProp, true);
+            }
         }
 
         Progress(0.92, "Collecting default states");

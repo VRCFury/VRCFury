@@ -125,5 +125,11 @@ namespace VF.Model.Feature {
     public class Visemes : FeatureModel {
         public AnimationClip oneAnim;
     }
+    
+    [Serializable]
+    public class ArmatureLink : FeatureModel {
+        public GameObject propBone;
+        public string bonePathOnAvatar;
+    }
 
 }

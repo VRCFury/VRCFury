@@ -32,15 +32,11 @@ public static class FeatureFinder {
     }
 
     public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(bool isProp) {
-        if (isProp) {
-            return GetAllFeatures()
-                .Where(e => {
-                    var impl = (BaseFeature)Activator.CreateInstance(e.Value);
-                    return impl.AvailableOnProps();
-                });
-        } else {
-            return GetAllFeatures();
-        }
+        return GetAllFeatures()
+            .Where(e => {
+                var impl = (BaseFeature)Activator.CreateInstance(e.Value);
+                return isProp ? impl.AvailableOnProps() : impl.AvailableOnAvatar();
+            });
     }
 
     public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, bool isProp) {
@@ -65,7 +61,9 @@ public static class FeatureFinder {
             
             VisualElement bodyContent;
             if (isProp && !featureInstance.AvailableOnProps()) {
-                bodyContent = new Label("This feature is not allowed on props");
+                bodyContent = new Label("This feature is not available for props");
+            } else if (!isProp && !featureInstance.AvailableOnAvatar()) {
+                bodyContent = new Label("This feature is not available for avatars");
             } else {
                 try {
                     bodyContent = featureInstance.CreateEditor(prop);
@@ -89,7 +87,7 @@ public static class FeatureFinder {
             return new Label("Editor threw an exception, check the unity console");
         }
     }
-    public static void RunFeature(FeatureModel model, Action<BaseFeature> configure, bool isProp) {
+    public static void RunFeature(FeatureModel model, Action<BaseFeature> configure, bool isProp, bool isVrcClone) {
         if (model == null) {
             throw new Exception(
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date?");
@@ -103,12 +101,20 @@ public static class FeatureFinder {
 
         var featureImpl = (BaseFeature)Activator.CreateInstance(implementationType);
 
+        if (isVrcClone && !featureImpl.ApplyToVrcClone()) {
+            return;
+        }
         if (isProp && !featureImpl.AvailableOnProps()) {
             Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");
             return;
         }
+        if (!isProp && !featureImpl.AvailableOnAvatar()) {
+            Debug.LogError("Found " + modelType.Name + " feature on an avatar. Avatars are not allowed to have this feature.");
+            return;
+        }
         
         configure(featureImpl);
+        featureImpl.addOtherFeature = m => RunFeature(m, configure, isProp, isVrcClone);
         featureImpl.GenerateUncasted(model);
     }
 }
