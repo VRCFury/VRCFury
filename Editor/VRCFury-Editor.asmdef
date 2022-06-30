@@ -3,5 +3,8 @@
     "references": [
         "VRCFury",
         "VRC.SDKBase.Editor.BuildPipeline"
+    ],
+    "includePlatforms": [
+        "Editor"
     ]
 }
