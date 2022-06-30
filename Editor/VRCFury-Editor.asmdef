@@ -1,0 +1,7 @@
+{
+    "name": "VRCFury-Editor",
+    "references": [
+        "VRCFury",
+        "VRC.SDK3A"
+    ]
+}
