@@ -21,23 +21,27 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ObjectToggleAction()); });
             menu.AddItem(new GUIContent("BlendShape"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlendShapeAction()); });
-            menu.AddItem(new GUIContent("Clip"), false,
+            menu.AddItem(new GUIContent("Animation Clip"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new AnimationClipAction()); });
             menu.ShowAsContext();
         }
 
-        var clipProp = prop.FindPropertyRelative("clip");
         var actions = prop.FindPropertyRelative("actions");
 
         container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var body = new VisualElement();
-            var hasActions = actions.arraySize > 0;
 
             var showLabel = myLabel != "";
-            var showPlus = true; 
-            var showActions = hasActions;
+            SerializedProperty singleClip = null;
+            if (list.arraySize == 1) {
+                singleClip = list.GetArrayElementAtIndex(0).FindPropertyRelative("clip");
+            }
 
-            if (showLabel || showPlus) {
+            var showPlus = singleClip != null || list.arraySize == 0;
+            var showSingleClip = singleClip != null;
+            var showList = singleClip == null;
+
+            if (showLabel || showSingleClip || showPlus) {
                 var segments = new VisualElement();
                 body.Add(segments);
                 segments.style.flexDirection = FlexDirection.Row;
@@ -49,19 +53,32 @@ public class VRCFuryStateEditor {
                     label.style.flexGrow = 0;
                     segments.Add(label);
                 }
+                if (showSingleClip) {
+                    var clipField = VRCFuryEditorUtils.PropWithoutLabel(singleClip);
+                    clipField.style.flexGrow = 1;
+                    segments.Add(clipField);
+                    var x = new Button(() => {
+                        list.DeleteArrayElementAtIndex(0);
+                    }) {
+                        style = { flexGrow = 0 },
+                        text = "x",
+                    };
+                    segments.Add(x);
+                }
                 if (showPlus) {
-                    var plus = new Button(OnPlus);
-                    plus.style.flexGrow = 0;
-                    plus.text = "+";
+                    var plus = new Button(OnPlus) {
+                        style = { flexGrow = showSingleClip ? 0 : 1 },
+                        text = "+",
+                    };
                     segments.Add(plus);
                 }
             }
-            if (showActions) {
+            if (showList) {
                 body.Add(VRCFuryEditorUtils.List(list, onPlus: OnPlus));
             }
 
             return body;
-        }, list, clipProp, actions));
+        }, list, actions));
 
         return container;
     }
