@@ -66,7 +66,7 @@ namespace VF.Feature {
             container.Add(new Label("Root Bone in this Prop:"));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("propBone")));
             container.Add(new Label("Path to corresponding root bone from root of avatar:"));
-            container.Add(new Label("Lleave empty to default to avatar root bone (hips)"));
+            container.Add(new Label("Leave empty to default to avatar root bone (hips)"));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("bonePathOnAvatar")));
             return container;
         }
