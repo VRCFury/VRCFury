@@ -1,14 +1,15 @@
 using System.IO;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
 
-public class LegacyPrefabSupport : BaseFeature<VF.Model.Feature.LegacyPrefabSupport> {
-    public override void Generate(VF.Model.Feature.LegacyPrefabSupport config) {
+public class ZawooIntegration : BaseFeature<VF.Model.Feature.ZawooIntegration> {
+    public override void Generate(VF.Model.Feature.ZawooIntegration config) {
         foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
             var maybeValid = false;
             var isCanine = false;
@@ -48,7 +49,7 @@ public class LegacyPrefabSupport : BaseFeature<VF.Model.Feature.LegacyPrefabSupp
                 controller = fx,
                 menu = menu,
                 parameters = prms,
-                submenu = "Zawoo",
+                submenu = string.IsNullOrWhiteSpace(config.submenu) ? "Zawoo" : config.submenu,
                 rootObj = child.gameObject,
                 ignoreSaved = true
             });
@@ -75,17 +76,18 @@ public class LegacyPrefabSupport : BaseFeature<VF.Model.Feature.LegacyPrefabSupp
     }
 
     public override string GetEditorTitle() {
-        return "Legacy Prefab Support";
+        return "Zawoo Integration";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
         content.Add(new Label() {
-            text = "This feature will automatically import some hand-picked legacy non-VRCFury prefabs into VRCFury.",
+            text = "This feature will automatically import zawoo prefabs into VRCFury.",
             style = {
                 whiteSpace = WhiteSpace.Normal
             }
         });
+        content.Add(new PropertyField(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
         return content;
     }
     

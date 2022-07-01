@@ -72,7 +72,7 @@ public class FullController : FeatureModel {
 [Serializable]
 public class LegacyPrefabSupport : FeatureModel {
     public override VF.Model.Feature.FeatureModel Upgrade() {
-        return new VF.Model.Feature.LegacyPrefabSupport();
+        return new VF.Model.Feature.ZawooIntegration();
     }
 }
 

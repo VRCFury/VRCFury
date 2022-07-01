@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
+// Notes for the future:
+// Don't ever remove a class -- it will break the entire list of serializedproperties
+// Don't mark a class as Obsolete or MovedFrom -- unity 2019 will go into an infinite loop and die
+
 namespace VF.Model.Feature {
 
     [Serializable]
@@ -34,9 +38,15 @@ namespace VF.Model.Feature {
         [NonSerialized] public GameObject rootObj;
         [NonSerialized] public bool ignoreSaved;
     }
-
+    
+    // Obsolete and removed
     [Serializable]
     public class LegacyPrefabSupport : FeatureModel {
+    }
+
+    [Serializable]
+    public class ZawooIntegration : FeatureModel {
+        public string submenu;
     }
 
     [Serializable]

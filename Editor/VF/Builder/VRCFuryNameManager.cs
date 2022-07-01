@@ -12,7 +12,7 @@ namespace VF.Builder {
 public class VRCFuryNameManager {
     public static string prefix = "VRCFury";
     private readonly VRCExpressionsMenu rootMenu;
-    private VRCExpressionsMenu fxMenu;
+    private VRCExpressionsMenu vrcfMenu;
     private VRCExpressionsMenu lastMenu;
     private int lastMenuNum;
     private readonly VRCExpressionParameters syncedParams;
@@ -136,77 +136,115 @@ public class VRCFuryNameManager {
         return tree;
     }
 
-    public VRCExpressionsMenu GetFxMenu() {
+    public VRCExpressionsMenu GetVrcFuryMenu() {
         if (useMenuRoot) {
             return rootMenu;
         }
-        if (fxMenu == null) {
+        if (vrcfMenu == null) {
             if (rootMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
                 throw new Exception("Root menu can't fit any more controls!");
             }
-            fxMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            AssetDatabase.CreateAsset(fxMenu, tmpDir + "/VRCF_Menu.asset");
-            var control = new VRCExpressionsMenu.Control();
-            rootMenu.controls.Add(control);
-            control.name = prefix;
-            control.subMenu = fxMenu;
-            control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+            vrcfMenu = CreateNewMenu(new string[]{});
+            rootMenu.controls.Add(new VRCExpressionsMenu.Control {
+                name = prefix,
+                subMenu = vrcfMenu,
+                type = VRCExpressionsMenu.Control.ControlType.SubMenu
+            });
         }
-        return fxMenu;
+        return vrcfMenu;
     }
-    public VRCExpressionsMenu NewTopLevelMenu(string name) {
-        var fxMenu = GetFxMenu();
-        if (fxMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-            throw new Exception("Out of room for new submenus!");
-        }
-        var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-        AssetDatabase.CreateAsset(newMenu, tmpDir + "/VRCF_Menu_" + name + ".asset");
+    public VRCExpressionsMenu.Control NewMenuItem(string path) {
+        var split = path.Split('/');
         var control = new VRCExpressionsMenu.Control();
-        fxMenu.controls.Add(control);
-        control.name = name;
-        control.subMenu = newMenu;
-        control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
-        return newMenu;
-    }
-    public VRCExpressionsMenu GetNumMenu() {
-        if (lastMenu == null || lastMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-            lastMenuNum++;
-            lastMenu = NewTopLevelMenu(""+lastMenuNum);
-        }
-        return lastMenu;
-    }
-    public VRCExpressionsMenu.Control NewMenuItem() {
-        var menu = GetNumMenu();
-        var control = new VRCExpressionsMenu.Control();
-        menu.controls.Add(control);
+        control.name = split[split.Length-1];
+        AddMenuItem(new ArraySegment<string>(split, 0, split.Length-1).ToArray(), control);
         return control;
     }
-    public void NewMenuToggle(string name, VFAParam param, float value = 1) {
-        var control = NewMenuItem();
-        control.name = name;
+
+    private VRCExpressionsMenu GetMenu(string[] path) {
+        var current = GetVrcFuryMenu();
+        for (var i = 0; i < path.Length; i++) {
+            var folderName = path[i];
+            var folderControl = current.controls.Find(c => c.name == folderName);
+            if (folderControl == null) {
+                folderControl = new VRCExpressionsMenu.Control() {
+                    name = folderName,
+                    type = VRCExpressionsMenu.Control.ControlType.SubMenu
+                };
+                current.controls.Add(folderControl);
+            }
+            var folder = folderControl.subMenu;
+            if (folder == null) {
+                var newFolderPath = new ArraySegment<string>(path, 0, i + 1)
+                    .ToArray();
+                folder = CreateNewMenu(newFolderPath);
+                folderControl.subMenu = folder;
+            }
+            current = folder;
+        }
+        return current;
+    }
+    public void AddMenuItem(string[] menuPath, VRCExpressionsMenu.Control control) {
+        var menu = GetMenu(menuPath);
+        menu.controls.Add(control);
+    }
+    public void NewMenuToggle(string path, VFAParam param, float value = 1) {
+        var control = NewMenuItem(path);
         control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
         var menuParam = new VRCExpressionsMenu.Control.Parameter();
         menuParam.name = param.Name();
         control.parameter = menuParam;
         control.value = value;
     }
-    public void NewMenuSlider(string name, VFANumber param) {
-        var control = NewMenuItem();
-        control.name = name;
+    public void NewMenuSlider(string path, VFANumber param) {
+        var control = NewMenuItem(path);
         control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
         var menuParam = new VRCExpressionsMenu.Control.Parameter();
         menuParam.name = param.Name();
         control.subParameters = new[]{menuParam};
     }
-    public void NewMenuPuppet(string name, VFANumber x, VFANumber y) {
-        var control = NewMenuItem();
-        control.name = name;
+    public void NewMenuPuppet(string path, VFANumber x, VFANumber y) {
+        var control = NewMenuItem(path);
         control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
         var menuParamX = new VRCExpressionsMenu.Control.Parameter();
         menuParamX.name = (x != null) ? x.Name() : "";
         var menuParamY = new VRCExpressionsMenu.Control.Parameter();
         menuParamY.name = (y != null) ? y.Name() : "";
         control.subParameters = new[]{menuParamX, menuParamY};
+    }
+
+    public void SplitMenus() {
+        SplitMenus(new string[]{}, GetVrcFuryMenu());
+    }
+
+    private void SplitMenus(string[] path, VRCExpressionsMenu menu) {
+        if (menu == null) return;
+        if (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS) {
+            var nextMenu = CreateNewMenu(new List<string>(path) { "Next" }.ToArray());
+            while (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS - 1) {
+                nextMenu.controls.Insert(0, menu.controls[menu.controls.Count-1]);
+                menu.controls.RemoveAt(menu.controls.Count-1);
+            }
+            menu.controls.Add(new VRCExpressionsMenu.Control() {
+                name = "Next",
+                type = VRCExpressionsMenu.Control.ControlType.SubMenu,
+                subMenu = nextMenu
+            });
+        }
+        foreach (var control in menu.controls) {
+            if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                SplitMenus(new List<string>(path) { control.name }.ToArray(), control.subMenu);
+            }
+        }
+    }
+
+    private VRCExpressionsMenu CreateNewMenu(string[] path) {
+        var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+        string filePath;
+        if (path.Length > 0) filePath = tmpDir + "/VRCF_Menu_" + string.Join("_", path) + ".asset";
+        else filePath = tmpDir + "/VRCF_Menu.asset";
+        AssetDatabase.CreateAsset(newMenu, filePath);
+        return newMenu;
     }
 
     public VFABool NewTrigger(string name, bool usePrefix = true) {

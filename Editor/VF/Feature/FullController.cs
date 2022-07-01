@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.UIElements;
@@ -19,13 +21,13 @@ public class FullController : BaseFeature<VF.Model.Feature.FullController> {
             });
         }
         if (config.menu != null) {
-            var targetMenu = manager.GetFxMenu();
-            if (!string.IsNullOrEmpty(config.submenu)) {
-                targetMenu = manager.NewTopLevelMenu(config.submenu);
+            string[] prefix;
+            if (string.IsNullOrWhiteSpace(config.submenu)) {
+                prefix = new string[] { };
+            } else {
+                prefix = config.submenu.Split('/').ToArray();
             }
-            foreach (var control in config.menu.controls) {
-                targetMenu.controls.Add(control);
-            }
+            MergeMenu(prefix, config.menu);
         }
         if (config.parameters != null) {
             foreach (var param in config.parameters.parameters) {
@@ -37,6 +39,18 @@ public class FullController : BaseFeature<VF.Model.Feature.FullController> {
                     defaultValue = param.defaultValue
                 };
                 manager.addSyncedParam(newParam);
+            }
+        }
+    }
+
+    private void MergeMenu(string[] prefix, VRCExpressionsMenu from) {
+        foreach (var control in from.controls) {
+            if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
+                var prefix2 = new List<string>(prefix);
+                prefix2.Add(control.name);
+                MergeMenu(prefix2.ToArray(), control.subMenu);
+            } else {
+                manager.AddMenuItem(prefix, control);
             }
         }
     }

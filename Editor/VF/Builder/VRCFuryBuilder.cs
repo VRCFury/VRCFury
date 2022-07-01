@@ -7,10 +7,8 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Feature;
-using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
-using Modes = VF.Model.Feature.Modes;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -97,6 +95,9 @@ public class VRCFuryBuilder {
                 if (c.gameObject != vrcCloneObject) Object.DestroyImmediate(c);
             }
         }
+        
+        Progress(0.98, "Splitting Menus");
+        manager.SplitMenus();
 
         Progress(1, "Finishing Up");
         EditorUtility.SetDirty(fxController);

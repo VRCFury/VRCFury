@@ -13,7 +13,7 @@ public class Modes : BaseFeature<VF.Model.Feature.Modes> {
         var off = layer.NewState("Off");
         if (physBoneResetter != null) off.Drives(physBoneResetter, true);
         var param = manager.NewInt(config.name, synced: true, saved: config.saved);
-        manager.NewMenuToggle(config.name + " - Off", param, 0);
+        manager.NewMenuToggle(config.name + "/Off", param, 0);
         var i = 1;
         foreach (var mode in config.modes) {
             var num = i++;
@@ -29,7 +29,7 @@ public class Modes : BaseFeature<VF.Model.Feature.Modes> {
                 state.TransitionsFromAny().When(param.IsEqualTo(num));
                 state.TransitionsToExit().When(param.IsNotEqualTo(num));
             }
-            manager.NewMenuToggle(config.name + " - " + num, param, num);
+            manager.NewMenuToggle(config.name + "/Mode " + num, param, num);
         }
     }
 

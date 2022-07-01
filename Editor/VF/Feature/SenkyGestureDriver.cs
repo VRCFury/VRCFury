@@ -14,13 +14,13 @@ public class SenkyGestureDriver : BaseFeature<VF.Model.Feature.SenkyGestureDrive
         var paramEmoteTongue = manager.NewBool("EmoteTongue", synced: true);
         // These don't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
         var paramEmoteHappyLock = manager.NewBool("EmoteHappyLock", synced: true);
-        manager.NewMenuToggle("Lock Happy", paramEmoteHappyLock);
+        manager.NewMenuToggle("Emote Lock/Happy", paramEmoteHappyLock);
         var paramEmoteSadLock = manager.NewBool("EmoteSadLock", synced: true);
-        manager.NewMenuToggle("Lock Sad", paramEmoteSadLock);
+        manager.NewMenuToggle("Emote Lock/Sad", paramEmoteSadLock);
         var paramEmoteAngryLock = manager.NewBool("EmoteAngryLock", synced: true);
-        manager.NewMenuToggle("Lock Angry", paramEmoteAngryLock);
+        manager.NewMenuToggle("Emote Lock/Angry", paramEmoteAngryLock);
         var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock", synced: true);
-        manager.NewMenuToggle("Lock Tongue", paramEmoteTongueLock);
+        manager.NewMenuToggle("Emote Lock/Tongue", paramEmoteTongueLock);
 
         {
             var layer = manager.NewLayer("Eyes");
