@@ -16,6 +16,7 @@ build_files:
     - echo "VERSION=$VERSION" > build.env
     - echo "PACKAGE_URL=$CI_JOB_URL/artifacts/raw/VRCFury.$VERSION.unitypackage" >> build.env
   artifacts:
+    expire_in: never
     paths:
       - "*.unitypackage"
     reports:
