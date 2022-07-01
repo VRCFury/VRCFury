@@ -15,24 +15,37 @@ function make_meta_directory() {
       return
     fi
     
-    if [[ -d "$asset_file" ]]; then
-      return
-    elif [[ ! -f "$asset_file" ]]; then
+    if [[ ! -e "$asset_file" ]]; then
       echo "Cannot find corresponding asset file $asset_file" >&2
       return
     fi
-    
+
     echo "Adding $asset_file to $path_prefix$asset_file"
     guid=$(yq e '.guid' "$meta_file")
     dir="$tmp_dir/$guid"
     mkdir $dir
     cp $meta_file $dir/asset.meta
     echo $path_prefix$asset_file > $dir/pathname
-    cp $asset_file $dir/asset
+    if [[ -f "$asset_file" ]]; then
+      cp $asset_file $dir/asset
+    fi
 }
 
 find . -name "*.meta" -print0 \
   | while IFS= read -r -d '' file; do make_meta_directory "$file"; done
+
+mkdir "$tmp_dir/00b990f230095454f82c345d433841ae"
+echo -n "Assets/VRCFury" > "$tmp_dir/00b990f230095454f82c345d433841ae/pathname"
+cat <<EOT > "$tmp_dir/00b990f230095454f82c345d433841ae/asset.meta"
+fileFormatVersion: 2
+guid: 00b990f230095454f82c345d433841ae
+folderAsset: yes
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+EOT
 
 cd $tmp_dir
 tar -czvf archtemp.tar.gz * > /dev/null
