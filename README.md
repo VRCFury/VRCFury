@@ -34,8 +34,8 @@ VRC Fury is new. Things may be broken. Beware. If you find any issues, please re
 ## How to install and use
 
 * Delete the VRCFury directory from your project (if upgrading).
-* Click [here](https://gitlab.com/VRCFury/VRCFury/-/archive/main/VRCFury-main.zip) to download the latest release.
-* Extract the zip somewhere into your project's Assets folder (this is not a unity package file, so you can't just drag it in).
+* Download the latest Unity Package from the [Releases Page](https://gitlab.com/VRCFury/VRCFury/-/releases)
+* Drag the package into your project's Project tab (where the folders are) and click OK to import
 * If you are using just VRCFury because an artist said you needed if for their prefab:
   * You can stop here! You're done! Just follow their directions to add their prefab to your avatar, and VRC Fury will handle the rest.
   * Otherwise, read on to add your own behaviors and props.
