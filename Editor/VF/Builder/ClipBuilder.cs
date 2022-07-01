@@ -7,6 +7,7 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
 
 public class ClipBuilder {
+    private static float ONE_FRAME = 1 / 60f;
     private readonly GameObject baseObject;
     public ClipBuilder(GameObject baseObject) {
         this.baseObject = baseObject;
@@ -24,8 +25,9 @@ public class ClipBuilder {
         return new[]{ f1, f2 };
     }
     public static AnimationCurve OneFrame(float value) {
-        return AnimationCurve.Constant(0, 1/60f, value);
+        return AnimationCurve.Constant(0, 0, value);
     }
+
     public static AnimationCurve FromFrames(params Keyframe[] keyframes) {
         for (var i = 0; i < keyframes.Length; i++) {
             keyframes[i].time /= 60f;
@@ -37,7 +39,7 @@ public class ClipBuilder {
     }
 
     public void Enable(AnimationClip clip, GameObject obj, bool active = true) {
-        clip.SetCurve(GetPath(obj), typeof(GameObject), "m_IsActive", OneFrame(active?1:0));
+        clip.SetCurve(GetPath(obj), typeof(GameObject), "m_IsActive", OneFrame(active ? 1 : 0));
     }
     public void Scale(AnimationClip clip, GameObject obj, AnimationCurve curve) {
         foreach (var axis in new[]{"x","y","z"}) {
@@ -91,10 +93,10 @@ public class ClipBuilder {
         return string.Join("/", ret);
     }
 
-    private string GetPath(GameObject obj) {
+    public string GetPath(GameObject obj) {
         return GetPath(obj.transform);
     }
-    private string GetPath(Transform transform) {
+    public string GetPath(Transform transform) {
         var parts = new List<string>();
         var current = transform;
         while (current != baseObject.transform) {

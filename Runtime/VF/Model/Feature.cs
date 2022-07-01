@@ -132,5 +132,9 @@ namespace VF.Model.Feature {
         public string bonePathOnAvatar;
         public bool useOptimizedUpload;
     }
+    
+    [Serializable]
+    public class TPSIntegration : FeatureModel {
+    }
 
 }

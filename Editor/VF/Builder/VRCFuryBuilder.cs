@@ -70,15 +70,6 @@ public class VRCFuryBuilder {
         AttachToAvatar(avatarObject, fxController, menu, syncedParams);
         if (vrcCloneObject != null) AttachToAvatar(vrcCloneObject, fxController, menu, syncedParams);
 
-        // Third party integrations (if this is a fully-managed controller)
-        if (IsVrcfAsset(fxController)) {
-            Progress(0.3, "Third-Party Integrations");
-            if (vrcCloneObject != null) VRCFuryTPSIntegration.Run(vrcCloneObject, fxController, tmpDir);
-            VRCFuryTPSIntegration.Run(avatarObject, fxController, tmpDir);
-            // This is kinda broken, since it won't work right during upload with the clone object
-            //VRCFuryLensIntegration.Run(avatarObject);
-        }
-
         // Apply configs
         var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
         var motions = new ClipBuilder(avatarObject);

@@ -84,13 +84,17 @@ public class VRCFuryNameManager {
     public AnimatorController GetRawController() {
         return ctrl;
     }
+    
+    public string GetTmpDir() {
+        return tmpDir;
+    }
 
     private VFAController _controller;
     private AnimationClip _noopClip;
     private VFAController GetController() {
         if (_controller == null) {
             _noopClip = NewClip("noop");
-            _noopClip.SetCurve("_ignored", typeof(GameObject), "m_IsActive", AnimationCurve.Constant(0,1/60f,0));
+            _noopClip.SetCurve("_ignored", typeof(GameObject), "m_IsActive", AnimationCurve.Constant(0,0,0));
             _controller = new VFAController(ctrl, _noopClip);
         }
         return _controller;
