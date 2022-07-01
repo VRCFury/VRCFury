@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -45,9 +46,12 @@ public static class FeatureFinder {
                 return new Label("VRCFury doesn't have code for this feature. Is your VRCFury up to date?");
             }
             var modelType = model.GetType();
-            var implementationType = GetAllFeatures()[modelType];
-            if (implementationType == null) {
-                return new Label("Failed to find editor: " + modelType.Name);
+            var found = GetAllFeatures().TryGetValue(modelType, out var implementationType);
+            if (!found) {
+                return VRCFuryEditorUtils.WrappedLabel(
+                    "The " + modelType.Name + " feature has been removed in your " +
+                    "version of VRCFury. It may have been replaced with a new feature, check the + menu."
+                );
             }
             var featureInstance = (BaseFeature)Activator.CreateInstance(implementationType);
 
