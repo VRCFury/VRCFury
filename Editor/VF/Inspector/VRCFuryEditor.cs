@@ -45,6 +45,9 @@ public class VRCFuryEditor : Editor {
             var disabled = PrefabUtility.IsPartOfPrefabInstance(self);
             container.Add(CreateOverrideLabel(features));
             if (disabled) {
+                // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
+                // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
+                // will just be thrown out randomly, and unity will dump a bunch of errors.
                 var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(self);
                 container.Add(CreatePrefabInstanceLabel(baseFury));
             }
@@ -138,29 +141,28 @@ public class VRCFuryEditor : Editor {
     }
     
     private VisualElement CreatePrefabInstanceLabel(VRCFury parent) {
-        var label = new VisualElement() {
+        var label = new Button(() => Selection.SetActiveObjectWithContext(parent, parent)) {
+            text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
             style = {
-                backgroundColor = new Color(0.3f, 0.3f, 0),
                 paddingTop = 5,
                 paddingBottom = 5,
                 unityTextAlign = TextAnchor.MiddleCenter,
                 whiteSpace = WhiteSpace.Normal,
                 borderTopLeftRadius = 5,
                 borderTopRightRadius = 5,
+                borderBottomLeftRadius = 0,
+                borderBottomRightRadius = 0,
                 marginTop = 5,
                 marginLeft = 20,
                 marginRight = 20,
                 borderTopWidth = 1,
                 borderLeftWidth = 1,
-                borderRightWidth = 1
+                borderRightWidth = 1,
+                borderBottomWidth = 0
             }
         };
         VRCFuryEditorUtils.Padding(label, 5);
         VRCFuryEditorUtils.BorderColor(label, Color.black);
-        label.Add(new Label("You are viewing a prefab instance."));
-        label.Add(new Button(() => Selection.SetActiveObjectWithContext(parent, parent)) {
-            text = "Click here to edit VRCFury on the base prefab"
-        });
         return label;
     }
 
