@@ -42,9 +42,14 @@ public class VRCFuryEditor : Editor {
         if (features == null) {
             container.Add(new Label("Feature list is missing? This is a bug."));
         } else {
+            var disabled = PrefabUtility.IsPartOfPrefabInstance(self);
             container.Add(CreateOverrideLabel(features));
-            container.Add(VRCFuryEditorUtils.List(features,
-                renderElement: (i,prop) => renderFeature(self.config.features[i], prop, pointingToAvatar),
+            if (disabled) {
+                var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(self);
+                container.Add(CreatePrefabInstanceLabel(baseFury));
+            }
+            var featureList = VRCFuryEditorUtils.List(features,
+                renderElement: (i, prop) => renderFeature(self.config.features[i], prop, pointingToAvatar),
                 onPlus: () => OnPlus(features, pointingToAvatar),
                 onEmpty: () => {
                     var c = new VisualElement();
@@ -65,7 +70,9 @@ public class VRCFuryEditor : Editor {
                     c.Add(l2);
                     return c;
                 }
-            ));
+            );
+            container.Add(featureList);
+            if (disabled) featureList.SetEnabled(false);
         }
 
         if (pointingToAvatar) {
@@ -94,9 +101,9 @@ public class VRCFuryEditor : Editor {
     }
 
     private VisualElement CreateOverrideLabel(SerializedProperty prop) {
-        var overrideLabel = new Label("The VRCFury features in this prefab are overridden on this instance") {
+        var overrideLabel = new Label("The VRCFury features in this prefab are overridden on this instance. Please revert them! If you apply, it may corrupt data in the changed features.") {
             style = {
-                backgroundColor = new Color(0.3f, 0.3f, 0),
+                backgroundColor = new Color(0.5f, 0, 0),
                 paddingTop = 5,
                 paddingBottom = 5,
                 unityTextAlign = TextAnchor.MiddleCenter,
@@ -128,6 +135,33 @@ public class VRCFuryEditor : Editor {
         CheckOverride();
 
         return overrideLabel;
+    }
+    
+    private VisualElement CreatePrefabInstanceLabel(VRCFury parent) {
+        var label = new VisualElement() {
+            style = {
+                backgroundColor = new Color(0.3f, 0.3f, 0),
+                paddingTop = 5,
+                paddingBottom = 5,
+                unityTextAlign = TextAnchor.MiddleCenter,
+                whiteSpace = WhiteSpace.Normal,
+                borderTopLeftRadius = 5,
+                borderTopRightRadius = 5,
+                marginTop = 5,
+                marginLeft = 20,
+                marginRight = 20,
+                borderTopWidth = 1,
+                borderLeftWidth = 1,
+                borderRightWidth = 1
+            }
+        };
+        VRCFuryEditorUtils.Padding(label, 5);
+        VRCFuryEditorUtils.BorderColor(label, Color.black);
+        label.Add(new Label("You are viewing a prefab instance."));
+        label.Add(new Button(() => Selection.SetActiveObjectWithContext(parent, parent)) {
+            text = "Click here to edit VRCFury on the base prefab"
+        });
+        return label;
     }
 
     private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, bool isEditorOnAvatar) {
