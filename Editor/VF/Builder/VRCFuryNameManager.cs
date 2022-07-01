@@ -165,7 +165,8 @@ public class VRCFuryNameManager {
         var current = GetVrcFuryMenu();
         for (var i = 0; i < path.Length; i++) {
             var folderName = path[i];
-            var folderControl = current.controls.Find(c => c.name == folderName);
+            var folderControl = current.controls.Find(
+                c => c.name == folderName && c.type == VRCExpressionsMenu.Control.ControlType.SubMenu);
             if (folderControl == null) {
                 folderControl = new VRCExpressionsMenu.Control() {
                     name = folderName,

@@ -6,7 +6,6 @@ namespace VF.Feature {
 public class AvatarScale : BaseFeature<VF.Model.Feature.AvatarScale> {
     public override void Generate(VF.Model.Feature.AvatarScale config) {
         var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
-        manager.NewMenuSlider("Scale", paramScale);
         var scaleClip = manager.NewClip("Scale");
         var baseScale = avatarObject.transform.localScale.x;
         motions.Scale(scaleClip, avatarObject, ClipBuilder.FromFrames(
@@ -18,6 +17,16 @@ public class AvatarScale : BaseFeature<VF.Model.Feature.AvatarScale> {
 
         var layer = manager.NewLayer("Scale");
         var main = layer.NewState("Scale").WithAnimation(scaleClip).MotionTime(paramScale);
+        
+        manager.NewMenuSlider("Scale/Adjust", paramScale);
+        manager.NewMenuToggle("Scale/40%", paramScale, 0.15f);
+        manager.NewMenuToggle("Scale/60%", paramScale, 0.25f);
+        manager.NewMenuToggle("Scale/80%", paramScale, 0.40f);
+        manager.NewMenuToggle("Scale/100%", paramScale, 0.50f);
+        manager.NewMenuToggle("Scale/125%", paramScale, 0.55f);
+        manager.NewMenuToggle("Scale/150%", paramScale, 0.60f);
+        manager.NewMenuToggle("Scale/200%", paramScale, 0.75f);
+        
     }
 
     public override string GetEditorTitle() {
