@@ -115,6 +115,12 @@ This is usually only useful for prefab artists. Provide a controller, menu, and 
 
 If this module is present, VRCFury will attempt to seek out and wire up some pre-VRCFury legacy prefabs stored within your avatar. If you aren't instructed to use this, then you probably shouldn't as it won't help you.
 
+### TPS Integration
+
+When enabled, VRCFury will instruct Poiyomi TPS to re-apply itself on the avatar as part of each VRCFury build. This is mostly
+useful when taking advantage of `Controller-Less Setup` (see below), as VRCFury will wipe the controller between each build,
+which would otherwise lose your existing TPS animator controller setup.
+
 ## Info for Prefab Artists
 
 Distributing your own prefab with animations? 
