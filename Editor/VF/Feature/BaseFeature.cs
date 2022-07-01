@@ -15,6 +15,7 @@ namespace VF.Feature {
 public abstract class BaseFeature {
     public VRCFuryNameManager manager;
     public ClipBuilder motions;
+    public string tmpDir;
     public GameObject avatarObject;
     public GameObject featureBaseObject;
     public Action<FeatureModel> addOtherFeature;

@@ -84,10 +84,6 @@ public class VRCFuryNameManager {
     public AnimatorController GetRawController() {
         return ctrl;
     }
-    
-    public string GetTmpDir() {
-        return tmpDir;
-    }
 
     private VFAController _controller;
     private AnimationClip _noopClip;

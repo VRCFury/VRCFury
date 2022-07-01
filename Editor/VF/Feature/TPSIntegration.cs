@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -19,15 +20,20 @@ namespace VF.Feature {
             
             Debug.Log("Running TPS on " + avatarObject + " ...");
 
-            var animator = manager.GetRawController();
+            var tpsClipDir = tmpDir;
+            AnimatorController tpsAnimator;
             if (operatingOnVrcClone) {
                 // If we're working on the clone, just throw away all of TPS's animator changes
-                animator = new AnimatorController();
+                tpsAnimator = new AnimatorController();
+                tpsClipDir = tmpDir + "/_tpsJunk";
+                Directory.CreateDirectory(tpsClipDir);
+            } else {
+                tpsAnimator = manager.GetRawController();
             }
 
             var setup = ScriptableObject.CreateInstance(tpsSetup);
             tpsSetup.GetField("_avatar", b).SetValue(setup, avatarObject.transform);
-            tpsSetup.GetField("_animator", b).SetValue(setup, animator);
+            tpsSetup.GetField("_animator", b).SetValue(setup, tpsAnimator);
             tpsSetup.GetMethod("ScanForTPS", b).Invoke(setup, new object[]{});
             tpsSetup.GetMethod("RemoveTPSFromAnimator", b).Invoke(setup, new object[]{});
             var penetrators = (IList)tpsSetup.GetField("_penetrators", b).GetValue(setup);
@@ -38,11 +44,11 @@ namespace VF.Feature {
             for (var i = 0; i < penetrators.Count; i++) {
                 callWithOptionalParams(tpsSetup.GetMethod("SetupPenetrator", b), null, 
                     avatarObject.transform,
-                    animator,
+                    tpsAnimator,
                     penetrators[i],
                     penetrators,
                     i,
-                    manager.GetTmpDir(),
+                    tpsClipDir,
                     true, // place contacts
                     false, // copy materials
                     !operatingOnVrcClone // configure materials
@@ -57,13 +63,13 @@ namespace VF.Feature {
                 var OrificeType = otype.GetField("OrificeType", b).GetValue(o);
                 callWithOptionalParams(tpsSetup.GetMethod("SetupOrifice", b), null,
                     avatarObject.transform,
-                    animator,
+                    tpsAnimator,
                     Transform,
                     Renderer,
                     OrificeType,
                     o,
                     i,
-                    manager.GetTmpDir()
+                    tpsClipDir
                 );
             }
         }

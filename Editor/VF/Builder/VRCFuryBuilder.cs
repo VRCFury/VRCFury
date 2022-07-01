@@ -73,9 +73,9 @@ public class VRCFuryBuilder {
         // Apply configs
         var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
         var motions = new ClipBuilder(avatarObject);
-        ApplyFuryConfigs(manager, motions, avatarObject, false);
+        ApplyFuryConfigs(manager, motions, tmpDir, avatarObject, false);
         if (vrcCloneObject != null)
-            ApplyFuryConfigs(null, null, vrcCloneObject, true);
+            ApplyFuryConfigs(null, null, tmpDir, vrcCloneObject, true);
         
         Progress(0.92, "Collecting default states");
         AddDefaultsLayer(manager, avatarObject);
@@ -109,6 +109,7 @@ public class VRCFuryBuilder {
     private static void ApplyFuryConfigs(
         VRCFuryNameManager manager,
         ClipBuilder motions,
+        string tmpDir,
         GameObject avatarObject,
         bool isVrcClone
     ) {
@@ -135,6 +136,7 @@ public class VRCFuryBuilder {
             Action<BaseFeature> configureFeature = f => {
                 f.manager = manager;
                 f.motions = motions;
+                f.tmpDir = tmpDir;
                 f.avatarObject = avatarObject;
                 f.featureBaseObject = configObject;
                 f.operatingOnVrcClone = isVrcClone;
