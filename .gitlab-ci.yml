@@ -30,7 +30,7 @@ release:
       artifacts: true
   release:
     name: 'VRCFury $VERSION'
-    description: 'This is a release of VRCFury. Click "Download Unity Package" to download!'
+    description: This is a release of VRCFury. Click 'Download Unity Package' above to download!
     tag_name: '$VERSION'
     assets:
       links:
