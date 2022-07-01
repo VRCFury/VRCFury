@@ -115,7 +115,7 @@ public class VRCFuryEditor : Editor {
         VRCFuryEditorUtils.Padding(overrideLabel, 5);
         VRCFuryEditorUtils.BorderColor(overrideLabel, Color.black);
 
-        var lastCheck = EditorApplication.timeSinceStartup;
+        double lastCheck = 0;
         void CheckOverride() {
             if (this == null) return; // The editor was deleted
             var now = EditorApplication.timeSinceStartup;
