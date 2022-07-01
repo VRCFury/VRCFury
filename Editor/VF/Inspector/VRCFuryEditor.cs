@@ -42,6 +42,28 @@ public class VRCFuryEditor : Editor {
         if (features == null) {
             container.Add(new Label("Feature list is missing? This is a bug."));
         } else {
+            if (features.prefabOverride) {
+                var label = new Label("The VRCFury features in this prefab are overridden on this instance") {
+                    style = {
+                        backgroundColor = new Color(0.3f, 0.3f, 0),
+                        paddingTop = 5,
+                        paddingBottom = 5,
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                        whiteSpace = WhiteSpace.Normal,
+                        borderTopLeftRadius = 5,
+                        borderTopRightRadius = 5,
+                        marginTop = 5,
+                        marginLeft = 20,
+                        marginRight = 20,
+                        borderTopWidth = 1,
+                        borderLeftWidth = 1,
+                        borderRightWidth = 1
+                    }
+                };
+                VRCFuryEditorUtils.Padding(label, 5);
+                VRCFuryEditorUtils.BorderColor(label, Color.black);
+                container.Add(label);
+            }
             container.Add(VRCFuryEditorUtils.List(features,
                 renderElement: (i,prop) => renderFeature(self.config.features[i], prop, pointingToAvatar),
                 onPlus: () => OnPlus(features, pointingToAvatar),
