@@ -8,6 +8,7 @@ namespace VF.Feature {
     public class ArmatureLink : BaseFeature<Model.Feature.ArmatureLink> {
         public override void Generate(Model.Feature.ArmatureLink model) {
             if (model.propBone == null) {
+                Debug.LogWarning("Root bone is null on armature link.");
                 return;
             }
 
@@ -34,26 +35,35 @@ namespace VF.Feature {
             }
             
             Debug.Log("Avatar Link is linking " + model.propBone + " to " + avatarBone);
-            LinkBone(avatarBone, model.propBone);
+            LinkBone(avatarBone, model.propBone, model.useOptimizedUpload);
         }
 
-        private void LinkBone(GameObject avatarBone, GameObject propBone) {
+        private void LinkBone(GameObject avatarBone, GameObject propBone, bool useOptimizedUpload) {
             if (avatarBone == null || propBone == null) return;
             var p = propBone.GetComponent<ParentConstraint>();
             if (p != null) Object.DestroyImmediate(p);
-            p = propBone.AddComponent<ParentConstraint>();
-            p.AddSource(new ConstraintSource() {
-                sourceTransform = avatarBone.transform,
-                weight = 1
-            });
-            p.weight = 1;
-            p.constraintActive = true;
-            p.locked = true;
-            
+            if (useOptimizedUpload && operatingOnVrcClone && !PrefabUtility.IsPartOfPrefabInstance(propBone)) {
+                // If we're operating on the upload copy, we can be more efficient by just
+                // moving the prop bone onto the avatar bone, rather than using constraints
+                Debug.Log("Using optimized armature link for bone " + propBone);
+                propBone.transform.SetParent(avatarBone.transform);
+                propBone.transform.localPosition = Vector3.zero;
+                propBone.transform.localRotation = Quaternion.identity;
+            } else {
+                p = propBone.AddComponent<ParentConstraint>();
+                p.AddSource(new ConstraintSource() {
+                    sourceTransform = avatarBone.transform,
+                    weight = 1
+                });
+                p.weight = 1;
+                p.constraintActive = true;
+                p.locked = true;
+            }
+
             foreach (Transform child in avatarBone.transform) {
                 var childAvatarBone = child.gameObject;
                 var childPropBone = propBone.transform.Find(childAvatarBone.name)?.gameObject;
-                LinkBone(childAvatarBone, childPropBone);
+                LinkBone(childAvatarBone, childPropBone, useOptimizedUpload);
             }
         }
 
@@ -63,20 +73,28 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var container = new VisualElement();
-            container.Add(new Label("Root Bone in this Prop:"));
+            container.Add(new Label("Root bone in the prop:"));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("propBone")));
-            container.Add(new Label("Path to corresponding root bone from root of avatar:"));
-            container.Add(new Label("Leave empty to default to avatar root bone (hips)"));
+
+            container.Add(new Label("Path to corresponding root bone from root of avatar:") {
+                style = { paddingTop = 10 }
+            });
+            container.Add(new Label("Leave empty to default to avatar's skin root bone (usually hips)"));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("bonePathOnAvatar")));
+
+            container.Add(new Label("Use bone parenting optimization on upload (EXPERIMENTAL):") {
+                style = { paddingTop = 10 }
+            });
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Removes constraints and actually re-parents the prop's bones into the avatar's bones (only when uploading)." +
+                                             " Possibly more optimized, but may affect PhysBones that share linked bones." +
+                                             " Required for quest support, which doesn't allow constraints."));
+            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("useOptimizedUpload")));
+            
             return container;
         }
 
-        public override bool AvailableOnAvatar() {
-            return false;
-        }
-        
         public override bool ApplyToVrcClone() {
-            return false;
+            return true;
         }
     }
 }

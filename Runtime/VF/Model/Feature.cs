@@ -130,6 +130,7 @@ namespace VF.Model.Feature {
     public class ArmatureLink : FeatureModel {
         public GameObject propBone;
         public string bonePathOnAvatar;
+        public bool useOptimizedUpload;
     }
 
 }

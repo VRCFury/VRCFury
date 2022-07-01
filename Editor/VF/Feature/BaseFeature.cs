@@ -15,10 +15,10 @@ namespace VF.Feature {
 public abstract class BaseFeature {
     public VRCFuryNameManager manager;
     public ClipBuilder motions;
-    public AnimationClip noopClip;
     public GameObject avatarObject;
     public GameObject featureBaseObject;
     public Action<FeatureModel> addOtherFeature;
+    public bool operatingOnVrcClone;
     
     public abstract void GenerateUncasted(FeatureModel model);
 
@@ -97,7 +97,7 @@ public abstract class BaseFeature {
             return (state.actions[0] as AnimationClipAction).clip;
         }
         if (state.actions.Count == 0) {
-            return noopClip;
+            return manager.GetNoopClip();
         }
         var clip = manager.NewClip(name);
         foreach (var action in state.actions) {

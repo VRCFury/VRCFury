@@ -9,7 +9,7 @@ public class Puppet : BaseFeature<VF.Model.Feature.Puppet> {
         var layer = manager.NewLayer(layerName);
         var tree = manager.NewBlendTree(config.name);
         tree.blendType = BlendTreeType.FreeformDirectional2D;
-        tree.AddChild(noopClip, new Vector2(0,0));
+        tree.AddChild(manager.GetNoopClip(), new Vector2(0,0));
         var i = 0;
         var usesX = false;
         var usesY = false;

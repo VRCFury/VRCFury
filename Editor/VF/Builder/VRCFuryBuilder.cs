@@ -79,8 +79,20 @@ public class VRCFuryBuilder {
             //VRCFuryLensIntegration.Run(avatarObject);
         }
 
-        // Remove components that shouldn't be lying around
-        Progress(0.4, "Removing Junk Components");
+        // Apply configs
+        var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
+        var motions = new ClipBuilder(avatarObject);
+        ApplyFuryConfigs(manager, motions, avatarObject, false);
+        if (vrcCloneObject != null)
+            ApplyFuryConfigs(null, null, vrcCloneObject, true);
+        
+        Progress(0.92, "Collecting default states");
+        AddDefaultsLayer(manager, avatarObject);
+
+        Progress(0.95, "Adjusting 'Write Defaults'");
+        UseWriteDefaultsIfNeeded(manager);
+        
+        Progress(0.97, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
             if (c.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(c.gameObject)) {
                 Object.DestroyImmediate(c);
@@ -95,9 +107,6 @@ public class VRCFuryBuilder {
             }
         }
 
-        // Do everything!
-        ApplyFuryConfigs(fxController, menu, syncedParams, tmpDir, avatarObject, vrcCloneObject);
-
         Progress(1, "Finishing Up");
         EditorUtility.SetDirty(fxController);
         EditorUtility.SetDirty(menu);
@@ -107,17 +116,11 @@ public class VRCFuryBuilder {
     }
 
     private static void ApplyFuryConfigs(
-        AnimatorController fxController,
-        VRCExpressionsMenu menu,
-        VRCExpressionParameters syncedParams,
-        string tmpDir,
+        VRCFuryNameManager manager,
+        ClipBuilder motions,
         GameObject avatarObject,
-        GameObject vrcCloneObject
+        bool isVrcClone
     ) {
-        var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
-        var motions = new ClipBuilder(avatarObject);
-        var noopClip = manager.GetNoopClip();
-
         Progress(0.5, "Scanning for features");
         var features = new List<Tuple<GameObject, FeatureModel>>();
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
@@ -141,24 +144,12 @@ public class VRCFuryBuilder {
             Action<BaseFeature> configureFeature = f => {
                 f.manager = manager;
                 f.motions = motions;
-                f.noopClip = noopClip;
                 f.avatarObject = avatarObject;
                 f.featureBaseObject = configObject;
+                f.operatingOnVrcClone = isVrcClone;
             };
-            FeatureFinder.RunFeature(feature, configureFeature, isProp, false);
-            if (vrcCloneObject != null) {
-                FeatureFinder.RunFeature(feature, f => {
-                    configureFeature(f);
-                    f.avatarObject = vrcCloneObject;
-                }, isProp, true);
-            }
+            FeatureFinder.RunFeature(feature, configureFeature, isProp, isVrcClone);
         }
-
-        Progress(0.92, "Collecting default states");
-        AddDefaultsLayer(manager, avatarObject);
-
-        Progress(0.95, "Adjusting 'Write Defaults'");
-        UseWriteDefaultsIfNeeded(manager);
     }
 
     private static AnimatorController GetAvatarFx(VRCAvatarDescriptor avatar) {

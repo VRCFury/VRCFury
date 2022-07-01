@@ -142,7 +142,17 @@ public static class VRCFuryEditorUtils {
     public static void BorderColor(VisualElement el, Color all) {
         BorderColor(el, all, all);
     }
+    
+    public static VisualElement WrappedLabel(string text) {
+        var field = new Label(text) {
+            style = {
+                whiteSpace = WhiteSpace.Normal
+            }
+        };
+        return field;
+    }
 
+    public static int LABEL_WIDTH = 153;
     public static VisualElement PropWithoutLabel(SerializedProperty prop) {
         var field = new PropertyField(prop, " ") {
             style = {
@@ -223,8 +233,6 @@ public static class VRCFuryEditorUtils {
         }
         return container;
     }
-
-    public static int LABEL_WIDTH = 150;
 
     public static bool FindAndResetMarkedFields(object obj) {
         if (obj == null) return false;
