@@ -42,28 +42,7 @@ public class VRCFuryEditor : Editor {
         if (features == null) {
             container.Add(new Label("Feature list is missing? This is a bug."));
         } else {
-            if (features.prefabOverride) {
-                var label = new Label("The VRCFury features in this prefab are overridden on this instance") {
-                    style = {
-                        backgroundColor = new Color(0.3f, 0.3f, 0),
-                        paddingTop = 5,
-                        paddingBottom = 5,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                        whiteSpace = WhiteSpace.Normal,
-                        borderTopLeftRadius = 5,
-                        borderTopRightRadius = 5,
-                        marginTop = 5,
-                        marginLeft = 20,
-                        marginRight = 20,
-                        borderTopWidth = 1,
-                        borderLeftWidth = 1,
-                        borderRightWidth = 1
-                    }
-                };
-                VRCFuryEditorUtils.Padding(label, 5);
-                VRCFuryEditorUtils.BorderColor(label, Color.black);
-                container.Add(label);
-            }
+            container.Add(CreateOverrideLabel(features));
             container.Add(VRCFuryEditorUtils.List(features,
                 renderElement: (i,prop) => renderFeature(self.config.features[i], prop, pointingToAvatar),
                 onPlus: () => OnPlus(features, pointingToAvatar),
@@ -112,6 +91,43 @@ public class VRCFuryEditor : Editor {
         }
 
         return container;
+    }
+
+    private VisualElement CreateOverrideLabel(SerializedProperty prop) {
+        var overrideLabel = new Label("The VRCFury features in this prefab are overridden on this instance") {
+            style = {
+                backgroundColor = new Color(0.3f, 0.3f, 0),
+                paddingTop = 5,
+                paddingBottom = 5,
+                unityTextAlign = TextAnchor.MiddleCenter,
+                whiteSpace = WhiteSpace.Normal,
+                borderTopLeftRadius = 5,
+                borderTopRightRadius = 5,
+                marginTop = 5,
+                marginLeft = 20,
+                marginRight = 20,
+                borderTopWidth = 1,
+                borderLeftWidth = 1,
+                borderRightWidth = 1,
+                display = DisplayStyle.None
+            }
+        };
+        VRCFuryEditorUtils.Padding(overrideLabel, 5);
+        VRCFuryEditorUtils.BorderColor(overrideLabel, Color.black);
+
+        var lastCheck = EditorApplication.timeSinceStartup;
+        void CheckOverride() {
+            if (this == null) return; // The editor was deleted
+            var now = EditorApplication.timeSinceStartup;
+            if (lastCheck < now - 0.5) {
+                lastCheck = now;
+                overrideLabel.style.display = prop.prefabOverride ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+            EditorApplication.delayCall += CheckOverride;
+        }
+        CheckOverride();
+
+        return overrideLabel;
     }
 
     private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, bool isEditorOnAvatar) {

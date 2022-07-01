@@ -7,7 +7,7 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
 
 public class ClipBuilder {
-    private static float ONE_FRAME = 1 / 60f;
+    //private static float ONE_FRAME = 1 / 60f;
     private readonly GameObject baseObject;
     public ClipBuilder(GameObject baseObject) {
         this.baseObject = baseObject;

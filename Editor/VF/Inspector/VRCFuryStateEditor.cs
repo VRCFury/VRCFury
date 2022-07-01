@@ -39,7 +39,7 @@ public class VRCFuryStateEditor {
 
             var showPlus = singleClip != null || list.arraySize == 0;
             var showSingleClip = singleClip != null;
-            var showList = singleClip == null;
+            var showList = singleClip == null && list.arraySize > 0;
 
             if (showLabel || showSingleClip || showPlus) {
                 var segments = new VisualElement();
@@ -59,6 +59,7 @@ public class VRCFuryStateEditor {
                     segments.Add(clipField);
                     var x = new Button(() => {
                         list.DeleteArrayElementAtIndex(0);
+                        list.serializedObject.ApplyModifiedProperties();
                     }) {
                         style = { flexGrow = 0 },
                         text = "x",
