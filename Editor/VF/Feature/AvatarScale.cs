@@ -1,4 +1,7 @@
+using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VF.Builder;
 
 namespace VF.Feature {
@@ -31,6 +34,20 @@ public class AvatarScale : BaseFeature<VF.Model.Feature.AvatarScale> {
 
     public override string GetEditorTitle() {
         return "Avatar Scale Slider";
+    }
+    
+    public override VisualElement CreateEditor(SerializedProperty prop) {
+        var content = new VisualElement();
+        content.Add(new Label() {
+            text = "This feature will add a slider to your menu which will adjust your avatar's size." +
+                   " Beware, this WILL NOT WORK in the current build of VRChat, as VRChat does not adjust" +
+                   " your viewpoint properly when scaled.",
+            style = {
+                whiteSpace = WhiteSpace.Normal
+            }
+        });
+        content.Add(new PropertyField(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
+        return content;
     }
 
     public override bool AvailableOnProps() {

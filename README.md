@@ -56,6 +56,10 @@ Once you add a VRCFury component to your avatar (or prop), you can add any combi
 
 Use this for a normal "on / off" prop. For simple object props, click the plus, choose Object toggle, and then drag the object into the field. If you choose blendshape, the blendshape will be set to 100 when "on" (only works on root skinned meshes). For more advanced "on" states, you can provide an animation clip instead.
 
+**Menu Entry**
+
+The name you put in the prop's text field will be used as the name of the toggle in your VRChat menu. If you wish to put the prop in a sub-menu, use slashes. Ex: `Props/My Cool Piano`
+
 **Default On**
 
 Want to add an idle animation or "default prop" to your avatar? Create a new prop, click the `*` and select `Default On`. Your idle animation or prop will now be on all the time (but you can also trigger it back off in game!)
@@ -110,10 +114,6 @@ and have the same names!
 ### Full Controller
 
 This is usually only useful for prefab artists. Provide a controller, menu, and params, and it will be merged into your client's avatar automatically. If you're working on your own avatar, you should usually just add these things to your avatar's own controller, menu, and params instead.
-
-### Legacy Prefab Support
-
-If this module is present, VRCFury will attempt to seek out and wire up some pre-VRCFury legacy prefabs stored within your avatar. If you aren't instructed to use this, then you probably shouldn't as it won't help you.
 
 ### TPS Integration
 
