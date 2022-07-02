@@ -106,10 +106,7 @@ Benefits:
 
 ### Armature Link
 
-Is your prop a skinned mesh that "attaches" to the bones of the root avatar? Armature Link is what you need! Give it the
-root bone (hips) within your prop and the path to that same root bone in the avatar, and VRCFury will automatically
-parent constraint the entire hierarchy together. Just make sure the bones you want to link are all in the same order
-and have the same names!
+Is your prop a skinned mesh that "attaches" to the bones of the root avatar? Armature Link is what you need! Give it the root bone (hips) within your prop and the path to that same root bone in the avatar, and VRCFury will automatically parent constraint the entire hierarchy together. Just make sure the bones you want to link are all in the same order and have the same names!
 
 ### Full Controller
 
@@ -117,9 +114,7 @@ This is usually only useful for prefab artists. Provide a controller, menu, and 
 
 ### TPS Integration
 
-When enabled, VRCFury will instruct Poiyomi TPS to re-apply itself on the avatar as part of each VRCFury build. This is mostly
-useful when taking advantage of `Controller-Less Setup` (see below), as VRCFury will wipe the controller between each build,
-which would otherwise lose your existing TPS animator controller setup.
+When enabled, VRCFury will instruct Poiyomi TPS to re-apply itself on the avatar as part of each VRCFury build. This is mostly useful when taking advantage of `Controller-Less Setup` (see below), as VRCFury will wipe the controller between each build, which would otherwise lose your existing TPS animator controller setup.
 
 ## Info for Prefab Artists
 
@@ -133,5 +128,4 @@ Note: If a client wishes to use your VRCFury-enabled prefab in a project WITHOUT
 
 ## Controller-Less Setup
 
-Your avatar doesn't even need to have a FX layer, menu, or params! If these are unset, VRCFury will create them automatically, and manage them fully (meaning it will be deleted and recreated from scratch before each upload).
-Beware of this! If you want to make your own changes to your controller, menu, or params, then you should create one yourself outside of the vrcf temp directory.
+Your avatar doesn't even need to have a FX layer, menu, or params! If these are unset, VRCFury will create them automatically, and manage them fully (meaning it will be deleted and recreated from scratch before each upload). Beware of this! If you want to make your own changes to your controller, menu, or params, then you should create one yourself outside of the vrcf temp directory.

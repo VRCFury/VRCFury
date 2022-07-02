@@ -51,7 +51,7 @@ public class VRCFuryEditor : Editor {
                 var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(self);
                 container.Add(CreatePrefabInstanceLabel(baseFury));
             }
-            var featureList = VRCFuryEditorUtils.List(features,
+            var featureList = VRCFuryEditorUtils.List(features, 
                 renderElement: (i, prop) => renderFeature(self.config.features[i], prop, pointingToAvatar),
                 onPlus: () => OnPlus(features, pointingToAvatar),
                 onEmpty: () => {
@@ -111,19 +111,16 @@ public class VRCFuryEditor : Editor {
                 paddingBottom = 5,
                 unityTextAlign = TextAnchor.MiddleCenter,
                 whiteSpace = WhiteSpace.Normal,
-                borderTopLeftRadius = 5,
-                borderTopRightRadius = 5,
                 marginTop = 5,
                 marginLeft = 20,
                 marginRight = 20,
-                borderTopWidth = 1,
-                borderLeftWidth = 1,
-                borderRightWidth = 1,
                 display = DisplayStyle.None
             }
         };
         VRCFuryEditorUtils.Padding(overrideLabel, 5);
         VRCFuryEditorUtils.BorderColor(overrideLabel, Color.black);
+        VRCFuryEditorUtils.BorderRadius(overrideLabel, 5);
+        VRCFuryEditorUtils.Border(overrideLabel, 1);
 
         double lastCheck = 0;
         void CheckOverride() {
@@ -141,7 +138,7 @@ public class VRCFuryEditor : Editor {
     }
     
     private VisualElement CreatePrefabInstanceLabel(VRCFury parent) {
-        var label = new Button(() => Selection.SetActiveObjectWithContext(parent, parent)) {
+        var label = new Button(() => AssetDatabase.OpenAsset(parent)) {
             text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
             style = {
                 paddingTop = 5,
