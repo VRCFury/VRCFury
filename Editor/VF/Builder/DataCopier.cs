@@ -57,9 +57,6 @@ public static class DataCopier {
                     newB.parameters = oldB.parameters;
                     newB.localOnly = oldB.localOnly;
                     newB.debugString = oldB.debugString;
-                    newB.initialized = oldB.initialized;
-                    newB.isLocalPlayer = oldB.isLocalPlayer;
-                    newB.isEnabled = oldB.isEnabled;
                 }
             }
 
