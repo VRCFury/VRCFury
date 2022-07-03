@@ -1,19 +1,32 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace VF.Builder {
 
 /**
  * Copies everything from one animator controller into another. Optionally rewriting all clips found along the way.
  */
-public static class DataCopier {
-    public static void Copy(AnimatorController from, AnimatorController to, string layerPrefix, Func<AnimationClip,AnimationClip> rewriteClip) {
+public class ControllerMerger {
+    private readonly Func<string, string> rewriteLayerName;
+    private readonly Func<string, string> rewriteParamName;
+    private readonly Func<AnimationClip, AnimationClip> rewriteClip;
+
+    public ControllerMerger(Func<string, string> rewriteLayerName, Func<string, string> rewriteParamName, Func<AnimationClip, AnimationClip> rewriteClip) {
+        this.rewriteLayerName = rewriteLayerName;
+        this.rewriteParamName = rewriteParamName;
+        this.rewriteClip = rewriteClip;
+    }
+
+    public void Merge(AnimatorController from, AnimatorController to) {
         foreach (var param in from.parameters) {
-            var exists = Array.Find(to.parameters, other => other.name == param.name);
+            var newName = rewriteParamName(param.name);
+            var exists = Array.Find(to.parameters, other => other.name == newName);
             if (exists == null) {
-                to.AddParameter(param.name, param.type);
+                to.AddParameter(newName, param.type);
                 var copy = to.parameters[to.parameters.Length-1];
                 copy.defaultBool = param.defaultBool;
                 copy.defaultFloat = param.defaultFloat;
@@ -22,7 +35,7 @@ public static class DataCopier {
         }
  
         foreach (var fromLayer in from.layers) {
-            to.AddLayer(layerPrefix + fromLayer.name);
+            to.AddLayer(rewriteLayerName(fromLayer.name));
             var toLayers = to.layers;
             var toLayer = toLayers[to.layers.Length-1];
             toLayer.avatarMask = fromLayer.avatarMask;
@@ -30,11 +43,11 @@ public static class DataCopier {
             toLayer.iKPass = fromLayer.iKPass;
             toLayer.defaultWeight = fromLayer.defaultWeight;
             to.layers = toLayers;
-            CopyMachine(fromLayer.stateMachine, toLayer.stateMachine, toLayer.stateMachine, rewriteClip);
+            CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, toLayer.stateMachine);
         }
     }
 
-    private static void CopyMachine(AnimatorStateMachine from, AnimatorStateMachine to, AnimatorStateMachine toBase, Func<AnimationClip,AnimationClip> rewriteClip) {
+    private void CloneMachine(AnimatorStateMachine from, AnimatorStateMachine to, AnimatorStateMachine toBase) {
         to.exitPosition = from.exitPosition;
         to.entryPosition = from.entryPosition;
         to.anyStatePosition = from.anyStatePosition;
@@ -45,16 +58,29 @@ public static class DataCopier {
             var fromState = fromStateOuter.state;
             var toState = to.AddState(fromState.name, fromStateOuter.position);
             toState.speed = fromState.speed;
-            toState.timeParameter = fromState.timeParameter;
-            toState.timeParameterActive = fromState.timeParameterActive;
+            toState.cycleOffset = fromState.cycleOffset;
+            toState.mirror = fromState.mirror;
+            toState.iKOnFeet = fromState.iKOnFeet;
             // We never use write defaults, because VRCFury will collect all the default values and handle them later
             toState.writeDefaultValues = false;
-            toState.motion = CopyMotion(fromState.motion, rewriteClip);
+            toState.tag = fromState.tag;
+            toState.speedParameter = rewriteParamName(fromState.speedParameter);
+            toState.cycleOffsetParameter = rewriteParamName(fromState.cycleOffsetParameter);
+            toState.mirrorParameter = rewriteParamName(fromState.mirrorParameter);
+            toState.timeParameter = rewriteParamName(fromState.timeParameter);
+            toState.speedParameterActive = fromState.speedParameterActive;
+            toState.cycleOffsetParameterActive = fromState.cycleOffsetParameterActive;
+            toState.mirrorParameterActive = fromState.mirrorParameterActive;
+            toState.timeParameterActive = fromState.timeParameterActive;
+
+            toState.motion = CloneMotion(fromState.motion);
             foreach (var b in fromState.behaviours) {
                 if (b is VRCAvatarParameterDriver) {
                     var oldB = b as VRCAvatarParameterDriver;
                     var newB = toState.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                    newB.parameters = oldB.parameters;
+                    foreach (var p in oldB.parameters) {
+                        newB.parameters.Add(CloneDriverParameter(p));
+                    }
                     newB.localOnly = oldB.localOnly;
                     newB.debugString = oldB.debugString;
                 }
@@ -72,32 +98,56 @@ public static class DataCopier {
                 name = fromMachine.name
             };
             to.AddStateMachine(toMachine.name, fromMachineOuter.position);
-            CopyMachine(fromMachine, toMachine, toBase, rewriteClip);
+            CloneMachine(fromMachine, toMachine, toBase);
         }
  
-        CopyTransitions(from, to, toBase);
+        CloneTransitions(from, to, toBase);
     }
 
-    private static Motion CopyMotion(Motion from, Func<AnimationClip,AnimationClip> rewriteClip) {
+    private VRC_AvatarParameterDriver.Parameter CloneDriverParameter(VRC_AvatarParameterDriver.Parameter from) {
+        return new VRC_AvatarParameterDriver.Parameter {
+            type = from.type,
+            name = rewriteParamName(from.name),
+            source = rewriteParamName(from.source),
+            value = from.value,
+            valueMin = from.valueMin,
+            valueMax = from.valueMax,
+            chance = from.chance,
+            convertRange = from.convertRange,
+            sourceMin = from.sourceMin,
+            sourceMax = from.sourceMax,
+            destMin = from.destMin,
+            destMax = from.destMax,
+            sourceParam = from.sourceParam,
+            destParam = from.destParam,
+        };
+    }
+
+    private Motion CloneMotion(Motion from) {
         switch (from) {
             case AnimationClip clip:
                 return rewriteClip(clip);
             case BlendTree tree:
                 var oldBlendTree = tree;
                 var newBlendTree = new BlendTree {
-                    useAutomaticThresholds = false,
-                    blendParameter = oldBlendTree.blendParameter,
-                    blendType = oldBlendTree.blendType
+                    blendParameter = rewriteParamName(oldBlendTree.blendParameter),
+                    blendParameterY = rewriteParamName(oldBlendTree.blendParameterY),
+                    blendType = oldBlendTree.blendType,
+                    useAutomaticThresholds = oldBlendTree.useAutomaticThresholds,
+                    minThreshold = oldBlendTree.minThreshold,
+                    maxThreshold = oldBlendTree.maxThreshold,
                 };
 
                 foreach (var oldChild in oldBlendTree.children) {
-                    var newMotion = CopyMotion(oldChild.motion, rewriteClip);
+                    var newMotion = CloneMotion(oldChild.motion);
                     newBlendTree.AddChild(newMotion, oldChild.threshold);
                     var newChild = newBlendTree.children[newBlendTree.children.Length-1];
                     newChild.timeScale = oldChild.timeScale;
                     newChild.position = oldChild.position;
                     newChild.threshold = oldChild.threshold;
-                    newChild.directBlendParameter = oldChild.directBlendParameter;
+                    newChild.directBlendParameter = rewriteParamName(oldChild.directBlendParameter);
+                    newChild.cycleOffset = oldChild.cycleOffset;
+                    newChild.mirror = oldChild.mirror;
                 }
 
                 return newBlendTree;
@@ -106,7 +156,7 @@ public static class DataCopier {
         }
     }
 
-    private static void CopyTransition(
+    private void CloneTransition(
         AnimatorTransitionBase from,
         AnimatorStateMachine toMachine,
         AnimatorStateMachine toMachineParent,
@@ -134,7 +184,15 @@ public static class DataCopier {
             }
         }
 
-        to.conditions = from.conditions;
+        var conds = new List<AnimatorCondition>();
+        foreach (var oldC in from.conditions) {
+            conds.Add(new AnimatorCondition {
+                mode = oldC.mode,
+                parameter = rewriteParamName(oldC.parameter),
+                threshold = oldC.threshold
+            });
+        }
+        to.conditions = conds.ToArray();
         if (to is AnimatorStateTransition) {
             var to2 = (AnimatorStateTransition)to;
             var from2 = (AnimatorStateTransition)from;
@@ -149,9 +207,9 @@ public static class DataCopier {
         }
     }
 
-    private static void CopyTransitions(AnimatorStateMachine from, AnimatorStateMachine to, AnimatorStateMachine toBase) {
+    private void CloneTransitions(AnimatorStateMachine from, AnimatorStateMachine to, AnimatorStateMachine toBase) {
         foreach (var oldTrans in from.anyStateTransitions) {
-            CopyTransition(
+            CloneTransition(
                 oldTrans,
                 to,
                 toBase,
@@ -160,7 +218,7 @@ public static class DataCopier {
             );
         }
         foreach (var oldTrans in from.entryTransitions) {
-            CopyTransition(
+            CloneTransition(
                 oldTrans,
                 to,
                 toBase,
@@ -174,7 +232,7 @@ public static class DataCopier {
             var toState = to.states[toStateIdx];
             foreach (var oldTrans in fromState.state.transitions) {
                 if (oldTrans.isExit) {
-                    CopyTransition(
+                    CloneTransition(
                         oldTrans,
                         to,
                         toBase,
@@ -182,7 +240,7 @@ public static class DataCopier {
                         null
                     );
                 } else {
-                    CopyTransition(
+                    CloneTransition(
                         oldTrans,
                         to,
                         toBase,

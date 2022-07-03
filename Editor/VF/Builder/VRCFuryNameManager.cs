@@ -102,7 +102,11 @@ public class VRCFuryNameManager {
     }
 
     public VFALayer NewLayer(string name, bool first = false) {
-        return GetController().NewLayer("[" + prefix + "] " + name, first);
+        return GetController().NewLayer(NewLayerName(name), first);
+    }
+
+    public string NewLayerName(string name) {
+        return "[" + prefix + "] " + name;
     }
 
     public IEnumerable<AnimatorControllerLayer> GetManagedLayers() {
@@ -249,11 +253,11 @@ public class VRCFuryNameManager {
     }
 
     public VFABool NewTrigger(string name, bool usePrefix = true) {
-        if (usePrefix) name = newParamName(name);
+        if (usePrefix) name = NewParamName(name);
         return GetController().NewTrigger(name);
     }
     public VFABool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
-        if (usePrefix) name = newParamName(name);
+        if (usePrefix) name = NewParamName(name);
         if (synced) {
             var param = new VRCExpressionParameters.Parameter();
             param.name = name;
@@ -265,7 +269,7 @@ public class VRCFuryNameManager {
         return GetController().NewBool(name, def || defTrueInEditor);
     }
     public VFANumber NewInt(string name, bool synced = false, int def = 0, bool saved = false, bool usePrefix = true) {
-        if (usePrefix) name = newParamName(name);
+        if (usePrefix) name = NewParamName(name);
         if (synced) {
             var param = new VRCExpressionParameters.Parameter();
             param.name = name;
@@ -277,7 +281,7 @@ public class VRCFuryNameManager {
         return GetController().NewInt(name, def);
     }
     public VFANumber NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
-        if (usePrefix) name = newParamName(name);
+        if (usePrefix) name = NewParamName(name);
         if (synced) {
             var param = new VRCExpressionParameters.Parameter();
             param.name = name;
@@ -288,7 +292,7 @@ public class VRCFuryNameManager {
         }
         return GetController().NewFloat(name, def);
     }
-    private string newParamName(string name) {
+    public string NewParamName(string name) {
         return prefix + "__" + name;
     }
 
