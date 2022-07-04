@@ -105,22 +105,35 @@ public class ControllerMerger {
     }
 
     private VRC_AvatarParameterDriver.Parameter CloneDriverParameter(VRC_AvatarParameterDriver.Parameter from) {
-        return new VRC_AvatarParameterDriver.Parameter {
+        var to = new VRC_AvatarParameterDriver.Parameter {
             type = from.type,
             name = rewriteParamName(from.name),
-            source = rewriteParamName(from.source),
             value = from.value,
             valueMin = from.valueMin,
             valueMax = from.valueMax,
             chance = from.chance,
-            convertRange = from.convertRange,
-            sourceMin = from.sourceMin,
-            sourceMax = from.sourceMax,
-            destMin = from.destMin,
-            destMax = from.destMax,
-            sourceParam = from.sourceParam,
-            destParam = from.destParam,
         };
+        CloneFieldIfPossible(from, to, "source", s => rewriteParamName((string)s));
+        CloneFieldIfPossible(from, to, "convertRange");
+        CloneFieldIfPossible(from, to, "sourceMin");
+        CloneFieldIfPossible(from, to, "sourceMax");
+        CloneFieldIfPossible(from, to, "destMin");
+        CloneFieldIfPossible(from, to, "destMax");
+        CloneFieldIfPossible(from, to, "sourceParam");
+        CloneFieldIfPossible(from, to, "destParam");
+        return to;
+    }
+
+    private void CloneFieldIfPossible(object from, object to, string field, Func<object,object> adjust = null) {
+        var toType = to.GetType();
+        var fromType = from.GetType();
+        var fromField = fromType.GetField(field);
+        var toField = toType.GetField(field);
+        if (fromField != null && toField != null) {
+            var val = fromField.GetValue(from);
+            if (adjust != null) val = adjust(val);
+            toField.SetValue(to, val);
+        }
     }
 
     private Motion CloneMotion(Motion from) {
