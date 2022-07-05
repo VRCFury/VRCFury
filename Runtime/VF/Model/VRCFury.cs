@@ -6,7 +6,11 @@ using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
     public class VRCFury : MonoBehaviour {
+        [HideInInspector]
         public VRCFuryConfig config = new VRCFuryConfig();
+
+        [Header("VRCFury failed to load")]
+        public bool somethingIsBroken;
     }
     
     [Serializable]
