@@ -1,10 +1,17 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
+using VF.Model;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using Object = UnityEngine.Object;
 
 namespace VF.Feature {
 
@@ -42,6 +49,7 @@ public class ZawooIntegration : BaseFeature<VF.Model.Feature.ZawooIntegration> {
             }
 
             if (fx == null || prms == null) {
+                Debug.LogWarning("Failed to find zawoo menu assets");
                 return;
             }
 
@@ -87,7 +95,13 @@ public class ZawooIntegration : BaseFeature<VF.Model.Feature.ZawooIntegration> {
                 whiteSpace = WhiteSpace.Normal
             }
         });
-        content.Add(new PropertyField(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
+        var foldout = new Foldout();
+        foldout.value = false;
+        content.Add(foldout);
+        foldout.text = "Advanced";
+
+        foldout.contentContainer.Add(new PropertyField(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
+
         return content;
     }
     

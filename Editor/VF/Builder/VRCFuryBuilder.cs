@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -58,7 +59,7 @@ public class VRCFuryBuilder {
         Directory.CreateDirectory(tmpDir);
 
         // Figure out what assets we're going to be messing with
-        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
         var fxController = GetOrCreateAvatarFx(avatar, tmpDir);
         var menu = GetOrCreateAvatarMenu(avatar, tmpDir);
         var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir);
@@ -146,20 +147,14 @@ public class VRCFuryBuilder {
         }
     }
 
-    private static AnimatorController GetAvatarFx(VRCAvatarDescriptor avatar) {
-        var fxLayer = avatar.baseAnimationLayers[4];
-        return avatar.customizeAnimationLayers && !fxLayer.isDefault ? (AnimatorController)fxLayer.animatorController : null;
-    }
     private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir) {
-        var fx = GetAvatarFx(avatar);
+        var fx = VRCAvatarUtils.GetAvatarFx(avatar);
         if (fx == null) fx = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatar.gameObject.name + ".controller");
         return fx;
     }
-    private static VRCExpressionsMenu GetAvatarMenu(VRCAvatarDescriptor avatar) {
-        return avatar.customExpressions ? avatar.expressionsMenu : null;
-    }
+
     private static VRCExpressionsMenu GetOrCreateAvatarMenu(VRCAvatarDescriptor avatar, string tmpDir) {
-        var menu = GetAvatarMenu(avatar);
+        var menu = VRCAvatarUtils.GetAvatarMenu(avatar);
         if (menu == null) {
             menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             menu.controls = new List<VRCExpressionsMenu.Control>();
@@ -167,11 +162,9 @@ public class VRCFuryBuilder {
         }
         return menu;
     }
-    private static VRCExpressionParameters GetAvatarParams(VRCAvatarDescriptor avatar) {
-        return avatar.customExpressions ? avatar.expressionParameters : null;
-    }
+
     private static VRCExpressionParameters GetOrCreateAvatarParams(VRCAvatarDescriptor avatar, string tmpDir) {
-        var prms = GetAvatarParams(avatar);
+        var prms = VRCAvatarUtils.GetAvatarParams(avatar);
         if (prms == null) {
             prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             prms.parameters = new VRCExpressionParameters.Parameter[]{};
@@ -188,26 +181,25 @@ public class VRCFuryBuilder {
             }
         }
 
-        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
-        var fx = GetAvatarFx(avatar);
+        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+
+        var fx = VRCAvatarUtils.GetAvatarFx(avatar);
         if (IsVrcfAsset(fx)) {
-            var fxLayer = avatar.baseAnimationLayers[4];
-            fxLayer.animatorController = null;
-            avatar.baseAnimationLayers[4] = fxLayer;
+            VRCAvatarUtils.SetAvatarFx(avatar, null);
         } else if (fx != null) {
             VRCFuryNameManager.PurgeFromAnimator(fx);
         }
 
-        var menu = GetAvatarMenu(avatar);
+        var menu = VRCAvatarUtils.GetAvatarMenu(avatar);
         if (IsVrcfAsset(menu)) {
-            avatar.expressionsMenu = null;
+            VRCAvatarUtils.SetAvatarMenu(avatar, null);
         } else if (menu != null) {
             VRCFuryNameManager.PurgeFromMenu(menu);
         }
 
-        var prms = GetAvatarParams(avatar);
+        var prms = VRCAvatarUtils.GetAvatarParams(avatar);
         if (IsVrcfAsset(prms)) {
-            avatar.expressionParameters = null;
+            VRCAvatarUtils.SetAvatarParams(avatar, null);
         } else if (prms != null) {
             VRCFuryNameManager.PurgeFromParams(prms);
         }
@@ -216,15 +208,10 @@ public class VRCFuryBuilder {
     }
 
     private static void AttachToAvatar(GameObject avatarObject, AnimatorController fx, VRCExpressionsMenu menu, VRCExpressionParameters prms) {
-        var avatar = avatarObject.GetComponent(typeof(VRCAvatarDescriptor)) as VRCAvatarDescriptor;
+        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
         var animator = avatarObject.GetComponent<Animator>();
 
-        var fxLayer = avatar.baseAnimationLayers[4];
-        avatar.customizeAnimationLayers = true;
-        fxLayer.isDefault = false;
-        fxLayer.type = VRCAvatarDescriptor.AnimLayerType.FX;
-        fxLayer.animatorController = fx;
-        avatar.baseAnimationLayers[4] = fxLayer;
+        VRCAvatarUtils.SetAvatarFx(avatar, fx);
         if (animator != null) animator.runtimeAnimatorController = fx;
         avatar.customExpressions = true;
         avatar.expressionsMenu = menu;

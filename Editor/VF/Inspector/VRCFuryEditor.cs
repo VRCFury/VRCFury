@@ -11,14 +11,14 @@ using VF.Model.Feature;
 namespace VF.Inspector {
 
 public class VRCFuryMenuItem {
-    [MenuItem("Tools/Force Run VRCFury on Selection")]
+    [MenuItem("Tools/VRCFury/Force Run VRCFury on Selection")]
     private static void Run() {
         var obj = Selection.activeTransform.gameObject;
         var builder = new VRCFuryBuilder();
         builder.SafeRun(obj);
     }
 
-    [MenuItem("Tools/Force Run VRCFury on Selection", true)]
+    [MenuItem("Tools/VRCFury/Force Run VRCFury on Selection", true)]
     private static bool Check() {
         if (Selection.activeTransform == null) return false;
         var obj = Selection.activeTransform.gameObject;
