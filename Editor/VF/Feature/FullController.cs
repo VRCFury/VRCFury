@@ -92,6 +92,13 @@ namespace VF.Feature {
         private string RewriteParamName(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (vrcBuiltInParams.Contains(name)) return name;
+            
+            // If the avatar controller already has a parameter with this name, we don't rewrite,
+            // assuming that the prop wants to use the avatar's parameter.
+            var exists = Array.Find(manager.GetRawController().parameters,
+                other => other.name == name);
+            if (exists != null) return name;
+
             return manager.NewParamName(name);
         }
 
