@@ -4,12 +4,13 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 
 namespace VF.Feature.Base {
-    public abstract class BaseFeature {
+    public abstract class FeatureBuilder {
         public VRCFuryNameManager manager;
         public ClipBuilder motions;
         public string tmpDir;
@@ -133,8 +134,10 @@ namespace VF.Feature.Base {
             return parent.GetComponentsInChildren<SkinnedMeshRenderer>(true);
         }
     }
+}
 
-    public abstract class BaseFeature<ModelType> : BaseFeature where ModelType : FeatureModel {
+namespace VF.Feature {
+    public abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
         public ModelType model;
     }
 }

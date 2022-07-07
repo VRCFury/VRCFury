@@ -1,10 +1,11 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Inspector;
+using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class TalkGlow : FeatureBuilder<VF.Model.Feature.Talking> {
+public class TalkingBuilder : FeatureBuilder<Talking> {
     public override void Apply() {
         var layer = manager.NewLayer("Talk Glow");
         var clip = LoadState("TalkGlow", model.state);

@@ -1,10 +1,11 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Inspector;
+using VF.Model.Feature;
 
-namespace VF.Feature.Base {
+namespace VF.Feature {
 
-public class Modes : FeatureBuilder<VF.Model.Feature.Modes> {
+public class ModesBuilder : FeatureBuilder<Modes> {
     public override void Apply() {
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
@@ -38,7 +39,7 @@ public class Modes : FeatureBuilder<VF.Model.Feature.Modes> {
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
-        return Toggle.CreateEditor(prop, true, true, content =>
+        return ToggleBuilder.CreateEditor(prop, true, true, content =>
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("modes"),
                 renderElement: (i,e) => VRCFuryStateEditor.render(e.FindPropertyRelative("state"), "Mode " + (i+1)))));
     }

@@ -4,11 +4,11 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Inspector;
-using VF.Model;
+using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
-public class Toggle : FeatureBuilder<VF.Model.Feature.Toggle> {
+public class ToggleBuilder : FeatureBuilder<Toggle> {
     public override void Apply() {
         if (model.slider) {
             var stops = new List<VF.Model.Feature.Puppet.Stop> {

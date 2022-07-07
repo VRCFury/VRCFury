@@ -4,13 +4,13 @@ using UnityEditor.Animations;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Feature;
+using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
 
-public class ZawooIntegration : FeatureBuilder<VF.Model.Feature.ZawooIntegration> {
+public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
     public override void Apply() {
         foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
             var maybeValid = false;

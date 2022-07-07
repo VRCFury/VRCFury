@@ -2,10 +2,11 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Inspector;
+using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class SenkyGestureDriver : FeatureBuilder<VF.Model.Feature.SenkyGestureDriver> {
+public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
     public override void Apply() {
         var blinkActive = manager.NewBool("BlinkActive", def: true);
         var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);

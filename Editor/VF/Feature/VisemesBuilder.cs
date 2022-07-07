@@ -4,10 +4,11 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Inspector;
+using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class Visemes : FeatureBuilder<VF.Model.Feature.Visemes> {
+public class VisemesBuilder : FeatureBuilder<Visemes> {
     public override void Apply() {
         if (model.oneAnim == null) return;
 

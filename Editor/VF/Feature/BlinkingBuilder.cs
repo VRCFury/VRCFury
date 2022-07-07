@@ -1,10 +1,11 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Inspector;
+using VF.Model.Feature;
 
-namespace VF.Feature.Base {
+namespace VF.Feature {
 
-public class Blinking : FeatureBuilder<VF.Model.Feature.Blinking> {
+public class BlinkingBuilder : FeatureBuilder<Blinking> {
     public override void Apply() {
         if (!StateExists(model.state)) return;
 

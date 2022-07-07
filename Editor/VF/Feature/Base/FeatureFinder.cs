@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 using VF.Inspector;
 using VF.Model.Feature;
 
-namespace VF.Feature {
+namespace VF.Feature.Base {
 
 public static class FeatureFinder {
     private static Dictionary<Type,Type> allFeatures;
@@ -17,7 +17,7 @@ public static class FeatureFinder {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
                 foreach (var type in assembly.GetTypes()) {
                     if (type.IsAbstract) continue;
-                    if (!typeof(BaseFeature).IsAssignableFrom(type)) continue;
+                    if (!typeof(FeatureBuilder).IsAssignableFrom(type)) continue;
                     try {
                         var modelType = type.GetField("model").FieldType;
                         allFeatures.Add(modelType, type);
@@ -34,7 +34,7 @@ public static class FeatureFinder {
     public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(bool isProp) {
         return GetAllFeatures()
             .Where(e => {
-                var impl = (BaseFeature)Activator.CreateInstance(e.Value);
+                var impl = (FeatureBuilder)Activator.CreateInstance(e.Value);
                 return isProp ? impl.AvailableOnProps() : impl.AvailableOnAvatar();
             });
     }
@@ -52,7 +52,7 @@ public static class FeatureFinder {
                     "version of VRCFury. It may have been replaced with a new feature, check the + menu."
                 );
             }
-            var featureInstance = (BaseFeature)Activator.CreateInstance(implementationType);
+            var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
 
             var wrapper = new VisualElement();
             var title = featureInstance.GetEditorTitle();
@@ -91,7 +91,7 @@ public static class FeatureFinder {
         }
     }
 
-    public static BaseFeature GetBuilder(FeatureModel model, bool isProp) {
+    public static FeatureBuilder GetBuilder(FeatureModel model, bool isProp) {
         if (model == null) {
             throw new Exception(
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date?");
@@ -103,7 +103,7 @@ public static class FeatureFinder {
             return null;
         }
 
-        var featureImpl = (BaseFeature)Activator.CreateInstance(implementationType);
+        var featureImpl = (FeatureBuilder)Activator.CreateInstance(implementationType);
         if (isProp && !featureImpl.AvailableOnProps()) {
             Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");
             return null;

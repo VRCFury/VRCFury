@@ -1,11 +1,11 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Inspector;
-using VF.Model;
+using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class Toes : FeatureBuilder<VF.Model.Feature.Toes> {
+public class ToesBuilder : FeatureBuilder<Toes> {
     public override void Apply() {
         var toes = new VF.Model.Feature.Puppet {
             name = "Toes"

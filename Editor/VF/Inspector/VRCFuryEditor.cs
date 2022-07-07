@@ -5,6 +5,7 @@ using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.Components;
 using VF.Builder;
 using VF.Feature;
+using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
 
@@ -170,7 +171,7 @@ public class VRCFuryEditor : Editor {
     private void OnPlus(SerializedProperty listProp, bool isEditorOnAvatar) {
         var menu = new GenericMenu();
         foreach (var feature in FeatureFinder.GetAllFeaturesForMenu(!isEditorOnAvatar)) {
-            var editorInst = (BaseFeature) Activator.CreateInstance(feature.Value);
+            var editorInst = (FeatureBuilder) Activator.CreateInstance(feature.Value);
             var title = editorInst.GetEditorTitle();
             if (title != null) {
                 menu.AddItem(new GUIContent(title), false, () => {

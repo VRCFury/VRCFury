@@ -8,10 +8,11 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Builder;
+using VF.Model.Feature;
 
-namespace VF.Feature.Base {
+namespace VF.Feature {
 
-    public class FullController : FeatureBuilder<VF.Model.Feature.FullController> {
+    public class FullControllerBuilder : FeatureBuilder<FullController> {
         public override void Apply() {
             var baseObject = model.rootObj != null ? model.rootObj : featureBaseObject;
 

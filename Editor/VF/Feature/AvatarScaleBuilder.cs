@@ -3,11 +3,11 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Feature.Base;
+using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class AvatarScale : FeatureBuilder<VF.Model.Feature.AvatarScale> {
+public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
     public override void Apply() {
         var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
         var scaleClip = manager.NewClip("Scale");

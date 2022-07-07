@@ -1,9 +1,10 @@
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Model.Feature;
 
-namespace VF.Feature.Base {
+namespace VF.Feature {
 
-public class Puppet : FeatureBuilder<VF.Model.Feature.Puppet> {
+public class PuppetBuilder : FeatureBuilder<Puppet> {
     public override void Apply() {
         var layerName = model.name;
         var layer = manager.NewLayer(layerName);

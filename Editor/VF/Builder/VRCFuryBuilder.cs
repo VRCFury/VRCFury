@@ -8,6 +8,7 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Feature;
+using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
 using Object = UnityEngine.Object;
@@ -116,7 +117,7 @@ public class VRCFuryBuilder {
         GameObject vrcCloneAvatarObject,
         ProgressBar progress
     ) {
-        var builders = new List<BaseFeature>();
+        var builders = new List<FeatureBuilder>();
 
         void AddModel(FeatureModel model, GameObject configObject) {
             var isProp = configObject != avatarObject;

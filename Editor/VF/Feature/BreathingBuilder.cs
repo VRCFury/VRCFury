@@ -5,11 +5,12 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Model;
+using VF.Model.Feature;
 using VF.Model.StateAction;
 
-namespace VF.Feature.Base {
+namespace VF.Feature {
 
-public class Breathing : FeatureBuilder<VF.Model.Feature.Breathing> {
+public class BreathingBuilder : FeatureBuilder<Breathing> {
     public override void Apply() {
         var clip = manager.NewClip("Breathing");
         var so = new SerializedObject(clip);
