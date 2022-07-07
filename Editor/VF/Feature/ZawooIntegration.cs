@@ -1,22 +1,16 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Builder;
-using VF.Model;
-using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
 
 public class ZawooIntegration : BaseFeature<VF.Model.Feature.ZawooIntegration> {
-    public override void Generate(VF.Model.Feature.ZawooIntegration config) {
+    public override void Apply() {
         foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
             var maybeValid = false;
             var isCanine = false;
@@ -57,7 +51,7 @@ public class ZawooIntegration : BaseFeature<VF.Model.Feature.ZawooIntegration> {
                 controller = fx,
                 menu = menu,
                 parameters = prms,
-                submenu = string.IsNullOrWhiteSpace(config.submenu) ? "Zawoo" : config.submenu,
+                submenu = string.IsNullOrWhiteSpace(model.submenu) ? "Zawoo" : model.submenu,
                 rootObj = child.gameObject,
                 ignoreSaved = true
             });

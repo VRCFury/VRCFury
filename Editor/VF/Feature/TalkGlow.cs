@@ -5,9 +5,9 @@ using VF.Inspector;
 namespace VF.Feature {
 
 public class Talking : BaseFeature<VF.Model.Feature.Talking> {
-    public override void Generate(VF.Model.Feature.Talking config) {
+    public override void Apply() {
         var layer = manager.NewLayer("Talk Glow");
-        var clip = LoadState("TalkGlow", config.state);
+        var clip = LoadState("TalkGlow", model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
 

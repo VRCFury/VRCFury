@@ -6,7 +6,7 @@ using VF.Inspector;
 namespace VF.Feature {
 
 public class SenkyGestureDriver : BaseFeature<VF.Model.Feature.SenkyGestureDriver> {
-    public override void Generate(VF.Model.Feature.SenkyGestureDriver config) {
+    public override void Apply() {
         var blinkActive = manager.NewBool("BlinkActive", def: true);
         var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
         var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);
@@ -25,11 +25,11 @@ public class SenkyGestureDriver : BaseFeature<VF.Model.Feature.SenkyGestureDrive
         {
             var layer = manager.NewLayer("Eyes");
             var idle = layer.NewState("Idle");
-            var closed = layer.NewState("Closed").WithAnimation(LoadState("eyesClosed", config.eyesClosed));
-            var happy = layer.NewState("Happy").WithAnimation(LoadState("eyesHappy", config.eyesHappy));
+            var closed = layer.NewState("Closed").WithAnimation(LoadState("eyesClosed", model.eyesClosed));
+            var happy = layer.NewState("Happy").WithAnimation(LoadState("eyesHappy", model.eyesHappy));
             //var bedroom = layer.NewState("Bedroom").WithAnimation(loadClip("eyesBedroom", inputs.eyesBedroom));
-            var sad = layer.NewState("Sad").WithAnimation(LoadState("eyesSad", config.eyesSad));
-            var angry = layer.NewState("Angry").WithAnimation(LoadState("eyesAngry", config.eyesAngry));
+            var sad = layer.NewState("Sad").WithAnimation(LoadState("eyesSad", model.eyesSad));
+            var angry = layer.NewState("Angry").WithAnimation(LoadState("eyesAngry", model.eyesAngry));
 
             if (blinkActive != null) {
                 idle.Drives(blinkActive, true);
@@ -52,11 +52,11 @@ public class SenkyGestureDriver : BaseFeature<VF.Model.Feature.SenkyGestureDrive
         {
             var layer = manager.NewLayer("Mouth");
             var idle = layer.NewState("Idle");
-            var blep = layer.NewState("Blep").WithAnimation(LoadState("mouthBlep", config.mouthBlep));
-            var suck = layer.NewState("Suck").WithAnimation(LoadState("mouthSuck", config.mouthSuck));
-            var sad = layer.NewState("Sad").WithAnimation(LoadState("mouthSad", config.mouthSad));
-            var angry = layer.NewState("Angry").WithAnimation(LoadState("mouthAngry", config.mouthAngry));
-            var happy = layer.NewState("Happy").WithAnimation(LoadState("mouthHappy", config.mouthHappy));
+            var blep = layer.NewState("Blep").WithAnimation(LoadState("mouthBlep", model.mouthBlep));
+            var suck = layer.NewState("Suck").WithAnimation(LoadState("mouthSuck", model.mouthSuck));
+            var sad = layer.NewState("Sad").WithAnimation(LoadState("mouthSad", model.mouthSad));
+            var angry = layer.NewState("Angry").WithAnimation(LoadState("mouthAngry", model.mouthAngry));
+            var happy = layer.NewState("Happy").WithAnimation(LoadState("mouthHappy", model.mouthHappy));
 
             //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
             //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
@@ -70,7 +70,7 @@ public class SenkyGestureDriver : BaseFeature<VF.Model.Feature.SenkyGestureDrive
         {
             var layer = manager.NewLayer("Ears");
             var idle = layer.NewState("Idle");
-            var back = layer.NewState("Back").WithAnimation(LoadState("earsBack", config.earsBack));
+            var back = layer.NewState("Back").WithAnimation(LoadState("earsBack", model.earsBack));
 
             back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
             back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());

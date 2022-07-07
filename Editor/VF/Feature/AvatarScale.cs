@@ -7,7 +7,7 @@ using VF.Builder;
 namespace VF.Feature {
 
 public class AvatarScale : BaseFeature<VF.Model.Feature.AvatarScale> {
-    public override void Generate(VF.Model.Feature.AvatarScale config) {
+    public override void Apply() {
         var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
         var scaleClip = manager.NewClip("Scale");
         var baseScale = avatarObject.transform.localScale.x;
@@ -22,12 +22,12 @@ public class AvatarScale : BaseFeature<VF.Model.Feature.AvatarScale> {
         var main = layer.NewState("Scale").WithAnimation(scaleClip).MotionTime(paramScale);
         
         manager.NewMenuSlider("Scale/Adjust", paramScale);
-        manager.NewMenuToggle("Scale/40%", paramScale, 0.15f);
-        manager.NewMenuToggle("Scale/60%", paramScale, 0.25f);
-        manager.NewMenuToggle("Scale/80%", paramScale, 0.40f);
+        manager.NewMenuToggle("Scale/40%", paramScale, 0.20f);
+        manager.NewMenuToggle("Scale/60%", paramScale, 0.27f);
+        manager.NewMenuToggle("Scale/80%", paramScale, 0.35f);
         manager.NewMenuToggle("Scale/100%", paramScale, 0.50f);
-        manager.NewMenuToggle("Scale/125%", paramScale, 0.55f);
-        manager.NewMenuToggle("Scale/150%", paramScale, 0.60f);
+        manager.NewMenuToggle("Scale/125%", paramScale, 0.58f);
+        manager.NewMenuToggle("Scale/150%", paramScale, 0.62f);
         manager.NewMenuToggle("Scale/200%", paramScale, 0.75f);
         
     }

@@ -6,15 +6,15 @@ using VF.Model;
 namespace VF.Feature {
 
 public class Toes : BaseFeature<VF.Model.Feature.Toes> {
-    public override void Generate(VF.Model.Feature.Toes config) {
+    public override void Apply() {
         var toes = new VF.Model.Feature.Puppet {
             name = "Toes"
         };
-        if (StateExists(config.down)) toes.stops.Add(new VF.Model.Feature.Puppet.Stop(0,-1,config.down));
-        if (StateExists(config.up)) toes.stops.Add(new VF.Model.Feature.Puppet.Stop(0,1,config.up));
-        if (StateExists(config.splay)) {
-            toes.stops.Add(new VF.Model.Feature.Puppet.Stop(-1,0,config.splay));
-            toes.stops.Add(new VF.Model.Feature.Puppet.Stop(1,0,config.splay));
+        if (StateExists(model.down)) toes.stops.Add(new VF.Model.Feature.Puppet.Stop(0,-1,model.down));
+        if (StateExists(model.up)) toes.stops.Add(new VF.Model.Feature.Puppet.Stop(0,1,model.up));
+        if (StateExists(model.splay)) {
+            toes.stops.Add(new VF.Model.Feature.Puppet.Stop(-1,0,model.splay));
+            toes.stops.Add(new VF.Model.Feature.Puppet.Stop(1,0,model.splay));
         }
         if (toes.stops.Count > 0) {
             addOtherFeature(toes);

@@ -5,8 +5,8 @@ using UnityEngine.UIElements;
 namespace VF.Feature {
 
 public class SecurityLock : BaseFeature<VF.Model.Feature.SecurityLock> {
-    public override void Generate(VF.Model.Feature.SecurityLock config) {
-        if (config.leftCode == 0 || config.rightCode == 0) return;
+    public override void Apply() {
+        if (model.leftCode == 0 || model.rightCode == 0) return;
 
         var paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
         // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
@@ -26,7 +26,7 @@ public class SecurityLock : BaseFeature<VF.Model.Feature.SecurityLock> {
         locked.Drives(paramSecuritySync, false);
         locked.TransitionsTo(check).When(paramSecurityMenu.IsTrue());
 
-        check.TransitionsTo(unlocked).When(GestureLeft().IsEqualTo(config.leftCode).And(GestureRight().IsEqualTo(config.rightCode)));
+        check.TransitionsTo(unlocked).When(GestureLeft().IsEqualTo(model.leftCode).And(GestureRight().IsEqualTo(model.rightCode)));
         check.TransitionsTo(locked).When(Always());
 
         unlocked.Drives(paramSecuritySync, true);

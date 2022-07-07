@@ -10,25 +10,25 @@ using VF.Model.StateAction;
 namespace VF.Feature {
 
 public class Breathing : BaseFeature<VF.Model.Feature.Breathing> {
-    public override void Generate(VF.Model.Feature.Breathing config) {
+    public override void Apply() {
         var clip = manager.NewClip("Breathing");
         var so = new SerializedObject(clip);
         so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
         so.ApplyModifiedProperties();
 
-        if (config.obj != null) {
-            motions.Scale(clip, config.obj, ClipBuilder.FromSeconds(
-                new Keyframe(0, config.scaleMin),
-                new Keyframe(2.3f, config.scaleMax),
-                new Keyframe(2.7f, config.scaleMax),
-                new Keyframe(5, config.scaleMin)
+        if (model.obj != null) {
+            motions.Scale(clip, model.obj, ClipBuilder.FromSeconds(
+                new Keyframe(0, model.scaleMin),
+                new Keyframe(2.3f, model.scaleMax),
+                new Keyframe(2.7f, model.scaleMax),
+                new Keyframe(5, model.scaleMin)
             ));
         }
-        if (!string.IsNullOrEmpty(config.blendshape)) {
+        if (!string.IsNullOrEmpty(model.blendshape)) {
             var breathingSkins = new List<SkinnedMeshRenderer>(GetAllSkins(avatarObject))
-                .FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(config.blendshape) != -1); 
+                .FindAll(skin => skin.sharedMesh.GetBlendShapeIndex(model.blendshape) != -1); 
             foreach (var skin in breathingSkins) {
-                motions.BlendShape(clip, skin, config.blendshape, ClipBuilder.FromSeconds(
+                motions.BlendShape(clip, skin, model.blendshape, ClipBuilder.FromSeconds(
                     new Keyframe(0, 0),
                     new Keyframe(2.3f, 100),
                     new Keyframe(2.7f, 100),

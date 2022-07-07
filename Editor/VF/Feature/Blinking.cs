@@ -5,8 +5,8 @@ using VF.Inspector;
 namespace VF.Feature {
 
 public class Blinking : BaseFeature<VF.Model.Feature.Blinking> {
-    public override void Generate(VF.Model.Feature.Blinking config) {
-        if (!StateExists(config.state)) return;
+    public override void Apply() {
+        if (!StateExists(model.state)) return;
 
         var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);
         var blinkTrigger = manager.NewTrigger("BlinkTrigger");
@@ -57,7 +57,7 @@ public class Blinking : BaseFeature<VF.Model.Feature.Blinking> {
 
         // Animator
         {
-            var blinkClip = LoadState("blink", config.state);
+            var blinkClip = LoadState("blink", model.state);
             var blinkDuration = 0.07f;
             var layer = manager.NewLayer("Blink - Animate");
             var idle = layer.NewState("Idle");

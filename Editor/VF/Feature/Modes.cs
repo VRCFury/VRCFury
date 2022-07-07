@@ -5,22 +5,22 @@ using VF.Inspector;
 namespace VF.Feature {
 
 public class Modes : BaseFeature<VF.Model.Feature.Modes> {
-    public override void Generate(VF.Model.Feature.Modes config) {
-        var physBoneResetter = CreatePhysBoneResetter(config.resetPhysbones, config.name);
+    public override void Apply() {
+        var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
-        var layerName = config.name;
+        var layerName = model.name;
         var layer = manager.NewLayer(layerName);
         var off = layer.NewState("Off");
         if (physBoneResetter != null) off.Drives(physBoneResetter, true);
-        var param = manager.NewInt(config.name, synced: true, saved: config.saved);
-        manager.NewMenuToggle(config.name + "/Off", param, 0);
+        var param = manager.NewInt(model.name, synced: true, saved: model.saved);
+        manager.NewMenuToggle(model.name + "/Off", param, 0);
         var i = 1;
-        foreach (var mode in config.modes) {
+        foreach (var mode in model.modes) {
             var num = i++;
-            var clip = LoadState(config.name+"_"+num, mode.state);
+            var clip = LoadState(model.name+"_"+num, mode.state);
             var state = layer.NewState(""+num).WithAnimation(clip);
             if (physBoneResetter != null) state.Drives(physBoneResetter, true);
-            if (config.securityEnabled) {
+            if (model.securityEnabled) {
                 var paramSecuritySync = manager.NewBool("SecurityLockSync");
                 state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
                 state.TransitionsToExit().When(param.IsNotEqualTo(num));
@@ -29,7 +29,7 @@ public class Modes : BaseFeature<VF.Model.Feature.Modes> {
                 state.TransitionsFromAny().When(param.IsEqualTo(num));
                 state.TransitionsToExit().When(param.IsNotEqualTo(num));
             }
-            manager.NewMenuToggle(config.name + "/Mode " + num, param, num);
+            manager.NewMenuToggle(model.name + "/Mode " + num, param, num);
         }
     }
 

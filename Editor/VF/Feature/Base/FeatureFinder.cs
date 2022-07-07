@@ -16,14 +16,13 @@ public static class FeatureFinder {
             allFeatures = new Dictionary<Type, Type>();
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
                 foreach (var type in assembly.GetTypes()) {
-                    if (!type.IsAbstract && typeof(BaseFeature).IsAssignableFrom(type)) {
-                        try {
-                            var genMethod = type.GetMethod("Generate");
-                            var modelType = genMethod.GetParameters()[0].ParameterType;
-                            allFeatures.Add(modelType, type);
-                        } catch(Exception e) { 
-                            Debug.LogException(new Exception("VRCFury failed to load feature " + type.Name, e));
-                        }
+                    if (type.IsAbstract) continue;
+                    if (!typeof(BaseFeature).IsAssignableFrom(type)) continue;
+                    try {
+                        var modelType = type.GetField("model").FieldType;
+                        allFeatures.Add(modelType, type);
+                    } catch(Exception e) { 
+                        Debug.LogException(new Exception("VRCFury failed to load feature " + type.Name, e));
                     }
                 }
             }
@@ -91,7 +90,8 @@ public static class FeatureFinder {
             return new Label("Editor threw an exception, check the unity console");
         }
     }
-    public static void RunFeature(FeatureModel model, Action<BaseFeature> configure, bool isProp, bool isVrcClone) {
+
+    public static BaseFeature GetBuilder(FeatureModel model, bool isProp) {
         if (model == null) {
             throw new Exception(
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date?");
@@ -100,26 +100,22 @@ public static class FeatureFinder {
         var implementationType = GetAllFeatures()[modelType];
         if (implementationType == null) {
             Debug.LogError("Failed to find feature implementation for " + modelType.Name + " while building");
-            return;
+            return null;
         }
 
         var featureImpl = (BaseFeature)Activator.CreateInstance(implementationType);
-
-        if (isVrcClone && !featureImpl.ApplyToVrcClone()) {
-            return;
-        }
         if (isProp && !featureImpl.AvailableOnProps()) {
             Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");
-            return;
+            return null;
         }
         if (!isProp && !featureImpl.AvailableOnAvatar()) {
             Debug.LogError("Found " + modelType.Name + " feature on an avatar. Avatars are not allowed to have this feature.");
-            return;
+            return null;
         }
         
-        configure(featureImpl);
-        featureImpl.addOtherFeature = m => RunFeature(m, configure, isProp, isVrcClone);
-        featureImpl.GenerateUncasted(model);
+        featureImpl.GetType().GetField("model").SetValue(featureImpl, model);
+
+        return featureImpl;
     }
 }
 

@@ -12,10 +12,10 @@ using VF.Builder;
 namespace VF.Feature {
 
     public class FullController : BaseFeature<VF.Model.Feature.FullController> {
-        public override void Generate(VF.Model.Feature.FullController config) {
-            var baseObject = config.rootObj != null ? config.rootObj : featureBaseObject;
+        public override void Apply() {
+            var baseObject = model.rootObj != null ? model.rootObj : featureBaseObject;
 
-            if (config.controller != null) {
+            if (model.controller != null) {
                 AnimationClip RewriteClip(AnimationClip from) {
                     var copy = manager.NewClip(baseObject.name + "__" + from.name);
                     motions.CopyWithAdjustedPrefixes(from, copy, baseObject);
@@ -27,27 +27,27 @@ namespace VF.Feature {
                     RewriteParamName,
                     RewriteClip
                 );
-                merger.Merge((AnimatorController)config.controller, manager.GetRawController());
+                merger.Merge((AnimatorController)model.controller, manager.GetRawController());
             }
 
-            if (config.menu != null) {
+            if (model.menu != null) {
                 string[] prefix;
-                if (string.IsNullOrWhiteSpace(config.submenu)) {
+                if (string.IsNullOrWhiteSpace(model.submenu)) {
                     prefix = new string[] { };
                 } else {
-                    prefix = config.submenu.Split('/').ToArray();
+                    prefix = model.submenu.Split('/').ToArray();
                 }
 
-                MergeMenu(prefix, config.menu);
+                MergeMenu(prefix, model.menu);
             }
 
-            if (config.parameters != null) {
-                foreach (var param in config.parameters.parameters) {
+            if (model.parameters != null) {
+                foreach (var param in model.parameters.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
                     var newParam = new VRCExpressionParameters.Parameter {
                         name = RewriteParamName(param.name),
                         valueType = param.valueType,
-                        saved = param.saved && !config.ignoreSaved,
+                        saved = param.saved && !model.ignoreSaved,
                         defaultValue = param.defaultValue
                     };
                     manager.addSyncedParam(newParam);

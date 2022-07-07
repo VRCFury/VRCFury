@@ -6,7 +6,15 @@ using VF.Inspector;
 
 namespace VF.Feature {
     public class ArmatureLink : BaseFeature<Model.Feature.ArmatureLink> {
-        public override void Generate(Model.Feature.ArmatureLink model) {
+        public override void Apply() {
+            Apply(false);
+        }
+
+        public override void ApplyToVrcClone() {
+            Apply(true);
+        }
+        
+        private void Apply(bool operatingOnVrcClone) {
             if (model.propBone == null) {
                 Debug.LogWarning("Root bone is null on armature link.");
                 return;
@@ -35,10 +43,10 @@ namespace VF.Feature {
             }
             
             Debug.Log("Avatar Link is linking " + model.propBone + " to " + avatarBone);
-            LinkBone(avatarBone, model.propBone, model.useOptimizedUpload);
+            LinkBone(avatarBone, model.propBone, model.useOptimizedUpload, operatingOnVrcClone);
         }
 
-        private void LinkBone(GameObject avatarBone, GameObject propBone, bool useOptimizedUpload) {
+        private void LinkBone(GameObject avatarBone, GameObject propBone, bool useOptimizedUpload, bool operatingOnVrcClone) {
             if (avatarBone == null || propBone == null) return;
             var p = propBone.GetComponent<ParentConstraint>();
             if (p != null) Object.DestroyImmediate(p);
@@ -63,7 +71,7 @@ namespace VF.Feature {
             foreach (Transform child in avatarBone.transform) {
                 var childAvatarBone = child.gameObject;
                 var childPropBone = propBone.transform.Find(childAvatarBone.name)?.gameObject;
-                LinkBone(childAvatarBone, childPropBone, useOptimizedUpload);
+                LinkBone(childAvatarBone, childPropBone, useOptimizedUpload, operatingOnVrcClone);
             }
         }
 
@@ -91,10 +99,6 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("useOptimizedUpload")));
             
             return container;
-        }
-
-        public override bool ApplyToVrcClone() {
-            return true;
         }
     }
 }

@@ -19,9 +19,14 @@ public abstract class BaseFeature {
     public GameObject avatarObject;
     public GameObject featureBaseObject;
     public Action<FeatureModel> addOtherFeature;
-    public bool operatingOnVrcClone;
     
-    public abstract void GenerateUncasted(FeatureModel model);
+    public abstract void Apply();
+
+    public virtual void PostApply() {
+    }
+
+    public virtual void ApplyToVrcClone() {
+    }
 
     public virtual string GetEditorTitle() {
         return null;
@@ -37,10 +42,6 @@ public abstract class BaseFeature {
 
     public virtual bool AvailableOnProps() {
         return true;
-    }
-    
-    public virtual bool ApplyToVrcClone() {
-        return false;
     }
 
     protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {
@@ -137,11 +138,7 @@ public abstract class BaseFeature {
 }
 
 public abstract class BaseFeature<ModelType> : BaseFeature where ModelType : FeatureModel {
-    public abstract void Generate(ModelType model);
-
-    public override void GenerateUncasted(FeatureModel model) {
-        Generate((ModelType)model);
-    }
+    public ModelType model;
 }
 
 }

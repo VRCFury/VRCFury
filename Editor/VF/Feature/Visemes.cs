@@ -8,10 +8,10 @@ using VF.Inspector;
 namespace VF.Feature {
 
 public class Visemes : BaseFeature<VF.Model.Feature.Visemes> {
-    public override void Generate(VF.Model.Feature.Visemes config) {
-        if (config.oneAnim == null) return;
+    public override void Apply() {
+        if (model.oneAnim == null) return;
 
-        var visemeFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(config.oneAnim));
+        var visemeFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(model.oneAnim));
         var visemes = manager.NewLayer("Visemes");
         var VisemeParam = manager.NewInt("Viseme", usePrefix: false);
         Action<int, string> addViseme = (index, text) => {

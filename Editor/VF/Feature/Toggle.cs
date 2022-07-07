@@ -9,14 +9,14 @@ using VF.Model;
 namespace VF.Feature {
 
 public class Toggle : BaseFeature<VF.Model.Feature.Toggle> {
-    public override void Generate(VF.Model.Feature.Toggle config) {
-        if (config.slider) {
+    public override void Apply() {
+        if (model.slider) {
             var stops = new List<VF.Model.Feature.Puppet.Stop> {
-                new VF.Model.Feature.Puppet.Stop(1,0,config.state)
+                new VF.Model.Feature.Puppet.Stop(1,0,model.state)
             };
             var puppet = new VF.Model.Feature.Puppet {
-                name = config.name,
-                saved = config.saved,
+                name = model.name,
+                saved = model.saved,
                 slider = true,
                 stops = stops,
             };
@@ -24,15 +24,15 @@ public class Toggle : BaseFeature<VF.Model.Feature.Toggle> {
             return;
         }
 
-        var physBoneResetter = CreatePhysBoneResetter(config.resetPhysbones, config.name);
+        var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
-        var layerName = config.name;
+        var layerName = model.name;
         var layer = manager.NewLayer(layerName);
-        var clip = LoadState(config.name, config.state);
+        var clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
-        var param = manager.NewBool(config.name, synced: true, saved: config.saved, def: config.defaultOn);
-        if (config.securityEnabled) {
+        var param = manager.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn);
+        if (model.securityEnabled) {
             var paramSecuritySync = manager.NewBool("SecurityLockSync");
             off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
             on.TransitionsTo(off).When(param.IsFalse());
@@ -46,7 +46,7 @@ public class Toggle : BaseFeature<VF.Model.Feature.Toggle> {
             off.Drives(physBoneResetter, true);
             on.Drives(physBoneResetter, true);
         }
-        manager.NewMenuToggle(config.name, param);
+        manager.NewMenuToggle(model.name, param);
     }
 
     public override string GetEditorTitle() {

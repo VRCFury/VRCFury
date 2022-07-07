@@ -11,7 +11,15 @@ namespace VF.Feature {
     public class TPSIntegration : BaseFeature<Model.Feature.TPSIntegration> {
         private static readonly BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
 
-        public override void Generate(Model.Feature.TPSIntegration model) {
+        public override void Apply() {
+            Apply(false);
+        }
+
+        public override void ApplyToVrcClone() {
+            Apply(true);
+        }
+        
+        private void Apply(bool operatingOnVrcClone) {
             var tpsSetup = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.TPS_Setup");
             if (tpsSetup == null) {
                 Debug.LogError("TPS is not installed!");
@@ -80,10 +88,6 @@ namespace VF.Feature {
 
         public override bool AvailableOnProps() {
             return false;
-        }
-
-        public override bool ApplyToVrcClone() {
-            return true;
         }
 
         private static void callWithOptionalParams(MethodInfo method, object obj, params object[] prms) {
