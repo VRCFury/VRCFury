@@ -4,7 +4,7 @@ using VF.Inspector;
 
 namespace VF.Feature {
 
-public class Talking : BaseFeature<VF.Model.Feature.Talking> {
+public class TalkGlow : FeatureBuilder<VF.Model.Feature.Talking> {
     public override void Apply() {
         var layer = manager.NewLayer("Talk Glow");
         var clip = LoadState("TalkGlow", model.state);

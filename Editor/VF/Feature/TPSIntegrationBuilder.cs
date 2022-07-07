@@ -6,9 +6,10 @@ using System.Reflection;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Feature;
 
 namespace VF.Feature {
-    public class TPSIntegration : BaseFeature<Model.Feature.TPSIntegration> {
+    public class TPSIntegration : FeatureBuilder<Model.Feature.TPSIntegration> {
         private static readonly BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
 
         public override void Apply() {

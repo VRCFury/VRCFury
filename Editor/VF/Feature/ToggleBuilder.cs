@@ -8,7 +8,7 @@ using VF.Model;
 
 namespace VF.Feature {
 
-public class Toggle : BaseFeature<VF.Model.Feature.Toggle> {
+public class Toggle : FeatureBuilder<VF.Model.Feature.Toggle> {
     public override void Apply() {
         if (model.slider) {
             var stops = new List<VF.Model.Feature.Puppet.Stop> {

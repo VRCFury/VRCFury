@@ -2,10 +2,11 @@
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.UIElements;
+using VF.Feature.Base;
 using VF.Inspector;
 
 namespace VF.Feature {
-    public class ArmatureLink : BaseFeature<Model.Feature.ArmatureLink> {
+    public class ArmatureLink : FeatureBuilder<Model.Feature.ArmatureLink> {
         public override void Apply() {
             Apply(false);
         }

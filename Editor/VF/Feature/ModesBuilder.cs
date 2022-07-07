@@ -2,9 +2,9 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Inspector;
 
-namespace VF.Feature {
+namespace VF.Feature.Base {
 
-public class Modes : BaseFeature<VF.Model.Feature.Modes> {
+public class Modes : FeatureBuilder<VF.Model.Feature.Modes> {
     public override void Apply() {
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 

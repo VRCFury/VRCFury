@@ -7,9 +7,9 @@ using VF.Builder;
 using VF.Model;
 using VF.Model.StateAction;
 
-namespace VF.Feature {
+namespace VF.Feature.Base {
 
-public class Breathing : BaseFeature<VF.Model.Feature.Breathing> {
+public class Breathing : FeatureBuilder<VF.Model.Feature.Breathing> {
     public override void Apply() {
         var clip = manager.NewClip("Breathing");
         var so = new SerializedObject(clip);

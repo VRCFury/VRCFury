@@ -7,7 +7,7 @@ using VF.Inspector;
 
 namespace VF.Feature {
 
-public class Visemes : BaseFeature<VF.Model.Feature.Visemes> {
+public class Visemes : FeatureBuilder<VF.Model.Feature.Visemes> {
     public override void Apply() {
         if (model.oneAnim == null) return;
 

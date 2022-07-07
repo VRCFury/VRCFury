@@ -2,9 +2,9 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
-namespace VF.Feature {
+namespace VF.Feature.Base {
 
-public class SecurityLock : BaseFeature<VF.Model.Feature.SecurityLock> {
+public class SecurityLock : FeatureBuilder<VF.Model.Feature.SecurityLock> {
     public override void Apply() {
         if (model.leftCode == 0 || model.rightCode == 0) return;
 

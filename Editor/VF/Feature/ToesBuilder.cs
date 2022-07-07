@@ -5,7 +5,7 @@ using VF.Model;
 
 namespace VF.Feature {
 
-public class Toes : BaseFeature<VF.Model.Feature.Toes> {
+public class Toes : FeatureBuilder<VF.Model.Feature.Toes> {
     public override void Apply() {
         var toes = new VF.Model.Feature.Puppet {
             name = "Toes"

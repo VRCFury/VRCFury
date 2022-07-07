@@ -5,7 +5,7 @@ using VF.Inspector;
 
 namespace VF.Feature {
 
-public class SenkyGestureDriver : BaseFeature<VF.Model.Feature.SenkyGestureDriver> {
+public class SenkyGestureDriver : FeatureBuilder<VF.Model.Feature.SenkyGestureDriver> {
     public override void Apply() {
         var blinkActive = manager.NewBool("BlinkActive", def: true);
         var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
