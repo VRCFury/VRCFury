@@ -1,5 +1,6 @@
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Feature.Base;
 using VF.Model.Feature;
 
 namespace VF.Feature {

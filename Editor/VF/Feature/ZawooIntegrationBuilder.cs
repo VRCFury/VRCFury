@@ -6,6 +6,7 @@ using UnityEditor.Animations;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Feature.Base;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;

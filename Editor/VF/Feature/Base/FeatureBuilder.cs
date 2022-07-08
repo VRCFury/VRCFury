@@ -4,7 +4,6 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
@@ -135,9 +134,7 @@ namespace VF.Feature.Base {
             return parent.GetComponentsInChildren<SkinnedMeshRenderer>(true);
         }
     }
-}
 
-namespace VF.Feature {
     public abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
         public ModelType model;
     }
