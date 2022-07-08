@@ -18,7 +18,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
 
     private List<Tuple<Type, GameObject>> GetZawooRoots() {
         var roots = new List<Tuple<Type, GameObject>>();
-        foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
+        foreach (var child in avatarObject.GetComponentsInChildren<Transform>(true)) {
             var maybeValid = false;
             var isCanine = false;
             foreach (Transform c in child) {
