@@ -17,6 +17,7 @@ namespace VF.Feature.Base {
         public GameObject avatarObject;
         public GameObject featureBaseObject;
         public Action<FeatureModel> addOtherFeature;
+        public AnimationClip defaultClip;
     
         public abstract void Apply();
 

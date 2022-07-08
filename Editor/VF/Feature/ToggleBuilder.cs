@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Inspector;
+using VF.Model.Feature;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -11,10 +12,10 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     public override void Apply() {
         if (model.slider) {
-            var stops = new List<VF.Model.Feature.Puppet.Stop> {
-                new VF.Model.Feature.Puppet.Stop(1,0,model.state)
+            var stops = new List<Puppet.Stop> {
+                new Puppet.Stop(1,0,model.state)
             };
-            var puppet = new VF.Model.Feature.Puppet {
+            var puppet = new Puppet {
                 name = model.name,
                 saved = model.saved,
                 slider = true,

@@ -75,10 +75,11 @@ public class VRCFuryBuilder {
         // Apply configs
         var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
         var motions = new ClipBuilder(avatarObject);
-        ApplyFuryConfigs(manager, motions, tmpDir, avatarObject, vrcCloneObject, progress.Partial(0.3, 0.8));
+        var defaultClip = manager.NewClip("Defaults");
+        ApplyFuryConfigs(manager, motions, tmpDir, defaultClip, avatarObject, vrcCloneObject, progress.Partial(0.3, 0.8));
         
         progress.Progress(0.8, "Collecting default states");
-        AddDefaultsLayer(manager, avatarObject);
+        AddDefaultsLayer(manager, avatarObject, defaultClip);
 
         progress.Progress(0.85, "Adjusting 'Write Defaults'");
         UseWriteDefaultsIfNeeded(manager);
@@ -113,6 +114,7 @@ public class VRCFuryBuilder {
         VRCFuryNameManager manager,
         ClipBuilder motions,
         string tmpDir,
+        AnimationClip defaultClip,
         GameObject avatarObject,
         GameObject vrcCloneAvatarObject,
         ProgressBar progress
@@ -125,6 +127,7 @@ public class VRCFuryBuilder {
             builder.manager = manager;
             builder.motions = motions;
             builder.tmpDir = tmpDir;
+            builder.defaultClip = defaultClip;
             builder.avatarObject = avatarObject;
             builder.featureBaseObject = configObject;
             builder.addOtherFeature = m => AddModel(m, configObject);
@@ -160,6 +163,7 @@ public class VRCFuryBuilder {
                 var builder = builders[i];
                 builder.manager = null;
                 builder.motions = null;
+                builder.defaultClip = null;
                 var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
                     builder.avatarObject.transform);
                 var configOnClone = vrcCloneAvatarObject.transform.Find(configPath).gameObject;
@@ -247,8 +251,7 @@ public class VRCFuryBuilder {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 
-    private static void AddDefaultsLayer(VRCFuryNameManager manager, GameObject avatarObject) {
-        var defaultClip = manager.NewClip("Defaults");
+    private static void AddDefaultsLayer(VRCFuryNameManager manager, GameObject avatarObject, AnimationClip defaultClip) {
         var defaultLayer = manager.NewLayer("Defaults", true);
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
         foreach (var layer in manager.GetManagedLayers()) {

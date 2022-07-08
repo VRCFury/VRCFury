@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -11,7 +13,11 @@ using Object = UnityEngine.Object;
 namespace VF.Feature {
 
 public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
-    public override void Apply() {
+
+    private enum Type { Canine, Anthro }
+
+    private List<Tuple<Type, GameObject>> GetZawooRoots() {
+        var roots = new List<Tuple<Type, GameObject>>();
         foreach (var child in avatarObject.GetComponentsInChildren<Transform>()) {
             var maybeValid = false;
             var isCanine = false;
@@ -23,40 +29,73 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
                 }
             }
             if (!maybeValid) continue;
+            roots.Add(Tuple.Create(isCanine ? Type.Canine : Type.Anthro, child.gameObject));
+        }
 
-            Debug.Log("Probably found zawoo prefab at " + child.gameObject.name);
+        return roots;
+    }
 
-            AnimatorController fx;
-            VRCExpressionsMenu menu;
-            VRCExpressionParameters prms;
-            if (isCanine) {
-                menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_caninePeen");
-                if (menu == null) return;
-                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
-                fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX Template.controller");
-                prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_caninePeen.asset");
-            } else {
-                menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_hybridAnthroPeen");
-                if (menu == null) return;
-                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
-                fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX_template.controller");
-                prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_hybridAnthroPeen.asset");
-            }
+    private void ApplyZawoo(Type type, GameObject root) {
+        Debug.Log("Probably found zawoo prefab at " + root.name);
 
-            if (fx == null || prms == null) {
-                Debug.LogWarning("Failed to find zawoo menu assets");
-                return;
-            }
+        AnimatorController fx = null;
+        VRCExpressionsMenu menu = null;
+        VRCExpressionParameters prms = null;
+        string toggleParam = null;
+        if (type == Type.Canine) {
+            menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_caninePeen");
+            if (menu == null) return;
+            var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+            fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX Template.controller");
+            prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_caninePeen.asset");
+            toggleParam = "caninePeenToggle";
+        } else if (type == Type.Anthro) {
+            menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_hybridAnthroPeen");
+            if (menu == null) return;
+            var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+            fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX_template.controller");
+            prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_hybridAnthroPeen.asset");
+            toggleParam = "peenToggle";
+        }
 
-            addOtherFeature(new VF.Model.Feature.FullController {
-                controller = fx,
-                menu = menu,
-                parameters = prms,
-                submenu = string.IsNullOrWhiteSpace(model.submenu) ? "Zawoo" : model.submenu,
-                rootObj = child.gameObject,
-                ignoreSaved = true
-            });
-            Debug.Log("Zawoo added!");
+        if (fx == null || menu == null || prms == null) {
+            Debug.LogWarning("Failed to find zawoo menu assets");
+            return;
+        }
+
+        addOtherFeature(new FullController {
+            controller = fx,
+            menu = menu,
+            parameters = prms,
+            submenu = string.IsNullOrWhiteSpace(model.submenu) ? "Zawoo" : model.submenu,
+            rootObj = root,
+            ignoreSaved = true
+        });
+        
+        motions.Enable(defaultClip, root, false);
+        var enableLayer = manager.NewLayer("VRCF_zawoo_enabler");
+        var off = enableLayer.NewState("Off");
+        var onClip = manager.NewClip("zawooOn");
+        motions.Enable(onClip, root);
+        var on = enableLayer.NewState("On").WithAnimation(onClip);
+        var toggle = manager.NewBool(toggleParam);
+        off.TransitionsTo(on).When(toggle.IsTrue());
+        on.TransitionsTo(off).When(toggle.IsFalse());
+        
+        Debug.Log("Zawoo added!");
+    }
+
+    public override void Apply() {
+        foreach (var zawooRoot in GetZawooRoots()) {
+            ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
+        }
+    }
+
+    public override void ApplyToVrcClone() {
+        foreach (var root in GetZawooRoots()) {
+            var obj = root.Item2;
+            Debug.Log("Deactivating zawoo prefab on upload: " + obj.name);
+            obj.SetActive(false);
         }
     }
 

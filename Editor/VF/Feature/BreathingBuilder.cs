@@ -7,6 +7,7 @@ using VF.Builder;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
@@ -38,7 +39,7 @@ public class BreathingBuilder : FeatureBuilder<Breathing> {
             }
         }
 
-        var toggle = new VF.Model.Feature.Toggle {
+        var toggle = new Toggle {
             name = "Breathing",
             defaultOn = true,
             state = new State {
