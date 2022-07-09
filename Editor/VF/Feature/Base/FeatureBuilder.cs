@@ -104,11 +104,16 @@ namespace VF.Feature.Base {
                 switch (action) {
                     case FlipbookAction flipbook:
                         if (flipbook.obj != null) {
+                            // If we animate the frame to a flat number, unity can internally do some weird tweening
+                            // which can result in it being just UNDER our target, (say 0.999 instead of 1), resulting
+                            // in unity displaying frame 0 instead of 1. Instead, we target framenum+0.5, so there's
+                            // leniency around it.
+                            var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
                             clip.SetCurve(
                                 motions.GetPath(flipbook.obj),
                                 typeof(SkinnedMeshRenderer),
                                 "material._FlipbookCurrentFrame",
-                                ClipBuilder.OneFrame(flipbook.frame));
+                                ClipBuilder.OneFrame(frameAnimNum));
                         }
                         break;
                     case AnimationClipAction actionClip:
