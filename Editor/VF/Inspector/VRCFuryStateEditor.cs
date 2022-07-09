@@ -34,16 +34,16 @@ public class VRCFuryStateEditor {
             var body = new VisualElement();
 
             var showLabel = myLabel != "";
-            SerializedProperty singleClip = null;
+            VisualElement singleLineEditor = null;
             if (list.arraySize == 1) {
-                singleClip = list.GetArrayElementAtIndex(0).FindPropertyRelative("clip");
+                singleLineEditor = VRCFuryActionDrawer.Render(list.GetArrayElementAtIndex(0), true);
             }
 
-            var showPlus = singleClip != null || list.arraySize == 0;
-            var showSingleClip = singleClip != null;
-            var showList = singleClip == null && list.arraySize > 0;
+            var showPlus = singleLineEditor != null || list.arraySize == 0;
+            var showSingleLineEditor = singleLineEditor != null;
+            var showList = singleLineEditor == null && list.arraySize > 0;
 
-            if (showLabel || showSingleClip || showPlus) {
+            if (showLabel || showSingleLineEditor || showPlus) {
                 var segments = new VisualElement();
                 body.Add(segments);
                 segments.style.flexDirection = FlexDirection.Row;
@@ -51,14 +51,13 @@ public class VRCFuryStateEditor {
 
                 if (showLabel) {
                     var label = new Label(myLabel);
-                    label.style.flexBasis = VRCFuryEditorUtils.LABEL_WIDTH;
+                    label.style.flexBasis = 100;
                     label.style.flexGrow = 0;
                     segments.Add(label);
                 }
-                if (showSingleClip) {
-                    var clipField = VRCFuryEditorUtils.PropWithoutLabel(singleClip);
-                    clipField.style.flexGrow = 1;
-                    segments.Add(clipField);
+                if (showSingleLineEditor) {
+                    singleLineEditor.style.flexGrow = 1;
+                    segments.Add(singleLineEditor);
                     var x = new Button(() => {
                         list.DeleteArrayElementAtIndex(0);
                         list.serializedObject.ApplyModifiedProperties();
@@ -70,7 +69,7 @@ public class VRCFuryStateEditor {
                 }
                 if (showPlus) {
                     var plus = new Button(OnPlus) {
-                        style = { flexGrow = showSingleClip ? 0 : 1 },
+                        style = { flexGrow = showSingleLineEditor ? 0 : 1 },
                         text = "+",
                     };
                     segments.Add(plus);
