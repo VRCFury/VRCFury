@@ -77,9 +77,9 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
             var idle = layer.NewState("Idle");
             var back = layer.NewState("Back").WithAnimation(LoadState("earsBack", model.earsBack));
 
-            back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-            back.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(Always());
+            idle.TransitionsTo(back).WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
+            idle.TransitionsTo(back).WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
+            back.TransitionsTo(idle).WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsFalse().And(paramEmoteAngry.IsFalse()));
         }
 
         createGestureTriggerLayer("Tongue", paramEmoteTongueLock, paramEmoteTongue, 4);
