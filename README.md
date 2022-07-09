@@ -97,11 +97,12 @@ Automatically creates an animation for your avatar's breathing cycle. Provide ei
 
 ### Advanced Visemes
 
-This feature is in very very early alpha testing. Fill a folder with animation clips named `Viseme-??` (where ?? is the oculus viseme code), then drop one of those animations into the VRCFury `Advanced Visemes` field. VRC Fury will build a layer to use these animations as visemes.
+This feature allows you to use VRCFury actions as visemes. If you use this, be sure your avatar descriptor is set to LipSync Mode "Viseme Parameter Only."
 
 Benefits:
 
-* You can use bone transforms in your visemes, meaning you can open your jaw rather than using an A blend shape.
+* Use animation clips, material flipbooks, or any other VRCFury action as a speech viseme.
+* You can use bone transforms in your visemes, meaning you can open your jaw rather than using an "open mouth" blend shape.
 * This can enhance some features, such as tongue movement, while your mouth is open during speech.
 
 ### Armature Link
