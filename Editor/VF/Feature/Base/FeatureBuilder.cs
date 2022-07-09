@@ -102,6 +102,15 @@ namespace VF.Feature.Base {
             var clip = manager.NewClip(name);
             foreach (var action in state.actions) {
                 switch (action) {
+                    case FlipbookAction flipbook:
+                        if (flipbook.obj != null) {
+                            clip.SetCurve(
+                                motions.GetPath(flipbook.obj),
+                                typeof(SkinnedMeshRenderer),
+                                "material._FlipbookCurrentFrame",
+                                ClipBuilder.OneFrame(flipbook.frame));
+                        }
+                        break;
                     case AnimationClipAction actionClip:
                         motions.CopyWithAdjustedPrefixes(actionClip.clip, clip, featureBaseObject);
                         break;

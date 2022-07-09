@@ -8,6 +8,34 @@ namespace VF.Inspector {
 public class VRCFuryActionDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
 
+        if (prop.FindPropertyRelative("frame") != null) {
+            var row = new VisualElement {
+                style = {
+                    flexDirection = FlexDirection.Row,
+                    alignItems = Align.FlexStart
+                }
+            };
+
+            var label = new Label("Flipbook Frame") {
+                style = {
+                    flexGrow = 0,
+                    flexBasis = VRCFuryEditorUtils.LABEL_WIDTH
+                }
+            };
+            row.Add(label);
+
+            var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("obj"));
+            propField.style.flexGrow = 1;
+            row.Add(propField);
+            
+            var propField3 = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("frame"));
+            propField3.style.flexGrow = 0;
+            propField3.style.flexBasis = 50;
+            row.Add(propField3);
+
+            return row;
+        }
+
         if (prop.FindPropertyRelative("obj") != null) {
             var row = new VisualElement {
                 style = {

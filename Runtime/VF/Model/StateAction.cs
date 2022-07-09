@@ -21,4 +21,10 @@ namespace VF.Model.StateAction {
         public AnimationClip clip;
     }
 
+    [Serializable]
+    public class FlipbookAction : Action {
+        public GameObject obj;
+        public int frame;
+    }
+
 }

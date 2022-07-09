@@ -39,9 +39,7 @@ namespace VRCF.Legacy {
             }
 
             if (oldConfig.viseme != null) {
-                newConfig.features.Add(new VF.Model.Feature.Visemes {
-                    oneAnim = oldConfig.viseme,
-                });
+                newConfig.features.Add(new VF.Model.Feature.Visemes());
             }
 
             if (oldConfig.scaleEnabled) {

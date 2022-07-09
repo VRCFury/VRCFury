@@ -232,9 +232,7 @@ public class Toes : FeatureModel {
 public class Visemes : FeatureModel {
     public AnimationClip oneAnim;
     public override VF.Model.Feature.FeatureModel Upgrade() {
-        return new VF.Model.Feature.Visemes {
-            oneAnim = oneAnim,
-        };
+        return new VF.Model.Feature.Visemes();
     }
 }
 

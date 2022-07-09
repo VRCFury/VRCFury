@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
@@ -24,6 +25,8 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock", synced: true);
         manager.NewMenuToggle("Emote Lock/Tongue", paramEmoteTongueLock);
 
+        var transitionTime = model.transitionTime >= 0 ? model.transitionTime : 0.1f;
+
         {
             var layer = manager.NewLayer("Eyes");
             var idle = layer.NewState("Idle");
@@ -42,13 +45,13 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
                 angry.Drives(blinkActive, false);
             }
 
-            //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
-            //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
-            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
-            //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(bedroom.IsTrue());
-            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(Always());
+            //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthRing.IsTrue());
+            //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthHole.IsTrue());
+            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteHappy.IsTrue());
+            //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(bedroom.IsTrue());
+            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteSad.IsTrue());
+            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteAngry.IsTrue());
+            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(Always());
         }
 
         {
@@ -60,13 +63,13 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
             var angry = layer.NewState("Angry").WithAnimation(LoadState("mouthAngry", model.mouthAngry));
             var happy = layer.NewState("Happy").WithAnimation(LoadState("mouthHappy", model.mouthHappy));
 
-            //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthRing.IsTrue());
-            //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramOrifaceMouthHole.IsTrue());
-            blep.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteTongue.IsTrue());
-            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteHappy.IsTrue());
-            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(0.1f).When(Always());
+            //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthRing.IsTrue());
+            //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthHole.IsTrue());
+            blep.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteTongue.IsTrue());
+            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteHappy.IsTrue());
+            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteSad.IsTrue());
+            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteAngry.IsTrue());
+            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(Always());
         }
 
         {
@@ -124,6 +127,14 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("mouthHappy"), "Mouth Happy"));
 
         content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("earsBack"), "Ears Back"));
+        
+        var adv = new Foldout {
+            text = "Advanced",
+            value = false
+        };
+        adv.Add(new PropertyField(prop.FindPropertyRelative("transitionTime"), "Transition Time (s)"));
+        adv.Add(new Label("-1 will use VRCFury recommended value"));
+        content.Add(adv);
 
         return content;
     }

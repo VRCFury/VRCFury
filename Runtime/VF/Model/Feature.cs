@@ -19,6 +19,8 @@ namespace VF.Model.Feature {
     [Serializable]
     public class Blinking : FeatureModel {
         public State state;
+        public float transitionTime = -1;
+        public float holdTime = -1;
     }
 
     [Serializable]
@@ -117,6 +119,8 @@ namespace VF.Model.Feature {
         public State mouthHappy;
 
         public State earsBack;
+        
+        public float transitionTime = -1;
     }
 
     [Serializable]
@@ -133,7 +137,22 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class Visemes : FeatureModel {
-        public AnimationClip oneAnim;
+        public float transitionTime = -1;
+        public State state_sil;
+        public State state_PP;
+        public State state_FF;
+        public State state_TH;
+        public State state_DD;
+        public State state_kk;
+        public State state_CH;
+        public State state_SS;
+        public State state_nn;
+        public State state_RR;
+        public State state_aa;
+        public State state_E;
+        public State state_I;
+        public State state_O;
+        public State state_U;
     }
     
     [Serializable]

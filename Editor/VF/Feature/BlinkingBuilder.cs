@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Inspector;
@@ -60,7 +61,8 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
         // Animator
         {
             var blinkClip = LoadState("blink", model.state);
-            var blinkDuration = 0.07f;
+            var blinkDuration = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
+            var holdDuration = model.holdTime >= 0 ? model.holdTime : 0;
             var layer = manager.NewLayer("Blink - Animate");
             var idle = layer.NewState("Idle");
             var checkActive = layer.NewState("Check Active");
@@ -69,7 +71,13 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
             checkActive.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(blinkActive.IsTrue());
             checkActive.TransitionsTo(idle).When(Always());
-            blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(Always());
+            if (holdDuration > 0) {
+                var hold = layer.NewState("Hold").WithAnimation(blinkClip);
+                blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(Always());
+                hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(Always());
+            } else {
+                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(Always());
+            }
         }
     }
 
@@ -78,7 +86,18 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
-        return VRCFuryStateEditor.render(prop.FindPropertyRelative("state"));
+        var c = new VisualElement();
+        c.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state")));
+        var adv = new Foldout {
+            text = "Advanced",
+            value = false
+        };
+        adv.Add(new PropertyField(prop.FindPropertyRelative("transitionTime"), "Transition Time (s)"));
+        adv.Add(new Label("-1 will use VRCFury recommended value"));
+        adv.Add(new PropertyField(prop.FindPropertyRelative("holdTime"), "Hold Time (s)"));
+        adv.Add(new Label("Time eyelids will remain closed, -1 will use VRCFury recommended value"));
+        c.Add(adv);
+        return c;
     }
     
     public override bool AvailableOnProps() {

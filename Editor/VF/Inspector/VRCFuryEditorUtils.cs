@@ -154,12 +154,26 @@ public static class VRCFuryEditorUtils {
 
     public static int LABEL_WIDTH = 153;
     public static VisualElement PropWithoutLabel(SerializedProperty prop) {
-        var field = new PropertyField(prop, " ") {
-            style = {
-                marginLeft = -LABEL_WIDTH
-            }
-        };
-        return field;
+        switch (prop.propertyType) {
+            case SerializedPropertyType.String:
+                return new TextField {
+                    bindingPath = prop.propertyPath
+                };
+            case SerializedPropertyType.Integer:
+                return new IntegerField() {
+                    bindingPath = prop.propertyPath
+                };
+            case SerializedPropertyType.Float:
+                return new FloatField() {
+                    bindingPath = prop.propertyPath
+                };
+            default:
+                return new PropertyField(prop, " ") {
+                    style = {
+                        marginLeft = -LABEL_WIDTH
+                    }
+                };
+        }
     }
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {
