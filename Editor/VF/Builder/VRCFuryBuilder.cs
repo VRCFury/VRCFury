@@ -149,9 +149,8 @@ public class VRCFuryBuilder {
             var action = actions.Min();
             actions.Remove(action);
             var builder = action.GetBuilder();
-            
-            var statusMessage = "Applying " + action.GetName() + " on " + builder.featureBaseObject.name;
-            progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
+            var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
+                avatarObject.transform);
             
             var applyToClone = action.applyToVrcClone();
             if (applyToClone && vrcCloneAvatarObject == null) continue;
@@ -159,10 +158,12 @@ public class VRCFuryBuilder {
             builder.motions = applyToClone ? null : motions;
             builder.defaultClip = applyToClone ? null : defaultClip;
             builder.avatarObject = applyToClone ? vrcCloneAvatarObject : avatarObject;
+            
+            var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
+            progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
+            
             var featureBaseObjectBak = builder.featureBaseObject;
             if (applyToClone) {
-                var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
-                    builder.avatarObject.transform);
                 var configOnClone = vrcCloneAvatarObject.transform.Find(configPath).gameObject;
                 builder.featureBaseObject = configOnClone;
             }
