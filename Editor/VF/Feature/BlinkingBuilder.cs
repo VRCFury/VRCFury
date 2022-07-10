@@ -8,7 +8,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class BlinkingBuilder : FeatureBuilder<Blinking> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         if (!StateExists(model.state)) return;
 
         var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);

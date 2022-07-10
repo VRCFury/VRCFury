@@ -7,7 +7,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class ModesBuilder : FeatureBuilder<Modes> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         var layerName = model.name;

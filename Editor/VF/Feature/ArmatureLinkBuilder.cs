@@ -8,11 +8,13 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
-        public override void Apply() {
+        [FeatureBuilderAction]
+        public void Apply() {
             Apply(false);
         }
 
-        public override void ApplyToVrcClone() {
+        [FeatureBuilderAction(applyToVrcClone:true)]
+        public void ApplyToVrcClone() {
             Apply(true);
         }
         

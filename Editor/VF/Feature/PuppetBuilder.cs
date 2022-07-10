@@ -6,7 +6,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class PuppetBuilder : FeatureBuilder<Puppet> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         var layerName = model.name;
         var layer = manager.NewLayer(layerName);
         var tree = manager.NewBlendTree(model.name);

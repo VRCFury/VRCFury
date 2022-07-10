@@ -9,7 +9,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         var paramScale = manager.NewFloat("Scale", synced: true, def: 0.5f);
         var scaleClip = manager.NewClip("Scale");
         var baseScale = avatarObject.transform.localScale.x;

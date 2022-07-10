@@ -119,19 +119,18 @@ public class VRCFuryBuilder {
         GameObject vrcCloneAvatarObject,
         ProgressBar progress
     ) {
-        var builders = new List<FeatureBuilder>();
+        var actions = new List<FeatureBuilderAction>();
+        var totalActionCount = 0;
 
         void AddModel(FeatureModel model, GameObject configObject) {
             var isProp = configObject != avatarObject;
             var builder = FeatureFinder.GetBuilder(model, isProp);
-            builder.manager = manager;
-            builder.motions = motions;
-            builder.tmpDir = tmpDir;
-            builder.defaultClip = defaultClip;
-            builder.avatarObject = avatarObject;
             builder.featureBaseObject = configObject;
+            builder.tmpDir = tmpDir;
             builder.addOtherFeature = m => AddModel(m, configObject);
-            builders.Add(builder);
+            var builderActions = builder.GetActions();
+            actions.AddRange(builderActions);
+            totalActionCount += builderActions.Count;
         }
 
         progress.Progress(0, "Collecting features");
@@ -145,32 +144,30 @@ public class VRCFuryBuilder {
                 }
             }
         }
-
-        progress.Progress(0.3, "Applying features");
-        for (var i = 0; i < builders.Count; i++) {
-            var builder = builders[i];
-            builder.Apply();
-        }
         
-        progress.Progress(0.6, "Post-Applying features");
-        for (var i = 0; i < builders.Count; i++) {
-            var builder = builders[i];
-            builder.PostApply();
-        }
-        if (vrcCloneAvatarObject != null) {
-            progress.Progress(0.8, "Applying features to VRC clone");
-            for (var i = 0; i < builders.Count; i++) {
-                var builder = builders[i];
-                builder.manager = null;
-                builder.motions = null;
-                builder.defaultClip = null;
+        while (actions.Count > 0) {
+            var action = actions.Min();
+            actions.Remove(action);
+            var builder = action.GetBuilder();
+            
+            var statusMessage = "Applying " + action.GetName() + " on " + builder.featureBaseObject.name;
+            progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
+            
+            var applyToClone = action.applyToVrcClone();
+            if (applyToClone && vrcCloneAvatarObject == null) continue;
+            builder.manager = applyToClone ? null : manager;
+            builder.motions = applyToClone ? null : motions;
+            builder.defaultClip = applyToClone ? null : defaultClip;
+            builder.avatarObject = applyToClone ? vrcCloneAvatarObject : avatarObject;
+            var featureBaseObjectBak = builder.featureBaseObject;
+            if (applyToClone) {
                 var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
                     builder.avatarObject.transform);
                 var configOnClone = vrcCloneAvatarObject.transform.Find(configPath).gameObject;
-                builder.avatarObject = vrcCloneAvatarObject;
                 builder.featureBaseObject = configOnClone;
-                builder.ApplyToVrcClone();
             }
+            action.Call();
+            builder.featureBaseObject = featureBaseObjectBak;
         }
     }
 

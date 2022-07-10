@@ -7,7 +7,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class TalkingBuilder : FeatureBuilder<Talking> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         var layer = manager.NewLayer("Talk Glow");
         var clip = LoadState("TalkGlow", model.state);
         var off = layer.NewState("Off");

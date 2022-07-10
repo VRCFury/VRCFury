@@ -1,4 +1,6 @@
+using System;
 using UnityEditor;
+using UnityEngine;
 
 namespace VF {
     public class ProgressBar {
@@ -17,14 +19,16 @@ namespace VF {
         }
 
         private double Lookup(double offset) {
-            var o = offset * (max - min);
+            var o = offset * (max - min) + min;
             if (o > 1) o = 1;
             if (o < 0) o = 0;
             return o;
         }
 
         public void Progress(double progress, string info) {
-            EditorUtility.DisplayProgressBar(title, info, (float)Lookup(progress));
+            var realProgress = (float)Lookup(progress);
+            Debug.Log("Progress (" + Math.Round(realProgress*100) + "%): " + info);
+            EditorUtility.DisplayProgressBar(title, info, realProgress);
         }
     }
 }

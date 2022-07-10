@@ -12,11 +12,13 @@ namespace VF.Feature {
     public class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration> {
         private static readonly BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
 
-        public override void Apply() {
+        [FeatureBuilderAction]
+        public void Apply() {
             Apply(false);
         }
 
-        public override void ApplyToVrcClone() {
+        [FeatureBuilderAction(applyToVrcClone:true)]
+        public void ApplyToVrcClone() {
             Apply(true);
         }
         

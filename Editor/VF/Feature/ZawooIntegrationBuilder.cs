@@ -86,13 +86,15 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         Debug.Log("Zawoo added!");
     }
 
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         foreach (var zawooRoot in GetZawooRoots()) {
             ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
         }
     }
 
-    public override void ApplyToVrcClone() {
+    [FeatureBuilderAction(applyToVrcClone:true)]
+    public void ApplyToVrcClone() {
         foreach (var root in GetZawooRoots()) {
             var obj = root.Item2;
             Debug.Log("Deactivating zawoo prefab on upload: " + obj.name);

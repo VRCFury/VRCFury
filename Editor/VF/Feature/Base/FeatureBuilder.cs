@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -17,14 +18,6 @@ namespace VF.Feature.Base {
         public GameObject featureBaseObject;
         public Action<FeatureModel> addOtherFeature;
         public AnimationClip defaultClip;
-    
-        public abstract void Apply();
-
-        public virtual void PostApply() {
-        }
-
-        public virtual void ApplyToVrcClone() {
-        }
 
         public virtual string GetEditorTitle() {
             return null;
@@ -146,6 +139,19 @@ namespace VF.Feature.Base {
 
         protected static SkinnedMeshRenderer[] GetAllSkins(GameObject parent) {
             return parent.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        }
+
+        public List<FeatureBuilderAction> GetActions() {
+            var list = new List<FeatureBuilderAction>();
+            foreach (var method in GetType().GetMethods()) {
+                var attr = method.GetCustomAttribute<FeatureBuilderActionAttribute>();
+                if (attr == null) continue;
+                list.Add(new FeatureBuilderAction(attr, method, this));
+            }
+            if (list.Count == 0) {
+                throw new Exception("Builder had no actions? This is probably a bug. " + GetType().Name);
+            }
+            return list;
         }
     }
 

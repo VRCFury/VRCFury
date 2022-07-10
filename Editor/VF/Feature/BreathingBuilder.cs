@@ -13,7 +13,8 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class BreathingBuilder : FeatureBuilder<Breathing> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         var clip = manager.NewClip("Breathing");
         var so = new SerializedObject(clip);
         so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;

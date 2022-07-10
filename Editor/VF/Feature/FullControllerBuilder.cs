@@ -14,7 +14,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
-        public override void Apply() {
+        [FeatureBuilderAction]
+        public void Apply() {
             var baseObject = model.rootObj != null ? model.rootObj : featureBaseObject;
 
             if (model.controller != null) {

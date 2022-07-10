@@ -11,7 +11,8 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         if (model.slider) {
             var stops = new List<Puppet.Stop> {
                 new Puppet.Stop(1,0,model.state)

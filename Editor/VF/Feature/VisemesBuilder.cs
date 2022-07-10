@@ -13,7 +13,8 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
         "sil", "PP", "FF", "TH", "DD", "kk", "CH", "SS", "nn", "RR", "aa", "E", "I", "O", "U"
     };
     
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         var visemes = manager.NewLayer("Visemes");
         var VisemeParam = manager.NewInt("Viseme", usePrefix: false);
         void addViseme(int index, string text, State clipState) {

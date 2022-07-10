@@ -7,7 +7,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
-    public override void Apply() {
+    [FeatureBuilderAction]
+    public void Apply() {
         if (model.leftCode == 0 || model.rightCode == 0) return;
 
         var paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
