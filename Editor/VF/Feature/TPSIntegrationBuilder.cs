@@ -36,8 +36,8 @@ namespace VF.Feature {
             if (operatingOnVrcClone) {
                 // If we're working on the clone, just throw away all of TPS's animator changes
                 tpsClipDir = tmpDir + "/_tpsJunk";
-                tpsAnimator = AnimatorController.CreateAnimatorControllerAtPath(tpsClipDir + "/tpsJunk.controller");
                 Directory.CreateDirectory(tpsClipDir);
+                tpsAnimator = AnimatorController.CreateAnimatorControllerAtPath(tpsClipDir + "/tpsJunk.controller");
             } else {
                 tpsAnimator = manager.GetRawController();
             }
