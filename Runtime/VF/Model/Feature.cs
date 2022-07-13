@@ -36,7 +36,7 @@ namespace VF.Model.Feature {
         public RuntimeAnimatorController controller;
         public VRCExpressionsMenu menu;
         public VRCExpressionParameters parameters;
-        [NonSerialized] public string submenu;
+        public string submenu;
         [NonSerialized] public GameObject rootObj;
         [NonSerialized] public bool ignoreSaved;
     }

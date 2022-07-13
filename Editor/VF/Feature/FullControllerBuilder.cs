@@ -9,6 +9,7 @@ using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -116,6 +117,9 @@ namespace VF.Feature {
             content.Add(new PropertyField(prop.FindPropertyRelative("controller"), "Controller"));
             content.Add(new PropertyField(prop.FindPropertyRelative("menu"), "Menu"));
             content.Add(new PropertyField(prop.FindPropertyRelative("parameters"), "Params"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Submenu to place your menu's items within. If left empty, your menu will be merged " +
+                                  "into the avatar's root menu."));
+            content.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("submenu")));
             return content;
         }
     }
