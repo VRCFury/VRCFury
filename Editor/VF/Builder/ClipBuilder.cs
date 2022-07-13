@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -54,19 +55,19 @@ public class ClipBuilder {
     }
 
     public void CopyWithAdjustedPrefixes(AnimationClip clip, AnimationClip copy, GameObject oldRoot) {
-        var prefix = oldRoot == baseObject ? "" : GetPath(oldRoot) + "/";
+        var prefix = oldRoot == baseObject ? "" : GetPath(oldRoot);
         var curvesBindings = AnimationUtility.GetCurveBindings(clip);
         foreach (var b in curvesBindings) {
             var binding = b;
             var curve = AnimationUtility.GetEditorCurve(clip, binding);
-            binding.path = ResolveRelativePath(prefix + binding.path);
+            binding.path = Join(prefix, binding.path);
             AnimationUtility.SetEditorCurve(copy, binding, curve);
         }
         var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
         foreach (var b in objBindings) {
             var binding = b;
             var objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
-            binding.path = ResolveRelativePath(prefix + binding.path);
+            binding.path = Join(prefix, binding.path);
             AnimationUtility.SetObjectReferenceCurve(copy, binding, objectReferenceCurve);
         }
         var prev = new SerializedObject(clip);
@@ -75,18 +76,16 @@ public class ClipBuilder {
         next.ApplyModifiedProperties();
     }
 
-    private static string ResolveRelativePath(string path)
+    private static string Join(params string[] paths)
     {
-        var parts = path.Split('/');
+        var parts = paths.SelectMany(path => path.Split('/'));
         var ret = new List<string>();
-        foreach (var part in parts)
-        {
-            if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1]))
-            {
+        foreach (var part in parts) {
+            if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1])) {
                 ret.RemoveAt(ret.Count - 1);
-            }
-            else
-            {
+            } else if (part == "." || part == "") {
+                // omit this chunk
+            } else {
                 ret.Add(part);
             }
         }
