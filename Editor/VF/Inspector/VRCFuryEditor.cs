@@ -10,25 +10,7 @@ using VF.Model;
 using VF.Model.Feature;
 
 namespace VF.Inspector {
-
-public class VRCFuryMenuItem {
-    [MenuItem("Tools/VRCFury/Force Run VRCFury on Selection")]
-    private static void Run() {
-        var obj = Selection.activeTransform.gameObject;
-        var builder = new VRCFuryBuilder();
-        builder.SafeRun(obj);
-    }
-
-    [MenuItem("Tools/VRCFury/Force Run VRCFury on Selection", true)]
-    private static bool Check() {
-        if (Selection.activeTransform == null) return false;
-        var obj = Selection.activeTransform.gameObject;
-        var avatar = obj.GetComponent<VRCAvatarDescriptor>();
-        if (avatar == null) return false;
-        if (obj.GetComponentsInChildren<VRCFury>(true).Length > 0) return true;
-        return false;
-    }
-}
+    
 
 [CustomEditor(typeof(VRCFury), true)]
 public class VRCFuryEditor : Editor {

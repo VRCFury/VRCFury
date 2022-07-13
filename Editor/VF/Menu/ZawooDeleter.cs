@@ -5,12 +5,20 @@ using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
-namespace VF {
+namespace VF.Menu {
     public class ZawooDeleter {
         [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar")]
         public static void Run() {
-            var avatarObj = Selection.activeObject as GameObject;
+            var avatarObj = MenuUtils.GetSelectedAvatar();
             var effects = CleanupAllZawooComponents(avatarObj, false);
+            if (effects.Count == 0) {
+                EditorUtility.DisplayDialog(
+                    "Zawoo Cleanup",
+                    "No zawoo objects were found on avatar",
+                    "Ok"
+                );
+                return;
+            }
             var doIt = EditorUtility.DisplayDialog(
                 "Zawoo Cleanup",
                 "The following parts will be deleted from your avatar:\n" + string.Join("\n", effects) +
@@ -24,11 +32,7 @@ namespace VF {
 
         [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar", true)]
         public static bool Check() {
-            var avatarObj = Selection.activeObject as GameObject;
-            if (!avatarObj) return false;
-            var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
-            if (!avatar) return false;
-            return true;
+            return MenuUtils.GetSelectedAvatar() != null;
         }
 
         private static bool ShouldRemoveObj(GameObject obj) {

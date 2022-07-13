@@ -7,7 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Inspector;
 
-namespace VF {
+namespace VF.Menu {
 
     public static class VRCFuryUpdater {
     [MenuItem("Tools/VRCFury/Update VRCFury")]
