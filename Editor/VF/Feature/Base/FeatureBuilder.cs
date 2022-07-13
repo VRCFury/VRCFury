@@ -18,6 +18,7 @@ namespace VF.Feature.Base {
         public GameObject featureBaseObject;
         public Action<FeatureModel> addOtherFeature;
         public AnimationClip defaultClip;
+        public int uniqueModelNum;
 
         public virtual string GetEditorTitle() {
             return null;

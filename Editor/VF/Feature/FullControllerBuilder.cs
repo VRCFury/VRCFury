@@ -14,9 +14,32 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
+        
+        private Func<string,string> RewriteParamIfSynced;
+        
         [FeatureBuilderAction]
         public void Apply() {
             var baseObject = model.rootObj != null ? model.rootObj : featureBaseObject;
+
+            var syncedParams = new List<string>();
+            if (model.parameters != null) {
+                foreach (var param in model.parameters.parameters) {
+                    if (string.IsNullOrWhiteSpace(param.name)) continue;
+                    syncedParams.Add(param.name);
+                    var newParam = new VRCExpressionParameters.Parameter {
+                        name = RewriteParamName(param.name),
+                        valueType = param.valueType,
+                        saved = param.saved && !model.ignoreSaved,
+                        defaultValue = param.defaultValue
+                    };
+                    manager.addSyncedParam(newParam);
+                }
+            }
+
+            RewriteParamIfSynced = name => {
+                if (syncedParams.Contains(name)) return RewriteParamName(name);
+                return name;
+            };
 
             if (model.controller != null) {
                 AnimationClip RewriteClip(AnimationClip from) {
@@ -26,8 +49,8 @@ namespace VF.Feature {
                 }
 
                 var merger = new ControllerMerger(
-                    layerName => manager.NewLayerName("[" + baseObject.name + "] " + layerName),
-                    RewriteParamName,
+                    layerName => manager.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
+                    param => RewriteParamIfSynced(param),
                     RewriteClip
                 );
                 merger.Merge((AnimatorController)model.controller, manager.GetRawController());
@@ -42,19 +65,6 @@ namespace VF.Feature {
                 }
 
                 MergeMenu(prefix, model.menu);
-            }
-
-            if (model.parameters != null) {
-                foreach (var param in model.parameters.parameters) {
-                    if (string.IsNullOrWhiteSpace(param.name)) continue;
-                    var newParam = new VRCExpressionParameters.Parameter {
-                        name = RewriteParamName(param.name),
-                        valueType = param.valueType,
-                        saved = param.saved && !model.ignoreSaved,
-                        defaultValue = param.defaultValue
-                    };
-                    manager.addSyncedParam(newParam);
-                }
             }
         }
 
@@ -94,15 +104,7 @@ namespace VF.Feature {
 
         private string RewriteParamName(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
-            if (vrcBuiltInParams.Contains(name)) return name;
-            
-            // If the avatar controller already has a parameter with this name, we don't rewrite,
-            // assuming that the prop wants to use the avatar's parameter.
-            var exists = Array.Find(manager.GetRawController().parameters,
-                other => other.name == name);
-            if (exists != null) return name;
-
-            return manager.NewParamName(name);
+            return manager.NewParamName("fc" + uniqueModelNum + "_" + name);
         }
 
         public override string GetEditorTitle() {
@@ -116,28 +118,6 @@ namespace VF.Feature {
             content.Add(new PropertyField(prop.FindPropertyRelative("parameters"), "Params"));
             return content;
         }
-
-        private static readonly HashSet<string> vrcBuiltInParams = new HashSet<string> {
-            "IsLocal",
-            "Viseme",
-            "Voice",
-            "GestureLeft",
-            "GestureRight",
-            "GestureLeftWeight",
-            "GestureRightWeight",
-            "AngularY",
-            "VelocityX",
-            "VelocityY",
-            "VelocityZ",
-            "Upright",
-            "Grounded",
-            "Seated",
-            "AFK",
-            "TrackingType",
-            "VRMode",
-            "MuteSelf",
-            "InStation"
-        };
     }
 
 }

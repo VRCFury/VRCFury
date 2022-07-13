@@ -121,6 +121,7 @@ public class VRCFuryBuilder {
     ) {
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
+        var totalModelCount = 0;
 
         void AddModel(FeatureModel model, GameObject configObject) {
             var isProp = configObject != avatarObject;
@@ -128,6 +129,7 @@ public class VRCFuryBuilder {
             builder.featureBaseObject = configObject;
             builder.tmpDir = tmpDir;
             builder.addOtherFeature = m => AddModel(m, configObject);
+            builder.uniqueModelNum = ++totalModelCount;
             var builderActions = builder.GetActions();
             actions.AddRange(builderActions);
             totalActionCount += builderActions.Count;
