@@ -44,6 +44,9 @@ namespace VF.Feature {
 
             if (model.controller != null) {
                 AnimationClip RewriteClip(AnimationClip from) {
+                    if (from == null) {
+                        return controller.GetNoopClip();
+                    }
                     var copy = controller.NewClip(baseObject.name + "__" + from.name);
                     motions.CopyWithAdjustedPrefixes(from, copy, baseObject);
                     return copy;

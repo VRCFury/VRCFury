@@ -165,7 +165,7 @@ public class ControllerMerger {
 
                 return newBlendTree;
             default:
-                return null;
+                return rewriteClip(null);
         }
     }
 
