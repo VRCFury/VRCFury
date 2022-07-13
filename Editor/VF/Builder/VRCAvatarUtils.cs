@@ -20,6 +20,7 @@ namespace VF.Builder {
             if (layerNum < 0) return null;
             var layer = avatar.baseAnimationLayers[layerNum];
             if (layer.isDefault) return null;
+            if (layer.animatorController == null) return null;
             return (AnimatorController)layer.animatorController;
         }
         

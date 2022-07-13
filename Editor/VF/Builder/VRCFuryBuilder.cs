@@ -72,19 +72,25 @@ public class VRCFuryBuilder {
         AttachToAvatar(avatarObject, fxController, menu, syncedParams);
         if (vrcCloneObject != null) AttachToAvatar(vrcCloneObject, fxController, menu, syncedParams);
 
+        progress.Progress(0.25, "Joining Menus");
+        MenuSplitter.JoinMenus(menu);
+
         // Apply configs
-        var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir, IsVrcfAsset(menu));
+        var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir);
         var motions = new ClipBuilder(avatarObject);
         var defaultClip = manager.NewClip("Defaults");
         ApplyFuryConfigs(manager, motions, tmpDir, defaultClip, avatarObject, vrcCloneObject, progress.Partial(0.3, 0.8));
         
-        progress.Progress(0.8, "Collecting default states");
+        progress.Progress(0.8, "Splitting Menus");
+        MenuSplitter.SplitMenus(menu);
+        
+        progress.Progress(0.85, "Collecting default states");
         AddDefaultsLayer(manager, avatarObject, defaultClip);
 
-        progress.Progress(0.85, "Adjusting 'Write Defaults'");
+        progress.Progress(0.9, "Adjusting 'Write Defaults'");
         UseWriteDefaultsIfNeeded(manager);
         
-        progress.Progress(0.9, "Removing Junk Components");
+        progress.Progress(0.95, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
             if (c.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(c.gameObject)) {
                 Object.DestroyImmediate(c);
@@ -98,9 +104,6 @@ public class VRCFuryBuilder {
                 if (c.gameObject != vrcCloneObject) Object.DestroyImmediate(c);
             }
         }
-        
-        progress.Progress(0.95, "Splitting Menus");
-        manager.SplitMenus();
 
         progress.Progress(1, "Finishing Up");
         EditorUtility.SetDirty(fxController);
@@ -221,7 +224,9 @@ public class VRCFuryBuilder {
         if (IsVrcfAsset(menu)) {
             VRCAvatarUtils.SetAvatarMenu(avatar, null);
         } else if (menu != null) {
+            MenuSplitter.JoinMenus(menu);
             VRCFuryNameManager.PurgeFromMenu(menu);
+            MenuSplitter.SplitMenus(menu);
         }
 
         var prms = VRCAvatarUtils.GetAvatarParams(avatar);

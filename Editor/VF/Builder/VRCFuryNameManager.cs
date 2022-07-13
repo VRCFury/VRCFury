@@ -12,21 +12,16 @@ namespace VF.Builder {
 public class VRCFuryNameManager {
     public static string prefix = "VRCFury";
     private readonly VRCExpressionsMenu rootMenu;
-    private VRCExpressionsMenu vrcfMenu;
-    private VRCExpressionsMenu lastMenu;
-    private int lastMenuNum;
     private readonly VRCExpressionParameters syncedParams;
     private readonly AnimatorController ctrl;
     private readonly string tmpDir;
-    private readonly bool useMenuRoot;
     private Object clipStorage;
 
-    public VRCFuryNameManager(VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller, string tmpDir, bool useMenuRoot) {
+    public VRCFuryNameManager(VRCExpressionsMenu menu, VRCExpressionParameters syncedParams, AnimatorController controller, string tmpDir) {
         rootMenu = menu;
         this.syncedParams = syncedParams;
         ctrl = controller;
         this.tmpDir = tmpDir;
-        this.useMenuRoot = useMenuRoot;
     }
 
     public static void PurgeFromAnimator(AnimatorController ctrl) {
@@ -54,10 +49,11 @@ public class VRCFuryNameManager {
         EditorUtility.SetDirty(syncedParams);
     }
 
-    public static void PurgeFromMenu(VRCExpressionsMenu rootMenu) {
-        for (var i = 0; i < rootMenu.controls.Count; i++) {
+    public static void PurgeFromMenu(VRCExpressionsMenu menu) {
+        if (menu == null) return;
+        for (var i = 0; i < menu.controls.Count; i++) {
             var remove = false;
-            var control = rootMenu.controls[i];
+            var control = menu.controls[i];
             if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                 if (control.subMenu.name.StartsWith("VRCFury")) {
                     remove = true;
@@ -69,14 +65,17 @@ public class VRCFuryNameManager {
             if (control.name == "SenkyFX" || control.name == "VRCFury") {
                 remove = true;
             }
-            if (remove) {
-                rootMenu.controls.RemoveAt(i);
-                i--;
+            if (control.parameter != null && control.parameter.name != null && control.parameter.name.StartsWith(prefix)) {
+                remove = true;
             }
-        }
-        foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(rootMenu))) {
-            if (subAsset.name.StartsWith("Senky") || subAsset.name.StartsWith("VRCFury")) {
-                AssetDatabase.RemoveObjectFromAsset(subAsset);
+            if (control.subParameters != null && control.subParameters.Any(p => p != null && p.name.StartsWith(prefix))) {
+                remove = true;
+            }
+            if (remove) {
+                menu.controls.RemoveAt(i);
+                i--;
+            } else if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                PurgeFromMenu(control.subMenu);
             }
         }
     }
@@ -141,21 +140,7 @@ public class VRCFuryNameManager {
     }
 
     public VRCExpressionsMenu GetVrcFuryMenu() {
-        if (useMenuRoot) {
-            return rootMenu;
-        }
-        if (vrcfMenu == null) {
-            if (rootMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS) {
-                throw new Exception("Root menu can't fit any more controls!");
-            }
-            vrcfMenu = CreateNewMenu(new string[]{});
-            rootMenu.controls.Add(new VRCExpressionsMenu.Control {
-                name = prefix,
-                subMenu = vrcfMenu,
-                type = VRCExpressionsMenu.Control.ControlType.SubMenu
-            });
-        }
-        return vrcfMenu;
+        return rootMenu;
     }
     public VRCExpressionsMenu.Control NewMenuItem(string path) {
         var split = path.Split('/');
@@ -216,31 +201,6 @@ public class VRCFuryNameManager {
         var menuParamY = new VRCExpressionsMenu.Control.Parameter();
         menuParamY.name = (y != null) ? y.Name() : "";
         control.subParameters = new[]{menuParamX, menuParamY};
-    }
-
-    public void SplitMenus() {
-        SplitMenus(new string[]{}, GetVrcFuryMenu());
-    }
-
-    private void SplitMenus(string[] path, VRCExpressionsMenu menu) {
-        if (menu == null) return;
-        if (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS) {
-            var nextMenu = CreateNewMenu(new List<string>(path) { "Next" }.ToArray());
-            while (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS - 1) {
-                nextMenu.controls.Insert(0, menu.controls[menu.controls.Count-1]);
-                menu.controls.RemoveAt(menu.controls.Count-1);
-            }
-            menu.controls.Add(new VRCExpressionsMenu.Control() {
-                name = "Next",
-                type = VRCExpressionsMenu.Control.ControlType.SubMenu,
-                subMenu = nextMenu
-            });
-        }
-        foreach (var control in menu.controls) {
-            if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                SplitMenus(new List<string>(path) { control.name }.ToArray(), control.subMenu);
-            }
-        }
     }
 
     private VRCExpressionsMenu CreateNewMenu(string[] path) {
