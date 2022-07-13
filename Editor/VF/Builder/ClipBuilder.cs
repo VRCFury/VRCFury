@@ -76,7 +76,7 @@ public class ClipBuilder {
         next.ApplyModifiedProperties();
     }
 
-    private static string Join(params string[] paths)
+    public static string Join(params string[] paths)
     {
         var parts = paths.SelectMany(path => path.Split('/'));
         var ret = new List<string>();
