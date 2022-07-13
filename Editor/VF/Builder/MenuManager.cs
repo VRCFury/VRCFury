@@ -27,7 +27,10 @@ namespace VF.Builder {
             return control;
         }
 
-        private VRCExpressionsMenu GetMenu(string[] path) {
+        /**
+         * If createIcon is set, we will use it when creating the folder control (if it didn't already exist)
+         */
+        public VRCExpressionsMenu GetMenu(string[] path, Texture2D createIcon = null) {
             var current = GetVrcFuryMenu();
             for (var i = 0; i < path.Length; i++) {
                 var folderName = path[i];
@@ -38,6 +41,9 @@ namespace VF.Builder {
                         name = folderName,
                         type = VRCExpressionsMenu.Control.ControlType.SubMenu
                     };
+                    if (createIcon != null && i == path.Length - 1) {
+                        folderControl.icon = createIcon;
+                    }
                     current.controls.Add(folderControl);
                 }
                 var folder = folderControl.subMenu;

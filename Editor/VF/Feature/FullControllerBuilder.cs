@@ -77,6 +77,7 @@ namespace VF.Feature {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     var prefix2 = new List<string>(prefix);
                     prefix2.Add(control.name);
+                    menu.GetMenu(prefix2.ToArray(), control.icon);
                     MergeMenu(prefix2.ToArray(), control.subMenu);
                 } else {
                     menu.AddMenuItem(prefix, CloneControl(control));
