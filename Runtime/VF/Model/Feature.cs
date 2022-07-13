@@ -39,6 +39,7 @@ namespace VF.Model.Feature {
         public string submenu;
         [NonSerialized] public GameObject rootObj;
         [NonSerialized] public bool ignoreSaved;
+        [NonSerialized] public string toggleParam;
     }
     
     // Obsolete and removed
