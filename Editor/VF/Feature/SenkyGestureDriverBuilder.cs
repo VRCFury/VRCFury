@@ -11,25 +11,25 @@ namespace VF.Feature {
 public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
     [FeatureBuilderAction(1)]
     public void Apply() {
-        var blinkActive = manager.NewBool("BlinkActive", def: true);
-        var paramEmoteHappy = manager.NewBool("EmoteHappy", synced: true);
-        var paramEmoteSad = manager.NewBool("EmoteSad", synced: true);
-        var paramEmoteAngry = manager.NewBool("EmoteAngry", synced: true);
-        var paramEmoteTongue = manager.NewBool("EmoteTongue", synced: true);
+        var blinkActive = controller.NewBool("BlinkActive", def: true);
+        var paramEmoteHappy = controller.NewBool("EmoteHappy", synced: true);
+        var paramEmoteSad = controller.NewBool("EmoteSad", synced: true);
+        var paramEmoteAngry = controller.NewBool("EmoteAngry", synced: true);
+        var paramEmoteTongue = controller.NewBool("EmoteTongue", synced: true);
         // These don't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-        var paramEmoteHappyLock = manager.NewBool("EmoteHappyLock", synced: true);
-        manager.NewMenuToggle("Emote Lock/Happy", paramEmoteHappyLock);
-        var paramEmoteSadLock = manager.NewBool("EmoteSadLock", synced: true);
-        manager.NewMenuToggle("Emote Lock/Sad", paramEmoteSadLock);
-        var paramEmoteAngryLock = manager.NewBool("EmoteAngryLock", synced: true);
-        manager.NewMenuToggle("Emote Lock/Angry", paramEmoteAngryLock);
-        var paramEmoteTongueLock = manager.NewBool("EmoteTongueLock", synced: true);
-        manager.NewMenuToggle("Emote Lock/Tongue", paramEmoteTongueLock);
+        var paramEmoteHappyLock = controller.NewBool("EmoteHappyLock", synced: true);
+        menu.NewMenuToggle("Emote Lock/Happy", paramEmoteHappyLock);
+        var paramEmoteSadLock = controller.NewBool("EmoteSadLock", synced: true);
+        menu.NewMenuToggle("Emote Lock/Sad", paramEmoteSadLock);
+        var paramEmoteAngryLock = controller.NewBool("EmoteAngryLock", synced: true);
+        menu.NewMenuToggle("Emote Lock/Angry", paramEmoteAngryLock);
+        var paramEmoteTongueLock = controller.NewBool("EmoteTongueLock", synced: true);
+        menu.NewMenuToggle("Emote Lock/Tongue", paramEmoteTongueLock);
 
         var transitionTime = model.transitionTime >= 0 ? model.transitionTime : 0.1f;
 
         {
-            var layer = manager.NewLayer("Eyes");
+            var layer = controller.NewLayer("Eyes");
             var idle = layer.NewState("Idle");
             var closed = layer.NewState("Closed").WithAnimation(LoadState("eyesClosed", model.eyesClosed));
             var happy = layer.NewState("Happy").WithAnimation(LoadState("eyesHappy", model.eyesHappy));
@@ -56,7 +56,7 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         }
 
         {
-            var layer = manager.NewLayer("Mouth");
+            var layer = controller.NewLayer("Mouth");
             var idle = layer.NewState("Idle");
             var blep = layer.NewState("Blep").WithAnimation(LoadState("mouthBlep", model.mouthBlep));
             var suck = layer.NewState("Suck").WithAnimation(LoadState("mouthSuck", model.mouthSuck));
@@ -74,7 +74,7 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         }
 
         {
-            var layer = manager.NewLayer("Ears");
+            var layer = controller.NewLayer("Ears");
             var idle = layer.NewState("Idle");
             var back = layer.NewState("Back").WithAnimation(LoadState("earsBack", model.earsBack));
 
@@ -90,12 +90,12 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
     }
 
     private void createGestureTriggerLayer(string name, VFABool lockParam, VFABool triggerParam, int gestureNum) {
-        var layer = manager.NewLayer("Gesture - " + name);
+        var layer = controller.NewLayer("Gesture - " + name);
         var off = layer.NewState("Off");
         var on = layer.NewState("On");
 
-        var GestureLeft = manager.NewInt("GestureLeft", usePrefix: false);
-        var GestureRight = manager.NewInt("GestureRight", usePrefix: false);
+        var GestureLeft = controller.NewInt("GestureLeft", usePrefix: false);
+        var GestureRight = controller.NewInt("GestureRight", usePrefix: false);
 
         off.TransitionsTo(on).When(lockParam.IsTrue());
         off.TransitionsTo(on).When(GestureLeft.IsEqualTo(gestureNum));

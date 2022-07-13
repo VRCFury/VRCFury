@@ -15,8 +15,8 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
     
     [FeatureBuilderAction]
     public void Apply() {
-        var visemes = manager.NewLayer("Visemes");
-        var VisemeParam = manager.NewInt("Viseme", usePrefix: false);
+        var visemes = controller.NewLayer("Visemes");
+        var VisemeParam = controller.NewInt("Viseme", usePrefix: false);
         void addViseme(int index, string text, State clipState) {
             var clip = LoadState(text, clipState);
             var state = visemes.NewState(text).WithAnimation(clip);

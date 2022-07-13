@@ -39,7 +39,7 @@ namespace VF.Feature {
                 Directory.CreateDirectory(tpsClipDir);
                 tpsAnimator = AnimatorController.CreateAnimatorControllerAtPath(tpsClipDir + "/tpsJunk.controller");
             } else {
-                tpsAnimator = manager.GetRawController();
+                tpsAnimator = controller.GetRawController();
             }
 
             var setup = ScriptableObject.CreateInstance(tpsSetup);

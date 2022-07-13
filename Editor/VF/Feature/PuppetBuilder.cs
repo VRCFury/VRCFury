@@ -9,10 +9,10 @@ public class PuppetBuilder : FeatureBuilder<Puppet> {
     [FeatureBuilderAction]
     public void Apply() {
         var layerName = model.name;
-        var layer = manager.NewLayer(layerName);
-        var tree = manager.NewBlendTree(model.name);
+        var layer = controller.NewLayer(layerName);
+        var tree = controller.NewBlendTree(model.name);
         tree.blendType = BlendTreeType.FreeformDirectional2D;
-        tree.AddChild(manager.GetNoopClip(), new Vector2(0,0));
+        tree.AddChild(controller.GetNoopClip(), new Vector2(0,0));
         var i = 0;
         var usesX = false;
         var usesY = false;
@@ -23,14 +23,14 @@ public class PuppetBuilder : FeatureBuilder<Puppet> {
         }
         var on = layer.NewState("Blend").WithAnimation(tree);
 
-        var x = manager.NewFloat(model.name + "_x", synced: usesX);
+        var x = controller.NewFloat(model.name + "_x", synced: usesX);
         tree.blendParameter = x.Name();
-        var y = manager.NewFloat(model.name + "_y", synced: usesY);
+        var y = controller.NewFloat(model.name + "_y", synced: usesY);
         tree.blendParameterY = y.Name();
         if (model.slider) {
-            if (usesX) manager.NewMenuSlider(model.name, x);
+            if (usesX) menu.NewMenuSlider(model.name, x);
         } else {
-            manager.NewMenuPuppet(model.name, usesX ? x : null, usesY ? y : null);
+            menu.NewMenuPuppet(model.name, usesX ? x : null, usesY ? y : null);
         }
     }
 }

@@ -11,7 +11,10 @@ using VF.Model.StateAction;
 
 namespace VF.Feature.Base {
     public abstract class FeatureBuilder {
-        public VRCFuryNameManager manager;
+        public ControllerManager controller;
+        public MenuManager menu;
+        public ParamManager prms;
+        
         public ClipBuilder motions;
         public string tmpDir;
         public GameObject avatarObject;
@@ -39,8 +42,8 @@ namespace VF.Feature.Base {
         protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {
             if (resetPhysbones == null || resetPhysbones.Count == 0) return null;
 
-            var layer = manager.NewLayer(name + "_PhysBoneReset");
-            var param = manager.NewTrigger(name + "_PhysBoneReset");
+            var layer = controller.NewLayer(name + "_PhysBoneReset");
+            var param = controller.NewTrigger(name + "_PhysBoneReset");
             var idle = layer.NewState("Idle");
             var pause = layer.NewState("Pause");
             var reset1 = layer.NewState("Reset").Move(pause, 1, 0);
@@ -50,7 +53,7 @@ namespace VF.Feature.Base {
             reset1.TransitionsTo(reset2).When(Always());
             reset2.TransitionsTo(idle).When(Always());
 
-            var resetClip = manager.NewClip(name + "_PhysBoneReset");
+            var resetClip = controller.NewClip(name + "_PhysBoneReset");
             foreach (var physBone in resetPhysbones) {
                 if (physBone == null) {
                     Debug.LogWarning("Physbone object in physboneResetter is missing!: " + name);
@@ -66,20 +69,20 @@ namespace VF.Feature.Base {
         }
 
         protected VFACondition Always() {
-            var paramTrue = manager.NewBool("True", def: true);
+            var paramTrue = controller.NewBool("True", def: true);
             return paramTrue.IsTrue();
         }
         protected VFANumber GestureLeft() {
-            return manager.NewInt("GestureLeft", usePrefix: false);
+            return controller.NewInt("GestureLeft", usePrefix: false);
         }
         protected VFANumber GestureRight() {
-            return manager.NewInt("GestureRight", usePrefix: false);
+            return controller.NewInt("GestureRight", usePrefix: false);
         }
         protected VFANumber Viseme() {
-            return manager.NewInt("Viseme", usePrefix: false);
+            return controller.NewInt("Viseme", usePrefix: false);
         }
         protected VFABool IsLocal() {
-            return manager.NewBool("IsLocal", usePrefix: false);
+            return controller.NewBool("IsLocal", usePrefix: false);
         }
 
         protected static bool StateExists(State state) {
@@ -91,9 +94,9 @@ namespace VF.Feature.Base {
                 return (state.actions[0] as AnimationClipAction).clip;
             }
             if (state.actions.Count == 0) {
-                return manager.GetNoopClip();
+                return controller.GetNoopClip();
             }
-            var clip = manager.NewClip(name);
+            var clip = controller.NewClip(name);
             foreach (var action in state.actions) {
                 switch (action) {
                     case FlipbookAction flipbook:

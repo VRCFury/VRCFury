@@ -76,19 +76,21 @@ public class VRCFuryBuilder {
         MenuSplitter.JoinMenus(menu);
 
         // Apply configs
-        var manager = new VRCFuryNameManager(menu, syncedParams, fxController, tmpDir);
+        var menuManager = new MenuManager(menu, tmpDir);
+        var paramsManager = new ParamManager(syncedParams);
+        var controllerManager = new ControllerManager(fxController, tmpDir, paramsManager);
         var motions = new ClipBuilder(avatarObject);
-        var defaultClip = manager.NewClip("Defaults");
-        ApplyFuryConfigs(manager, motions, tmpDir, defaultClip, avatarObject, vrcCloneObject, progress.Partial(0.3, 0.8));
+        var defaultClip = controllerManager.NewClip("Defaults");
+        ApplyFuryConfigs(controllerManager, menuManager, paramsManager, motions, tmpDir, defaultClip, avatarObject, vrcCloneObject, progress.Partial(0.3, 0.8));
         
         progress.Progress(0.8, "Splitting Menus");
         MenuSplitter.SplitMenus(menu);
         
         progress.Progress(0.85, "Collecting default states");
-        AddDefaultsLayer(manager, avatarObject, defaultClip);
+        AddDefaultsLayer(controllerManager, avatarObject, defaultClip);
 
         progress.Progress(0.9, "Adjusting 'Write Defaults'");
-        UseWriteDefaultsIfNeeded(manager);
+        UseWriteDefaultsIfNeeded(controllerManager);
         
         progress.Progress(0.95, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
@@ -114,7 +116,9 @@ public class VRCFuryBuilder {
     }
 
     private static void ApplyFuryConfigs(
-        VRCFuryNameManager manager,
+        ControllerManager controller,
+        MenuManager menu,
+        ParamManager prms,
         ClipBuilder motions,
         string tmpDir,
         AnimationClip defaultClip,
@@ -159,7 +163,9 @@ public class VRCFuryBuilder {
             
             var applyToClone = action.applyToVrcClone();
             if (applyToClone && vrcCloneAvatarObject == null) continue;
-            builder.manager = applyToClone ? null : manager;
+            builder.controller = applyToClone ? null : controller;
+            builder.menu = applyToClone ? null : menu;
+            builder.prms = applyToClone ? null : prms;
             builder.motions = applyToClone ? null : motions;
             builder.defaultClip = applyToClone ? null : defaultClip;
             builder.avatarObject = applyToClone ? vrcCloneAvatarObject : avatarObject;
@@ -217,7 +223,7 @@ public class VRCFuryBuilder {
         if (IsVrcfAsset(fx)) {
             VRCAvatarUtils.SetAvatarFx(avatar, null);
         } else if (fx != null) {
-            VRCFuryNameManager.PurgeFromAnimator(fx);
+            ControllerManager.PurgeFromAnimator(fx);
         }
 
         var menu = VRCAvatarUtils.GetAvatarMenu(avatar);
@@ -225,7 +231,7 @@ public class VRCFuryBuilder {
             VRCAvatarUtils.SetAvatarMenu(avatar, null);
         } else if (menu != null) {
             MenuSplitter.JoinMenus(menu);
-            VRCFuryNameManager.PurgeFromMenu(menu);
+            MenuManager.PurgeFromMenu(menu);
             MenuSplitter.SplitMenus(menu);
         }
 
@@ -233,7 +239,7 @@ public class VRCFuryBuilder {
         if (IsVrcfAsset(prms)) {
             VRCAvatarUtils.SetAvatarParams(avatar, null);
         } else if (prms != null) {
-            VRCFuryNameManager.PurgeFromParams(prms);
+            ParamManager.PurgeFromParams(prms);
         }
 
         EditorUtility.SetDirty(avatar);
@@ -256,7 +262,7 @@ public class VRCFuryBuilder {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 
-    private static void AddDefaultsLayer(VRCFuryNameManager manager, GameObject avatarObject, AnimationClip defaultClip) {
+    private static void AddDefaultsLayer(ControllerManager manager, GameObject avatarObject, AnimationClip defaultClip) {
         var defaultLayer = manager.NewLayer("Defaults", true);
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
         foreach (var layer in manager.GetManagedLayers()) {
@@ -264,7 +270,7 @@ public class VRCFuryBuilder {
         }
     }
     
-    private static void UseWriteDefaultsIfNeeded(VRCFuryNameManager manager) {
+    private static void UseWriteDefaultsIfNeeded(ControllerManager manager) {
         var offStates = 0;
         var onStates = 0;
         foreach (var layer in manager.GetUnmanagedLayers()) {

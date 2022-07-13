@@ -11,11 +11,11 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
     public void Apply() {
         if (model.leftCode == 0 || model.rightCode == 0) return;
 
-        var paramSecuritySync = manager.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
+        var paramSecuritySync = controller.NewBool("SecurityLockSync", synced: true, defTrueInEditor: true);
         // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-        var paramSecurityMenu = manager.NewBool("SecurityLockMenu", synced: true);
-        manager.NewMenuToggle("Security", paramSecurityMenu);
-        var layer = manager.NewLayer("Security Lock");
+        var paramSecurityMenu = controller.NewBool("SecurityLockMenu", synced: true);
+        menu.NewMenuToggle("Security", paramSecurityMenu);
+        var layer = controller.NewLayer("Security Lock");
         var entry = layer.NewState("Entry");
         var remote = layer.NewState("Remote").Move(entry, 0, -1);
         var locked = layer.NewState("Locked").Move(entry, 0, 1);

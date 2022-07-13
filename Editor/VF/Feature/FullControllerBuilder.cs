@@ -33,7 +33,7 @@ namespace VF.Feature {
                         saved = param.saved && !model.ignoreSaved,
                         defaultValue = param.defaultValue
                     };
-                    manager.addSyncedParam(newParam);
+                    prms.addSyncedParam(newParam);
                 }
             }
 
@@ -44,17 +44,17 @@ namespace VF.Feature {
 
             if (model.controller != null) {
                 AnimationClip RewriteClip(AnimationClip from) {
-                    var copy = manager.NewClip(baseObject.name + "__" + from.name);
+                    var copy = controller.NewClip(baseObject.name + "__" + from.name);
                     motions.CopyWithAdjustedPrefixes(from, copy, baseObject);
                     return copy;
                 }
 
                 var merger = new ControllerMerger(
-                    layerName => manager.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
+                    layerName => controller.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
                     param => RewriteParamIfSynced(param),
                     RewriteClip
                 );
-                merger.Merge((AnimatorController)model.controller, manager.GetRawController());
+                merger.Merge((AnimatorController)model.controller, controller.GetRawController());
             }
 
             if (model.menu != null) {
@@ -76,7 +76,7 @@ namespace VF.Feature {
                     prefix2.Add(control.name);
                     MergeMenu(prefix2.ToArray(), control.subMenu);
                 } else {
-                    manager.AddMenuItem(prefix, CloneControl(control));
+                    menu.AddMenuItem(prefix, CloneControl(control));
                 }
             }
         }
@@ -105,7 +105,7 @@ namespace VF.Feature {
 
         private string RewriteParamName(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
-            return manager.NewParamName("fc" + uniqueModelNum + "_" + name);
+            return controller.NewParamName("fc" + uniqueModelNum + "_" + name);
         }
 
         public override string GetEditorTitle() {

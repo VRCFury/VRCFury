@@ -30,13 +30,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         var layerName = model.name;
-        var layer = manager.NewLayer(layerName);
+        var layer = controller.NewLayer(layerName);
         var clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
-        var param = manager.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn);
+        var param = controller.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn);
         if (model.securityEnabled) {
-            var paramSecuritySync = manager.NewBool("SecurityLockSync");
+            var paramSecuritySync = controller.NewBool("SecurityLockSync");
             off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
             on.TransitionsTo(off).When(param.IsFalse());
             on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
@@ -49,7 +49,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             off.Drives(physBoneResetter, true);
             on.Drives(physBoneResetter, true);
         }
-        manager.NewMenuToggle(model.name, param);
+        menu.NewMenuToggle(model.name, param);
     }
 
     public override string GetEditorTitle() {

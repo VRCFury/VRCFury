@@ -74,12 +74,12 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         });
         
         motions.Enable(defaultClip, root, false);
-        var enableLayer = manager.NewLayer("VRCF_zawoo_enabler");
+        var enableLayer = controller.NewLayer("VRCF_zawoo_enabler");
         var off = enableLayer.NewState("Off");
-        var onClip = manager.NewClip("zawooOn");
+        var onClip = controller.NewClip("zawooOn");
         motions.Enable(onClip, root);
         var on = enableLayer.NewState("On").WithAnimation(onClip);
-        var toggle = manager.NewBool(toggleParam);
+        var toggle = controller.NewBool(toggleParam);
         off.TransitionsTo(on).When(toggle.IsTrue());
         on.TransitionsTo(off).When(toggle.IsFalse());
         

@@ -12,14 +12,14 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
     public void Apply() {
         if (!StateExists(model.state)) return;
 
-        var blinkTriggerSynced = manager.NewBool("BlinkTriggerSynced", synced: true);
-        var blinkTrigger = manager.NewTrigger("BlinkTrigger");
-        var blinkActive = manager.NewBool("BlinkActive", def: true);
+        var blinkTriggerSynced = controller.NewBool("BlinkTriggerSynced", synced: true);
+        var blinkTrigger = controller.NewTrigger("BlinkTrigger");
+        var blinkActive = controller.NewBool("BlinkActive", def: true);
 
         // Generator
         {
-            var blinkCounter = manager.NewInt("BlinkCounter");
-            var layer = manager.NewLayer("Blink - Generator");
+            var blinkCounter = controller.NewInt("BlinkCounter");
+            var layer = controller.NewLayer("Blink - Generator");
             var entry = layer.NewState("Entry");
             var remote = layer.NewState("Remote").Move(entry, 0, -1);
             var idle = layer.NewState("Idle").Move(entry, 0, 1);
@@ -49,7 +49,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
         // Receiver
         {
-            var layer = manager.NewLayer("Blink - Receiver");
+            var layer = controller.NewLayer("Blink - Receiver");
             var blink0 = layer.NewState("Trigger == false");
             var blink1 = layer.NewState("Trigger == true");
 
@@ -64,7 +64,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             var blinkClip = LoadState("blink", model.state);
             var blinkDuration = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
             var holdDuration = model.holdTime >= 0 ? model.holdTime : 0;
-            var layer = manager.NewLayer("Blink - Animate");
+            var layer = controller.NewLayer("Blink - Animate");
             var idle = layer.NewState("Idle");
             var checkActive = layer.NewState("Check Active");
             var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(checkActive, 1, 0);

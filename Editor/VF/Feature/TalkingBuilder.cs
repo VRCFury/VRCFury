@@ -9,7 +9,7 @@ namespace VF.Feature {
 public class TalkingBuilder : FeatureBuilder<Talking> {
     [FeatureBuilderAction]
     public void Apply() {
-        var layer = manager.NewLayer("Talk Glow");
+        var layer = controller.NewLayer("Talk Glow");
         var clip = LoadState("TalkGlow", model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);

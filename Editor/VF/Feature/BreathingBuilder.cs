@@ -15,7 +15,7 @@ namespace VF.Feature {
 public class BreathingBuilder : FeatureBuilder<Breathing> {
     [FeatureBuilderAction]
     public void Apply() {
-        var clip = manager.NewClip("Breathing");
+        var clip = controller.NewClip("Breathing");
         var so = new SerializedObject(clip);
         so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
         so.ApplyModifiedProperties();
