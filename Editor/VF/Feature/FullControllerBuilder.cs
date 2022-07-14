@@ -70,6 +70,18 @@ namespace VF.Feature {
 
                 MergeMenu(prefix, model.menu);
             }
+
+            if (model.toggleParam != null) {
+                motions.Enable(defaultClip, baseObject, false);
+                var enableLayer = controller.NewLayer("[FC" + uniqueModelNum + "_" + baseObject.name + "] VRCF Enabler");
+                var off = enableLayer.NewState("Off");
+                var onClip = controller.NewClip(baseObject.name + "__vrcfon");
+                motions.Enable(onClip, baseObject);
+                var on = enableLayer.NewState("On").WithAnimation(onClip);
+                var toggle = controller.NewBool(RewriteParamName(model.toggleParam), usePrefix:false);
+                off.TransitionsTo(on).When(toggle.IsTrue());
+                on.TransitionsTo(off).When(toggle.IsFalse());
+            }
         }
 
         private void MergeMenu(string[] prefix, VRCExpressionsMenu from) {

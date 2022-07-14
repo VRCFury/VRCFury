@@ -70,19 +70,10 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
             parameters = prms,
             submenu = string.IsNullOrWhiteSpace(model.submenu) ? "Zawoo" : model.submenu,
             rootObj = root,
-            ignoreSaved = true
+            ignoreSaved = true,
+            toggleParam = toggleParam
         });
-        
-        motions.Enable(defaultClip, root, false);
-        var enableLayer = controller.NewLayer("VRCF_zawoo_enabler");
-        var off = enableLayer.NewState("Off");
-        var onClip = controller.NewClip("zawooOn");
-        motions.Enable(onClip, root);
-        var on = enableLayer.NewState("On").WithAnimation(onClip);
-        var toggle = controller.NewBool(toggleParam);
-        off.TransitionsTo(on).When(toggle.IsTrue());
-        on.TransitionsTo(off).When(toggle.IsFalse());
-        
+
         Debug.Log("Zawoo added!");
     }
 
