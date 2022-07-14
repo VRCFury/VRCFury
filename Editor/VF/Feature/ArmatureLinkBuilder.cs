@@ -13,10 +13,21 @@ using Object = UnityEngine.Object;
 namespace VF.Feature {
 
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
+        private string propBonePath;
         private Dictionary<string, string> clipMappings = new Dictionary<string, string>();
         
+        /**
+         * We need to collect the clip mappings and path to the prop bone before we start messing with
+         * transforms, moving them around and making it impossible to collect these later.
+         */
         [FeatureBuilderAction(-1)]
-        public void CollectClipMappings() {
+        public void Prepare() {
+            if (model.propBone == null) {
+                Debug.LogWarning("Root bone is null on armature link.");
+                return;
+            }
+            propBonePath = motions.GetPath(model.propBone);
+
             var links = GetLinks();
             foreach (var mergeBone in links.mergeBones) {
                 var propBone = mergeBone.Item1;
@@ -26,16 +37,11 @@ namespace VF.Feature {
                 clipMappings.Add(oldPath, newPath);
             }
         }
-        
-        private string RewriteClipPath(string path) {
-            foreach (var pair in clipMappings) {
-                if (path.StartsWith(pair.Key + "/") || path == pair.Key) {
-                    return pair.Value + path.Substring(pair.Key.Length);
-                }
-            }
-            return null;
-        }
-        
+
+        /**
+         * For the normal (non-upload) avatar object, we link the prop's bones to the avatar bones using
+         * parent constraints. This way, props within prefabs don't need to be unpacked.
+         */
         [FeatureBuilderAction]
         public void Link() {
             var links = GetLinks();
@@ -60,6 +66,11 @@ namespace VF.Feature {
             }
         }
         
+        /**
+         * For the uploaded cope, we link the bones by moving them into each other, effectively merging the hierarchies.
+         * This allows us to do the same as above, but without parent constraints, making it quest compatible
+         * and more efficient.
+         */
         [FeatureBuilderAction(applyToVrcClone:true)]
         public void LinkOnVrcClone() {
             var links = GetLinks();
@@ -77,6 +88,11 @@ namespace VF.Feature {
             }
         }
         
+        /**
+         * Since we move the bone objects in LinkOnVrcClone, we need to rewrite any animation clips using the old
+         * bone paths to use the new ones. We leave both binding paths in the animation, so it will work on both
+         * the uploaded copy and in the editor (where the bones have not moved).
+         */
         [FeatureBuilderAction(100)]
         public void FixAnimations() {
             foreach (var layer in controller.GetManagedLayers()) {
@@ -113,11 +129,9 @@ namespace VF.Feature {
         private Links GetLinks() {
             var links = new Links();
 
-            if (model.propBone == null) {
-                Debug.LogWarning("Root bone is null on armature link.");
-                return links;
-            }
-            var propBone = model.propBone;
+            if (propBonePath == null) return links;
+            var propBone = avatarObject.transform.Find(propBonePath)?.gameObject;
+            if (propBone == null) return links;
 
             GameObject avatarBone = null;
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
@@ -158,6 +172,15 @@ namespace VF.Feature {
             }
 
             return links;
+        }
+        
+        private string RewriteClipPath(string path) {
+            foreach (var pair in clipMappings) {
+                if (path.StartsWith(pair.Key + "/") || path == pair.Key) {
+                    return pair.Value + path.Substring(pair.Key.Length);
+                }
+            }
+            return null;
         }
 
         public override string GetEditorTitle() {
