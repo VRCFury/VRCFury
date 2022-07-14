@@ -10,7 +10,7 @@ using VF.Inspector;
 namespace VF.Menu {
 
     public static class VRCFuryUpdater {
-    [MenuItem("Tools/VRCFury/Update VRCFury")]
+    [MenuItem("Tools/VRCFury/Update VRCFury", priority = 0)]
     private static void Upgrade() {
         WithErrorPopup(() => {
             var client = new WebClient();
