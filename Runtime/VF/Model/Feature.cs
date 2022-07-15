@@ -161,6 +161,7 @@ namespace VF.Model.Feature {
         public GameObject propBone;
         public string bonePathOnAvatar;
         public bool useOptimizedUpload;
+        public bool keepBoneOffsets;
     }
     
     [Serializable]

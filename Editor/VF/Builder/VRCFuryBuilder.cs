@@ -87,7 +87,7 @@ public class VRCFuryBuilder {
         MenuSplitter.SplitMenus(menu);
         
         progress.Progress(0.85, "Collecting default states");
-        AddDefaultsLayer(controllerManager, avatarObject, defaultClip);
+        AddDefaultsLayer(controllerManager, defaultClip, avatarObject, vrcCloneObject);
 
         progress.Progress(0.9, "Adjusting 'Write Defaults'");
         UseWriteDefaultsIfNeeded(controllerManager);
@@ -262,11 +262,11 @@ public class VRCFuryBuilder {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 
-    private static void AddDefaultsLayer(ControllerManager manager, GameObject avatarObject, AnimationClip defaultClip) {
+    private static void AddDefaultsLayer(ControllerManager manager, AnimationClip defaultClip, GameObject avatarObject, GameObject vrcCloneObject) {
         var defaultLayer = manager.NewLayer("Defaults", true);
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
         foreach (var layer in manager.GetManagedLayers()) {
-            DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject);
+            DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject, vrcCloneObject);
         }
     }
     
