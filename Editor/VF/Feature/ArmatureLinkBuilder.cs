@@ -30,12 +30,31 @@ namespace VF.Feature {
             propBonePath = motions.GetPath(model.propBone);
 
             var links = GetLinks();
-            foreach (var mergeBone in links.mergeBones) {
-                var propBone = mergeBone.Item1;
-                var avatarBone = mergeBone.Item2;
-                var oldPath = motions.GetPath(propBone);
-                var newPath = ClipBuilder.Join(motions.GetPath(avatarBone), "vrcf_" + uniqueModelNum + "_" + propBone.name);
-                clipMappings.Add(oldPath, newPath);
+            if (model.useBoneMerging) {
+                foreach (var reparent in links.reparent) {
+                    var objectToMove = reparent.Item1;
+                    var newParent = reparent.Item2;
+                    var oldPath = motions.GetPath(objectToMove);
+                    var newPath = ClipBuilder.Join(motions.GetPath(newParent),
+                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name);
+                    clipMappings.Add(oldPath, newPath);
+                }
+                foreach (var mergeBone in links.mergeBones) {
+                    var propBone = mergeBone.Item1;
+                    var avatarBone = mergeBone.Item2;
+                    var oldPath = motions.GetPath(propBone);
+                    var newPath = motions.GetPath(avatarBone);
+                    clipMappings.Add(oldPath, newPath);
+                }
+            } else {
+                foreach (var mergeBone in links.mergeBones) {
+                    var propBone = mergeBone.Item1;
+                    var avatarBone = mergeBone.Item2;
+                    var oldPath = motions.GetPath(propBone);
+                    var newPath = ClipBuilder.Join(motions.GetPath(avatarBone),
+                        "vrcf_" + uniqueModelNum + "_" + propBone.name);
+                    clipMappings.Add(oldPath, newPath);
+                }
             }
         }
 
@@ -75,24 +94,53 @@ namespace VF.Feature {
         [FeatureBuilderAction(applyToVrcClone:true)]
         public void LinkOnVrcClone() {
             var links = GetLinks();
-            foreach (var mergeBone in links.mergeBones) {
-                var propBone = mergeBone.Item1;
-                var avatarBone = mergeBone.Item2;
-                var p = propBone.GetComponent<ParentConstraint>();
-                if (p != null) Object.DestroyImmediate(p);
-                propBone.name = "vrcf_" + uniqueModelNum + "_" + propBone.name;
-                propBone.transform.SetParent(avatarBone.transform);
-                if (!model.keepBoneOffsets) {
-                    propBone.transform.localPosition = Vector3.zero;
-                    propBone.transform.localRotation = Quaternion.identity;
+            if (model.useBoneMerging) {
+                var boneMapping = new Dictionary<Transform, Transform>();
+                foreach (var mergeBone in links.mergeBones) {
+                    boneMapping[mergeBone.Item1.transform] = mergeBone.Item2.transform;
                 }
-            }
-            foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>()) {
-                var root = physbone.GetRootTransform();
+                foreach (var skin in featureBaseObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                    if (boneMapping.TryGetValue(skin.rootBone, out var newRootBone)) {
+                        skin.rootBone = newRootBone;
+                    }
+                    var bones = skin.bones;
+                    for (var i = 0; i < bones.Length; i++) {
+                        if (boneMapping.TryGetValue(bones[i], out var newBone)) {
+                            bones[i] = newBone;
+                        }
+                    }
+                    skin.bones = bones;
+                }
+                foreach (var reparent in links.reparent) {
+                    var objectToMove = reparent.Item1;
+                    var newParent = reparent.Item2;
+                    objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
+                    objectToMove.transform.SetParent(newParent.transform);
+                }
+                foreach (var mergeBone in links.mergeBones) {
+                    Object.DestroyImmediate(mergeBone.Item1);
+                }
+            } else {
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
-                    if (propBone.transform.IsChildOf(root)) {
-                        physbone.ignoreTransforms.Add(propBone.transform);
+                    var avatarBone = mergeBone.Item2;
+                    var p = propBone.GetComponent<ParentConstraint>();
+                    if (p != null) Object.DestroyImmediate(p);
+                    propBone.name = "vrcf_" + uniqueModelNum + "_" + propBone.name;
+                    propBone.transform.SetParent(avatarBone.transform);
+                    if (!model.keepBoneOffsets) {
+                        propBone.transform.localPosition = Vector3.zero;
+                        propBone.transform.localRotation = Quaternion.identity;
+                    }
+                }
+
+                foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
+                    var root = physbone.GetRootTransform();
+                    foreach (var mergeBone in links.mergeBones) {
+                        var propBone = mergeBone.Item1;
+                        if (propBone.transform.IsChildOf(root)) {
+                            physbone.ignoreTransforms.Add(propBone.transform);
+                        }
                     }
                 }
             }
@@ -131,8 +179,13 @@ namespace VF.Feature {
             // These are stacks, because it's convenient, and we want to iterate over them in reverse order anyways
             // because when operating on the vrc clone, we delete game objects as we process them, and we want to
             // delete the children first.
+            
             // left=bone in prop | right=bone in avatar
             public readonly Stack<Tuple<GameObject, GameObject>> mergeBones
+                = new Stack<Tuple<GameObject, GameObject>>();
+            
+            // left=object to move | right=new parent
+            public readonly Stack<Tuple<GameObject, GameObject>> reparent
                 = new Stack<Tuple<GameObject, GameObject>>();
         }
 
@@ -177,6 +230,8 @@ namespace VF.Feature {
                     if (childAvatarBone != null) {
                         links.mergeBones.Push(Tuple.Create(childPropBone, childAvatarBone));
                         checkStack.Push(Tuple.Create(childPropBone, childAvatarBone));
+                    } else {
+                        links.reparent.Push(Tuple.Create(childPropBone, check.Item2));
                     }
                 }
             }
@@ -215,6 +270,14 @@ namespace VF.Feature {
                                              " If true, prop bones will maintain their initial offset to the corresponding avatar bone. This is unusual."));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("keepBoneOffsets")));
             
+            container.Add(new Label("Use Bone Merging (fragile):") {
+                style = { paddingTop = 10 }
+            });
+            container.Add(VRCFuryEditorUtils.WrappedLabel("If true, skinned meshes in this prop will be modified during upload to use the actual bones from the avatar armature." +
+                                                          " This means that your prop's bones will not count toward the avatar's bone count (more efficient)." +
+                                                          " Beware that this may cause the prop mesh to be broken in game if the armature (including fbx export settings) does not match the avatar's EXACTLY."));
+            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("useBoneMerging")));
+
             return container;
         }
     }

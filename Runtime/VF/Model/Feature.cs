@@ -162,6 +162,7 @@ namespace VF.Model.Feature {
         public string bonePathOnAvatar;
         public bool useOptimizedUpload;
         public bool keepBoneOffsets;
+        public bool useBoneMerging;
     }
     
     [Serializable]
