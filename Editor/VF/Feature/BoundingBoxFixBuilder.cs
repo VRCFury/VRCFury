@@ -13,7 +13,8 @@ namespace VF.Feature {
             var first = true;
             var overallWorldBounds = new Bounds();
 
-            var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>();
+            var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+
             foreach (var skin in skins) {
                 var worldMin = skin.transform.TransformPoint(skin.localBounds.min);
                 var worldMax = skin.transform.TransformPoint(skin.localBounds.max);
