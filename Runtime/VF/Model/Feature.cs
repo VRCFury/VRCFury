@@ -168,5 +168,9 @@ namespace VF.Model.Feature {
     [Serializable]
     public class TPSIntegration : FeatureModel {
     }
+    
+    [Serializable]
+    public class BoundingBoxFix : FeatureModel {
+    }
 
 }

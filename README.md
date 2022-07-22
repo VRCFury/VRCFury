@@ -117,6 +117,10 @@ This is usually only useful for prefab artists. Provide a controller, menu, and 
 
 When enabled, VRCFury will instruct Poiyomi TPS to re-apply itself on the avatar as part of each VRCFury build. This is mostly useful when taking advantage of `Controller-Less Setup` (see below), as VRCFury will wipe the controller between each build, which would otherwise lose your existing TPS animator controller setup.
 
+### Bounding Box Fix
+
+This feature will automatically resize all mesh bounding boxes on your avatar to fit your avatar bounds during upload, preventing the common issue where small props (such as hair, gloves, etc) will disappear when near your viewpoint in game.
+
 ## Info for Prefab Artists
 
 Distributing your own prefab with animations? 

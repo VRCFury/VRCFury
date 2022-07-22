@@ -33,10 +33,15 @@ public static class FeatureFinder {
 
     public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(bool isProp) {
         return GetAllFeatures()
-            .Where(e => {
+            .Select(e => {
                 var impl = (FeatureBuilder)Activator.CreateInstance(e.Value);
-                return isProp ? impl.AvailableOnProps() : impl.AvailableOnAvatar();
-            });
+                var title = impl.GetEditorTitle();
+                var allowed = isProp ? impl.AvailableOnProps() : impl.AvailableOnAvatar();
+                return Tuple.Create(title, allowed, e);
+            })
+            .Where(tuple => tuple.Item1 != null && tuple.Item2)
+            .OrderBy(tuple => tuple.Item1)
+            .Select(tuple => tuple.Item3);
     }
 
     public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, bool isProp) {
