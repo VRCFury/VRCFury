@@ -13,6 +13,10 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [FeatureBuilderAction]
     public void Apply() {
+        if (model.state.IsEmpty()) {
+            return;
+        }
+        
         if (model.slider) {
             var stops = new List<Puppet.Stop> {
                 new Puppet.Stop(1,0,model.state)

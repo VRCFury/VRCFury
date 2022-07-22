@@ -4,11 +4,18 @@ using UnityEngine;
 namespace VF.Model.StateAction {
     [Serializable]
     public class Action {
+        public virtual bool IsEmpty() {
+            return false;
+        }
     }
     
     [Serializable]
     public class ObjectToggleAction : Action {
         public GameObject obj;
+
+        public override bool IsEmpty() {
+            return obj == null || obj.CompareTag("EditorOnly");
+        }
     }
     
     [Serializable]

@@ -86,7 +86,7 @@ namespace VF.Feature.Base {
         }
 
         protected static bool StateExists(State state) {
-            return state != null && !state.isEmpty();
+            return state != null && !state.IsEmpty();
         }
 
         protected AnimationClip LoadState(string name, State state) {
