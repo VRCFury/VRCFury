@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -11,29 +12,22 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(applyToVrcClone:true,priority:10)]
         public void ApplyOnClone() {
-            var first = true;
-            var overallWorldBounds = new Bounds();
-
             var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-
             foreach (var skin in skins) {
-                if (skin.rootBone == null) continue;
-                if (first) {
-                    first = false;
-                    overallWorldBounds.SetMinMax(skin.bounds.min, skin.bounds.max);
-                } else {
-                    overallWorldBounds.Encapsulate(skin.bounds.min);
-                    overallWorldBounds.Encapsulate(skin.bounds.max);
+                var root = skin.rootBone == null ? skin.transform : skin.rootBone;
+                var avgScale = (root.lossyScale.x + root.lossyScale.y + root.lossyScale.z) / 3;
+                var minExtentWorld = 0.5f; // 0.5 meters
+                var minExtentLocal = minExtentWorld / avgScale;
+                var bounds = skin.localBounds;
+                var extents = bounds.extents;
+                var changed = false;
+                if (extents.x < minExtentLocal) { changed = true; extents.x = minExtentLocal; }
+                if (extents.y < minExtentLocal) { changed = true; extents.y = minExtentLocal; }
+                if (extents.z < minExtentLocal) { changed = true; extents.z = minExtentLocal; }
+                if (changed) {
+                    bounds.extents = extents;
+                    skin.localBounds = bounds;
                 }
-            }
-
-            foreach (var skin in skins) {
-                if (skin.rootBone == null) continue;
-                var localBounds = skin.localBounds;
-                foreach (var corner in GetCorners(overallWorldBounds)) {
-                    localBounds.Encapsulate(skin.rootBone.InverseTransformPoint(corner));
-                }
-                skin.localBounds = localBounds;
             }
         }
 
@@ -54,19 +48,6 @@ namespace VF.Feature {
                 }
             });
             return content;
-        }
-        
-        private static List<Vector3> GetCorners(Bounds obj, bool includePosition = true)
-        {
-            var result = new List<Vector3>();
-            for (int x = -1; x <= 1; x += 2)
-            for (int y = -1; y <= 1; y += 2)
-            for (int z = -1; z <= 1; z += 2) {
-                var offset = (obj.size / 2);
-                offset.Scale(new Vector3(x, y, z));
-                result.Add((includePosition ? obj.center : Vector3.zero) + offset);
-            }
-            return result;
         }
     }
 }
