@@ -85,16 +85,15 @@ namespace VF.Feature {
                 }
             }
         }
-        
-        /**
-         * For the uploaded cope, we link the bones by moving them into each other, effectively merging the hierarchies.
-         * This allows us to do the same as above, but without parent constraints, making it quest compatible
-         * and more efficient.
-         */
+
         [FeatureBuilderAction(applyToVrcClone:true)]
         public void LinkOnVrcClone() {
             var links = GetLinks();
             if (model.useBoneMerging) {
+                // For the uploaded copy, if bone merging is enabled, we adjust all the skinned meshes to use the
+                // bones in the avatar's armature, move over any objects which don't exist in the avatar, then delete all
+                // the original prop bones.
+
                 var boneMapping = new Dictionary<Transform, Transform>();
                 foreach (var mergeBone in links.mergeBones) {
                     boneMapping[mergeBone.Item1.transform] = mergeBone.Item2.transform;
@@ -121,6 +120,7 @@ namespace VF.Feature {
                     Object.DestroyImmediate(mergeBone.Item1);
                 }
             } else {
+                // Otherwise, we move all the prop bones into their matching avatar bones (as children)
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
                     var avatarBone = mergeBone.Item2;
@@ -134,6 +134,8 @@ namespace VF.Feature {
                     }
                 }
 
+                // Because we're adding new children to bones in the avatar, we need to ensure they are ignored
+                // by all physbones.
                 foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
                     var root = physbone.GetRootTransform();
                     foreach (var mergeBone in links.mergeBones) {
