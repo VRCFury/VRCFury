@@ -8,6 +8,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
@@ -84,6 +85,15 @@ namespace VF.Feature {
                 if (!model.keepBoneOffsets) {
                     propBone.transform.localPosition = Vector3.zero;
                     propBone.transform.localRotation = Quaternion.identity;
+                }
+            }
+            foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>()) {
+                var root = physbone.GetRootTransform();
+                foreach (var mergeBone in links.mergeBones) {
+                    var propBone = mergeBone.Item1;
+                    if (propBone.transform.IsChildOf(root)) {
+                        physbone.ignoreTransforms.Add(propBone.transform);
+                    }
                 }
             }
         }
