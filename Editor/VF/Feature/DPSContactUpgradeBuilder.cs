@@ -189,7 +189,7 @@ namespace VF.Feature {
                 var section = new VisualElement();
                 if (oscEnabled.boolValue) {
                     section.Add(new Label() {
-                        text = "Which objects should be have OSC receivers enabled?",
+                        text = "Which objects should have OSC receivers enabled?",
                         style = {
                             whiteSpace = WhiteSpace.Normal
                         }
