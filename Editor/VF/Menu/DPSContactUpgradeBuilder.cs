@@ -30,9 +30,6 @@ namespace VF.Menu {
             var fx = VRCAvatarUtils.GetAvatarFx(avatar);
             var controller = new VFAController(fx, null);
 
-            var penetrators = getPenetrators(avatarObject);
-            var orifices = getOrifaceLights(avatarObject);
-            
             // Clean up
             for (var i = 0; i < fx.parameters.Length; i++) {
                 var param = fx.parameters[i];
@@ -49,7 +46,7 @@ namespace VF.Menu {
             }
 
             var penI = 0;
-            foreach (var skin in penetrators) {
+            foreach (var skin in getPenetrators(avatarObject)) {
                 var mesh = skin.sharedMesh;
                 var forward = new Vector3(0, 0, 1);
                 var length = mesh.vertices.Select(v => Vector3.Dot(v, forward)).Max();
@@ -71,7 +68,7 @@ namespace VF.Menu {
             }
 
             var orfI = 0;
-            foreach (var pair in orifices) {
+            foreach (var pair in getOrifaceLights(avatarObject)) {
                 var light = pair.Item1;
                 var normal = pair.Item2;
                 var forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
