@@ -172,12 +172,5 @@ namespace VF.Model.Feature {
     [Serializable]
     public class BoundingBoxFix : FeatureModel {
     }
-    
-    [Serializable]
-    public class DPSContactUpgrade : FeatureModel {
-        public bool oscEnabled;
-        public List<GameObject> oscObjects;
-        public float oscDepth = 0;
-    }
 
 }
