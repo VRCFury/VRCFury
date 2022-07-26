@@ -72,11 +72,15 @@ namespace VF.Feature {
                 var Transform = otype.GetField("Transform", b).GetValue(o);
                 var Renderer = otype.GetField("Renderer", b).GetValue(o);
                 var OrificeType = otype.GetField("OrificeType", b).GetValue(o);
+                var skin = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>()[0];
+                otype.GetField("BlendShapeIndexEnter", b).SetValue(o, 0);
+                otype.GetField("BlendShapeIndexIn", b).SetValue(o, 0);
+                otype.GetField("MaxDepth", b).SetValue(o, 0.25f); // Max penetration depth meters
                 callWithOptionalParams(tpsSetup.GetMethod("SetupOrifice", b), null,
                     avatarObject.transform,
                     tpsAnimator,
                     Transform,
-                    Renderer,
+                    skin, //Renderer,
                     OrificeType,
                     o,
                     i,
