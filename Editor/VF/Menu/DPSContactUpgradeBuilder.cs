@@ -121,8 +121,10 @@ namespace VF.Menu {
             return skins;
         }
 
+        private static readonly System.Random rand = new System.Random();
+
         private static string RandomTag() {
-            return "TPSVF_" + (new System.Random().Next(100_000_000, 999_999_999));
+            return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
         }
 
         private static List<Tuple<Light,Light>> getOrifaceLights(GameObject avatarObject) {
