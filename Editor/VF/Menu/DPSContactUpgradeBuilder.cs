@@ -110,7 +110,13 @@ namespace VF.Menu {
                 if (skin.GetComponent<VRCContactReceiver>() != null || skin.GetComponent<VRCContactSender>() != null) {
                     continue;
                 }
-                var usesDps = skin.sharedMaterials.Any(mat => mat != null && mat.shader && mat.shader.name == "Raliv/Penetrator");
+                var usesDps = skin.sharedMaterials.Any(mat => {
+                    if (mat == null) return false;
+                    if (!mat.shader) return false;
+                    if (mat.shader.name == "Raliv/Penetrator") return true;
+                    if (mat.GetFloat("_PenetratorEnabled") > 0) return true;
+                    return false;
+                });
                 if (!usesDps) continue;
                 Debug.Log("Found DPS penetrator: " + skin);
                 skins.Add(skin);
