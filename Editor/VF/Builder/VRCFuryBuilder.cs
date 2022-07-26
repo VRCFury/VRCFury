@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.Collections;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -281,10 +282,20 @@ public class VRCFuryBuilder {
         }
 
         if (onStates > 0 && offStates > 0) {
+            var weirdStates = new List<string>();
+            var weirdAreOn = offStates > onStates;
+            foreach (var layer in manager.GetUnmanagedLayers()) {
+                DefaultClipBuilder.ForEachState(layer, state => {
+                    if (state.writeDefaultValues == weirdAreOn) {
+                        weirdStates.Add(layer.name+"."+state.name);
+                    }
+                });
+            }
             Debug.LogWarning("Your animation controller contains a mix of Write Defaults ON and Write Defaults OFF states." +
                            " (" + onStates + " on, " + offStates + " off)." +
                            " Doing this may cause weird issues to happen with your animations in game." +
                            " This is not an issue with VRCFury, but an issue with your avatar's custom animation controller.");
+            Debug.LogWarning("The broken states are most likely: " + String.Join(",", weirdStates));
         }
         
         // If half of the old states use writeDefaults, safe to assume it should be used everywhere
