@@ -2,9 +2,9 @@
 
 Set up your avatar's props, gestures, and other animations without ever touching a layer or menu!
 
-## Beta Notice
+## Need Help?
 
-VRC Fury is new. Things may be broken. Beware. If you find any issues, please report them in our issue tracker, or to @SenkyDragon on twitter.
+[Join the VRCFury discord!](https://discord.gg/rGDa2NAPRa)
 
 ## Benefits
 * **Easy to use**
