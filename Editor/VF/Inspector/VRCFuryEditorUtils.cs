@@ -61,8 +61,12 @@ public static class VRCFuryEditorUtils {
                 remove.style.paddingBottom = 3;
                 row.Add(remove);
             }
-            if (size == 0 && onEmpty != null) {
-                entries.Add(onEmpty());
+            if (size == 0) {
+                if (onEmpty != null) {
+                    entries.Add(onEmpty());
+                } else {
+                    entries.Add(new Label("This list is empty. Click + to add an entry."));
+                }
             }
             return entries;
         }, list));
