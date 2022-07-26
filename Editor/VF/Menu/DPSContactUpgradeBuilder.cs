@@ -68,7 +68,7 @@ namespace VF.Menu {
             }
 
             var orfI = 0;
-            foreach (var pair in getOrifaceLights(avatarObject)) {
+            foreach (var pair in getOrificeLights(avatarObject)) {
                 var light = pair.Item1;
                 var normal = pair.Item2;
                 var forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
@@ -83,7 +83,7 @@ namespace VF.Menu {
             
             EditorUtility.DisplayDialog(
                 "DPS Upgrader",
-                "VRCFury upgraded " + penI + " penetrators and " + orfI + " orifices with TPS contacts",
+                "VRCFury upgraded " + penI + " DPS penetrators and " + orfI + " DPS orifices with TPS contacts",
                 "Ok"
             );
         }
@@ -124,7 +124,7 @@ namespace VF.Menu {
             return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
         }
 
-        private static List<Tuple<Light,Light>> getOrifaceLights(GameObject avatarObject) {
+        private static List<Tuple<Light,Light>> getOrificeLights(GameObject avatarObject) {
             var pairs = new List<Tuple<Light,Light>>();
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
                 if (light.transform.parent.GetComponentsInChildren<VRCContactReceiver>(true).Length > 0
@@ -144,7 +144,7 @@ namespace VF.Menu {
                         Debug.Log("Failed to find normal sibling light for light: " + light);
                         continue;
                     }
-                    Debug.Log("Found DPS oriface: " + light);
+                    Debug.Log("Found DPS orifice: " + light);
                     pairs.Add(Tuple.Create(light, normal));
                 }
             }
