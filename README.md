@@ -4,7 +4,7 @@ Set up your avatar's props, gestures, and other animations without ever touching
 
 ## Need Help?
 
-[Join the VRCFury discord!](https://discord.gg/rGDa2NAPRa)
+[Join the VRCFury discord!](https://vrcfury.com/discord)
 
 ## Benefits
 * **Easy to use**
