@@ -49,6 +49,12 @@ namespace VF.Menu {
             foreach (var pair in getPenetrators(avatarObject)) {
                 var obj = pair.Item1;
                 var mesh = pair.Item2;
+                
+                Debug.Log("Found DPS penetrator: " + obj);
+                
+                if (obj.GetComponent<VRCContactReceiver>() != null || obj.GetComponent<VRCContactSender>() != null) {
+                    Debug.Log("Already has contacts... skipping");
+                }
 
                 var forward = new Vector3(0, 0, 1);
                 var length = mesh.vertices.Select(v => Vector3.Dot(v, forward)).Max();
@@ -73,13 +79,26 @@ namespace VF.Menu {
             foreach (var pair in getOrificeLights(avatarObject)) {
                 var light = pair.Item1;
                 var normal = pair.Item2;
-                var forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
 
-                AddSender(light.gameObject, Vector3.zero, 0.01f, "TPS_Orf_Root");
-                AddSender(light.gameObject, forward * 0.01f, 0.01f, "TPS_Orf_Norm");
+                Debug.Log("Found DPS orifice: " + light);
+
+                var hasSenders = light.transform.parent.GetComponentsInChildren<VRCContactSender>(true).Length > 0;
+                var hasReceivers = light.transform.parent.GetComponentsInChildren<VRCContactReceiver>(true).Length > 0;
+
+                // If the user used TPS setup, they probably only got senders, so let's add the receivers for them.
+                if (hasReceivers) {
+                    Debug.Log("Already has receivers... skipping");
+                }
+                
+                var forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
                 var param = "TPS_Internal/Orf/VF" + orfI + "/Depth_In";
                 controller.NewFloat(param);
                 AddReceiver(light.gameObject, forward * -oscDepth, param, oscDepth, "TPS_Pen_Penetrating");
+
+                if (!hasSenders) {
+                    AddSender(light.gameObject, Vector3.zero, 0.01f, "TPS_Orf_Root");
+                    AddSender(light.gameObject, forward * 0.01f, 0.01f, "TPS_Orf_Norm");
+                }
                 orfI++;
             }
             
@@ -116,21 +135,13 @@ namespace VF.Menu {
                 return false;
             };
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (skin.GetComponent<VRCContactReceiver>() != null || skin.GetComponent<VRCContactSender>() != null) {
-                    continue;
-                }
                 if (!skin.sharedMaterials.Any(materialIsDps)) continue;
-                Debug.Log("Found DPS skinned penetrator: " + skin);
                 skins.Add(Tuple.Create(skin.gameObject, skin.sharedMesh));
             }
             foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (renderer.GetComponent<VRCContactReceiver>() != null || renderer.GetComponent<VRCContactSender>() != null) {
-                    continue;
-                }
                 if (!renderer.sharedMaterials.Any(materialIsDps)) continue;
                 var meshFilter = renderer.GetComponent<MeshFilter>();
                 if (!meshFilter) continue;
-                Debug.Log("Found DPS mesh penetrator: " + renderer);
                 skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
             }
             return skins;
@@ -145,11 +156,6 @@ namespace VF.Menu {
         private static List<Tuple<Light,Light>> getOrificeLights(GameObject avatarObject) {
             var pairs = new List<Tuple<Light,Light>>();
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
-                if (light.transform.parent.GetComponentsInChildren<VRCContactReceiver>(true).Length > 0
-                    || light.transform.parent.GetComponentsInChildren<VRCContactSender>(true).Length > 0) {
-                    continue;
-                }
-
                 if (light.range >= 0.405f && light.range <= 0.425f) {
                     Light normal = null;
                     foreach (Transform sibling in light.gameObject.transform.parent) {
@@ -162,7 +168,6 @@ namespace VF.Menu {
                         Debug.Log("Failed to find normal sibling light for light: " + light);
                         continue;
                     }
-                    Debug.Log("Found DPS orifice: " + light);
                     pairs.Add(Tuple.Create(light, normal));
                 }
             }
