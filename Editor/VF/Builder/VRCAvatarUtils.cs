@@ -5,18 +5,26 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
     public class VRCAvatarUtils {
-        public static int GetAvatarFxLayerNumber(VRCAvatarDescriptor avatar) {
+        private static int GetAvatarLayerNumber(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
             if (!avatar.customizeAnimationLayers) return -1;
+            // Sometimes, broken avatar descriptors have multiple entries for the same type.
+            // We'll do a first pass to see if there's one actually used (in case its not the first one during this bug)
+            var seenCount = 0;
+            var firstSeenIndex = -1;
             for (var i = 0; i < avatar.baseAnimationLayers.Length; i++) {
                 var layer = avatar.baseAnimationLayers[i];
-                if (layer.type == VRCAvatarDescriptor.AnimLayerType.FX) return i;
+                if (layer.type == type) {
+                    seenCount++;
+                    if (firstSeenIndex < 0) firstSeenIndex = i;
+                    if (!layer.isDefault && layer.animatorController != null) return i;
+                }
             }
-            return -1;
+            return firstSeenIndex;
         }
 
         public static AnimatorController GetAvatarFx(VRCAvatarDescriptor avatar) {
             if (!avatar.customizeAnimationLayers) return null;
-            var layerNum = GetAvatarFxLayerNumber(avatar);
+            var layerNum = GetAvatarLayerNumber(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
             if (layerNum < 0) return null;
             var layer = avatar.baseAnimationLayers[layerNum];
             if (layer.isDefault) return null;
@@ -25,12 +33,12 @@ namespace VF.Builder {
         }
         
         public static void SetAvatarFx(VRCAvatarDescriptor avatar, AnimatorController fx) {
-            var layerNum = GetAvatarFxLayerNumber(avatar);
+            avatar.customizeAnimationLayers = true;
+            var layerNum = GetAvatarLayerNumber(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
             if (layerNum < 0)
                 throw new Exception(
                     "Failed to find FX layer on avatar. You may need to 'reset' the expression layers on the avatar descriptor.");
             var layer = avatar.baseAnimationLayers[layerNum];
-            avatar.customizeAnimationLayers = true;
             layer.isDefault = false;
             layer.animatorController = fx;
             avatar.baseAnimationLayers[layerNum] = layer;
