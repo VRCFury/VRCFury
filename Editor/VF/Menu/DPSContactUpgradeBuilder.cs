@@ -131,6 +131,7 @@ namespace VF.Menu {
                 if (mat == null) return false;
                 if (!mat.shader) return false;
                 if (mat.shader.name == "Raliv/Penetrator") return true;
+                if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return true;
                 if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return true;
                 return false;
             };

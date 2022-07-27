@@ -27,10 +27,12 @@ public class ControllerMerger {
             var exists = Array.Find(to.parameters, other => other.name == newName);
             if (exists == null) {
                 to.AddParameter(newName, param.type);
-                var copy = to.parameters[to.parameters.Length-1];
+                var prms = to.parameters;
+                var copy = prms[prms.Length-1];
                 copy.defaultBool = param.defaultBool;
                 copy.defaultFloat = param.defaultFloat;
                 copy.defaultInt = param.defaultInt;
+                to.parameters = prms;
             }
         }
  
