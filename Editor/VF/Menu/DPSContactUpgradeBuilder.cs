@@ -46,14 +46,16 @@ namespace VF.Menu {
             }
 
             var penI = 0;
-            foreach (var skin in getPenetrators(avatarObject)) {
-                var mesh = skin.sharedMesh;
+            foreach (var pair in getPenetrators(avatarObject)) {
+                var obj = pair.Item1;
+                var mesh = pair.Item2;
+
                 var forward = new Vector3(0, 0, 1);
                 var length = mesh.vertices.Select(v => Vector3.Dot(v, forward)).Max();
                 float width = mesh.vertices.Select(v => new Vector2(v.x, v.y).magnitude).Average() * 2;
 
-                AddSender(skin.gameObject, Vector3.zero, length, "TPS_Pen_Penetrating");
-                AddSender(skin.gameObject, Vector3.zero, Mathf.Max(0.01f, length - width), "TPS_Pen_Width");
+                AddSender(obj, Vector3.zero, length, "TPS_Pen_Penetrating");
+                AddSender(obj, Vector3.zero, Mathf.Max(0.01f, length - width), "TPS_Pen_Width");
 
                 string paramFloatRootRoot = "TPS_Internal/Pen/VF" + penI + "/RootRoot";
                 string paramFloatRootFrwd = "TPS_Internal/Pen/VF" + penI + "/RootForw";
@@ -61,9 +63,9 @@ namespace VF.Menu {
                 controller.NewFloat(paramFloatRootRoot);
                 controller.NewFloat(paramFloatRootFrwd);
                 controller.NewFloat(paramFloatBackRoot);
-                AddReceiver(skin.gameObject, Vector3.zero, paramFloatRootRoot, length, "TPS_Orf_Root");
-                AddReceiver(skin.gameObject, Vector3.zero, paramFloatRootFrwd, length, "TPS_Orf_Norm");
-                AddReceiver(skin.gameObject, Vector3.back * 0.01f, paramFloatBackRoot, length, "TPS_Orf_Root");
+                AddReceiver(obj, Vector3.zero, paramFloatRootRoot, length, "TPS_Orf_Root");
+                AddReceiver(obj, Vector3.zero, paramFloatRootFrwd, length, "TPS_Orf_Norm");
+                AddReceiver(obj, Vector3.back * 0.01f, paramFloatBackRoot, length, "TPS_Orf_Root");
                 penI++;
             }
 
@@ -104,22 +106,32 @@ namespace VF.Menu {
             receiver.collisionTags = new List<string> { tag, RandomTag() };
         }
         
-        private static List<SkinnedMeshRenderer> getPenetrators(GameObject avatarObject) {
-            var skins = new List<SkinnedMeshRenderer>();
+        private static List<Tuple<GameObject,Mesh>> getPenetrators(GameObject avatarObject) {
+            var skins = new List<Tuple<GameObject,Mesh>>();
+            bool materialIsDps(Material mat) {
+                if (mat == null) return false;
+                if (!mat.shader) return false;
+                if (mat.shader.name == "Raliv/Penetrator") return true;
+                if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return true;
+                return false;
+            };
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                 if (skin.GetComponent<VRCContactReceiver>() != null || skin.GetComponent<VRCContactSender>() != null) {
                     continue;
                 }
-                var usesDps = skin.sharedMaterials.Any(mat => {
-                    if (mat == null) return false;
-                    if (!mat.shader) return false;
-                    if (mat.shader.name == "Raliv/Penetrator") return true;
-                    if (mat.GetFloat("_PenetratorEnabled") > 0) return true;
-                    return false;
-                });
-                if (!usesDps) continue;
-                Debug.Log("Found DPS penetrator: " + skin);
-                skins.Add(skin);
+                if (!skin.sharedMaterials.Any(materialIsDps)) continue;
+                Debug.Log("Found DPS skinned penetrator: " + skin);
+                skins.Add(Tuple.Create(skin.gameObject, skin.sharedMesh));
+            }
+            foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
+                if (renderer.GetComponent<VRCContactReceiver>() != null || renderer.GetComponent<VRCContactSender>() != null) {
+                    continue;
+                }
+                if (!renderer.sharedMaterials.Any(materialIsDps)) continue;
+                var meshFilter = renderer.GetComponent<MeshFilter>();
+                if (!meshFilter) continue;
+                Debug.Log("Found DPS mesh penetrator: " + renderer);
+                skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
             }
             return skins;
         }
