@@ -16,7 +16,7 @@ namespace VF.Menu {
             var msg = Apply(obj);
             VRCFuryVRCPatch.DeleteOscFilesForAvatar(obj);
             EditorUtility.DisplayDialog(
-                "DPS Upgrader",
+                "OscGB Upgrade",
                 msg,
                 "Ok"
             );

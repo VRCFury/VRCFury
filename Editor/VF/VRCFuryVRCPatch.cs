@@ -84,6 +84,7 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
                     }
                 }
             }
+            Debug.Log("Done");
         } catch (Exception e) {
             Debug.LogException(e);
         }
