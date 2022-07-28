@@ -14,6 +14,7 @@ namespace VF.Menu {
         private static void Run() {
             var obj = MenuUtils.GetSelectedAvatar();
             var msg = Apply(obj);
+            VRCFuryVRCPatch.DeleteOscFilesForAvatar(obj);
             EditorUtility.DisplayDialog(
                 "DPS Upgrader",
                 msg,
