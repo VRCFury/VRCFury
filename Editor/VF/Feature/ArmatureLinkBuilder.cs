@@ -68,21 +68,25 @@ namespace VF.Feature {
             foreach (var mergeBone in links.mergeBones) {
                 var propBone = mergeBone.Item1;
                 var avatarBone = mergeBone.Item2;
-                var p = propBone.GetComponent<ParentConstraint>();
-                if (p != null) Object.DestroyImmediate(p);
-                p = propBone.AddComponent<ParentConstraint>();
-                p.AddSource(new ConstraintSource() {
-                    sourceTransform = avatarBone.transform,
-                    weight = 1
-                });
-                p.weight = 1;
-                p.constraintActive = true;
-                p.locked = true;
-                if (model.keepBoneOffsets) {
-                    Matrix4x4 inverse = Matrix4x4.TRS(avatarBone.transform.position, avatarBone.transform.rotation, new Vector3(1,1,1)).inverse;
-                    p.SetTranslationOffset(0, inverse.MultiplyPoint3x4(p.transform.position));
-                    p.SetRotationOffset(0, (Quaternion.Inverse(avatarBone.transform.rotation) * p.transform.rotation).eulerAngles);
-                }
+                Constrain(propBone, avatarBone, model.keepBoneOffsets);
+            }
+        }
+
+        public static void Constrain(GameObject obj, GameObject target, bool keepOffset = false) {
+            var p = obj.GetComponent<ParentConstraint>();
+            if (p != null) Object.DestroyImmediate(p);
+            p = obj.AddComponent<ParentConstraint>();
+            p.AddSource(new ConstraintSource() {
+                sourceTransform = target.transform,
+                weight = 1
+            });
+            p.weight = 1;
+            p.constraintActive = true;
+            p.locked = true;
+            if (keepOffset) {
+                Matrix4x4 inverse = Matrix4x4.TRS(target.transform.position, target.transform.rotation, new Vector3(1,1,1)).inverse;
+                p.SetTranslationOffset(0, inverse.MultiplyPoint3x4(p.transform.position));
+                p.SetRotationOffset(0, (Quaternion.Inverse(target.transform.rotation) * p.transform.rotation).eulerAngles);
             }
         }
 

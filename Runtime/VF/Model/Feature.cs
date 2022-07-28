@@ -173,4 +173,10 @@ namespace VF.Model.Feature {
     public class BoundingBoxFix : FeatureModel {
     }
 
+    [Serializable]
+    public class BoneConstraint : FeatureModel {
+        public GameObject obj;
+        public HumanBodyBones bone;
+    }
+
 }
