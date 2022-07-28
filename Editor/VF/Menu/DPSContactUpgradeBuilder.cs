@@ -10,13 +10,13 @@ using Object = UnityEngine.Object;
 
 namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
-        [MenuItem("Tools/VRCFury/Upgrade DPS with TPS Contacts", priority = 2)]
+        [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", priority = 2)]
         private static void Run() {
             var obj = MenuUtils.GetSelectedAvatar();
             Apply(obj);
         }
 
-        [MenuItem("Tools/VRCFury/Upgrade DPS with TPS Contacts", true)]
+        [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", true)]
         private static bool Check() {
             var obj = MenuUtils.GetSelectedAvatar();
             if (obj == null) return false;
@@ -45,33 +45,64 @@ namespace VF.Menu {
                 if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) Object.DestroyImmediate(c);
             }
 
+            var addedOGB = new List<string>();
+            var addedTPS = new List<string>();
+            var usedNames = new List<string>();
+
+            string getNextName(string prefix) {
+                for (int i = 0; ; i++) {
+                    var next = prefix + (i == 0 ? "" : i+"");
+                    if (!usedNames.Contains(next)) return next;
+                }
+            }
+            
+            var CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
+            var CONTACT_PEN_WIDTH = "TPS_Pen_Width";
+            var CONTACT_ORF_MAIN = "TPS_Orf_Root";
+            var CONTACT_ORF_NORM = "TPS_Orf_Norm";
+
             var penI = 0;
             foreach (var pair in getPenetrators(avatarObject)) {
                 var obj = pair.Item1;
                 var mesh = pair.Item2;
-                
+                var isTps = pair.Item3;
+                var path = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
+
                 Debug.Log("Found DPS penetrator: " + obj);
                 
-                if (obj.GetComponent<VRCContactReceiver>() != null || obj.GetComponent<VRCContactSender>() != null) {
-                    Debug.Log("Already has contacts... skipping");
-                }
+                var prefabBase = PrefabUtility.IsPartOfAnyPrefab(obj) ? PrefabUtility.GetNearestPrefabInstanceRoot(obj) : obj;
+                var hasSenders = isTps ? prefabBase.GetComponentsInChildren<VRCContactSender>(true).Length > 0 : false;
+                var hasReceivers = isTps ? prefabBase.GetComponentsInChildren<VRCContactReceiver>(true).Length > 0 : false;
 
                 var forward = new Vector3(0, 0, 1);
                 var length = mesh.vertices.Select(v => Vector3.Dot(v, forward)).Max();
                 float width = mesh.vertices.Select(v => new Vector2(v.x, v.y).magnitude).Average() * 2;
 
-                AddSender(obj, Vector3.zero, length, "TPS_Pen_Penetrating");
-                AddSender(obj, Vector3.zero, Mathf.Max(0.01f, length - width), "TPS_Pen_Width");
+                // Add TPS senders
+                if (!hasSenders) {
+                    AddSender(obj, Vector3.zero, length, CONTACT_PEN_MAIN);
+                    AddSender(obj, Vector3.zero, Mathf.Max(0.01f, length - width), CONTACT_PEN_WIDTH);
+                    addedTPS.Add(path);
+                }
 
-                string paramFloatRootRoot = "TPS_Internal/Pen/VF" + penI + "/RootRoot";
-                string paramFloatRootFrwd = "TPS_Internal/Pen/VF" + penI + "/RootForw";
-                string paramFloatBackRoot = "TPS_Internal/Pen/VF" + penI + "/BackRoot";
-                controller.NewFloat(paramFloatRootRoot);
-                controller.NewFloat(paramFloatRootFrwd);
-                controller.NewFloat(paramFloatBackRoot);
-                AddReceiver(obj, Vector3.zero, paramFloatRootRoot, length, "TPS_Orf_Root");
-                AddReceiver(obj, Vector3.zero, paramFloatRootFrwd, length, "TPS_Orf_Norm");
-                AddReceiver(obj, Vector3.back * 0.01f, paramFloatBackRoot, length, "TPS_Orf_Root");
+                // Add TPS receivers
+                /*
+                if (!hasReceivers) {
+                    AddReceiver(obj, Vector3.zero, "TPS_Internal/Pen/VF" + penI + "/RootRoot", controller, length, new []{CONTACT_ORF_MAIN});
+                    AddReceiver(obj, Vector3.zero, "TPS_Internal/Pen/VF" + penI + "/RootForw", controller, length, new []{CONTACT_ORF_NORM});
+                    AddReceiver(obj, Vector3.back * 0.01f, "TPS_Internal/Pen/VF" + penI + "/BackRoot", controller, length, new []{CONTACT_ORF_MAIN});
+                }
+                */
+
+                // Add OscGB receivers
+                var name = getNextName("OGB/Pen/" + obj.name);
+                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", controller, length, BodyContacts, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/TouchOthers", controller, length, BodyContacts, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/FrotOthers", controller, length, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                addedOGB.Add(path);
+
                 penI++;
             }
 
@@ -79,35 +110,69 @@ namespace VF.Menu {
             foreach (var pair in getOrificeLights(avatarObject)) {
                 var light = pair.Item1;
                 var normal = pair.Item2;
+                var obj = light.transform.parent.gameObject;
+                var path = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
                 Debug.Log("Found DPS orifice: " + light);
 
-                var hasSenders = light.transform.parent.GetComponentsInChildren<VRCContactSender>(true).Length > 0;
-                var hasReceivers = light.transform.parent.GetComponentsInChildren<VRCContactReceiver>(true).Length > 0;
+                var hasSenders = obj.GetComponentsInChildren<VRCContactSender>(true).Length > 0;
+                var hasReceivers = obj.GetComponentsInChildren<VRCContactReceiver>(true).Length > 0;
 
-                // If the user used TPS setup, they probably only got senders, so let's add the receivers for them.
-                if (hasReceivers) {
-                    Debug.Log("Already has receivers... skipping");
-                }
-                
                 var forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
-                var param = "TPS_Internal/Orf/VF" + orfI + "/Depth_In";
-                controller.NewFloat(param);
-                AddReceiver(light.gameObject, forward * -oscDepth, param, oscDepth, "TPS_Pen_Penetrating");
-
+                
+                // Add TPS senders
                 if (!hasSenders) {
-                    AddSender(light.gameObject, Vector3.zero, 0.01f, "TPS_Orf_Root");
-                    AddSender(light.gameObject, forward * 0.01f, 0.01f, "TPS_Orf_Norm");
+                    AddSender(light.gameObject, Vector3.zero, 0.01f, CONTACT_ORF_MAIN);
+                    AddSender(light.gameObject, forward * 0.01f, 0.01f, CONTACT_ORF_NORM);
+                    addedTPS.Add(path);
                 }
+
+                // Add TPS receivers
+                /*
+                if (!hasReceivers) {
+                    AddReceiver(light.gameObject, forward * -oscDepth, "TPS_Internal/Orf/VF" + orfI + "/Depth_In", controller, oscDepth, new []{"TPS_Pen_Penetrating"});
+                }
+                */
+
+                // Add OscGB receivers
+                var name = getNextName("OGB/Orf/" + obj.name);
+                AddReceiver(light.gameObject, forward * -oscDepth, name + "/TouchSelf", controller, oscDepth, BodyContacts, allowOthers:false, localOnly:true);
+                AddReceiver(light.gameObject, forward * -oscDepth, name + "/TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
+                AddReceiver(light.gameObject, forward * -oscDepth, name + "/PenSelf", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(light.gameObject, forward * -oscDepth, name + "/PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(light.gameObject, forward * -oscDepth, name + "/FrotOthers", controller, oscDepth, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                addedOGB.Add(path);
+                
                 orfI++;
             }
+
+            if (addedOGB.Count == 0 && addedTPS.Count == 0) {
+                EditorUtility.DisplayDialog(
+                    "DPS Upgrader",
+                    "VRCFury failed to find any parts to upgrade! Ask on the discord?",
+                    "Ok"
+                );
+                return;
+            }
+
+            var msg = "";
+            if (addedTPS.Count > 0) msg += "VRCFury added TPS senders to:\n" + String.Join("\n", addedTPS) + "\n\n";
+            msg += "VRCFury added OscGB receivers to:\n" + String.Join("\n", addedOGB);
             
             EditorUtility.DisplayDialog(
                 "DPS Upgrader",
-                "VRCFury upgraded " + penI + " DPS penetrators and " + orfI + " DPS orifices with TPS contacts",
+                msg,
                 "Ok"
             );
         }
+
+        private static readonly string[] BodyContacts = {
+            "Head",
+            "Torso",
+            "Hand",
+            "Foot",
+            "Finger"
+        };
         
         private static void AddSender(GameObject obj, Vector3 pos, float radius, string tag) {
             var normSender = obj.AddComponent<VRCContactSender>();
@@ -116,17 +181,21 @@ namespace VF.Menu {
             normSender.collisionTags = new List<string> { tag, RandomTag() };
         }
 
-        private static void AddReceiver(GameObject obj, Vector3 pos, String param, float radius, string tag) {
+        private static void AddReceiver(GameObject obj, Vector3 pos, String param, VFAController controller, float radius, string[] tags, bool allowOthers = true, bool allowSelf = true, bool localOnly = false) {
+            controller.NewFloat(param);
             var receiver = obj.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
             receiver.parameter = param;
             receiver.radius = radius;
             receiver.receiverType = VRC.Dynamics.ContactReceiver.ReceiverType.Proximity;
-            receiver.collisionTags = new List<string> { tag, RandomTag() };
+            receiver.collisionTags = new List<string>(tags) { RandomTag() };
+            receiver.allowOthers = allowOthers;
+            receiver.allowSelf = allowSelf;
+            receiver.localOnly = localOnly;
         }
         
-        private static List<Tuple<GameObject,Mesh>> getPenetrators(GameObject avatarObject) {
-            var skins = new List<Tuple<GameObject,Mesh>>();
+        private static List<Tuple<GameObject,Mesh,bool>> getPenetrators(GameObject avatarObject) {
+            var skins = new List<Tuple<GameObject,Mesh,bool>>();
             bool materialIsDps(Material mat) {
                 if (mat == null) return false;
                 if (!mat.shader) return false;
@@ -135,15 +204,25 @@ namespace VF.Menu {
                 if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return true;
                 return false;
             };
+            bool materialIsTps(Material mat) {
+                if (mat == null) return false;
+                if (!mat.shader) return false;
+                if (mat.HasProperty("_TPSPenetratorEnabled") && mat.GetFloat("_TPSPenetratorEnabled") > 0) return true;
+                return false;
+            };
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (!skin.sharedMaterials.Any(materialIsDps)) continue;
-                skins.Add(Tuple.Create(skin.gameObject, skin.sharedMesh));
+                if (skin.sharedMaterials.Any(materialIsDps))
+                    skins.Add(Tuple.Create(skin.gameObject, skin.sharedMesh, false));
+                else if (skin.sharedMaterials.Any(materialIsTps))
+                    skins.Add(Tuple.Create(skin.gameObject, skin.sharedMesh, true));
             }
             foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (!renderer.sharedMaterials.Any(materialIsDps)) continue;
                 var meshFilter = renderer.GetComponent<MeshFilter>();
                 if (!meshFilter) continue;
-                skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
+                if (renderer.sharedMaterials.Any(materialIsDps))
+                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh, false));
+                else if (renderer.sharedMaterials.Any(materialIsTps))
+                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh, true));
             }
             return skins;
         }
