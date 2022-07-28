@@ -13,7 +13,12 @@ namespace VF.Menu {
         [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", priority = 2)]
         private static void Run() {
             var obj = MenuUtils.GetSelectedAvatar();
-            Apply(obj);
+            var msg = Apply(obj);
+            EditorUtility.DisplayDialog(
+                "DPS Upgrader",
+                msg,
+                "Ok"
+            );
         }
 
         [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", true)]
@@ -23,7 +28,7 @@ namespace VF.Menu {
             return true;
         }
 
-        private static void Apply(GameObject avatarObject) {
+        public static string Apply(GameObject avatarObject) {
             var oscDepth = 0.25f; // meters
             
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
@@ -96,7 +101,7 @@ namespace VF.Menu {
 
                 // Add OscGB receivers
                 var name = getNextName("OGB/Pen/" + obj.name);
-                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", controller, length, BodyContacts, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", controller, length, HandContacts, allowOthers:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/TouchOthers", controller, length, BodyContacts, allowSelf:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
@@ -136,7 +141,7 @@ namespace VF.Menu {
 
                 // Add OscGB receivers
                 var name = getNextName("OGB/Orf/" + obj.name);
-                AddReceiver(light.gameObject, forward * -oscDepth, name + "/TouchSelf", controller, oscDepth, BodyContacts, allowOthers:false, localOnly:true);
+                AddReceiver(light.gameObject, forward * -oscDepth, name + "/TouchSelf", controller, oscDepth, HandContacts, allowOthers:false, localOnly:true);
                 AddReceiver(light.gameObject, forward * -oscDepth, name + "/TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
                 AddReceiver(light.gameObject, forward * -oscDepth, name + "/PenSelf", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(light.gameObject, forward * -oscDepth, name + "/PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
@@ -147,25 +152,19 @@ namespace VF.Menu {
             }
 
             if (addedOGB.Count == 0 && addedTPS.Count == 0) {
-                EditorUtility.DisplayDialog(
-                    "DPS Upgrader",
-                    "VRCFury failed to find any parts to upgrade! Ask on the discord?",
-                    "Ok"
-                );
-                return;
+                return "VRCFury failed to find any parts to upgrade! Ask on the discord?";
             }
 
             var msg = "";
             if (addedTPS.Count > 0) msg += "VRCFury added TPS senders to:\n" + String.Join("\n", addedTPS) + "\n\n";
             msg += "VRCFury added OscGB receivers to:\n" + String.Join("\n", addedOGB);
-            
-            EditorUtility.DisplayDialog(
-                "DPS Upgrader",
-                msg,
-                "Ok"
-            );
+            return msg;
         }
 
+        private static readonly string[] HandContacts = {
+            "Hand",
+            "Finger"
+        };
         private static readonly string[] BodyContacts = {
             "Head",
             "Torso",

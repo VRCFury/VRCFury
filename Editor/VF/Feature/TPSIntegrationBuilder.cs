@@ -6,6 +6,7 @@ using System.Reflection;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Feature.Base;
+using VF.Menu;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -72,7 +73,6 @@ namespace VF.Feature {
                 var Transform = otype.GetField("Transform", b).GetValue(o);
                 var Renderer = otype.GetField("Renderer", b).GetValue(o);
                 var OrificeType = otype.GetField("OrificeType", b).GetValue(o);
-                var skin = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>()[0];
                 otype.GetField("BlendShapeIndexEnter", b).SetValue(o, 0);
                 otype.GetField("BlendShapeIndexIn", b).SetValue(o, 0);
                 otype.GetField("MaxDepth", b).SetValue(o, 0.25f); // Max penetration depth meters
@@ -80,13 +80,15 @@ namespace VF.Feature {
                     avatarObject.transform,
                     tpsAnimator,
                     Transform,
-                    skin, //Renderer,
+                    Renderer,
                     OrificeType,
                     o,
                     i,
                     tpsClipDir
                 );
             }
+
+            DPSContactUpgradeBuilder.Apply(avatarObject);
         }
 
         public override string GetEditorTitle() {
