@@ -12,7 +12,7 @@ build_files:
     - chmod +x /tmp/release.sh
     - VERSION="1.$(date +%Y%m%d.%H%M%S)"
     - echo "Version $VERSION"
-    - /tmp/release.sh VRCFury.$VERSION.unitypackage Assets/VRCFury/
+    - /tmp/release.sh VRCFury.$VERSION.unitypackage Assets/VRCFury 00b990f230095454f82c345d433841ae
     - echo "VERSION=$VERSION" > build.env
     - echo "PACKAGE_URL=$CI_JOB_URL/artifacts/raw/VRCFury.$VERSION.unitypackage" >> build.env
   artifacts:
