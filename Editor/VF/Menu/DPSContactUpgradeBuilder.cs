@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
@@ -30,8 +31,6 @@ namespace VF.Menu {
         }
 
         public static string Apply(GameObject avatarObject) {
-            var oscDepth = 0.25f; // meters
-            
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             var fx = VRCAvatarUtils.GetAvatarFx(avatar);
             var controller = new VFAController(fx, null);
@@ -45,10 +44,16 @@ namespace VF.Menu {
                 }
             }
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactSender>(true)) {
-                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) Object.DestroyImmediate(c);
+                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) {
+                    if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject)) Object.DestroyImmediate(c.gameObject);
+                    else Object.DestroyImmediate(c);
+                }
             }
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) Object.DestroyImmediate(c);
+                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) {
+                    if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject)) Object.DestroyImmediate(c.gameObject);
+                    else Object.DestroyImmediate(c);
+                }
             }
 
             var addedOGB = new List<string>();
@@ -64,6 +69,7 @@ namespace VF.Menu {
             
             var CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
             var CONTACT_PEN_WIDTH = "TPS_Pen_Width";
+            var CONTACT_PEN_CLOSE = "TPS_Pen_Close";
             var CONTACT_ORF_MAIN = "TPS_Orf_Root";
             var CONTACT_ORF_NORM = "TPS_Orf_Norm";
 
@@ -82,14 +88,25 @@ namespace VF.Menu {
 
                 var forward = new Vector3(0, 0, 1);
                 var length = mesh.vertices.Select(v => Vector3.Dot(v, forward)).Max();
-                float width = mesh.vertices.Select(v => new Vector2(v.x, v.y).magnitude).Average() * 2;
+                float radius = mesh.vertices.Select(v => new Vector2(v.x, v.y).magnitude).Average();
+
+                float radiusThatEncompasesMost = mesh.vertices
+                    .Select(v => new Vector2(v.x, v.y).magnitude)
+                    .OrderBy(m => m)
+                    .Where((m, i) => i <= mesh.vertices.Length*0.75)
+                    .Max();
+                
+                var tightPos = forward * (length / 2);
+                var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
 
                 // Add TPS senders
                 if (!hasSenders) {
                     AddSender(obj, Vector3.zero, length, CONTACT_PEN_MAIN);
-                    AddSender(obj, Vector3.zero, Mathf.Max(0.01f, length - width), CONTACT_PEN_WIDTH);
+                    AddSender(obj, Vector3.zero, Mathf.Max(0.01f, length - radius*2), CONTACT_PEN_WIDTH);
                     addedTPS.Add(path);
                 }
+                
+                AddSender(obj, tightPos, radiusThatEncompasesMost, CONTACT_PEN_CLOSE, rotation: tightRot, height: length);
 
                 // Add TPS receivers
                 /*
@@ -102,11 +119,16 @@ namespace VF.Menu {
 
                 // Add OscGB receivers
                 var name = getNextName("OGB/Pen/" + obj.name);
-                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", controller, length, HandContacts, allowOthers:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/TouchOthers", controller, length, BodyContacts, allowSelf:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/FrotOthers", controller, length, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/TouchSelfClose", "TouchSelfClose", controller, radiusThatEncompasesMost, SelfContacts, allowOthers:false, localOnly:true, rotation: tightRot, height: length);
+                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", "TouchSelf", controller, length, SelfContacts, allowOthers:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/TouchOthersClose", "TouchOthersClose", controller, radiusThatEncompasesMost, BodyContacts, allowSelf:false, localOnly:true, rotation: tightRot, height: length);
+                AddReceiver(obj, Vector3.zero, name + "/TouchOthers", "TouchOthers", controller, length, BodyContacts, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelf", "PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthers", "PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/FrotSelf", "FrotSelf", controller, length, new []{CONTACT_PEN_CLOSE}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/FrotSelfClose", "FrotSelfClose", controller, radiusThatEncompasesMost, new []{CONTACT_PEN_CLOSE}, allowOthers:false, localOnly:true, rotation: tightRot, height: length);
+                AddReceiver(obj, Vector3.zero, name + "/FrotOthers", "FrotOthers", controller, length, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", controller, radiusThatEncompasesMost, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length);
                 addedOGB.Add(path);
 
                 penI++;
@@ -128,25 +150,34 @@ namespace VF.Menu {
                 
                 // Add TPS senders
                 if (!hasSenders) {
-                    AddSender(light.gameObject, Vector3.zero, 0.01f, CONTACT_ORF_MAIN);
-                    AddSender(light.gameObject, forward * 0.01f, 0.01f, CONTACT_ORF_NORM);
+                    AddSender(obj, Vector3.zero, 0.01f, CONTACT_ORF_MAIN);
+                    AddSender(obj, forward * 0.01f, 0.01f, CONTACT_ORF_NORM);
                     addedTPS.Add(path);
                 }
 
                 // Add TPS receivers
                 /*
                 if (!hasReceivers) {
-                    AddReceiver(light.gameObject, forward * -oscDepth, "TPS_Internal/Orf/VF" + orfI + "/Depth_In", controller, oscDepth, new []{"TPS_Pen_Penetrating"});
+                    AddReceiver(obj, forward * -oscDepth, "TPS_Internal/Orf/VF" + orfI + "/Depth_In", controller, oscDepth, new []{"TPS_Pen_Penetrating"});
                 }
                 */
+                
+                var oscDepth = 0.25f;
+                var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+                var frotRadius = 0.1f;
+                var frotPos = 0.05f;
+                var closeRadius = 0.1f;
 
                 // Add OscGB receivers
                 var name = getNextName("OGB/Orf/" + obj.name);
-                AddReceiver(light.gameObject, forward * -oscDepth, name + "/TouchSelf", controller, oscDepth, HandContacts, allowOthers:false, localOnly:true);
-                AddReceiver(light.gameObject, forward * -oscDepth, name + "/TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
-                AddReceiver(light.gameObject, forward * -oscDepth, name + "/PenSelf", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
-                AddReceiver(light.gameObject, forward * -oscDepth, name + "/PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                AddReceiver(light.gameObject, forward * -oscDepth, name + "/FrotOthers", controller, oscDepth, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * -oscDepth, name + "/TouchSelf", "TouchSelf", controller, oscDepth, SelfContacts, allowOthers:false, localOnly:true);
+                AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchSelfClose", "TouchSelfClose", controller, closeRadius, SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot);
+                AddReceiver(obj, forward * -oscDepth, name + "/TouchOthers", "TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchOthersClose", "TouchOthersClose", controller, closeRadius, BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot);
+                AddReceiver(obj, forward * -oscDepth, name + "/PenSelf", "PenSelf", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, forward * -oscDepth, name + "/PenOthers", "PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * frotPos, name + "/FrotSelf", "FrotSelf", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 addedOGB.Add(path);
                 
                 orfI++;
@@ -162,9 +193,10 @@ namespace VF.Menu {
             return msg;
         }
 
-        private static readonly string[] HandContacts = {
+        private static readonly string[] SelfContacts = {
             "Hand",
-            "Finger"
+            "Finger",
+            "Foot"
         };
         private static readonly string[] BodyContacts = {
             "Head",
@@ -174,24 +206,58 @@ namespace VF.Menu {
             "Finger"
         };
         
-        private static void AddSender(GameObject obj, Vector3 pos, float radius, string tag) {
-            var normSender = obj.AddComponent<VRCContactSender>();
-            normSender.position = pos;
-            normSender.radius = radius;
-            normSender.collisionTags = new List<string> { tag, RandomTag() };
+        private static void AddSender(
+            GameObject obj,
+            Vector3 pos,
+            float radius,
+            string tag,
+            float height = 0,
+            Quaternion rotation = default
+        ) {
+            var sender = obj.AddComponent<VRCContactSender>();
+            sender.position = pos;
+            sender.radius = radius;
+            sender.collisionTags = new List<string> { tag, RandomTag() };
+            if (height > 0) {
+                sender.shapeType = ContactBase.ShapeType.Capsule;
+                sender.height = height;
+                sender.rotation = rotation;
+            }
         }
 
-        private static void AddReceiver(GameObject obj, Vector3 pos, String param, VFAController controller, float radius, string[] tags, bool allowOthers = true, bool allowSelf = true, bool localOnly = false) {
+        private static void AddReceiver(
+            GameObject obj,
+            Vector3 pos,
+            String param,
+            String objName,
+            VFAController controller,
+            float radius,
+            string[] tags,
+            bool allowOthers = true,
+            bool allowSelf = true,
+            bool localOnly = false,
+            float height = 0,
+            Quaternion rotation = default,
+            ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity
+        ) {
+            var child = new GameObject();
+            child.name = "OGB_" + objName;
+            child.transform.SetParent(obj.transform, false);
             controller.NewFloat(param);
-            var receiver = obj.AddComponent<VRCContactReceiver>();
+            var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
             receiver.parameter = param;
             receiver.radius = radius;
-            receiver.receiverType = VRC.Dynamics.ContactReceiver.ReceiverType.Proximity;
+            receiver.receiverType = type;
             receiver.collisionTags = new List<string>(tags) { RandomTag() };
             receiver.allowOthers = allowOthers;
             receiver.allowSelf = allowSelf;
             receiver.localOnly = localOnly;
+            if (height > 0) {
+                receiver.shapeType = ContactBase.ShapeType.Capsule;
+                receiver.height = height;
+                receiver.rotation = rotation;
+            }
         }
         
         private static List<Tuple<GameObject,Mesh,bool>> getPenetrators(GameObject avatarObject) {
