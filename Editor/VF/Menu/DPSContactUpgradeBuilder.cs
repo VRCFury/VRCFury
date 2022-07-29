@@ -45,13 +45,13 @@ namespace VF.Menu {
             }
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactSender>(true)) {
                 if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) {
-                    if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject)) Object.DestroyImmediate(c.gameObject);
+                    if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject) && c.gameObject.transform.childCount == 0) Object.DestroyImmediate(c.gameObject);
                     else Object.DestroyImmediate(c);
                 }
             }
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
                 if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) {
-                    if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject)) Object.DestroyImmediate(c.gameObject);
+                    if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject) && c.gameObject.transform.childCount == 0) Object.DestroyImmediate(c.gameObject);
                     else Object.DestroyImmediate(c);
                 }
             }
