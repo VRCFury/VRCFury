@@ -118,7 +118,7 @@ namespace VF.Menu {
                 */
 
                 // Add OscGB receivers
-                var name = getNextName("OGB/Pen/" + obj.name);
+                var name = getNextName("OGB/Pen/" + obj.name.Replace('/','_'));
                 AddReceiver(obj, tightPos, name + "/TouchSelfClose", "TouchSelfClose", controller, radiusThatEncompasesMost, SelfContacts, allowOthers:false, localOnly:true, rotation: tightRot, height: length);
                 AddReceiver(obj, Vector3.zero, name + "/TouchSelf", "TouchSelf", controller, length, SelfContacts, allowOthers:false, localOnly:true);
                 AddReceiver(obj, tightPos, name + "/TouchOthersClose", "TouchOthersClose", controller, radiusThatEncompasesMost, BodyContacts, allowSelf:false, localOnly:true, rotation: tightRot, height: length);
@@ -169,7 +169,7 @@ namespace VF.Menu {
                 var closeRadius = 0.1f;
 
                 // Add OscGB receivers
-                var name = getNextName("OGB/Orf/" + obj.name);
+                var name = getNextName("OGB/Orf/" + obj.name.Replace('/','_'));
                 AddReceiver(obj, forward * -oscDepth, name + "/TouchSelf", "TouchSelf", controller, oscDepth, SelfContacts, allowOthers:false, localOnly:true);
                 AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchSelfClose", "TouchSelfClose", controller, closeRadius, SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot);
                 AddReceiver(obj, forward * -oscDepth, name + "/TouchOthers", "TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
