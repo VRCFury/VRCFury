@@ -87,14 +87,18 @@ namespace VF.Menu {
                 var hasReceivers = isTps ? prefabBase.GetComponentsInChildren<VRCContactReceiver>(true).Length > 0 : false;
 
                 var forward = new Vector3(0, 0, 1);
-                var length = mesh.vertices.Select(v => Vector3.Dot(v, forward)).Max();
-                float radius = mesh.vertices.Select(v => new Vector2(v.x, v.y).magnitude).Average();
-
+                var length = mesh.vertices
+                    .Select(v => Vector3.Dot(v, forward)).Max();
+                //float radius = mesh.vertices
+                //    .Where(v => v.z > 0)
+                //    .Select(v => new Vector2(v.x, v.y).magnitude).Average();
                 float radiusThatEncompasesMost = mesh.vertices
+                    .Where(v => v.z > 0)
                     .Select(v => new Vector2(v.x, v.y).magnitude)
                     .OrderBy(m => m)
                     .Where((m, i) => i <= mesh.vertices.Length*0.75)
                     .Max();
+                float radius = radiusThatEncompasesMost;
                 
                 var tightPos = forward * (length / 2);
                 var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
