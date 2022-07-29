@@ -125,8 +125,6 @@ namespace VF.Menu {
                 AddReceiver(obj, Vector3.zero, name + "/TouchOthers", "TouchOthers", controller, length, BodyContacts, allowSelf:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/PenSelf", "PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/PenOthers", "PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/FrotSelf", "FrotSelf", controller, length, new []{CONTACT_PEN_CLOSE}, allowOthers:false, localOnly:true);
-                AddReceiver(obj, tightPos, name + "/FrotSelfClose", "FrotSelfClose", controller, radiusThatEncompasesMost, new []{CONTACT_PEN_CLOSE}, allowOthers:false, localOnly:true, rotation: tightRot, height: length);
                 AddReceiver(obj, Vector3.zero, name + "/FrotOthers", "FrotOthers", controller, length, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
                 AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", controller, radiusThatEncompasesMost, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length);
                 addedOGB.Add(path);
@@ -176,7 +174,6 @@ namespace VF.Menu {
                 AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchOthersClose", "TouchOthersClose", controller, closeRadius, BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot);
                 AddReceiver(obj, forward * -oscDepth, name + "/PenSelf", "PenSelf", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, forward * -oscDepth, name + "/PenOthers", "PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, forward * frotPos, name + "/FrotSelf", "FrotSelf", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 addedOGB.Add(path);
                 
