@@ -7,6 +7,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Menu;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
@@ -82,6 +83,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         foreach (var zawooRoot in GetZawooRoots()) {
             ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
         }
+        DPSContactUpgradeBuilder.Apply(avatarObject);
     }
 
     [FeatureBuilderAction(applyToVrcClone:true)]
@@ -91,6 +93,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
             Debug.Log("Deactivating zawoo prefab on upload: " + obj.name);
             obj.SetActive(false);
         }
+        DPSContactUpgradeBuilder.Apply(avatarObject);
     }
 
     private T LoadAssetByName<T>(string name) where T : Object {
