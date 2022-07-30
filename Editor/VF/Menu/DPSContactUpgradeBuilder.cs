@@ -283,13 +283,14 @@ namespace VF.Menu {
                 var isTps = skin.sharedMaterials.Any(materialIsTps);
                 if (isDps || isTps) {
                     var temporaryMesh = new Mesh();
-                    var scaleBak = skin.gameObject.transform.localScale;
-                    skin.gameObject.transform.localScale = Vector3.one;
-                    try {
-                        skin.BakeMesh(temporaryMesh);
-                    } finally {
-                        skin.gameObject.transform.localScale = scaleBak;
+                    skin.BakeMesh(temporaryMesh);
+                    var verts = temporaryMesh.vertices;
+                    var scale = skin.transform.lossyScale;
+                    var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
+                    for (var i = 0; i < verts.Length; i++) {
+                        verts[i].Scale(inverseScale);
                     }
+                    temporaryMesh.vertices = verts;
                     skins.Add(Tuple.Create(skin.gameObject, temporaryMesh, isTps));
                 }
             }
