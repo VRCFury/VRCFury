@@ -139,7 +139,8 @@ namespace VF.Menu {
 
                 var versionTag = RandomTag();
                 AddSender(obj, Vector3.zero, "Version", 0.01f, versionTag);
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/2", "Version", controller, 0.01f, new []{versionTag}, allowOthers:false, localOnly:true);
+                // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/3", "Version", controller, 0.01f, new []{versionTag, "TPS_" + versionTag}, allowOthers:false, localOnly:true);
 
                 penI++;
             }
@@ -195,7 +196,8 @@ namespace VF.Menu {
                 
                 var versionTag = RandomTag();
                 AddSender(obj, Vector3.zero, "Version", 0.01f, versionTag);
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/2", "Version", controller, 0.01f, new []{versionTag}, allowOthers:false, localOnly:true);
+                // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/3", "Version", controller, 0.01f, new []{versionTag, "TPS_" + versionTag}, allowOthers:false, localOnly:true);
                 
                 orfI++;
             }
