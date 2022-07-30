@@ -8,6 +8,7 @@ using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
+using Random = System.Random;
 
 namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
@@ -136,6 +137,10 @@ namespace VF.Menu {
                 AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", controller, radiusThatEncompasesMost, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant);
                 addedOGB.Add(path);
 
+                var versionTag = RandomTag();
+                AddSender(obj, Vector3.zero, "Version", 0.01f, versionTag);
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/2", "Version", controller, 0.01f, new []{versionTag}, allowOthers:false, localOnly:true);
+
                 penI++;
             }
 
@@ -188,6 +193,10 @@ namespace VF.Menu {
                 AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 addedOGB.Add(path);
                 
+                var versionTag = RandomTag();
+                AddSender(obj, Vector3.zero, "Version", 0.01f, versionTag);
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/2", "Version", controller, 0.01f, new []{versionTag}, allowOthers:false, localOnly:true);
+                
                 orfI++;
             }
 
@@ -229,7 +238,7 @@ namespace VF.Menu {
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
-            sender.collisionTags = new List<string> { tag, RandomTag() };
+            sender.collisionTags = new List<string> { tag };
             if (height > 0) {
                 sender.shapeType = ContactBase.ShapeType.Capsule;
                 sender.height = height;
