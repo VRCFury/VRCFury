@@ -283,7 +283,13 @@ namespace VF.Menu {
                 var isTps = skin.sharedMaterials.Any(materialIsTps);
                 if (isDps || isTps) {
                     var temporaryMesh = new Mesh();
-                    skin.BakeMesh(temporaryMesh);
+                    var scaleBak = skin.gameObject.transform.localScale;
+                    skin.gameObject.transform.localScale = Vector3.one;
+                    try {
+                        skin.BakeMesh(temporaryMesh);
+                    } finally {
+                        skin.gameObject.transform.localScale = scaleBak;
+                    }
                     skins.Add(Tuple.Create(skin.gameObject, temporaryMesh, isTps));
                 }
             }
