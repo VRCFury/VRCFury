@@ -11,6 +11,9 @@ using Object = UnityEngine.Object;
 
 namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
+        
+        private static int version = 5;
+        
         [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", priority = 2)]
         private static void Run() {
             var obj = MenuUtils.GetSelectedAvatar();
@@ -125,10 +128,13 @@ namespace VF.Menu {
                 AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", controller, radius, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant, worldScale: false);
 
                 // Version Contacts
-                var versionTag = RandomTag();
-                AddSender(obj, Vector3.zero, "Version", 0.01f, versionTag);
+                var versionLocalTag = RandomTag();
+                var versionBeaconTag = "OGB_VERSION_" + version;
+                AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
                 // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/4", "Version", controller, 0.01f, new []{versionTag, "TPS_" + versionTag}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + version, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+                AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
+                AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
                 penI++;
                 addedOGB.Add(path);
@@ -169,11 +175,14 @@ namespace VF.Menu {
                 AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
 
                 // Version Contacts
-                var versionTag = RandomTag();
-                AddSender(obj, Vector3.zero, "Version", 0.01f, versionTag);
+                var versionLocalTag = RandomTag();
+                var versionBeaconTag = "OGB_VERSION_" + version;
+                AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
                 // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/4", "Version", controller, 0.01f, new []{versionTag, "TPS_" + versionTag}, allowOthers:false, localOnly:true);
-                
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + version, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+                AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
+                AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
+
                 orfI++;
                 addedOGB.Add(path);
             }
