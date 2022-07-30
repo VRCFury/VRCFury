@@ -92,11 +92,12 @@ namespace VF.Menu {
                 //float radius = mesh.vertices
                 //    .Where(v => v.z > 0)
                 //    .Select(v => new Vector2(v.x, v.y).magnitude).Average();
-                float radiusThatEncompasesMost = mesh.vertices
-                    .Where(v => v.z > 0)
+                var verticesInFront = mesh.vertices.Where(v => v.z > 0);
+                var verticesInFrontCount = verticesInFront.Count();
+                float radiusThatEncompasesMost = verticesInFront
                     .Select(v => new Vector2(v.x, v.y).magnitude)
                     .OrderBy(m => m)
-                    .Where((m, i) => i <= mesh.vertices.Length*0.75)
+                    .Where((m, i) => i <= verticesInFrontCount*0.75)
                     .Max();
                 float radius = radiusThatEncompasesMost;
                 
@@ -278,10 +279,13 @@ namespace VF.Menu {
                 return false;
             };
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (skin.sharedMaterials.Any(materialIsDps))
-                    skins.Add(Tuple.Create(skin.gameObject, skin.sharedMesh, false));
-                else if (skin.sharedMaterials.Any(materialIsTps))
-                    skins.Add(Tuple.Create(skin.gameObject, skin.sharedMesh, true));
+                var isDps = skin.sharedMaterials.Any(materialIsDps);
+                var isTps = skin.sharedMaterials.Any(materialIsTps);
+                if (isDps || isTps) {
+                    var temporaryMesh = new Mesh();
+                    skin.BakeMesh(temporaryMesh);
+                    skins.Add(Tuple.Create(skin.gameObject, temporaryMesh, isTps));
+                }
             }
             foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
                 var meshFilter = renderer.GetComponent<MeshFilter>();
