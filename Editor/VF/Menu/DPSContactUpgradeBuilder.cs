@@ -44,13 +44,13 @@ namespace VF.Menu {
                 }
             }
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactSender>(true)) {
-                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) {
+                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_")) || c.gameObject.name.StartsWith("OGB_")) {
                     if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject) && c.gameObject.transform.childCount == 0) Object.DestroyImmediate(c.gameObject);
                     else Object.DestroyImmediate(c);
                 }
             }
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_"))) {
+                if (c.collisionTags.Any(t => t.StartsWith("TPSVF_")) || c.gameObject.name.StartsWith("OGB_")) {
                     if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject) && c.gameObject.transform.childCount == 0) Object.DestroyImmediate(c.gameObject);
                     else Object.DestroyImmediate(c);
                 }
@@ -107,13 +107,13 @@ namespace VF.Menu {
 
                 // Add TPS senders
                 if (!hasSenders) {
-                    AddSender(obj, Vector3.zero, length, CONTACT_PEN_MAIN);
-                    AddSender(obj, Vector3.zero, Mathf.Max(0.01f, length - radius*2), CONTACT_PEN_WIDTH);
+                    AddSender(obj, Vector3.zero, "Radius", length, CONTACT_PEN_MAIN);
+                    AddSender(obj, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, length - radius*2), CONTACT_PEN_WIDTH);
                     addedTPS.Add(path);
                 }
                 
-                AddSender(obj, tightPos, radiusThatEncompasesMost, CONTACT_PEN_CLOSE, rotation: tightRot, height: length);
-                AddSender(obj, Vector3.zero, 0.01f, CONTACT_PEN_ROOT);
+                AddSender(obj, tightPos, "Envelope", radiusThatEncompasesMost, CONTACT_PEN_CLOSE, rotation: tightRot, height: length);
+                AddSender(obj, Vector3.zero, "Root", 0.01f, CONTACT_PEN_ROOT);
 
                 // Add TPS receivers
                 /*
@@ -155,8 +155,8 @@ namespace VF.Menu {
                 
                 // Add TPS senders
                 if (!hasSenders) {
-                    AddSender(obj, Vector3.zero, 0.01f, CONTACT_ORF_MAIN);
-                    AddSender(obj, forward * 0.01f, 0.01f, CONTACT_ORF_NORM);
+                    AddSender(obj, Vector3.zero, "Root", 0.01f, CONTACT_ORF_MAIN);
+                    AddSender(obj, forward * 0.01f, "Front", 0.01f, CONTACT_ORF_NORM);
                     addedTPS.Add(path);
                 }
 
@@ -217,12 +217,16 @@ namespace VF.Menu {
         private static void AddSender(
             GameObject obj,
             Vector3 pos,
+            String objName,
             float radius,
             string tag,
             float height = 0,
             Quaternion rotation = default
         ) {
-            var sender = obj.AddComponent<VRCContactSender>();
+            var child = new GameObject();
+            child.name = "OGB_Sender_" + objName;
+            child.transform.SetParent(obj.transform, false);
+            var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
             sender.collisionTags = new List<string> { tag, RandomTag() };
@@ -249,7 +253,7 @@ namespace VF.Menu {
             ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity
         ) {
             var child = new GameObject();
-            child.name = "OGB_" + objName;
+            child.name = "OGB_Receiver_" + objName;
             child.transform.SetParent(obj.transform, false);
             controller.NewFloat(param);
             var receiver = child.AddComponent<VRCContactReceiver>();
@@ -257,7 +261,7 @@ namespace VF.Menu {
             receiver.parameter = param;
             receiver.radius = radius;
             receiver.receiverType = type;
-            receiver.collisionTags = new List<string>(tags) { RandomTag() };
+            receiver.collisionTags = new List<string>(tags);
             receiver.allowOthers = allowOthers;
             receiver.allowSelf = allowSelf;
             receiver.localOnly = localOnly;
