@@ -70,6 +70,7 @@ namespace VF.Menu {
             var CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
             var CONTACT_PEN_WIDTH = "TPS_Pen_Width";
             var CONTACT_PEN_CLOSE = "TPS_Pen_Close";
+            var CONTACT_PEN_ROOT = "TPS_Pen_Root";
             var CONTACT_ORF_MAIN = "TPS_Orf_Root";
             var CONTACT_ORF_NORM = "TPS_Orf_Norm";
 
@@ -112,6 +113,7 @@ namespace VF.Menu {
                 }
                 
                 AddSender(obj, tightPos, radiusThatEncompasesMost, CONTACT_PEN_CLOSE, rotation: tightRot, height: length);
+                AddSender(obj, Vector3.zero, 0.01f, CONTACT_PEN_ROOT);
 
                 // Add TPS receivers
                 /*
@@ -178,7 +180,11 @@ namespace VF.Menu {
                 AddReceiver(obj, forward * -oscDepth, name + "/TouchOthers", "TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
                 AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchOthersClose", "TouchOthersClose", controller, closeRadius, BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                 AddReceiver(obj, forward * -oscDepth, name + "/PenSelf", "PenSelf", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelfNewRoot", "PenSelfNewRoot", controller, 1f, new []{CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelfNewTip", "PenSelfNewTip", controller, 1f, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, forward * -oscDepth, name + "/PenOthers", "PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthersNewRoot", "PenOthersNewRoot", controller, 1f, new []{CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthersNewTip", "PenOthersNewTip", controller, 1f, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
                 AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 addedOGB.Add(path);
                 
