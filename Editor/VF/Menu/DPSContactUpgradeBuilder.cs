@@ -84,7 +84,6 @@ namespace VF.Menu {
             foreach (var pair in getPenetrators(avatarObject)) {
                 var obj = pair.Item1;
                 var mesh = pair.Item2;
-                var isTps = pair.Item3;
                 var path = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
                 Debug.Log("Found DPS penetrator: " + obj);
@@ -269,8 +268,8 @@ namespace VF.Menu {
             }
         }
         
-        private static List<Tuple<GameObject,Mesh,bool>> getPenetrators(GameObject avatarObject) {
-            var skins = new List<Tuple<GameObject,Mesh,bool>>();
+        private static List<Tuple<GameObject,Mesh>> getPenetrators(GameObject avatarObject) {
+            var skins = new List<Tuple<GameObject,Mesh>>();
             bool materialIsDps(Material mat) {
                 if (mat == null) return false;
                 if (!mat.shader) return false;
@@ -298,16 +297,16 @@ namespace VF.Menu {
                         verts[i].Scale(inverseScale);
                     }
                     temporaryMesh.vertices = verts;
-                    skins.Add(Tuple.Create(skin.gameObject, temporaryMesh, isTps));
+                    skins.Add(Tuple.Create(skin.gameObject, temporaryMesh));
                 }
             }
             foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
                 var meshFilter = renderer.GetComponent<MeshFilter>();
                 if (!meshFilter) continue;
                 if (renderer.sharedMaterials.Any(materialIsDps))
-                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh, false));
+                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
                 else if (renderer.sharedMaterials.Any(materialIsTps))
-                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh, true));
+                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
             }
             return skins;
         }
