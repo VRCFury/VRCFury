@@ -295,13 +295,14 @@ namespace VF.Menu {
                 var isDps = skin.sharedMaterials.Any(materialIsDps);
                 var isTps = skin.sharedMaterials.Any(materialIsTps);
                 if (isDps || isTps) {
-                    var temporaryMesh = new Mesh();
-                    skin.BakeMesh(temporaryMesh);
+                    Mesh mesh;
                     
-                    // For some reason, bakeMesh does nothing if the skinned mesh renderer isn't actually attached to bones
-                    // (doesn't even apply influence from the mesh scale), so we have to be sure to not unscale it in this case
+                    // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
+                    // So we have to skip calling BakeMesh, because otherwise we'd apply the inverse scale inappropriately and it would be too small.
                     bool actuallySkinned = skin.bones.Any(b => b != null);
                     if (actuallySkinned) {
+                        var temporaryMesh = new Mesh();
+                        skin.BakeMesh(temporaryMesh);
                         var verts = temporaryMesh.vertices;
                         var scale = skin.transform.lossyScale;
                         var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
@@ -309,8 +310,11 @@ namespace VF.Menu {
                             verts[i].Scale(inverseScale);
                         }
                         temporaryMesh.vertices = verts;
+                        mesh = temporaryMesh;
+                    } else {
+                        mesh = skin.sharedMesh;
                     }
-                    skins.Add(Tuple.Create(skin.gameObject, temporaryMesh));
+                    skins.Add(Tuple.Create(skin.gameObject, mesh));
                 }
             }
             foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
