@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
         
-        private static int version = 5;
+        private static int version = 6;
         
         [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", priority = 2)]
         private static void Run() {
@@ -90,8 +90,6 @@ namespace VF.Menu {
                 var path = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
                 Debug.Log("Found DPS penetrator: " + obj);
-                
-                var prefabBase = PrefabUtility.IsPartOfAnyPrefab(obj) ? PrefabUtility.GetNearestPrefabInstanceRoot(obj) : obj;
 
                 var forward = new Vector3(0, 0, 1);
                 var length = mesh.vertices
@@ -299,13 +297,19 @@ namespace VF.Menu {
                 if (isDps || isTps) {
                     var temporaryMesh = new Mesh();
                     skin.BakeMesh(temporaryMesh);
-                    var verts = temporaryMesh.vertices;
-                    var scale = skin.transform.lossyScale;
-                    var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
-                    for (var i = 0; i < verts.Length; i++) {
-                        verts[i].Scale(inverseScale);
+                    
+                    // For some reason, bakeMesh does nothing if the skinned mesh renderer isn't actually attached to bones
+                    // (doesn't even apply influence from the mesh scale), so we have to be sure to not unscale it in this case
+                    bool actuallySkinned = skin.bones.Any(b => b != null);
+                    if (actuallySkinned) {
+                        var verts = temporaryMesh.vertices;
+                        var scale = skin.transform.lossyScale;
+                        var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
+                        for (var i = 0; i < verts.Length; i++) {
+                            verts[i].Scale(inverseScale);
+                        }
+                        temporaryMesh.vertices = verts;
                     }
-                    temporaryMesh.vertices = verts;
                     skins.Add(Tuple.Create(skin.gameObject, temporaryMesh));
                 }
             }
