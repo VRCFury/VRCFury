@@ -50,7 +50,12 @@ namespace VF.Menu {
             OrificeCreatorMenuItem.RunRing();
         }
         
-        [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar", priority = 1204)]
+        [MenuItem("Tools/VRCFury/Manually mark mesh as penetrator", priority = 1204)]
+        public static void RunManualPen() {
+            OrificeCreatorMenuItem.RunPen();
+        }
+        
+        [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar", priority = 1205)]
         public static void RunZawooDeleter() {
             ZawooDeleter.Run();
         }

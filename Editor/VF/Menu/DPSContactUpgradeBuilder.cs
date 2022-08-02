@@ -20,6 +20,16 @@ namespace VF.Menu {
         
         // Bump when any receivers are changed
         private static int beaconVersion = 6;
+        
+        private static string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
+        private static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
+        private static string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
+        private static string CONTACT_PEN_ROOT = "TPS_Pen_Root";
+        private static string CONTACT_ORF_MAIN = "TPS_Orf_Root";
+        private static string CONTACT_ORF_NORM = "TPS_Orf_Norm";
+
+        public static string MARKER_ORF = "OGB_Marker_Orf";
+        public static string MARKER_PEN = "OGB_Marker_Pen";
 
         public static void Run() {
             var obj = MenuUtils.GetSelectedAvatar();
@@ -51,13 +61,6 @@ namespace VF.Menu {
                     i--;
                 }
             }
-            
-            var CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
-            var CONTACT_PEN_WIDTH = "TPS_Pen_Width";
-            var CONTACT_PEN_CLOSE = "TPS_Pen_Close";
-            var CONTACT_PEN_ROOT = "TPS_Pen_Root";
-            var CONTACT_ORF_MAIN = "TPS_Orf_Root";
-            var CONTACT_ORF_NORM = "TPS_Orf_Norm";
 
             void maybeRemoveComponent(Component c, List<string> collisionTags) {
                 var shouldRemove = false;
@@ -88,7 +91,6 @@ namespace VF.Menu {
                 }
             }
 
-            var penI = 0;
             foreach (var pair in getPenetrators(avatarObject)) {
                 var obj = pair.Item1;
                 var mesh = pair.Item2;
@@ -143,21 +145,21 @@ namespace VF.Menu {
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
                 AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
-                penI++;
+                if (!obj.transform.Find(MARKER_PEN)) {
+                    var marker = new GameObject(MARKER_PEN);
+                    marker.transform.SetParent(obj.transform, false);
+                }
+
                 addedOGB.Add(path);
             }
 
-            var orfI = 0;
             foreach (var pair in getOrificeLights(avatarObject)) {
-                var light = pair.Item1;
-                var normal = pair.Item2;
-                var obj = light.transform.parent.gameObject;
+                var obj = pair.Item1;
+                var forward = pair.Item2;
                 var path = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
-                Debug.Log("Found DPS orifice: " + light);
+                Debug.Log("Found DPS orifice: " + obj);
 
-                var forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
-                
                 // Senders
                 AddSender(obj, Vector3.zero, "Root", 0.01f, CONTACT_ORF_MAIN);
                 AddSender(obj, forward * 0.01f, "Front", 0.01f, CONTACT_ORF_NORM);
@@ -190,7 +192,11 @@ namespace VF.Menu {
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
                 AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
-                orfI++;
+                if (!obj.transform.Find(MARKER_ORF)) {
+                    var marker = new GameObject(MARKER_ORF);
+                    marker.transform.SetParent(obj.transform, false);
+                }
+                
                 addedOGB.Add(path);
             }
 
@@ -303,7 +309,8 @@ namespace VF.Menu {
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                 var isDps = skin.sharedMaterials.Any(materialIsDps);
                 var isTps = skin.sharedMaterials.Any(materialIsTps);
-                if (isDps || isTps) {
+                var hasMarker = skin.transform.Find(MARKER_PEN) != null;
+                if (isDps || isTps || hasMarker) {
                     Mesh mesh;
                     
                     // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
@@ -343,8 +350,9 @@ namespace VF.Menu {
             return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
         }
 
-        private static List<Tuple<Light,Light>> getOrificeLights(GameObject avatarObject) {
-            var pairs = new List<Tuple<Light,Light>>();
+        private static List<Tuple<GameObject,Vector3>> getOrificeLights(GameObject avatarObject) {
+            var pairs = new List<Tuple<GameObject,Vector3>>();
+            var addedObjs = new HashSet<GameObject>();
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
                 if (light.range >= 0.405f && light.range <= 0.425f) {
                     Light normal = null;
@@ -354,11 +362,25 @@ namespace VF.Menu {
                             normal = siblingLight;
                         }
                     }
-                    if (normal == null) {
-                        Debug.Log("Failed to find normal sibling light for light: " + light);
-                        continue;
+                    
+                    var obj = light.transform.parent.gameObject;
+                    var forward = Vector3.forward;
+                    if (normal != null) {
+                        forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
                     }
-                    pairs.Add(Tuple.Create(light, normal));
+                    
+                    addedObjs.Add(obj);
+                    pairs.Add(Tuple.Create(obj, forward));
+                }
+            }
+
+            foreach (var transform in avatarObject.GetComponentsInChildren<Transform>(true)) {
+                if (transform.gameObject.name == MARKER_ORF) {
+                    var parent = transform.parent.gameObject;
+                    if (!addedObjs.Contains(parent)) {
+                        addedObjs.Add(parent);
+                        pairs.Add(Tuple.Create(parent, Vector3.forward));
+                    }
                 }
             }
 
