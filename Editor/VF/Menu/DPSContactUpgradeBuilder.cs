@@ -19,7 +19,7 @@ namespace VF.Menu {
         private static int orfVersion = 8;
         
         // Bump when any senders are changed
-        private static int beaconVersion = 8;
+        private static int beaconVersion = 6;
         
         private static string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
         private static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
