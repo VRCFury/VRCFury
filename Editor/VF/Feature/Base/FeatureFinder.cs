@@ -99,7 +99,7 @@ public static class FeatureFinder {
     public static FeatureBuilder GetBuilder(FeatureModel model, bool isProp) {
         if (model == null) {
             throw new Exception(
-                "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date?");
+                "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date? If you are still receiving this after updating, you may need to re-import the prop package which caused this issue.");
         }
         var modelType = model.GetType();
         var implementationType = GetAllFeatures()[modelType];
