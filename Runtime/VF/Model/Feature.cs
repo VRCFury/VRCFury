@@ -159,6 +159,7 @@ namespace VF.Model.Feature {
     [Serializable]
     public class ArmatureLink : FeatureModel {
         public GameObject propBone;
+        public HumanBodyBones boneOnAvatar;
         public string bonePathOnAvatar;
         public bool useOptimizedUpload;
         public bool keepBoneOffsets;

@@ -202,22 +202,16 @@ namespace VF.Feature {
             var propBone = avatarObject.transform.Find(propBonePath)?.gameObject;
             if (propBone == null) return links;
 
-            GameObject avatarBone = null;
+            GameObject avatarBone;
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
-                foreach (Transform child in avatarObject.transform) {
-                    var skin = child.gameObject.GetComponent<SkinnedMeshRenderer>();
-                    if (skin != null) {
-                        avatarBone = skin.rootBone.gameObject;
-                        break;
-                    }
-                }
-
+                var animator = avatarObject.GetComponent<Animator>();
+                avatarBone = animator.GetBoneTransform(model.boneOnAvatar)?.gameObject;
                 if (avatarBone == null) {
-                    Debug.LogError("Failed to find root bone on avatar. Skipping armature link.");
+                    Debug.LogError("Failed to find " + model.boneOnAvatar + " bone on avatar. Skipping armature link.");
                     return links;
                 }
             } else {
-                avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar).gameObject;
+                avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
                 if (avatarBone == null) {
                     Debug.LogError("Failed to find " + model.bonePathOnAvatar + " bone on avatar. Skipping armature link.");
                     return links;
@@ -266,7 +260,8 @@ namespace VF.Feature {
             container.Add(new Label("Path to corresponding root bone from root of avatar:") {
                 style = { paddingTop = 10 }
             });
-            container.Add(new Label("Leave empty to default to avatar's skin root bone (usually hips)"));
+            container.Add(new Label("(If full string path is given, humanoid bone dropdown will be ignored)"));
+            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("boneOnAvatar")));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("bonePathOnAvatar")));
 
             container.Add(new Label("Keep bone offsets:") {
