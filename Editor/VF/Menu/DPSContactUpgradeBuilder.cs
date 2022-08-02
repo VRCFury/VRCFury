@@ -12,10 +12,16 @@ using Object = UnityEngine.Object;
 namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
         
-        private static int version = 6;
+        // Bump when pen senders or receivers are changed
+        private static int penVersion = 7;
         
-        [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", priority = 2)]
-        private static void Run() {
+        // Bump when orf senders or receivers are changed
+        private static int orfVersion = 6;
+        
+        // Bump when any receivers are changed
+        private static int beaconVersion = 6;
+
+        public static void Run() {
             var obj = MenuUtils.GetSelectedAvatar();
             var msg = Apply(obj);
             VRCFuryVRCPatch.DeleteOscFilesForAvatar(obj);
@@ -26,8 +32,7 @@ namespace VF.Menu {
             );
         }
 
-        [MenuItem("Tools/VRCFury/Setup OscGB on Avatar", true)]
-        private static bool Check() {
+        public static bool Check() {
             var obj = MenuUtils.GetSelectedAvatar();
             if (obj == null) return false;
             return true;
@@ -91,46 +96,50 @@ namespace VF.Menu {
 
                 Debug.Log("Found DPS penetrator: " + obj);
 
+                var worldScale = obj.transform.lossyScale.x;
+
                 var forward = new Vector3(0, 0, 1);
                 var length = mesh.vertices
-                    .Select(v => Vector3.Dot(v, forward)).Max();
-                //float radius = mesh.vertices
-                //    .Where(v => v.z > 0)
-                //    .Select(v => new Vector2(v.x, v.y).magnitude).Average();
+                    .Select(v => Vector3.Dot(v, forward)).Max() * worldScale;
                 var verticesInFront = mesh.vertices.Where(v => v.z > 0);
                 var verticesInFrontCount = verticesInFront.Count();
                 float radius = verticesInFront
                     .Select(v => new Vector2(v.x, v.y).magnitude)
                     .OrderBy(m => m)
                     .Where((m, i) => i <= verticesInFrontCount*0.75)
-                    .Max();
+                    .Max() * worldScale;
                 
                 var tightPos = forward * (length / 2);
                 var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
 
+                var extraRadiusForTouch = Math.Min(radius, 0.08f /* 8cm */);
+                
+                // Extra frot radius should always match for everyone, so when two penetrators collide, both parties experience at the same time
+                var extraRadiusForFrot = 0.08f;
+
                 // Senders
-                AddSender(obj, Vector3.zero, "Radius", length, CONTACT_PEN_MAIN, worldScale: false);
-                AddSender(obj, Vector3.zero, "WidthHelper", Mathf.Max(0.01f/obj.transform.lossyScale.x, length - radius*2), CONTACT_PEN_WIDTH, worldScale: false);
-                AddSender(obj, tightPos, "Envelope", radius, CONTACT_PEN_CLOSE, rotation: tightRot, height: length, worldScale: false);
+                AddSender(obj, Vector3.zero, "Radius", length, CONTACT_PEN_MAIN);
+                AddSender(obj, Vector3.zero, "WidthHelper", Mathf.Max(0.01f/obj.transform.lossyScale.x, length - radius*2), CONTACT_PEN_WIDTH);
+                AddSender(obj, tightPos, "Envelope", radius, CONTACT_PEN_CLOSE, rotation: tightRot, height: length);
                 AddSender(obj, Vector3.zero, "Root", 0.01f, CONTACT_PEN_ROOT);
 
                 // Receivers
                 var name = getNextName("OGB/Pen/" + obj.name.Replace('/','_'));
-                AddReceiver(obj, tightPos, name + "/TouchSelfClose", "TouchSelfClose", controller, radius, SelfContacts, allowOthers:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant, worldScale: false);
-                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", "TouchSelf", controller, length, SelfContacts, allowOthers:false, localOnly:true, worldScale: false);
-                AddReceiver(obj, tightPos, name + "/TouchOthersClose", "TouchOthersClose", controller, radius, BodyContacts, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant, worldScale: false);
-                AddReceiver(obj, Vector3.zero, name + "/TouchOthers", "TouchOthers", controller, length, BodyContacts, allowSelf:false, localOnly:true, worldScale: false);
-                AddReceiver(obj, Vector3.zero, name + "/PenSelf", "PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true, worldScale: false);
-                AddReceiver(obj, Vector3.zero, name + "/PenOthers", "PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true, worldScale: false);
-                AddReceiver(obj, Vector3.zero, name + "/FrotOthers", "FrotOthers", controller, length, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, worldScale: false);
-                AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", controller, radius, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant, worldScale: false);
+                AddReceiver(obj, tightPos, name + "/TouchSelfClose", "TouchSelfClose", controller, radius+extraRadiusForTouch, SelfContacts, allowOthers:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", "TouchSelf", controller, length+extraRadiusForTouch, SelfContacts, allowOthers:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/TouchOthersClose", "TouchOthersClose", controller, radius+extraRadiusForTouch, BodyContacts, allowSelf:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, Vector3.zero, name + "/TouchOthers", "TouchOthers", controller, length+extraRadiusForTouch, BodyContacts, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelf", "PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthers", "PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/FrotOthers", "FrotOthers", controller, length, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", controller, radius+extraRadiusForFrot, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant);
 
                 // Version Contacts
                 var versionLocalTag = RandomTag();
-                var versionBeaconTag = "OGB_VERSION_" + version;
+                var versionBeaconTag = "OGB_VERSION_" + beaconVersion;
                 AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
                 // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + version, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + penVersion, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
                 AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
@@ -174,10 +183,10 @@ namespace VF.Menu {
 
                 // Version Contacts
                 var versionLocalTag = RandomTag();
-                var versionBeaconTag = "OGB_VERSION_" + version;
+                var versionBeaconTag = "OGB_VERSION_" + beaconVersion;
                 AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
                 // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + version, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + orfVersion, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
                 AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 

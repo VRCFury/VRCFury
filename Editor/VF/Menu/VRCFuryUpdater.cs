@@ -10,8 +10,8 @@ using VF.Inspector;
 namespace VF.Menu {
 
     public static class VRCFuryUpdater {
-    [MenuItem("Tools/VRCFury/Update VRCFury", priority = 0)]
-    private static void Upgrade() {
+
+    public static void Upgrade() {
         WithErrorPopup(() => {
             var client = new WebClient();
             var downloadUrl = "https://gitlab.com/VRCFury/VRCFury/-/archive/main/VRCFury-main.zip";

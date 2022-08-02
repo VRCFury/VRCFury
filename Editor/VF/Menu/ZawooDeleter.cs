@@ -7,7 +7,6 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Menu {
     public class ZawooDeleter {
-        [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar", priority = 1)]
         public static void Run() {
             var avatarObj = MenuUtils.GetSelectedAvatar();
             var effects = CleanupAllZawooComponents(avatarObj, false);
@@ -30,7 +29,6 @@ namespace VF.Menu {
             CleanupAllZawooComponents(avatarObj, true);
         }
 
-        [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar", true)]
         public static bool Check() {
             return MenuUtils.GetSelectedAvatar() != null;
         }
