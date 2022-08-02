@@ -61,7 +61,33 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
         Debug.Log("Found original avatar object for VRC upload: " + original);
 
         var builder = new VRCFuryBuilder();
-        return builder.SafeRun(original, vrcCloneObject);
+        var vrcFurySuccess = builder.SafeRun(original, vrcCloneObject);
+        if (!vrcFurySuccess) return false;
+
+        // Try to detect conflicting parameter names that break OSC
+        try {
+            var avatar = original.GetComponent<VRCAvatarDescriptor>();
+            var fx = VRCAvatarUtils.GetAvatarFx(avatar);
+            if (fx) {
+                var normalizedNames = new HashSet<string>();
+                foreach (var param in fx.parameters) {
+                    var normalized = param.name.Replace(' ', '_');
+                    if (normalizedNames.Contains(normalized)) {
+                        EditorUtility.DisplayDialog("VRCFury Error",
+                            "Your FX controller contains multiple parameters with the same normalized name: " +
+                            normalized
+                            + " This will cause OSC and various other vrchat functions to fail. Please fix it.", "Ok");
+                        return false;
+                    }
+
+                    normalizedNames.Add(normalized);
+                }
+            }
+        } catch (Exception e) {
+            Debug.LogException(e);
+        }
+
+        return true;
     }
 
     public static void DeleteOscFilesForAvatar(GameObject avatar) {
