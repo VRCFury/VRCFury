@@ -9,10 +9,12 @@ namespace VF.Builder {
 public class VFAController {
     private readonly AnimatorController ctrl;
     internal readonly AnimationClip noopClip;
+    private readonly VRCAvatarDescriptor.AnimLayerType type;
 
-    public VFAController(AnimatorController ctrl, AnimationClip noopClip) {
+    public VFAController(AnimatorController ctrl, AnimationClip noopClip, VRCAvatarDescriptor.AnimLayerType type) {
         this.ctrl = ctrl;
         this.noopClip = noopClip;
+        this.type = type;
     }
 
     public VFALayer NewLayer(string name, bool first = false) {
@@ -25,6 +27,7 @@ public class VFAController {
                 layers[i] = layers[i - 1];
             }
             layers[1] = layer;
+            ControllerManager.CorrectLayerReferences(ctrl, 0, type,  1);
         }
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);

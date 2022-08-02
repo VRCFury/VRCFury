@@ -3,7 +3,9 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDKBase;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -13,11 +15,13 @@ namespace VF.Builder {
         private readonly string tmpDir;
         private Object clipStorage;
         private readonly ParamManager paramManager;
+        private VRCAvatarDescriptor.AnimLayerType type;
 
-        public ControllerManager(AnimatorController ctrl, string tmpDir, ParamManager paramManager) {
+        public ControllerManager(AnimatorController ctrl, string tmpDir, ParamManager paramManager, VRCAvatarDescriptor.AnimLayerType type) {
             this.ctrl = ctrl;
             this.tmpDir = tmpDir;
             this.paramManager = paramManager;
+            this.type = type;
         }
 
         public AnimatorController GetRawController() {
@@ -27,7 +31,7 @@ namespace VF.Builder {
         private VFAController _controller;
         private VFAController GetController() {
             if (_controller == null) {
-                _controller = new VFAController(ctrl, GetNoopClip());
+                _controller = new VFAController(ctrl, GetNoopClip(), type);
             }
             return _controller;
         }
@@ -124,12 +128,12 @@ namespace VF.Builder {
             return prefix + "__" + name;
         }
 
-        public static void PurgeFromAnimator(AnimatorController ctrl) {
+        public static void PurgeFromAnimator(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
             // Clean up layers
             for (var i = 0; i < ctrl.layers.Length; i++) {
                 var layer = ctrl.layers[i];
                 if (layer.name.StartsWith("["+prefix+"]")) {
-                    ctrl.RemoveLayer(i);
+                    RemoveLayer(ctrl, i, type);
                     i--;
                 }
             }
@@ -139,6 +143,26 @@ namespace VF.Builder {
                 if (param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__")) {
                     ctrl.RemoveParameter(param);
                     i--;
+                }
+            }
+        }
+
+        public static void RemoveLayer(AnimatorController ctrl, int i, VRCAvatarDescriptor.AnimLayerType type) {
+            CorrectLayerReferences(ctrl, i, type, -1);
+            ctrl.RemoveLayer(i);
+        }
+        
+        public static void CorrectLayerReferences(AnimatorController ctrl, int after, VRCAvatarDescriptor.AnimLayerType type, int offset) {
+            if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
+                foreach (var layer in ctrl.layers) {
+                    DefaultClipBuilder.ForEachState(layer, state => {
+                        foreach (var b in state.behaviours) {
+                            var layerControl = b as VRCAnimatorLayerControl;
+                            if (layerControl && layerControl.playable == VRC_AnimatorLayerControl.BlendableLayer.FX && layerControl.layer > after) {
+                                layerControl.layer += offset;
+                            }
+                        }
+                    });
                 }
             }
         }

@@ -37,5 +37,18 @@ namespace VF.Menu {
             if (obj.GetComponentsInChildren<VRCFury>(true).Length > 0) return true;
             return false;
         }
+        
+        [MenuItem("Tools/VRCFury/Debug/Purge from Selection", priority = 102)]
+        private static void RunPurge() {
+            var obj = MenuUtils.GetSelectedAvatar();
+            VRCFuryBuilder.DetachFromAvatar(obj);
+        }
+
+        [MenuItem("Tools/VRCFury/Debug/Purge from Selection", true)]
+        private static bool CheckPurge() {
+            var obj = MenuUtils.GetSelectedAvatar();
+            if (obj == null) return false;
+            return true;
+        }
     }
 }

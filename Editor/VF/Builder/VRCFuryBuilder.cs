@@ -79,7 +79,7 @@ public class VRCFuryBuilder {
         // Apply configs
         var menuManager = new MenuManager(menu, tmpDir);
         var paramsManager = new ParamManager(syncedParams);
-        var controllerManager = new ControllerManager(fxController, tmpDir, paramsManager);
+        var controllerManager = new ControllerManager(fxController, tmpDir, paramsManager, VRCAvatarDescriptor.AnimLayerType.FX);
         var motions = new ClipBuilder(avatarObject);
         var defaultClip = controllerManager.NewClip("Defaults");
         ApplyFuryConfigs(controllerManager, menuManager, paramsManager, motions, tmpDir, defaultClip, avatarObject, vrcCloneObject, progress.Partial(0.3, 0.8));
@@ -210,7 +210,7 @@ public class VRCFuryBuilder {
         return prms;
     }
 
-    private static void DetachFromAvatar(GameObject avatarObject) {
+    public static void DetachFromAvatar(GameObject avatarObject) {
         var animator = avatarObject.GetComponent<Animator>();
         if (animator != null) {
             if (IsVrcfAsset(animator.runtimeAnimatorController)) {
@@ -224,7 +224,7 @@ public class VRCFuryBuilder {
         if (IsVrcfAsset(fx)) {
             VRCAvatarUtils.SetAvatarFx(avatar, null);
         } else if (fx != null) {
-            ControllerManager.PurgeFromAnimator(fx);
+            ControllerManager.PurgeFromAnimator(fx, VRCAvatarDescriptor.AnimLayerType.FX);
         }
 
         var menu = VRCAvatarUtils.GetAvatarMenu(avatar);

@@ -36,7 +36,7 @@ namespace VF.Menu {
         public static string Apply(GameObject avatarObject) {
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             var fx = VRCAvatarUtils.GetAvatarFx(avatar);
-            var controller = new VFAController(fx, null);
+            var controller = new VFAController(fx, null, VRCAvatarDescriptor.AnimLayerType.FX);
 
             // Clean up
             for (var i = 0; i < fx.parameters.Length; i++) {

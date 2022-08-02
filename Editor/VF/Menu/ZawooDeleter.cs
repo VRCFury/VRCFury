@@ -99,7 +99,7 @@ namespace VF.Menu {
                         if (ShouldRemoveLayer(layer.name)) {
                             removeItems.Add("Layer: " + layer.name);
                             if (perform) {
-                                avatarFx.RemoveLayer(i);
+                                ControllerManager.RemoveLayer(avatarFx, i, VRCAvatarDescriptor.AnimLayerType.FX);
                                 i--;
                             }
                         }
