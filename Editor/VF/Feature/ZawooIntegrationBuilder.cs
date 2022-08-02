@@ -126,6 +126,11 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
                 whiteSpace = WhiteSpace.Normal
             }
         });
+        
+        content.Add(new Button(() => {
+            ZawooDeleter.Run(avatarObject);
+        }) { text = "Nuke all Zawoo components on avatar" });
+        
         var foldout = new Foldout();
         foldout.value = false;
         content.Add(foldout);

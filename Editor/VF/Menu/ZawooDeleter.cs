@@ -7,8 +7,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Menu {
     public class ZawooDeleter {
-        public static void Run() {
-            var avatarObj = MenuUtils.GetSelectedAvatar();
+        public static void Run(GameObject avatarObj) {
             var effects = CleanupAllZawooComponents(avatarObj, false);
             if (effects.Count == 0) {
                 EditorUtility.DisplayDialog(
@@ -20,6 +19,7 @@ namespace VF.Menu {
             }
             var doIt = EditorUtility.DisplayDialog(
                 "Zawoo Cleanup",
+                "This tool is meant to be used to remove broken, old installs of the Zawoo prefab.\n\n" +
                 "The following parts will be deleted from your avatar:\n" + string.Join("\n", effects) +
                 "\n\nContinue?",
                 "Yes, Delete them",
@@ -27,10 +27,6 @@ namespace VF.Menu {
             );
             if (!doIt) return;
             CleanupAllZawooComponents(avatarObj, true);
-        }
-
-        public static bool Check() {
-            return MenuUtils.GetSelectedAvatar() != null;
         }
 
         private static bool ShouldRemoveObj(GameObject obj) {

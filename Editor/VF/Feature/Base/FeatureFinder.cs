@@ -44,7 +44,7 @@ public static class FeatureFinder {
             .Select(tuple => tuple.Item3);
     }
 
-    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, bool isProp) {
+    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, GameObject avatar) {
         try {
             if (model == null) {
                 return new Label("VRCFury doesn't have code for this feature. Is your VRCFury up to date?");
@@ -58,6 +58,7 @@ public static class FeatureFinder {
                 );
             }
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
+            featureInstance.avatarObject = avatar;
 
             var wrapper = new VisualElement();
             var title = featureInstance.GetEditorTitle();
@@ -68,9 +69,9 @@ public static class FeatureFinder {
             wrapper.Add(header);
             
             VisualElement bodyContent;
-            if (isProp && !featureInstance.AvailableOnProps()) {
+            if (!avatar && !featureInstance.AvailableOnProps()) {
                 bodyContent = new Label("This feature is not available for props");
-            } else if (!isProp && !featureInstance.AvailableOnAvatar()) {
+            } else if (avatar && !featureInstance.AvailableOnAvatar()) {
                 bodyContent = new Label("This feature is not available for avatars");
             } else {
                 try {

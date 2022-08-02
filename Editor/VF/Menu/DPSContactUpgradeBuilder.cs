@@ -13,13 +13,13 @@ namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
         
         // Bump when pen senders or receivers are changed
-        private static int penVersion = 7;
+        private static int penVersion = 8;
         
         // Bump when orf senders or receivers are changed
-        private static int orfVersion = 6;
+        private static int orfVersion = 8;
         
-        // Bump when any receivers are changed
-        private static int beaconVersion = 6;
+        // Bump when any senders are changed
+        private static int beaconVersion = 8;
         
         private static string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
         private static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
@@ -214,7 +214,6 @@ namespace VF.Menu {
         };
         private static readonly string[] BodyContacts = {
             "Head",
-            "Torso",
             "Hand",
             "Foot",
             "Finger"

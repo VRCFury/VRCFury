@@ -54,17 +54,7 @@ namespace VF.Menu {
         public static void RunManualPen() {
             OrificeCreatorMenuItem.RunPen();
         }
-        
-        [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar", priority = 1205)]
-        public static void RunZawooDeleter() {
-            ZawooDeleter.Run();
-        }
 
-        [MenuItem("Tools/VRCFury/Nuke all Zawoo components on avatar", true)]
-        public static bool CheckZawooDeleter() {
-            return ZawooDeleter.Check();
-        }
-        
         //
         
         [MenuItem("Tools/VRCFury/Debug", priority = 1400)]

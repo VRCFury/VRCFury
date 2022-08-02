@@ -19,7 +19,7 @@ public class VRCFuryEditor : Editor {
 
         var container = new VisualElement();
 
-        var pointingToAvatar = self.gameObject.GetComponent<VRCAvatarDescriptor>() != null;
+        var pointingToAvatar = self.gameObject.GetComponent<VRCAvatarDescriptor>() != null ? self.gameObject : null;
 
         var features = serializedObject.FindProperty("config.features");
         if (features == null) {
@@ -146,8 +146,8 @@ public class VRCFuryEditor : Editor {
         return label;
     }
 
-    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, bool isEditorOnAvatar) {
-        return FeatureFinder.RenderFeatureEditor(prop, model, !isEditorOnAvatar);
+    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, GameObject avatar) {
+        return FeatureFinder.RenderFeatureEditor(prop, model, avatar);
     }
 
     private void OnPlus(SerializedProperty listProp, bool isEditorOnAvatar) {
