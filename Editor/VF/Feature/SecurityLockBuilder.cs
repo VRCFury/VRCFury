@@ -57,12 +57,9 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
             var saveState = layer.NewState("Save " + i);
             if (saveStates.Count == 0) saveState.Move(entry, -1, 1);
             saveStates.Add(saveState);
-            var driver = saveState.GetDriver(true);
-            var p = new VRC_AvatarParameterDriver.Parameter();
-            p.name = digitParams[i].Name();
-            p.type = VRC_AvatarParameterDriver.ChangeType.Copy;
-            p.source = i == 0 ? paramInput.Name() : digitParams[i - 1].Name();
-            driver.parameters.Add(p);
+            var target = digitParams[i];
+            var source = i == 0 ? paramInput : digitParams[i - 1];
+            saveState.DrivesCopy(target, source);
             if (saveStates.Count > 1) {
                 saveStates[saveStates.Count - 2].TransitionsTo(saveState).When(Always());
             } else {
