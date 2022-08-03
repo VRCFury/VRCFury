@@ -34,7 +34,6 @@ namespace VF.Menu {
         public static void Run() {
             var obj = MenuUtils.GetSelectedAvatar();
             var msg = Apply(obj);
-            VRCFuryVRCPatch.DeleteOscFilesForAvatar(obj);
             EditorUtility.DisplayDialog(
                 "OscGB Upgrade",
                 msg,

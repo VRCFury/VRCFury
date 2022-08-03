@@ -38,14 +38,6 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
             return false;
         }
 
-        var hasOscGB = false;
-        foreach (var c in vrcCloneObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
-            hasOscGB |= c.collisionTags.Any(t => t.StartsWith("TPSVF_"));
-        }
-        if (hasOscGB) {
-            DeleteOscFilesForAvatar(vrcCloneObject);
-        }
-
         GameObject original = null;
         foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
             if (desc.gameObject.name+"(Clone)" == vrcCloneObject.name && desc.gameObject.activeInHierarchy) {
@@ -88,32 +80,6 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
         }
 
         return true;
-    }
-
-    public static void DeleteOscFilesForAvatar(GameObject avatar) {
-        try {
-            Debug.Log("Deleting OSC files for avatar");
-            string localLowPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            if (localLowPath.EndsWith("Local")) {
-                localLowPath = Path.Combine(Path.GetDirectoryName(localLowPath), "LocalLow");
-            }
-
-            string vrcOSCPath = Path.Combine(localLowPath, "VRChat", "VRChat", "OSC");
-            var pipeline = avatar.GetComponentsInChildren<PipelineManager>();
-            foreach (var p in pipeline) {
-                if (String.IsNullOrWhiteSpace(p.blueprintId)) continue;
-                Debug.Log("Deleting OSC file for " + p.blueprintId);
-                foreach (string file in Directory.EnumerateFiles(vrcOSCPath, "*.*", SearchOption.AllDirectories)) {
-                    if (file.Contains(p.blueprintId) && file.EndsWith(".json")) {
-                        Debug.Log("Deleting " + file);
-                        File.Delete(file);
-                    }
-                }
-            }
-            Debug.Log("Done");
-        } catch (Exception e) {
-            Debug.LogException(e);
-        }
     }
 }
 
