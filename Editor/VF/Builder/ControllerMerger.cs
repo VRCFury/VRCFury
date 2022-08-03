@@ -14,11 +14,18 @@ public class ControllerMerger {
     private readonly Func<string, string> rewriteLayerName;
     private readonly Func<string, string> rewriteParamName;
     private readonly Func<AnimationClip, AnimationClip> rewriteClip;
+    private readonly Func<string, BlendTree> NewBlendTree;
 
-    public ControllerMerger(Func<string, string> rewriteLayerName, Func<string, string> rewriteParamName, Func<AnimationClip, AnimationClip> rewriteClip) {
+    public ControllerMerger(
+        Func<string, string> rewriteLayerName,
+        Func<string, string> rewriteParamName,
+        Func<AnimationClip, AnimationClip> rewriteClip,
+        Func<string, BlendTree> NewBlendTree
+    ) {
         this.rewriteLayerName = rewriteLayerName;
         this.rewriteParamName = rewriteParamName;
         this.rewriteClip = rewriteClip;
+        this.NewBlendTree = NewBlendTree;
     }
 
     public void Merge(AnimatorController from, AnimatorController to) {
@@ -144,14 +151,13 @@ public class ControllerMerger {
                 return rewriteClip(clip);
             case BlendTree tree:
                 var oldBlendTree = tree;
-                var newBlendTree = new BlendTree {
-                    blendParameter = rewriteParamName(oldBlendTree.blendParameter),
-                    blendParameterY = rewriteParamName(oldBlendTree.blendParameterY),
-                    blendType = oldBlendTree.blendType,
-                    useAutomaticThresholds = oldBlendTree.useAutomaticThresholds,
-                    minThreshold = oldBlendTree.minThreshold,
-                    maxThreshold = oldBlendTree.maxThreshold,
-                };
+                var newBlendTree = NewBlendTree(oldBlendTree.name);
+                newBlendTree.blendParameter = rewriteParamName(oldBlendTree.blendParameter);
+                newBlendTree.blendParameterY = rewriteParamName(oldBlendTree.blendParameterY);
+                newBlendTree.blendType = oldBlendTree.blendType;
+                newBlendTree.useAutomaticThresholds = oldBlendTree.useAutomaticThresholds;
+                newBlendTree.minThreshold = oldBlendTree.minThreshold;
+                newBlendTree.maxThreshold = oldBlendTree.maxThreshold;
 
                 foreach (var oldChild in oldBlendTree.children) {
                     var newMotion = CloneMotion(oldChild.motion);

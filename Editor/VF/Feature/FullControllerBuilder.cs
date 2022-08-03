@@ -51,11 +51,16 @@ namespace VF.Feature {
                     motions.CopyWithAdjustedPrefixes(from, copy, baseObject);
                     return copy;
                 }
+                
+                BlendTree NewBlendTree(string name) {
+                    return controller.NewBlendTree(baseObject.name + "__" + name);
+                }
 
                 var merger = new ControllerMerger(
                     layerName => controller.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
                     param => RewriteParamIfSynced(param),
-                    RewriteClip
+                    RewriteClip,
+                    NewBlendTree
                 );
                 merger.Merge((AnimatorController)model.controller, controller.GetRawController());
             }
