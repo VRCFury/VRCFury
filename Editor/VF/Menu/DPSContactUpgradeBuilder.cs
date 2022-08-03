@@ -86,7 +86,10 @@ namespace VF.Menu {
             string getNextName(string prefix) {
                 for (int i = 0; ; i++) {
                     var next = prefix + (i == 0 ? "" : i+"");
-                    if (!usedNames.Contains(next)) return next;
+                    if (!usedNames.Contains(next)) {
+                        usedNames.Add(next);
+                        return next;
+                    }
                 }
             }
 
