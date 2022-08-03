@@ -98,7 +98,6 @@ public class VFALayer {
 public class VFAState {
     private ChildAnimatorState node;
     private readonly AnimatorControllerLayer layer;
-    private VRCAvatarParameterDriver driver;
 
     private static readonly float X_OFFSET = 250;
     private static readonly float Y_OFFSET = 80;
@@ -143,11 +142,17 @@ public class VFAState {
         return this;
     }
 
-    private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
-        if (driver == null) {
-            driver = node.state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
-            driver.localOnly = local;
+    public VRCAvatarParameterDriver GetDriver(bool local = false) {
+        foreach (var b in node.state.behaviours) {
+            var d = b as VRCAvatarParameterDriver;
+            if (d && d.localOnly == local) return d;
         }
+        var driver = node.state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+        driver.localOnly = local;
+        return driver;
+    }
+    private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
+        var driver = GetDriver(local);
         var p = new VRC_AvatarParameterDriver.Parameter();
         p.name = param;
         p.type = VRC_AvatarParameterDriver.ChangeType.Set;

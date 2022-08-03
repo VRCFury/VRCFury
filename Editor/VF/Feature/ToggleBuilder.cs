@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Model.StateAction;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -35,11 +37,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var layerName = model.name;
         var layer = controller.NewLayer(layerName);
-        var clip = LoadState(model.name, model.state);
+        var clip = LoadState(model.name, model.state, assumeDefaultIsOff:model.forceOffForUpload);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
-        var param = controller.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn);
-        if (model.securityEnabled) {
+        var param = controller.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+        if (model.securityEnabled && allFeaturesInRun.Any(f => f is SecurityLock)) {
             var paramSecuritySync = controller.NewBool("SecurityLockSync");
             off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
             on.TransitionsTo(off).When(param.IsFalse());
@@ -53,7 +55,23 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             off.Drives(physBoneResetter, true);
             on.Drives(physBoneResetter, true);
         }
-        menu.NewMenuToggle(model.name, param);
+
+        if (model.addMenuItem) {
+            menu.NewMenuToggle(model.name, param);
+        }
+    }
+
+    [FeatureBuilderAction(applyToVrcClone:true)]
+    public void ApplyToVrcClone() {
+        if (model.forceOffForUpload) {
+            foreach (var action in model.state.actions) {
+                var toggleAction = action as ObjectToggleAction;
+                if (toggleAction != null && toggleAction.obj != null) {
+                    var objInClone = GetObjectInClone(toggleAction.obj);
+                    if (objInClone) objInClone.SetActive(false);
+                }
+            }
+        }
     }
 
     public override string GetEditorTitle() {

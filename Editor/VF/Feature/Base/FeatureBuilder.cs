@@ -18,10 +18,12 @@ namespace VF.Feature.Base {
         public ClipBuilder motions;
         public string tmpDir;
         public GameObject avatarObject;
+        public GameObject _realAvatarObjectWhenProcessingClone;
         public GameObject featureBaseObject;
         public Action<FeatureModel> addOtherFeature;
         public AnimationClip defaultClip;
         public int uniqueModelNum;
+        public List<FeatureModel> allFeaturesInRun;
 
         public virtual string GetEditorTitle() {
             return null;
@@ -89,7 +91,7 @@ namespace VF.Feature.Base {
             return state != null && !state.IsEmpty();
         }
 
-        protected AnimationClip LoadState(string name, State state) {
+        protected AnimationClip LoadState(string name, State state, bool assumeDefaultIsOff = false) {
             if (state.actions.Count == 1 && state.actions[0] is AnimationClipAction && featureBaseObject == avatarObject) {
                 return (state.actions[0] as AnimationClipAction).clip;
             }
@@ -120,7 +122,12 @@ namespace VF.Feature.Base {
                         if (toggle.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
                         } else {
-                            motions.Enable(clip, toggle.obj, !toggle.obj.activeSelf);
+                            var restingState = toggle.obj.activeSelf;
+                            if (assumeDefaultIsOff) {
+                                motions.Enable(defaultClip, toggle.obj, false);
+                                restingState = false;
+                            }
+                            motions.Enable(clip, toggle.obj, !restingState);
                         }
                         break;
                     case BlendShapeAction blendShape:
@@ -156,6 +163,12 @@ namespace VF.Feature.Base {
                 throw new Exception("Builder had no actions? This is probably a bug. " + GetType().Name);
             }
             return list;
+        }
+
+        public GameObject GetObjectInClone(GameObject objInMain) {
+            var path = AnimationUtility.CalculateTransformPath(objInMain.transform,
+                _realAvatarObjectWhenProcessingClone.transform);
+            return avatarObject.transform.Find(path)?.gameObject;
         }
     }
 

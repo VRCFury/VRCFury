@@ -4,7 +4,7 @@ using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 // Notes for the future:
-// Don't ever remove a class -- it will break the entire list of serializedproperties
+// Don't ever remove a class -- it will break the entire list of SerializedReferences that contained it
 // Don't mark a class as Obsolete or MovedFrom -- unity 2019 will go into an infinite loop and die
 
 namespace VF.Model.Feature {
@@ -78,6 +78,9 @@ namespace VF.Model.Feature {
         public bool securityEnabled;
         public bool defaultOn;
         public List<GameObject> resetPhysbones = new List<GameObject>();
+        [NonSerialized] public bool forceOffForUpload = false;
+        [NonSerialized] public bool addMenuItem = true;
+        [NonSerialized] public bool usePrefixOnParam = true;
     }
 
     [Serializable]
@@ -102,8 +105,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class SecurityLock : FeatureModel {
-        public int leftCode;
-        public int rightCode;
+        public string pinNumber;
     }
 
     [Serializable]

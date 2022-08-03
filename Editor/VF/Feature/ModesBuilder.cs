@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
@@ -23,7 +24,7 @@ public class ModesBuilder : FeatureBuilder<Modes> {
             var clip = LoadState(model.name+"_"+num, mode.state);
             var state = layer.NewState(""+num).WithAnimation(clip);
             if (physBoneResetter != null) state.Drives(physBoneResetter, true);
-            if (model.securityEnabled) {
+            if (model.securityEnabled && allFeaturesInRun.Any(f => f is SecurityLock)) {
                 var paramSecuritySync = controller.NewBool("SecurityLockSync");
                 state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
                 state.TransitionsToExit().When(param.IsNotEqualTo(num));

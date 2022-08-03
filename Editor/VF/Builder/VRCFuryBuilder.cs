@@ -130,14 +130,17 @@ public class VRCFuryBuilder {
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
         var totalModelCount = 0;
+        var collectedFeatures = new List<FeatureModel>();
 
         void AddModel(FeatureModel model, GameObject configObject) {
+            collectedFeatures.Add(model);
             var isProp = configObject != avatarObject;
             var builder = FeatureFinder.GetBuilder(model, isProp);
             builder.featureBaseObject = configObject;
             builder.tmpDir = tmpDir;
             builder.addOtherFeature = m => AddModel(m, configObject);
             builder.uniqueModelNum = ++totalModelCount;
+            builder.allFeaturesInRun = collectedFeatures;
             var builderActions = builder.GetActions();
             actions.AddRange(builderActions);
             totalActionCount += builderActions.Count;
@@ -170,6 +173,7 @@ public class VRCFuryBuilder {
             builder.motions = applyToClone ? null : motions;
             builder.defaultClip = applyToClone ? null : defaultClip;
             builder.avatarObject = applyToClone ? vrcCloneAvatarObject : avatarObject;
+            builder._realAvatarObjectWhenProcessingClone = avatarObject;
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);

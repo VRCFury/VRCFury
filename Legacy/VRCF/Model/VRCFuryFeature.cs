@@ -162,8 +162,6 @@ public class SecurityLock : FeatureModel {
     
     public override VF.Model.Feature.FeatureModel Upgrade() {
         return new VF.Model.Feature.SecurityLock {
-            leftCode = leftCode,
-            rightCode = rightCode,
         };
     }
 }

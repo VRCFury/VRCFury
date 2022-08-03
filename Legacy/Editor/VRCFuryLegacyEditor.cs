@@ -48,8 +48,6 @@ namespace VRCF.Legacy {
 
             if (oldConfig.securityCodeLeft != 0 && oldConfig.securityCodeRight != 0) {
                 newConfig.features.Add(new VF.Model.Feature.SecurityLock {
-                    leftCode = oldConfig.securityCodeLeft,
-                    rightCode = oldConfig.securityCodeRight,
                 });
             }
 

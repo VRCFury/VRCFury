@@ -10,7 +10,11 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
+using VF.Model.StateAction;
+using Action = VF.Model.StateAction.Action;
+using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
@@ -77,15 +81,16 @@ namespace VF.Feature {
             }
 
             if (model.toggleParam != null) {
-                motions.Enable(defaultClip, baseObject, false);
-                var enableLayer = controller.NewLayer("[FC" + uniqueModelNum + "_" + baseObject.name + "] VRCF Enabler");
-                var off = enableLayer.NewState("Off");
-                var onClip = controller.NewClip(baseObject.name + "__vrcfon");
-                motions.Enable(onClip, baseObject);
-                var on = enableLayer.NewState("On").WithAnimation(onClip);
-                var toggle = controller.NewBool(RewriteParamName(model.toggleParam), usePrefix:false);
-                off.TransitionsTo(on).When(toggle.IsTrue());
-                on.TransitionsTo(off).When(toggle.IsFalse());
+                addOtherFeature(new Toggle {
+                    name = RewriteParamName(model.toggleParam),
+                    state = new State {
+                        actions = { new ObjectToggleAction { obj = baseObject } }
+                    },
+                    securityEnabled = true,
+                    forceOffForUpload = true,
+                    addMenuItem = false,
+                    usePrefixOnParam = false
+                });
             }
         }
 
