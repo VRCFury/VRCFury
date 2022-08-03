@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
@@ -159,17 +160,15 @@ public class ControllerMerger {
                 newBlendTree.minThreshold = oldBlendTree.minThreshold;
                 newBlendTree.maxThreshold = oldBlendTree.maxThreshold;
 
-                foreach (var oldChild in oldBlendTree.children) {
-                    var newMotion = CloneMotion(oldChild.motion);
-                    newBlendTree.AddChild(newMotion, oldChild.threshold);
-                    var newChild = newBlendTree.children[newBlendTree.children.Length-1];
-                    newChild.timeScale = oldChild.timeScale;
-                    newChild.position = oldChild.position;
-                    newChild.threshold = oldChild.threshold;
-                    newChild.directBlendParameter = rewriteParamName(oldChild.directBlendParameter);
-                    newChild.cycleOffset = oldChild.cycleOffset;
-                    newChild.mirror = oldChild.mirror;
-                }
+                newBlendTree.children = oldBlendTree.children.Select(oldChild => new ChildMotion {
+                    motion = CloneMotion(oldChild.motion),
+                    threshold = oldChild.threshold,
+                    cycleOffset = oldChild.cycleOffset,
+                    directBlendParameter = oldChild.directBlendParameter,
+                    mirror = oldChild.mirror,
+                    position = oldChild.position,
+                    timeScale = oldChild.timeScale
+                }).ToArray();
 
                 return newBlendTree;
             default:
