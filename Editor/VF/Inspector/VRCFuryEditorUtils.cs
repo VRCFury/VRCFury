@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.IO;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -284,6 +285,21 @@ public static class VRCFuryEditorUtils {
             }
         }
         return false;
+    }
+
+    public static string MakeFilenameSafe(string str) {
+        var output = "";
+        foreach (var c in str) {
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+                output += c;
+            } else {
+                output += '_';
+            }
+        }
+        output = output.Trim();
+        if (output.Length > 32) output = output.Substring(0, 32);
+        if (output.Length == 0) output = "Unknown";
+        return output;
     }
 }
 

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
@@ -89,7 +90,7 @@ namespace VF.Builder {
         private VRCExpressionsMenu CreateNewMenu(string[] path) {
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             string filePath;
-            if (path.Length > 0) filePath = tmpDir + "/VRCF_Menu_" + string.Join("_", path) + ".asset";
+            if (path.Length > 0) filePath = tmpDir + "/VRCF_Menu_" + VRCFuryEditorUtils.MakeFilenameSafe(string.Join("_", path)) + ".asset";
             else filePath = tmpDir + "/VRCF_Menu.asset";
             AssetDatabase.CreateAsset(newMenu, filePath);
             return newMenu;

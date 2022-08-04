@@ -10,6 +10,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Feature;
 using VF.Feature.Base;
+using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using Object = UnityEngine.Object;
@@ -53,7 +54,7 @@ public class VRCFuryBuilder {
         if (string.IsNullOrEmpty(avatarPath)) {
             throw new Exception("Failed to find file path to avatar scene");
         }
-        var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + avatarObject.name;
+        var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + VRCFuryEditorUtils.MakeFilenameSafe(avatarObject.name);
         if (Directory.Exists(tmpDir)) {
             foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDir })) {
                 var path = AssetDatabase.GUIDToAssetPath(asset);
