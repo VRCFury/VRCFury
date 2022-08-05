@@ -16,7 +16,7 @@ namespace VF.Menu {
         private static int penVersion = 8;
         
         // Bump when orf senders or receivers are changed
-        private static int orfVersion = 8;
+        private static int orfVersion = 9;
         
         // Bump when any senders are changed
         private static int beaconVersion = 6;
@@ -177,10 +177,10 @@ namespace VF.Menu {
                 AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchSelfClose", "TouchSelfClose", controller, closeRadius, SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                 AddReceiver(obj, forward * -oscDepth, name + "/TouchOthers", "TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
                 AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchOthersClose", "TouchOthersClose", controller, closeRadius, BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
-                AddReceiver(obj, forward * -oscDepth, name + "/PenSelf", "PenSelf", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/PenSelfNewRoot", "PenSelfNewRoot", controller, 1f, new []{CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/PenSelfNewTip", "PenSelfNewTip", controller, 1f, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
                 AddReceiver(obj, forward * -oscDepth, name + "/PenOthers", "PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * -(oscDepth/2), name + "/PenOthersClose", "PenOthersClose", controller, closeRadius, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                 AddReceiver(obj, Vector3.zero, name + "/PenOthersNewRoot", "PenOthersNewRoot", controller, 1f, new []{CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
                 AddReceiver(obj, Vector3.zero, name + "/PenOthersNewTip", "PenOthersNewTip", controller, 1f, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
                 AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
