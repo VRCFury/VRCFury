@@ -106,7 +106,7 @@ public class VRCFuryBuilder {
         UseWriteDefaultsIfNeeded(controllerManager);
         
         if (forceWriteDefaultsOff && vrcCloneObject != null) {
-            progress.Progress(0.91, "Creating Write Defaults Fix Copy");
+            progress.Progress(0.92, "Creating Write Defaults Fix Copy");
             var fxCopy = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/FX with Write Defaults Off Fix.controller");
             fxCopy.RemoveLayer(0); // Remove default base layer
             var merger = new ControllerMerger(
@@ -116,14 +116,14 @@ public class VRCFuryBuilder {
                 treeName => null
             );
             merger.Merge(fxController, fxCopy);
-            
-            progress.Progress(0.85, "Collecting default states");
+
             var writeDefaultsClip = controllerManager.NewClip("WriteDefaultsFixDefaults");
             AddDefaultsLayer(controllerManager, writeDefaultsClip, avatarObject, vrcCloneObject, true);
             
             foreach (var layer in fxCopy.layers) {
                 DefaultClipBuilder.ForEachState(layer, state => {
                     state.writeDefaultValues = false;
+                    if (state.motion == null) state.motion = controllerManager.GetNoopClip();
                 });
             }
 
