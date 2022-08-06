@@ -83,16 +83,55 @@ public class VRCFuryBuilder {
         var controllerManager = new ControllerManager(fxController, tmpDir, paramsManager, VRCAvatarDescriptor.AnimLayerType.FX);
         var motions = new ClipBuilder(avatarObject);
         var defaultClip = controllerManager.NewClip("Defaults");
-        ApplyFuryConfigs(controllerManager, menuManager, paramsManager, motions, tmpDir, defaultClip, avatarObject, vrcCloneObject, progress.Partial(0.3, 0.8));
+        ApplyFuryConfigs(
+            controllerManager,
+            menuManager,
+            paramsManager,
+            motions,
+            tmpDir,
+            defaultClip,
+            avatarObject,
+            vrcCloneObject,
+            progress.Partial(0.3, 0.8),
+            out var forceWriteDefaultsOff
+        );
         
         progress.Progress(0.8, "Splitting Menus");
         MenuSplitter.SplitMenus(menu);
-        
+
         progress.Progress(0.85, "Collecting default states");
-        AddDefaultsLayer(controllerManager, defaultClip, avatarObject, vrcCloneObject);
+        AddDefaultsLayer(controllerManager, defaultClip, avatarObject, vrcCloneObject, false);
 
         progress.Progress(0.9, "Adjusting 'Write Defaults'");
         UseWriteDefaultsIfNeeded(controllerManager);
+        
+        if (forceWriteDefaultsOff && vrcCloneObject != null) {
+            progress.Progress(0.91, "Creating Write Defaults Fix Copy");
+            var fxCopy = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/FX with Write Defaults Off Fix.controller");
+            fxCopy.RemoveLayer(0); // Remove default base layer
+            var merger = new ControllerMerger(
+                layerName => layerName,
+                param => param,
+                clip => clip,
+                treeName => null
+            );
+            merger.Merge(fxController, fxCopy);
+            
+            progress.Progress(0.85, "Collecting default states");
+            var writeDefaultsClip = controllerManager.NewClip("WriteDefaultsFixDefaults");
+            AddDefaultsLayer(controllerManager, writeDefaultsClip, avatarObject, vrcCloneObject, true);
+            
+            foreach (var layer in fxCopy.layers) {
+                DefaultClipBuilder.ForEachState(layer, state => {
+                    state.writeDefaultValues = false;
+                });
+            }
+
+            var cloneAvatar = vrcCloneObject.GetComponent<VRCAvatarDescriptor>();
+            var cloneAnimator = avatarObject.GetComponent<Animator>();
+            VRCAvatarUtils.SetAvatarFx(cloneAvatar, fxCopy);
+            cloneAnimator.runtimeAnimatorController = null;
+        }
         
         progress.Progress(0.95, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
@@ -126,7 +165,8 @@ public class VRCFuryBuilder {
         AnimationClip defaultClip,
         GameObject avatarObject,
         GameObject vrcCloneAvatarObject,
-        ProgressBar progress
+        ProgressBar progress,
+        out bool forceWriteDefaultsOff
     ) {
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
@@ -187,11 +227,14 @@ public class VRCFuryBuilder {
             action.Call();
             builder.featureBaseObject = featureBaseObjectBak;
         }
+
+        forceWriteDefaultsOff = collectedFeatures
+            .Any(feature => feature is MakeWriteDefaultsOff);
     }
 
     private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir) {
         var fx = VRCAvatarUtils.GetAvatarFx(avatar);
-        if (fx == null) fx = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + avatar.gameObject.name + ".controller");
+        if (fx == null) fx = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + VRCFuryEditorUtils.MakeFilenameSafe(avatar.gameObject.name) + ".controller");
         return fx;
     }
 
@@ -200,7 +243,7 @@ public class VRCFuryBuilder {
         if (menu == null) {
             menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             menu.controls = new List<VRCExpressionsMenu.Control>();
-            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + avatar.gameObject.name + ".asset");
+            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + VRCFuryEditorUtils.MakeFilenameSafe(avatar.gameObject.name) + ".asset");
         }
         return menu;
     }
@@ -210,7 +253,7 @@ public class VRCFuryBuilder {
         if (prms == null) {
             prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             prms.parameters = new VRCExpressionParameters.Parameter[]{};
-            AssetDatabase.CreateAsset(prms, tmpDir + "/VRCFury Params for " + avatar.gameObject.name + ".asset");
+            AssetDatabase.CreateAsset(prms, tmpDir + "/VRCFury Params for " + VRCFuryEditorUtils.MakeFilenameSafe(avatar.gameObject.name) + ".asset");
         }
         return prms;
     }
@@ -268,11 +311,17 @@ public class VRCFuryBuilder {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 
-    private static void AddDefaultsLayer(ControllerManager manager, AnimationClip defaultClip, GameObject avatarObject, GameObject vrcCloneObject) {
-        var defaultLayer = manager.NewLayer("Defaults", true);
+    private static void AddDefaultsLayer(ControllerManager manager, AnimationClip defaultClip, GameObject avatarObject, GameObject vrcCloneObject, bool applyToUnmanagedLayers) {
+        var layerName = applyToUnmanagedLayers ? "WriteDefaultsFixDefaults" : "Defaults";
+        var defaultLayer = manager.NewLayer(layerName, true);
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
         foreach (var layer in manager.GetManagedLayers()) {
             DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject, vrcCloneObject);
+        }
+        if (applyToUnmanagedLayers) {
+            foreach (var layer in manager.GetUnmanagedLayers()) {
+                DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject, vrcCloneObject);
+            }
         }
     }
     

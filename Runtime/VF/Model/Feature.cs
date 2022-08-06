@@ -181,5 +181,9 @@ namespace VF.Model.Feature {
         public GameObject obj;
         public HumanBodyBones bone;
     }
+    
+    [Serializable]
+    public class MakeWriteDefaultsOff : FeatureModel {
+    }
 
 }

@@ -22,12 +22,13 @@ public class VFAController {
         var layers = ctrl.layers;
         var layer = layers[ctrl.layers.Length-1];
         if (first) {
-            // Leave one layer at the top (the base layer)
-            for (var i = layers.Length-1; i > 1; i--) {
+            // Leave top layer alone if it's base layer (with no states)
+            var skipOneLayer = layers[0].stateMachine.states.Length == 0;
+            for (var i = layers.Length-1; i > (skipOneLayer ? 1 : 0); i--) {
                 layers[i] = layers[i - 1];
             }
-            layers[1] = layer;
-            ControllerManager.CorrectLayerReferences(ctrl, 0, type,  1);
+            layers[skipOneLayer ? 1 : 0] = layer;
+            ControllerManager.CorrectLayerReferences(ctrl, skipOneLayer ? 0 : -1, type,  1);
         }
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);

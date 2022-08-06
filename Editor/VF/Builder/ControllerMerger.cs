@@ -153,6 +153,9 @@ public class ControllerMerger {
             case BlendTree tree:
                 var oldBlendTree = tree;
                 var newBlendTree = NewBlendTree(oldBlendTree.name);
+                if (newBlendTree == null) {
+                    return oldBlendTree;
+                }
                 newBlendTree.blendParameter = rewriteParamName(oldBlendTree.blendParameter);
                 newBlendTree.blendParameterY = rewriteParamName(oldBlendTree.blendParameterY);
                 newBlendTree.blendType = oldBlendTree.blendType;
