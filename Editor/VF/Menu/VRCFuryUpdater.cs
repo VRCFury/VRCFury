@@ -4,10 +4,27 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEngine;
 using VF.Inspector;
 
 namespace VF.Menu {
+    
+    [InitializeOnLoad]
+    public class VRCFuryUpdaterStartup {
+        static VRCFuryUpdaterStartup() {
+            if (Directory.Exists(Application.dataPath + "/~vrcfupdated")) {
+                Directory.Delete(Application.dataPath + "/~vrcfupdated");
+                EditorUtility.ClearProgressBar();
+                Debug.Log("Upgrade complete");
+                EditorUtility.DisplayDialog(
+                    "VRCFury Updater",
+                    "VRCFury has been updated",
+                    "Ok"
+                );
+            }
+        }
+    }
 
     public static class VRCFuryUpdater {
 
@@ -86,22 +103,35 @@ namespace VF.Menu {
             var oldDir = tmpDir + ".old";
 
             Debug.Log("Overwriting install ...");
-            AssetDatabase.StartAssetEditing();
+
             try {
-                Directory.Move(rootDir, oldDir);
-                Directory.Move(innerDir, rootDir);
-                if (Directory.Exists(oldDir+"/.git")) {
-                    Directory.Move(oldDir+"/.git", rootDir+"/.git");
+                AssetDatabase.StartAssetEditing();
+                try {
+                    EditorApplication.LockReloadAssemblies();
+                    Directory.Move(rootDir, oldDir);
+                    Directory.Move(innerDir, rootDir);
+                    if (Directory.Exists(oldDir + "/.git")) {
+                        Directory.Move(oldDir + "/.git", rootDir + "/.git");
+                    }
+
+                    Directory.Delete(tmpDir, true);
+                    Directory.Delete(oldDir, true);
+                    Directory.CreateDirectory(Application.dataPath + "/~vrcfupdated");
+                } finally {
+                    EditorApplication.UnlockReloadAssemblies();
                 }
-                Directory.Delete(tmpDir, true);
-                Directory.Delete(oldDir, true);
             } finally {
                 AssetDatabase.StopAssetEditing();
-                AssetDatabase.Refresh();
             }
 
-            Debug.Log("Upgrade complete");
-            EditorUtility.DisplayDialog("VRCFury Updater", "VRCFury has been updated", "Ok");
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            CompilationPipeline.RequestScriptCompilation();
+
+            if (!EditorApplication.isCompiling) {
+                throw new Exception("Unity didn't start recompiling scripts on RequestScriptCompilation");
+            }
+
+            EditorUtility.DisplayProgressBar("VRCFury Updater", "Unity is recompiling scripts ...", 0);
         });
     }
 
