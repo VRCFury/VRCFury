@@ -19,7 +19,7 @@ namespace VF.Menu {
                 Debug.Log("Upgrade complete");
                 EditorUtility.DisplayDialog(
                     "VRCFury Updater",
-                    "VRCFury has been updated",
+                    "VRCFury has been updated. Unity may be frozen for a bit as it reloads.",
                     "Ok"
                 );
             }
