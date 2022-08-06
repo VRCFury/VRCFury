@@ -355,11 +355,11 @@ namespace VF.Menu {
             var pairs = new List<Tuple<GameObject,Vector3>>();
             var addedObjs = new HashSet<GameObject>();
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
-                if (light.range >= 0.405f && light.range <= 0.425f) {
+                if (light.range % 0.1 >= 0.005f && light.range % 0.1 <= 0.025f) {
                     Light normal = null;
                     foreach (Transform sibling in light.gameObject.transform.parent) {
                         var siblingLight = sibling.gameObject.GetComponent<Light>();
-                        if (siblingLight != null && siblingLight.range >= 0.445f && siblingLight.range <= 0.455f) {
+                        if (siblingLight != null && siblingLight.range % 0.1 >= 0.045f && siblingLight.range % 0.1 <= 0.055f) {
                             normal = siblingLight;
                         }
                     }
