@@ -102,7 +102,7 @@ namespace VF.Menu {
 
             var oldDir = tmpDir + ".old";
 
-            Debug.Log("Overwriting install ...");
+            Debug.Log("Overwriting VRCFury install ...");
 
             try {
                 AssetDatabase.StartAssetEditing();
@@ -131,6 +131,7 @@ namespace VF.Menu {
                 throw new Exception("Unity didn't start recompiling scripts on RequestScriptCompilation");
             }
 
+            Debug.Log("Waiting for Unity to recompile scripts ...");
             EditorUtility.DisplayProgressBar("VRCFury Updater", "Unity is recompiling scripts ...", 0);
         });
     }
