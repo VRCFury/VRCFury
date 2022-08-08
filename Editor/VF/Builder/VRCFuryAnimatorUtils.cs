@@ -186,7 +186,7 @@ public class VFAState {
         var p = new VRC_AvatarParameterDriver.Parameter();
         p.name = param.Name();
         var sourceField = p.GetType().GetField("source");
-        if (sourceField == null) throw new Exception("VRCFury feature failed to build because VRCSDK is outdated");
+        if (sourceField == null) throw new VRCFBuilderException("VRCFury feature failed to build because VRCSDK is outdated");
         sourceField.SetValue(p, source.Name());
         // We cast rather than use Copy directly so it doesn't fail to compile on old VRCSDK
         p.type = (VRC_AvatarParameterDriver.ChangeType)3; //VRC_AvatarParameterDriver.ChangeType.Copy;

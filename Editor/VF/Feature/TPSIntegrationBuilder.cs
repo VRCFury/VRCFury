@@ -2,9 +2,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Menu;
 using VF.Model.Feature;
@@ -15,16 +18,8 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            Apply(false);
             addOtherFeature(new OGBIntegration());
-        }
 
-        [FeatureBuilderAction(applyToVrcClone:true)]
-        public void ApplyToVrcClone() {
-            Apply(true);
-        }
-        
-        private void Apply(bool operatingOnVrcClone) {
             var tpsSetup = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.TPS_Setup");
             if (tpsSetup == null) {
                 Debug.LogError("TPS is not installed!");
@@ -33,16 +28,31 @@ namespace VF.Feature {
             
             Debug.Log("Running TPS on " + avatarObject + " ...");
 
-            var tpsClipDir = tmpDir;
-            AnimatorController tpsAnimator;
-            if (operatingOnVrcClone) {
-                // If we're working on the clone, just throw away all of TPS's animator changes
-                tpsClipDir = tmpDir + "/_tpsJunk";
-                Directory.CreateDirectory(tpsClipDir);
-                tpsAnimator = AnimatorController.CreateAnimatorControllerAtPath(tpsClipDir + "/tpsJunk.controller");
-            } else {
-                tpsAnimator = controller.GetRawController();
+            var badMaterials = new List<string>();
+            foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                foreach (var mat in skin.sharedMaterials) {
+                    if (AssetDatabase.GetAssetPath(mat).Contains("/TPS_")) {
+                        badMaterials.Add(skin.gameObject.transform.GetHierarchyPath());
+                    }
+                }
             }
+            foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
+                foreach (var mat in mesh.sharedMaterials) {
+                    if (AssetDatabase.GetAssetPath(mat).Contains("/TPS_")) {
+                        badMaterials.Add(mesh.gameObject.transform.GetHierarchyPath());
+                    }
+                }
+            }
+            if (badMaterials.Count > 0) {
+                throw new VRCFBuilderException(
+                    "TPSIntegration failed because some materials have already been locked using the manual TPS setup wizard." +
+                    " Revert the materials on these objects back to their default Poiyomi file instead of the copy created by the wizard:\n\n" +
+                    string.Join("\n", badMaterials));
+            }
+
+            var tpsClipDir = tmpDir + "/TPS";
+            Directory.CreateDirectory(tpsClipDir);
+            AnimatorController tpsAnimator = controller.GetRawController();
 
             var setup = ScriptableObject.CreateInstance(tpsSetup);
             tpsSetup.GetField("_avatar", b).SetValue(setup, avatarObject.transform);
@@ -63,8 +73,8 @@ namespace VF.Feature {
                     i,
                     tpsClipDir,
                     true, // place contacts
-                    false, // copy materials
-                    !operatingOnVrcClone // configure materials
+                    true, // copy materials
+                    true // configure materials
                 );
             }
             for (var i = 0; i < orifices.Count; i++) {

@@ -17,10 +17,6 @@ namespace VF.Feature.Base {
             method.Invoke(builder, new object[] { });
         }
 
-        public bool applyToVrcClone() {
-            return attribute.applyToVrcClone;
-        }
-
         public int CompareTo(FeatureBuilderAction other) {
             return attribute.CompareTo(other.attribute);
         }

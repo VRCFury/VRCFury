@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.Collections;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using VF.Feature;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -18,7 +18,32 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
 
 public class VRCFuryBuilder {
-    public bool SafeRun(GameObject avatarObject, GameObject vrcCloneObject = null) {
+    public void TestRun(GameObject originalObject) {
+        if (originalObject.name.StartsWith("VRCF ")) {
+            EditorUtility.DisplayDialog("VRCFury Error", "This object is already the output of a VRCF test build.", "Ok");
+            return;
+        }
+        var cloneName = "VRCF Test Build for " + originalObject.name;
+        var exists = originalObject.scene
+            .GetRootGameObjects()
+            .FirstOrDefault(o => o.name == cloneName);
+        if (exists) {
+            Object.DestroyImmediate(exists);
+        }
+        var clone = Object.Instantiate(originalObject);
+        if (clone.scene != originalObject.scene) {
+            SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
+        }
+        clone.name = cloneName;
+        var result = SafeRun(originalObject, clone);
+        if (result) {
+            Selection.SetActiveObjectWithContext(clone, clone);
+        } else {
+            Object.DestroyImmediate(clone);
+        }
+    }
+    
+    public bool SafeRun(GameObject originalObject, GameObject avatarObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length == 0) {
@@ -28,11 +53,14 @@ public class VRCFuryBuilder {
 
         var result = true;
         try {
-            Run(avatarObject, vrcCloneObject);
+            Run(originalObject, avatarObject);
         } catch(Exception e) {
             result = false;
             Debug.LogException(e);
-            EditorUtility.DisplayDialog("VRCFury Error", "An exception was thrown by VRCFury. Check the unity console.", "Ok");
+            while (e is TargetInvocationException) {
+                e = (e as TargetInvocationException).InnerException;
+            }
+            EditorUtility.DisplayDialog("VRCFury Error", "VRCFury encountered an error.\n\n" + e.Message, "Ok");
         }
 
         AssetDatabase.SaveAssets();
@@ -40,13 +68,15 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    private void Run(GameObject avatarObject, GameObject vrcCloneObject) {
+    private void Run(GameObject originalObject, GameObject avatarObject) {
         var progress = new ProgressBar("VRCFury is building ...");
 
         // Unhook everything from our assets before we delete them
-        progress.Progress(0, "Detaching from avatar");
+        progress.Progress(0, "Cleaning up original (in case of old builds)");
+        DetachFromAvatar(originalObject);
+        
+        progress.Progress(0.5, "Cleaning up clone (in case of old builds)");
         DetachFromAvatar(avatarObject);
-        if (vrcCloneObject != null) DetachFromAvatar(vrcCloneObject);
 
         // Nuke all our old generated assets
         progress.Progress(0.1, "Clearing generated assets");
@@ -54,7 +84,7 @@ public class VRCFuryBuilder {
         if (string.IsNullOrEmpty(avatarPath)) {
             throw new Exception("Failed to find file path to avatar scene");
         }
-        var tmpDir = Path.GetDirectoryName(avatarPath) + "/_VRCFury/" + VRCFuryEditorUtils.MakeFilenameSafe(avatarObject.name);
+        var tmpDir = "Assets/_VRCFury/" + VRCFuryEditorUtils.MakeFilenameSafe(originalObject.name);
         if (Directory.Exists(tmpDir)) {
             foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDir })) {
                 var path = AssetDatabase.GUIDToAssetPath(asset);
@@ -65,14 +95,13 @@ public class VRCFuryBuilder {
 
         // Figure out what assets we're going to be messing with
         var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-        var fxController = GetOrCreateAvatarFx(avatar, tmpDir);
-        var menu = GetOrCreateAvatarMenu(avatar, tmpDir);
-        var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir);
+        var fxController = GetOrCreateAvatarFx(avatar, tmpDir, originalObject.name);
+        var menu = GetOrCreateAvatarMenu(avatar, tmpDir, originalObject.name);
+        var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir, originalObject.name);
 
         // Attach our assets back to the avatar
         progress.Progress(0.2, "Attaching to avatar");
         AttachToAvatar(avatarObject, fxController, menu, syncedParams);
-        if (vrcCloneObject != null) AttachToAvatar(vrcCloneObject, fxController, menu, syncedParams);
 
         progress.Progress(0.25, "Joining Menus");
         MenuSplitter.JoinMenus(menu);
@@ -91,7 +120,6 @@ public class VRCFuryBuilder {
             tmpDir,
             defaultClip,
             avatarObject,
-            vrcCloneObject,
             progress.Partial(0.3, 0.8),
             out var forceWriteDefaultsOff
         );
@@ -99,38 +127,23 @@ public class VRCFuryBuilder {
         progress.Progress(0.8, "Splitting Menus");
         MenuSplitter.SplitMenus(menu);
 
-        progress.Progress(0.85, "Collecting default states");
-        AddDefaultsLayer(controllerManager, defaultClip, avatarObject, vrcCloneObject, false);
+        if (forceWriteDefaultsOff) {
+            progress.Progress(0.85, "Creating Write Defaults Fix Copy");
 
-        progress.Progress(0.9, "Adjusting 'Write Defaults'");
-        UseWriteDefaultsIfNeeded(controllerManager);
-        
-        if (forceWriteDefaultsOff && vrcCloneObject != null) {
-            progress.Progress(0.92, "Creating Write Defaults Fix Copy");
-            var fxCopy = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/FX with Write Defaults Off Fix.controller");
-            fxCopy.RemoveLayer(0); // Remove default base layer
-            var merger = new ControllerMerger(
-                layerName => layerName,
-                param => param,
-                clip => clip,
-                treeName => null
-            );
-            merger.Merge(fxController, fxCopy);
-
-            var writeDefaultsClip = controllerManager.NewClip("WriteDefaultsFixDefaults");
-            AddDefaultsLayer(controllerManager, writeDefaultsClip, avatarObject, vrcCloneObject, true);
+            AddDefaultsLayer(controllerManager, defaultClip, avatarObject, true);
             
-            foreach (var layer in fxCopy.layers) {
+            foreach (var layer in fxController.layers) {
                 DefaultClipBuilder.ForEachState(layer, state => {
                     state.writeDefaultValues = false;
                     if (state.motion == null) state.motion = controllerManager.GetNoopClip();
                 });
             }
+        } else {
+            progress.Progress(0.85, "Collecting default states");
+            AddDefaultsLayer(controllerManager, defaultClip, avatarObject, false);
 
-            var cloneAvatar = vrcCloneObject.GetComponent<VRCAvatarDescriptor>();
-            var cloneAnimator = avatarObject.GetComponent<Animator>();
-            VRCAvatarUtils.SetAvatarFx(cloneAvatar, fxCopy);
-            cloneAnimator.runtimeAnimatorController = null;
+            progress.Progress(0.9, "Adjusting 'Write Defaults'");
+            UseWriteDefaultsIfNeeded(controllerManager);
         }
         
         progress.Progress(0.95, "Removing Junk Components");
@@ -139,13 +152,12 @@ public class VRCFuryBuilder {
                 Object.DestroyImmediate(c);
             }
         }
-        if (vrcCloneObject != null) {
-            foreach (var c in vrcCloneObject.GetComponentsInChildren<VRCFury>(true)) {
-                Object.DestroyImmediate(c);
-            }
-            foreach (var c in vrcCloneObject.GetComponentsInChildren<Animator>(true)) {
-                if (c.gameObject != vrcCloneObject) Object.DestroyImmediate(c);
-            }
+
+        foreach (var c in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
+            Object.DestroyImmediate(c);
+        }
+        foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
+            if (c.gameObject != avatarObject) Object.DestroyImmediate(c);
         }
 
         progress.Progress(1, "Finishing Up");
@@ -164,7 +176,6 @@ public class VRCFuryBuilder {
         string tmpDir,
         AnimationClip defaultClip,
         GameObject avatarObject,
-        GameObject vrcCloneAvatarObject,
         ProgressBar progress,
         out bool forceWriteDefaultsOff
     ) {
@@ -205,57 +216,57 @@ public class VRCFuryBuilder {
             var builder = action.GetBuilder();
             var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
                 avatarObject.transform);
-            
-            var applyToClone = action.applyToVrcClone();
-            if (applyToClone && vrcCloneAvatarObject == null) continue;
-            builder.controller = applyToClone ? null : controller;
-            builder.menu = applyToClone ? null : menu;
-            builder.prms = applyToClone ? null : prms;
-            builder.motions = applyToClone ? null : motions;
-            builder.defaultClip = applyToClone ? null : defaultClip;
-            builder.avatarObject = applyToClone ? vrcCloneAvatarObject : avatarObject;
-            builder._realAvatarObjectWhenProcessingClone = avatarObject;
+
+            builder.controller = controller;
+            builder.menu = menu;
+            builder.prms = prms;
+            builder.motions = motions;
+            builder.defaultClip = defaultClip;
+            builder.avatarObject = avatarObject;
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
-            
-            var featureBaseObjectBak = builder.featureBaseObject;
-            if (applyToClone) {
-                var configOnClone = vrcCloneAvatarObject.transform.Find(configPath).gameObject;
-                builder.featureBaseObject = configOnClone;
-            }
+
             action.Call();
-            builder.featureBaseObject = featureBaseObjectBak;
         }
 
         forceWriteDefaultsOff = collectedFeatures
             .Any(feature => feature is MakeWriteDefaultsOff);
     }
 
-    private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir) {
-        var fx = VRCAvatarUtils.GetAvatarFx(avatar);
-        if (fx == null) fx = AnimatorController.CreateAnimatorControllerAtPath(tmpDir + "/VRCFury for " + VRCFuryEditorUtils.MakeFilenameSafe(avatar.gameObject.name) + ".controller");
-        return fx;
+    private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
+        var origFx = VRCAvatarUtils.GetAvatarFx(avatar);
+        var newPath = tmpDir + "/VRCFury for " + VRCFuryEditorUtils.MakeFilenameSafe(avatarName) + ".controller";
+        if (origFx == null) {
+            return AnimatorController.CreateAnimatorControllerAtPath(newPath);
+        }
+        AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origFx), newPath);
+        return AssetDatabase.LoadAssetAtPath<AnimatorController>(newPath);
     }
 
-    private static VRCExpressionsMenu GetOrCreateAvatarMenu(VRCAvatarDescriptor avatar, string tmpDir) {
-        var menu = VRCAvatarUtils.GetAvatarMenu(avatar);
-        if (menu == null) {
-            menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            menu.controls = new List<VRCExpressionsMenu.Control>();
-            AssetDatabase.CreateAsset(menu, tmpDir + "/VRCFury Menu for " + VRCFuryEditorUtils.MakeFilenameSafe(avatar.gameObject.name) + ".asset");
+    private static VRCExpressionsMenu GetOrCreateAvatarMenu(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
+        var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
+        var newPath = tmpDir + "/VRCFury Menu for " + VRCFuryEditorUtils.MakeFilenameSafe(avatarName) + ".asset";
+        var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+        AssetDatabase.CreateAsset(menu, newPath);
+        if (origMenu != null) {
+            var menuManager = new MenuManager(menu, tmpDir);
+            menuManager.MergeMenu(origMenu);
         }
         return menu;
     }
 
-    private static VRCExpressionParameters GetOrCreateAvatarParams(VRCAvatarDescriptor avatar, string tmpDir) {
-        var prms = VRCAvatarUtils.GetAvatarParams(avatar);
-        if (prms == null) {
-            prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
+    private static VRCExpressionParameters GetOrCreateAvatarParams(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
+        var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
+        var newPath = tmpDir + "/VRCFury Params for " + VRCFuryEditorUtils.MakeFilenameSafe(avatarName) + ".asset";
+        if (origParams == null) {
+            var prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             prms.parameters = new VRCExpressionParameters.Parameter[]{};
-            AssetDatabase.CreateAsset(prms, tmpDir + "/VRCFury Params for " + VRCFuryEditorUtils.MakeFilenameSafe(avatar.gameObject.name) + ".asset");
+            AssetDatabase.CreateAsset(prms, newPath);
+            return prms;
         }
-        return prms;
+        AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origParams), newPath);
+        return AssetDatabase.LoadAssetAtPath<VRCExpressionParameters>(newPath);
     }
 
     public static void DetachFromAvatar(GameObject avatarObject) {
@@ -311,16 +322,15 @@ public class VRCFuryBuilder {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
     }
 
-    private static void AddDefaultsLayer(ControllerManager manager, AnimationClip defaultClip, GameObject avatarObject, GameObject vrcCloneObject, bool applyToUnmanagedLayers) {
-        var layerName = applyToUnmanagedLayers ? "WriteDefaultsFixDefaults" : "Defaults";
-        var defaultLayer = manager.NewLayer(layerName, true);
+    private static void AddDefaultsLayer(ControllerManager manager, AnimationClip defaultClip, GameObject avatarObject, bool applyToUnmanagedLayers) {
+        var defaultLayer = manager.NewLayer("Defaults", true);
         defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
         foreach (var layer in manager.GetManagedLayers()) {
-            DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject, vrcCloneObject);
+            DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject);
         }
         if (applyToUnmanagedLayers) {
             foreach (var layer in manager.GetUnmanagedLayers()) {
-                DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject, vrcCloneObject);
+                DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject);
             }
         }
     }

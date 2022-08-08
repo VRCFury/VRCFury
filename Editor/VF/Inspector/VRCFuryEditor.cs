@@ -66,19 +66,22 @@ public class VRCFuryEditor : Editor {
             box.style.marginTop = box.style.marginBottom = 10;
             container.Add(box);
 
-            var label = new Label("VRCFury builds automatically when your avatar uploads. You only need to click this button if you want to verify its changes in the editor or in play mode.");
+            var label = new Label(
+                "VRCFury only applies changes to a temporary copy of your avatar while uploading." + 
+                " If you wish to verify these changes in your editor, clicking this button will generate" +
+                " a clone object with the VRCFury changes applied.");
             VRCFuryEditorUtils.Padding(box, 5);
             label.style.whiteSpace = WhiteSpace.Normal;
             box.Add(label);
 
             var genButton = new Button(() => {
                 var builder = new VRCFuryBuilder();
-                builder.SafeRun(self.gameObject);
+                builder.TestRun(self.gameObject);
             }) {
                 style = {
                     marginTop = 5
                 },
-                text = "Force Build Now"
+                text = "Build a Test Copy"
             };
             box.Add(genButton);
         }

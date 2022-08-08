@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -8,7 +9,6 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace VF.Builder {
 
     public class MenuManager {
-        private static string prefix = "VRCFury";
         private readonly VRCExpressionsMenu rootMenu;
         private readonly string tmpDir;
 
@@ -95,6 +95,45 @@ namespace VF.Builder {
             AssetDatabase.CreateAsset(newMenu, filePath);
             return newMenu;
         }
+
+        public void MergeMenu(VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
+            MergeMenu(new string[]{}, from, rewriteParamName);
+        }
+
+        public void MergeMenu(string[] prefix, VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
+            foreach (var control in from.controls) {
+                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
+                    var prefix2 = new List<string>(prefix);
+                    prefix2.Add(control.name);
+                    GetMenu(prefix2.ToArray(), control.icon);
+                    MergeMenu(prefix2.ToArray(), control.subMenu);
+                } else {
+                    AddMenuItem(prefix, CloneControl(control, rewriteParamName));
+                }
+            }
+        }
+
+        private VRCExpressionsMenu.Control CloneControl(VRCExpressionsMenu.Control from, Func<string,string> rewriteParamName) {
+            return new VRCExpressionsMenu.Control {
+                name = from.name,
+                icon = from.icon,
+                type = from.type,
+                parameter = CloneControlParam(from.parameter, rewriteParamName),
+                value = from.value,
+                style = from.style,
+                subMenu = from.subMenu,
+                labels = from.labels,
+                subParameters = from.subParameters == null ? null : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
+                    .Select(p => CloneControlParam(p, rewriteParamName))
+                    .ToArray(),
+            };
+        }
+        private VRCExpressionsMenu.Control.Parameter CloneControlParam(VRCExpressionsMenu.Control.Parameter from, Func<string,string> rewriteParamName) {
+            if (from == null) return null;
+            return new VRCExpressionsMenu.Control.Parameter {
+                name = rewriteParamName != null ? rewriteParamName(from.name) : from.name
+            };
+        }
         
         public static void PurgeFromMenu(VRCExpressionsMenu menu) {
             if (menu == null) return;
@@ -112,10 +151,10 @@ namespace VF.Builder {
                 if (control.name == "SenkyFX" || control.name == "VRCFury") {
                     remove = true;
                 }
-                if (control.parameter != null && control.parameter.name != null && control.parameter.name.StartsWith(prefix)) {
+                if (control.parameter != null && control.parameter.name != null && control.parameter.name.StartsWith("VRCFury")) {
                     remove = true;
                 }
-                if (control.subParameters != null && control.subParameters.Any(p => p != null && p.name.StartsWith(prefix))) {
+                if (control.subParameters != null && control.subParameters.Any(p => p != null && p.name.StartsWith("VRCFury"))) {
                     remove = true;
                 }
                 if (remove) {

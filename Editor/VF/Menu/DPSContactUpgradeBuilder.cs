@@ -28,7 +28,8 @@ namespace VF.Menu {
         private static string CONTACT_ORF_MAIN = "TPS_Orf_Root";
         private static string CONTACT_ORF_NORM = "TPS_Orf_Norm";
 
-        public static string MARKER_ORF = "OGB_Marker_Orf";
+        public static string MARKER_RING = "OGB_Marker_Ring";
+        public static string MARKER_HOLE = "OGB_Marker_Hole";
         public static string MARKER_PEN = "OGB_Marker_Pen";
 
         public static void Run() {
@@ -73,25 +74,30 @@ namespace VF.Menu {
                     }
                 }
             }
-
-            void maybeRemoveComponent(Component c, List<string> collisionTags) {
-                var shouldRemove = false;
-                if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) shouldRemove = true;
-                else if (c.gameObject.name.StartsWith("OGB_")) shouldRemove = true;
-                else if (collisionTags.Any(t => t == CONTACT_PEN_MAIN)) shouldRemove = true;
-                else if (collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) shouldRemove = true;
-                else if (collisionTags.Any(t => t == CONTACT_ORF_MAIN)) shouldRemove = true;
-                else if (collisionTags.Any(t => t == CONTACT_ORF_NORM)) shouldRemove = true;
-                if (!shouldRemove) return;
-                if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject) && c.gameObject.transform.childCount == 0) Object.DestroyImmediate(c.gameObject);
-                else Object.DestroyImmediate(c);
-            }
+            
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactSender>(true)) {
-                maybeRemoveComponent(c, c.collisionTags);
+                MaybeRemoveContact(c, c.collisionTags);
             }
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                maybeRemoveComponent(c, c.collisionTags);
+                MaybeRemoveContact(c, c.collisionTags);
             }
+        }
+        
+        private static void MaybeRemoveContact(Component c, List<string> collisionTags) {
+            var shouldRemove = false;
+            if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) shouldRemove = true;
+            else if (c.gameObject.name.StartsWith("OGB_")) shouldRemove = true;
+            else if (collisionTags.Any(t => t == CONTACT_PEN_MAIN)) shouldRemove = true;
+            else if (collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) shouldRemove = true;
+            else if (collisionTags.Any(t => t == CONTACT_ORF_MAIN)) shouldRemove = true;
+            else if (collisionTags.Any(t => t == CONTACT_ORF_NORM)) shouldRemove = true;
+            if (!shouldRemove) return;
+            RemoveComponent(c);
+        }
+
+        private static void RemoveComponent(Component c) {
+            if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject) && c.gameObject.transform.childCount == 0) Object.DestroyImmediate(c.gameObject);
+            else Object.DestroyImmediate(c);
         }
 
         public static string Apply(GameObject avatarObject) {
@@ -170,6 +176,8 @@ namespace VF.Menu {
             foreach (var pair in getOrificeLights(avatarObject)) {
                 var obj = pair.Item1;
                 var forward = pair.Item2;
+                var isRing = pair.Item3;
+                var managed = pair.Item4;
                 var path = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
                 Debug.Log("Found DPS orifice: " + obj);
@@ -205,6 +213,31 @@ namespace VF.Menu {
                 AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + orfVersion, "Version", 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
                 AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
+
+                if (managed) {
+                    foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
+                        RemoveComponent(light);
+                    }
+
+                    var main = new GameObject("Root");
+                    main.transform.SetParent(obj.transform);
+                    var mainLight = main.AddComponent<Light>();
+                    mainLight.type = LightType.Point;
+                    mainLight.color = Color.black;
+                    mainLight.range = isRing ? 0.42f : 0.41f;
+                    mainLight.shadows = LightShadows.None;
+                    mainLight.renderMode = LightRenderMode.ForceVertex;
+
+                    var front = new GameObject("Front");
+                    front.transform.SetParent(obj.transform);
+                    var frontLight = front.AddComponent<Light>();
+                    front.transform.position = new Vector3(0, 0, 0.01f / obj.transform.lossyScale.x);
+                    frontLight.type = LightType.Point;
+                    frontLight.color = Color.black;
+                    frontLight.range = 0.45f;
+                    frontLight.shadows = LightShadows.None;
+                    frontLight.renderMode = LightRenderMode.ForceVertex;
+                }
 
                 addedOGB.Add(path);
             }
@@ -360,38 +393,43 @@ namespace VF.Menu {
             return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
         }
 
-        private static List<Tuple<GameObject,Vector3>> getOrificeLights(GameObject avatarObject) {
-            var pairs = new List<Tuple<GameObject,Vector3>>();
+        private static List<Tuple<GameObject,Vector3,bool,bool>> getOrificeLights(GameObject avatarObject) {
+            var pairs = new List<Tuple<GameObject,Vector3,bool,bool>>();
             var addedObjs = new HashSet<GameObject>();
-            foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
-                if (light.range % 0.1 >= 0.005f && light.range % 0.1 <= 0.025f) {
-                    Light normal = null;
-                    foreach (Transform sibling in light.gameObject.transform.parent) {
-                        var siblingLight = sibling.gameObject.GetComponent<Light>();
-                        if (siblingLight != null && siblingLight.range % 0.1 >= 0.045f && siblingLight.range % 0.1 <= 0.055f) {
-                            normal = siblingLight;
-                        }
-                    }
-                    
-                    var obj = light.transform.parent.gameObject;
-                    var forward = Vector3.forward;
-                    if (normal != null) {
-                        forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
-                    }
-                    
-                    addedObjs.Add(obj);
-                    pairs.Add(Tuple.Create(obj, forward));
+            
+            foreach (var transform in avatarObject.GetComponentsInChildren<Transform>(true)) {
+                if (transform.gameObject.name == MARKER_HOLE || transform.gameObject.name == MARKER_RING) {
+                    var parent = transform.parent.gameObject;
+                    if (addedObjs.Contains(parent)) continue;
+                    addedObjs.Add(parent);
+                    pairs.Add(Tuple.Create(parent, Vector3.forward, transform.gameObject.name == MARKER_RING, true));
                 }
             }
+            
+            foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
+                var obj = light.transform.parent?.gameObject;
+                if (!obj) continue;
+                if (addedObjs.Contains(obj)) continue;
 
-            foreach (var transform in avatarObject.GetComponentsInChildren<Transform>(true)) {
-                if (transform.gameObject.name == MARKER_ORF) {
-                    var parent = transform.parent.gameObject;
-                    if (!addedObjs.Contains(parent)) {
-                        addedObjs.Add(parent);
-                        pairs.Add(Tuple.Create(parent, Vector3.forward));
+                var isHole = light.range % 0.1 >= 0.005f && light.range % 0.1 < 0.015f;
+                var isRing = light.range % 0.1 >= 0.015f && light.range % 0.1 < 0.025f;
+                if (!isHole && !isRing) continue;
+
+                Light normal = null;
+                foreach (Transform sibling in light.gameObject.transform.parent) {
+                    var siblingLight = sibling.gameObject.GetComponent<Light>();
+                    if (siblingLight != null && siblingLight.range % 0.1 >= 0.045f && siblingLight.range % 0.1 <= 0.055f) {
+                        normal = siblingLight;
                     }
                 }
+
+                var forward = Vector3.forward;
+                if (normal != null) {
+                    forward = (normal.transform.localPosition - light.transform.localPosition).normalized;
+                }
+                
+                addedObjs.Add(obj);
+                pairs.Add(Tuple.Create(obj, forward, isRing, false));
             }
 
             return pairs;

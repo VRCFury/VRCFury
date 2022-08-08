@@ -34,10 +34,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
+        
+        if (model.forceOffForUpload) {
+            foreach (var action in model.state.actions) {
+                if (action is ObjectToggleAction toggleAction && toggleAction.obj != null) {
+                    toggleAction.obj.SetActive(false);
+                }
+            }
+        }
 
         var layerName = model.name;
         var layer = controller.NewLayer(layerName);
-        var clip = LoadState(model.name, model.state, assumeDefaultIsOff:model.forceOffForUpload);
+        var clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
         var param = controller.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
@@ -58,19 +66,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.addMenuItem) {
             menu.NewMenuToggle(model.name, param);
-        }
-    }
-
-    [FeatureBuilderAction(applyToVrcClone:true)]
-    public void ApplyToVrcClone() {
-        if (model.forceOffForUpload) {
-            foreach (var action in model.state.actions) {
-                var toggleAction = action as ObjectToggleAction;
-                if (toggleAction != null && toggleAction.obj != null) {
-                    var objInClone = GetObjectInClone(toggleAction.obj);
-                    if (objInClone) objInClone.SetActive(false);
-                }
-            }
         }
     }
 

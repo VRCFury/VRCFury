@@ -36,7 +36,7 @@ namespace VF.Builder {
             avatar.customizeAnimationLayers = true;
             var layerNum = GetAvatarLayerNumber(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
             if (layerNum < 0)
-                throw new Exception(
+                throw new VRCFBuilderException(
                     "Failed to find FX layer on avatar. You may need to 'reset' the expression layers on the avatar descriptor.");
             var layer = avatar.baseAnimationLayers[layerNum];
             layer.isDefault = false;

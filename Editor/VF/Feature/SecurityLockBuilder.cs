@@ -20,14 +20,14 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
             .Select(c => c - '0')
             .ToArray();
         if (digits.Length < 4) {
-            throw new Exception("Security lock must contain at least 4 digits");
+            throw new VRCFBuilderException("Security lock must contain at least 4 digits");
         }
         if (digits.Length > 10) {
-            throw new Exception("Security lock must contain at most 10 digits");
+            throw new VRCFBuilderException("Security lock must contain at most 10 digits");
         }
         foreach (var digit in digits) {
             if (digit < 1 || digit > 7) {
-                throw new Exception("Security lock contains digit outside allowed bounds (1-7)");
+                throw new VRCFBuilderException("Security lock contains digit outside allowed bounds (1-7)");
             }
         }
         var numDigits = digits.Length;

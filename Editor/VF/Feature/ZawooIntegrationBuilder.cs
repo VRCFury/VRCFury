@@ -17,6 +17,14 @@ namespace VF.Feature {
 public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
 
     private enum Type { Canine, Anthro }
+    
+    [FeatureBuilderAction]
+    public void Apply() {
+        foreach (var zawooRoot in GetZawooRoots()) {
+            ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
+        }
+        addOtherFeature(new OGBIntegration());
+    }
 
     private List<Tuple<Type, GameObject>> GetZawooRoots() {
         var roots = new List<Tuple<Type, GameObject>>();
@@ -76,23 +84,6 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         });
 
         Debug.Log("Zawoo added!");
-    }
-
-    [FeatureBuilderAction]
-    public void Apply() {
-        foreach (var zawooRoot in GetZawooRoots()) {
-            ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
-        }
-        addOtherFeature(new OGBIntegration());
-    }
-
-    [FeatureBuilderAction(applyToVrcClone:true)]
-    public void ApplyToVrcClone() {
-        foreach (var root in GetZawooRoots()) {
-            var obj = root.Item2;
-            Debug.Log("Deactivating zawoo prefab on upload: " + obj.name);
-            obj.SetActive(false);
-        }
     }
 
     private T LoadAssetByName<T>(string name) where T : Object {

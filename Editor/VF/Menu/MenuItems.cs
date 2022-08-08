@@ -76,27 +76,17 @@ namespace VF.Menu {
             return false;
         }
         
-        [MenuItem("Tools/VRCFury/Test Run on Selection", priority = 1401)]
+        [MenuItem("Tools/VRCFury/Test Build Selection", priority = 1401)]
         private static void RunForceRun() {
-            VRCFuryForceRunMenuItem.Run();
-        }
-
-        [MenuItem("Tools/VRCFury/Test Run on Selection", true)]
-        private static bool CheckForceRun() {
-            return VRCFuryForceRunMenuItem.Check();
-        }
-        
-        [MenuItem("Tools/VRCFury/Test Run as if uploading", priority = 1402)]
-        private static void RunFakeUpload() {
             VRCFuryForceRunMenuItem.RunFakeUpload();
         }
 
-        [MenuItem("Tools/VRCFury/Test Run as if uploading", true)]
-        private static bool CheckFakeUpload() {
+        [MenuItem("Tools/VRCFury/Test Build Selection", true)]
+        private static bool CheckForceRun() {
             return VRCFuryForceRunMenuItem.CheckFakeUpload();
         }
         
-        [MenuItem("Tools/VRCFury/Purge from Selection", priority = 1403)]
+        [MenuItem("Tools/VRCFury/Purge from Selection", priority = 1402)]
         private static void RunPurge() {
             VRCFuryForceRunMenuItem.RunPurge();
         }

@@ -13,7 +13,6 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
-using Action = VF.Model.StateAction.Action;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -70,14 +69,10 @@ namespace VF.Feature {
             }
 
             if (model.menu != null) {
-                string[] prefix;
-                if (string.IsNullOrWhiteSpace(model.submenu)) {
-                    prefix = new string[] { };
-                } else {
-                    prefix = model.submenu.Split('/').ToArray();
-                }
-
-                MergeMenu(prefix, model.menu);
+                var prefix = string.IsNullOrWhiteSpace(model.submenu)
+                    ? new string[] { }
+                    : model.submenu.Split('/').ToArray();
+                menu.MergeMenu(prefix, model.menu);
             }
 
             if (model.toggleParam != null) {
@@ -92,41 +87,6 @@ namespace VF.Feature {
                     usePrefixOnParam = false
                 });
             }
-        }
-
-        private void MergeMenu(string[] prefix, VRCExpressionsMenu from) {
-            foreach (var control in from.controls) {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
-                    var prefix2 = new List<string>(prefix);
-                    prefix2.Add(control.name);
-                    menu.GetMenu(prefix2.ToArray(), control.icon);
-                    MergeMenu(prefix2.ToArray(), control.subMenu);
-                } else {
-                    menu.AddMenuItem(prefix, CloneControl(control));
-                }
-            }
-        }
-
-        private VRCExpressionsMenu.Control CloneControl(VRCExpressionsMenu.Control from) {
-            return new VRCExpressionsMenu.Control {
-                name = from.name,
-                icon = from.icon,
-                type = from.type,
-                parameter = CloneControlParam(from.parameter),
-                value = from.value,
-                style = from.style,
-                subMenu = from.subMenu,
-                labels = from.labels,
-                subParameters = from.subParameters == null ? null : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
-                    .Select(CloneControlParam)
-                    .ToArray(),
-            };
-        }
-        private VRCExpressionsMenu.Control.Parameter CloneControlParam(VRCExpressionsMenu.Control.Parameter from) {
-            if (from == null) return null;
-            return new VRCExpressionsMenu.Control.Parameter {
-                name = RewriteParamName(from.name)
-            };
         }
 
         private string RewriteParamName(string name) {

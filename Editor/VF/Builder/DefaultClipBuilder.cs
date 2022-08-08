@@ -43,7 +43,7 @@ namespace VF.Builder {
             });
         }
         
-        public static void CollectDefaults(AnimatorControllerLayer layer, AnimationClip defaultClip, GameObject baseObject, GameObject fallbackBaseObject) {
+        public static void CollectDefaults(AnimatorControllerLayer layer, AnimationClip defaultClip, GameObject baseObject) {
             var alreadySet = new HashSet<EditorCurveBinding>();
             foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
@@ -53,7 +53,6 @@ namespace VF.Builder {
                     if (alreadySet.Contains(binding)) continue;
                     alreadySet.Add(binding);
                     var exists = AnimationUtility.GetFloatValue(baseObject, binding, out var value);
-                    if (!exists && fallbackBaseObject != null) exists = AnimationUtility.GetFloatValue(fallbackBaseObject, binding, out value);
                     if (exists) {
                         AnimationUtility.SetEditorCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
                     } else if (binding.path != "_ignored") {
@@ -64,7 +63,6 @@ namespace VF.Builder {
                     if (alreadySet.Contains(binding)) continue;
                     alreadySet.Add(binding);
                     var exists = AnimationUtility.GetObjectReferenceValue(baseObject, binding, out var value);
-                    if (!exists && fallbackBaseObject != null) exists = AnimationUtility.GetObjectReferenceValue(fallbackBaseObject, binding, out value);
                     if (exists) {
                         AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
                     } else if (binding.path != "_ignored") {

@@ -14,27 +14,8 @@ namespace VF.Menu {
 
         private static void Create(bool ring) {
             var newObj = new GameObject(ring ? "Ring" : "Hole");
-
-            var main = new GameObject("Root");
-            main.transform.SetParent(newObj.transform);
-            var mainLight = main.AddComponent<Light>();
-            mainLight.type = LightType.Point;
-            mainLight.color = Color.black;
-            mainLight.range = ring ? 0.42f : 0.41f;
-            mainLight.shadows = LightShadows.None;
-            mainLight.renderMode = LightRenderMode.ForceVertex;
-
-            var front = new GameObject("Front");
-            front.transform.SetParent(newObj.transform);
-            var frontLight = front.AddComponent<Light>();
-            front.transform.position = new Vector3(0, 0, 0.01f);
-            frontLight.type = LightType.Point;
-            frontLight.color = Color.black;
-            frontLight.range = 0.45f;
-            frontLight.shadows = LightShadows.None;
-            frontLight.renderMode = LightRenderMode.ForceVertex;
             
-            var marker = new GameObject(DPSContactUpgradeBuilder.MARKER_ORF);
+            var marker = new GameObject(ring ? DPSContactUpgradeBuilder.MARKER_RING : DPSContactUpgradeBuilder.MARKER_HOLE);
             marker.transform.SetParent(newObj.transform);
 
             if (Selection.activeGameObject) {

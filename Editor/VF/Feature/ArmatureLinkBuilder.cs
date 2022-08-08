@@ -14,63 +14,7 @@ using Object = UnityEngine.Object;
 namespace VF.Feature {
 
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
-        private string propBonePath;
         private Dictionary<string, string> clipMappings = new Dictionary<string, string>();
-        
-        /**
-         * We need to collect the clip mappings and path to the prop bone before we start messing with
-         * transforms, moving them around and making it impossible to collect these later.
-         */
-        [FeatureBuilderAction(-1)]
-        public void Prepare() {
-            if (model.propBone == null) {
-                Debug.LogWarning("Root bone is null on armature link.");
-                return;
-            }
-            propBonePath = motions.GetPath(model.propBone);
-
-            var links = GetLinks();
-            if (model.useBoneMerging) {
-                foreach (var reparent in links.reparent) {
-                    var objectToMove = reparent.Item1;
-                    var newParent = reparent.Item2;
-                    var oldPath = motions.GetPath(objectToMove);
-                    var newPath = ClipBuilder.Join(motions.GetPath(newParent),
-                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name);
-                    clipMappings.Add(oldPath, newPath);
-                }
-                foreach (var mergeBone in links.mergeBones) {
-                    var propBone = mergeBone.Item1;
-                    var avatarBone = mergeBone.Item2;
-                    var oldPath = motions.GetPath(propBone);
-                    var newPath = motions.GetPath(avatarBone);
-                    clipMappings.Add(oldPath, newPath);
-                }
-            } else {
-                foreach (var mergeBone in links.mergeBones) {
-                    var propBone = mergeBone.Item1;
-                    var avatarBone = mergeBone.Item2;
-                    var oldPath = motions.GetPath(propBone);
-                    var newPath = ClipBuilder.Join(motions.GetPath(avatarBone),
-                        "vrcf_" + uniqueModelNum + "_" + propBone.name);
-                    clipMappings.Add(oldPath, newPath);
-                }
-            }
-        }
-
-        /**
-         * For the normal (non-upload) avatar object, we link the prop's bones to the avatar bones using
-         * parent constraints. This way, props within prefabs don't need to be unpacked.
-         */
-        [FeatureBuilderAction]
-        public void Link() {
-            var links = GetLinks();
-            foreach (var mergeBone in links.mergeBones) {
-                var propBone = mergeBone.Item1;
-                var avatarBone = mergeBone.Item2;
-                Constrain(propBone, avatarBone, model.keepBoneOffsets);
-            }
-        }
 
         public static void Constrain(GameObject obj, GameObject target, bool keepOffset = false) {
             var p = obj.GetComponent<ParentConstraint>();
@@ -90,17 +34,43 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction(applyToVrcClone:true)]
-        public void LinkOnVrcClone() {
+        [FeatureBuilderAction]
+        public void Apply() {
+            if (model.propBone == null) {
+                Debug.LogWarning("Root bone is null on armature link.");
+                return;
+            }
+            
             var links = GetLinks();
             if (model.useBoneMerging) {
-                // For the uploaded copy, if bone merging is enabled, we adjust all the skinned meshes to use the
-                // bones in the avatar's armature, move over any objects which don't exist in the avatar, then delete all
-                // the original prop bones.
 
+                // First, move over all the "new children objects" that aren't bones
+                foreach (var reparent in links.reparent) {
+                    // Move the object
+                    var objectToMove = reparent.Item1;
+                    var newParent = reparent.Item2;
+                    objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
+                    objectToMove.transform.SetParent(newParent.transform);
+                    
+                    // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
+                    RemoveFromPhysbones(objectToMove);
+                    
+                    // Remember how we need to rewrite animations later
+                    var oldPath = motions.GetPath(objectToMove);
+                    var newPath = ClipBuilder.Join(motions.GetPath(newParent),
+                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name);
+                    clipMappings.Add(oldPath, newPath);
+                }
+
+                // Now, update all the skinned meshes in the prop to use the avatar's bone objects
                 var boneMapping = new Dictionary<Transform, Transform>();
                 foreach (var mergeBone in links.mergeBones) {
-                    boneMapping[mergeBone.Item1.transform] = mergeBone.Item2.transform;
+                    var propBone = mergeBone.Item1;
+                    var avatarBone = mergeBone.Item2;
+                    boneMapping[propBone.transform] = avatarBone.transform;
+                    var oldPath = motions.GetPath(propBone);
+                    var newPath = motions.GetPath(avatarBone);
+                    clipMappings.Add(oldPath, newPath);
                 }
                 foreach (var skin in featureBaseObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                     if (boneMapping.TryGetValue(skin.rootBone, out var newRootBone)) {
@@ -114,18 +84,14 @@ namespace VF.Feature {
                     }
                     skin.bones = bones;
                 }
-                foreach (var reparent in links.reparent) {
-                    var objectToMove = reparent.Item1;
-                    var newParent = reparent.Item2;
-                    objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
-                    objectToMove.transform.SetParent(newParent.transform);
-                }
                 foreach (var mergeBone in links.mergeBones) {
-                    Object.DestroyImmediate(mergeBone.Item1);
+                    var propBone = mergeBone.Item1;
+                    Object.DestroyImmediate(propBone);
                 }
             } else {
                 // Otherwise, we move all the prop bones into their matching avatar bones (as children)
                 foreach (var mergeBone in links.mergeBones) {
+                    // Move the object
                     var propBone = mergeBone.Item1;
                     var avatarBone = mergeBone.Item2;
                     var p = propBone.GetComponent<ParentConstraint>();
@@ -136,27 +102,28 @@ namespace VF.Feature {
                         propBone.transform.localPosition = Vector3.zero;
                         propBone.transform.localRotation = Quaternion.identity;
                     }
-                }
-
-                // Because we're adding new children to bones in the avatar, we need to ensure they are ignored
-                // by all physbones.
-                foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
-                    var root = physbone.GetRootTransform();
-                    foreach (var mergeBone in links.mergeBones) {
-                        var propBone = mergeBone.Item1;
-                        if (propBone.transform.IsChildOf(root)) {
-                            physbone.ignoreTransforms.Add(propBone.transform);
-                        }
-                    }
+                    
+                    // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
+                    RemoveFromPhysbones(propBone);
+                    
+                    // Remember how we need to rewrite animations later
+                    var oldPath = motions.GetPath(propBone);
+                    var newPath = ClipBuilder.Join(motions.GetPath(avatarBone),
+                        "vrcf_" + uniqueModelNum + "_" + propBone.name);
+                    clipMappings.Add(oldPath, newPath);
                 }
             }
         }
-        
-        /**
-         * Since we move the bone objects in LinkOnVrcClone, we need to rewrite any animation clips using the old
-         * bone paths to use the new ones. We leave both binding paths in the animation, so it will work on both
-         * the uploaded copy and in the editor (where the bones have not moved).
-         */
+
+        private void RemoveFromPhysbones(GameObject obj) {
+            foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
+                var root = physbone.GetRootTransform();
+                if (obj.transform.IsChildOf(root)) {
+                    physbone.ignoreTransforms.Add(obj.transform);
+                }
+            }
+        }
+
         [FeatureBuilderAction(100)]
         public void FixAnimations() {
             foreach (var layer in controller.GetManagedLayers()) {
@@ -164,6 +131,7 @@ namespace VF.Feature {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                         var newPath = RewriteClipPath(binding.path);
                         if (newPath != null) {
+                            AnimationUtility.SetEditorCurve(clip, binding, null);
                             var b = binding;
                             b.path = newPath;
                             AnimationUtility.SetEditorCurve(clip, b, AnimationUtility.GetEditorCurve(clip, binding));
@@ -172,6 +140,7 @@ namespace VF.Feature {
                     foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
                         var newPath = RewriteClipPath(binding.path);
                         if (newPath != null) {
+                            AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
                             var b = binding;
                             b.path = newPath;
                             AnimationUtility.SetObjectReferenceCurve(clip, b, AnimationUtility.GetObjectReferenceCurve(clip, binding));
@@ -198,8 +167,7 @@ namespace VF.Feature {
         private Links GetLinks() {
             var links = new Links();
 
-            if (propBonePath == null) return links;
-            var propBone = avatarObject.transform.Find(propBonePath)?.gameObject;
+            var propBone = model.propBone;
             if (propBone == null) return links;
 
             GameObject avatarBone;
