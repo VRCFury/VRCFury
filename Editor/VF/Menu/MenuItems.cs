@@ -76,22 +76,22 @@ namespace VF.Menu {
             return false;
         }
         
-        [MenuItem("Tools/VRCFury/Test Build Selection", priority = 1401)]
+        [MenuItem("Tools/VRCFury/Build Test Avatar", priority = 1401)]
         private static void RunForceRun() {
             VRCFuryForceRunMenuItem.RunFakeUpload();
         }
 
-        [MenuItem("Tools/VRCFury/Test Build Selection", true)]
+        [MenuItem("Tools/VRCFury/Build Test Avatar", true)]
         private static bool CheckForceRun() {
             return VRCFuryForceRunMenuItem.CheckFakeUpload();
         }
         
-        [MenuItem("Tools/VRCFury/Purge from Selection", priority = 1402)]
+        [MenuItem("Tools/VRCFury/Purge from Selected Avatar", priority = 1402)]
         private static void RunPurge() {
             VRCFuryForceRunMenuItem.RunPurge();
         }
 
-        [MenuItem("Tools/VRCFury/Purge from Selection", true)]
+        [MenuItem("Tools/VRCFury/Purge from Selected Avatar", true)]
         private static bool CheckPurge() {
             return VRCFuryForceRunMenuItem.CheckPurge();
         }

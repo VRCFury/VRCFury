@@ -46,9 +46,11 @@ namespace VF.Feature {
 
                 // First, move over all the "new children objects" that aren't bones
                 foreach (var reparent in links.reparent) {
-                    // Move the object
                     var objectToMove = reparent.Item1;
                     var newParent = reparent.Item2;
+                    var oldPath = motions.GetPath(objectToMove);
+
+                    // Move the object
                     objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
                     objectToMove.transform.SetParent(newParent.transform);
                     
@@ -56,9 +58,7 @@ namespace VF.Feature {
                     RemoveFromPhysbones(objectToMove);
                     
                     // Remember how we need to rewrite animations later
-                    var oldPath = motions.GetPath(objectToMove);
-                    var newPath = ClipBuilder.Join(motions.GetPath(newParent),
-                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name);
+                    var newPath = motions.GetPath(objectToMove);
                     clipMappings.Add(oldPath, newPath);
                 }
 
@@ -91,9 +91,11 @@ namespace VF.Feature {
             } else {
                 // Otherwise, we move all the prop bones into their matching avatar bones (as children)
                 foreach (var mergeBone in links.mergeBones) {
-                    // Move the object
                     var propBone = mergeBone.Item1;
                     var avatarBone = mergeBone.Item2;
+                    var oldPath = motions.GetPath(propBone);
+                    
+                    // Move the object
                     var p = propBone.GetComponent<ParentConstraint>();
                     if (p != null) Object.DestroyImmediate(p);
                     propBone.name = "vrcf_" + uniqueModelNum + "_" + propBone.name;
@@ -107,9 +109,7 @@ namespace VF.Feature {
                     RemoveFromPhysbones(propBone);
                     
                     // Remember how we need to rewrite animations later
-                    var oldPath = motions.GetPath(propBone);
-                    var newPath = ClipBuilder.Join(motions.GetPath(avatarBone),
-                        "vrcf_" + uniqueModelNum + "_" + propBone.name);
+                    var newPath = motions.GetPath(propBone);
                     clipMappings.Add(oldPath, newPath);
                 }
             }
@@ -131,19 +131,19 @@ namespace VF.Feature {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                         var newPath = RewriteClipPath(binding.path);
                         if (newPath != null) {
-                            AnimationUtility.SetEditorCurve(clip, binding, null);
                             var b = binding;
                             b.path = newPath;
                             AnimationUtility.SetEditorCurve(clip, b, AnimationUtility.GetEditorCurve(clip, binding));
+                            AnimationUtility.SetEditorCurve(clip, binding, null);
                         }
                     }
                     foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
                         var newPath = RewriteClipPath(binding.path);
                         if (newPath != null) {
-                            AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
                             var b = binding;
                             b.path = newPath;
                             AnimationUtility.SetObjectReferenceCurve(clip, b, AnimationUtility.GetObjectReferenceCurve(clip, binding));
+                            AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
                         }
                     }
                 });

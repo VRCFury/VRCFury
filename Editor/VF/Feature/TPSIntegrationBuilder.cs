@@ -50,7 +50,7 @@ namespace VF.Feature {
                     string.Join("\n", badMaterials));
             }
 
-            var tpsClipDir = tmpDir + "/TPS";
+            var tpsClipDir = tmpDir;
             Directory.CreateDirectory(tpsClipDir);
             AnimatorController tpsAnimator = controller.GetRawController();
 

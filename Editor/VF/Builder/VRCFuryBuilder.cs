@@ -31,6 +31,9 @@ public class VRCFuryBuilder {
             Object.DestroyImmediate(exists);
         }
         var clone = Object.Instantiate(originalObject);
+        if (!clone.activeSelf) {
+            clone.SetActive(true);
+        }
         if (clone.scene != originalObject.scene) {
             SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
         }

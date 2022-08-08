@@ -72,7 +72,7 @@ namespace VF.Feature {
                 var prefix = string.IsNullOrWhiteSpace(model.submenu)
                     ? new string[] { }
                     : model.submenu.Split('/').ToArray();
-                menu.MergeMenu(prefix, model.menu);
+                menu.MergeMenu(prefix, model.menu, RewriteParamName);
             }
 
             if (model.toggleParam != null) {
