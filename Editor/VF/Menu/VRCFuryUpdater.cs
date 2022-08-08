@@ -19,7 +19,7 @@ namespace VF.Menu {
                 Debug.Log("Upgrade complete");
                 EditorUtility.DisplayDialog(
                     "VRCFury Updater",
-                    "VRCFury has been updated. Unity may be frozen for a bit as it reloads.",
+                    "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads.",
                     "Ok"
                 );
             }
@@ -133,8 +133,8 @@ namespace VF.Menu {
 
             Debug.Log("Waiting for Unity to recompile scripts ...");
             EditorUtility.DisplayDialog("VRCFury Updater",
-                "Unity is now recompiling VRCFury. You will receive another message when the upgrade is complete.",
-                "Ok, I will wait for the next message");
+                "Unity is now recompiling VRCFury.\n\nYou will receive another message when the upgrade is complete.",
+                "Ok");
         });
     }
 
