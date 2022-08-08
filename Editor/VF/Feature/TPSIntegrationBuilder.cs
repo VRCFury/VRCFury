@@ -16,6 +16,7 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Apply() {
             Apply(false);
+            addOtherFeature(new OGBIntegration());
         }
 
         [FeatureBuilderAction(applyToVrcClone:true)]
@@ -87,8 +88,6 @@ namespace VF.Feature {
                     tpsClipDir
                 );
             }
-
-            DPSContactUpgradeBuilder.Apply(avatarObject);
         }
 
         public override string GetEditorTitle() {

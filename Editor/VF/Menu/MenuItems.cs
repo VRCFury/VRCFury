@@ -54,6 +54,16 @@ namespace VF.Menu {
         public static void RunManualPen() {
             OrificeCreatorMenuItem.RunPen();
         }
+        
+        [MenuItem("Tools/VRCFury/Remove OscGB from avatar", priority = 1205)]
+        private static void RunOGBRemove() {
+            DPSContactUpgradeBuilder.Remove();
+        }
+
+        [MenuItem("Tools/VRCFury/Remove OscGB from avatar", true)]
+        private static bool RunOGBRemoveCheck() {
+            return DPSContactUpgradeBuilder.Check();
+        }
 
         //
         

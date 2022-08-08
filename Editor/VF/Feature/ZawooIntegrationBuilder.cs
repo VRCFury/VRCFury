@@ -83,7 +83,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         foreach (var zawooRoot in GetZawooRoots()) {
             ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
         }
-        DPSContactUpgradeBuilder.Apply(avatarObject);
+        addOtherFeature(new OGBIntegration());
     }
 
     [FeatureBuilderAction(applyToVrcClone:true)]
@@ -93,7 +93,6 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
             Debug.Log("Deactivating zawoo prefab on upload: " + obj.name);
             obj.SetActive(false);
         }
-        DPSContactUpgradeBuilder.Apply(avatarObject);
     }
 
     private T LoadAssetByName<T>(string name) where T : Object {

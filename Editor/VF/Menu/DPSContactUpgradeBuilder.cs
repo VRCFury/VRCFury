@@ -46,8 +46,18 @@ namespace VF.Menu {
             if (obj == null) return false;
             return true;
         }
+        
+        public static void Remove() {
+            var obj = MenuUtils.GetSelectedAvatar();
+            Purge(obj);
+            EditorUtility.DisplayDialog(
+                "OscGB Upgrade",
+                "Removed OGB from avatar",
+                "Ok"
+            );
+        }
 
-        public static string Apply(GameObject avatarObject) {
+        private static void Purge(GameObject avatarObject) {
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             // Clean up
@@ -82,6 +92,10 @@ namespace VF.Menu {
             foreach (var c in avatarObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
                 maybeRemoveComponent(c, c.collisionTags);
             }
+        }
+
+        public static string Apply(GameObject avatarObject) {
+            Purge(avatarObject);
 
             var addedOGB = new List<string>();
             var usedNames = new List<string>();
@@ -150,11 +164,6 @@ namespace VF.Menu {
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
                 AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
-                if (!obj.transform.Find(MARKER_PEN)) {
-                    var marker = new GameObject(MARKER_PEN);
-                    marker.transform.SetParent(obj.transform, false);
-                }
-
                 addedOGB.Add(path);
             }
 
@@ -197,11 +206,6 @@ namespace VF.Menu {
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
                 AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
-                if (!obj.transform.Find(MARKER_ORF)) {
-                    var marker = new GameObject(MARKER_ORF);
-                    marker.transform.SetParent(obj.transform, false);
-                }
-                
                 addedOGB.Add(path);
             }
 

@@ -185,5 +185,9 @@ namespace VF.Model.Feature {
     [Serializable]
     public class MakeWriteDefaultsOff : FeatureModel {
     }
+    
+    [Serializable]
+    public class OGBIntegration : FeatureModel {
+    }
 
 }
