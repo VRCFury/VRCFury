@@ -163,6 +163,13 @@ public class VRCFuryBuilder {
             if (c.gameObject != avatarObject) Object.DestroyImmediate(c);
         }
 
+        if (syncedParams.CalcTotalCost() > VRCExpressionParameters.MAX_PARAMETER_COST) {
+            throw new Exception(
+                "Avatar is out of space for parameters! Used "
+                + syncedParams.CalcTotalCost() + "/" + VRCExpressionParameters.MAX_PARAMETER_COST
+                + ". Delete some params from your avatar's param file, or disable some VRCFury features.");
+        }
+
         progress.Progress(1, "Finishing Up");
         EditorUtility.SetDirty(fxController);
         EditorUtility.SetDirty(menu);
