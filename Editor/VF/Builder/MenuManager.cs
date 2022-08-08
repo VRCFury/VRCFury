@@ -106,7 +106,7 @@ namespace VF.Builder {
                     var prefix2 = new List<string>(prefix);
                     prefix2.Add(control.name);
                     GetMenu(prefix2.ToArray(), control.icon);
-                    MergeMenu(prefix2.ToArray(), control.subMenu);
+                    MergeMenu(prefix2.ToArray(), control.subMenu, rewriteParamName);
                 } else {
                     AddMenuItem(prefix, CloneControl(control, rewriteParamName));
                 }
