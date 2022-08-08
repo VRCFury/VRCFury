@@ -19,7 +19,7 @@ namespace VF.Feature {
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.WrappedLabel("This feature will automatically add OGB contacts to your avatar (only during upload)"));
+            return VRCFuryEditorUtils.WrappedLabel("This feature will automatically add OGB contacts to your avatar (only during upload)");
         }
 
         public override bool AvailableOnProps() {
