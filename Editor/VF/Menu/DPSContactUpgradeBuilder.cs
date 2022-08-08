@@ -55,7 +55,9 @@ namespace VF.Menu {
             // Clean up
             for (var i = 0; i < fx.parameters.Length; i++) {
                 var param = fx.parameters[i];
-                if (param.name.StartsWith("TPS") && param.name.Contains("/VF")) {
+                var isOldTpsVf = param.name.StartsWith("TPS") && param.name.Contains("/VF");
+                var isOgb = param.name.StartsWith("OGB/");
+                if (isOldTpsVf || isOgb) {
                     fx.RemoveParameter(param);
                     i--;
                 }
@@ -269,7 +271,7 @@ namespace VF.Menu {
             var child = new GameObject();
             child.name = "OGB_Receiver_" + objName;
             child.transform.SetParent(obj.transform, false);
-            controller.NewFloat(param);
+            //controller.NewFloat(param);
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
             receiver.parameter = param;
