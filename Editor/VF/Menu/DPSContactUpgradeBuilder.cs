@@ -296,9 +296,10 @@ namespace VF.Menu {
             bool materialIsDps(Material mat) {
                 if (mat == null) return false;
                 if (!mat.shader) return false;
-                if (mat.shader.name == "Raliv/Penetrator") return true;
-                if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return true;
-                if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return true;
+                if (mat.shader.name == "Raliv/Penetrator") return true; // Raliv
+                if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return true; // XSToon w/ Raliv
+                if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return true; // Poiyomi 7 w/ Raliv
+                if (mat.shader.name.Contains("DPS") && mat.HasProperty("_ReCurvature")) return true; // UnityChanToonShader w/ DPS
                 return false;
             };
             bool materialIsTps(Material mat) {
