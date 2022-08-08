@@ -49,17 +49,18 @@ namespace VF.Menu {
 
         public static string Apply(GameObject avatarObject) {
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-            var fx = VRCAvatarUtils.GetAvatarFx(avatar);
-            var controller = new VFAController(fx, null, VRCAvatarDescriptor.AnimLayerType.FX);
 
             // Clean up
-            for (var i = 0; i < fx.parameters.Length; i++) {
-                var param = fx.parameters[i];
-                var isOldTpsVf = param.name.StartsWith("TPS") && param.name.Contains("/VF");
-                var isOgb = param.name.StartsWith("OGB/");
-                if (isOldTpsVf || isOgb) {
-                    fx.RemoveParameter(param);
-                    i--;
+            var fx = VRCAvatarUtils.GetAvatarFx(avatar);
+            if (fx) {
+                for (var i = 0; i < fx.parameters.Length; i++) {
+                    var param = fx.parameters[i];
+                    var isOldTpsVf = param.name.StartsWith("TPS") && param.name.Contains("/VF");
+                    var isOgb = param.name.StartsWith("OGB/");
+                    if (isOldTpsVf || isOgb) {
+                        fx.RemoveParameter(param);
+                        i--;
+                    }
                 }
             }
 
@@ -131,23 +132,23 @@ namespace VF.Menu {
 
                 // Receivers
                 var name = getNextName("OGB/Pen/" + obj.name.Replace('/','_'));
-                AddReceiver(obj, tightPos, name + "/TouchSelfClose", "TouchSelfClose", controller, radius+extraRadiusForTouch, SelfContacts, allowOthers:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", "TouchSelf", controller, length+extraRadiusForTouch, SelfContacts, allowOthers:false, localOnly:true);
-                AddReceiver(obj, tightPos, name + "/TouchOthersClose", "TouchOthersClose", controller, radius+extraRadiusForTouch, BodyContacts, allowSelf:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                AddReceiver(obj, Vector3.zero, name + "/TouchOthers", "TouchOthers", controller, length+extraRadiusForTouch, BodyContacts, allowSelf:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/PenSelf", "PenSelf", controller, length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/PenOthers", "PenOthers", controller, length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/FrotOthers", "FrotOthers", controller, length, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", controller, radius+extraRadiusForFrot, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, tightPos, name + "/TouchSelfClose", "TouchSelfClose", radius+extraRadiusForTouch, SelfContacts, allowOthers:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, Vector3.zero, name + "/TouchSelf", "TouchSelf", length+extraRadiusForTouch, SelfContacts, allowOthers:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/TouchOthersClose", "TouchOthersClose", radius+extraRadiusForTouch, BodyContacts, allowSelf:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, Vector3.zero, name + "/TouchOthers", "TouchOthers", length+extraRadiusForTouch, BodyContacts, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelf", "PenSelf", length, new []{CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthers", "PenOthers", length, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/FrotOthers", "FrotOthers", length, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, tightPos, name + "/FrotOthersClose", "FrotOthersClose", radius+extraRadiusForFrot, new []{CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant);
 
                 // Version Contacts
                 var versionLocalTag = RandomTag();
                 var versionBeaconTag = "OGB_VERSION_" + beaconVersion;
                 AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
                 // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + penVersion, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + penVersion, "Version", 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
-                AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
                 if (!obj.transform.Find(MARKER_PEN)) {
                     var marker = new GameObject(MARKER_PEN);
@@ -175,26 +176,26 @@ namespace VF.Menu {
                 var frotPos = 0.05f;
                 var closeRadius = 0.1f;
                 var name = getNextName("OGB/Orf/" + obj.name.Replace('/','_'));
-                AddReceiver(obj, forward * -oscDepth, name + "/TouchSelf", "TouchSelf", controller, oscDepth, SelfContacts, allowOthers:false, localOnly:true);
-                AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchSelfClose", "TouchSelfClose", controller, closeRadius, SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
-                AddReceiver(obj, forward * -oscDepth, name + "/TouchOthers", "TouchOthers", controller, oscDepth, BodyContacts, allowSelf:false, localOnly:true);
-                AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchOthersClose", "TouchOthersClose", controller, closeRadius, BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
-                AddReceiver(obj, Vector3.zero, name + "/PenSelfNewRoot", "PenSelfNewRoot", controller, 1f, new []{CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/PenSelfNewTip", "PenSelfNewTip", controller, 1f, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
-                AddReceiver(obj, forward * -oscDepth, name + "/PenOthers", "PenOthers", controller, oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, forward * -(oscDepth/2), name + "/PenOthersClose", "PenOthersClose", controller, closeRadius, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
-                AddReceiver(obj, Vector3.zero, name + "/PenOthersNewRoot", "PenOthersNewRoot", controller, 1f, new []{CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, Vector3.zero, name + "/PenOthersNewTip", "PenOthersNewTip", controller, 1f, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", controller, frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * -oscDepth, name + "/TouchSelf", "TouchSelf", oscDepth, SelfContacts, allowOthers:false, localOnly:true);
+                AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchSelfClose", "TouchSelfClose", closeRadius, SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, forward * -oscDepth, name + "/TouchOthers", "TouchOthers", oscDepth, BodyContacts, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * -(oscDepth/2), name + "/TouchOthersClose", "TouchOthersClose", closeRadius, BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, forward * -oscDepth, name + "/PenOthers", "PenOthers", oscDepth, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * -(oscDepth/2), name + "/PenOthersClose", "PenOthersClose", closeRadius, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, forward * frotPos, name + "/FrotOthers", "FrotOthers", frotRadius, new []{CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
 
                 // Version Contacts
                 var versionLocalTag = RandomTag();
                 var versionBeaconTag = "OGB_VERSION_" + beaconVersion;
                 AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
                 // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + orfVersion, "Version", controller, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+                AddReceiver(obj, Vector3.one * 0.01f, name + "/Version/" + orfVersion, "Version", 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
                 AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
-                AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", controller, 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
+                AddReceiver(obj, Vector3.zero, name + "/VersionMatch", "VersionBeacon", 1f, new []{versionBeaconTag, "TPS_" + RandomTag()}, allowSelf:false, localOnly:true);
 
                 if (!obj.transform.Find(MARKER_ORF)) {
                     var marker = new GameObject(MARKER_ORF);
@@ -257,7 +258,6 @@ namespace VF.Menu {
             Vector3 pos,
             String param,
             String objName,
-            VFAController controller,
             float radius,
             string[] tags,
             bool allowOthers = true,
@@ -271,7 +271,6 @@ namespace VF.Menu {
             var child = new GameObject();
             child.name = "OGB_Receiver_" + objName;
             child.transform.SetParent(obj.transform, false);
-            //controller.NewFloat(param);
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
             receiver.parameter = param;
