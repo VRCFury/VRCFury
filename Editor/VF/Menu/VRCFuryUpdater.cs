@@ -132,7 +132,7 @@ namespace VF.Menu {
             }
 
             Debug.Log("Waiting for Unity to recompile scripts ...");
-            EditorUtility.DisplayProgressBar("VRCFury Updater", "Unity is recompiling scripts ...", 0);
+            EditorUtility.DisplayDialog("VRCFury Updater", "Unity is now recompiling VRCFury. You will receive another message when the upgrade is complete.", "Ok");
         });
     }
 
