@@ -50,7 +50,7 @@ namespace VF.Menu {
             
             EditorUtility.DisplayDialog("OscGB",
                 (ring ? "Ring" : "Hole") +
-                " added.\n\nBlue arrow should face OUTWARD.\nDon't forget to run OseGB Upgrader after placing in position.", "Ok");
+                " added.\n\nBlue arrow should face OUTWARD.\nDon't forget to attach it to the nearest bone in your avatar, AND run the OseGB Upgrader after placing in position.", "Ok");
         }
 
         public static void RunPen() {
