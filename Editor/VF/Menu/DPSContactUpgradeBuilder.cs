@@ -335,12 +335,15 @@ namespace VF.Menu {
                 }
             }
             foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                var meshFilter = renderer.GetComponent<MeshFilter>();
-                if (!meshFilter) continue;
-                if (renderer.sharedMaterials.Any(materialIsDps))
-                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
-                else if (renderer.sharedMaterials.Any(materialIsTps))
-                    skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
+                var isDps = renderer.sharedMaterials.Any(materialIsDps);
+                var isTps = renderer.sharedMaterials.Any(materialIsTps);
+                var hasMarker = renderer.transform.Find(MARKER_PEN) != null;
+                if (isDps || isTps || hasMarker) {
+                    var meshFilter = renderer.GetComponent<MeshFilter>();
+                    if (meshFilter) {
+                        skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
+                    }
+                }
             }
             return skins;
         }
