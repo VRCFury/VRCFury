@@ -7,8 +7,10 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Inspector;
 using VF.Menu;
 using VF.Model.Feature;
 
@@ -102,6 +104,10 @@ namespace VF.Feature {
 
         public override string GetEditorTitle() {
             return "TPS Integration";
+        }
+        
+        public override VisualElement CreateEditor(SerializedProperty prop) {
+            return VRCFuryEditorUtils.WrappedLabel("This feature will automatically run Poiyomi TPS setup on your avatar.");
         }
 
         public override bool AvailableOnProps() {

@@ -7,6 +7,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Inspector;
 using VF.Menu;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -110,12 +111,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
-        content.Add(new Label() {
-            text = "This feature will automatically import zawoo prefabs into VRCFury.",
-            style = {
-                whiteSpace = WhiteSpace.Normal
-            }
-        });
+        content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will automatically attach Zawoo prefabs to your avatar."));
         
         content.Add(new Button(() => {
             ZawooDeleter.Run(avatarObject);

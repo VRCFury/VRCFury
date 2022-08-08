@@ -5,6 +5,8 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace VF.Feature {
 
@@ -15,6 +17,9 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
     
     [FeatureBuilderAction]
     public void Apply() {
+        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+        avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
+        
         var visemes = controller.NewLayer("Visemes");
         var VisemeParam = controller.NewInt("Viseme", usePrefix: false);
         void addViseme(int index, string text, State clipState) {
@@ -38,6 +43,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
+        content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will allow you to use animations for your avatar's visemes. Note this will override any LipSync set on the VRC Avatar Descriptor."));
         foreach (var name in visemeNames) {
             content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state_" + name), name));
         }

@@ -93,6 +93,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
+        content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will enable the security submenu in your avatar's menu. You must enter the correct pin to unlock any VRCFury toggles marked with the 'Security' flag."));
         content.Add(VRCFuryEditorUtils.WrappedLabel("Pin Number (min 4 digits, max 10 digits, can only use numbers 1-7)"));
         content.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("pinNumber")));
         return content;

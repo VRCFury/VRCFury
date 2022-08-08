@@ -42,7 +42,7 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(new Label() {
-                text = "This feature will resize the bounding box of all meshes to your avatar's size, preventing small objects from disappearing when near your camera in game.",
+                text = "This feature will ensure a minimum size of your avatar's bounding boxes. This will prevent small objects on your avatar from disappearing when near the camera.",
                 style = {
                     whiteSpace = WhiteSpace.Normal
                 }

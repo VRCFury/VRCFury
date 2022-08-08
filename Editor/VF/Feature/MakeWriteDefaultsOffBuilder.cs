@@ -16,7 +16,7 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var container = new VisualElement();
-            container.Add(VRCFuryEditorUtils.WrappedLabel("This feature will automatically make your avatar 'Write Defaults Off' (only during upload)"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("This feature will automatically make your avatar 'Write Defaults Off'."));
             return container;
         }
     }

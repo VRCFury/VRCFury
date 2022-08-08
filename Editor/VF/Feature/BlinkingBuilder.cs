@@ -4,6 +4,7 @@ using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
 
@@ -11,6 +12,9 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
     [FeatureBuilderAction]
     public void Apply() {
         if (!StateExists(model.state)) return;
+
+        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+        avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
 
         var blinkTriggerSynced = controller.NewBool("BlinkTriggerSynced", synced: true);
         var blinkTrigger = controller.NewTrigger("BlinkTrigger");
@@ -88,6 +92,8 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var c = new VisualElement();
+        c.Add(VRCFuryEditorUtils.WrappedLabel("This feature will manage eye-blinking for your avatar. Note this will disable 'Eyelid Type' on the VRC avatar descriptor."));
+        c.Add(new Label("Blinking state:"));
         c.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state")));
         var adv = new Foldout {
             text = "Advanced",
