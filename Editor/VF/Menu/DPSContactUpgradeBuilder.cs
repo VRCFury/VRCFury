@@ -220,7 +220,7 @@ namespace VF.Menu {
                     }
 
                     var main = new GameObject("Root");
-                    main.transform.SetParent(obj.transform);
+                    main.transform.SetParent(obj.transform, false);
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
@@ -229,9 +229,9 @@ namespace VF.Menu {
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
                     var front = new GameObject("Front");
-                    front.transform.SetParent(obj.transform);
+                    front.transform.SetParent(obj.transform, false);
                     var frontLight = front.AddComponent<Light>();
-                    front.transform.position = new Vector3(0, 0, 0.01f / obj.transform.lossyScale.x);
+                    front.transform.localPosition = new Vector3(0, 0, 0.01f / obj.transform.lossyScale.x);
                     frontLight.type = LightType.Point;
                     frontLight.color = Color.black;
                     frontLight.range = 0.45f;
