@@ -55,13 +55,14 @@ Once you add a VRCFury component to your avatar (or prop), you can add any combi
 
 ### Advanced Visemes
 
-This feature allows you to use VRCFury actions as visemes. If you use this, be sure your avatar descriptor is set to LipSync Mode "Viseme Parameter Only."
+This feature allows you to use VRCFury actions as visemes.
 
 Benefits:
 
 * Use animation clips, material flipbooks, or any other VRCFury action as a speech viseme.
 * You can use bone transforms in your visemes, meaning you can open your jaw rather than using an "open mouth" blend shape.
 * This can enhance some features, such as tongue movement, while your mouth is open during speech.
+* Note that enabling this feature will disable your VRC Avatar Descriptor's default viseme support.
 
 ### Armature Link
 
