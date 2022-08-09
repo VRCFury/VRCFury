@@ -17,6 +17,7 @@ using VF.Model.Feature;
 namespace VF.Feature {
     public class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration> {
         private static readonly BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
+        private int matCounter = 0;
 
         [FeatureBuilderAction]
         public void Apply() {
@@ -24,32 +25,26 @@ namespace VF.Feature {
 
             var tpsSetup = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.TPS_Setup");
             if (tpsSetup == null) {
-                Debug.LogError("TPS is not installed!");
-                return;
+                throw new Exception("TPS Integration Feature cannot run, because Poiyomi TPS is not installed!");
             }
-            
-            Debug.Log("Running TPS on " + avatarObject + " ...");
 
-            var badMaterials = new List<string>();
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                foreach (var mat in skin.sharedMaterials) {
-                    if (AssetDatabase.GetAssetPath(mat).Contains("/TPS_")) {
-                        badMaterials.Add(skin.gameObject.transform.GetHierarchyPath());
-                    }
+                var mats = skin.sharedMaterials;
+                for (var i = 0; i < mats.Length; i++) {
+                    ManageMaterial(skin.gameObject, skin, mats[i], m => {
+                        mats[i] = m;
+                        skin.sharedMaterials = mats;
+                    });
                 }
             }
             foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                foreach (var mat in mesh.sharedMaterials) {
-                    if (AssetDatabase.GetAssetPath(mat).Contains("/TPS_")) {
-                        badMaterials.Add(mesh.gameObject.transform.GetHierarchyPath());
-                    }
+                var mats = mesh.sharedMaterials;
+                for (var i = 0; i < mats.Length; i++) {
+                    ManageMaterial(mesh.gameObject, null, mats[i], m => {
+                        mats[i] = m;
+                        mesh.sharedMaterials = mats;
+                    });
                 }
-            }
-            if (badMaterials.Count > 0) {
-                throw new VRCFBuilderException(
-                    "TPSIntegration failed because some materials have already been locked using the manual TPS setup wizard." +
-                    " Revert the materials on these objects back to their default Poiyomi file instead of the copy created by the wizard:\n\n" +
-                    string.Join("\n", badMaterials));
             }
 
             var tpsClipDir = tmpDir;
@@ -75,7 +70,7 @@ namespace VF.Feature {
                     i,
                     tpsClipDir,
                     true, // place contacts
-                    true, // copy materials
+                    false, // copy materials
                     true // configure materials
                 );
             }
@@ -102,6 +97,39 @@ namespace VF.Feature {
             }
         }
 
+        private void ManageMaterial(GameObject obj, SkinnedMeshRenderer skin, Material mat, Action<Material> update) {
+            var isTps = mat.HasProperty("_TPSPenetratorEnabled") && mat.GetFloat("_TPSPenetratorEnabled") > 0;
+            if (!isTps) return;
+            if (AssetDatabase.GetAssetPath(mat).Contains("/TPS_")) {
+                throw new VRCFBuilderException(
+                    "TPS Integration failed because the material on a penetrator has already been locked using the manual TPS setup wizard." +
+                    " Revert the material on this object back to its default Poiyomi file instead of the copy created by the wizard:\n\n" +
+                    obj.transform.GetHierarchyPath());
+            }
+            if (mat.shader.name.Contains("Locked")) {
+                throw new VRCFBuilderException(
+                    "TPS Integration failed because the material on a penetrator has already been locked by poiyomi." +
+                    " Please go to the material on this object and unlock it:\n\n" +
+                    obj.transform.GetHierarchyPath());
+            }
+            var copy = new Material(mat);
+            AssetDatabase.CreateAsset(copy, tmpDir + "/VRCFTPS_" + (matCounter++) + ".mat");
+
+            if (skin != null) {
+                var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
+                var bakeMethod = bakeUtil.GetMethod("BakePositionsToTexture", new[] { typeof(Renderer), typeof(Texture2D) });
+                Texture2D tex = (Texture2D)callWithOptionalParams(bakeMethod, null, skin, null);
+                copy.SetTexture("_TPS_BakedMesh", tex);
+                copy.SetFloat("_TPS_IsSkinnedMeshRenderer", 1);
+                copy.EnableKeyword("TPS_IsSkinnedMesh");
+            } else {
+                copy.SetFloat("_TPS_IsSkinnedMeshRenderer", 0);
+                copy.DisableKeyword("TPS_IsSkinnedMesh");
+            }
+
+            update(copy);
+        }
+
         public override string GetEditorTitle() {
             return "TPS Integration";
         }
@@ -114,13 +142,13 @@ namespace VF.Feature {
             return false;
         }
 
-        private static void callWithOptionalParams(MethodInfo method, object obj, params object[] prms) {
+        private static object callWithOptionalParams(MethodInfo method, object obj, params object[] prms) {
             var list = new List<object>(prms);
             var paramCount = method.GetParameters().Length;
             while (list.Count < paramCount) {
                 list.Add(Type.Missing);
             }
-            method.Invoke(obj, list.ToArray());
+            return method.Invoke(obj, list.ToArray());
         }
     }
 }
