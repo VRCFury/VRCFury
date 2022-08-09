@@ -189,5 +189,9 @@ namespace VF.Model.Feature {
     [Serializable]
     public class OGBIntegration : FeatureModel {
     }
+    
+    [Serializable]
+    public class RemoveHandGestures : FeatureModel {
+    }
 
 }
