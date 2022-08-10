@@ -31,7 +31,7 @@ namespace VF.Builder {
         private VFAController _controller;
         private VFAController GetController() {
             if (_controller == null) {
-                _controller = new VFAController(ctrl, GetNoopClip(), type);
+                _controller = new VFAController(ctrl, type);
             }
             return _controller;
         }

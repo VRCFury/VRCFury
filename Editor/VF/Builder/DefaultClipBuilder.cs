@@ -21,54 +21,29 @@ namespace VF.Builder {
                     action(state.state);
             }
         }
+        
+        public static void ForEachClip(AnimatorState state, Action<AnimationClip> action) {
+            var motions = new Stack<Motion>();
+            motions.Push(state.motion);
+            while (motions.Count > 0) {
+                var motion = motions.Pop();
+                if (motion == null) continue;
+                switch (motion) {
+                    case AnimationClip clip:
+                        action(clip);
+                        break;
+                    case BlendTree tree:
+                        foreach (var child in tree.children) {
+                            motions.Push(child.motion);
+                        }
+                        break;
+                }
+            }
+        }
 
         public static void ForEachClip(AnimatorControllerLayer layer, Action<AnimationClip> action) {
             ForEachState(layer, state => {
-                var motions = new Stack<Motion>();
-                motions.Push(state.motion);
-                while (motions.Count > 0) {
-                    var motion = motions.Pop();
-                    if (motion == null) continue;
-                    switch (motion) {
-                        case AnimationClip clip:
-                            action(clip);
-                            break;
-                        case BlendTree tree:
-                            foreach (var child in tree.children) {
-                                motions.Push(child.motion);
-                            }
-                            break;
-                    }
-                }
-            });
-        }
-        
-        public static void CollectDefaults(AnimatorControllerLayer layer, AnimationClip defaultClip, GameObject baseObject) {
-            var alreadySet = new HashSet<EditorCurveBinding>();
-            foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
-            foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
-
-            ForEachClip(layer, clip => {
-                foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                    if (alreadySet.Contains(binding)) continue;
-                    alreadySet.Add(binding);
-                    var exists = AnimationUtility.GetFloatValue(baseObject, binding, out var value);
-                    if (exists) {
-                        AnimationUtility.SetEditorCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
-                    } else if (binding.path != "_ignored") {
-                        Debug.LogWarning("Missing default value for '" + binding.path + "' in " + layer.name);
-                    }
-                }
-                foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                    if (alreadySet.Contains(binding)) continue;
-                    alreadySet.Add(binding);
-                    var exists = AnimationUtility.GetObjectReferenceValue(baseObject, binding, out var value);
-                    if (exists) {
-                        AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
-                    } else if (binding.path != "_ignored") {
-                        Debug.LogWarning("Missing default value for '" + binding.path + "' in " + layer.name);
-                    }
-                }
+                ForEachClip(state, action);
             });
         }
     }

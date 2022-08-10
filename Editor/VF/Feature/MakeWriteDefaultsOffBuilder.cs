@@ -8,6 +8,7 @@ namespace VF.Feature {
     public class MakeWriteDefaultsOffBuilder : FeatureBuilder<MakeWriteDefaultsOff> {
         [FeatureBuilderAction]
         public void DoStuff() {
+            // The action of this model actually happens inside FixWriteDefaultsBuilder (which always runs on all builds)
         }
 
         public override string GetEditorTitle() {

@@ -8,12 +8,10 @@ namespace VF.Builder {
 
 public class VFAController {
     private readonly AnimatorController ctrl;
-    internal readonly AnimationClip noopClip;
     private readonly VRCAvatarDescriptor.AnimLayerType type;
 
-    public VFAController(AnimatorController ctrl, AnimationClip noopClip, VRCAvatarDescriptor.AnimLayerType type) {
+    public VFAController(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
         this.ctrl = ctrl;
-        this.noopClip = noopClip;
         this.type = type;
     }
 
@@ -73,8 +71,7 @@ public class VFALayer {
         var lastNode = GetLastNodeForPositioning();
         layer.stateMachine.AddState(name);
         var node = GetLastNode().Value;
-        node.state.writeDefaultValues = false;
-        node.state.motion = ctrl.noopClip;
+        node.state.writeDefaultValues = true;
 
         var state = new VFAState(node, layer);
         if (lastNode.HasValue) state.Move(lastNode.Value.position, 0, 1);

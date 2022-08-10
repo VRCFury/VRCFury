@@ -75,10 +75,8 @@ public class VRCFuryBuilder {
         var progress = new ProgressBar("VRCFury is building ...");
 
         // Unhook everything from our assets before we delete them
-        progress.Progress(0, "Cleaning up original (in case of old builds)");
+        progress.Progress(0, "Cleaning up old VRCF cruft from avatar (in case of old builds)");
         DetachFromAvatar(originalObject);
-        
-        progress.Progress(0.5, "Cleaning up clone (in case of old builds)");
         DetachFromAvatar(avatarObject);
 
         // Nuke all our old generated assets
@@ -96,17 +94,15 @@ public class VRCFuryBuilder {
         }
         Directory.CreateDirectory(tmpDir);
 
-        // Figure out what assets we're going to be messing with
+        // Create our new copies of the assets, and attach them
+        progress.Progress(0.2, "Attaching to avatar");
         var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
         var fxController = GetOrCreateAvatarFx(avatar, tmpDir, originalObject.name);
         var menu = GetOrCreateAvatarMenu(avatar, tmpDir, originalObject.name);
         var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir, originalObject.name);
-
-        // Attach our assets back to the avatar
-        progress.Progress(0.2, "Attaching to avatar");
         AttachToAvatar(avatarObject, fxController, menu, syncedParams);
 
-        progress.Progress(0.25, "Joining Menus");
+        progress.Progress(0.3, "Joining Menus");
         MenuSplitter.JoinMenus(menu);
 
         // Apply configs
@@ -114,42 +110,20 @@ public class VRCFuryBuilder {
         var paramsManager = new ParamManager(syncedParams);
         var controllerManager = new ControllerManager(fxController, tmpDir, paramsManager, VRCAvatarDescriptor.AnimLayerType.FX);
         var motions = new ClipBuilder(avatarObject);
-        var defaultClip = controllerManager.NewClip("Defaults");
         ApplyFuryConfigs(
             controllerManager,
             menuManager,
             paramsManager,
             motions,
             tmpDir,
-            defaultClip,
             avatarObject,
-            progress.Partial(0.3, 0.8),
-            out var forceWriteDefaultsOff
+            progress.Partial(0.3, 0.8)
         );
         
         progress.Progress(0.8, "Splitting Menus");
         MenuSplitter.SplitMenus(menu);
 
-        if (forceWriteDefaultsOff) {
-            progress.Progress(0.85, "Creating Write Defaults Fix Copy");
-
-            AddDefaultsLayer(controllerManager, defaultClip, avatarObject, true);
-            
-            foreach (var layer in fxController.layers) {
-                DefaultClipBuilder.ForEachState(layer, state => {
-                    state.writeDefaultValues = false;
-                    if (state.motion == null) state.motion = controllerManager.GetNoopClip();
-                });
-            }
-        } else {
-            progress.Progress(0.85, "Collecting default states");
-            AddDefaultsLayer(controllerManager, defaultClip, avatarObject, false);
-
-            progress.Progress(0.9, "Adjusting 'Write Defaults'");
-            UseWriteDefaultsIfNeeded(controllerManager);
-        }
-        
-        progress.Progress(0.95, "Removing Junk Components");
+        progress.Progress(0.9, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
             if (c.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(c.gameObject)) {
                 Object.DestroyImmediate(c);
@@ -184,10 +158,8 @@ public class VRCFuryBuilder {
         ParamManager prms,
         ClipBuilder motions,
         string tmpDir,
-        AnimationClip defaultClip,
         GameObject avatarObject,
-        ProgressBar progress,
-        out bool forceWriteDefaultsOff
+        ProgressBar progress
     ) {
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
@@ -219,6 +191,8 @@ public class VRCFuryBuilder {
                 }
             }
         }
+
+        AddModel(new FixWriteDefaults(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();
@@ -231,7 +205,6 @@ public class VRCFuryBuilder {
             builder.menu = menu;
             builder.prms = prms;
             builder.motions = motions;
-            builder.defaultClip = defaultClip;
             builder.avatarObject = avatarObject;
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
@@ -239,9 +212,6 @@ public class VRCFuryBuilder {
 
             action.Call();
         }
-
-        forceWriteDefaultsOff = collectedFeatures
-            .Any(feature => feature is MakeWriteDefaultsOff);
     }
 
     private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
@@ -330,56 +300,6 @@ public class VRCFuryBuilder {
 
     public static bool IsVrcfAsset(Object obj) {
         return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
-    }
-
-    private static void AddDefaultsLayer(ControllerManager manager, AnimationClip defaultClip, GameObject avatarObject, bool applyToUnmanagedLayers) {
-        var defaultLayer = manager.NewLayer("Defaults", true);
-        defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
-        foreach (var layer in manager.GetManagedLayers()) {
-            DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject);
-        }
-        if (applyToUnmanagedLayers) {
-            foreach (var layer in manager.GetUnmanagedLayers()) {
-                DefaultClipBuilder.CollectDefaults(layer, defaultClip, avatarObject);
-            }
-        }
-    }
-    
-    private static void UseWriteDefaultsIfNeeded(ControllerManager manager) {
-        var offStates = 0;
-        var onStates = 0;
-        foreach (var layer in manager.GetUnmanagedLayers()) {
-            DefaultClipBuilder.ForEachState(layer, state => {
-                if (state.writeDefaultValues) onStates++;
-                else offStates++;
-            });
-        }
-
-        if (onStates > 0 && offStates > 0) {
-            var weirdStates = new List<string>();
-            var weirdAreOn = offStates > onStates;
-            foreach (var layer in manager.GetUnmanagedLayers()) {
-                DefaultClipBuilder.ForEachState(layer, state => {
-                    if (state.writeDefaultValues == weirdAreOn) {
-                        weirdStates.Add(layer.name+"."+state.name);
-                    }
-                });
-            }
-            Debug.LogWarning("Your animation controller contains a mix of Write Defaults ON and Write Defaults OFF states." +
-                           " (" + onStates + " on, " + offStates + " off)." +
-                           " Doing this may cause weird issues to happen with your animations in game." +
-                           " This is not an issue with VRCFury, but an issue with your avatar's custom animation controller.");
-            Debug.LogWarning("The broken states are most likely: " + String.Join(",", weirdStates));
-        }
-        
-        // If half of the old states use writeDefaults, safe to assume it should be used everywhere
-        var shouldUseWriteDefaults = onStates >= offStates && onStates > 0;
-        if (shouldUseWriteDefaults) {
-            Debug.Log("Detected usage of 'Write Defaults', adjusting generated states to use it too.");
-            foreach (var layer in manager.GetManagedLayers()) {
-                DefaultClipBuilder.ForEachState(layer, state => state.writeDefaultValues = true);
-            }
-        }
     }
 }
 

@@ -71,8 +71,7 @@ public class ControllerMerger {
             toState.cycleOffset = fromState.cycleOffset;
             toState.mirror = fromState.mirror;
             toState.iKOnFeet = fromState.iKOnFeet;
-            // We never use write defaults, because VRCFury will collect all the default values and handle them later
-            toState.writeDefaultValues = false;
+            toState.writeDefaultValues = fromState.writeDefaultValues;
             toState.tag = fromState.tag;
             toState.speedParameter = rewriteParamName(fromState.speedParameter);
             toState.cycleOffsetParameter = rewriteParamName(fromState.cycleOffsetParameter);

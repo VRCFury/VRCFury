@@ -194,4 +194,8 @@ namespace VF.Model.Feature {
     public class RemoveHandGestures : FeatureModel {
     }
 
+    [Serializable]
+    public class FixWriteDefaults : FeatureModel {
+    }
+
 }
