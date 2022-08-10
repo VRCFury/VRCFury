@@ -49,7 +49,7 @@ namespace VF.Feature {
 
             var tpsClipDir = tmpDir;
             Directory.CreateDirectory(tpsClipDir);
-            AnimatorController tpsAnimator = controller.GetRawController();
+            var tpsAnimator = AnimatorController.CreateAnimatorControllerAtPath(tpsClipDir + "/tmp.controller");
 
             var setup = ScriptableObject.CreateInstance(tpsSetup);
             tpsSetup.GetField("_avatar", b).SetValue(setup, avatarObject.transform);
@@ -95,6 +95,9 @@ namespace VF.Feature {
                     tpsClipDir
                 );
             }
+
+            var merger = new ControllerMerger(rewriteLayerName: layerName => controller.NewLayerName(layerName));
+            merger.Merge(tpsAnimator, controller.GetRawController());
         }
 
         private void ManageMaterial(GameObject obj, SkinnedMeshRenderer skin, Material mat, Action<Material> update) {

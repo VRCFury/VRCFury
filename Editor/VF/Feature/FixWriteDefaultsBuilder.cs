@@ -21,7 +21,13 @@ namespace VF.Feature {
             if (!useWriteDefaults) {
                 Debug.Log("Detected 'Write Defaults Off', adjusting VRCFury states to use it too.");
                 MakeWriteDefaultsOff(false);
-                return;
+            } else {
+                // Usually the VRCF layers will all have writeDefaults = on by default, but some won't (like full controllers)
+                foreach (var layer in controller.GetManagedLayers()) {
+                    DefaultClipBuilder.ForEachState(layer, state => {
+                        state.writeDefaultValues = true;
+                    });
+                }
             }
         }
         

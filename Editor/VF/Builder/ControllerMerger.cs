@@ -12,26 +12,26 @@ namespace VF.Builder {
  * Copies everything from one animator controller into another. Optionally rewriting all clips found along the way.
  */
 public class ControllerMerger {
-    private readonly Func<string, string> rewriteLayerName;
-    private readonly Func<string, string> rewriteParamName;
-    private readonly Func<AnimationClip, AnimationClip> rewriteClip;
-    private readonly Func<string, BlendTree> NewBlendTree;
+    private readonly Func<string, string> _rewriteLayerName;
+    private readonly Func<string, string> _rewriteParamName;
+    private readonly Func<AnimationClip, AnimationClip> _rewriteClip;
+    private readonly Func<string, BlendTree> _newBlendTree;
 
     public ControllerMerger(
-        Func<string, string> rewriteLayerName,
-        Func<string, string> rewriteParamName,
-        Func<AnimationClip, AnimationClip> rewriteClip,
-        Func<string, BlendTree> NewBlendTree
+        Func<string, string> rewriteLayerName = null,
+        Func<string, string> rewriteParamName = null,
+        Func<AnimationClip, AnimationClip> rewriteClip = null,
+        Func<string, BlendTree> NewBlendTree = null
     ) {
-        this.rewriteLayerName = rewriteLayerName;
-        this.rewriteParamName = rewriteParamName;
-        this.rewriteClip = rewriteClip;
-        this.NewBlendTree = NewBlendTree;
+        this._rewriteLayerName = rewriteLayerName;
+        this._rewriteParamName = rewriteParamName;
+        this._rewriteClip = rewriteClip;
+        this._newBlendTree = NewBlendTree;
     }
 
     public void Merge(AnimatorController from, AnimatorController to) {
         foreach (var param in from.parameters) {
-            var newName = rewriteParamName(param.name);
+            var newName = RewriteParamName(param.name);
             var exists = Array.Find(to.parameters, other => other.name == newName);
             if (exists == null) {
                 to.AddParameter(newName, param.type);
@@ -45,7 +45,7 @@ public class ControllerMerger {
         }
  
         foreach (var fromLayer in from.layers) {
-            to.AddLayer(rewriteLayerName(fromLayer.name));
+            to.AddLayer(RewriteLayerName(fromLayer.name));
             var toLayers = to.layers;
             var toLayer = toLayers[to.layers.Length-1];
             toLayer.avatarMask = fromLayer.avatarMask;
@@ -73,10 +73,10 @@ public class ControllerMerger {
             toState.iKOnFeet = fromState.iKOnFeet;
             toState.writeDefaultValues = fromState.writeDefaultValues;
             toState.tag = fromState.tag;
-            toState.speedParameter = rewriteParamName(fromState.speedParameter);
-            toState.cycleOffsetParameter = rewriteParamName(fromState.cycleOffsetParameter);
-            toState.mirrorParameter = rewriteParamName(fromState.mirrorParameter);
-            toState.timeParameter = rewriteParamName(fromState.timeParameter);
+            toState.speedParameter = RewriteParamName(fromState.speedParameter);
+            toState.cycleOffsetParameter = RewriteParamName(fromState.cycleOffsetParameter);
+            toState.mirrorParameter = RewriteParamName(fromState.mirrorParameter);
+            toState.timeParameter = RewriteParamName(fromState.timeParameter);
             toState.speedParameterActive = fromState.speedParameterActive;
             toState.cycleOffsetParameterActive = fromState.cycleOffsetParameterActive;
             toState.mirrorParameterActive = fromState.mirrorParameterActive;
@@ -116,13 +116,13 @@ public class ControllerMerger {
     private VRC_AvatarParameterDriver.Parameter CloneDriverParameter(VRC_AvatarParameterDriver.Parameter from) {
         var to = new VRC_AvatarParameterDriver.Parameter {
             type = from.type,
-            name = rewriteParamName(from.name),
+            name = RewriteParamName(from.name),
             value = from.value,
             valueMin = from.valueMin,
             valueMax = from.valueMax,
             chance = from.chance,
         };
-        CloneFieldIfPossible(from, to, "source", s => rewriteParamName((string)s));
+        CloneFieldIfPossible(from, to, "source", s => RewriteParamName((string)s));
         CloneFieldIfPossible(from, to, "convertRange");
         CloneFieldIfPossible(from, to, "sourceMin");
         CloneFieldIfPossible(from, to, "sourceMax");
@@ -148,15 +148,15 @@ public class ControllerMerger {
     private Motion CloneMotion(Motion from) {
         switch (from) {
             case AnimationClip clip:
-                return rewriteClip(clip);
+                return RewriteClip(clip);
             case BlendTree tree:
                 var oldBlendTree = tree;
                 var newBlendTree = NewBlendTree(oldBlendTree.name);
                 if (newBlendTree == null) {
                     return oldBlendTree;
                 }
-                newBlendTree.blendParameter = rewriteParamName(oldBlendTree.blendParameter);
-                newBlendTree.blendParameterY = rewriteParamName(oldBlendTree.blendParameterY);
+                newBlendTree.blendParameter = RewriteParamName(oldBlendTree.blendParameter);
+                newBlendTree.blendParameterY = RewriteParamName(oldBlendTree.blendParameterY);
                 newBlendTree.blendType = oldBlendTree.blendType;
                 newBlendTree.useAutomaticThresholds = oldBlendTree.useAutomaticThresholds;
                 newBlendTree.minThreshold = oldBlendTree.minThreshold;
@@ -174,7 +174,7 @@ public class ControllerMerger {
 
                 return newBlendTree;
             default:
-                return rewriteClip(null);
+                return RewriteClip(null);
         }
     }
 
@@ -210,7 +210,7 @@ public class ControllerMerger {
         foreach (var oldC in from.conditions) {
             conds.Add(new AnimatorCondition {
                 mode = oldC.mode,
-                parameter = rewriteParamName(oldC.parameter),
+                parameter = RewriteParamName(oldC.parameter),
                 threshold = oldC.threshold
             });
         }
@@ -272,6 +272,26 @@ public class ControllerMerger {
                 }
             }
         }
+    }
+    
+    private string RewriteLayerName(string name) {
+        if (_rewriteLayerName == null) return name;
+        return _rewriteLayerName(name);
+    }
+    
+    private string RewriteParamName(string name) {
+        if (_rewriteParamName == null) return name;
+        return _rewriteParamName(name);
+    }
+    
+    private AnimationClip RewriteClip(AnimationClip clip) {
+        if (_rewriteClip == null) return clip;
+        return _rewriteClip(clip);
+    }
+    
+    private BlendTree NewBlendTree(string name) {
+        if (_newBlendTree == null) return null;
+        return _newBlendTree(name);
     }
 }
 
