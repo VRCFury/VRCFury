@@ -33,8 +33,9 @@ namespace VF.Menu {
         public static string MARKER_PEN = "OGB_Marker_Pen";
 
         public static void Run() {
-            var obj = MenuUtils.GetSelectedAvatar();
-            var msg = Apply(obj);
+            var avatarObject = MenuUtils.GetSelectedAvatar();
+            Purge(avatarObject);
+            var msg = Apply(avatarObject);
             EditorUtility.DisplayDialog(
                 "OscGB Upgrade",
                 msg,
@@ -101,8 +102,6 @@ namespace VF.Menu {
         }
 
         public static string Apply(GameObject avatarObject) {
-            Purge(avatarObject);
-
             var addedOGB = new List<string>();
             var usedNames = new List<string>();
 

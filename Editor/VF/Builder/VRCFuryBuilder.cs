@@ -124,12 +124,6 @@ public class VRCFuryBuilder {
         MenuSplitter.SplitMenus(menu);
 
         progress.Progress(0.9, "Removing Junk Components");
-        foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
-            if (c.gameObject != avatarObject && PrefabUtility.IsPartOfPrefabInstance(c.gameObject)) {
-                Object.DestroyImmediate(c);
-            }
-        }
-
         foreach (var c in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             Object.DestroyImmediate(c);
         }

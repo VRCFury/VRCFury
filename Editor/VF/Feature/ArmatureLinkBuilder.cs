@@ -173,6 +173,10 @@ namespace VF.Feature {
             GameObject avatarBone;
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
                 var animator = avatarObject.GetComponent<Animator>();
+                if (!animator) {
+                    Debug.LogError("No humanoid animator on avatar. Skipping armature link.");
+                    return links;
+                }
                 avatarBone = animator.GetBoneTransform(model.boneOnAvatar)?.gameObject;
                 if (avatarBone == null) {
                     Debug.LogError("Failed to find " + model.boneOnAvatar + " bone on avatar. Skipping armature link.");
