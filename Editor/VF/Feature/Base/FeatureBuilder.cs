@@ -22,6 +22,7 @@ namespace VF.Feature.Base {
         public Action<FeatureModel> addOtherFeature;
         public int uniqueModelNum;
         public List<FeatureModel> allFeaturesInRun;
+        public GameObject editorObject;
 
         public virtual string GetEditorTitle() {
             return null;

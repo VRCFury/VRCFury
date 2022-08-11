@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Inspector;
 using VF.Model.Feature;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
 
@@ -32,12 +33,17 @@ public static class FeatureFinder {
         return allFeatures;
     }
 
-    public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(bool isProp) {
+    private static bool AllowAvatarFeatures(GameObject gameObject) {
+        return gameObject.GetComponent<VRCAvatarDescriptor>() || gameObject.name == "AvatarVrcFuryFeatures";
+    }
+
+    public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(GameObject gameObject) {
+        var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
         return GetAllFeatures()
             .Select(e => {
                 var impl = (FeatureBuilder)Activator.CreateInstance(e.Value);
                 var title = impl.GetEditorTitle();
-                var allowed = isProp ? impl.AvailableOnProps() : impl.AvailableOnAvatar();
+                var allowed = allowAvatarFeatures ? impl.AvailableOnAvatar() : impl.AvailableOnProps();
                 return Tuple.Create(title, allowed, e);
             })
             .Where(tuple => tuple.Item1 != null && tuple.Item2)
@@ -45,7 +51,7 @@ public static class FeatureFinder {
             .Select(tuple => tuple.Item3);
     }
 
-    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, GameObject avatar) {
+    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, GameObject gameObject) {
         try {
             if (model == null) {
                 return new Label("VRCFury doesn't have code for this feature. Is your VRCFury up to date?");
@@ -59,7 +65,7 @@ public static class FeatureFinder {
                 );
             }
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
-            featureInstance.avatarObject = avatar;
+            featureInstance.editorObject = gameObject;
 
             var wrapper = new VisualElement();
             var title = featureInstance.GetEditorTitle();
@@ -70,9 +76,10 @@ public static class FeatureFinder {
             wrapper.Add(header);
             
             VisualElement bodyContent;
-            if (!avatar && !featureInstance.AvailableOnProps()) {
+            var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
+            if (!allowAvatarFeatures && !featureInstance.AvailableOnProps()) {
                 bodyContent = new Label("This feature is not available for props");
-            } else if (avatar && !featureInstance.AvailableOnAvatar()) {
+            } else if (allowAvatarFeatures && !featureInstance.AvailableOnAvatar()) {
                 bodyContent = new Label("This feature is not available for avatars");
             } else {
                 try {
@@ -98,7 +105,7 @@ public static class FeatureFinder {
         }
     }
 
-    public static FeatureBuilder GetBuilder(FeatureModel model, bool isProp) {
+    public static FeatureBuilder GetBuilder(FeatureModel model, GameObject gameObject) {
         if (model == null) {
             throw new VRCFBuilderException(
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date? If you are still receiving this after updating, you may need to re-import the prop package which caused this issue.");
@@ -111,11 +118,12 @@ public static class FeatureFinder {
         }
 
         var featureImpl = (FeatureBuilder)Activator.CreateInstance(implementationType);
-        if (isProp && !featureImpl.AvailableOnProps()) {
+        var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
+        if (!allowAvatarFeatures && !featureImpl.AvailableOnProps()) {
             Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");
             return null;
         }
-        if (!isProp && !featureImpl.AvailableOnAvatar()) {
+        if (allowAvatarFeatures && !featureImpl.AvailableOnAvatar()) {
             Debug.LogError("Found " + modelType.Name + " feature on an avatar. Avatars are not allowed to have this feature.");
             return null;
         }

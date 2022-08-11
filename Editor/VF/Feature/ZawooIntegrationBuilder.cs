@@ -114,7 +114,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will automatically attach Zawoo prefabs to your avatar."));
         
         content.Add(new Button(() => {
-            ZawooDeleter.Run(avatarObject);
+            ZawooDeleter.Run(editorObject);
         }) { text = "Nuke all Zawoo components on avatar" });
         
         var foldout = new Foldout();

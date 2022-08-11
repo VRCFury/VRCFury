@@ -163,7 +163,7 @@ public class VRCFuryBuilder {
         void AddModel(FeatureModel model, GameObject configObject) {
             collectedFeatures.Add(model);
             var isProp = configObject != avatarObject;
-            var builder = FeatureFinder.GetBuilder(model, isProp);
+            var builder = FeatureFinder.GetBuilder(model, configObject);
             builder.featureBaseObject = configObject;
             builder.tmpDir = tmpDir;
             builder.addOtherFeature = m => AddModel(m, configObject);

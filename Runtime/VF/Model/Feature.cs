@@ -197,5 +197,9 @@ namespace VF.Model.Feature {
     [Serializable]
     public class FixWriteDefaults : FeatureModel {
     }
+    
+    [Serializable]
+    public class CrossEyeFix : FeatureModel {
+    }
 
 }

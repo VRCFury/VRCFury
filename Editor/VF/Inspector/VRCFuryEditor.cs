@@ -19,8 +19,6 @@ public class VRCFuryEditor : Editor {
 
         var container = new VisualElement();
 
-        var pointingToAvatar = self.gameObject.GetComponent<VRCAvatarDescriptor>() != null ? self.gameObject : null;
-
         var features = serializedObject.FindProperty("config.features");
         if (features == null) {
             container.Add(new Label("Feature list is missing? This is a bug."));
@@ -35,8 +33,8 @@ public class VRCFuryEditor : Editor {
                 container.Add(CreatePrefabInstanceLabel(baseFury));
             }
             var featureList = VRCFuryEditorUtils.List(features, 
-                renderElement: (i, prop) => renderFeature(self.config.features[i], prop, pointingToAvatar),
-                onPlus: () => OnPlus(features, pointingToAvatar),
+                renderElement: (i, prop) => renderFeature(self.config.features[i], prop, self.gameObject),
+                onPlus: () => OnPlus(features, self.gameObject),
                 onEmpty: () => {
                     var c = new VisualElement();
                     VRCFuryEditorUtils.Padding(c, 10);
@@ -61,6 +59,7 @@ public class VRCFuryEditor : Editor {
             if (disabled) featureList.SetEnabled(false);
         }
 
+        var pointingToAvatar = self.gameObject.GetComponent<VRCAvatarDescriptor>() != null;
         if (pointingToAvatar) {
             var box = new Box();
             box.style.marginTop = box.style.marginBottom = 10;
@@ -149,13 +148,13 @@ public class VRCFuryEditor : Editor {
         return label;
     }
 
-    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, GameObject avatar) {
-        return FeatureFinder.RenderFeatureEditor(prop, model, avatar);
+    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, GameObject gameObject) {
+        return FeatureFinder.RenderFeatureEditor(prop, model, gameObject);
     }
 
-    private void OnPlus(SerializedProperty listProp, bool isEditorOnAvatar) {
+    private void OnPlus(SerializedProperty listProp, GameObject gameObject) {
         var menu = new GenericMenu();
-        foreach (var feature in FeatureFinder.GetAllFeaturesForMenu(!isEditorOnAvatar)) {
+        foreach (var feature in FeatureFinder.GetAllFeaturesForMenu(gameObject)) {
             var editorInst = (FeatureBuilder) Activator.CreateInstance(feature.Value);
             var title = editorInst.GetEditorTitle();
             if (title != null) {
