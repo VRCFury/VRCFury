@@ -11,7 +11,7 @@ namespace VF.Feature {
 public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
     [FeatureBuilderAction]
     public void Apply() {
-        var paramScale = controller.NewFloat("Scale", synced: true, def: 0.5f);
+        var paramScale = controller.NewFloat("Scale", synced: true, def: 0.5f, saved: true);
         var scaleClip = controller.NewClip("Scale");
         var baseScale = avatarObject.transform.localScale.x;
         motions.Scale(scaleClip, avatarObject, ClipBuilder.FromFrames(
@@ -43,8 +43,7 @@ public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
         var content = new VisualElement();
         content.Add(new Label() {
             text = "This feature will add a slider to your menu which will adjust your avatar's size." +
-                   " Beware, this WILL NOT WORK in the current build of VRChat, as VRChat does not adjust" +
-                   " your viewpoint properly when scaled.",
+                   " NOTE: You need to change your avatar and change back for viewpoint to recalculate.",
             style = {
                 whiteSpace = WhiteSpace.Normal
             }
