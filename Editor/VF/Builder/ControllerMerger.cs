@@ -43,15 +43,25 @@ public class ControllerMerger {
                 to.parameters = prms;
             }
         }
- 
+
+        var fromFirstLayer = true;
         foreach (var fromLayer in from.layers) {
+            var fromWeight = fromLayer.defaultWeight;
+            if (fromFirstLayer) {
+                fromFirstLayer = false;
+                if (fromLayer.stateMachine.states.Length == 0) {
+                    // empty base layer -- just throw it out
+                    continue;
+                }
+                fromWeight = 1;
+            }
             to.AddLayer(RewriteLayerName(fromLayer.name));
             var toLayers = to.layers;
             var toLayer = toLayers[to.layers.Length-1];
             toLayer.avatarMask = fromLayer.avatarMask;
             toLayer.blendingMode = fromLayer.blendingMode;
             toLayer.iKPass = fromLayer.iKPass;
-            toLayer.defaultWeight = fromLayer.defaultWeight;
+            toLayer.defaultWeight = fromWeight;
             to.layers = toLayers;
             CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, toLayer.stateMachine);
         }
