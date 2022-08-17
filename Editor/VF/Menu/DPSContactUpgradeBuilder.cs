@@ -346,42 +346,43 @@ namespace VF.Menu {
                 return false;
             };
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                if (!skin.sharedMesh) continue;
+
                 var isDps = skin.sharedMaterials.Any(materialIsDps);
                 var isTps = skin.sharedMaterials.Any(materialIsTps);
                 var hasMarker = skin.transform.Find(MARKER_PEN) != null;
-                if (isDps || isTps || hasMarker) {
-                    Mesh mesh;
-                    
-                    // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
-                    // So we have to skip calling BakeMesh, because otherwise we'd apply the inverse scale inappropriately and it would be too small.
-                    bool actuallySkinned = skin.bones.Any(b => b != null);
-                    if (actuallySkinned) {
-                        var temporaryMesh = new Mesh();
-                        skin.BakeMesh(temporaryMesh);
-                        var verts = temporaryMesh.vertices;
-                        var scale = skin.transform.lossyScale;
-                        var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
-                        for (var i = 0; i < verts.Length; i++) {
-                            verts[i].Scale(inverseScale);
-                        }
-                        temporaryMesh.vertices = verts;
-                        mesh = temporaryMesh;
-                    } else {
-                        mesh = skin.sharedMesh;
+                if (!isDps && !isTps && !hasMarker) continue;
+                
+                // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
+                // So we have to skip calling BakeMesh, because otherwise we'd apply the inverse scale inappropriately and it would be too small.
+                bool actuallySkinned = skin.bones.Any(b => b != null);
+                Mesh mesh;
+                if (actuallySkinned) {
+                    var temporaryMesh = new Mesh();
+                    skin.BakeMesh(temporaryMesh);
+                    var verts = temporaryMesh.vertices;
+                    var scale = skin.transform.lossyScale;
+                    var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
+                    for (var i = 0; i < verts.Length; i++) {
+                        verts[i].Scale(inverseScale);
                     }
-                    skins.Add(Tuple.Create(skin.gameObject, mesh));
+                    temporaryMesh.vertices = verts;
+                    mesh = temporaryMesh;
+                } else {
+                    mesh = skin.sharedMesh;
                 }
+                skins.Add(Tuple.Create(skin.gameObject, mesh));
             }
             foreach (var renderer in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
+                var meshFilter = renderer.GetComponent<MeshFilter>();
+                if (!meshFilter || !meshFilter.sharedMesh) continue;
+
                 var isDps = renderer.sharedMaterials.Any(materialIsDps);
                 var isTps = renderer.sharedMaterials.Any(materialIsTps);
                 var hasMarker = renderer.transform.Find(MARKER_PEN) != null;
-                if (isDps || isTps || hasMarker) {
-                    var meshFilter = renderer.GetComponent<MeshFilter>();
-                    if (meshFilter) {
-                        skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
-                    }
-                }
+                if (!isDps && !isTps && !hasMarker) continue;
+                
+                skins.Add(Tuple.Create(renderer.gameObject, meshFilter.sharedMesh));
             }
             return skins;
         }
