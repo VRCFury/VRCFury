@@ -63,9 +63,14 @@ namespace VF.Model.Feature {
         [Serializable]
         public class Mode {
             public State state;
+            public Mode() {
+                this.state = new State();
+            }
             public Mode(State state) {
                 this.state = state;
             }
+            
+            public bool ResetMePlease;
         }
     }
 

@@ -256,7 +256,7 @@ public static class VRCFuryEditorUtils {
     public static bool FindAndResetMarkedFields(object obj) {
         if (obj == null) return false;
         var objType = obj.GetType();
-        if (!objType.FullName.StartsWith("VRCFury")) return false;
+        if (!objType.FullName.StartsWith("VF")) return false;
         var fields = objType.GetFields();
         foreach (var field in fields) {
             var value = field.GetValue(obj);
