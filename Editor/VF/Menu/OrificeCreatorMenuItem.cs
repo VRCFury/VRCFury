@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using VF.Inspector;
 using VF.Model;
 
 namespace VF.Menu {
@@ -64,10 +65,10 @@ namespace VF.Menu {
             }
 
             if (pen) {
-                pen.Bake(onlySenders:true);
+                OGBPenetratorEditor.Bake(pen, onlySenders:true);
             }
             if (orf) {
-                orf.Bake(onlySenders:true);
+                OGBOrificeEditor.Bake(orf, onlySenders:true);
             }
         }
     }

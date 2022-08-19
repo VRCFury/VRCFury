@@ -71,10 +71,10 @@ public class VRCFuryBuilder {
         Debug.Log("Baking OGB components ...");
         List<string> usedNames = new List<string>();
         foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-            c.Bake(usedNames);
+            OGBPenetratorEditor.Bake(c, usedNames);
         }
         foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
-            c.Bake(usedNames);
+            OGBOrificeEditor.Bake(c, usedNames);
         }
         Debug.Log("Done");
     }

@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Inspector;
 using VF.Model;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -62,15 +63,15 @@ namespace VF.Menu {
                 alreadyExists.Add(GetPath(c.gameObject));
             }
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (OGBPenetrator.GetAutoSize(skin.gameObject, true) != null) addPen(skin.gameObject);
+                if (OGBPenetratorEditor.GetAutoSize(skin.gameObject, true) != null) addPen(skin.gameObject);
             }
             foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (OGBPenetrator.GetAutoSize(mesh.gameObject, true) != null) addPen(mesh.gameObject);
+                if (OGBPenetratorEditor.GetAutoSize(mesh.gameObject, true) != null) addPen(mesh.gameObject);
             }
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
                 var parent = light.gameObject.transform.parent?.gameObject;
                 if (parent) {
-                    if (OGBOrifice.GetInfoFromLights(parent) != null) addOrifice(parent);
+                    if (OGBOrificeEditor.GetInfoFromLights(parent) != null) addOrifice(parent);
                 }
             }
             foreach (var t in avatarObject.GetComponentsInChildren<Transform>(true)) {

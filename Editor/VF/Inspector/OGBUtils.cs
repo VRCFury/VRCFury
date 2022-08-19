@@ -111,18 +111,6 @@ namespace VF.Model {
                 receiver.height /= child.transform.lossyScale.x;
             }
         }
-        
-        private static void RemoveIfOGBContact(VRCContactSender c, List<string> collisionTags) {
-            var shouldRemove = false;
-            if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) shouldRemove = true;
-            else if (c.gameObject.name.StartsWith("OGB_")) shouldRemove = true;
-            else if (collisionTags.Any(t => t == CONTACT_PEN_MAIN)) shouldRemove = true;
-            else if (collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) shouldRemove = true;
-            else if (collisionTags.Any(t => t == CONTACT_ORF_MAIN)) shouldRemove = true;
-            else if (collisionTags.Any(t => t == CONTACT_ORF_NORM)) shouldRemove = true;
-            if (!shouldRemove) return;
-            RemoveComponent(c);
-        }
 
         public static void RemoveTPSSenders(GameObject obj) {
             foreach (Transform child in obj.transform) {
@@ -138,9 +126,9 @@ namespace VF.Model {
 
         public static bool IsTPSSender(VRCContactSender c) {
             if (c.collisionTags.Any(t => t == CONTACT_PEN_MAIN)) return true;
-            else if (c.collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) return true;
-            else if (c.collisionTags.Any(t => t == CONTACT_ORF_MAIN)) return true;
-            else if (c.collisionTags.Any(t => t == CONTACT_ORF_NORM)) return true;
+            if (c.collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) return true;
+            if (c.collisionTags.Any(t => t == CONTACT_ORF_MAIN)) return true;
+            if (c.collisionTags.Any(t => t == CONTACT_ORF_NORM)) return true;
             return false;
         }
 
