@@ -50,21 +50,11 @@ namespace VF.Menu {
             OrificeCreatorMenuItem.RunRing();
         }
         
-        [MenuItem("Tools/VRCFury/Manually mark mesh as penetrator", priority = 1204)]
-        public static void RunManualPen() {
-            OrificeCreatorMenuItem.RunPen();
+        [MenuItem("Tools/VRCFury/Bake OscGB Component", priority = 1204)]
+        public static void RunBake() {
+            OrificeCreatorMenuItem.RunBake();
         }
         
-        [MenuItem("Tools/VRCFury/Remove OscGB from avatar", priority = 1205)]
-        private static void RunOGBRemove() {
-            DPSContactUpgradeBuilder.Remove();
-        }
-
-        [MenuItem("Tools/VRCFury/Remove OscGB from avatar", true)]
-        private static bool RunOGBRemoveCheck() {
-            return DPSContactUpgradeBuilder.Check();
-        }
-
         //
         
         [MenuItem("Tools/VRCFury/Debug", priority = 1400)]
@@ -84,16 +74,6 @@ namespace VF.Menu {
         [MenuItem("Tools/VRCFury/Build Test Avatar", true)]
         private static bool CheckForceRun() {
             return VRCFuryForceRunMenuItem.CheckFakeUpload();
-        }
-        
-        [MenuItem("Tools/VRCFury/Purge from Selected Avatar", priority = 1402)]
-        private static void RunPurge() {
-            VRCFuryForceRunMenuItem.RunPurge();
-        }
-
-        [MenuItem("Tools/VRCFury/Purge from Selected Avatar", true)]
-        private static bool CheckPurge() {
-            return VRCFuryForceRunMenuItem.CheckPurge();
         }
     }
 }

@@ -49,14 +49,10 @@ public class VRCFuryBuilder {
     public bool SafeRun(GameObject originalObject, GameObject avatarObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-        if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length == 0) {
-            Debug.Log("VRCFury components not found in avatar. Skipping.");
-            return true;
-        }
-
         var result = true;
         try {
             Run(originalObject, avatarObject);
+            BakeOGB(avatarObject);
         } catch(Exception e) {
             result = false;
             Debug.LogException(e);
@@ -71,7 +67,24 @@ public class VRCFuryBuilder {
         return result;
     }
 
+    private void BakeOGB(GameObject avatarObject) {
+        Debug.Log("Baking OGB components ...");
+        List<string> usedNames = new List<string>();
+        foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
+            c.Bake(usedNames);
+        }
+        foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
+            c.Bake(usedNames);
+        }
+        Debug.Log("Done");
+    }
+
     private void Run(GameObject originalObject, GameObject avatarObject) {
+        if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length == 0) {
+            Debug.Log("VRCFury components not found in avatar. Skipping.");
+            return;
+        }
+        
         var progress = new ProgressBar("VRCFury is building ...");
 
         // Unhook everything from our assets before we delete them

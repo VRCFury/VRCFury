@@ -8,6 +8,7 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using VF.Builder;
+using VF.Model;
 using VRC.Core;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
@@ -22,7 +23,9 @@ public class Startup {
         var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic);
         var whitelist = whitelistField.GetValue(null);
         var updated = new List<string>((string[])whitelist);
-        updated.Add("VF.Model.VRCFury");
+        updated.Add(typeof(VRCFury).FullName);
+        updated.Add(typeof(OGBOrifice).FullName);
+        updated.Add(typeof(OGBPenetrator).FullName);
         whitelistField.SetValue(null,updated.ToArray());
     }
 }
