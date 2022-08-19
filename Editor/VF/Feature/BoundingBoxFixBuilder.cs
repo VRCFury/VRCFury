@@ -10,7 +10,7 @@ namespace VF.Feature {
 
     public class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix> {
 
-        [FeatureBuilderAction(10)]
+        [FeatureBuilderAction((int)FeatureOrder.BoundingBoxFix)]
         public void ApplyOnClone() {
             var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             foreach (var skin in skins) {

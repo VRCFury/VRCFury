@@ -206,5 +206,9 @@ namespace VF.Model.Feature {
     [Serializable]
     public class CrossEyeFix : FeatureModel {
     }
+    
+    [Serializable]
+    public class AnchorOverrideFix : FeatureModel {
+    }
 
 }

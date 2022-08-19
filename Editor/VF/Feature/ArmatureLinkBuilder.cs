@@ -124,7 +124,7 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction(100)]
+        [FeatureBuilderAction((int)FeatureOrder.ArmatureLinkBuilderFixAnimations)]
         public void FixAnimations() {
             foreach (var layer in controller.GetManagedLayers()) {
                 DefaultClipBuilder.ForEachClip(layer, clip => {

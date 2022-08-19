@@ -9,7 +9,7 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
-    [FeatureBuilderAction(1)]
+    [FeatureBuilderAction((int)FeatureOrder.SenkyGestureDriver)]
     public void Apply() {
         var blinkActive = controller.NewBool("BlinkActive", def: true);
         var paramEmoteHappy = controller.NewBool("EmoteHappy", synced: true);

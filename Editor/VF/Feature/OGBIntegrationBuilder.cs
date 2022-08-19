@@ -7,7 +7,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration> {
-        [FeatureBuilderAction(100)]
+        [FeatureBuilderAction((int)FeatureOrder.AddOgbComponents)]
         public void Apply() {
             var isFirst = allFeaturesInRun.Find(m => m is OGBIntegration) == model;
             if (!isFirst) return;

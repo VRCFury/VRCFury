@@ -10,7 +10,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder<FixWriteDefaults> {
-        [FeatureBuilderAction(10000)]
+        [FeatureBuilderAction((int)FeatureOrder.FixWriteDefaults)]
         public void Apply() {
             if (allFeaturesInRun.Any(f => f is MakeWriteDefaultsOff)) {
                 MakeWriteDefaultsOff(true);
