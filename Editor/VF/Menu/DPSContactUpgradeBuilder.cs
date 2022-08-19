@@ -75,6 +75,7 @@ namespace VF.Menu {
                 }
             }
             foreach (var t in avatarObject.GetComponentsInChildren<Transform>(true)) {
+                if (!t) continue; // this can happen if we're visiting one of the things we deleted below
                 var penMarker = t.Find("OGB_Marker_Pen");
                 if (penMarker) {
                     addPen(t.gameObject);
