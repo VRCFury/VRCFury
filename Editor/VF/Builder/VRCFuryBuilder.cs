@@ -138,10 +138,9 @@ public class VRCFuryBuilder {
 
         progress.Progress(0.9, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
+            var animator = c.gameObject.GetComponent<Animator>();
+            if (animator != null) Object.DestroyImmediate(animator);
             Object.DestroyImmediate(c);
-        }
-        foreach (var c in avatarObject.GetComponentsInChildren<Animator>(true)) {
-            if (c.gameObject != avatarObject) Object.DestroyImmediate(c);
         }
 
         if (syncedParams.CalcTotalCost() > VRCExpressionParameters.MAX_PARAMETER_COST) {
