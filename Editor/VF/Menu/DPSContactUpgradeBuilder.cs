@@ -14,6 +14,10 @@ namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
+            if (avatarObject == null) {
+                avatarObject = Selection.activeGameObject;
+                while (avatarObject.transform.parent != null) avatarObject = avatarObject.transform.parent.gameObject;
+            }
             var msg = Apply(avatarObject);
             EditorUtility.DisplayDialog(
                 "OscGB Upgrade",
@@ -23,8 +27,7 @@ namespace VF.Menu {
         }
 
         public static bool Check() {
-            var obj = MenuUtils.GetSelectedAvatar();
-            if (obj == null) return false;
+            if (Selection.activeGameObject == null) return false;
             return true;
         }
 
@@ -139,15 +142,17 @@ namespace VF.Menu {
 
             // Clean up
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-            var fx = VRCAvatarUtils.GetAvatarFx(avatar);
-            if (fx) {
-                for (var i = 0; i < fx.parameters.Length; i++) {
-                    var param = fx.parameters[i];
-                    var isOldTpsVf = param.name.StartsWith("TPS") && param.name.Contains("/VF");
-                    var isOgb = param.name.StartsWith("OGB/");
-                    if (isOldTpsVf || isOgb) {
-                        fx.RemoveParameter(param);
-                        i--;
+            if (avatar) {
+                var fx = VRCAvatarUtils.GetAvatarFx(avatar);
+                if (fx) {
+                    for (var i = 0; i < fx.parameters.Length; i++) {
+                        var param = fx.parameters[i];
+                        var isOldTpsVf = param.name.StartsWith("TPS") && param.name.Contains("/VF");
+                        var isOgb = param.name.StartsWith("OGB/");
+                        if (isOldTpsVf || isOgb) {
+                            fx.RemoveParameter(param);
+                            i--;
+                        }
                     }
                 }
             }
