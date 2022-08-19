@@ -97,6 +97,8 @@ public class ControllerMerger {
                 if (b is VRCAvatarParameterDriver) {
                     var oldB = b as VRCAvatarParameterDriver;
                     var newB = toState.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                    if (newB == null) throw new Exception("Added parameter driver is null");
+                    if (newB.parameters == null) throw new Exception("Added parameter driver params are null");
                     foreach (var p in oldB.parameters) {
                         newB.parameters.Add(CloneDriverParameter(p));
                     }
