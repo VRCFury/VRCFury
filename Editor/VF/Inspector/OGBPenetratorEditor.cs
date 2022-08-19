@@ -56,7 +56,7 @@ namespace VF.Inspector {
             HandlesUtil.DrawWireCapsule(worldPos, worldRot, worldLength, worldRadius);
         }
         
-                public static bool MaterialIsDps(Material mat) {
+        public static bool MaterialIsDps(Material mat) {
             if (mat == null) return false;
             if (!mat.shader) return false;
             if (mat.shader.name == "Raliv/Penetrator") return true; // Raliv
@@ -193,10 +193,23 @@ namespace VF.Inspector {
             OGBUtils.AddSender(obj, Vector3.zero, "WidthHelper", Mathf.Max(0.01f/obj.transform.lossyScale.x, length - radius*2), OGBUtils.CONTACT_PEN_WIDTH);
             OGBUtils.AddSender(obj, tightPos, "Envelope", radius, OGBUtils.CONTACT_PEN_CLOSE, rotation: tightRot, height: length);
             OGBUtils.AddSender(obj, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_PEN_ROOT);
+            
+            var paramPrefix = OGBUtils.GetNextName(usedNames, "OGB/Pen/" + name.Replace('/','_'));
 
-            if (!onlySenders) {
+            if (onlySenders) {
+                var bake = new GameObject("OGB_Baked_Pen");
+                bake.transform.SetParent(obj.transform, false);
+                if (!string.IsNullOrWhiteSpace(pen.name)) {
+                    var nameObj = new GameObject("name=" + pen.name);
+                    nameObj.transform.SetParent(bake.transform, false);
+                }
+                if (pen.length != 0 || pen.radius != 0) {
+                    var sizeObj = new GameObject("size");
+                    sizeObj.transform.SetParent(bake.transform, false);
+                    sizeObj.transform.localScale.Set(length, radius, 0);
+                }
+            } else {
                 // Receivers
-                var paramPrefix = OGBUtils.GetNextName(usedNames, "OGB/Pen/" + name.Replace('/','_'));
                 OGBUtils.AddReceiver(obj, tightPos, paramPrefix + "/TouchSelfClose", "TouchSelfClose", radius+extraRadiusForTouch, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", length+extraRadiusForTouch, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, tightPos, paramPrefix + "/TouchOthersClose", "TouchOthersClose", radius+extraRadiusForTouch, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, rotation: tightRot, height: length+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
@@ -205,16 +218,9 @@ namespace VF.Inspector {
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", length, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", length, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, tightPos, paramPrefix + "/FrotOthersClose", "FrotOthersClose", radius+extraRadiusForFrot, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant);
-
-                // Version Contacts
-                var versionLocalTag = OGBUtils.RandomTag();
-                var versionBeaconTag = "OGB_VERSION_" + OGBUtils.beaconVersion;
-                OGBUtils.AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
-                // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                OGBUtils.AddReceiver(obj, Vector3.one * 0.01f, paramPrefix + "/Version/" + OGBUtils.penVersion, "Version", 0.01f, new []{versionLocalTag, "TPS_" + OGBUtils.RandomTag()}, allowOthers:false, localOnly:true);
-                OGBUtils.AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
-                OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/VersionMatch", "VersionBeacon", 1f, new []{versionBeaconTag, "TPS_" + OGBUtils.RandomTag()}, allowSelf:false, localOnly:true);
             }
+            
+            OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders);
             
             DestroyImmediate(pen);
         }

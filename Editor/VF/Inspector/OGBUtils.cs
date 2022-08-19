@@ -73,6 +73,24 @@ namespace VF.Model {
             }
         }
 
+        public static void AddVersionContacts(GameObject obj, string paramPrefix, bool baked, bool isPen) {
+            // Version Local
+            var varName = baked ? "BakedVersion" : "Version";
+            var versionLocalTag = RandomTag();
+            AddSender(obj, Vector3.zero, varName, 0.01f, versionLocalTag);
+            // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
+            var versionLocal = isPen ? penVersion : orfVersion;
+            AddReceiver(obj, Vector3.one * 0.01f, paramPrefix + "/" + varName + "/" + versionLocal, varName, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+
+            // Version Remote
+            var versionBeaconTag = "OGB_VERSION_" + beaconVersion;
+            AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
+            if (!baked) {
+                AddReceiver(obj, Vector3.zero, paramPrefix + "/VersionMatch", "VersionBeacon", 1f,
+                    new[] { versionBeaconTag, "TPS_" + RandomTag() }, allowSelf: false, localOnly: true);
+            }
+        }
+
         public static void AddReceiver(
             GameObject obj,
             Vector3 pos,

@@ -72,15 +72,23 @@ namespace VF.Inspector {
             // Senders
             OGBUtils.AddSender(obj, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_ORF_MAIN);
             OGBUtils.AddSender(obj, forward * 0.01f, "Front", 0.01f, OGBUtils.CONTACT_ORF_NORM);
+            
+            var paramPrefix = OGBUtils.GetNextName(usedNames, "OGB/Orf/" + name.Replace('/','_'));
 
-            if (!onlySenders) {
+            if (onlySenders) {
+                var bake = new GameObject("OGB_Baked_Orf");
+                bake.transform.SetParent(obj.transform, false);
+                if (!string.IsNullOrWhiteSpace(orifice.name)) {
+                    var nameObj = new GameObject("name=" + orifice.name);
+                    nameObj.transform.SetParent(bake.transform, false);
+                }
+            } else {
                 // Receivers
                 var oscDepth = 0.25f;
                 var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
                 var frotRadius = 0.1f;
                 var frotPos = 0.05f;
                 var closeRadius = 0.1f;
-                var paramPrefix = OGBUtils.GetNextName(usedNames, "OGB/Orf/" + name.Replace('/','_'));
                 OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                 OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
@@ -92,16 +100,9 @@ namespace VF.Inspector {
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
-
-                // Version Contacts
-                var versionLocalTag = OGBUtils.RandomTag();
-                var versionBeaconTag = "OGB_VERSION_" + OGBUtils.beaconVersion;
-                OGBUtils.AddSender(obj, Vector3.zero, "Version", 0.01f, versionLocalTag);
-                // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-                OGBUtils.AddReceiver(obj, Vector3.one * 0.01f, paramPrefix + "/Version/" + OGBUtils.orfVersion, "Version", 0.01f, new []{versionLocalTag, "TPS_" + OGBUtils.RandomTag()}, allowOthers:false, localOnly:true);
-                OGBUtils.AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
-                OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/VersionMatch", "VersionBeacon", 1f, new []{versionBeaconTag, "TPS_" + OGBUtils.RandomTag()}, allowSelf:false, localOnly:true);
             }
+            
+            OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders);
 
             if (autoInfo == null && orifice.addLight != AddLight.None) {
                 foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
