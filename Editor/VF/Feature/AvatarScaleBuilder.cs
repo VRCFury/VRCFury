@@ -43,7 +43,7 @@ public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
         var content = new VisualElement();
         content.Add(new Label() {
             text = "This feature will add a slider to your menu which will adjust your avatar's size." +
-                   " NOTE: You need to change your avatar and change back for viewpoint to recalculate.",
+                   " NOTE: This feature no longer works in the latest release of vrchat.",
             style = {
                 whiteSpace = WhiteSpace.Normal
             }
