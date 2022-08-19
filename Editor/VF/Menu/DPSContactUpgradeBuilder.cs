@@ -62,18 +62,58 @@ namespace VF.Menu {
             foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
                 alreadyExists.Add(GetPath(c.gameObject));
             }
+            
+            // Un-bake baked components
+            foreach (var t in avatarObject.GetComponentsInChildren<Transform>(true)) {
+                if (!t) continue; // this can happen if we're visiting one of the things we deleted below
+                var penMarker = t.Find("OGB_Baked_Pen");
+                if (penMarker) {
+                    var p = addPen(t.gameObject);
+                    if (p) {
+                        var size = penMarker.Find("size");
+                        if (size) {
+                            p.length = size.localScale.x;
+                            p.radius = size.localScale.y;
+                        }
+                        p.name = GetNameFromBakeMarker(penMarker.gameObject);
+                    }
+                    DeleteIfNotInPrefab(penMarker.gameObject);
+                }
+
+                var orfMarker = t.Find("OGB_Baked_Orf");
+                if (orfMarker) {
+                    var o = addOrifice(t.gameObject);
+                    if (o) {
+                        var autoInfo = OGBOrificeEditor.GetInfoFromLights(t.gameObject);
+                        if (autoInfo != null) {
+                            o.addLight = autoInfo.Item2 ? AddLight.Ring : AddLight.Hole;
+                        }
+                        o.name = GetNameFromBakeMarker(orfMarker.gameObject);
+                        foreach (var light in t.gameObject.GetComponentsInChildren<Light>()) {
+                            OGBUtils.RemoveComponent(light);
+                        }
+                    }
+                    DeleteIfNotInPrefab(orfMarker.gameObject);
+                }
+            }
+            
+            // Auto-add DPS and TPS penetrators
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                 if (OGBPenetratorEditor.GetAutoSize(skin.gameObject, true) != null) addPen(skin.gameObject);
             }
             foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
                 if (OGBPenetratorEditor.GetAutoSize(mesh.gameObject, true) != null) addPen(mesh.gameObject);
             }
+            
+            // Auto-add DPS orifices
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
                 var parent = light.gameObject.transform.parent?.gameObject;
                 if (parent) {
                     if (OGBOrificeEditor.GetInfoFromLights(parent) != null) addOrifice(parent);
                 }
             }
+            
+            // Upgrade old OGB markers to components
             foreach (var t in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 if (!t) continue; // this can happen if we're visiting one of the things we deleted below
                 var penMarker = t.Find("OGB_Marker_Pen");
@@ -126,6 +166,15 @@ namespace VF.Menu {
                    + String.Join("\n", addedOGB)
                    + "\n"
                    + String.Join("\n", alreadyExists.Select(a => a + " (already upgraded)"));
+        }
+
+        private static string GetNameFromBakeMarker(GameObject marker) {
+            foreach (Transform child in marker.transform) {
+                if (child.name.StartsWith("name=")) {
+                    return child.name.Substring(5);
+                }
+            }
+            return "";
         }
     }
 }

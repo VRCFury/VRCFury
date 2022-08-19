@@ -206,7 +206,7 @@ namespace VF.Inspector {
                 if (pen.length != 0 || pen.radius != 0) {
                     var sizeObj = new GameObject("size");
                     sizeObj.transform.SetParent(bake.transform, false);
-                    sizeObj.transform.localScale.Set(length, radius, 0);
+                    sizeObj.transform.localScale = new Vector3(pen.length, pen.radius, 0);
                 }
             } else {
                 // Receivers
