@@ -102,7 +102,7 @@ namespace VF.Inspector {
                 OGBUtils.AddReceiver(obj, forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
             }
             
-            OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders);
+            OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders, false);
 
             if (autoInfo == null && orifice.addLight != AddLight.None) {
                 foreach (var light in obj.GetComponentsInChildren<Light>(true)) {

@@ -220,7 +220,7 @@ namespace VF.Inspector {
                 OGBUtils.AddReceiver(obj, tightPos, paramPrefix + "/FrotOthersClose", "FrotOthersClose", radius+extraRadiusForFrot, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: tightRot, height: length, type: ContactReceiver.ReceiverType.Constant);
             }
             
-            OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders);
+            OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders, true);
             
             DestroyImmediate(pen);
         }
