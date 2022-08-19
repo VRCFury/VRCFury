@@ -131,10 +131,18 @@ namespace VF.Model {
         }
 
         public static void RemoveTPSSenders(GameObject obj) {
+            var remove = new List<Component>();
             foreach (Transform child in obj.transform) {
                 foreach (var sender in child.gameObject.GetComponents<VRCContactSender>()) {
-                    if (IsTPSSender(sender)) RemoveComponent(sender);
+                    if (IsTPSSender(sender)) {
+                        Debug.Log("Deleting OG TPS sender on " + sender.gameObject);
+                        remove.Add(sender);
+                    }
                 }
+            }
+
+            foreach (var c in remove) {
+                RemoveComponent(c);
             }
 
             if (obj.transform.parent) {
