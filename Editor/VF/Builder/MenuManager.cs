@@ -29,22 +29,35 @@ namespace VF.Builder {
         }
 
         /**
-         * If createIcon is set, we will use it when creating the folder control (if it didn't already exist)
+         * If createFromControl is set, we will use it when creating the folder control (if it didn't already exist)
          */
-        public VRCExpressionsMenu GetMenu(string[] path, Texture2D createIcon = null) {
+        public VRCExpressionsMenu GetMenu(
+            string[] path,
+            VRCExpressionsMenu.Control createFromControl = null,
+            Func<string,string> rewriteParamName = null
+        ) {
             var current = GetVrcFuryMenu();
             for (var i = 0; i < path.Length; i++) {
                 var folderName = path[i];
-                var folderControl = current.controls.Find(
-                    c => c.name == folderName && c.type == VRCExpressionsMenu.Control.ControlType.SubMenu);
+                var dupIndex = folderName.IndexOf(".dup.");
+                var offset = 0;
+                if (dupIndex >= 0) {
+                    offset = Int32.Parse(folderName.Substring(dupIndex + 5));
+                    folderName = folderName.Substring(0, dupIndex);
+                }
+                var folderControls = current.controls.Where(
+                    c => c.name == folderName && c.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
+                    .ToArray();
+                var folderControl = offset < folderControls.Length ? folderControls[offset] : null;
                 if (folderControl == null) {
-                    folderControl = new VRCExpressionsMenu.Control() {
-                        name = folderName,
-                        type = VRCExpressionsMenu.Control.ControlType.SubMenu
-                    };
-                    if (createIcon != null && i == path.Length - 1) {
-                        folderControl.icon = createIcon;
+                    if (createFromControl != null && i == path.Length - 1) {
+                        folderControl = CloneControl(createFromControl, rewriteParamName);
+                    } else {
+                        folderControl = new VRCExpressionsMenu.Control();
                     }
+                    folderControl.name = folderName;
+                    folderControl.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+                    folderControl.subMenu = null;
                     current.controls.Add(folderControl);
                 }
                 var folder = folderControl.subMenu;
@@ -101,11 +114,20 @@ namespace VF.Builder {
         }
 
         public void MergeMenu(string[] prefix, VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
+            var usedSubmenuNames = new HashSet<string>();
+            string GetNextSubmenuName(string name) {
+                for (var i = 0;; i++) {
+                    var next = name + (i > 0 ? (".dup." + i) : "");
+                    if (usedSubmenuNames.Contains(next)) continue;
+                    usedSubmenuNames.Add(next);
+                    return next;
+                }
+            }
             foreach (var control in from.controls) {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     var prefix2 = new List<string>(prefix);
-                    prefix2.Add(control.name);
-                    GetMenu(prefix2.ToArray(), control.icon);
+                    prefix2.Add(GetNextSubmenuName(control.name));
+                    GetMenu(prefix2.ToArray(), control, rewriteParamName);
                     MergeMenu(prefix2.ToArray(), control.subMenu, rewriteParamName);
                 } else {
                     AddMenuItem(prefix, CloneControl(control, rewriteParamName));
