@@ -15,11 +15,13 @@ namespace VF.Feature {
         }
         
         public override string GetEditorTitle() {
-            return "OGB Integration";
+            return "OGB Component Auto-Adder";
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.WrappedLabel("This feature will automatically add run the OscGB Upgrade Tool on your avatar.");
+            return VRCFuryEditorUtils.WrappedLabel(
+                "This feature will search for TPS/DPS orifice and penetrators and automatically add OGB components to them." +
+                " You don't need this if you've already run the OGB upgrade tool yourself (which means the components are already added).");
         }
 
         public override bool AvailableOnProps() {
