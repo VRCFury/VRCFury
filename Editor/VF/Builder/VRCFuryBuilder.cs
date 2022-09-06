@@ -231,8 +231,16 @@ public class VRCFuryBuilder {
         if (origFx == null) {
             return AnimatorController.CreateAnimatorControllerAtPath(newPath);
         }
-        AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origFx), newPath);
-        return AssetDatabase.LoadAssetAtPath<AnimatorController>(newPath);
+        AssetDatabase.StopAssetEditing();
+        if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origFx), newPath)) {
+            throw new Exception("Failed to copy avatar controller asset");
+        }
+        var copy = AssetDatabase.LoadAssetAtPath<AnimatorController>(newPath);
+        AssetDatabase.StartAssetEditing();
+        if (copy == null) {
+            throw new Exception("Failed to load copy of avatar controller asset");
+        }
+        return copy;
     }
 
     private static VRCExpressionsMenu GetOrCreateAvatarMenu(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
@@ -256,8 +264,16 @@ public class VRCFuryBuilder {
             AssetDatabase.CreateAsset(prms, newPath);
             return prms;
         }
-        AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origParams), newPath);
-        return AssetDatabase.LoadAssetAtPath<VRCExpressionParameters>(newPath);
+        AssetDatabase.StopAssetEditing();
+        if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origParams), newPath)) {
+            throw new Exception("Failed to copy avatar params asset");
+        }
+        var copy = AssetDatabase.LoadAssetAtPath<VRCExpressionParameters>(newPath);
+        AssetDatabase.StartAssetEditing();
+        if (copy == null) {
+            throw new Exception("Failed to load copy of avatar params asset");
+        }
+        return copy;
     }
 
     public static void DetachFromAvatar(GameObject avatarObject) {
