@@ -16,6 +16,9 @@ namespace VF.Feature.Base {
         AddOgbComponents = 101,
         
         // Needs to run after everything is done touching the animation controller
-        FixWriteDefaults = 10000
+        FixWriteDefaults = 10000,
+        
+        // Needs to run after anything that creates menu items, so the user can relocate them if they wish
+        MoveMenuItems = 10001
     }
 }

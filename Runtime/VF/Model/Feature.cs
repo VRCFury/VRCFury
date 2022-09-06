@@ -210,5 +210,11 @@ namespace VF.Model.Feature {
     [Serializable]
     public class AnchorOverrideFix : FeatureModel {
     }
+    
+    [Serializable]
+    public class MoveMenuItem : FeatureModel {
+        public string fromPath;
+        public string toPath;
+    }
 
 }

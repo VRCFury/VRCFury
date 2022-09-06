@@ -17,22 +17,25 @@ namespace VF.Builder {
             this.tmpDir = tmpDir;
         }
 
-        public VRCExpressionsMenu GetVrcFuryMenu() {
+        private VRCExpressionsMenu GetVrcFuryMenu() {
             return rootMenu;
         }
-        public VRCExpressionsMenu.Control NewMenuItem(string path) {
+        private VRCExpressionsMenu.Control NewMenuItem(string path) {
             var split = path.Split('/');
             var control = new VRCExpressionsMenu.Control();
             control.name = split[split.Length-1];
-            AddMenuItem(new ArraySegment<string>(split, 0, split.Length-1).ToArray(), control);
+            var submenu = GetSubmenu(Slice(split, split.Length-1));
+            submenu.controls.Add(control);
             return control;
         }
 
         /**
-         * If createFromControl is set, we will use it when creating the folder control (if it didn't already exist)
+         * Gets the VRC menu for the path specified, recursively creating if it doesn't exist.
+         * If createFromControl is set, we will use it as the basis if creating the folder control is needed.
          */
-        public VRCExpressionsMenu GetMenu(
+        public VRCExpressionsMenu GetSubmenu(
             string[] path,
+            bool createIfMissing = true,
             VRCExpressionsMenu.Control createFromControl = null,
             Func<string,string> rewriteParamName = null
         ) {
@@ -50,6 +53,7 @@ namespace VF.Builder {
                     .ToArray();
                 var folderControl = offset < folderControls.Length ? folderControls[offset] : null;
                 if (folderControl == null) {
+                    if (!createIfMissing) return null;
                     if (createFromControl != null && i == path.Length - 1) {
                         folderControl = CloneControl(createFromControl, rewriteParamName);
                     } else {
@@ -62,18 +66,14 @@ namespace VF.Builder {
                 }
                 var folder = folderControl.subMenu;
                 if (folder == null) {
-                    var newFolderPath = new ArraySegment<string>(path, 0, i + 1)
-                        .ToArray();
+                    if (!createIfMissing) return null;
+                    var newFolderPath = Slice(path, i + 1);
                     folder = CreateNewMenu(newFolderPath);
                     folderControl.subMenu = folder;
                 }
                 current = folder;
             }
             return current;
-        }
-        public void AddMenuItem(string[] menuPath, VRCExpressionsMenu.Control control) {
-            var menu = GetMenu(menuPath);
-            menu.controls.Add(control);
         }
         public void NewMenuToggle(string path, VFAParam param, float value = 1) {
             var control = NewMenuItem(path);
@@ -114,23 +114,20 @@ namespace VF.Builder {
         }
 
         public void MergeMenu(string[] prefix, VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
-            var usedSubmenuNames = new HashSet<string>();
-            string GetNextSubmenuName(string name) {
-                for (var i = 0;; i++) {
-                    var next = name + (i > 0 ? (".dup." + i) : "");
-                    if (usedSubmenuNames.Contains(next)) continue;
-                    usedSubmenuNames.Add(next);
-                    return next;
-                }
+            var submenuCount = new Dictionary<string,int>();
+            int GetNextSubmenuDupId(string name) {
+                return submenuCount[name] = submenuCount.TryGetValue(name, out var value) ? value + 1 : 0;
             }
             foreach (var control in from.controls) {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
+                    var submenuDupId = GetNextSubmenuDupId(control.name);
                     var prefix2 = new List<string>(prefix);
-                    prefix2.Add(GetNextSubmenuName(control.name));
-                    GetMenu(prefix2.ToArray(), control, rewriteParamName);
+                    prefix2.Add( control.name + (submenuDupId > 0 ? (".dup." + submenuDupId) : ""));
+                    GetSubmenu(prefix2.ToArray(), createFromControl: control, rewriteParamName: rewriteParamName);
                     MergeMenu(prefix2.ToArray(), control.subMenu, rewriteParamName);
                 } else {
-                    AddMenuItem(prefix, CloneControl(control, rewriteParamName));
+                    var submenu = GetSubmenu(prefix);
+                    submenu.controls.Add(CloneControl(control, rewriteParamName));
                 }
             }
         }
@@ -186,6 +183,10 @@ namespace VF.Builder {
                     PurgeFromMenu(control.subMenu);
                 }
             }
+        }
+
+        public static string[] Slice(string[] arr, int count) {
+            return new ArraySegment<string>(arr, 0, count).ToArray();
         }
 
     }

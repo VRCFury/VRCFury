@@ -42,7 +42,7 @@ public class ModesBuilder : FeatureBuilder<Modes> {
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
-        return ToggleBuilder.CreateEditor(prop, true, true, content =>
+        return ToggleBuilder.CreateEditor(prop, content =>
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("modes"),
                 renderElement: (i,e) => VRCFuryStateEditor.render(e.FindPropertyRelative("state"), "Mode " + (i+1)))));
     }

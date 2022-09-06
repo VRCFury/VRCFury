@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
@@ -74,10 +75,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
-        return CreateEditor(prop, true, true, content => content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state"))));
+        return CreateEditor(prop, content => content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state"))));
     }
 
-    public static VisualElement CreateEditor(SerializedProperty prop, bool allowSlider, bool alloDefaultOn, Action<VisualElement> renderBody) {
+    public static VisualElement CreateEditor(SerializedProperty prop, Action<VisualElement> renderBody) {
         var container = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
@@ -95,7 +96,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         };
         container.Add(flex);
 
-        var name = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("name"));
+        var name = new PropertyField(prop.FindPropertyRelative("name"), "Menu Path");
         name.style.flexGrow = 1;
         flex.Add(name);
 
