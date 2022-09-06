@@ -51,6 +51,7 @@ public class VRCFuryBuilder {
 
         var result = true;
         try {
+            AssetDatabase.StartAssetEditing();
             Run(originalObject, avatarObject);
             BakeOGB(avatarObject);
         } catch(Exception e) {
@@ -62,6 +63,7 @@ public class VRCFuryBuilder {
             EditorUtility.DisplayDialog("VRCFury Error", "VRCFury encountered an error.\n\n" + e.Message, "Ok");
         }
 
+        AssetDatabase.StopAssetEditing();
         AssetDatabase.SaveAssets();
         EditorUtility.ClearProgressBar();
         return result;
