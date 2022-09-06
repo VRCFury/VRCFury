@@ -105,6 +105,9 @@ public class VRCFuryBuilder {
                 AssetDatabase.DeleteAsset(path);
             }
         }
+        // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
+        // old asset and messes with the new copy.
+        tmpDir = tmpDir + "/" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
         Directory.CreateDirectory(tmpDir);
 
         // Create our new copies of the assets, and attach them
