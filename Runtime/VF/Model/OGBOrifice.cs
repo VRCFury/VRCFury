@@ -11,5 +11,6 @@ namespace VF.Model {
     public class OGBOrifice : MonoBehaviour {
         public AddLight addLight;
         public String name;
+        public float length;
     }
 }

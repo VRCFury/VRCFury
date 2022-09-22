@@ -17,6 +17,8 @@ namespace VF.Inspector {
             
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name Override"));
             container.Add(new PropertyField(serializedObject.FindProperty("addLight"), "Add DPS Light"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Depth Override in meters (note, this only affects hand touches, penetrators do not use orifice depth)"));
+            container.Add(VRCFuryEditorUtils.PropWithoutLabel(serializedObject.FindProperty("length")));
 
             return container;
         }
@@ -36,12 +38,15 @@ namespace VF.Inspector {
             var c = Handles.color;
             try {
                 Handles.color = Color.red;
+                var size = GetCapsuleSize(scr);
+                var length = size.Item1;
+                var radius = size.Item2;
                 OGBPenetratorEditor.DrawCapsule(
                     scr.gameObject,
-                    forward * -(oscDepth / 2),
+                    forward * -(length / 2),
                     tightRot,
-                    oscDepth,
-                    closeRadius
+                    length,
+                    radius
                 );
                 Handles.Label(scr.transform.position, "Entrance");
                 Handles.Label(scr.transform.TransformPoint(forward * -(oscDepth / 2) / scr.transform.lossyScale.x), "Inside");
@@ -84,11 +89,12 @@ namespace VF.Inspector {
                 }
             } else {
                 // Receivers
-                var oscDepth = 0.25f;
+                var size = GetCapsuleSize(orifice);
+                var oscDepth = size.Item1;
+                var closeRadius = size.Item2;
                 var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
                 var frotRadius = 0.1f;
                 var frotPos = 0.05f;
-                var closeRadius = 0.1f;
                 OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                 OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
@@ -130,6 +136,13 @@ namespace VF.Inspector {
             }
             
             DestroyImmediate(orifice);
+        }
+
+        private static Tuple<float, float> GetCapsuleSize(OGBOrifice orifice) {
+            var length = orifice.length;
+            if (length <= 0) length = 0.25f;
+            var radius = length / 2.5f;
+            return Tuple.Create(length, radius);
         }
         
         private static bool IsHole(Light light) {
