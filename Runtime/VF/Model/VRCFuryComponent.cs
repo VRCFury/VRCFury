@@ -16,12 +16,14 @@ namespace VF.Model {
             if (vrcfSerVersion > VRCFURY_SER_VERSION) {
                 if (!warningShown) {
                     warningShown = true;
+                    #if UNITY_EDITOR
                     EditorApplication.delayCall += () => {
                         EditorUtility.DisplayDialog("VRCFury Error",
                             "This project contains VRCFury assets newer than the installed VRCFury plugin. " +
                             "You need to upgrade VRCFury using Tools -> VRCFury -> Upgrade VRCFury.",
                             "Ok");
                     };
+                    #endif
                 }
                 failedToLoad = true; 
                 throw new SerializationException("Cannot load VRCFury component, VRCFury plugin is out of date");
