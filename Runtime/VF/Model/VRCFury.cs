@@ -6,7 +6,8 @@ using VF.Model.Feature;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
-    public class VRCFury : MonoBehaviour {
+
+    public class VRCFury : VRCFuryComponent {
         [HideInInspector]
         public VRCFuryConfig config = new VRCFuryConfig();
 

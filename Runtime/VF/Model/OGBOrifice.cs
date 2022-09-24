@@ -8,9 +8,9 @@ namespace VF.Model {
         Ring
     }
     
-    public class OGBOrifice : MonoBehaviour {
+    public class OGBOrifice : VRCFuryComponent {
         public AddLight addLight;
-        public String name;
+        public new string name;
         public float length;
     }
 }

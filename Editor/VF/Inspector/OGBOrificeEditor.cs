@@ -30,10 +30,8 @@ namespace VF.Inspector {
             if (autoInfo != null) {
                 forward = autoInfo.Item1;
             }
-            
-            var oscDepth = 0.25f;
+
             var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
-            var closeRadius = 0.1f;
 
             var c = Handles.color;
             try {
@@ -49,7 +47,7 @@ namespace VF.Inspector {
                     radius
                 );
                 Handles.Label(scr.transform.position, "Entrance");
-                Handles.Label(scr.transform.TransformPoint(forward * -(oscDepth / 2) / scr.transform.lossyScale.x), "Inside");
+                Handles.Label(scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x), "Inside");
             } finally {
                 Handles.color = c;
             }
