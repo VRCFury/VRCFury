@@ -16,6 +16,10 @@ public static class VRCFuryEditorUtils {
         Action onPlus = null,
         Func<VisualElement> onEmpty = null
     ) {
+        if (list == null) {
+            return new Label("List is null");
+        }
+        
         var container = new VisualElement();
 
         var entriesContainer = new VisualElement();
@@ -173,11 +177,14 @@ public static class VRCFuryEditorUtils {
                     bindingPath = prop.propertyPath
                 };
             default:
-                return new PropertyField(prop, " ") {
+                var wrapper = new VisualElement();
+                wrapper.style.overflow = Overflow.Hidden;
+                wrapper.Add(new PropertyField(prop, " ") {
                     style = {
                         marginLeft = -LABEL_WIDTH
                     }
-                };
+                });
+                return wrapper;
         }
     }
 

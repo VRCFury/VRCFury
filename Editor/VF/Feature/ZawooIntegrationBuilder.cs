@@ -75,10 +75,16 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         }
 
         addOtherFeature(new FullController {
-            controller = fx,
-            menu = menu,
-            parameters = prms,
-            submenu = string.IsNullOrWhiteSpace(model.submenu) ? "Zawoo" : model.submenu,
+            controllers = { new FullController.ControllerEntry {
+                controller = fx
+            } },
+            menus = { new FullController.MenuEntry {
+                menu = menu,
+                prefix = string.IsNullOrWhiteSpace(model.submenu) ? "Zawoo" : model.submenu
+            } },
+            prms = { new FullController.ParamsEntry {
+                parameters = prms
+            } },
             rootObj = root,
             ignoreSaved = true,
             toggleParam = toggleParam

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDKBase;
 
 // Notes for the future:
 // Don't ever remove a class -- it will break the entire list of SerializedReferences that contained it
@@ -32,14 +34,54 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class FullController : FeatureModel {
+    public class FullController : FeatureModel, ISerializationCallbackReceiver {
+        [NonSerialized] public GameObject rootObj;
+        [NonSerialized] public bool ignoreSaved;
+        [NonSerialized] public string toggleParam;
+
+        public List<ControllerEntry> controllers = new List<ControllerEntry>();
+        public List<MenuEntry> menus = new List<MenuEntry>();
+        public List<ParamsEntry> prms = new List<ParamsEntry>();
+        
+        // obsolete
         public RuntimeAnimatorController controller;
         public VRCExpressionsMenu menu;
         public VRCExpressionParameters parameters;
         public string submenu;
-        [NonSerialized] public GameObject rootObj;
-        [NonSerialized] public bool ignoreSaved;
-        [NonSerialized] public string toggleParam;
+
+        [Serializable]
+        public class ControllerEntry {
+            public RuntimeAnimatorController controller;
+            public VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.FX;
+        }
+
+        [Serializable]
+        public class MenuEntry {
+            public VRCExpressionsMenu menu;
+            public string prefix;
+        }
+
+        [Serializable]
+        public class ParamsEntry {
+            public VRCExpressionParameters parameters;
+        }
+
+        public void OnBeforeSerialize() {}
+
+        public void OnAfterDeserialize() {
+            if (controller != null) {
+                controllers.Add(new ControllerEntry { controller = controller });
+                controller = null;
+            }
+            if (menu != null) {
+                menus.Add(new MenuEntry { menu = menu, prefix = submenu });
+                menu = null;
+            }
+            if (parameters != null) {
+                prms.Add(new ParamsEntry { parameters = parameters });
+                parameters = null;
+            }
+        }
     }
     
     // Obsolete and removed

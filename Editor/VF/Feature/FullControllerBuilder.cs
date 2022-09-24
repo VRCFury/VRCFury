@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -26,8 +25,8 @@ namespace VF.Feature {
             var baseObject = model.rootObj != null ? model.rootObj : featureBaseObject;
 
             var syncedParams = new List<string>();
-            if (model.parameters != null) {
-                foreach (var param in model.parameters.parameters) {
+            foreach (var p in model.prms) {
+                foreach (var param in p.parameters.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
                     syncedParams.Add(param.name);
                     var newParam = new VRCExpressionParameters.Parameter {
@@ -45,7 +44,7 @@ namespace VF.Feature {
                 return name;
             };
 
-            if (model.controller != null) {
+            foreach (var c in model.controllers) {
                 AnimationClip RewriteClip(AnimationClip from) {
                     if (from == null) {
                         return null;
@@ -65,14 +64,14 @@ namespace VF.Feature {
                     RewriteClip,
                     NewBlendTree
                 );
-                merger.Merge((AnimatorController)model.controller, controller.GetRawController());
+                merger.Merge((AnimatorController)c.controller, controller.GetRawController());
             }
 
-            if (model.menu != null) {
-                var prefix = string.IsNullOrWhiteSpace(model.submenu)
+            foreach (var m in model.menus) {
+                var prefix = string.IsNullOrWhiteSpace(m.prefix)
                     ? new string[] { }
-                    : model.submenu.Split('/').ToArray();
-                menu.MergeMenu(prefix, model.menu, RewriteParamName);
+                    : m.prefix.Split('/').ToArray();
+                menu.MergeMenu(prefix, m.menu, RewriteParamName);
             }
 
             if (model.toggleParam != null) {
@@ -100,12 +99,31 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
-            content.Add(new PropertyField(prop.FindPropertyRelative("controller"), "Controller"));
-            content.Add(new PropertyField(prop.FindPropertyRelative("menu"), "Menu"));
-            content.Add(new PropertyField(prop.FindPropertyRelative("parameters"), "Params"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Submenu to place your menu's items within. If left empty, your menu will be merged " +
-                                  "into the avatar's root menu."));
-            content.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("submenu")));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers"),
+                (i, el) => VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("controller"))));
+
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("(If prefix is left empty, menu will be merged into avatar's root menu)"));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus"),
+                (i, el) => {
+                    var wrapper = new VisualElement();
+                    wrapper.style.flexDirection = FlexDirection.Row;
+                    var a = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("menu"));
+                    a.style.flexBasis = 0;
+                    a.style.flexGrow = 1;
+                    wrapper.Add(a);
+                    var b = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("prefix"));
+                    b.style.flexBasis = 0;
+                    b.style.flexGrow = 1;
+                    wrapper.Add(b);
+                    return wrapper;
+                }));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms"),
+                (i, el) => VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("parameters"))));
+
             return content;
         }
     }
