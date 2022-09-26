@@ -18,8 +18,10 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
     [FeatureBuilderAction]
     public void Apply() {
         var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-        avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
-        
+        if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.Default) {
+            avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
+        }
+
         var visemes = controller.NewLayer("Visemes");
         var VisemeParam = controller.NewInt("Viseme", usePrefix: false);
         void addViseme(int index, string text, State clipState) {
