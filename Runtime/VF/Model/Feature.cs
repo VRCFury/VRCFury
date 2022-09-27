@@ -258,5 +258,44 @@ namespace VF.Model.Feature {
         public string fromPath;
         public string toPath;
     }
+    
+    [Serializable]
+    public class GestureDriver : FeatureModel {
+        public List<Gesture> gestures = new List<Gesture>();
+        
+        [Serializable]
+        public class Gesture {
+            public Hand hand;
+            public HandSign sign;
+            public HandSign comboSign;
+            public State state;
+            public bool disableBlinking;
+            public bool customTransitionTime;
+            public float transitionTime = 0;
+            public bool enableLockMenuItem;
+            public string lockMenuItem;
+            public bool enableExclusiveTag;
+            public string exclusiveTag;
+            public bool enableWeight;
+        }
+
+        public enum Hand {
+            EITHER,
+            LEFT,
+            RIGHT,
+            COMBO
+        }
+        
+        public enum HandSign {
+            NEUTRAL,
+            FIST,
+            HANDOPEN,
+            FINGERPOINT,
+            VICTORY,
+            ROCKNROLL,
+            HANDGUN,
+            THUMBSUP
+        }
+    }
 
 }

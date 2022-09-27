@@ -1,8 +1,10 @@
 namespace VF.Feature.Base {
     public enum FeatureOrder {
-        // Needs to happen after BlinkController
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver = 1,
+        
+        // Needs to run after any builders have added their "disable blinking" models (gesture builders mostly)
+        Blinking = 5,
         
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix = 10,
@@ -19,6 +21,6 @@ namespace VF.Feature.Base {
         FixWriteDefaults = 10000,
         
         // Needs to run after anything that creates menu items, so the user can relocate them if they wish
-        MoveMenuItems = 10001
+        MoveMenuItems = 10001,
     }
 }

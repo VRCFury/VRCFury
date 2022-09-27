@@ -131,8 +131,8 @@ namespace VF.Feature.Base {
                             var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
                             if (blendShapeIndex < 0) continue;
                             foundOne = true;
-                            var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
-                            motions.BlendShape(clip, skin, blendShape.blendShape, 100);
+                            //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
+                            motions.BlendShape(clip, skin, blendShape.blendShape, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
                             Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);

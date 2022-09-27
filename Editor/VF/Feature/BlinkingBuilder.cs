@@ -1,6 +1,8 @@
+using System.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -9,7 +11,16 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Feature {
 
 public class BlinkingBuilder : FeatureBuilder<Blinking> {
-    [FeatureBuilderAction]
+    /** Adding this feature to the build will disable blinking when the param is true */
+    public class BlinkingPrevention : FeatureModel {
+        public VFABool param;
+    }
+    public class BlinkingPreventionBuilder : FeatureBuilder<BlinkingPrevention> {
+        [FeatureBuilderAction]
+        public void Apply() { }
+    }
+
+    [FeatureBuilderAction((int)FeatureOrder.Blinking)]
     public void Apply() {
         if (!StateExists(model.state)) return;
 
@@ -18,7 +29,6 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
         var blinkTriggerSynced = controller.NewBool("BlinkTriggerSynced", synced: true);
         var blinkTrigger = controller.NewTrigger("BlinkTrigger");
-        var blinkActive = controller.NewBool("BlinkActive", def: true);
 
         // Generator
         {
@@ -71,11 +81,15 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             var layer = controller.NewLayer("Blink - Animate");
             var idle = layer.NewState("Idle");
             var checkActive = layer.NewState("Check Active");
-            var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(checkActive, 1, 0);
+            var blinkStart = layer.NewState("Blink Start").Move(checkActive, 1, 0);
+            var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 0, -1);
 
             idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
-            checkActive.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(blinkActive.IsTrue());
-            checkActive.TransitionsTo(idle).When(Always());
+            foreach (var prevention in allFeaturesInRun.Select(f => f as BlinkingPrevention).Where(f => f != null)) {
+                checkActive.TransitionsTo(idle).When(prevention.param.IsTrue());
+            }
+            checkActive.TransitionsTo(blinkStart).When(Always());
+            blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(Always());
             if (holdDuration > 0) {
                 var hold = layer.NewState("Hold").WithAnimation(blinkClip);
                 blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(Always());

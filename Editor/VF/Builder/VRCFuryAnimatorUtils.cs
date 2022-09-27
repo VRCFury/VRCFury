@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using BestHTTP.SecureProtocol.Org.BouncyCastle.Asn1.Cms;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -191,22 +195,17 @@ public class VFAState {
         return this;
     }
 
-    public VFATransition TransitionsFromEntry() {
-        var trans = layer.stateMachine.AddEntryTransition(node.state);
-        return new VFATransition(trans);
+    public VFAEntryTransition TransitionsFromEntry() {
+        return new VFAEntryTransition(() => layer.stateMachine.AddEntryTransition(node.state));
     }
-    public VFAAnyTransition TransitionsFromAny() {
-        var trans = layer.stateMachine.AddAnyStateTransition(node.state);
-        trans.canTransitionToSelf = false;
-        return new VFAAnyTransition(trans);
+    public VFATransition TransitionsFromAny() {
+        return new VFATransition(() => layer.stateMachine.AddAnyStateTransition(node.state));
     }
-    public VFAAnyTransition TransitionsTo(VFAState other) {
-        var trans = node.state.AddTransition(other.node.state);
-        return new VFAAnyTransition(trans);
+    public VFATransition TransitionsTo(VFAState other) {
+        return new VFATransition(() => node.state.AddTransition(other.node.state));
     }
-    public VFAAnyTransition TransitionsToExit() {
-        var trans = node.state.AddExitTransition();
-        return new VFAAnyTransition(trans);
+    public VFATransition TransitionsToExit() {
+        return new VFATransition(() => node.state.AddExitTransition());
     }
 }
 
@@ -223,67 +222,106 @@ public class VFABool : VFAParam {
     public VFABool(AnimatorControllerParameter param) : base(param) {}
 
     public VFACondition IsTrue() {
-        return new VFACondition(trans => trans.AddCondition(AnimatorConditionMode.If, 0, Name()));
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.If, parameter = Name(), threshold = 0 });
     }
     public VFACondition IsFalse() {
-        return new VFACondition(trans => trans.AddCondition(AnimatorConditionMode.IfNot, 0, Name()));
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.IfNot, parameter = Name(), threshold = 0 });
     }
 }
 public class VFANumber : VFAParam {
     public VFANumber(AnimatorControllerParameter param) : base(param) {}
 
     public VFACondition IsGreaterThan(float num) {
-        return new VFACondition(trans => trans.AddCondition(AnimatorConditionMode.Greater, num, Name()));
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Greater, parameter = Name(), threshold = num });
     }
     public VFACondition IsLessThan(float num) {
-        return new VFACondition(trans => trans.AddCondition(AnimatorConditionMode.Less, num, Name()));
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Less, parameter = Name(), threshold = num });
     }
     public VFACondition IsEqualTo(float num) {
-        return new VFACondition(trans => trans.AddCondition(AnimatorConditionMode.Equals, num, Name()));
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Equals, parameter = Name(), threshold = num });
     }
     public VFACondition IsNotEqualTo(float num) {
-        return new VFACondition(trans => trans.AddCondition(AnimatorConditionMode.NotEqual, num, Name()));
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.NotEqual, parameter = Name(), threshold = num });
     }
 }
 
 public class VFACondition {
-    internal Action<AnimatorTransitionBase> apply;
-    public VFACondition(Action<AnimatorTransitionBase> apply) {
-        this.apply = apply;
+    internal IEnumerable<IEnumerable<AnimatorCondition>> transitions;
+    public VFACondition(AnimatorCondition cond) {
+        var transition = new List<AnimatorCondition> { cond };
+        transitions = new List<List<AnimatorCondition>> { transition };
+    }
+    public VFACondition(IEnumerable<IEnumerable<AnimatorCondition>> transitions) {
+        this.transitions = transitions;
     }
     public VFACondition And(VFACondition other) {
-        return new VFACondition(trans => { apply(trans); other.apply(trans); });
+        return new VFACondition(AnimatorConditionLogic.And(transitions, other.transitions));
     }
+    public VFACondition Or(VFACondition other) {
+        return new VFACondition(AnimatorConditionLogic.Or(transitions, other.transitions));
+    }
+    public VFACondition Not() {
+        return new VFACondition(AnimatorConditionLogic.Not(transitions));
+    }
+
 }
 
+public class VFAEntryTransition {
+    private readonly Func<AnimatorTransition> transitionProvider;
+    public VFAEntryTransition(Func<AnimatorTransition> transitionProvider) {
+        this.transitionProvider = transitionProvider;
+    }
+
+    public VFAEntryTransition When(VFACondition cond) {
+        foreach (var t in cond.transitions) {
+            var transition = transitionProvider();
+            transition.conditions = t.ToArray();
+        }
+        return this;
+    }
+}
 public class VFATransition {
-    private readonly AnimatorTransition trans;
-    public VFATransition(AnimatorTransition trans) {
-        this.trans = trans;
+    private readonly List<AnimatorStateTransition> createdTransitions = new List<AnimatorStateTransition>();
+    private Func<AnimatorStateTransition> transitionProvider;
+    public VFATransition(Func<AnimatorStateTransition> transitionProvider) {
+        this.transitionProvider = () => {
+             var trans = transitionProvider();
+             trans.duration = 0;
+             trans.canTransitionToSelf = false;
+             createdTransitions.Add(trans);
+             return trans;
+        };
     }
 
     public VFATransition When(VFACondition cond) {
-        cond.apply(trans);
+        foreach (var t in cond.transitions) {
+            var transition = transitionProvider();
+            transition.conditions = t.ToArray();
+        }
         return this;
     }
-}
-public class VFAAnyTransition {
-    private readonly AnimatorStateTransition trans;
-    public VFAAnyTransition(AnimatorStateTransition trans) {
-        this.trans = trans;
-        trans.duration = 0;
-    }
-
-    public VFAAnyTransition When(VFACondition cond) {
-        cond.apply(trans);
+    public VFATransition WithTransitionToSelf() {
+        foreach (var t in createdTransitions) {
+            t.canTransitionToSelf = true;
+        }
+        var oldProvider = transitionProvider;
+        transitionProvider = () => {
+            var trans = oldProvider();
+            trans.canTransitionToSelf = true;
+            return trans;
+        };
         return this;
     }
-    public VFAAnyTransition WithTransitionToSelf() {
-        trans.canTransitionToSelf = true;
-        return this;
-    }
-    public VFAAnyTransition WithTransitionDurationSeconds(float time) {
-        trans.duration = time;
+    public VFATransition WithTransitionDurationSeconds(float time) {
+        foreach (var t in createdTransitions) {
+            t.duration = time;
+        }
+        var oldProvider = transitionProvider;
+        transitionProvider = () => {
+            var trans = oldProvider();
+            trans.duration = time;
+            return trans;
+        };
         return this;
     }
 }

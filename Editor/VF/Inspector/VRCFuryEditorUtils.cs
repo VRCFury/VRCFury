@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -33,6 +34,7 @@ public static class VRCFuryEditorUtils {
         entriesContainer.Add(RefreshOnChange(() => {
             var entries = new VisualElement();
             var size = list.arraySize;
+            var refreshAllElements = new List<Action>();
             for (var i = 0; i < size; i++) {
                 var offset = i;
                 var el = list.GetArrayElementAtIndex(i);
@@ -48,12 +50,62 @@ public static class VRCFuryEditorUtils {
                 row.style.alignItems = Align.FlexStart;
                 entries.Add(row);
 
-                var data = renderElement != null ? renderElement(offset, el) : new PropertyField(el);
+                VisualElement data = RefreshOnTrigger(
+                    () => renderElement != null ? renderElement(offset, el) : new PropertyField(el),
+                    el.serializedObject,
+                    out var triggerRefresh
+                );
+                refreshAllElements.Add(triggerRefresh);
                 Padding(data, 5);
                 data.style.flexGrow = 1;
                 row.Add(data);
 
-                var remove = new Label("x");
+                var elButtons = new VisualElement();
+                elButtons.style.flexDirection = FlexDirection.ColumnReverse;
+                elButtons.style.flexGrow = 0;
+                elButtons.style.flexShrink = 0;
+                elButtons.style.flexBasis = 20;
+                row.Add(elButtons);
+
+                var shownButton = false;
+
+                if (offset != 0) {
+                    var move = new Label("↑");
+                    move.AddManipulator(new Clickable(e => {
+                        list.MoveArrayElement(offset, offset - 1);
+                        list.serializedObject.ApplyModifiedProperties();
+                        foreach (var r in refreshAllElements) r();
+                    }));
+                    move.style.flexGrow = 0;
+                    move.style.borderLeftColor = move.style.borderBottomColor = Color.black;
+                    move.style.borderLeftWidth = move.style.borderBottomWidth = 1;
+                    move.style.borderBottomLeftRadius = shownButton ? 0 : 5;
+                    move.style.paddingLeft = move.style.paddingRight = 5;
+                    move.style.paddingBottom = 3;
+                    move.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    elButtons.Add(move);
+                    shownButton = true;
+                }
+                
+                if (offset != size - 1) {
+                    var move = new Label("↓");
+                    move.AddManipulator(new Clickable(e => {
+                        list.MoveArrayElement(offset, offset + 1);
+                        list.serializedObject.ApplyModifiedProperties();
+                        foreach (var r in refreshAllElements) r();
+                    }));
+                    move.style.flexGrow = 0;
+                    move.style.borderLeftColor = move.style.borderBottomColor = Color.black;
+                    move.style.borderLeftWidth = move.style.borderBottomWidth = 1;
+                    move.style.borderBottomLeftRadius = shownButton ? 0 : 5;
+                    move.style.paddingLeft = move.style.paddingRight = 5;
+                    move.style.paddingBottom = 3;
+                    move.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    elButtons.Add(move);
+                    shownButton = true;
+                }
+
+                var remove = new Label("✕");
                 remove.AddManipulator(new Clickable(e => {
                     list.DeleteArrayElementAtIndex(offset);
                     list.serializedObject.ApplyModifiedProperties();
@@ -61,10 +113,11 @@ public static class VRCFuryEditorUtils {
                 remove.style.flexGrow = 0;
                 remove.style.borderLeftColor = remove.style.borderBottomColor = Color.black;
                 remove.style.borderLeftWidth = remove.style.borderBottomWidth = 1;
-                remove.style.borderBottomLeftRadius = 5;
+                remove.style.borderBottomLeftRadius = shownButton ? 0 : 5;
                 remove.style.paddingLeft = remove.style.paddingRight = 5;
                 remove.style.paddingBottom = 3;
-                row.Add(remove);
+                remove.style.unityTextAlign = TextAnchor.MiddleCenter;
+                elButtons.Add(remove);
             }
             if (size == 0) {
                 if (onEmpty != null) {
@@ -163,29 +216,33 @@ public static class VRCFuryEditorUtils {
 
     public static int LABEL_WIDTH = 153;
     public static VisualElement PropWithoutLabel(SerializedProperty prop) {
+        var wrapper = new VisualElement();
+        wrapper.style.overflow = Overflow.Hidden;
         switch (prop.propertyType) {
             case SerializedPropertyType.String:
-                return new TextField {
+                wrapper.Add(new TextField {
                     bindingPath = prop.propertyPath
-                };
+                });
+                break;
             case SerializedPropertyType.Integer:
-                return new IntegerField() {
+                wrapper.Add(new IntegerField() {
                     bindingPath = prop.propertyPath
-                };
+                });
+                break;
             case SerializedPropertyType.Float:
-                return new FloatField() {
+                wrapper.Add(new FloatField() {
                     bindingPath = prop.propertyPath
-                };
+                });
+                break;
             default:
-                var wrapper = new VisualElement();
-                wrapper.style.overflow = Overflow.Hidden;
                 wrapper.Add(new PropertyField(prop, " ") {
                     style = {
                         marginLeft = -LABEL_WIDTH
                     }
                 });
-                return wrapper;
+                break;
         }
+        return wrapper;
     }
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {
@@ -199,7 +256,10 @@ public static class VRCFuryEditorUtils {
                 return _OnChange(prop, () => prop.stringValue, changed, (a,b) => a==b);
             case SerializedPropertyType.ObjectReference:
                 return _OnChange(prop, () => prop.objectReferenceValue, changed, (a,b) => a==b);
+            case SerializedPropertyType.Enum:
+                return _OnChange(prop, () => prop.enumValueIndex, changed, (a,b) => a==b);
         }
+
         if (prop.isArray) {
             var fakeField = new IntegerField();
             fakeField.bindingPath = prop.propertyPath+".Array.size";
@@ -218,13 +278,9 @@ public static class VRCFuryEditorUtils {
     private static VisualElement _OnChange<T>(SerializedProperty prop, Func<T> getValue, Action changed, Func<T,T,bool> equals) {
         // The register events can sometimes randomly fire when binding / unbinding happens,
         // with the oldValue being "null", so we have to do our own change detection by caching the old value.
-        var fakeField = new PropertyField(prop) {
-            style = {
-                display = DisplayStyle.None
-            }
-        };
+        var fakeField = new PropertyField(prop) { style = { display = DisplayStyle.None } };
+    
         var oldValue = getValue();
-
         void Check() {
             var newValue = getValue();
             if (equals(oldValue, newValue)) return;
@@ -232,15 +288,17 @@ public static class VRCFuryEditorUtils {
             //Debug.Log("Detected change in " + prop.propertyPath);
             changed();
         }
+        if (prop.propertyType == SerializedPropertyType.Enum) {
+            fakeField.RegisterCallback<ChangeEvent<string>>(e => changed());
+        } else {
+            fakeField.RegisterCallback<ChangeEvent<T>>(e => Check());
+        }
 
-        fakeField.RegisterCallback<ChangeEvent<T>>(e => Check());
         return fakeField;
     }
-
-    public static VisualElement RefreshOnChange(Func<VisualElement> content, params SerializedProperty[] props) {
-        var container = new VisualElement();
+    
+    public static VisualElement RefreshOnTrigger(Func<VisualElement> content, SerializedObject obj, out Action triggerRefresh) {
         var inner = new VisualElement();
-        container.Add(inner);
         inner.Add(content());
 
         void Refresh() {
@@ -248,12 +306,19 @@ public static class VRCFuryEditorUtils {
             inner.Clear();
             var newContent = content();
             inner.Add(newContent);
-            inner.Bind(props[0].serializedObject);
+            inner.Bind(obj);
         }
 
+        triggerRefresh = Refresh;
+        return inner;
+    }
+
+    public static VisualElement RefreshOnChange(Func<VisualElement> content, params SerializedProperty[] props) {
+        var container = new VisualElement();
+        container.Add(RefreshOnTrigger(content, props[0].serializedObject, out var triggerRefresh));
         foreach (var prop in props) {
             if (prop != null) {
-                var onChangeField = OnChange(prop, Refresh);
+                var onChangeField = OnChange(prop, triggerRefresh);
                 container.Add(onChangeField);
             }
         }

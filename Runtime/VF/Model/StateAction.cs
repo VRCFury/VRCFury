@@ -21,6 +21,7 @@ namespace VF.Model.StateAction {
     [Serializable]
     public class BlendShapeAction : Action {
         public string blendShape;
+        public float blendShapeValue = 100;
     }
     
     [Serializable]

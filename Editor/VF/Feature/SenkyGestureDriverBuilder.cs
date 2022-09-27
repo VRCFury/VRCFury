@@ -11,102 +11,79 @@ namespace VF.Feature {
 public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
     [FeatureBuilderAction((int)FeatureOrder.SenkyGestureDriver)]
     public void Apply() {
-        var blinkActive = controller.NewBool("BlinkActive", def: true);
-        var paramEmoteHappy = controller.NewBool("EmoteHappy", synced: true);
-        var paramEmoteSad = controller.NewBool("EmoteSad", synced: true);
-        var paramEmoteAngry = controller.NewBool("EmoteAngry", synced: true);
-        var paramEmoteTongue = controller.NewBool("EmoteTongue", synced: true);
-        // These don't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-        var paramEmoteHappyLock = controller.NewBool("EmoteHappyLock", synced: true);
-        menu.NewMenuToggle("Emote Lock/Happy", paramEmoteHappyLock);
-        var paramEmoteSadLock = controller.NewBool("EmoteSadLock", synced: true);
-        menu.NewMenuToggle("Emote Lock/Sad", paramEmoteSadLock);
-        var paramEmoteAngryLock = controller.NewBool("EmoteAngryLock", synced: true);
-        menu.NewMenuToggle("Emote Lock/Angry", paramEmoteAngryLock);
-        var paramEmoteTongueLock = controller.NewBool("EmoteTongueLock", synced: true);
-        menu.NewMenuToggle("Emote Lock/Tongue", paramEmoteTongueLock);
+        var feature = new GestureDriver {
+            gestures = {
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.THUMBSUP,
+                    state = model.eyesHappy,
+                    disableBlinking = true,
+                    lockMenuItem = "Emote Lock/Happy",
+                    exclusiveTag = "eyes",
+                },
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.HANDGUN,
+                    state = model.eyesSad,
+                    disableBlinking = true,
+                    lockMenuItem = "Emote Lock/Sad",
+                    exclusiveTag = "eyes",
+                },
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.ROCKNROLL,
+                    state = model.eyesAngry,
+                    disableBlinking = true,
+                    lockMenuItem = "Emote Lock/Angry",
+                    exclusiveTag = "eyes",
+                },
 
-        var transitionTime = model.transitionTime >= 0 ? model.transitionTime : 0.1f;
-
-        {
-            var layer = controller.NewLayer("Eyes");
-            var idle = layer.NewState("Idle");
-            var closed = layer.NewState("Closed").WithAnimation(LoadState("eyesClosed", model.eyesClosed));
-            var happy = layer.NewState("Happy").WithAnimation(LoadState("eyesHappy", model.eyesHappy));
-            //var bedroom = layer.NewState("Bedroom").WithAnimation(loadClip("eyesBedroom", inputs.eyesBedroom));
-            var sad = layer.NewState("Sad").WithAnimation(LoadState("eyesSad", model.eyesSad));
-            var angry = layer.NewState("Angry").WithAnimation(LoadState("eyesAngry", model.eyesAngry));
-
-            if (blinkActive != null) {
-                idle.Drives(blinkActive, true);
-                closed.Drives(blinkActive, false);
-                happy.Drives(blinkActive, false);
-                //bedroom.Drives(blinkActive, false)
-                sad.Drives(blinkActive, false);
-                angry.Drives(blinkActive, false);
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.VICTORY,
+                    state = model.mouthBlep,
+                    lockMenuItem = "Emote Lock/Tongue",
+                    exclusiveTag = "mouth",
+                },
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.THUMBSUP,
+                    state = model.mouthHappy,
+                    lockMenuItem = "Emote Lock/Happy",
+                    exclusiveTag = "mouth",
+                },
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.HANDGUN,
+                    state = model.mouthSad,
+                    lockMenuItem = "Emote Lock/Sad",
+                    exclusiveTag = "mouth",
+                },
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.ROCKNROLL,
+                    state = model.mouthAngry,
+                    lockMenuItem = "Emote Lock/Angry",
+                    exclusiveTag = "mouth",
+                },
+                
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.HANDGUN,
+                    state = model.earsBack,
+                    lockMenuItem = "Emote Lock/Sad",
+                    exclusiveTag = "ears",
+                },
+                new GestureDriver.Gesture {
+                    sign = GestureDriver.HandSign.ROCKNROLL,
+                    state = model.earsBack,
+                    lockMenuItem = "Emote Lock/Angry",
+                    exclusiveTag = "ears",
+                },
             }
+        };
 
-            //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthRing.IsTrue());
-            //closed.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthHole.IsTrue());
-            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteHappy.IsTrue());
-            //bedroom.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(bedroom.IsTrue());
-            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteSad.IsTrue());
-            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(Always());
+        foreach (var gesture in feature.gestures) {
+            gesture.hand = GestureDriver.Hand.EITHER;
+            gesture.enableLockMenuItem = true;
+            gesture.enableExclusiveTag = true;
+            gesture.customTransitionTime = model.transitionTime >= 0;
+            gesture.transitionTime = model.transitionTime;
         }
 
-        {
-            var layer = controller.NewLayer("Mouth");
-            var idle = layer.NewState("Idle");
-            var blep = layer.NewState("Blep").WithAnimation(LoadState("mouthBlep", model.mouthBlep));
-            var suck = layer.NewState("Suck").WithAnimation(LoadState("mouthSuck", model.mouthSuck));
-            var sad = layer.NewState("Sad").WithAnimation(LoadState("mouthSad", model.mouthSad));
-            var angry = layer.NewState("Angry").WithAnimation(LoadState("mouthAngry", model.mouthAngry));
-            var happy = layer.NewState("Happy").WithAnimation(LoadState("mouthHappy", model.mouthHappy));
-
-            //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthRing.IsTrue());
-            //suck.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramOrifaceMouthHole.IsTrue());
-            blep.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteTongue.IsTrue());
-            happy.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteHappy.IsTrue());
-            sad.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteSad.IsTrue());
-            angry.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(paramEmoteAngry.IsTrue());
-            idle.TransitionsFromAny().WithTransitionToSelf().WithTransitionDurationSeconds(transitionTime).When(Always());
-        }
-
-        {
-            var layer = controller.NewLayer("Ears");
-            var idle = layer.NewState("Idle");
-            var back = layer.NewState("Back").WithAnimation(LoadState("earsBack", model.earsBack));
-
-            idle.TransitionsTo(back).WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsTrue());
-            idle.TransitionsTo(back).WithTransitionDurationSeconds(0.1f).When(paramEmoteAngry.IsTrue());
-            back.TransitionsTo(idle).WithTransitionDurationSeconds(0.1f).When(paramEmoteSad.IsFalse().And(paramEmoteAngry.IsFalse()));
-        }
-
-        createGestureTriggerLayer("Tongue", paramEmoteTongueLock, paramEmoteTongue, 4);
-        createGestureTriggerLayer("Happy", paramEmoteHappyLock, paramEmoteHappy, 7);
-        createGestureTriggerLayer("Sad", paramEmoteSadLock, paramEmoteSad, 6);
-        createGestureTriggerLayer("Angry", paramEmoteAngryLock, paramEmoteAngry, 5);
-    }
-
-    private void createGestureTriggerLayer(string name, VFABool lockParam, VFABool triggerParam, int gestureNum) {
-        var layer = controller.NewLayer("Gesture - " + name);
-        var off = layer.NewState("Off");
-        var on = layer.NewState("On");
-
-        var GestureLeft = controller.NewInt("GestureLeft", usePrefix: false);
-        var GestureRight = controller.NewInt("GestureRight", usePrefix: false);
-
-        off.TransitionsTo(on).When(lockParam.IsTrue());
-        off.TransitionsTo(on).When(GestureLeft.IsEqualTo(gestureNum));
-        off.TransitionsTo(on).When(GestureRight.IsEqualTo(gestureNum));
-        on.TransitionsTo(off)
-            .When(lockParam.IsFalse()
-            .And(GestureLeft.IsNotEqualTo(gestureNum))
-            .And(GestureRight.IsNotEqualTo(gestureNum)));
-
-        off.Drives(triggerParam, false);
-        on.Drives(triggerParam, true);
+        addOtherFeature(feature);
     }
 
     public override string GetEditorTitle() {

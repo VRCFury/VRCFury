@@ -92,6 +92,38 @@ Automatically creates an animation for your avatar's breathing cycle. Provide ei
 
 This is usually only useful for prefab artists. Provide a controller, menu, and params, and it will be merged into your client's avatar automatically. If you're working on your own avatar, you should usually just add these things to your avatar's own controller, menu, and params instead.
 
+### Gestures
+
+This is the one-stop shop for adding hand gestures to your avatar! For each hand gesture, choose
+ which hand is used for the gesture, and which hand sign needs to be acted. If
+ you select COMBO, the gesture will only activate if you do the given gesture on both hands
+ simultaneously. Use the + (Plus symbol) to set the animation clip / blend shape that
+ your gesture will activate.
+
+Advanced options for each gesture:
+
+#### Disable Blinking when Active
+
+If enabled, this gesture will automatically prevent your avatar from blinking while the gesture
+is active. Useful if the gesture does something like sad eyes or eyes closed. Note: Only works
+if your avatar's blinking is controlled by the VrcFury Blink Controller.
+
+#### Customize Transition Time
+
+By default, gestures will active in 0.1 seconds. You can adjust this with this option.
+
+#### Gesture Lock
+
+Set a menu path here, and an item will be created in your expression menu at the given path. The
+menu item will allow you to easily lock the gesture "on" without having to hold the hand sign.
+
+#### Exclusive Tag
+
+If multiple gestures contain the same Exclusive Tag, only one can be active at a time. For instance,
+if you have a Sad and an Angry gesture, you could give them both the same tag, and the system will
+prevent them from being active simultaneously. The "highest" one in the list wins. A gesture
+can have multiple Exclusive Tags separated by commas.
+
 ### Make Write Defaults Off
 
 This feature will automatically make your avatar use Write Defaults Off. Yes, it's magic. No, you don't even need to configure any options.

@@ -87,6 +87,11 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("blendShape"));
             propField.style.flexGrow = 1;
             row.Add(propField);
+            
+            var valueField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("blendShapeValue"));
+            valueField.style.flexGrow = 0;
+            valueField.style.flexBasis = 50;
+            row.Add(valueField);
 
             return row;
         }
