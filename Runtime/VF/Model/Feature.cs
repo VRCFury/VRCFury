@@ -277,6 +277,8 @@ namespace VF.Model.Feature {
             public bool enableExclusiveTag;
             public string exclusiveTag;
             public bool enableWeight;
+            
+            public bool ResetMePlease;
         }
 
         public enum Hand {
