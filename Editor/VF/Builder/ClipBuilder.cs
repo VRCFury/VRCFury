@@ -78,15 +78,19 @@ public class ClipBuilder {
 
     public static string Join(params string[] paths)
     {
-        var parts = paths.SelectMany(path => path.Split('/'));
         var ret = new List<string>();
-        foreach (var part in parts) {
-            if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1])) {
-                ret.RemoveAt(ret.Count - 1);
-            } else if (part == "." || part == "") {
-                // omit this chunk
-            } else {
-                ret.Add(part);
+        foreach (var path in paths) {
+            if (path.StartsWith("/")) {
+                ret.Clear();
+            }
+            foreach (var part in path.Split('/')) {
+                if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1])) {
+                    ret.RemoveAt(ret.Count - 1);
+                } else if (part == "." || part == "") {
+                    // omit this chunk
+                } else {
+                    ret.Add(part);
+                }
             }
         }
         return string.Join("/", ret);

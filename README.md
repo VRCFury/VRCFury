@@ -92,6 +92,13 @@ Automatically creates an animation for your avatar's breathing cycle. Provide ei
 
 This is usually only useful for prefab artists. Provide a controller, menu, and params, and it will be merged into your client's avatar automatically. If you're working on your own avatar, you should usually just add these things to your avatar's own controller, menu, and params instead.
 
+NOTE: Animation clips in your specified controller should have animated paths relative
+to your prop's root. VRCF will automatically add prefixes to all the animations so they
+work wherever it is installed on the avatar. If you wish to animate properties on the avatar
+itself (outside of your prop), you can prefix the animated property with a slash. For
+instance, if you animate the property `/Body`, your animation will apply to the avatar's
+Body object instead of a Body object within your prop.
+
 ### Gestures
 
 This is the one-stop shop for adding hand gestures to your avatar! For each hand gesture, choose
