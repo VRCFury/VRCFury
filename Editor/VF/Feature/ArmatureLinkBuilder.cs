@@ -34,7 +34,7 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction]
+        [FeatureBuilderAction((int)FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
             if (model.propBone == null) {
                 Debug.LogWarning("Root bone is null on armature link.");

@@ -123,7 +123,13 @@ public static class VRCFuryEditorUtils {
                 if (onEmpty != null) {
                     entries.Add(onEmpty());
                 } else {
-                    entries.Add(new Label("This list is empty. Click + to add an entry."));
+                    var label = new Label("This list is empty. Click + to add an entry.") {
+                        style = {
+                            unityTextAlign = TextAnchor.MiddleCenter
+                        }
+                    };
+                    VRCFuryEditorUtils.Padding(label, 5);
+                    entries.Add(label);
                 }
             }
             return entries;

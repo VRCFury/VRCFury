@@ -42,6 +42,9 @@ namespace VF.Model.Feature {
         public List<ControllerEntry> controllers = new List<ControllerEntry>();
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
+        public List<string> globalParams = new List<string>();
+        public bool allNonsyncedAreGlobal = false;
+        public int version;
         
         // obsolete
         public RuntimeAnimatorController controller;
@@ -66,8 +69,6 @@ namespace VF.Model.Feature {
             public VRCExpressionParameters parameters;
         }
 
-        public void OnBeforeSerialize() {}
-
         public void OnAfterDeserialize() {
             if (controller != null) {
                 controllers.Add(new ControllerEntry { controller = controller });
@@ -81,6 +82,13 @@ namespace VF.Model.Feature {
                 prms.Add(new ParamsEntry { parameters = parameters });
                 parameters = null;
             }
+            if (version == 0) {
+                allNonsyncedAreGlobal = true;
+            }
+        }
+        
+        public void OnBeforeSerialize() {
+            version = 1;
         }
     }
     

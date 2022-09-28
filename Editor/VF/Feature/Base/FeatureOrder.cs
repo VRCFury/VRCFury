@@ -3,6 +3,11 @@ namespace VF.Feature.Base {
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver = 1,
         
+        // Needs to happen after builders have scanned their prop children objects for any purpose (since this action
+        // may move objects out of the props and onto the avatar base). One example is the FullController which
+        // scans the prop children for contact receivers.
+        ArmatureLinkBuilder = 1,
+        
         // Needs to run after any builders have added their "disable blinking" models (gesture builders mostly)
         Blinking = 5,
         

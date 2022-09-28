@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -12,25 +13,38 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VRC.SDK3.Dynamics.Contact.Components;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
-        
-        private Func<string,string> RewriteParamIfSynced;
-        
+
         [FeatureBuilderAction]
         public void Apply() {
             var baseObject = model.rootObj != null ? model.rootObj : featureBaseObject;
 
-            var syncedParams = new List<string>();
+            var rewrittenParams = new HashSet<string>();
+            Func<string,string> rewriteParam = name => {
+                if (string.IsNullOrWhiteSpace(name)) return name;
+                if (VRChatGlobalParams.Contains(name)) return name;
+                if (model.allNonsyncedAreGlobal) {
+                    var synced = model.prms.Any(p => p.parameters.parameters.Any(param => param.name == name));
+                    if (!synced) return name;
+                }
+                if (model.globalParams.Contains(name)) {
+                    return name;
+                }
+
+                rewrittenParams.Add(name);
+                return controller.NewParamName("fc" + uniqueModelNum + "_" + name);
+            };
+
             foreach (var p in model.prms) {
                 foreach (var param in p.parameters.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
-                    syncedParams.Add(param.name);
                     var newParam = new VRCExpressionParameters.Parameter {
-                        name = RewriteParamName(param.name),
+                        name = rewriteParam(param.name),
                         valueType = param.valueType,
                         saved = param.saved && !model.ignoreSaved,
                         defaultValue = param.defaultValue
@@ -38,11 +52,6 @@ namespace VF.Feature {
                     prms.addSyncedParam(newParam);
                 }
             }
-
-            RewriteParamIfSynced = name => {
-                if (syncedParams.Contains(name)) return RewriteParamName(name);
-                return name;
-            };
 
             foreach (var c in model.controllers) {
                 AnimationClip RewriteClip(AnimationClip from) {
@@ -60,7 +69,7 @@ namespace VF.Feature {
 
                 var merger = new ControllerMerger(
                     layerName => controller.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
-                    param => RewriteParamIfSynced(param),
+                    param => rewriteParam(param),
                     RewriteClip,
                     NewBlendTree
                 );
@@ -71,12 +80,18 @@ namespace VF.Feature {
                 var prefix = string.IsNullOrWhiteSpace(m.prefix)
                     ? new string[] { }
                     : m.prefix.Split('/').ToArray();
-                menu.MergeMenu(prefix, m.menu, RewriteParamName);
+                menu.MergeMenu(prefix, m.menu, rewriteParam);
+            }
+            
+            foreach (var receiver in baseObject.GetComponentsInChildren<VRCContactReceiver>(true)){
+                if (rewrittenParams.Contains(receiver.parameter)) {
+                    receiver.parameter = rewriteParam(receiver.parameter);
+                }
             }
 
             if (model.toggleParam != null) {
                 addOtherFeature(new Toggle {
-                    name = RewriteParamName(model.toggleParam),
+                    name = rewriteParam(model.toggleParam),
                     state = new State {
                         actions = { new ObjectToggleAction { obj = baseObject } }
                     },
@@ -86,11 +101,6 @@ namespace VF.Feature {
                     usePrefixOnParam = false
                 });
             }
-        }
-
-        private string RewriteParamName(string name) {
-            if (string.IsNullOrWhiteSpace(name)) return name;
-            return controller.NewParamName("fc" + uniqueModelNum + "_" + name);
         }
 
         public override string GetEditorTitle() {
@@ -123,9 +133,41 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms"),
                 (i, el) => VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("parameters"))));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel(
+                "Parameters in this list will have their name kept as is, allowing you to interact with " +
+                "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
+                "parameters (such as gestures) are included by default."));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams"),
+                (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
+            
+            content.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
 
             return content;
         }
+        
+        private static HashSet<string> VRChatGlobalParams = new HashSet<string> {
+            "IsLocal",
+            "Viseme",
+            "Voice",
+            "GestureLeft",
+            "GestureRight",
+            "GestureLeftWeight",
+            "GestureRightWeight",
+            "AngularY",
+            "VelocityX",
+            "VelocityY",
+            "VelocityZ",
+            "Upright",
+            "Grounded",
+            "Seated",
+            "AFK",
+            "TrackingType",
+            "VRMode",
+            "MuteSelf",
+            "InStation"
+        };
     }
 
 }
