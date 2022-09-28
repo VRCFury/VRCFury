@@ -172,5 +172,40 @@ namespace VF.Model {
                 }
             }
         }
+
+        public static bool IsZeroScale(GameObject obj) {
+            var scale = obj.transform.lossyScale;
+            return scale.x == 0 || scale.y == 0 || scale.z == 0;
+        }
+
+        public static bool IsNegativeScale(GameObject obj) {
+            var scale = obj.transform.lossyScale;
+            return scale.x < 0 || scale.y < 0 || scale.z < 0;
+        }
+        public static bool IsNonUniformScale(GameObject obj) {
+            var scale = obj.transform.lossyScale;
+            return Math.Abs(scale.x - scale.y) / scale.x > 0.05
+                   || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
+        }
+        public static void AssertValidScale(GameObject obj, string type) {
+            if (IsZeroScale(obj)) {
+                throw new Exception(
+                    "OGB " + type + " exists on object " + obj +
+                    ", but the object has zero scale. This object must" +
+                    " not be zero scale or size calculation will fail.");
+            }
+            if (IsNegativeScale(obj)) {
+                throw new Exception(
+                    "OGB " + type + " exists on object " + obj +
+                    ", but the object has negative scale. This object must" +
+                    " have a positive scale or size calculation will fail.");
+            }
+            if (IsNonUniformScale(obj)) {
+                throw new Exception(
+                    "OGB " + type + " exists on object " + obj +
+                    ", but the object has a non-uniform scale. This object (and all parents) must" +
+                    " have an X, Y, and Z scale value that match each other, or size calculation will fail.");
+            }
+        }
     }
 }

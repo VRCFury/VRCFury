@@ -57,6 +57,8 @@ namespace VF.Inspector {
             if (usedNames == null) usedNames = new List<string>();
             var obj = orifice.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
+            
+            OGBUtils.AssertValidScale(obj, "orifice");
 
             var autoInfo = GetInfoFromLights(obj);
 

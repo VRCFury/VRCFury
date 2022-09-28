@@ -168,6 +168,8 @@ namespace VF.Inspector {
             var obj = pen.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
 
+            OGBUtils.AssertValidScale(obj, "penetrator");
+
             var size = GetSize(pen);
             var length = size.Item1;
             var radius = size.Item2;
