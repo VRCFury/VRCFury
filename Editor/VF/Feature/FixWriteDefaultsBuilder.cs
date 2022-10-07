@@ -54,6 +54,11 @@ namespace VF.Feature {
             foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
 
+            // Additive layers are basically just totally broken in unity with write defaults off, so we have to make
+            // them all override. With additive layers, random things get animated that are unrelated to what
+            // the layer is actually working on.
+            layer.blendingMode = AnimatorLayerBlendingMode.Override;
+
             DefaultClipBuilder.ForEachState(layer, state => {
                 if (state.motion == null) {
                     state.motion = noopClip;
