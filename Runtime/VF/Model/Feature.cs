@@ -43,6 +43,7 @@ namespace VF.Model.Feature {
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
         public List<string> globalParams = new List<string>();
+        public List<string> removePrefixes = new List<string>();
         public bool allNonsyncedAreGlobal = false;
         public int version;
         

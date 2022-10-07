@@ -54,20 +54,35 @@ public class ClipBuilder {
         BlendShape(clip, skin, blendShape, OneFrame(value));
     }
 
-    public void CopyWithAdjustedPrefixes(AnimationClip clip, AnimationClip copy, GameObject oldRoot) {
+    public void CopyWithAdjustedPrefixes(AnimationClip clip, AnimationClip copy, GameObject oldRoot, List<string> removePrefixes = null) {
         var prefix = oldRoot == baseObject ? "" : GetPath(oldRoot);
+
+        string rewritePath(string path) {
+            if (removePrefixes != null) {
+                foreach (var removePrefix in removePrefixes) {
+                    if (path.StartsWith(removePrefix + "/")) {
+                        path = path.Substring(removePrefix.Length + 1);
+                    } else if (path.StartsWith(removePrefix)) {
+                        path = path.Substring(removePrefix.Length);
+                    }
+                }
+            }
+            path = Join(prefix, path);
+            return path;
+        }
+
         var curvesBindings = AnimationUtility.GetCurveBindings(clip);
         foreach (var b in curvesBindings) {
             var binding = b;
             var curve = AnimationUtility.GetEditorCurve(clip, binding);
-            binding.path = Join(prefix, binding.path);
+            binding.path = rewritePath(binding.path);
             AnimationUtility.SetEditorCurve(copy, binding, curve);
         }
         var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
         foreach (var b in objBindings) {
             var binding = b;
             var objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
-            binding.path = Join(prefix, binding.path);
+            binding.path = rewritePath(binding.path);
             AnimationUtility.SetObjectReferenceCurve(copy, binding, objectReferenceCurve);
         }
         var prev = new SerializedObject(clip);

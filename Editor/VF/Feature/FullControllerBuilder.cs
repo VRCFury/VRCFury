@@ -59,7 +59,7 @@ namespace VF.Feature {
                         return null;
                     }
                     var copy = controller.NewClip(baseObject.name + "__" + from.name);
-                    motions.CopyWithAdjustedPrefixes(from, copy, baseObject);
+                    motions.CopyWithAdjustedPrefixes(from, copy, baseObject, model.removePrefixes);
                     return copy;
                 }
                 
@@ -140,6 +140,14 @@ namespace VF.Feature {
                 "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
                 "parameters (such as gestures) are included by default."));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams"),
+                (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Remove prefixes from clips:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel(
+                "Strings in this list will be removed from the start of every animated key, useful if the animations" +
+                " in the controller were originally written to be based from the avatar root, " +
+                "but you are now trying to use as a VRCFury prop."));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("removePrefixes"),
                 (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
             
             content.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
