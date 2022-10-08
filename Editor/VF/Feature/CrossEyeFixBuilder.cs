@@ -22,7 +22,7 @@ namespace VF.Feature {
         private static GameObject AddFakeEye(GameObject originalEye) {
             var realEyeUp = new GameObject(originalEye.name + ".Up");
             realEyeUp.transform.SetParent(originalEye.transform, false);
-            realEyeUp.transform.localRotation = Quaternion.identity;
+            realEyeUp.transform.rotation = Quaternion.identity;
             realEyeUp.transform.SetParent(originalEye.transform.parent, true);
             
             var fakeEye = new GameObject(originalEye.name + ".Fake");
