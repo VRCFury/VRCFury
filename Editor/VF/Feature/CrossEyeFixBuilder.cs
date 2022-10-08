@@ -20,16 +20,24 @@ namespace VF.Feature {
         }
 
         private static GameObject AddFakeEye(GameObject originalEye) {
+            var realEyeUp = new GameObject(originalEye.name + ".Up");
+            realEyeUp.transform.SetParent(originalEye.transform, false);
+            realEyeUp.transform.localRotation = Quaternion.identity;
+            realEyeUp.transform.SetParent(originalEye.transform.parent, true);
+            
             var fakeEye = new GameObject(originalEye.name + ".Fake");
-            fakeEye.transform.SetParent(originalEye.transform.parent, false);
-            fakeEye.transform.localPosition = originalEye.transform.localPosition;
-            var euler = originalEye.transform.localRotation.eulerAngles;
-            euler.z = 0;
-            fakeEye.transform.localRotation = Quaternion.Euler(euler);
+            fakeEye.transform.SetParent(originalEye.transform, false);
+            fakeEye.transform.SetParent(originalEye.transform.parent, true);
 
-            var constraint = originalEye.AddComponent<RotationConstraint>();
+            var fakeEyeUp = new GameObject(originalEye.name + ".Fake.Up");
+            fakeEyeUp.transform.SetParent(realEyeUp.transform, false);
+            fakeEyeUp.transform.SetParent(fakeEye.transform, true);
+            
+            originalEye.transform.SetParent(realEyeUp.transform, true);
+
+            var constraint = realEyeUp.AddComponent<RotationConstraint>();
             constraint.AddSource(new ConstraintSource() {
-                sourceTransform = fakeEye.transform,
+                sourceTransform = fakeEyeUp.transform,
                 weight = 1
             });
             constraint.rotationAxis = Axis.X | Axis.Y;
