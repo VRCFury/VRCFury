@@ -202,11 +202,14 @@ namespace VF.Model {
                     path);
             }
             if (IsNonUniformScale(obj)) {
-                throw new Exception(
-                    "An OGB " + type + " exists on an object with a non-uniform scale." +
-                    " This object (and all parents) must have an X, Y, and Z scale value that match" +
-                    " each other, or size calculation will fail.\n\n" +
-                    path);
+                var bypass = obj.transform.Find("ItsOkayThatOgbMightBeBroken") != null;
+                if (!bypass) {
+                    throw new Exception(
+                        "An OGB " + type + " exists on an object with a non-uniform scale." +
+                        " This object (and all parents) must have an X, Y, and Z scale value that match" +
+                        " each other, or size calculation will fail.\n\n" +
+                        path);
+                }
             }
         }
     }
