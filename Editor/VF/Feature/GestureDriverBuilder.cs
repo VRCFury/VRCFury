@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -11,73 +14,146 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
+        private int i = 0;
+        private Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
+        private Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
+        
         [FeatureBuilderAction]
         public void Apply() {
-            var lockMenuItems = new Dictionary<string, VFABool>();
-            var excludeConditions = new Dictionary<string, VFACondition>();
-            
-            var i = 0;
             foreach (var gesture in model.gestures) {
-                i++;
-                var layer = controller.NewLayer("Gesture - " + i);
-                var off = layer.NewState("Off");
-                var on = layer.NewState("On").WithAnimation(LoadState("gesture" + i, gesture.state));
+                MakeGesture(gesture);
+            }
+        }
 
-                VFABool lockMenuParam = null;
-                if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
-                    if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
-                        // This doesn't actually need synced, but vrc gets annoyed if the menu is using an unsynced param
-                        lockMenuParam = controller.NewBool("handGestureLock" + i, synced: true);
-                        menu.NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
-                        lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
-                    }
+        private void MakeGesture(GestureDriver.Gesture gesture) {
+            if (gesture.enableWeight && gesture.hand == GestureDriver.Hand.EITHER &&
+                gesture.sign == GestureDriver.HandSign.FIST) {
+                var clone = VRCFuryEditorUtils.DeepCloneSerializable(gesture);
+                clone.hand = GestureDriver.Hand.LEFT;
+                MakeGesture(clone);
+                clone.hand = GestureDriver.Hand.RIGHT;
+                MakeGesture(clone);
+                return;
+            }
+
+            var uniqueNum = i++;
+            var name = "Gesture " + uniqueModelNum + "#" + uniqueNum + " - " + gesture.hand + " " + gesture.sign;
+            if (gesture.hand == GestureDriver.Hand.COMBO) {
+                name += " " + gesture.comboSign;
+            }
+            var uid = "gesture_" + uniqueModelNum + "_" + uniqueNum;
+
+            var layer = controller.NewLayer("Gesture - " + name);
+            var off = layer.NewState("Off");
+            var on = layer.NewState("On");
+
+            VFABool lockMenuParam = null;
+            if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
+                if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
+                    // This doesn't actually need synced, but vrc gets annoyed if the menu is using an unsynced param
+                    lockMenuParam = controller.NewBool(uid + "_lock", synced: true);
+                    menu.NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
+                    lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
                 }
+            }
 
-                var GestureLeft = controller.NewInt("GestureLeft", usePrefix: false);
-                var GestureRight = controller.NewInt("GestureRight", usePrefix: false);
+            var GestureLeft = controller.NewInt("GestureLeft", usePrefix: false);
+            var GestureRight = controller.NewInt("GestureRight", usePrefix: false);
 
-                VFACondition onCondition;
-                if (gesture.hand == GestureDriver.Hand.LEFT) {
-                    onCondition = GestureLeft.IsEqualTo((int)gesture.sign);
-                } else if (gesture.hand == GestureDriver.Hand.RIGHT) {
-                    onCondition = GestureRight.IsEqualTo((int)gesture.sign);
-                } else if (gesture.hand == GestureDriver.Hand.EITHER) {
-                    onCondition = GestureLeft.IsEqualTo((int)gesture.sign).Or(GestureRight.IsEqualTo((int)gesture.sign));
-                } else if (gesture.hand == GestureDriver.Hand.COMBO) {
-                    onCondition = GestureLeft.IsEqualTo((int)gesture.sign).And(GestureRight.IsEqualTo((int)gesture.comboSign));
-                } else {
-                    throw new Exception("Unknown hand type");
-                }
+            VFACondition onCondition;
+            int weightHand = 0;
+            if (gesture.hand == GestureDriver.Hand.LEFT) {
+                onCondition = GestureLeft.IsEqualTo((int)gesture.sign);
+                if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
+            } else if (gesture.hand == GestureDriver.Hand.RIGHT) {
+                onCondition = GestureRight.IsEqualTo((int)gesture.sign);
+                if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 2;
+            } else if (gesture.hand == GestureDriver.Hand.EITHER) {
+                onCondition = GestureLeft.IsEqualTo((int)gesture.sign).Or(GestureRight.IsEqualTo((int)gesture.sign));
+            } else if (gesture.hand == GestureDriver.Hand.COMBO) {
+                onCondition = GestureLeft.IsEqualTo((int)gesture.sign).And(GestureRight.IsEqualTo((int)gesture.comboSign));
+                if (gesture.comboSign == GestureDriver.HandSign.FIST) weightHand = 2;
+                else if(gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
+            } else {
+                throw new Exception("Unknown hand type");
+            }
 
-                if (lockMenuParam != null) {
-                    onCondition = onCondition.Or(lockMenuParam.IsTrue());
-                }
+            if (lockMenuParam != null) {
+                onCondition = onCondition.Or(lockMenuParam.IsTrue());
+            }
 
-                if (gesture.enableExclusiveTag) {
-                    foreach (var tag in gesture.exclusiveTag.Split(',')) {
-                        var trimmedTag = tag.Trim();
-                        if (!string.IsNullOrWhiteSpace(trimmedTag)) {
-                            if (excludeConditions.TryGetValue(trimmedTag, out var excludeCondition)) {
-                                excludeConditions[trimmedTag] = excludeCondition.Or(onCondition);
-                                onCondition = onCondition.And(excludeCondition.Not());
-                            } else {
-                                excludeConditions[trimmedTag] = onCondition;
-                            }
+            if (gesture.enableExclusiveTag) {
+                foreach (var tag in gesture.exclusiveTag.Split(',')) {
+                    var trimmedTag = tag.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmedTag)) {
+                        if (excludeConditions.TryGetValue(trimmedTag, out var excludeCondition)) {
+                            excludeConditions[trimmedTag] = excludeCondition.Or(onCondition);
+                            onCondition = onCondition.And(excludeCondition.Not());
+                        } else {
+                            excludeConditions[trimmedTag] = onCondition;
                         }
                     }
                 }
-
-                if (gesture.disableBlinking) {
-                    var disableBlinkParam = controller.NewBool("gestureDisableBlink" + i);
-                    off.Drives(disableBlinkParam, false);
-                    on.Drives(disableBlinkParam, true);
-                    addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
-                }
-                
-                var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
-                off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
-                on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
             }
+
+            if (gesture.disableBlinking) {
+                var disableBlinkParam = controller.NewBool(uid + "_disableBlink");
+                off.Drives(disableBlinkParam, false);
+                on.Drives(disableBlinkParam, true);
+                addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
+            }
+            
+            var clip = LoadState(uid, gesture.state);
+            if (weightHand > 0) {
+                MakeWeightParams();
+                var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
+                var tree = controller.NewBlendTree(uid + "_blend");
+                tree.blendType = BlendTreeType.Simple1D;
+                tree.useAutomaticThresholds = false;
+                tree.blendParameter = weightParam.Name();
+                tree.AddChild(controller.GetNoopClip(), 0);
+                tree.AddChild(clip, 1);
+                on.WithAnimation(tree);
+            } else {
+                on.WithAnimation(clip);
+            }
+
+            var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
+            off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
+            on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+        }
+
+        private VFANumber leftWeightParam;
+        private VFANumber rightWeightParam;
+        private void MakeWeightParams() {
+            if (leftWeightParam != null) return;
+            var GestureLeftWeight = controller.NewFloat("GestureLeftWeight", usePrefix: false);
+            var GestureRightWeight = controller.NewFloat("GestureRightWeight", usePrefix: false);
+            leftWeightParam = MakeWeightLayer("left", GestureLeftWeight);
+            rightWeightParam = MakeWeightLayer("right", GestureRightWeight);
+        }
+        private VFANumber MakeWeightLayer(string name, VFANumber input) {
+            var layer = controller.NewLayer("GestureWeight_" + name);
+            var output = controller.NewFloat(input.Name() + "_cached");
+            
+            var initClip = controller.NewClip("GestureWeightInit_" + output.Name());
+            initClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 600, 1));
+            var driveClip = controller.NewClip("GestureWeightDrive_" + output.Name());
+            driveClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Linear(0, 0, 600, 1));
+
+            var init = layer.NewState("Init");
+            var off = layer.NewState("Off");
+            var on = layer.NewState("On");
+            var onWhen = input.IsGreaterThan(0);
+
+            init.TransitionsTo(on).When(onWhen);
+            init.WithAnimation(initClip);
+            off.TransitionsTo(on).When(onWhen);
+            off.WithAnimation(driveClip).MotionTime(output);
+            on.TransitionsTo(off).When(onWhen.Not());
+            on.WithAnimation(driveClip).MotionTime(input);
+            
+            return output;
         }
 
         public override string GetEditorTitle() {
@@ -154,10 +230,10 @@ namespace VF.Feature {
                     enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
                     gesture.serializedObject.ApplyModifiedProperties();
                 });
-                //advMenu.AddItem(new GUIContent("Use gesture weight (fist only)"), enableWeightProp.boolValue, () => {
-                //    enableWeightProp.boolValue = !enableWeightProp.boolValue;
-                //    gesture.serializedObject.ApplyModifiedProperties();
-                //});
+                advMenu.AddItem(new GUIContent("Use gesture weight (fist only)"), enableWeightProp.boolValue, () => {
+                    enableWeightProp.boolValue = !enableWeightProp.boolValue;
+                    gesture.serializedObject.ApplyModifiedProperties();
+                });
                 advMenu.ShowAsContext();
             }) {
                 text = "Options",

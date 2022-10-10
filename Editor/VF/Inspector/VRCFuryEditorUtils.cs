@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -378,6 +379,15 @@ public static class VRCFuryEditorUtils {
         if (output.Length > 32) output = output.Substring(0, 32);
         if (output.Length == 0) output = "Unknown";
         return output;
+    }
+    
+    public static T DeepCloneSerializable<T>(T obj) {
+        using (var ms = new MemoryStream()) {
+            var formatter = new BinaryFormatter();
+            formatter.Serialize(ms, obj);
+            ms.Position = 0;
+            return (T) formatter.Deserialize(ms);
+        }
     }
 }
 

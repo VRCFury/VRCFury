@@ -22,14 +22,14 @@ namespace VF.Builder {
                     break;
                 case AnimatorConditionMode.Greater:
                     copy.mode = AnimatorConditionMode.Less;
-                    copy.threshold += 1;
+                    copy.threshold += 0.00001f;
                     break;
                 case AnimatorConditionMode.If:
                     copy.mode = AnimatorConditionMode.IfNot;
                     break;
                 case AnimatorConditionMode.Less:
                     copy.mode = AnimatorConditionMode.Greater;
-                    copy.threshold -= 1;
+                    copy.threshold -= 0.00001f;
                     break;
                 case AnimatorConditionMode.IfNot:
                     copy.mode = AnimatorConditionMode.If;
