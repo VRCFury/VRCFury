@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.Collections;
 using UnityEditor.Animations;
-
+using VF.Inspector;
 using AnimatorConditions = System.Collections.Generic.IEnumerable<UnityEditor.Animations.AnimatorCondition>;
 using AnimatorConditionsUnion = System.Collections.Generic.IEnumerable<
     System.Collections.Generic.IEnumerable<UnityEditor.Animations.AnimatorCondition>>;
@@ -22,14 +22,14 @@ namespace VF.Builder {
                     break;
                 case AnimatorConditionMode.Greater:
                     copy.mode = AnimatorConditionMode.Less;
-                    copy.threshold += 0.00001f;
+                    copy.threshold = VRCFuryEditorUtils.NextFloatUp(copy.threshold);
                     break;
                 case AnimatorConditionMode.If:
                     copy.mode = AnimatorConditionMode.IfNot;
                     break;
                 case AnimatorConditionMode.Less:
                     copy.mode = AnimatorConditionMode.Greater;
-                    copy.threshold -= 0.00001f;
+                    copy.threshold = VRCFuryEditorUtils.NextFloatDown(copy.threshold);
                     break;
                 case AnimatorConditionMode.IfNot:
                     copy.mode = AnimatorConditionMode.If;

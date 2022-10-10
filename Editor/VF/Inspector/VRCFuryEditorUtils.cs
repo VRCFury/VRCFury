@@ -389,6 +389,32 @@ public static class VRCFuryEditorUtils {
             return (T) formatter.Deserialize(ms);
         }
     }
+
+    private static float NextFloat(float input, int offset) {
+        if (float.IsNaN(input) || float.IsPositiveInfinity(input) || float.IsNegativeInfinity(input))
+            return input;
+
+        byte[] bytes = BitConverter.GetBytes(input);
+        int bits = BitConverter.ToInt32(bytes, 0);
+
+        if (input > 0) {
+            bits += offset;
+        } else if (input < 0) {
+            bits -= offset;
+        } else if (input == 0) {
+            return (offset > 0) ? float.Epsilon : -float.Epsilon;
+        }
+
+        bytes = BitConverter.GetBytes(bits);
+        return BitConverter.ToSingle(bytes, 0);
+    }
+
+    public static float NextFloatUp(float input) {
+        return NextFloat(input, 1);
+    }
+    public static float NextFloatDown(float input) {
+        return NextFloat(input, 1);
+    }
 }
 
 }

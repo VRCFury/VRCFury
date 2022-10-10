@@ -142,7 +142,7 @@ namespace VF.Feature {
             driveClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Linear(0, 0, 600, 1));
 
             var init = layer.NewState("Init");
-            var off = layer.NewState("Off");
+            var off = layer.NewState("Off").Move(1,-1);
             var on = layer.NewState("On");
             var onWhen = input.IsGreaterThan(0);
 
