@@ -64,7 +64,7 @@ namespace VF.Builder {
             if (clipStorage == null) {
                 clipStorage = new AnimationClip();
                 clipStorage.hideFlags = HideFlags.None;
-                AssetDatabase.CreateAsset(clipStorage, tmpDir + "/VRCF_Clips.anim");
+                VRCFuryAssetDatabase.SaveAsset(clipStorage, tmpDir, "VRCF_Clips");
             }
             AssetDatabase.AddObjectToAsset(asset, clipStorage);
         }

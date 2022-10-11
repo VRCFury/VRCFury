@@ -116,7 +116,7 @@ namespace VF.Feature {
                     obj.transform.GetHierarchyPath());
             }
             var copy = new Material(mat);
-            AssetDatabase.CreateAsset(copy, tmpDir + "/VRCFTPS_" + (matCounter++) + ".mat");
+            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "VRCFTPS_" + (matCounter++));
 
             if (skin != null) {
                 var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");

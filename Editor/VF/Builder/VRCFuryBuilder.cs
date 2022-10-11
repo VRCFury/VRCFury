@@ -100,7 +100,7 @@ public class VRCFuryBuilder {
         if (string.IsNullOrEmpty(avatarPath)) {
             throw new Exception("Failed to find file path to avatar scene");
         }
-        var tmpDir = "Assets/_VRCFury/" + VRCFuryEditorUtils.MakeFilenameSafe(originalObject.name);
+        var tmpDir = "Assets/_VRCFury/" + VRCFuryAssetDatabase.MakeFilenameSafe(originalObject.name);
         if (Directory.Exists(tmpDir)) {
             foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDir })) {
                 var path = AssetDatabase.GUIDToAssetPath(asset);
@@ -227,7 +227,7 @@ public class VRCFuryBuilder {
 
     private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
         var origFx = VRCAvatarUtils.GetAvatarFx(avatar);
-        var newPath = tmpDir + "/VRCFury for " + VRCFuryEditorUtils.MakeFilenameSafe(avatarName) + ".controller";
+        var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "VRCFury for " + avatarName, "controller");
         if (origFx == null) {
             return AnimatorController.CreateAnimatorControllerAtPath(newPath);
         }
@@ -245,9 +245,8 @@ public class VRCFuryBuilder {
 
     private static VRCExpressionsMenu GetOrCreateAvatarMenu(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
         var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
-        var newPath = tmpDir + "/VRCFury Menu for " + VRCFuryEditorUtils.MakeFilenameSafe(avatarName) + ".asset";
         var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-        AssetDatabase.CreateAsset(menu, newPath);
+        VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarName);
         if (origMenu != null) {
             var menuManager = new MenuManager(menu, tmpDir);
             menuManager.MergeMenu(origMenu);
@@ -257,7 +256,7 @@ public class VRCFuryBuilder {
 
     private static VRCExpressionParameters GetOrCreateAvatarParams(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
         var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
-        var newPath = tmpDir + "/VRCFury Params for " + VRCFuryEditorUtils.MakeFilenameSafe(avatarName) + ".asset";
+        var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "VRCFury Params for " + avatarName, "asset");
         if (origParams == null) {
             var prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             prms.parameters = new VRCExpressionParameters.Parameter[]{};

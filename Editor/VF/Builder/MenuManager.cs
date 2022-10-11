@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using VF.Inspector;
@@ -101,12 +102,20 @@ namespace VF.Builder {
         }
 
         private VRCExpressionsMenu CreateNewMenu(string[] path) {
+            var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            string filePath;
-            if (path.Length > 0) filePath = tmpDir + "/VRCF_Menu_" + VRCFuryEditorUtils.MakeFilenameSafe(string.Join("_", path)) + ".asset";
-            else filePath = tmpDir + "/VRCF_Menu.asset";
-            AssetDatabase.CreateAsset(newMenu, filePath);
+            string filename;
+            if (path.Length > 0) filename = "VRCF_Menu_" + string.Join("_", cleanPath);
+            else filename = tmpDir + "VRCF_Menu";
+            VRCFuryAssetDatabase.SaveAsset(newMenu, tmpDir, filename);
             return newMenu;
+        }
+        private static string CleanTitleForFilename(string str) {
+            // strip html tags
+            str = Regex.Replace(str, "<.*?>", string.Empty);
+            // clean up extra spaces
+            str = Regex.Replace(str, " +", " ").Trim();
+            return str;
         }
 
         public void MergeMenu(VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
