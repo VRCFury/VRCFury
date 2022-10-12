@@ -85,10 +85,14 @@ namespace VF.Feature {
             }
             
             foreach (var receiver in baseObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                receiver.parameter = rewriteParam(receiver.parameter);
+                if (rewrittenParams.Contains(receiver.parameter)) {
+                    receiver.parameter = rewriteParam(receiver.parameter);
+                }
             }
             foreach (var physbone in baseObject.GetComponentsInChildren<VRCPhysBone>(true)) {
-                physbone.parameter = rewriteParam(physbone.parameter);
+                if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed") || rewrittenParams.Contains(physbone.parameter + "_Angle") || rewrittenParams.Contains(physbone.parameter + "_Stretch")) {
+                    physbone.parameter = rewriteParam(physbone.parameter);
+                }
             }
 
             if (model.toggleParam != null) {
