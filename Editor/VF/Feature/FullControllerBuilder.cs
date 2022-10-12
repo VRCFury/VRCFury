@@ -14,6 +14,7 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -83,10 +84,11 @@ namespace VF.Feature {
                 menu.MergeMenu(prefix, m.menu, rewriteParam);
             }
             
-            foreach (var receiver in baseObject.GetComponentsInChildren<VRCContactReceiver>(true)){
-                if (rewrittenParams.Contains(receiver.parameter)) {
-                    receiver.parameter = rewriteParam(receiver.parameter);
-                }
+            foreach (var receiver in baseObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                receiver.parameter = rewriteParam(receiver.parameter);
+            }
+            foreach (var physbone in baseObject.GetComponentsInChildren<VRCPhysBone>(true)) {
+                physbone.parameter = rewriteParam(physbone.parameter);
             }
 
             if (model.toggleParam != null) {
