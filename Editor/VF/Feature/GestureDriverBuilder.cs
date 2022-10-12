@@ -129,10 +129,12 @@ namespace VF.Feature {
             if (leftWeightParam != null) return;
             var GestureLeftWeight = controller.NewFloat("GestureLeftWeight", usePrefix: false);
             var GestureRightWeight = controller.NewFloat("GestureRightWeight", usePrefix: false);
-            leftWeightParam = MakeWeightLayer("left", GestureLeftWeight);
-            rightWeightParam = MakeWeightLayer("right", GestureRightWeight);
+            var GestureLeftCondition = controller.NewInt("GestureLeft", usePrefix: false).IsEqualTo(1);
+            var GestureRightCondition = controller.NewInt("GestureRight", usePrefix: false).IsEqualTo(1);
+            leftWeightParam = MakeWeightLayer("left", GestureLeftWeight, GestureLeftCondition);
+            rightWeightParam = MakeWeightLayer("right", GestureRightWeight, GestureRightCondition);
         }
-        private VFANumber MakeWeightLayer(string name, VFANumber input) {
+        private VFANumber MakeWeightLayer(string name, VFANumber input, VFACondition whenEnabled) {
             var layer = controller.NewLayer("GestureWeight_" + name);
             var output = controller.NewFloat(input.Name() + "_cached");
             
@@ -144,13 +146,13 @@ namespace VF.Feature {
             var init = layer.NewState("Init");
             var off = layer.NewState("Off").Move(1,-1);
             var on = layer.NewState("On");
-            var onWhen = input.IsGreaterThan(0);
+            var whenWeightSeen = input.IsGreaterThan(0);
 
-            init.TransitionsTo(on).When(onWhen);
+            init.TransitionsTo(on).When(whenWeightSeen);
             init.WithAnimation(initClip);
-            off.TransitionsTo(on).When(onWhen);
+            off.TransitionsTo(on).When(whenEnabled);
             off.WithAnimation(driveClip).MotionTime(output);
-            on.TransitionsTo(off).When(onWhen.Not());
+            on.TransitionsTo(off).When(whenEnabled.Not());
             on.WithAnimation(driveClip).MotionTime(input);
             
             return output;
