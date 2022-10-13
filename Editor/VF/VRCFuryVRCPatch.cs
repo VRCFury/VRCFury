@@ -18,15 +18,30 @@ namespace VF {
 [InitializeOnLoad]
 public class Startup {
     static Startup() {
-        var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Validation.AvatarValidation");
-        if (validation == null) return;
-        var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic);
-        var whitelist = whitelistField.GetValue(null);
-        var updated = new List<string>((string[])whitelist);
-        updated.Add(typeof(VRCFury).FullName);
-        updated.Add(typeof(OGBOrifice).FullName);
-        updated.Add(typeof(OGBPenetrator).FullName);
-        whitelistField.SetValue(null,updated.ToArray());
+        try {
+            var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Validation.AvatarValidation");
+            var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var whitelist = whitelistField.GetValue(null);
+            var updated = new List<string>((string[])whitelist);
+            updated.Add(typeof(VRCFury).FullName);
+            updated.Add(typeof(OGBOrifice).FullName);
+            updated.Add(typeof(OGBPenetrator).FullName);
+            whitelistField.SetValue(null, updated.ToArray());
+        } catch (Exception) {
+        }
+        try {
+            var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.AvatarValidation");
+            var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var whitelist = whitelistField.GetValue(null);
+            var updated = new List<string>((string[])whitelist);
+            updated.Add(typeof(VRCFury).FullName);
+            updated.Add(typeof(OGBOrifice).FullName);
+            updated.Add(typeof(OGBPenetrator).FullName);
+            whitelistField.SetValue(null, updated.ToArray());
+        } catch (Exception) {
+        }
     }
 }
 
