@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDKBase;
@@ -26,7 +28,26 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class Breathing : FeatureModel {
+    public class Breathing : FeatureModel, ISerializationCallbackReceiver {
+        public State inState;
+        public State outState;
+        
+        public void OnAfterDeserialize() {
+            if (obj != null) {
+                inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
+                outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
+                obj = null;
+            }
+            if (!string.IsNullOrWhiteSpace(blendshape)) {
+                inState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 0 });
+                outState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 100 });
+                blendshape = null;
+            }
+        }
+        public void OnBeforeSerialize() {
+        }
+        
+        // legacy
         public GameObject obj;
         public string blendshape;
         public float scaleMin;

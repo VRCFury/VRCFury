@@ -39,6 +39,41 @@ public class ClipBuilder {
         return new AnimationCurve(keyframes);
     }
 
+    public void MergeSingleFrameClips(AnimationClip target, params Tuple<float, AnimationClip>[] sources) {
+        foreach (var binding in sources.SelectMany(tuple => AnimationUtility.GetCurveBindings(tuple.Item2)).Distinct()) {
+            var exists = AnimationUtility.GetFloatValue(baseObject, binding, out var defaultValue);
+            if (!exists) continue;
+            var outputCurve = new AnimationCurve();
+            foreach (var source in sources) {
+                var sourceCurve = AnimationUtility.GetEditorCurve(source.Item2, binding);
+                if (sourceCurve.keys.Length == 1) {
+                    outputCurve.AddKey(new Keyframe(source.Item1, sourceCurve.keys[0].value, 0f, 0f));
+                } else if (sourceCurve.keys.Length == 0) {
+                    outputCurve.AddKey(new Keyframe(source.Item1, defaultValue, 0f, 0f));
+                } else {
+                    throw new Exception("Source curve didn't contain exactly 1 key: " + sourceCurve.keys.Length);
+                }
+            }
+            AnimationUtility.SetEditorCurve(target, binding, outputCurve);
+        }
+        foreach (var binding in sources.SelectMany(tuple => AnimationUtility.GetObjectReferenceCurveBindings(tuple.Item2)).Distinct()) {
+            var exists = AnimationUtility.GetObjectReferenceValue(baseObject, binding, out var defaultValue);
+            if (!exists) continue;
+            var outputCurve = new List<ObjectReferenceKeyframe>();
+            foreach (var source in sources) {
+                var sourceCurve = AnimationUtility.GetObjectReferenceCurve(source.Item2, binding);
+                if (sourceCurve.Length == 1) {
+                    outputCurve.Add(new ObjectReferenceKeyframe { time = source.Item1, value = sourceCurve[0].value });
+                } else if (sourceCurve.Length == 0) {
+                    outputCurve.Add(new ObjectReferenceKeyframe { time = source.Item1, value = defaultValue });
+                } else {
+                    throw new Exception("Source curve didn't contain exactly 1 key: " + sourceCurve.Length);
+                }
+            }
+            AnimationUtility.SetObjectReferenceCurve(target, binding, outputCurve.ToArray());
+        }
+    }
+
     public void Enable(AnimationClip clip, GameObject obj, bool active = true) {
         clip.SetCurve(GetPath(obj), typeof(GameObject), "m_IsActive", OneFrame(active ? 1 : 0));
     }
@@ -46,6 +81,11 @@ public class ClipBuilder {
         foreach (var axis in new[]{"x","y","z"}) {
             clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale." + axis, curve);
         }
+    }
+    public void Scale(AnimationClip clip, GameObject obj, float x, float y, float z) {
+        clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.x", OneFrame(x));
+        clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.y", OneFrame(y));
+        clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.z", OneFrame(z));
     }
     public void BlendShape(AnimationClip clip, SkinnedMeshRenderer skin, string blendShape, AnimationCurve curve) {
         clip.SetCurve(GetPath(skin.gameObject), typeof(SkinnedMeshRenderer), "blendShape." + blendShape, curve);

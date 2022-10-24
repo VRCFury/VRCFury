@@ -41,6 +41,36 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
             return row;
         }
+        
+        if (prop.FindPropertyRelative("scale") != null) {
+            var row = new VisualElement {
+                style = {
+                    flexDirection = FlexDirection.Row,
+                    alignItems = Align.FlexStart
+                }
+            };
+
+            if (!singleLine) {
+                var label = new Label("Object Scale") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100
+                    }
+                };
+                row.Add(label);
+            }
+
+            var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("obj"));
+            propField.style.flexGrow = 1;
+            row.Add(propField);
+            
+            var propField3 = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("scale"));
+            propField3.style.flexGrow = 0;
+            propField3.style.flexBasis = 50;
+            row.Add(propField3);
+
+            return row;
+        }
 
         if (prop.FindPropertyRelative("obj") != null) {
             if (singleLine) return null;

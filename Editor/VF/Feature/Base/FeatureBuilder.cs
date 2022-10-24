@@ -138,6 +138,17 @@ namespace VF.Feature.Base {
                             Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);
                         }
                         break;
+                    case ScaleAction scaleAction:
+                        if (scaleAction.obj == null) {
+                            Debug.LogWarning("Missing object in action: " + name);
+                        } else {
+                            var restingState = scaleAction.obj.transform.localScale.x;
+                            motions.Scale(clip, scaleAction.obj,
+                                scaleAction.obj.transform.localScale.x * scaleAction.scale,
+                                scaleAction.obj.transform.localScale.y * scaleAction.scale,
+                                scaleAction.obj.transform.localScale.z * scaleAction.scale);
+                        }
+                        break;
                 }
             }
             return clip;

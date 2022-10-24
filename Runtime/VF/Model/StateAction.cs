@@ -34,5 +34,11 @@ namespace VF.Model.StateAction {
         public GameObject obj;
         public int frame;
     }
+    
+    [Serializable]
+    public class ScaleAction : Action {
+        public GameObject obj;
+        public float scale = 1;
+    }
 
 }
