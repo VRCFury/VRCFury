@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace VF.Model {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver {
-        private static readonly int VRCFURY_SER_VERSION = 6;
+        private static readonly int VRCFURY_SER_VERSION = 7;
         private static bool warningShown = false;
         
         public int vrcfSerVersion;
