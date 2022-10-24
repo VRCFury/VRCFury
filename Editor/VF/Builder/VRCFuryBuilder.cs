@@ -38,7 +38,7 @@ public class VRCFuryBuilder {
             SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
         }
         clone.name = cloneName;
-        var result = SafeRun(originalObject, clone);
+        var result = SafeRun(clone);
         if (result) {
             Selection.SetActiveObjectWithContext(clone, clone);
         } else {
@@ -46,13 +46,13 @@ public class VRCFuryBuilder {
         }
     }
     
-    public bool SafeRun(GameObject originalObject, GameObject avatarObject) {
+    public bool SafeRun(GameObject avatarObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = true;
         try {
             AssetDatabase.StartAssetEditing();
-            Run(originalObject, avatarObject);
+            Run(avatarObject);
             BakeOGB(avatarObject);
         } catch(Exception e) {
             result = false;
@@ -81,7 +81,7 @@ public class VRCFuryBuilder {
         Debug.Log("Done");
     }
 
-    private void Run(GameObject originalObject, GameObject avatarObject) {
+    private void Run(GameObject avatarObject) {
         if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length == 0) {
             Debug.Log("VRCFury components not found in avatar. Skipping.");
             return;
@@ -89,9 +89,10 @@ public class VRCFuryBuilder {
         
         var progress = new ProgressBar("VRCFury is building ...");
 
+        var name = avatarObject.name;
+
         // Unhook everything from our assets before we delete them
         progress.Progress(0, "Cleaning up old VRCF cruft from avatar (in case of old builds)");
-        DetachFromAvatar(originalObject);
         DetachFromAvatar(avatarObject);
 
         // Nuke all our old generated assets
@@ -100,7 +101,7 @@ public class VRCFuryBuilder {
         if (string.IsNullOrEmpty(avatarPath)) {
             throw new Exception("Failed to find file path to avatar scene");
         }
-        var tmpDir = "Assets/_VRCFury/" + VRCFuryAssetDatabase.MakeFilenameSafe(originalObject.name);
+        var tmpDir = "Assets/_VRCFury/" + VRCFuryAssetDatabase.MakeFilenameSafe(name);
         if (Directory.Exists(tmpDir)) {
             foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDir })) {
                 var path = AssetDatabase.GUIDToAssetPath(asset);
@@ -115,9 +116,9 @@ public class VRCFuryBuilder {
         // Create our new copies of the assets, and attach them
         progress.Progress(0.2, "Attaching to avatar");
         var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-        var fxController = GetOrCreateAvatarFx(avatar, tmpDir, originalObject.name);
-        var menu = GetOrCreateAvatarMenu(avatar, tmpDir, originalObject.name);
-        var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir, originalObject.name);
+        var fxController = GetOrCreateAvatarFx(avatar, tmpDir, name);
+        var menu = GetOrCreateAvatarMenu(avatar, tmpDir, name);
+        var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir, name);
         AttachToAvatar(avatarObject, fxController, menu, syncedParams);
 
         progress.Progress(0.3, "Joining Menus");

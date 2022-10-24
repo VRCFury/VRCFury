@@ -56,27 +56,29 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
             return false;
         }
 
-        GameObject original = null;
-        foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
-            if (desc.gameObject.name+"(Clone)" == vrcCloneObject.name && desc.gameObject.activeInHierarchy) {
-                original = desc.gameObject;
-                break;
+        // Clean up junk from the original avatar, in case it still has junk from way back when we used to
+        // dirty the original
+        {
+            GameObject original = null;
+            foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
+                if (desc.gameObject.name + "(Clone)" == vrcCloneObject.name && desc.gameObject.activeInHierarchy) {
+                    original = desc.gameObject;
+                    break;
+                }
+            }
+
+            if (original) {
+                VRCFuryBuilder.DetachFromAvatar(original);
             }
         }
-        if (original == null) {
-            Debug.LogError("Failed to find original avatar object during vrchat upload");
-            return false;
-        }
-
-        Debug.Log("Found original avatar object for VRC upload: " + original);
 
         var builder = new VRCFuryBuilder();
-        var vrcFurySuccess = builder.SafeRun(original, vrcCloneObject);
+        var vrcFurySuccess = builder.SafeRun(vrcCloneObject);
         if (!vrcFurySuccess) return false;
 
         // Try to detect conflicting parameter names that break OSC
         try {
-            var avatar = original.GetComponent<VRCAvatarDescriptor>();
+            var avatar = vrcCloneObject.GetComponent<VRCAvatarDescriptor>();
             var fx = VRCAvatarUtils.GetAvatarFx(avatar);
             if (fx) {
                 var normalizedNames = new HashSet<string>();
