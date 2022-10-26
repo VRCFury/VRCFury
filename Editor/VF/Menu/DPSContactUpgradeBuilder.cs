@@ -143,7 +143,7 @@ namespace VF.Menu {
             // Clean up
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             if (avatar) {
-                var fx = VRCAvatarUtils.GetAvatarFx(avatar);
+                var fx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
                 if (fx) {
                     for (var i = 0; i < fx.parameters.Length; i++) {
                         var param = fx.parameters[i];

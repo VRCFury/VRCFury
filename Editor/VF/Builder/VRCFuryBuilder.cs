@@ -93,7 +93,7 @@ public class VRCFuryBuilder {
 
         // Unhook everything from our assets before we delete them
         progress.Progress(0, "Cleaning up old VRCF cruft from avatar (in case of old builds)");
-        DetachFromAvatar(avatarObject);
+        LegacyCleaner.Clean(avatarObject);
 
         // Nuke all our old generated assets
         progress.Progress(0.1, "Clearing generated assets");
@@ -113,34 +113,12 @@ public class VRCFuryBuilder {
         tmpDir = tmpDir + "/" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
         Directory.CreateDirectory(tmpDir);
 
-        // Create our new copies of the assets, and attach them
-        progress.Progress(0.2, "Attaching to avatar");
-        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-        var fxController = GetOrCreateAvatarFx(avatar, tmpDir, name);
-        var menu = GetOrCreateAvatarMenu(avatar, tmpDir, name);
-        var syncedParams = GetOrCreateAvatarParams(avatar, tmpDir, name);
-        AttachToAvatar(avatarObject, fxController, menu, syncedParams);
-
-        progress.Progress(0.3, "Joining Menus");
-        MenuSplitter.JoinMenus(menu);
-
         // Apply configs
-        var menuManager = new MenuManager(menu, tmpDir);
-        var paramsManager = new ParamManager(syncedParams);
-        var controllerManager = new ControllerManager(fxController, tmpDir, paramsManager, VRCAvatarDescriptor.AnimLayerType.FX);
-        var motions = new ClipBuilder(avatarObject);
         ApplyFuryConfigs(
-            controllerManager,
-            menuManager,
-            paramsManager,
-            motions,
             tmpDir,
             avatarObject,
-            progress.Partial(0.3, 0.8)
+            progress.Partial(0.2, 0.8)
         );
-        
-        progress.Progress(0.8, "Splitting Menus");
-        MenuSplitter.SplitMenus(menu);
 
         progress.Progress(0.9, "Removing Junk Components");
         foreach (var c in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
@@ -149,30 +127,20 @@ public class VRCFuryBuilder {
             Object.DestroyImmediate(c);
         }
 
-        if (syncedParams.CalcTotalCost() > VRCExpressionParameters.MAX_PARAMETER_COST) {
-            throw new Exception(
-                "Avatar is out of space for parameters! Used "
-                + syncedParams.CalcTotalCost() + "/" + VRCExpressionParameters.MAX_PARAMETER_COST
-                + ". Delete some params from your avatar's param file, or disable some VRCFury features.");
-        }
-
         progress.Progress(1, "Finishing Up");
-        EditorUtility.SetDirty(fxController);
-        EditorUtility.SetDirty(menu);
-        EditorUtility.SetDirty(syncedParams);
+
 
         Debug.Log("VRCFury Finished!");
     }
 
     private static void ApplyFuryConfigs(
-        ControllerManager controller,
-        MenuManager menu,
-        ParamManager prms,
-        ClipBuilder motions,
         string tmpDir,
         GameObject avatarObject,
         ProgressBar progress
     ) {
+        var manager = new AvatarManager(avatarObject, tmpDir);
+        var clipBuilder = new ClipBuilder(avatarObject);
+        
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
         var totalModelCount = 0;
@@ -213,10 +181,8 @@ public class VRCFuryBuilder {
             var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
                 avatarObject.transform);
 
-            builder.controller = controller;
-            builder.menu = menu;
-            builder.prms = prms;
-            builder.motions = motions;
+            builder.manager = manager;
+            builder.clipBuilder = clipBuilder;
             builder.avatarObject = avatarObject;
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
@@ -224,109 +190,9 @@ public class VRCFuryBuilder {
 
             action.Call();
         }
-    }
-
-    private static AnimatorController GetOrCreateAvatarFx(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
-        var origFx = VRCAvatarUtils.GetAvatarFx(avatar);
-        var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "VRCFury for " + avatarName, "controller");
-        if (origFx == null) {
-            return AnimatorController.CreateAnimatorControllerAtPath(newPath);
-        }
-        AssetDatabase.StopAssetEditing();
-        if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origFx), newPath)) {
-            throw new Exception("Failed to copy avatar controller asset");
-        }
-        var copy = AssetDatabase.LoadAssetAtPath<AnimatorController>(newPath);
-        AssetDatabase.StartAssetEditing();
-        if (copy == null) {
-            throw new Exception("Failed to load copy of avatar controller asset");
-        }
-        return copy;
-    }
-
-    private static VRCExpressionsMenu GetOrCreateAvatarMenu(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
-        var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
-        var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-        VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarName);
-        if (origMenu != null) {
-            var menuManager = new MenuManager(menu, tmpDir);
-            menuManager.MergeMenu(origMenu);
-        }
-        return menu;
-    }
-
-    private static VRCExpressionParameters GetOrCreateAvatarParams(VRCAvatarDescriptor avatar, string tmpDir, string avatarName) {
-        var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
-        var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "VRCFury Params for " + avatarName, "asset");
-        if (origParams == null) {
-            var prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
-            prms.parameters = new VRCExpressionParameters.Parameter[]{};
-            AssetDatabase.CreateAsset(prms, newPath);
-            return prms;
-        }
-        AssetDatabase.StopAssetEditing();
-        if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(origParams), newPath)) {
-            throw new Exception("Failed to copy avatar params asset");
-        }
-        var copy = AssetDatabase.LoadAssetAtPath<VRCExpressionParameters>(newPath);
-        AssetDatabase.StartAssetEditing();
-        if (copy == null) {
-            throw new Exception("Failed to load copy of avatar params asset");
-        }
-        return copy;
-    }
-
-    public static void DetachFromAvatar(GameObject avatarObject) {
-        var animator = avatarObject.GetComponent<Animator>();
-        if (animator != null) {
-            if (IsVrcfAsset(animator.runtimeAnimatorController)) {
-                animator.runtimeAnimatorController = null;
-            }
-        }
-
-        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-
-        var fx = VRCAvatarUtils.GetAvatarFx(avatar);
-        if (IsVrcfAsset(fx)) {
-            VRCAvatarUtils.SetAvatarFx(avatar, null);
-        } else if (fx != null) {
-            ControllerManager.PurgeFromAnimator(fx, VRCAvatarDescriptor.AnimLayerType.FX);
-        }
-
-        var menu = VRCAvatarUtils.GetAvatarMenu(avatar);
-        if (IsVrcfAsset(menu)) {
-            VRCAvatarUtils.SetAvatarMenu(avatar, null);
-        } else if (menu != null) {
-            MenuSplitter.JoinMenus(menu);
-            MenuManager.PurgeFromMenu(menu);
-            MenuSplitter.SplitMenus(menu);
-        }
-
-        var prms = VRCAvatarUtils.GetAvatarParams(avatar);
-        if (IsVrcfAsset(prms)) {
-            VRCAvatarUtils.SetAvatarParams(avatar, null);
-        } else if (prms != null) {
-            ParamManager.PurgeFromParams(prms);
-        }
-
-        EditorUtility.SetDirty(avatar);
-    }
-
-    private static void AttachToAvatar(GameObject avatarObject, AnimatorController fx, VRCExpressionsMenu menu, VRCExpressionParameters prms) {
-        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-        var animator = avatarObject.GetComponent<Animator>();
-
-        VRCAvatarUtils.SetAvatarFx(avatar, fx);
-        if (animator != null) animator.runtimeAnimatorController = fx;
-        avatar.customExpressions = true;
-        avatar.expressionsMenu = menu;
-        avatar.expressionParameters = prms;
-
-        EditorUtility.SetDirty(avatar);
-    }
-
-    public static bool IsVrcfAsset(Object obj) {
-        return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
+        
+        progress.Progress(1, "Finalizing avatar changes");
+        manager.Finish();
     }
 }
 

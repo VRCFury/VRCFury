@@ -45,13 +45,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         var layerName = model.name;
-        var layer = controller.NewLayer(layerName);
+        var fx = GetFx();
+        var layer = fx.NewLayer(layerName);
         var clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
-        var param = controller.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+        var param = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
         if (model.securityEnabled && allFeaturesInRun.Any(f => f is SecurityLock)) {
-            var paramSecuritySync = controller.NewBool("SecurityLockSync");
+            var paramSecuritySync = fx.NewBool("SecurityLockSync");
             off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
             on.TransitionsTo(off).When(param.IsFalse());
             on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
@@ -66,7 +67,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (model.addMenuItem) {
-            menu.NewMenuToggle(model.name, param);
+            manager.GetMenu().NewMenuToggle(model.name, param);
         }
     }
 

@@ -20,12 +20,13 @@ public class BreathingBuilder : FeatureBuilder<Breathing> {
 
         var inClip = LoadState("breatheIn", model.inState);
         var outClip = LoadState("breatheOut", model.outState);
-        
-        var clip = controller.NewClip("Breathing");
+
+        var fx = GetFx();
+        var clip = manager.GetClipStorage().NewClip("Breathing");
         var so = new SerializedObject(clip);
         so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
         so.ApplyModifiedProperties();
-        motions.MergeSingleFrameClips(clip,
+        clipBuilder.MergeSingleFrameClips(clip,
             Tuple.Create(0f, outClip),
             Tuple.Create(2.5f, inClip),
             Tuple.Create(5f, outClip)

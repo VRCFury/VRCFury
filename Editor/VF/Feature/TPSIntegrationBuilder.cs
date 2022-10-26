@@ -96,8 +96,9 @@ namespace VF.Feature {
                 );
             }
 
-            var merger = new ControllerMerger(rewriteLayerName: layerName => controller.NewLayerName(layerName));
-            merger.Merge(tpsAnimator, controller.GetRawController());
+            var fx = GetFx();
+            var merger = new ControllerMerger(rewriteLayerName: layerName => ControllerManager.NewLayerName(layerName));
+            merger.Merge(tpsAnimator, fx.GetRaw());
         }
 
         private void ManageMaterial(GameObject obj, SkinnedMeshRenderer skin, Material mat, Action<Material> update) {

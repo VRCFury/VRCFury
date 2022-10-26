@@ -30,15 +30,16 @@ namespace VF.Feature {
             }
 
             fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
+            var menuManager = manager.GetMenu();
             foreach (var control in fromControls) {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                    menu.GetSubmenu(toPath, createFromControl: control);
-                    menu.MergeMenu(toPath, control.subMenu);
+                    menuManager.GetSubmenu(toPath, createFromControl: control);
+                    menuManager.MergeMenu(toPath, control.subMenu);
                 } else {
                     control.name = toName;
                     var tmpMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                     tmpMenu.controls.Add(control);
-                    menu.MergeMenu(toPrefix, tmpMenu);
+                    menuManager.MergeMenu(toPrefix, tmpMenu);
                 }
             }
         }
@@ -53,7 +54,7 @@ namespace VF.Feature {
                 prefix = new string[]{};
                 name = "";
             }
-            prefixMenu = menu.GetSubmenu(prefix, createIfMissing: create);
+            prefixMenu = manager.GetMenu().GetSubmenu(prefix, createIfMissing: create);
         }
         
         public override string GetEditorTitle() {

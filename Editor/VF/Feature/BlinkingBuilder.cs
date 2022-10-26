@@ -27,13 +27,14 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
         var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
         avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
 
-        var blinkTriggerSynced = controller.NewBool("BlinkTriggerSynced", synced: true);
-        var blinkTrigger = controller.NewTrigger("BlinkTrigger");
+        var fx = GetFx();
+        var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
+        var blinkTrigger = fx.NewTrigger("BlinkTrigger");
 
         // Generator
         {
-            var blinkCounter = controller.NewInt("BlinkCounter");
-            var layer = controller.NewLayer("Blink - Generator");
+            var blinkCounter = fx.NewInt("BlinkCounter");
+            var layer = fx.NewLayer("Blink - Generator");
             var entry = layer.NewState("Entry");
             var remote = layer.NewState("Remote").Move(entry, 0, -1);
             var idle = layer.NewState("Idle").Move(entry, 0, 1);
@@ -42,28 +43,28 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             var trigger1 = layer.NewState("Trigger 1").Move(trigger0, 1, 0);
             var randomize = layer.NewState("Randomize").Move(idle, 1, 0);
 
-            entry.TransitionsTo(remote).When(IsLocal().IsFalse());
-            entry.TransitionsTo(idle).When(Always());
+            entry.TransitionsTo(remote).When(fx.IsLocal().IsFalse());
+            entry.TransitionsTo(idle).When(fx.Always());
 
             idle.TransitionsTo(trigger0).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsTrue()));
             trigger0.Drives(blinkTriggerSynced, false);
-            trigger0.TransitionsTo(randomize).When(Always());
+            trigger0.TransitionsTo(randomize).When(fx.Always());
 
             idle.TransitionsTo(trigger1).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsFalse()));
             trigger1.Drives(blinkTriggerSynced, true);
-            trigger1.TransitionsTo(randomize).When(Always());
+            trigger1.TransitionsTo(randomize).When(fx.Always());
 
             randomize.DrivesRandom(blinkCounter, 2, 10);
-            randomize.TransitionsTo(idle).When(Always());
+            randomize.TransitionsTo(idle).When(fx.Always());
 
-            idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(Always());
+            idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(fx.Always());
             subtract.DrivesDelta(blinkCounter, -1);
-            subtract.TransitionsTo(idle).When(Always());
+            subtract.TransitionsTo(idle).When(fx.Always());
         }
 
         // Receiver
         {
-            var layer = controller.NewLayer("Blink - Receiver");
+            var layer = fx.NewLayer("Blink - Receiver");
             var blink0 = layer.NewState("Trigger == false");
             var blink1 = layer.NewState("Trigger == true");
 
@@ -78,7 +79,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             var blinkClip = LoadState("blink", model.state);
             var blinkDuration = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
             var holdDuration = model.holdTime >= 0 ? model.holdTime : 0;
-            var layer = controller.NewLayer("Blink - Animate");
+            var layer = fx.NewLayer("Blink - Animate");
             var idle = layer.NewState("Idle");
             var checkActive = layer.NewState("Check Active");
             var blinkStart = layer.NewState("Blink Start").Move(checkActive, 1, 0);
@@ -88,14 +89,14 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             foreach (var prevention in allFeaturesInRun.Select(f => f as BlinkingPrevention).Where(f => f != null)) {
                 checkActive.TransitionsTo(idle).When(prevention.param.IsTrue());
             }
-            checkActive.TransitionsTo(blinkStart).When(Always());
-            blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(Always());
+            checkActive.TransitionsTo(blinkStart).When(fx.Always());
+            blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
             if (holdDuration > 0) {
                 var hold = layer.NewState("Hold").WithAnimation(blinkClip);
-                blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(Always());
-                hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(Always());
+                blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(fx.Always());
+                hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
             } else {
-                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(Always());
+                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
             }
         }
     }

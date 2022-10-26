@@ -1,87 +1,50 @@
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEditor.Animations;
-using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDKBase;
-using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     public class ControllerManager {
         private static string prefix = "VRCFury";
         private readonly AnimatorController ctrl;
-        private readonly string tmpDir;
-        private Object clipStorage;
         private readonly ParamManager paramManager;
         private VRCAvatarDescriptor.AnimLayerType type;
 
-        public ControllerManager(AnimatorController ctrl, string tmpDir, ParamManager paramManager, VRCAvatarDescriptor.AnimLayerType type) {
+        public ControllerManager(
+            AnimatorController ctrl,
+            ParamManager paramManager,
+            VRCAvatarDescriptor.AnimLayerType type
+        ) {
             this.ctrl = ctrl;
-            this.tmpDir = tmpDir;
             this.paramManager = paramManager;
             this.type = type;
         }
 
-        public AnimatorController GetRawController() {
+        public AnimatorController GetRaw() {
             return ctrl;
         }
 
         private VFAController _controller;
         private VFAController GetController() {
-            if (_controller == null) {
-                _controller = new VFAController(ctrl, type);
-            }
+            if (_controller == null) _controller = new VFAController(GetRaw(), type);
             return _controller;
         }
 
-        private AnimationClip _noopClip;
-        public AnimationClip GetNoopClip() {
-            if (_noopClip == null) {
-                _noopClip = NewClip("noop");
-                _noopClip.SetCurve("_ignored", typeof(GameObject), "m_IsActive", AnimationCurve.Constant(0,0,0));
-            }
-            return _noopClip;
+        public VFALayer NewLayer(string name, int insertAt = -1) {
+            return GetController().NewLayer(NewLayerName(name), insertAt);
         }
 
-        public VFALayer NewLayer(string name, bool first = false) {
-            return GetController().NewLayer(NewLayerName(name), first);
-        }
-
-        public string NewLayerName(string name) {
+        public static string NewLayerName(string name) {
             return "[" + prefix + "] " + name;
         }
 
         public IEnumerable<AnimatorControllerLayer> GetManagedLayers() {
-            return ctrl.layers.Where(l => l.name.StartsWith("[" + prefix + "] "));
+            return GetRaw().layers.Where(l => l.name.StartsWith("[" + prefix + "] "));
         }
         public IEnumerable<AnimatorControllerLayer> GetUnmanagedLayers() {
-            return ctrl.layers.Where(l => !l.name.StartsWith("[" + prefix + "] "));
-        }
-
-        public void AddToClipStorage(Object asset) {
-            if (clipStorage == null) {
-                clipStorage = new AnimationClip();
-                clipStorage.hideFlags = HideFlags.None;
-                VRCFuryAssetDatabase.SaveAsset(clipStorage, tmpDir, "VRCF_Clips");
-            }
-            AssetDatabase.AddObjectToAsset(asset, clipStorage);
-        }
-
-        public AnimationClip NewClip(string name) {
-            var clip = new AnimationClip();
-            clip.name = prefix + "/" + name;
-            clip.hideFlags = HideFlags.None;
-            AddToClipStorage(clip);
-            return clip;
-        }
-        public BlendTree NewBlendTree(string name) {
-            var tree = new BlendTree();
-            tree.name = prefix + "/" + name;
-            tree.hideFlags = HideFlags.None;
-            AddToClipStorage(tree);
-            return tree;
+            return GetRaw().layers.Where(l => !l.name.StartsWith("[" + prefix + "] "));
         }
 
         public VFABool NewTrigger(string name, bool usePrefix = true) {
@@ -124,7 +87,7 @@ namespace VF.Builder {
             }
             return GetController().NewFloat(name, def);
         }
-        public string NewParamName(string name) {
+        public static string NewParamName(string name) {
             return prefix + "__" + name;
         }
 
@@ -155,7 +118,7 @@ namespace VF.Builder {
         public static void CorrectLayerReferences(AnimatorController ctrl, int after, VRCAvatarDescriptor.AnimLayerType type, int offset) {
             if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
                 foreach (var layer in ctrl.layers) {
-                    DefaultClipBuilder.ForEachState(layer, state => {
+                    AnimatorIterator.ForEachState(layer, state => {
                         foreach (var b in state.behaviours) {
                             var layerControl = b as VRCAnimatorLayerControl;
                             if (layerControl && layerControl.playable == VRC_AnimatorLayerControl.BlendableLayer.FX && layerControl.layer > after) {
@@ -165,6 +128,22 @@ namespace VF.Builder {
                     });
                 }
             }
+        }
+        
+        public VFACondition Always() {
+            return NewBool("True", def: true).IsTrue();
+        }
+        public VFANumber GestureLeft() {
+            return NewInt("GestureLeft", usePrefix: false);
+        }
+        public VFANumber GestureRight() {
+            return NewInt("GestureRight", usePrefix: false);
+        }
+        public VFANumber Viseme() {
+            return NewInt("Viseme", usePrefix: false);
+        }
+        public VFABool IsLocal() {
+            return NewBool("IsLocal", usePrefix: false);
         }
     }
 }

@@ -48,7 +48,7 @@ namespace VF.Feature {
                 foreach (var reparent in links.reparent) {
                     var objectToMove = reparent.Item1;
                     var newParent = reparent.Item2;
-                    var oldPath = motions.GetPath(objectToMove);
+                    var oldPath = clipBuilder.GetPath(objectToMove);
 
                     // Move the object
                     objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
@@ -58,7 +58,7 @@ namespace VF.Feature {
                     RemoveFromPhysbones(objectToMove);
                     
                     // Remember how we need to rewrite animations later
-                    var newPath = motions.GetPath(objectToMove);
+                    var newPath = clipBuilder.GetPath(objectToMove);
                     clipMappings.Add(oldPath, newPath);
                 }
 
@@ -68,8 +68,8 @@ namespace VF.Feature {
                     var propBone = mergeBone.Item1;
                     var avatarBone = mergeBone.Item2;
                     boneMapping[propBone.transform] = avatarBone.transform;
-                    var oldPath = motions.GetPath(propBone);
-                    var newPath = motions.GetPath(avatarBone);
+                    var oldPath = clipBuilder.GetPath(propBone);
+                    var newPath = clipBuilder.GetPath(avatarBone);
                     clipMappings.Add(oldPath, newPath);
                 }
                 foreach (var skin in featureBaseObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
@@ -93,7 +93,7 @@ namespace VF.Feature {
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
                     var avatarBone = mergeBone.Item2;
-                    var oldPath = motions.GetPath(propBone);
+                    var oldPath = clipBuilder.GetPath(propBone);
                     
                     // Move the object
                     var p = propBone.GetComponent<ParentConstraint>();
@@ -109,7 +109,7 @@ namespace VF.Feature {
                     RemoveFromPhysbones(propBone);
                     
                     // Remember how we need to rewrite animations later
-                    var newPath = motions.GetPath(propBone);
+                    var newPath = clipBuilder.GetPath(propBone);
                     clipMappings.Add(oldPath, newPath);
                 }
             }
@@ -126,8 +126,8 @@ namespace VF.Feature {
 
         [FeatureBuilderAction((int)FeatureOrder.ArmatureLinkBuilderFixAnimations)]
         public void FixAnimations() {
-            foreach (var layer in controller.GetManagedLayers()) {
-                DefaultClipBuilder.ForEachClip(layer, clip => {
+            foreach (var layer in GetFx().GetManagedLayers()) {
+                AnimatorIterator.ForEachClip(layer, clip => {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                         var newPath = RewriteClipPath(binding.path);
                         if (newPath != null) {

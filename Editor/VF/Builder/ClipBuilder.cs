@@ -127,7 +127,14 @@ public class ClipBuilder {
         }
         var prev = new SerializedObject(clip);
         var next = new SerializedObject(copy);
-        next.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = prev.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
+        //next.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = prev.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
+        SerializedProperty prevIterator = prev.GetIterator();
+        while (prevIterator.NextVisible(true)) {
+            var nextEl = next.FindProperty(prevIterator.propertyPath);
+            if (nextEl != null && nextEl.propertyType == prevIterator.propertyType) {
+                next.CopyFromSerializedProperty(prevIterator);
+            }
+        }
         next.ApplyModifiedProperties();
     }
 

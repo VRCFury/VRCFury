@@ -19,18 +19,16 @@ public class VFAController {
         this.type = type;
     }
 
-    public VFALayer NewLayer(string name, bool first = false) {
+    public VFALayer NewLayer(string name, int insertAt = -1) {
         ctrl.AddLayer(name);
         var layers = ctrl.layers;
         var layer = layers[ctrl.layers.Length-1];
-        if (first) {
-            // Leave top layer alone if it's base layer (with no states)
-            var skipOneLayer = layers[0].stateMachine.states.Length == 0;
-            for (var i = layers.Length-1; i > (skipOneLayer ? 1 : 0); i--) {
+        if (insertAt >= 0) {
+            for (var i = layers.Length-1; i > insertAt; i--) {
                 layers[i] = layers[i - 1];
             }
-            layers[skipOneLayer ? 1 : 0] = layer;
-            ControllerManager.CorrectLayerReferences(ctrl, skipOneLayer ? 0 : -1, type,  1);
+            layers[insertAt] = layer;
+            ControllerManager.CorrectLayerReferences(ctrl, insertAt - 1, type,  1);
         }
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);

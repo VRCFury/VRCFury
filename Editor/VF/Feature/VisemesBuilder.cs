@@ -22,8 +22,9 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
         }
 
-        var visemes = controller.NewLayer("Visemes");
-        var VisemeParam = controller.NewInt("Viseme", usePrefix: false);
+        var fx = GetFx();
+        var visemes = fx.NewLayer("Visemes");
+        var VisemeParam = fx.NewInt("Viseme", usePrefix: false);
         void addViseme(int index, string text, State clipState) {
             var clip = LoadState(text, clipState);
             var state = visemes.NewState(text).WithAnimation(clip);
