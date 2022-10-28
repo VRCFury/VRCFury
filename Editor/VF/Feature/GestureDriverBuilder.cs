@@ -36,6 +36,7 @@ namespace VF.Feature {
                 return;
             }
 
+            var fx = GetFx();
             var uniqueNum = i++;
             var name = "Gesture " + uniqueModelNum + "#" + uniqueNum + " - " + gesture.hand + " " + gesture.sign;
             if (gesture.hand == GestureDriver.Hand.COMBO) {
@@ -43,7 +44,7 @@ namespace VF.Feature {
             }
             var uid = "gesture_" + uniqueModelNum + "_" + uniqueNum;
 
-            var layer = controller.NewLayer("Gesture - " + name);
+            var layer = fx.NewLayer("Gesture - " + name);
             var off = layer.NewState("Off");
             var on = layer.NewState("On");
 
@@ -51,14 +52,14 @@ namespace VF.Feature {
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
                 if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
                     // This doesn't actually need synced, but vrc gets annoyed if the menu is using an unsynced param
-                    lockMenuParam = controller.NewBool(uid + "_lock", synced: true);
-                    menu.NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
+                    lockMenuParam = fx.NewBool(uid + "_lock", synced: true);
+                    manager.GetMenu().NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
                     lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
                 }
             }
 
-            var GestureLeft = controller.NewInt("GestureLeft", usePrefix: false);
-            var GestureRight = controller.NewInt("GestureRight", usePrefix: false);
+            var GestureLeft = fx.NewInt("GestureLeft", usePrefix: false);
+            var GestureRight = fx.NewInt("GestureRight", usePrefix: false);
 
             VFACondition onCondition;
             int weightHand = 0;
@@ -97,7 +98,7 @@ namespace VF.Feature {
             }
 
             if (gesture.disableBlinking) {
-                var disableBlinkParam = controller.NewBool(uid + "_disableBlink");
+                var disableBlinkParam = fx.NewBool(uid + "_disableBlink");
                 off.Drives(disableBlinkParam, false);
                 on.Drives(disableBlinkParam, true);
                 addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
@@ -107,11 +108,11 @@ namespace VF.Feature {
             if (weightHand > 0) {
                 MakeWeightParams();
                 var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
-                var tree = controller.NewBlendTree(uid + "_blend");
+                var tree = manager.GetClipStorage().NewBlendTree(uid + "_blend");
                 tree.blendType = BlendTreeType.Simple1D;
                 tree.useAutomaticThresholds = false;
                 tree.blendParameter = weightParam.Name();
-                tree.AddChild(controller.GetNoopClip(), 0);
+                tree.AddChild(manager.GetClipStorage().GetNoopClip(), 0);
                 tree.AddChild(clip, 1);
                 on.WithAnimation(tree);
             } else {
@@ -127,20 +128,22 @@ namespace VF.Feature {
         private VFANumber rightWeightParam;
         private void MakeWeightParams() {
             if (leftWeightParam != null) return;
-            var GestureLeftWeight = controller.NewFloat("GestureLeftWeight", usePrefix: false);
-            var GestureRightWeight = controller.NewFloat("GestureRightWeight", usePrefix: false);
-            var GestureLeftCondition = controller.NewInt("GestureLeft", usePrefix: false).IsEqualTo(1);
-            var GestureRightCondition = controller.NewInt("GestureRight", usePrefix: false).IsEqualTo(1);
+            var fx = GetFx();
+            var GestureLeftWeight = fx.NewFloat("GestureLeftWeight", usePrefix: false);
+            var GestureRightWeight = fx.NewFloat("GestureRightWeight", usePrefix: false);
+            var GestureLeftCondition = fx.NewInt("GestureLeft", usePrefix: false).IsEqualTo(1);
+            var GestureRightCondition = fx.NewInt("GestureRight", usePrefix: false).IsEqualTo(1);
             leftWeightParam = MakeWeightLayer("left", GestureLeftWeight, GestureLeftCondition);
             rightWeightParam = MakeWeightLayer("right", GestureRightWeight, GestureRightCondition);
         }
         private VFANumber MakeWeightLayer(string name, VFANumber input, VFACondition whenEnabled) {
-            var layer = controller.NewLayer("GestureWeight_" + name);
-            var output = controller.NewFloat(input.Name() + "_cached");
+            var fx = GetFx();
+            var layer = fx.NewLayer("GestureWeight_" + name);
+            var output = fx.NewFloat(input.Name() + "_cached");
             
-            var initClip = controller.NewClip("GestureWeightInit_" + output.Name());
+            var initClip = manager.GetClipStorage().NewClip("GestureWeightInit_" + output.Name());
             initClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 600, 1));
-            var driveClip = controller.NewClip("GestureWeightDrive_" + output.Name());
+            var driveClip = manager.GetClipStorage().NewClip("GestureWeightDrive_" + output.Name());
             driveClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Linear(0, 0, 600, 1));
 
             var init = layer.NewState("Init");

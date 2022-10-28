@@ -10,14 +10,15 @@ namespace VF.Feature {
 public class ModesBuilder : FeatureBuilder<Modes> {
     [FeatureBuilderAction]
     public void Apply() {
+        var fx = GetFx();
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         var layerName = model.name;
-        var layer = controller.NewLayer(layerName);
+        var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
         if (physBoneResetter != null) off.Drives(physBoneResetter, true);
-        var param = controller.NewInt(model.name, synced: true, saved: model.saved);
-        menu.NewMenuToggle(model.name + "/Off", param, 0);
+        var param = fx.NewInt(model.name, synced: true, saved: model.saved);
+        manager.GetMenu().NewMenuToggle(model.name + "/Off", param, 0);
         var i = 1;
         foreach (var mode in model.modes) {
             var num = i++;
@@ -25,7 +26,7 @@ public class ModesBuilder : FeatureBuilder<Modes> {
             var state = layer.NewState(""+num).WithAnimation(clip);
             if (physBoneResetter != null) state.Drives(physBoneResetter, true);
             if (model.securityEnabled && allFeaturesInRun.Any(f => f is SecurityLock)) {
-                var paramSecuritySync = controller.NewBool("SecurityLockSync");
+                var paramSecuritySync = fx.NewBool("SecurityLockSync");
                 state.TransitionsFromAny().When(param.IsEqualTo(num).And(paramSecuritySync.IsTrue()));
                 state.TransitionsToExit().When(param.IsNotEqualTo(num));
                 state.TransitionsToExit().When(paramSecuritySync.IsFalse());
@@ -33,7 +34,7 @@ public class ModesBuilder : FeatureBuilder<Modes> {
                 state.TransitionsFromAny().When(param.IsEqualTo(num));
                 state.TransitionsToExit().When(param.IsNotEqualTo(num));
             }
-            menu.NewMenuToggle(model.name + "/Mode " + num, param, num);
+            manager.GetMenu().NewMenuToggle(model.name + "/Mode " + num, param, num);
         }
     }
 

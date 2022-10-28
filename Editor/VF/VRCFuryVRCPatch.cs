@@ -68,7 +68,7 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
             }
 
             if (original) {
-                VRCFuryBuilder.DetachFromAvatar(original);
+                LegacyCleaner.Clean(original);
             }
         }
 
@@ -79,20 +79,23 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
         // Try to detect conflicting parameter names that break OSC
         try {
             var avatar = vrcCloneObject.GetComponent<VRCAvatarDescriptor>();
-            var fx = VRCAvatarUtils.GetAvatarFx(avatar);
-            if (fx) {
-                var normalizedNames = new HashSet<string>();
-                foreach (var param in fx.parameters) {
-                    var normalized = param.name.Replace(' ', '_');
-                    if (normalizedNames.Contains(normalized)) {
-                        EditorUtility.DisplayDialog("VRCFury Error",
-                            "Your FX controller contains multiple parameters with the same normalized name: " +
-                            normalized
-                            + " This will cause OSC and various other vrchat functions to fail. Please fix it.", "Ok");
-                        return false;
-                    }
+            var normalizedNames = new HashSet<string>();
+            var fullNames = new HashSet<string>();
+            foreach (var c in VRCAvatarUtils.GetAllControllers(avatar).Select(c => c.Item1).Where(c => c != null)) {
+                foreach (var param in c.parameters) {
+                    if (!fullNames.Contains(param.name)) {
+                        var normalized = param.name.Replace(' ', '_');
+                        if (normalizedNames.Contains(normalized)) {
+                            EditorUtility.DisplayDialog("VRCFury Error",
+                                "Your avatar controllers contain multiple parameters with the same normalized name: " +
+                                normalized
+                                + " This will cause OSC and various other vrchat functions to fail. Please fix it.", "Ok");
+                            return false;
+                        }
 
-                    normalizedNames.Add(normalized);
+                        fullNames.Add(param.name);
+                        normalizedNames.Add(normalized);
+                    }
                 }
             }
         } catch (Exception e) {

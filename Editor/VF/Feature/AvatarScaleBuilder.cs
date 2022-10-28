@@ -11,19 +11,21 @@ namespace VF.Feature {
 public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
     [FeatureBuilderAction]
     public void Apply() {
-        var paramScale = controller.NewFloat("Scale", synced: true, def: 0.5f, saved: true);
-        var scaleClip = controller.NewClip("Scale");
+        var fx = GetFx();
+        var paramScale = fx.NewFloat("Scale", synced: true, def: 0.5f, saved: true);
+        var scaleClip = manager.GetClipStorage().NewClip("Scale");
         var baseScale = avatarObject.transform.localScale.x;
-        motions.Scale(scaleClip, avatarObject, ClipBuilder.FromFrames(
+        clipBuilder.Scale(scaleClip, avatarObject, ClipBuilder.FromFrames(
             new Keyframe(0, baseScale * 0.1f),
             new Keyframe(2, baseScale * 1),
             new Keyframe(3, baseScale * 2),
             new Keyframe(4, baseScale * 10)
         ));
 
-        var layer = controller.NewLayer("Scale");
+        var layer = fx.NewLayer("Scale");
         var main = layer.NewState("Scale").WithAnimation(scaleClip).MotionTime(paramScale);
-        
+
+        var menu = manager.GetMenu();
         menu.NewMenuSlider("Scale/Adjust", paramScale);
         menu.NewMenuToggle("Scale/40%", paramScale, 0.20f);
         menu.NewMenuToggle("Scale/60%", paramScale, 0.27f);

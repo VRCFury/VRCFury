@@ -10,16 +10,18 @@ namespace VF.Feature {
     public class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures> {
         [FeatureBuilderAction]
         public void Apply() {
-            foreach (var layer in controller.GetUnmanagedLayers()) {
-                foreach (var t in layer.stateMachine.entryTransitions) AdjustTransition(t);
-                foreach (var t in layer.stateMachine.anyStateTransitions) AdjustTransition(t);
-                DefaultClipBuilder.ForEachState(layer, state => {
-                    foreach (var t in state.transitions) AdjustTransition(t);
-                });
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                foreach (var layer in controller.GetUnmanagedLayers()) {
+                    foreach (var t in layer.stateMachine.entryTransitions) AdjustTransition(controller, t);
+                    foreach (var t in layer.stateMachine.anyStateTransitions) AdjustTransition(controller, t);
+                    AnimatorIterator.ForEachState(layer, state => {
+                        foreach (var t in state.transitions) AdjustTransition(controller, t);
+                    });
+                }
             }
         }
         
-        private void AdjustTransition(AnimatorTransitionBase transition) {
+        private void AdjustTransition(ControllerManager controller, AnimatorTransitionBase transition) {
             var tru = controller.NewBool("True", def: true);
             var conds = transition.conditions;
             for (var i = 0; i < conds.Length; i++) {

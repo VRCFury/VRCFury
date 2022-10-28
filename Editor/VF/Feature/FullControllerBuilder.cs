@@ -13,6 +13,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Toggle = VF.Model.Feature.Toggle;
@@ -29,6 +30,8 @@ namespace VF.Feature {
             Func<string,string> rewriteParam = name => {
                 if (string.IsNullOrWhiteSpace(name)) return name;
                 if (VRChatGlobalParams.Contains(name)) return name;
+                // TODO REMOVE THIS
+                if (name.StartsWith("Go/")) return name;
                 if (model.allNonsyncedAreGlobal) {
                     var synced = model.prms.Any(p => p.parameters.parameters.Any(param => param.name == name));
                     if (!synced) return name;
@@ -38,7 +41,7 @@ namespace VF.Feature {
                 }
 
                 rewrittenParams.Add(name);
-                return controller.NewParamName("fc" + uniqueModelNum + "_" + name);
+                return ControllerManager.NewParamName("fc" + uniqueModelNum + "_" + name);
             };
 
             foreach (var p in model.prms) {
@@ -50,38 +53,70 @@ namespace VF.Feature {
                         saved = param.saved && !model.ignoreSaved,
                         defaultValue = param.defaultValue
                     };
-                    prms.addSyncedParam(newParam);
+                    manager.GetParams().addSyncedParam(newParam);
                 }
             }
 
+            var rewrittenClips = new Dictionary<AnimationClip, AnimationClip>();
+
             foreach (var c in model.controllers) {
+                var type = c.type;
+                var source = (AnimatorController)c.controller;
+                
                 AnimationClip RewriteClip(AnimationClip from) {
                     if (from == null) {
                         return null;
                     }
-                    var copy = controller.NewClip(baseObject.name + "__" + from.name);
-                    motions.CopyWithAdjustedPrefixes(from, copy, baseObject, model.removePrefixes);
+                    if (rewrittenClips.ContainsKey(from)) return rewrittenClips[from];
+                    var copy = manager.GetClipStorage().NewClip(baseObject.name + "__" + from.name);
+                    clipBuilder.CopyWithAdjustedPrefixes(from, copy, baseObject, model.removePrefixes);
+                    rewrittenClips[from] = copy;
                     return copy;
                 }
                 
                 BlendTree NewBlendTree(string name) {
-                    return controller.NewBlendTree(baseObject.name + "__" + name);
+                    return manager.GetClipStorage().NewBlendTree(baseObject.name + "__" + name);
                 }
 
+                var targetController = manager.GetController(type);
+                if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && source.layers.Length > 0 && targetController.GetRaw().layers.Length > 0) {
+                    var sourceMask = AvatarManager.GetBaseMask(source);
+                    var targetMask = AvatarManager.GetBaseMask(targetController.GetRaw());
+                    if (targetMask == null) {
+                        AvatarManager.SetBaseMask(targetController.GetRaw(), sourceMask);
+                    } else if (sourceMask == null) {
+                        // oh well?
+                    } else {
+                        var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "gestureMask", "mask");
+                        var copy = VRCFuryAssetDatabase.CopyAsset(targetMask, newPath);
+                        foreach (var bodyPart in (AvatarMaskBodyPart[])Enum.GetValues(typeof(AvatarMaskBodyPart))) {
+                            if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
+                                copy.SetHumanoidBodyPartActive(bodyPart, true);
+                        }
+                        for (var i = 0; i < sourceMask.transformCount; i++) {
+                            if (sourceMask.GetTransformActive(i)) {
+                                copy.transformCount++;
+                                copy.SetTransformPath(targetMask.transformCount-1, sourceMask.GetTransformPath(i));
+                                copy.SetTransformActive(targetMask.transformCount-1, true);
+                            }
+                        }
+                        AvatarManager.SetBaseMask(targetController.GetRaw(), copy);
+                    }
+                }
                 var merger = new ControllerMerger(
-                    layerName => controller.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
+                    layerName => ControllerManager.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
                     param => rewriteParam(param),
                     RewriteClip,
                     NewBlendTree
                 );
-                merger.Merge((AnimatorController)c.controller, controller.GetRawController());
+                merger.Merge(source, targetController.GetRaw());
             }
 
             foreach (var m in model.menus) {
                 var prefix = string.IsNullOrWhiteSpace(m.prefix)
                     ? new string[] { }
                     : m.prefix.Split('/').ToArray();
-                menu.MergeMenu(prefix, m.menu, rewriteParam);
+                manager.GetMenu().MergeMenu(prefix, m.menu, rewriteParam);
             }
             
             foreach (var receiver in baseObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
@@ -117,7 +152,19 @@ namespace VF.Feature {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers"),
-                (i, el) => VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("controller"))));
+                (i, el) => {
+                    var wrapper = new VisualElement();
+                    wrapper.style.flexDirection = FlexDirection.Row;
+                    var a = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("controller"));
+                    a.style.flexBasis = 0;
+                    a.style.flexGrow = 1;
+                    wrapper.Add(a);
+                    var b = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("type"));
+                    b.style.flexBasis = 0;
+                    b.style.flexGrow = 1;
+                    wrapper.Add(b);
+                    return wrapper;
+                }));
 
             content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel("(If prefix is left empty, menu will be merged into avatar's root menu)"));
@@ -180,7 +227,10 @@ namespace VF.Feature {
             "TrackingType",
             "VRMode",
             "MuteSelf",
-            "InStation"
+            "InStation",
+            "AvatarVersion",
+            "GroundProximity",
+            "VRCEmote"
         };
     }
 

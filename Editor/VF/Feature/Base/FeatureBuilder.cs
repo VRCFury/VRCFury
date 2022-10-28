@@ -8,14 +8,12 @@ using VF.Builder;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
     public abstract class FeatureBuilder {
-        public ControllerManager controller;
-        public MenuManager menu;
-        public ParamManager prms;
-        
-        public ClipBuilder motions;
+        public AvatarManager manager;
+        public ClipBuilder clipBuilder;
         public string tmpDir;
         public GameObject avatarObject;
         public GameObject featureBaseObject;
@@ -40,50 +38,38 @@ namespace VF.Feature.Base {
             return true;
         }
 
+        public ControllerManager GetFx() {
+            return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
+        }
+
         protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {
             if (resetPhysbones == null || resetPhysbones.Count == 0) return null;
 
-            var layer = controller.NewLayer(name + "_PhysBoneReset");
-            var param = controller.NewTrigger(name + "_PhysBoneReset");
+            var fx = GetFx();
+            var layer = fx.NewLayer(name + "_PhysBoneReset");
+            var param = fx.NewTrigger(name + "_PhysBoneReset");
             var idle = layer.NewState("Idle");
             var pause = layer.NewState("Pause");
             var reset1 = layer.NewState("Reset").Move(pause, 1, 0);
             var reset2 = layer.NewState("Reset").Move(idle, 1, 0);
             idle.TransitionsTo(pause).When(param.IsTrue());
-            pause.TransitionsTo(reset1).When(Always());
-            reset1.TransitionsTo(reset2).When(Always());
-            reset2.TransitionsTo(idle).When(Always());
+            pause.TransitionsTo(reset1).When(fx.Always());
+            reset1.TransitionsTo(reset2).When(fx.Always());
+            reset2.TransitionsTo(idle).When(fx.Always());
 
-            var resetClip = controller.NewClip(name + "_PhysBoneReset");
+            var resetClip = manager.GetClipStorage().NewClip(name + "_PhysBoneReset");
             foreach (var physBone in resetPhysbones) {
                 if (physBone == null) {
                     Debug.LogWarning("Physbone object in physboneResetter is missing!: " + name);
                     continue;
                 }
-                motions.Enable(resetClip, physBone, false);
+                clipBuilder.Enable(resetClip, physBone, false);
             }
 
             reset1.WithAnimation(resetClip);
             reset2.WithAnimation(resetClip);
 
             return param;
-        }
-
-        protected VFACondition Always() {
-            var paramTrue = controller.NewBool("True", def: true);
-            return paramTrue.IsTrue();
-        }
-        protected VFANumber GestureLeft() {
-            return controller.NewInt("GestureLeft", usePrefix: false);
-        }
-        protected VFANumber GestureRight() {
-            return controller.NewInt("GestureRight", usePrefix: false);
-        }
-        protected VFANumber Viseme() {
-            return controller.NewInt("Viseme", usePrefix: false);
-        }
-        protected VFABool IsLocal() {
-            return controller.NewBool("IsLocal", usePrefix: false);
         }
 
         protected static bool StateExists(State state) {
@@ -95,9 +81,9 @@ namespace VF.Feature.Base {
                 return (state.actions[0] as AnimationClipAction).clip;
             }
             if (state.actions.Count == 0) {
-                return controller.GetNoopClip();
+                return manager.GetClipStorage().GetNoopClip();
             }
-            var clip = controller.NewClip(name);
+            var clip = manager.GetClipStorage().NewClip(name);
             foreach (var action in state.actions) {
                 switch (action) {
                     case FlipbookAction flipbook:
@@ -108,21 +94,21 @@ namespace VF.Feature.Base {
                             // leniency around it.
                             var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
                             clip.SetCurve(
-                                motions.GetPath(flipbook.obj),
+                                clipBuilder.GetPath(flipbook.obj),
                                 typeof(SkinnedMeshRenderer),
                                 "material._FlipbookCurrentFrame",
                                 ClipBuilder.OneFrame(frameAnimNum));
                         }
                         break;
                     case AnimationClipAction actionClip:
-                        motions.CopyWithAdjustedPrefixes(actionClip.clip, clip, featureBaseObject);
+                        clipBuilder.CopyWithAdjustedPrefixes(actionClip.clip, clip, featureBaseObject);
                         break;
                     case ObjectToggleAction toggle:
                         if (toggle.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
                         } else {
                             var restingState = toggle.obj.activeSelf;
-                            motions.Enable(clip, toggle.obj, !restingState);
+                            clipBuilder.Enable(clip, toggle.obj, !restingState);
                         }
                         break;
                     case BlendShapeAction blendShape:
@@ -132,7 +118,7 @@ namespace VF.Feature.Base {
                             if (blendShapeIndex < 0) continue;
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
-                            motions.BlendShape(clip, skin, blendShape.blendShape, blendShape.blendShapeValue);
+                            clipBuilder.BlendShape(clip, skin, blendShape.blendShape, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
                             Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);
@@ -142,8 +128,7 @@ namespace VF.Feature.Base {
                         if (scaleAction.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
                         } else {
-                            var restingState = scaleAction.obj.transform.localScale.x;
-                            motions.Scale(clip, scaleAction.obj,
+                            clipBuilder.Scale(clip, scaleAction.obj,
                                 scaleAction.obj.transform.localScale.x * scaleAction.scale,
                                 scaleAction.obj.transform.localScale.y * scaleAction.scale,
                                 scaleAction.obj.transform.localScale.z * scaleAction.scale);

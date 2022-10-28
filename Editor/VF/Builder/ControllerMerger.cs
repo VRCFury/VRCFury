@@ -5,6 +5,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
 
@@ -63,20 +64,25 @@ public class ControllerMerger {
             toLayer.iKPass = fromLayer.iKPass;
             toLayer.defaultWeight = fromWeight;
             to.layers = toLayers;
-            CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, toLayer.stateMachine);
+            var transitionTargets = new Dictionary<Object, Object>();
+            CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, transitionTargets);
+            CloneTransitions(fromLayer.stateMachine, transitionTargets);
         }
     }
 
-    private void CloneMachine(AnimatorStateMachine from, AnimatorStateMachine to, AnimatorStateMachine toBase) {
+    private void CloneMachine(AnimatorStateMachine from, AnimatorStateMachine to, Dictionary<Object, Object> transitionTargets) {
+        transitionTargets[from] = to;
         to.exitPosition = from.exitPosition;
         to.entryPosition = from.entryPosition;
         to.anyStatePosition = from.anyStatePosition;
         to.parentStateMachinePosition = from.parentStateMachinePosition;
+        CloneBehaviours(from.behaviours, to.AddStateMachineBehaviour);
 
         // Copy States
         foreach (var fromStateOuter in from.states) {
             var fromState = fromStateOuter.state;
             var toState = to.AddState(fromState.name, fromStateOuter.position);
+            transitionTargets[fromState] = toState;
             toState.speed = fromState.speed;
             toState.cycleOffset = fromState.cycleOffset;
             toState.mirror = fromState.mirror;
@@ -93,19 +99,7 @@ public class ControllerMerger {
             toState.timeParameterActive = fromState.timeParameterActive;
 
             toState.motion = CloneMotion(fromState.motion);
-            foreach (var b in fromState.behaviours) {
-                if (b is VRCAvatarParameterDriver) {
-                    var oldB = b as VRCAvatarParameterDriver;
-                    var newB = toState.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                    if (newB == null) throw new Exception("Added parameter driver is null");
-                    if (newB.parameters == null) throw new Exception("Added parameter driver params are null");
-                    foreach (var p in oldB.parameters) {
-                        newB.parameters.Add(CloneDriverParameter(p));
-                    }
-                    newB.localOnly = oldB.localOnly;
-                    newB.debugString = oldB.debugString;
-                }
-            }
+            CloneBehaviours(fromState.behaviours, toState.AddStateMachineBehaviour);
 
             if (fromState == from.defaultState) {
                 to.defaultState = toState;
@@ -115,14 +109,68 @@ public class ControllerMerger {
         // Copy Substate Machines
         foreach (var fromMachineOuter in from.stateMachines) {
             var fromMachine = fromMachineOuter.stateMachine;
-            var toMachine = new AnimatorStateMachine {
-                name = fromMachine.name
-            };
-            to.AddStateMachine(toMachine.name, fromMachineOuter.position);
-            CloneMachine(fromMachine, toMachine, toBase);
+            var toMachine = to.AddStateMachine(fromMachine.name, fromMachineOuter.position);
+            CloneMachine(fromMachine, toMachine, transitionTargets);
         }
- 
-        CloneTransitions(from, to, toBase);
+    }
+
+    private void CloneBehaviours(StateMachineBehaviour[] from, Func<Type, StateMachineBehaviour> AddUnchecked) {
+        T Add<T>() where T : StateMachineBehaviour => AddUnchecked(typeof (T)) as T;
+        foreach (var b in from) {
+            switch (b) {
+                case VRCAvatarParameterDriver oldB: {
+                    var newB = Add<VRCAvatarParameterDriver>();
+                    if (newB == null) throw new Exception("Added parameter driver is null");
+                    if (newB.parameters == null) throw new Exception("Added parameter driver params are null");
+                    foreach (var p in oldB.parameters) {
+                        newB.parameters.Add(CloneDriverParameter(p));
+                    }
+                    newB.localOnly = oldB.localOnly;
+                    newB.debugString = oldB.debugString;
+                    break;
+                }
+                case VRCPlayableLayerControl oldB: {
+                    var newB = Add<VRCPlayableLayerControl>();
+                    newB.layer = oldB.layer;
+                    newB.goalWeight = oldB.goalWeight;
+                    newB.blendDuration = oldB.blendDuration;
+                    newB.debugString = oldB.debugString;
+                    break;
+                }
+                case VRCAnimatorTemporaryPoseSpace oldB: {
+                    var newB = Add<VRCAnimatorTemporaryPoseSpace>();
+                    newB.enterPoseSpace = oldB.enterPoseSpace;
+                    newB.fixedDelay = oldB.fixedDelay;
+                    newB.delayTime = oldB.delayTime;
+                    newB.debugString = oldB.debugString;
+                    break;
+                }
+                case VRCAnimatorTrackingControl oldB: {
+                    var newB = Add<VRCAnimatorTrackingControl>();
+                    newB.trackingHead = oldB.trackingHead;
+                    newB.trackingLeftHand = oldB.trackingLeftHand;
+                    newB.trackingRightHand = oldB.trackingRightHand;
+                    newB.trackingHip = oldB.trackingHip;
+                    newB.trackingLeftFoot = oldB.trackingLeftFoot;
+                    newB.trackingRightFoot = oldB.trackingRightFoot;
+                    newB.trackingLeftFingers = oldB.trackingLeftFingers;
+                    newB.trackingRightFingers = oldB.trackingRightFingers;
+                    newB.trackingEyes = oldB.trackingEyes;
+                    newB.trackingMouth = oldB.trackingMouth;
+                    newB.debugString = oldB.debugString;
+                    break;
+                }
+                case VRCAnimatorLocomotionControl oldB: {
+                    var newB = Add<VRCAnimatorLocomotionControl>();
+                    newB.disableLocomotion = oldB.disableLocomotion;
+                    newB.debugString = oldB.debugString;
+                    break;
+                }
+                default:
+                    throw new VRCFBuilderException(
+                        "Unable to copy unknown state machine behavior type: " + b.GetType().Name);
+            }
+        }
     }
 
     private VRC_AvatarParameterDriver.Parameter CloneDriverParameter(VRC_AvatarParameterDriver.Parameter from) {
@@ -192,8 +240,7 @@ public class ControllerMerger {
 
     private void CloneTransition(
         AnimatorTransitionBase from,
-        AnimatorStateMachine toMachine,
-        AnimatorStateMachine toMachineParent,
+        Dictionary<Object, Object> transitionTargets,
         Func<AnimatorState,AnimatorTransitionBase> makeNewWithState,
         Func<AnimatorStateMachine,AnimatorTransitionBase> makeNewWithMachine
     ) {
@@ -201,21 +248,11 @@ public class ControllerMerger {
         if (from.isExit) {
             to = makeNewWithState(null);
         } else if (from.destinationState != null) {
-            var newDestIdx = Array.FindIndex(toMachine.states, s => s.state.name == from.destinationState.name);
-            if (newDestIdx < 0) return;
-            to = makeNewWithState(toMachine.states[newDestIdx].state);
+            var newDest = (AnimatorState)transitionTargets[from.destinationState];
+            to = makeNewWithState(newDest);
         } else {
-            var newDestIdx = Array.FindIndex(toMachine.stateMachines, s => s.stateMachine.name == from.destinationStateMachine.name);
-            if (newDestIdx >= 0) {
-                to = makeNewWithMachine(toMachine.stateMachines[newDestIdx].stateMachine);
-            } else {
-                newDestIdx = Array.FindIndex(toMachineParent.stateMachines, s => s.stateMachine.name == from.destinationStateMachine.name);
-                if (newDestIdx >= 0) {
-                    to = makeNewWithMachine(toMachineParent.stateMachines[newDestIdx].stateMachine);
-                } else {
-                    return;
-                }
-            }
+            var newDest = (AnimatorStateMachine)transitionTargets[from.destinationStateMachine];
+            to = makeNewWithMachine(newDest);
         }
 
         var conds = new List<AnimatorCondition>();
@@ -241,48 +278,46 @@ public class ControllerMerger {
         }
     }
 
-    private void CloneTransitions(AnimatorStateMachine from, AnimatorStateMachine to, AnimatorStateMachine toBase) {
-        foreach (var oldTrans in from.anyStateTransitions) {
+    private void CloneTransitions(AnimatorStateMachine from, Dictionary<Object, Object> transitionTargets) {
+        var to = (AnimatorStateMachine)transitionTargets[from];
+        foreach (var oldTrans in from.anyStateTransitions.Reverse()) {
             CloneTransition(
                 oldTrans,
-                to,
-                toBase,
+                transitionTargets,
                 to.AddAnyStateTransition,
                 to.AddAnyStateTransition
             );
         }
-        foreach (var oldTrans in from.entryTransitions) {
+        foreach (var oldTrans in from.entryTransitions.Reverse()) {
             CloneTransition(
                 oldTrans,
-                to,
-                toBase,
+                transitionTargets,
                 to.AddEntryTransition,
                 to.AddEntryTransition
             );
         }
         foreach (var fromState in from.states) {
-            var toStateIdx = Array.FindIndex(to.states, s => s.state.name == fromState.state.name);
-            if (toStateIdx < 0) continue;
-            var toState = to.states[toStateIdx];
-            foreach (var oldTrans in fromState.state.transitions) {
+            var toState = (AnimatorState)transitionTargets[fromState.state];
+            foreach (var oldTrans in fromState.state.transitions.Reverse()) {
                 if (oldTrans.isExit) {
                     CloneTransition(
                         oldTrans,
-                        to,
-                        toBase,
-                        s => toState.state.AddExitTransition(),
+                        transitionTargets,
+                        s => toState.AddExitTransition(),
                         null
                     );
                 } else {
                     CloneTransition(
                         oldTrans,
-                        to,
-                        toBase,
-                        toState.state.AddTransition,
-                        toState.state.AddTransition
+                        transitionTargets,
+                        toState.AddTransition,
+                        toState.AddTransition
                     );
                 }
             }
+        }
+        foreach (var fromMachineOuter in from.stateMachines) {
+            CloneTransitions(fromMachineOuter.stateMachine, transitionTargets);
         }
     }
     

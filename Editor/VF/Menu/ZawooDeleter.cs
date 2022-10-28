@@ -82,11 +82,11 @@ namespace VF.Menu {
             }
 
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
-            var avatarFx = VRCAvatarUtils.GetAvatarFx(avatar);
+            var avatarFx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
             if (avatarFx != null) {
                 if (ShouldRemoveAsset(avatarFx)) {
                     removeItems.Add("Avatar descriptor FX layer setting");
-                    if (perform) VRCAvatarUtils.SetAvatarFx(avatar, null);
+                    if (perform) VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
                 } else {
                     for (var i = 0; i < avatarFx.layers.Length; i++) {
                         var layer = avatarFx.layers[i];

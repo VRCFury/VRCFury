@@ -1,47 +1,69 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
     public class VRCAvatarUtils {
-        private static int GetAvatarLayerNumber(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
-            if (!avatar.customizeAnimationLayers) return -1;
-            // Sometimes, broken avatar descriptors have multiple entries for the same type.
-            // We'll do a first pass to see if there's one actually used (in case its not the first one during this bug)
-            var seenCount = 0;
-            var firstSeenIndex = -1;
-            for (var i = 0; i < avatar.baseAnimationLayers.Length; i++) {
-                var layer = avatar.baseAnimationLayers[i];
-                if (layer.type == type) {
-                    seenCount++;
-                    if (firstSeenIndex < 0) firstSeenIndex = i;
-                    if (!layer.isDefault && layer.animatorController != null) return i;
-                }
+        private static
+            IEnumerable<Tuple<AnimatorController, Action<AnimatorController>, VRCAvatarDescriptor.AnimLayerType>>
+            GetAllControllers(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.CustomAnimLayer[] layers) {
+            
+            var output =
+                new List<Tuple<AnimatorController, Action<AnimatorController>, VRCAvatarDescriptor.AnimLayerType>>();
+
+            for (var i = 0; i < layers.Length; i++) {
+                var layerNum = i;
+                var layer = layers[layerNum];
+                var type = layer.type;
+                var controller = (avatar.customizeAnimationLayers && !layer.isDefault)
+                    ? layer.animatorController as AnimatorController
+                    : null;
+                Action<AnimatorController> Set = c => {
+                    avatar.customizeAnimationLayers = true;
+                    layer.isDefault = false;
+                    layer.animatorController = c;
+                    layers[layerNum] = layer;
+                    EditorUtility.SetDirty(avatar);
+                };
+                output.Add(Tuple.Create(controller, Set, type));
             }
-            return firstSeenIndex;
+
+            return output;
+        }
+        public static IEnumerable<Tuple<AnimatorController, Action<AnimatorController>, VRCAvatarDescriptor.AnimLayerType>> GetAllControllers(VRCAvatarDescriptor avatar) {
+            return Enumerable.Concat(
+                GetAllControllers(avatar, avatar.baseAnimationLayers),
+                GetAllControllers(avatar, avatar.specialAnimationLayers));
         }
 
-        public static AnimatorController GetAvatarFx(VRCAvatarDescriptor avatar) {
-            if (!avatar.customizeAnimationLayers) return null;
-            var layerNum = GetAvatarLayerNumber(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
-            if (layerNum < 0) return null;
-            var layer = avatar.baseAnimationLayers[layerNum];
-            if (layer.isDefault) return null;
-            if (layer.animatorController == null) return null;
-            return (AnimatorController)layer.animatorController;
+        public static AnimatorController GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
+            foreach (var layer in GetAllControllers(avatar)) {
+                if (layer.Item3 == type && layer.Item1 != null) {
+                    return layer.Item1;
+                }
+            }
+            return null;
         }
         
-        public static void SetAvatarFx(VRCAvatarDescriptor avatar, AnimatorController fx) {
-            avatar.customizeAnimationLayers = true;
-            var layerNum = GetAvatarLayerNumber(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
-            if (layerNum < 0)
-                throw new VRCFBuilderException(
-                    "Failed to find FX layer on avatar. You may need to 'reset' the expression layers on the avatar descriptor.");
-            var layer = avatar.baseAnimationLayers[layerNum];
-            layer.isDefault = false;
-            layer.animatorController = fx;
-            avatar.baseAnimationLayers[layerNum] = layer;
+        public static void SetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type, AnimatorController controller) {
+            foreach (var layer in GetAllControllers(avatar)) {
+                if (layer.Item3 == type && layer.Item1 != null) {
+                    layer.Item2.Invoke(controller);
+                    return;
+                }
+            }
+            foreach (var layer in GetAllControllers(avatar)) {
+                if (layer.Item3 == type) {
+                    layer.Item2.Invoke(controller);
+                    return;
+                }
+            }
+            throw new VRCFBuilderException(
+                "Failed to find " + type + " layer on avatar. You may need to 'reset' the expression layers on the avatar descriptor.");
         }
 
         public static VRCExpressionsMenu GetAvatarMenu(VRCAvatarDescriptor avatar) {
@@ -51,6 +73,7 @@ namespace VF.Builder {
         public static void SetAvatarMenu(VRCAvatarDescriptor avatar, VRCExpressionsMenu menu) {
             avatar.customExpressions = true;
             avatar.expressionsMenu = menu;
+            EditorUtility.SetDirty(avatar);
         }
 
         public static VRCExpressionParameters GetAvatarParams(VRCAvatarDescriptor avatar) {
@@ -60,6 +83,7 @@ namespace VF.Builder {
         public static void SetAvatarParams(VRCAvatarDescriptor avatar, VRCExpressionParameters prms) {
             avatar.customExpressions = true;
             avatar.expressionParameters = prms;
+            EditorUtility.SetDirty(avatar);
         }
     }
 }

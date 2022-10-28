@@ -9,13 +9,14 @@ namespace VF.Feature {
 public class TalkingBuilder : FeatureBuilder<Talking> {
     [FeatureBuilderAction]
     public void Apply() {
-        var layer = controller.NewLayer("Talk Glow");
+        var fx = GetFx();
+        var layer = fx.NewLayer("Talk Glow");
         var clip = LoadState("TalkGlow", model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
 
-        off.TransitionsTo(on).When(Viseme().IsGreaterThan(9));
-        on.TransitionsTo(off).When(Viseme().IsLessThan(10));
+        off.TransitionsTo(on).When(fx.Viseme().IsGreaterThan(9));
+        on.TransitionsTo(off).When(fx.Viseme().IsLessThan(10));
     }
 
     public override string GetEditorTitle() {

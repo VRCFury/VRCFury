@@ -39,12 +39,28 @@ namespace VF.Builder {
                 ext = "mat";
             } else if (obj is AnimatorController) {
                 ext = "controller";
+            } else if (obj is AvatarMask) {
+                ext = "mask";
             } else {
                 ext = "asset";
             }
 
             var fullPath = GetUniquePath(dir, filename, ext);
             AssetDatabase.CreateAsset(obj, fullPath);
+        }
+        
+        public static T CopyAsset<T>(T obj, string toPath) where T : Object {
+            AssetDatabase.StopAssetEditing();
+            if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(obj), toPath)) {
+                throw new VRCFBuilderException("Failed to copy asset " + obj);
+            }
+
+            var copy = AssetDatabase.LoadAssetAtPath<T>(toPath);
+            AssetDatabase.StartAssetEditing();
+            if (copy == null) {
+                throw new VRCFBuilderException("Failed to load copy asset " + obj);
+            }
+            return copy;
         }
     }
 }

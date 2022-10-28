@@ -18,7 +18,7 @@ namespace VF.Builder {
             this.tmpDir = tmpDir;
         }
 
-        private VRCExpressionsMenu GetVrcFuryMenu() {
+        public VRCExpressionsMenu GetRaw() {
             return rootMenu;
         }
         private VRCExpressionsMenu.Control NewMenuItem(string path) {
@@ -40,7 +40,7 @@ namespace VF.Builder {
             VRCExpressionsMenu.Control createFromControl = null,
             Func<string,string> rewriteParamName = null
         ) {
-            var current = GetVrcFuryMenu();
+            var current = GetRaw();
             for (var i = 0; i < path.Length; i++) {
                 var folderName = path[i];
                 var dupIndex = folderName.IndexOf(".dup.");
@@ -161,37 +161,6 @@ namespace VF.Builder {
             return new VRCExpressionsMenu.Control.Parameter {
                 name = rewriteParamName != null ? rewriteParamName(from.name) : from.name
             };
-        }
-        
-        public static void PurgeFromMenu(VRCExpressionsMenu menu) {
-            if (menu == null) return;
-            for (var i = 0; i < menu.controls.Count; i++) {
-                var remove = false;
-                var control = menu.controls[i];
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
-                    if (control.subMenu.name.StartsWith("VRCFury")) {
-                        remove = true;
-                    }
-                    if (VRCFuryBuilder.IsVrcfAsset(control.subMenu)) {
-                        remove = true;
-                    }
-                }
-                if (control.name == "SenkyFX" || control.name == "VRCFury") {
-                    remove = true;
-                }
-                if (control.parameter != null && control.parameter.name != null && control.parameter.name.StartsWith("VRCFury")) {
-                    remove = true;
-                }
-                if (control.subParameters != null && control.subParameters.Any(p => p != null && p.name.StartsWith("VRCFury"))) {
-                    remove = true;
-                }
-                if (remove) {
-                    menu.controls.RemoveAt(i);
-                    i--;
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                    PurgeFromMenu(control.subMenu);
-                }
-            }
         }
 
         public static string[] Slice(string[] arr, int count) {

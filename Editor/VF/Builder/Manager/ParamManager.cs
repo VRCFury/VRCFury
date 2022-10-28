@@ -32,6 +32,10 @@ namespace VF.Builder {
             syncedParams.parameters = syncedParamsList.ToArray();
             EditorUtility.SetDirty(syncedParams);
         }
+
+        public VRCExpressionParameters GetRaw() {
+            return syncedParams;
+        }
     }
 
 }
