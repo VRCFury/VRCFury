@@ -78,17 +78,20 @@ namespace VF.Model.Feature {
         public class ControllerEntry {
             public RuntimeAnimatorController controller;
             public VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.FX;
+            public bool ResetMePlease;
         }
 
         [Serializable]
         public class MenuEntry {
             public VRCExpressionsMenu menu;
             public string prefix;
+            public bool ResetMePlease;
         }
 
         [Serializable]
         public class ParamsEntry {
             public VRCExpressionParameters parameters;
+            public bool ResetMePlease;
         }
 
         public void OnAfterDeserialize() {
