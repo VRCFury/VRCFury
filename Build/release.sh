@@ -25,10 +25,10 @@ function make_meta_directory() {
     guid=$(yq e '.guid' "$meta_file")
     dir="$tmp_dir/$guid"
     mkdir $dir
-    cp $meta_file $dir/asset.meta
-    echo $path_prefix/$asset_file > $dir/pathname
+    cp "$meta_file" "$dir/asset.meta"
+    echo "$path_prefix/$asset_file" > $dir/pathname
     if [[ -f "$asset_file" ]]; then
-      cp $asset_file $dir/asset
+      cp "$asset_file" "$dir/asset"
     fi
 }
 
