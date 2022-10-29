@@ -13,9 +13,10 @@ namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder<FixWriteDefaults> {
         [FeatureBuilderAction((int)FeatureOrder.FixWriteDefaults)]
         public void Apply() {
-            // Ensure all controllers have an empty non-masked base layer, so they don't mask away
-            // our vrcfury changes on accident
-            foreach (var t in manager.GetAllTouchedControllers()) {
+            // TODO: Bring this back once I can assure it only happens on managed controllers,
+            // and ensure it works with gogoloco base layer
+            /*
+            foreach (var t in manager.GetAllUsedControllers()) {
                 var type = t.GetType();
                 var controller = t.GetRaw();
                 var needsFix = controller.layers.Length == 0
@@ -26,6 +27,7 @@ namespace VF.Feature {
                     managed.NewLayer("Base", 0);
                 }
             }
+            */
             
             if (allFeaturesInRun.Any(f => f is MakeWriteDefaultsOff)) {
                 MakeWriteDefaultsOff(true);
@@ -123,26 +125,27 @@ namespace VF.Feature {
             var offStates = 0;
             var onStates = 0;
 
-            foreach (var controller in manager.GetAllUsedControllers()) {
-                foreach (var layer in controller.GetUnmanagedLayers()) {
-                    AnimatorIterator.ForEachState(layer, state => {
-                        if (state.writeDefaultValues) onStates++;
-                        else offStates++;
-                    });
-                }
+            var allUnmanagedLayers = manager.GetAllUsedControllersRaw()
+                .Select(c => c.Item2)
+                .SelectMany(controller => controller.layers)
+                .Where(layer => !ControllerManager.IsManaged(layer));
+
+            foreach (var layer in allUnmanagedLayers) {
+                AnimatorIterator.ForEachState(layer, state => {
+                    if (state.writeDefaultValues) onStates++;
+                    else offStates++;
+                });
             }
 
             if (onStates > 0 && offStates > 0) {
                 var weirdStates = new List<string>();
                 var weirdAreOn = offStates > onStates;
-                foreach (var controller in manager.GetAllUsedControllers()) {
-                    foreach (var layer in controller.GetUnmanagedLayers()) {
-                        AnimatorIterator.ForEachState(layer, state => {
-                            if (state.writeDefaultValues == weirdAreOn) {
-                                weirdStates.Add(layer.name + "." + state.name);
-                            }
-                        });
-                    }
+                foreach (var layer in allUnmanagedLayers) {
+                    AnimatorIterator.ForEachState(layer, state => {
+                        if (state.writeDefaultValues == weirdAreOn) {
+                            weirdStates.Add(layer.name + "." + state.name);
+                        }
+                    });
                 }
 
                 Debug.LogWarning("Your animation controller contains a mix of Write Defaults ON and Write Defaults OFF states." +

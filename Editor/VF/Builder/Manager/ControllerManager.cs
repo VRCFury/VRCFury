@@ -45,10 +45,14 @@ namespace VF.Builder {
         }
 
         public IEnumerable<AnimatorControllerLayer> GetManagedLayers() {
-            return GetRaw().layers.Where(l => l.name.StartsWith("[" + prefix + "] "));
+            return GetRaw().layers.Where(IsManaged);
         }
         public IEnumerable<AnimatorControllerLayer> GetUnmanagedLayers() {
-            return GetRaw().layers.Where(l => !l.name.StartsWith("[" + prefix + "] "));
+            return GetRaw().layers.Where(l => !IsManaged(l));
+        }
+
+        public static bool IsManaged(AnimatorControllerLayer layer) {
+            return layer.name.StartsWith("[" + prefix + "] ");
         }
 
         public VFABool NewTrigger(string name, bool usePrefix = true) {
