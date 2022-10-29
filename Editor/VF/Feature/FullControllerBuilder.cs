@@ -104,7 +104,7 @@ namespace VF.Feature {
                     }
                 }
                 var merger = new ControllerMerger(
-                    layerName => ControllerManager.NewLayerName("[FC" + uniqueModelNum + "_" + baseObject.name + "] " + layerName),
+                    layerName => ControllerManager.NewLayerName("[FC" + uniqueModelNum + "] " + layerName),
                     param => rewriteParam(param),
                     RewriteClip,
                     NewBlendTree

@@ -116,6 +116,7 @@ namespace VF.Builder {
             // This is only here because a lot of the internal usages of these three forget to call setDirty themselves
             foreach (var c in _controllers.Values) {
                 EditorUtility.SetDirty(c.GetRaw());
+                RebuildDebugHashes(c);
             }
             if (_menu != null) EditorUtility.SetDirty(_menu.GetRaw());
             if (_params != null) EditorUtility.SetDirty(_params.GetRaw());
@@ -127,6 +128,32 @@ namespace VF.Builder {
                         "Avatar is out of space for parameters! Used "
                         + _params.GetRaw().CalcTotalCost() + "/" + VRCExpressionParameters.MAX_PARAMETER_COST
                         + ". Delete some params from your avatar's param file, or disable some VRCFury features.");
+                }
+            }
+        }
+
+        /**
+         * VRC calculates the animator debug map before vrcfury is invoked, so if we want our states to show up in the
+         * debug panel, we need to add them to the map ourselves.
+         */
+        private void RebuildDebugHashes(ControllerManager manager) {
+            foreach (var layer in manager.GetManagedLayers()) {
+                ProcessStateMachine(layer.stateMachine, "");
+                void ProcessStateMachine(AnimatorStateMachine stateMachine, string prefix) {
+                    //Update prefix
+                    prefix = prefix + stateMachine.name + ".";
+
+                    //States
+                    foreach (var state in stateMachine.states) {
+                        VRCAvatarDescriptor.DebugHash hash = new VRCAvatarDescriptor.DebugHash();
+                        string fullName = prefix + state.state.name;
+                        hash.hash = Animator.StringToHash(fullName);
+                        hash.name = fullName.Remove(0, layer.stateMachine.name.Length + 1);
+                        avatar.animationHashSet.Add(hash);
+                    }
+
+                    foreach (var subMachine in stateMachine.stateMachines)
+                        ProcessStateMachine(subMachine.stateMachine, prefix);
                 }
             }
         }
