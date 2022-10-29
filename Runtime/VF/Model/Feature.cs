@@ -67,6 +67,7 @@ namespace VF.Model.Feature {
         public List<string> removePrefixes = new List<string>();
         public bool allNonsyncedAreGlobal = false;
         public int version;
+        public bool disableClipRewriting = false;
         
         // obsolete
         public RuntimeAnimatorController controller;

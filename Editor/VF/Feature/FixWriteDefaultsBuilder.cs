@@ -51,7 +51,7 @@ namespace VF.Feature {
         private void MakeWriteDefaultsOff(bool applyToUnmanagedLayers) {
             var missingStates = new List<string>();
             foreach (var controller in applyToUnmanagedLayers ? manager.GetAllUsedControllers() : manager.GetAllTouchedControllers()) {
-                var defaultClip = manager.GetClipStorage().NewClip("Defaults");
+                var defaultClip = manager.GetClipStorage().NewClip("Defaults " + controller.GetType());
                 var defaultLayer = controller.NewLayer("Defaults", 1);
                 defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
                 foreach (var layer in controller.GetManagedLayers()) {

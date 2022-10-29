@@ -113,11 +113,26 @@ namespace VF.Builder {
                 MenuSplitter.SplitMenus(_menu.GetRaw());
             }
 
-            // This is only here because a lot of the internal usages of these three forget to call setDirty themselves
+            // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
+            // to update it with our newly-added states
             foreach (var c in _controllers.Values) {
                 EditorUtility.SetDirty(c.GetRaw());
                 RebuildDebugHashes(c);
             }
+            
+            // The VRCSDK usually does this before the avatar is built
+            var layers = avatar.baseAnimationLayers;
+            for (var i = 0; i < layers.Length; i++) {
+                var layer = layers[i];
+                if (layer.type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                    var c = layer.animatorController as AnimatorController;
+                    if (c && c.layers.Length > 0) {
+                        layer.mask = c.layers[0].avatarMask;
+                        layers[i] = layer;
+                    }
+                }
+            }
+
             if (_menu != null) EditorUtility.SetDirty(_menu.GetRaw());
             if (_params != null) EditorUtility.SetDirty(_params.GetRaw());
             if (_clipStorage != null) _clipStorage.Finish();
@@ -156,6 +171,7 @@ namespace VF.Builder {
                         ProcessStateMachine(subMachine.stateMachine, prefix);
                 }
             }
+            EditorUtility.SetDirty(avatar);
         }
 
         public static AvatarMask GetBaseMask(AnimatorController ctrl) {
@@ -165,6 +181,7 @@ namespace VF.Builder {
             var layers = ctrl.layers;
             layers[0].avatarMask = mask;
             ctrl.layers = layers;
+            EditorUtility.SetDirty(ctrl);
         }
     }
 }

@@ -24,14 +24,19 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var baseObject = model.rootObj != null ? model.rootObj : featureBaseObject;
+            var baseObject = model.rootObj;
+            if (baseObject == null) {
+                if (model.disableClipRewriting) {
+                    baseObject = avatarObject;
+                } else {
+                    baseObject = featureBaseObject;
+                }
+            }
 
             var rewrittenParams = new HashSet<string>();
             Func<string,string> rewriteParam = name => {
                 if (string.IsNullOrWhiteSpace(name)) return name;
                 if (VRChatGlobalParams.Contains(name)) return name;
-                // TODO REMOVE THIS
-                if (name.StartsWith("Go/")) return name;
                 if (model.allNonsyncedAreGlobal) {
                     var synced = model.prms.Any(p => p.parameters.parameters.Any(param => param.name == name));
                     if (!synced) return name;
@@ -68,10 +73,16 @@ namespace VF.Feature {
                         return null;
                     }
                     if (rewrittenClips.ContainsKey(from)) return rewrittenClips[from];
-                    var copy = manager.GetClipStorage().NewClip(baseObject.name + "__" + from.name);
-                    clipBuilder.CopyWithAdjustedPrefixes(from, copy, baseObject, model.removePrefixes);
-                    rewrittenClips[from] = copy;
-                    return copy;
+                    AnimationClip rewritten;
+                    if (baseObject == avatarObject) {
+                        rewritten = from;
+                    } else {
+                        rewritten = manager.GetClipStorage().NewClip(baseObject.name + "__" + from.name);
+                        clipBuilder.CopyWithAdjustedPrefixes(from, rewritten, baseObject, model.removePrefixes);
+                    }
+
+                    rewrittenClips[from] = rewritten;
+                    return rewritten;
                 }
                 
                 BlendTree NewBlendTree(string name) {
@@ -204,6 +215,7 @@ namespace VF.Feature {
                 (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
             
             content.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
+            content.Add(new PropertyField(prop.FindPropertyRelative("disableClipRewriting"), "Leave clip keys relative to avatar root (Extremely unusual)"));
 
             return content;
         }
