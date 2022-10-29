@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
@@ -9,12 +10,12 @@ namespace VF.Builder {
     public class ControllerManager {
         private static string prefix = "VRCFury";
         private readonly AnimatorController ctrl;
-        private readonly ParamManager paramManager;
+        private readonly Func<ParamManager> paramManager;
         private VRCAvatarDescriptor.AnimLayerType type;
 
         public ControllerManager(
             AnimatorController ctrl,
-            ParamManager paramManager,
+            Func<ParamManager> paramManager,
             VRCAvatarDescriptor.AnimLayerType type
         ) {
             this.ctrl = ctrl;
@@ -59,6 +60,10 @@ namespace VF.Builder {
             if (usePrefix) name = NewParamName(name);
             return GetController().NewTrigger(name);
         }
+
+        private ParamManager GetParamManager() {
+            return paramManager.Invoke();
+        }
         public VFABool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
             if (usePrefix) name = NewParamName(name);
             if (synced) {
@@ -67,7 +72,7 @@ namespace VF.Builder {
                 param.valueType = VRCExpressionParameters.ValueType.Bool;
                 param.saved = saved;
                 param.defaultValue = def ? 1 : 0;
-                paramManager.addSyncedParam(param);
+                GetParamManager().addSyncedParam(param);
             }
             return GetController().NewBool(name, def || defTrueInEditor);
         }
@@ -79,7 +84,7 @@ namespace VF.Builder {
                 param.valueType = VRCExpressionParameters.ValueType.Int;
                 param.saved = saved;
                 param.defaultValue = def;
-                paramManager.addSyncedParam(param);
+                GetParamManager().addSyncedParam(param);
             }
             return GetController().NewInt(name, def);
         }
@@ -91,7 +96,7 @@ namespace VF.Builder {
                 param.valueType = VRCExpressionParameters.ValueType.Float;
                 param.saved = saved;
                 param.defaultValue = def;
-                paramManager.addSyncedParam(param);
+                GetParamManager().addSyncedParam(param);
             }
             return GetController().NewFloat(name, def);
         }

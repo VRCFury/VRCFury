@@ -57,7 +57,7 @@ namespace VF.Builder {
                 } else {
                     ctrl = VRCFuryAssetDatabase.CopyAsset(origFx, newPath);
                 }
-                output = new ControllerManager(ctrl, GetParams(), type);
+                output = new ControllerManager(ctrl, () => GetParams(), type);
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
                 if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
@@ -121,11 +121,13 @@ namespace VF.Builder {
             if (_params != null) EditorUtility.SetDirty(_params.GetRaw());
             if (_clipStorage != null) _clipStorage.Finish();
 
-            if (_params.GetRaw().CalcTotalCost() > VRCExpressionParameters.MAX_PARAMETER_COST) {
-                throw new Exception(
-                    "Avatar is out of space for parameters! Used "
-                    + _params.GetRaw().CalcTotalCost() + "/" + VRCExpressionParameters.MAX_PARAMETER_COST
-                    + ". Delete some params from your avatar's param file, or disable some VRCFury features.");
+            if (_params != null) {
+                if (_params.GetRaw().CalcTotalCost() > VRCExpressionParameters.MAX_PARAMETER_COST) {
+                    throw new Exception(
+                        "Avatar is out of space for parameters! Used "
+                        + _params.GetRaw().CalcTotalCost() + "/" + VRCExpressionParameters.MAX_PARAMETER_COST
+                        + ". Delete some params from your avatar's param file, or disable some VRCFury features.");
+                }
             }
         }
 
