@@ -26,11 +26,7 @@ namespace VF.Feature {
         public void Apply() {
             var baseObject = model.rootObj;
             if (baseObject == null) {
-                if (model.disableClipRewriting) {
-                    baseObject = avatarObject;
-                } else {
-                    baseObject = featureBaseObject;
-                }
+                baseObject = featureBaseObject;
             }
 
             var rewrittenParams = new HashSet<string>();
@@ -215,7 +211,6 @@ namespace VF.Feature {
                 (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
             
             content.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
-            content.Add(new PropertyField(prop.FindPropertyRelative("disableClipRewriting"), "Leave clip keys relative to avatar root (Extremely unusual)"));
 
             return content;
         }
