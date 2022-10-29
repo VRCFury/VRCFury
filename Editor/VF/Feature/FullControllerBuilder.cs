@@ -74,7 +74,7 @@ namespace VF.Feature {
                     }
                     if (rewrittenClips.ContainsKey(from)) return rewrittenClips[from];
                     AnimationClip rewritten;
-                    if (baseObject == avatarObject) {
+                    if (AssetDatabase.GetAssetPath(from).Contains("/proxy_")) {
                         rewritten = from;
                     } else {
                         rewritten = manager.GetClipStorage().NewClip(baseObject.name + "__" + from.name);

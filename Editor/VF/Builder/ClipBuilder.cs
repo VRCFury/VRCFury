@@ -112,18 +112,24 @@ public class ClipBuilder {
         }
 
         var curvesBindings = AnimationUtility.GetCurveBindings(clip);
-        foreach (var b in curvesBindings) {
-            var binding = b;
-            var curve = AnimationUtility.GetEditorCurve(clip, binding);
-            binding.path = rewritePath(binding.path);
-            AnimationUtility.SetEditorCurve(copy, binding, curve);
+        foreach (var bindingFromAvatar in curvesBindings) {
+            var bindingFromProp = bindingFromAvatar;
+            bindingFromProp.path = rewritePath(bindingFromProp.path);
+            var curve = AnimationUtility.GetEditorCurve(clip, bindingFromAvatar);
+            var existsOnProp = AnimationUtility.GetFloatValue(baseObject, bindingFromProp, out _);
+            var existsOnAvatar = AnimationUtility.GetFloatValue(baseObject, bindingFromAvatar, out _);
+            var useAvatarBinding = existsOnAvatar && !existsOnProp;
+            AnimationUtility.SetEditorCurve(copy, useAvatarBinding ? bindingFromAvatar : bindingFromProp, curve);
         }
         var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
-        foreach (var b in objBindings) {
-            var binding = b;
-            var objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
-            binding.path = rewritePath(binding.path);
-            AnimationUtility.SetObjectReferenceCurve(copy, binding, objectReferenceCurve);
+        foreach (var bindingFromAvatar in objBindings) {
+            var bindingFromProp = bindingFromAvatar;
+            bindingFromProp.path = rewritePath(bindingFromProp.path);
+            var objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(clip, bindingFromAvatar);
+            var existsOnProp = AnimationUtility.GetObjectReferenceValue(baseObject, bindingFromProp, out _);
+            var existsOnAvatar = AnimationUtility.GetObjectReferenceValue(baseObject, bindingFromAvatar, out _);
+            var useAvatarBinding = existsOnAvatar && !existsOnProp;
+            AnimationUtility.SetObjectReferenceCurve(copy, useAvatarBinding ? bindingFromAvatar : bindingFromProp, objectReferenceCurve);
         }
         var prev = new SerializedObject(clip);
         var next = new SerializedObject(copy);

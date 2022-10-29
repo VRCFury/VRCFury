@@ -77,7 +77,7 @@ MonoBehaviour:
         removePrefixes: []
         allNonsyncedAreGlobal: 0
         version: 1
-        disableClipRewriting: 1
+        disableClipRewriting: 0
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
