@@ -75,11 +75,6 @@ namespace VF.Builder {
                 .Where(c => c.Item1 != null)
                 .Select(c => GetController(c.Item3));
         }
-        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> GetAllUsedControllersRaw() {
-            return VRCAvatarUtils.GetAllControllers(avatar)
-                .Where(c => c.Item1 != null)
-                .Select(c => Tuple.Create(c.Item3, c.Item1));
-        }
 
         private ParamManager _params;
         public ParamManager GetParams() {

@@ -26,6 +26,10 @@ namespace VF.Builder {
             return ctrl;
         }
 
+        public VRCAvatarDescriptor.AnimLayerType GetType() {
+            return type;
+        }
+
         private VFAController _controller;
         private VFAController GetController() {
             if (_controller == null) _controller = new VFAController(GetRaw(), type);

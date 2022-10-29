@@ -15,9 +15,9 @@ namespace VF.Feature {
         public void Apply() {
             // Ensure all controllers have an empty non-masked base layer, so they don't mask away
             // our vrcfury changes on accident
-            foreach (var t in manager.GetAllUsedControllersRaw()) {
-                var type = t.Item1;
-                var controller = t.Item2;
+            foreach (var t in manager.GetAllTouchedControllers()) {
+                var type = t.GetType();
+                var controller = t.GetRaw();
                 var needsFix = controller.layers.Length == 0
                                || controller.layers[0].stateMachine.states.Length > 0
                                || controller.layers[0].avatarMask != null;
