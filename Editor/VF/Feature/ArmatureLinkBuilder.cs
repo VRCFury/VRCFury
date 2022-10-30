@@ -198,7 +198,15 @@ namespace VF.Feature {
                 var check = checkStack.Pop();
                 foreach (Transform child in check.Item1.transform) {
                     var childPropBone = child.gameObject;
-                    var childAvatarBone = check.Item2.transform.Find(childPropBone.name)?.gameObject;
+                    var searchName = childPropBone.name;
+                    if (!string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
+                        searchName = searchName.Replace(model.removeBoneSuffix, "");
+                    }
+                    var childAvatarBone = check.Item2.transform.Find(searchName)?.gameObject;
+                    // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
+                    if (childAvatarBone == null) {
+                        childAvatarBone = check.Item2.transform.Find("ChestUp/" + searchName)?.gameObject;
+                    }
                     if (childAvatarBone != null) {
                         links.mergeBones.Push(Tuple.Create(childPropBone, childAvatarBone));
                         checkStack.Push(Tuple.Create(childPropBone, childAvatarBone));
@@ -250,6 +258,13 @@ namespace VF.Feature {
                                                           " This means that your prop's bones will not count toward the avatar's bone count (more efficient)." +
                                                           " Beware that this may cause the prop mesh to be broken in game if the armature (including fbx export settings) does not match the avatar's EXACTLY."));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("useBoneMerging")));
+            
+            container.Add(new Label("Remove bone suffix/prefix:") {
+                style = { paddingTop = 10 }
+            });
+            container.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
+                                                          "something like _PropName to the end of every bone, breaking AvatarLink in the process."));
+            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("removeBoneSuffix")));
 
             return container;
         }

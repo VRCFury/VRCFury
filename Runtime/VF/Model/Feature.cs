@@ -246,6 +246,7 @@ namespace VF.Model.Feature {
         public bool useOptimizedUpload;
         public bool keepBoneOffsets;
         public bool useBoneMerging;
+        public string removeBoneSuffix;
     }
     
     [Serializable]
