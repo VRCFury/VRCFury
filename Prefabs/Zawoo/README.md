@@ -14,5 +14,5 @@ These prefabs require the purchase and install of the corresponding package from
 * **Clothing DLC is only compatible with the specific base model it was designed for**
 * Drag corresponding clothing prefab from this folder onto your avatar's root object
 * You're done!
-* If you'd like to use one of the alternate clothing materials, unhide the clothing object, drag the material from the Zawoo DLC folder onto it in the 3d view, then hide it again
+* If you'd like to use one of the alternate clothing materials, unhide the piece of clothing, drag the material from the Zawoo DLC folder onto it in the 3d view, then hide it again
 * The options will be available in your avatar's Expression Menu under `Clothes`
