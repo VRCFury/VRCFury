@@ -137,7 +137,7 @@ namespace VF.Feature {
                 }
             }
 
-            if (model.toggleParam != null) {
+            if (!string.IsNullOrWhiteSpace(model.toggleParam)) {
                 addOtherFeature(new Toggle {
                     name = rewriteParam(model.toggleParam),
                     state = new State {
