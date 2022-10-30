@@ -1,12 +1,10 @@
 GogoLoco Using VRCFury
 ==
 
-## Requirements
-This prefab requires [GogoLoco by franada](https://franadavrc.gumroad.com/l/gogoloco) to be installed
-
-## Install
+## How to install
+* You must first import [GogoLoco by franada](https://franadavrc.gumroad.com/l/gogoloco)
 * Choose a version: All, Beyond, or Broke
-* Drag the applicable prefab object onto the root of your avatar
+* Drag the applicable VRCFury prefab from this folder onto the root of your avatar
 * You're done!
 
 ## Limitations
