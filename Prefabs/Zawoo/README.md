@@ -1,4 +1,4 @@
-GogoLoco Using VRCFury
+Zawoo Using VRCFury
 ==
 
 ## How to install Knotty Canine / Hybrid Anthro
