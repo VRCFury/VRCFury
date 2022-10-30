@@ -1,0 +1,342 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &4468986156436347698
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2138124993436386592}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+    - id: 1
+    - id: 2
+    - id: 3
+    - id: 4
+    - id: 5
+    - id: 6
+    - id: 7
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        propBone: {fileID: 1879990872806129293}
+        boneOnAvatar: 0
+        bonePathOnAvatar: 
+        useOptimizedUpload: 0
+        keepBoneOffsets: 0
+        useBoneMerging: 1
+    00000001:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        name: Clothes/Booty Shorts
+        state:
+          actions:
+          - id: 8
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        resetPhysbones: []
+    00000002:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        name: Clothes/Gloves
+        state:
+          actions:
+          - id: 9
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        resetPhysbones: []
+    00000003:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        name: Clothes/Inner Shirt
+        state:
+          actions:
+          - id: 10
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        resetPhysbones: []
+    00000004:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        name: Clothes/Jacket
+        state:
+          actions:
+          - id: 11
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        resetPhysbones: []
+    00000005:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        name: Clothes/Pants
+        state:
+          actions:
+          - id: 12
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        resetPhysbones: []
+    00000006:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        name: Clothes/Socks
+        state:
+          actions:
+          - id: 13
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        resetPhysbones: []
+    00000007:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        name: Clothes/Tank Top
+        state:
+          actions:
+          - id: 14
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        resetPhysbones: []
+    00000008:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 3845997241018139847}
+    00000009:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 6690264118185740124}
+    0000000A:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 5611059921061083435}
+    0000000B:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 2861860256106924869}
+    0000000C:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 5933417193264303921}
+    0000000D:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 5591072147009445696}
+    0000000E:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 108350464056882217}
+--- !u!1001 &1255744033324808305
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8003533534058787752, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7001457324018154092, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 936efbf9e8f58974a95a7e2372228b45, type: 2}
+    - target: {fileID: -5565616925630395092, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: cbe261a688eb8e744b936c3983325ac3, type: 2}
+    - target: {fileID: -4378916058236258496, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3623749191439417555, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -2536639174769277832, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 3b0084a823a190044b75dfbed179b37e, type: 2}
+    - target: {fileID: -2523644214232733903, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -1308504623849856002, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 5ad031efe30a59048bcff5d9c6c36da6, type: 2}
+    - target: {fileID: 419586516169460071, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 7cc2ddd9eae0f2241b7bfc25f7c429c8, type: 2}
+    - target: {fileID: 919132149155446097, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Name
+      value: zaWoo_chaosCanine_DLC1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2608418260808432822, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3952491650154754868, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6418192721369052034, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 96db8f7de5caed94e9e41b4764011458, type: 2}
+    - target: {fileID: 6679737435492106586, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8212245817392820110, guid: 1a1800fd0b9941040bd43d78b00edb73,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 55b282e1a1f0c9b49b8d3ae2aabdfccc, type: 2}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 1a1800fd0b9941040bd43d78b00edb73, type: 3}
+--- !u!1 &2138124993436386592 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1879990872806129293 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 827075974287967996, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3845997241018139847 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2608418260808432822, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &6690264118185740124 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3623749191439417555, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5611059921061083435 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6679737435492106586, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &2861860256106924869 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3952491650154754868, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5933417193264303921 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -4378916058236258496, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5591072147009445696 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -2523644214232733903, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &108350464056882217 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -8003533534058787752, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 1255744033324808305}
+  m_PrefabAsset: {fileID: 0}

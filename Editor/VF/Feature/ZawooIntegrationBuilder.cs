@@ -9,6 +9,7 @@ using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Menu;
+using VF.Model;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
@@ -33,6 +34,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
             var maybeValid = false;
             var isCanine = false;
             foreach (Transform c in child) {
+                if (c.GetComponent<VRCFury>() != null) continue;
                 var name = c.gameObject.name.ToLower();
                 if (name.Contains("constraint") && name.Contains("peen")) {
                     maybeValid = true;

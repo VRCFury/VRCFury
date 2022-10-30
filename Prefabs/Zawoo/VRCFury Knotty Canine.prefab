@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &1650853317
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3436880454605067732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+    - id: 1
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        controllers:
+        - controller: {fileID: 9100000, guid: d7d4fa511891a7449bf6b1c73b0548c5, type: 2}
+          type: 5
+          ResetMePlease: 0
+        menus:
+        - menu: {fileID: 11400000, guid: b8208fdd46918ee4388e3937a6d63c1e, type: 2}
+          prefix: Zawoo
+          ResetMePlease: 0
+        prms:
+        - parameters: {fileID: 11400000, guid: 7aa23cf790624234aa28b78624eb8df9, type: 2}
+          ResetMePlease: 0
+        globalParams: []
+        removePrefixes: []
+        allNonsyncedAreGlobal: 0
+        ignoreSaved: 1
+        toggleParam: caninePeenToggle
+        version: 1
+        controller: {fileID: 0}
+        menu: {fileID: 0}
+        parameters: {fileID: 0}
+        submenu: 
+    00000001:
+      type: {class: OGBIntegration, ns: VF.Model.Feature, asm: VRCFury}
+--- !u!1001 &7828997365638179033
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 4833610413082082573, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_Name
+      value: VRCFury Zawoo Canine Tool
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.831
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.1221
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e46d7cde4bbf2ef4c86271fe6d19728d, type: 3}
+--- !u!1 &3436880454605067732 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4833610413082082573, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+    type: 3}
+  m_PrefabInstance: {fileID: 7828997365638179033}
+  m_PrefabAsset: {fileID: 0}

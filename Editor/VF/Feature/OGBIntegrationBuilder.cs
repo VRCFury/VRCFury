@@ -9,9 +9,7 @@ namespace VF.Feature {
     public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration> {
         [FeatureBuilderAction((int)FeatureOrder.AddOgbComponents)]
         public void Apply() {
-            var isFirst = allFeaturesInRun.Find(m => m is OGBIntegration) == model;
-            if (!isFirst) return;
-            DPSContactUpgradeBuilder.Apply(avatarObject);
+            DPSContactUpgradeBuilder.Apply(featureBaseObject);
         }
         
         public override string GetEditorTitle() {
@@ -20,12 +18,8 @@ namespace VF.Feature {
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             return VRCFuryEditorUtils.WrappedLabel(
-                "This feature will search for TPS/DPS orifice and penetrators and automatically add OGB components to them." +
+                "This feature will search for TPS/DPS orifices and penetrators that are children of this object, and automatically add OGB components to them." +
                 " You don't need this if you've already run the OGB upgrade tool yourself (which means the components are already added).");
-        }
-
-        public override bool AvailableOnProps() {
-            return false;
         }
     }
 }

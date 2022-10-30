@@ -57,8 +57,6 @@ namespace VF.Model.Feature {
     [Serializable]
     public class FullController : FeatureModel, ISerializationCallbackReceiver {
         [NonSerialized] public GameObject rootObj;
-        [NonSerialized] public bool ignoreSaved;
-        [NonSerialized] public string toggleParam;
 
         public List<ControllerEntry> controllers = new List<ControllerEntry>();
         public List<MenuEntry> menus = new List<MenuEntry>();
@@ -66,6 +64,9 @@ namespace VF.Model.Feature {
         public List<string> globalParams = new List<string>();
         public List<string> removePrefixes = new List<string>();
         public bool allNonsyncedAreGlobal = false;
+        public bool ignoreSaved;
+        public string toggleParam;
+        
         public int version;
         
         // obsolete

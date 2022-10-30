@@ -209,8 +209,20 @@ namespace VF.Feature {
                 "but you are now trying to use as a VRCFury prop."));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("removePrefixes"),
                 (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
+
+            var adv = new Foldout {
+                text = "Advanced Options",
+                value = false
+            };
             
-            content.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
+            adv.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
+            adv.Add(new PropertyField(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel(
+                "Parameter name for prop toggling. If set, this entire prop will be de-activated whenever" +
+                " this boolean parameter within the Full Controller is false."));
+            adv.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("toggleParam")));
+
+            content.Add(adv);
 
             return content;
         }
