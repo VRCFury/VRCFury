@@ -56,7 +56,7 @@ namespace VF.Menu {
         }
         
         //
-        
+
         [MenuItem("Tools/VRCFury/Debug", priority = 1400)]
         private static void MarkerDebug() {
         }
@@ -66,7 +66,17 @@ namespace VF.Menu {
             return false;
         }
         
-        [MenuItem("Tools/VRCFury/Build Test Avatar", priority = 1401)]
+        [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", priority = 1401)]
+        private static void NukeZawooParts() {
+            ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
+        }
+        
+        [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", true)]
+        private static bool CheckNukeZawooParts() {
+            return MenuUtils.GetSelectedAvatar() != null;
+        }
+        
+        [MenuItem("Tools/VRCFury/Build Test Avatar", priority = 1402)]
         private static void RunForceRun() {
             VRCFuryForceRunMenuItem.RunFakeUpload();
         }

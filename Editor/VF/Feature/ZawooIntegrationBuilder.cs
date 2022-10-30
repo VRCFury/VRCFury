@@ -119,11 +119,26 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
-        content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will automatically attach Zawoo prefabs to your avatar."));
-        
-        content.Add(new Button(() => {
-            ZawooDeleter.Run(editorObject);
-        }) { text = "Nuke all Zawoo components on avatar" });
+
+        var overrideLabel = new Label(
+            "This feature is deprecated! Please remove this, and see the VRCFury/Prefabs/Zawoo/Readme.MD" +
+            " file for details about how to install the Zawoo prefabs the new way!") {
+            style = {
+                backgroundColor = new Color(0.5f, 0, 0),
+                paddingTop = 5,
+                paddingBottom = 5,
+                unityTextAlign = TextAnchor.MiddleCenter,
+                whiteSpace = WhiteSpace.Normal,
+                marginTop = 5,
+                marginLeft = 20,
+                marginRight = 20,
+                display = DisplayStyle.None
+            }
+        };
+        VRCFuryEditorUtils.Padding(overrideLabel, 5);
+        VRCFuryEditorUtils.BorderColor(overrideLabel, Color.black);
+        VRCFuryEditorUtils.BorderRadius(overrideLabel, 5);
+        VRCFuryEditorUtils.Border(overrideLabel, 1);
         
         var foldout = new Foldout();
         foldout.value = false;
