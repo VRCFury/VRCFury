@@ -87,7 +87,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
             prms = { new FullController.ParamsEntry {
                 parameters = prms
             } },
-            rootObj = root,
+            rootObjOverride = root,
             ignoreSaved = true,
             toggleParam = toggleParam
         });

@@ -24,7 +24,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var baseObject = model.rootObj;
+            var baseObject = model.rootObjOverride;
             if (baseObject == null) {
                 baseObject = featureBaseObject;
             }
@@ -73,7 +73,7 @@ namespace VF.Feature {
                     if (AssetDatabase.GetAssetPath(from).Contains("/proxy_")) {
                         rewritten = from;
                     } else {
-                        rewritten = manager.GetClipStorage().NewClip(baseObject.name + "__" + from.name);
+                        rewritten = manager.GetClipStorage().NewClip("fc" + uniqueModelNum + "__" + from.name);
                         clipBuilder.CopyWithAdjustedPrefixes(from, rewritten, baseObject, model.removePrefixes);
                     }
 
@@ -82,7 +82,7 @@ namespace VF.Feature {
                 }
                 
                 BlendTree NewBlendTree(string name) {
-                    return manager.GetClipStorage().NewBlendTree(baseObject.name + "__" + name);
+                    return manager.GetClipStorage().NewBlendTree("fc" + uniqueModelNum + "__" + name);
                 }
 
                 var targetController = manager.GetController(type);
@@ -217,6 +217,7 @@ namespace VF.Feature {
             
             adv.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
             adv.Add(new PropertyField(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
+            adv.Add(new PropertyField(prop.FindPropertyRelative("rootObjOverride"), "Root object override"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameter name for prop toggling. If set, this entire prop will be de-activated whenever" +
                 " this boolean parameter within the Full Controller is false."));
