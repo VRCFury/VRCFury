@@ -43,7 +43,8 @@ public static class FeatureFinder {
             .Select(e => {
                 var impl = (FeatureBuilder)Activator.CreateInstance(e.Value);
                 var title = impl.GetEditorTitle();
-                var allowed = allowAvatarFeatures ? impl.AvailableOnAvatar() : impl.AvailableOnProps();
+                var allowed = impl.ShowInMenu();
+                allowed &= allowAvatarFeatures ? impl.AvailableOnAvatar() : impl.AvailableOnProps();
                 return Tuple.Create(title, allowed, e);
             })
             .Where(tuple => tuple.Item1 != null && tuple.Item2)

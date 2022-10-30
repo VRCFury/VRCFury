@@ -37,6 +37,10 @@ namespace VF.Feature.Base {
         public virtual bool AvailableOnProps() {
             return true;
         }
+        
+        public virtual bool ShowInMenu() {
+            return true;
+        }
 
         public ControllerManager GetFx() {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);

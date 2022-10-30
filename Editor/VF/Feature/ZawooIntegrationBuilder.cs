@@ -153,6 +153,10 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
     public override bool AvailableOnProps() {
         return false;
     }
+
+    public override bool ShowInMenu() {
+        return false;
+    }
 }
 
 }
