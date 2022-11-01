@@ -34,6 +34,7 @@ namespace VF.Model {
                     toggle.securityEnabled = modes.securityEnabled;
                     toggle.resetPhysbones = new List<GameObject>(modes.resetPhysbones);
                     toggle.state = mode.state;
+                    toggle.enableExclusiveTag = true;
                     toggle.exclusiveTag = tag;
                     features.Insert(i, toggle);
                     i++;
