@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -112,6 +113,10 @@ public static class FeatureFinder {
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date? If you are still receiving this after updating, you may need to re-import the prop package which caused this issue.");
         }
         var modelType = model.GetType();
+        if (modelType.GetCustomAttribute<NoBuilder>() != null) {
+            return null;
+        }
+        
         var implementationType = GetAllFeatures()[modelType];
         if (implementationType == null) {
             Debug.LogError("Failed to find feature implementation for " + modelType.Name + " while building");

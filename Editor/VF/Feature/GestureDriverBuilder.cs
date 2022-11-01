@@ -15,8 +15,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
-        private Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
-        private Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
+        private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
+        private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -44,7 +44,7 @@ namespace VF.Feature {
             }
             var uid = "gesture_" + uniqueModelNum + "_" + uniqueNum;
 
-            var layer = fx.NewLayer("Gesture - " + name);
+            var layer = fx.NewLayer(name);
             var off = layer.NewState("Off");
             var on = layer.NewState("On");
 

@@ -67,6 +67,7 @@ MonoBehaviour:
         useOptimizedUpload: 0
         keepBoneOffsets: 0
         useBoneMerging: 1
+        removeBoneSuffix: 
     00000001:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -78,6 +79,8 @@ MonoBehaviour:
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        enableExclusiveTag: 1
+        exclusiveTag: zawooBottom
         resetPhysbones: []
     00000002:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
@@ -90,6 +93,8 @@ MonoBehaviour:
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        enableExclusiveTag: 0
+        exclusiveTag: 
         resetPhysbones: []
     00000003:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
@@ -102,6 +107,8 @@ MonoBehaviour:
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        enableExclusiveTag: 0
+        exclusiveTag: 
         resetPhysbones: []
     00000004:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
@@ -114,6 +121,8 @@ MonoBehaviour:
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        enableExclusiveTag: 1
+        exclusiveTag: zawooTop
         resetPhysbones: []
     00000005:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
@@ -126,6 +135,8 @@ MonoBehaviour:
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        enableExclusiveTag: 1
+        exclusiveTag: zawooBottom
         resetPhysbones: []
     00000006:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
@@ -138,6 +149,8 @@ MonoBehaviour:
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        enableExclusiveTag: 0
+        exclusiveTag: 
         resetPhysbones: []
     00000007:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
@@ -150,6 +163,8 @@ MonoBehaviour:
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        enableExclusiveTag: 1
+        exclusiveTag: zawooTop
         resetPhysbones: []
     00000008:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}

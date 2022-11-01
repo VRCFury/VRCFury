@@ -144,17 +144,22 @@ public class VRCFuryBuilder {
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
         var totalModelCount = 0;
-        var collectedFeatures = new List<FeatureModel>();
+        var collectedModels = new List<FeatureModel>();
+        var collectedBuilders = new List<FeatureBuilder>();
 
         void AddModel(FeatureModel model, GameObject configObject) {
-            collectedFeatures.Add(model);
-            var isProp = configObject != avatarObject;
+            collectedModels.Add(model);
+            
             var builder = FeatureFinder.GetBuilder(model, configObject);
+            if (builder == null) return;
             builder.featureBaseObject = configObject;
             builder.tmpDir = tmpDir;
             builder.addOtherFeature = m => AddModel(m, configObject);
             builder.uniqueModelNum = ++totalModelCount;
-            builder.allFeaturesInRun = collectedFeatures;
+            builder.allFeaturesInRun = collectedModels;
+            builder.allBuildersInRun = collectedBuilders;
+
+            collectedBuilders.Add(builder);
             var builderActions = builder.GetActions();
             actions.AddRange(builderActions);
             totalActionCount += builderActions.Count;

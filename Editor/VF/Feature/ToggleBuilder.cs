@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -14,9 +15,27 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
+    private VFAState onState;
+    private VFABool param;
+
+    public ISet<string> GetExclusiveTags() {
+        if (model.enableExclusiveTag) {
+            return model.exclusiveTag.Split(',')
+                .Select(tag => tag.Trim())
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .ToImmutableHashSet();
+        }
+        return new HashSet<string>();
+    }
+    public VFABool GetParam() {
+        return param;
+    }
+
     [FeatureBuilderAction]
     public void Apply() {
-        if (model.state.IsEmpty()) {
+        // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
+        // Then don't even bother adding it. The user probably removed the object, so the toggle shouldn't be present.
+        if (model.state.IsEmpty() && model.state.actions.Count > 0) {
             return;
         }
         
@@ -50,7 +69,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
-        var param = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+        onState = on;
+        param = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
         if (model.securityEnabled && allFeaturesInRun.Any(f => f is SecurityLock)) {
             var paramSecuritySync = fx.NewBool("SecurityLockSync");
             off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
@@ -71,6 +91,20 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
+    [FeatureBuilderAction((int)FeatureOrder.CollectToggleExclusiveTags)]
+    public void ApplyExclusiveTags() {
+        var myTags = GetExclusiveTags();
+        foreach (var other in allBuildersInRun
+                     .OfType<ToggleBuilder>()
+                     .Where(b => b != this)) {
+            var otherTags = other.GetExclusiveTags();
+            var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
+            if (conflictsWithOther) {
+                onState.Drives(other.GetParam(), false);
+            }
+        }
+    }
+
     public override string GetEditorTitle() {
         return "Toggleable Prop";
     }
@@ -80,24 +114,24 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     public static VisualElement CreateEditor(SerializedProperty prop, Action<VisualElement> renderBody) {
-        var container = new VisualElement();
+        var content = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
         var sliderProp = prop.FindPropertyRelative("slider");
         var securityEnabledProp = prop.FindPropertyRelative("securityEnabled");
         var defaultOnProp = prop.FindPropertyRelative("defaultOn");
+        var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
 
         var flex = new VisualElement {
             style = {
                 flexDirection = FlexDirection.Row,
-                alignItems = Align.FlexStart,
-                marginBottom = 10
+                alignItems = Align.FlexStart
             }
         };
-        container.Add(flex);
+        content.Add(flex);
 
-        var name = new PropertyField(prop.FindPropertyRelative("name"), "Menu Path");
+        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path");
         name.style.flexGrow = 1;
         flex.Add(name);
 
@@ -132,6 +166,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     VRCFuryEditorUtils.AddToList(resetPhysboneProp);
                 });
             }
+            if (enableExclusiveTagProp != null) {
+                advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
+                    enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
             advMenu.ShowAsContext();
         }) {
             text = "*",
@@ -141,9 +181,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         };
         flex.Add(button);
 
-        var content = new VisualElement();
-        //content.style.paddingLeft = 20;
-        container.Add(content);
+        if (enableExclusiveTagProp != null) {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableExclusiveTagProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("exclusiveTag"), "Exclusive Tags"));
+                }
+                return c;
+            }, enableExclusiveTagProp));
+        }
 
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -182,7 +228,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, resetPhysboneProp));
         }
 
-        return container;
+        return content;
     }
 }
 

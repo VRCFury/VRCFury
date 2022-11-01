@@ -27,5 +27,8 @@ namespace VF.Feature.Base {
         
         // Needs to run after anything that creates menu items, so the user can relocate them if they wish
         MoveMenuItems = 10001,
+        
+        // Needs to run after all possible toggles have been created and applied
+        CollectToggleExclusiveTags = 10002,
     }
 }

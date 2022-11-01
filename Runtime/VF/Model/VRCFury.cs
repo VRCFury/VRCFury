@@ -16,8 +16,30 @@ namespace VF.Model {
     }
     
     [Serializable]
-    public class VRCFuryConfig {
+    public class VRCFuryConfig : ISerializationCallbackReceiver {
         [SerializeReference] public List<FeatureModel> features = new List<FeatureModel>();
+
+        public void OnBeforeSerialize() {
+        }
+        public void OnAfterDeserialize() {
+            for (var i = 0; i < features.Count; i++) {
+                if (!(features[i] is Modes modes)) continue;
+                features.RemoveAt(i);
+                var tag = "mode_" + modes.name.Replace(" ", "").Replace("/", "").Trim();
+                var modeNum = 0;
+                foreach (var mode in modes.modes) {
+                    var toggle = new Toggle();
+                    toggle.name = modes.name + "/Mode " + (++modeNum);
+                    toggle.saved = modes.saved;
+                    toggle.securityEnabled = modes.securityEnabled;
+                    toggle.resetPhysbones = new List<GameObject>(modes.resetPhysbones);
+                    toggle.state = mode.state;
+                    toggle.exclusiveTag = tag;
+                    features.Insert(i, toggle);
+                    i++;
+                }
+            }
+        }
     }
 
     [Serializable]

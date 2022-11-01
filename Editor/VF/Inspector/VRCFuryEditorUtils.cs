@@ -221,6 +221,12 @@ public static class VRCFuryEditorUtils {
         return field;
     }
 
+    public static VisualElement Prop(SerializedProperty prop, string label) {
+        var field = new PropertyField(prop, label);
+        field.style.marginLeft = -2;
+        return field;
+    }
+
     public static int LABEL_WIDTH = 153;
     public static VisualElement PropWithoutLabel(SerializedProperty prop) {
         var wrapper = new VisualElement();

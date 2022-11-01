@@ -12,12 +12,9 @@ namespace VF.Feature {
 
 public class BlinkingBuilder : FeatureBuilder<Blinking> {
     /** Adding this feature to the build will disable blinking when the param is true */
+    [NoBuilder]
     public class BlinkingPrevention : FeatureModel {
         public VFABool param;
-    }
-    public class BlinkingPreventionBuilder : FeatureBuilder<BlinkingPrevention> {
-        [FeatureBuilderAction]
-        public void Apply() { }
     }
 
     [FeatureBuilderAction((int)FeatureOrder.Blinking)]

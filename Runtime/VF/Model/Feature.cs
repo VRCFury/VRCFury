@@ -12,6 +12,10 @@ using VRC.SDKBase;
 // Don't mark a class as Obsolete or MovedFrom -- unity 2019 will go into an infinite loop and die
 
 namespace VF.Model.Feature {
+    
+    [AttributeUsage(AttributeTargets.Class)]
+    public class NoBuilder : Attribute {
+    }
 
     [Serializable]
     public abstract class FeatureModel {}
@@ -157,6 +161,8 @@ namespace VF.Model.Feature {
         public bool slider;
         public bool securityEnabled;
         public bool defaultOn;
+        public bool enableExclusiveTag;
+        public string exclusiveTag;
         public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool forceOffForUpload = false;
         [NonSerialized] public bool addMenuItem = true;

@@ -20,6 +20,7 @@ namespace VF.Feature.Base {
         public Action<FeatureModel> addOtherFeature;
         public int uniqueModelNum;
         public List<FeatureModel> allFeaturesInRun;
+        public List<FeatureBuilder> allBuildersInRun;
         public GameObject editorObject;
 
         public virtual string GetEditorTitle() {
@@ -77,7 +78,7 @@ namespace VF.Feature.Base {
         }
 
         protected static bool StateExists(State state) {
-            return state != null && !state.IsEmpty();
+            return state != null;
         }
 
         protected AnimationClip LoadState(string name, State state) {
