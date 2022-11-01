@@ -46,6 +46,7 @@ namespace VF.Feature {
             };
 
             foreach (var p in model.prms) {
+                if (p.parameters == null) continue;
                 foreach (var param in p.parameters.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
                     var newParam = new VRCExpressionParameters.Parameter {
@@ -63,6 +64,7 @@ namespace VF.Feature {
             foreach (var c in model.controllers) {
                 var type = c.type;
                 var source = (AnimatorController)c.controller;
+                if (source == null) continue;
                 
                 AnimationClip RewriteClip(AnimationClip from) {
                     if (from == null) {
@@ -120,6 +122,7 @@ namespace VF.Feature {
             }
 
             foreach (var m in model.menus) {
+                if (m.menu == null) continue;
                 var prefix = string.IsNullOrWhiteSpace(m.prefix)
                     ? new string[] { }
                     : m.prefix.Split('/').ToArray();
