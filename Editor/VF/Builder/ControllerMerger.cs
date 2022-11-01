@@ -76,7 +76,7 @@ public class ControllerMerger {
         to.entryPosition = from.entryPosition;
         to.anyStatePosition = from.anyStatePosition;
         to.parentStateMachinePosition = from.parentStateMachinePosition;
-        CloneBehaviours(from.behaviours, to.AddStateMachineBehaviour);
+        CloneBehaviours(from.behaviours, to.AddStateMachineBehaviour, "Machine " + from.name);
 
         // Copy States
         foreach (var fromStateOuter in from.states) {
@@ -99,7 +99,7 @@ public class ControllerMerger {
             toState.timeParameterActive = fromState.timeParameterActive;
 
             toState.motion = CloneMotion(fromState.motion);
-            CloneBehaviours(fromState.behaviours, toState.AddStateMachineBehaviour);
+            CloneBehaviours(fromState.behaviours, toState.AddStateMachineBehaviour, "State " + fromState.name);
 
             if (fromState == from.defaultState) {
                 to.defaultState = toState;
@@ -114,7 +114,7 @@ public class ControllerMerger {
         }
     }
 
-    private void CloneBehaviours(StateMachineBehaviour[] from, Func<Type, StateMachineBehaviour> AddUnchecked) {
+    private void CloneBehaviours(StateMachineBehaviour[] from, Func<Type, StateMachineBehaviour> AddUnchecked, string source) {
         T Add<T>() where T : StateMachineBehaviour => AddUnchecked(typeof (T)) as T;
         foreach (var b in from) {
             switch (b) {
@@ -168,7 +168,7 @@ public class ControllerMerger {
                 }
                 default:
                     throw new VRCFBuilderException(
-                        "Unable to copy unknown state machine behavior type: " + b.GetType().Name);
+                        "Unable to copy unknown state machine behavior type: " + b.GetType().Name + " at " + source);
             }
         }
     }
