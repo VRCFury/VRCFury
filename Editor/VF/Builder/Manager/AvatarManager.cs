@@ -60,10 +60,6 @@ namespace VF.Builder {
                 output = new ControllerManager(ctrl, () => GetParams(), type);
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
-                if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    var animator = avatarObject.GetComponent<Animator>();
-                    if (animator != null) animator.runtimeAnimatorController = ctrl;
-                }
             }
             return output;
         }
