@@ -1,5 +1,8 @@
 namespace VF.Feature.Base {
     public enum FeatureOrder {
+        // Needs to happen before toggles begin getting processed
+        ForceObjectState = -1,
+        
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver = 1,
         

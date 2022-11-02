@@ -339,5 +339,30 @@ namespace VF.Model.Feature {
             THUMBSUP
         }
     }
+    
+    [Serializable]
+    public class Gizmo : FeatureModel {
+        public Vector3 rotation;
+        public string text;
+        public float sphereRadius;
+        public float arrowLength;
+    }
+    
+    [Serializable]
+    public class ObjectState : FeatureModel {
+        public List<ObjState> states = new List<ObjState>();
+
+        [Serializable]
+        public class ObjState {
+            public GameObject obj;
+            public Action action = Action.DEACTIVATE;
+            public bool ResetMePlease;
+        }
+        public enum Action {
+            DEACTIVATE,
+            ACTIVATE,
+            DELETE
+        }
+    }
 
 }
