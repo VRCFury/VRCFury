@@ -255,6 +255,9 @@ public class ControllerMerger {
             to = makeNewWithMachine(newDest);
         }
 
+        to.solo = from.solo;
+        to.mute = from.mute;
+
         var conds = new List<AnimatorCondition>();
         foreach (var oldC in from.conditions) {
             conds.Add(new AnimatorCondition {
