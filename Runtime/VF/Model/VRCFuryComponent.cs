@@ -18,7 +18,7 @@ namespace VF.Model {
             return vrcfSerVersion > VRCFURY_SER_VERSION || ContainsNullsInList(this);
         }
 
-        public void OnAfterDeserialize() {
+        public virtual void OnAfterDeserialize() {
             if (IsBroken()) {
                 failedToLoad = true;
 #if UNITY_EDITOR
@@ -37,7 +37,7 @@ namespace VF.Model {
             }
         }
         
-        public void OnBeforeSerialize() {
+        public virtual void OnBeforeSerialize() {
         }
         
         private static bool ContainsNullsInList(object obj) {

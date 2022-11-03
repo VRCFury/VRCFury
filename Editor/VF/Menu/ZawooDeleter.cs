@@ -6,7 +6,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Menu {
-    public class ZawooDeleter {
+    public static class ZawooDeleter {
         public static void Run(GameObject avatarObj) {
             var effects = CleanupAllZawooComponents(avatarObj, false);
             if (effects.Count == 0) {
@@ -27,6 +27,17 @@ namespace VF.Menu {
             );
             if (!doIt) return;
             CleanupAllZawooComponents(avatarObj, true);
+        }
+        
+        private static List<string> CleanupAllZawooComponents(GameObject avatarObj, bool perform = false) {
+            return AvatarCleaner.Cleanup(
+                avatarObj,
+                perform: perform,
+                ShouldRemoveAsset: ShouldRemoveAsset,
+                ShouldRemoveLayer: ShouldRemoveLayer,
+                ShouldRemoveObj: ShouldRemoveObj,
+                ShouldRemoveParam: ShouldRemoveParam
+            );
         }
 
         private static bool ShouldRemoveObj(GameObject obj) {
@@ -62,103 +73,6 @@ namespace VF.Menu {
             if (name.StartsWith("caninePeen")) return true;
             if (name.StartsWith("peen")) return true;
             return false;
-        }
-
-        private static List<string> CleanupAllZawooComponents(GameObject avatarObj, bool perform = false) {
-            var removeItems = new List<string>();
-
-            var checkStack = new Stack<Transform>();
-            checkStack.Push(avatarObj.transform);
-            while (checkStack.Count > 0) {
-                var t = checkStack.Pop();
-                var obj = t.gameObject;
-
-                if (ShouldRemoveObj(obj) && (!PrefabUtility.IsPartOfPrefabInstance(obj) || PrefabUtility.IsOutermostPrefabInstanceRoot(obj))) {
-                    removeItems.Add("Object: " + obj.name);
-                    if (perform) Object.DestroyImmediate(obj);
-                } else {
-                    foreach (Transform t2 in t) checkStack.Push(t2);
-                }
-            }
-
-            var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
-            var avatarFx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
-            if (avatarFx != null) {
-                if (ShouldRemoveAsset(avatarFx)) {
-                    removeItems.Add("Avatar descriptor FX layer setting");
-                    if (perform) VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
-                } else {
-                    var vfac = new VFAController(avatarFx, VRCAvatarDescriptor.AnimLayerType.FX);
-                    for (var i = 0; i < avatarFx.layers.Length; i++) {
-                        var layer = avatarFx.layers[i];
-                        if (ShouldRemoveLayer(layer.name)) {
-                            removeItems.Add("Layer: " + layer.name);
-                            if (perform) {
-                                vfac.RemoveLayer(i);
-                                i--;
-                            }
-                        }
-                    }
-                    for (var i = 0; i < avatarFx.parameters.Length; i++) {
-                        var prm = avatarFx.parameters[i];
-                        if (ShouldRemoveParam(prm.name)) {
-                            removeItems.Add("Parameter: " + prm.name);
-                            if (perform) {
-                                avatarFx.RemoveParameter(i);
-                                i--;
-                            }
-                        }
-                    }
-                }
-            }
-
-            var syncParams = VRCAvatarUtils.GetAvatarParams(avatar);
-            if (syncParams != null) {
-                if (ShouldRemoveAsset(syncParams)) {
-                    removeItems.Add("Avatar descriptor params setting");
-                    if (perform) VRCAvatarUtils.SetAvatarParams(avatar, null);
-                } else {
-                    var prms = new List<VRCExpressionParameters.Parameter>(syncParams.parameters);
-                    for (var i = 0; i < prms.Count; i++) {
-                        if (ShouldRemoveParam(prms[i].name)) {
-                            removeItems.Add("Synced param: " + prms[i].name);
-                            if (perform) {
-                                prms.RemoveAt(i);
-                                i--;
-                            }
-                        }
-                    }
-                    if (perform) syncParams.parameters = prms.ToArray();
-                }
-            }
-
-            void CheckMenu(VRCExpressionsMenu menu) {
-                for (var i = 0; i < menu.controls.Count; i++) {
-                    if (menu.controls[i].type != VRCExpressionsMenu.Control.ControlType.SubMenu) continue;
-                    if (menu.controls[i].subMenu == null) continue;
-                    if (ShouldRemoveAsset(menu.controls[i].subMenu)) {
-                        removeItems.Add("Menu Item: " + menu.controls[i].name);
-                        if (perform) {
-                            menu.controls.RemoveAt(i);
-                            i--;
-                        }
-                    } else {
-                        CheckMenu(menu.controls[i].subMenu);
-                    }
-                }
-            }
-
-            var m = VRCAvatarUtils.GetAvatarMenu(avatar);
-            if (m != null) {
-                if (ShouldRemoveAsset(m)) {
-                    removeItems.Add("Avatar descriptor menu setting");
-                    if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
-                } else {
-                    CheckMenu(m);
-                }
-            }
-
-            return removeItems;
         }
     }
 }

@@ -15,10 +15,11 @@ namespace VF.Inspector {
 
             var container = new VisualElement();
             
-            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name Override"));
-            container.Add(new PropertyField(serializedObject.FindProperty("addLight"), "Add DPS Light"));
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name Override"));
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addLight"), "Add DPS Light"));
             container.Add(VRCFuryEditorUtils.WrappedLabel("Depth Override in meters (note, this only affects hand touches, penetrators do not use orifice depth)"));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(serializedObject.FindProperty("length")));
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
 
             return container;
         }
@@ -145,15 +146,15 @@ namespace VF.Inspector {
             return Tuple.Create(length, radius);
         }
         
-        private static bool IsHole(Light light) {
+        public static bool IsHole(Light light) {
             var rangeId = light.range % 0.1;
             return rangeId >= 0.005f && rangeId < 0.015f;
         }
-        private static bool IsRing(Light light) {
+        public static bool IsRing(Light light) {
             var rangeId = light.range % 0.1;
             return rangeId >= 0.015f && rangeId < 0.025f;
         }
-        private static bool IsNormal(Light light) {
+        public static bool IsNormal(Light light) {
             var rangeId = light.range % 0.1;
             return rangeId >= 0.045f && rangeId <= 0.055f;
         }

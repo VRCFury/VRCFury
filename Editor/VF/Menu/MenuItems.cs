@@ -50,7 +50,17 @@ namespace VF.Menu {
             OrificeCreatorMenuItem.RunRing();
         }
         
-        [MenuItem("Tools/VRCFury/Bake OscGB Component", priority = 1204)]
+        [MenuItem("Tools/VRCFury/Migrate DPSAttach to OGB", priority = 1204)]
+        private static void RunMigrateDPSAttach() {
+            DpsAttachMigration.Run(MenuUtils.GetSelectedAvatar());
+        }
+        
+        [MenuItem("Tools/VRCFury/Migrate DPSAttach to OGB", true)]
+        private static bool CheckMigrateDPSAttach() {
+            return MenuUtils.GetSelectedAvatar() != null;
+        }
+        
+        [MenuItem("Tools/VRCFury/Bake OscGB Component", priority = 1205)]
         public static void RunBake() {
             OrificeCreatorMenuItem.RunBake();
         }
@@ -75,7 +85,7 @@ namespace VF.Menu {
         private static bool CheckNukeZawooParts() {
             return MenuUtils.GetSelectedAvatar() != null;
         }
-        
+
         [MenuItem("Tools/VRCFury/Build Test Avatar", priority = 1402)]
         private static void RunForceRun() {
             VRCFuryForceRunMenuItem.RunFakeUpload();

@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Feature.Base;
@@ -53,7 +54,6 @@ public class VRCFuryBuilder {
         try {
             AssetDatabase.StartAssetEditing();
             Run(avatarObject);
-            BakeOGB(avatarObject);
         } catch(Exception e) {
             result = false;
             Debug.LogException(e);
@@ -69,20 +69,15 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    private void BakeOGB(GameObject avatarObject) {
-        Debug.Log("Baking OGB components ...");
-        List<string> usedNames = new List<string>();
-        foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-            OGBPenetratorEditor.Bake(c, usedNames);
-        }
-        foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
-            OGBOrificeEditor.Bake(c, usedNames);
-        }
-        Debug.Log("Done");
+    private bool ShouldRun(GameObject avatarObject) {
+        if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length > 0) return true;
+        if (avatarObject.GetComponentsInChildren<OGBPenetrator>(true).Length > 0) return true;
+        if (avatarObject.GetComponentsInChildren<OGBOrifice>(true).Length > 0) return true;
+        return false;
     }
 
     private void Run(GameObject avatarObject) {
-        if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length == 0) {
+        if (!ShouldRun(avatarObject)) {
             Debug.Log("VRCFury components not found in avatar. Skipping.");
             return;
         }
@@ -148,11 +143,7 @@ public class VRCFuryBuilder {
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
 
-        void AddModel(FeatureModel model, GameObject configObject) {
-            collectedModels.Add(model);
-            
-            var builder = FeatureFinder.GetBuilder(model, configObject);
-            if (builder == null) return;
+        void AddBuilder(FeatureBuilder builder, GameObject configObject) {
             builder.featureBaseObject = configObject;
             builder.tmpDir = tmpDir;
             builder.addOtherFeature = m => AddModel(m, configObject);
@@ -169,6 +160,14 @@ public class VRCFuryBuilder {
             totalActionCount += builderActions.Count;
         }
 
+        void AddModel(FeatureModel model, GameObject configObject) {
+            collectedModels.Add(model);
+            
+            var builder = FeatureFinder.GetBuilder(model, configObject);
+            if (builder == null) return;
+            AddBuilder(builder, configObject);
+        }
+
         progress.Progress(0, "Collecting features");
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
@@ -181,7 +180,8 @@ public class VRCFuryBuilder {
             }
         }
 
-        AddModel(new FixWriteDefaults(), avatarObject);
+        AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
+        AddBuilder(new BakeOGBBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();

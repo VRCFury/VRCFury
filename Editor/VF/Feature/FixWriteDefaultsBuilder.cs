@@ -10,7 +10,8 @@ using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class FixWriteDefaultsBuilder : FeatureBuilder<FixWriteDefaults> {
+    public class FixWriteDefaultsBuilder : FeatureBuilder {
+
         [FeatureBuilderAction((int)FeatureOrder.FixWriteDefaults)]
         public void Apply() {
             // TODO: Bring this back once I can assure it only happens on managed controllers,

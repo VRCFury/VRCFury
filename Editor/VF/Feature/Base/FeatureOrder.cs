@@ -25,6 +25,9 @@ namespace VF.Feature.Base {
         // Needs to run after TPS integration (since it may add new TPS material meshes)
         AddOgbComponents = 101,
         
+        // Needs to run after all OGB components are in place
+        BakeOgbComponents = 102,
+        
         // Needs to run after everything is done touching the animation controller
         FixWriteDefaults = 10000,
         

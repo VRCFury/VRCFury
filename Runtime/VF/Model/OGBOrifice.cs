@@ -12,5 +12,6 @@ namespace VF.Model {
         public AddLight addLight;
         public new string name;
         public float length;
+        public bool addMenuItem = false;
     }
 }
