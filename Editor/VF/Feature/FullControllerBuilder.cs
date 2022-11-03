@@ -42,7 +42,7 @@ namespace VF.Feature {
                 }
 
                 rewrittenParams.Add(name);
-                return ControllerManager.NewParamName("fc" + uniqueModelNum + "_" + name);
+                return ControllerManager.NewParamName(name, uniqueModelNum);
             };
 
             foreach (var p in model.prms) {
@@ -75,7 +75,7 @@ namespace VF.Feature {
                     if (AssetDatabase.GetAssetPath(from).Contains("/proxy_")) {
                         rewritten = from;
                     } else {
-                        rewritten = manager.GetClipStorage().NewClip("fc" + uniqueModelNum + "__" + from.name);
+                        rewritten = manager.GetClipStorage().NewClip(from.name);
                         clipBuilder.CopyWithAdjustedPrefixes(from, rewritten, baseObject, model.removePrefixes);
                     }
 
@@ -84,7 +84,7 @@ namespace VF.Feature {
                 }
                 
                 BlendTree NewBlendTree(string name) {
-                    return manager.GetClipStorage().NewBlendTree("fc" + uniqueModelNum + "__" + name);
+                    return manager.GetClipStorage().NewBlendTree(name);
                 }
 
                 var targetController = manager.GetController(type);
@@ -113,7 +113,7 @@ namespace VF.Feature {
                     }
                 }
                 var merger = new ControllerMerger(
-                    layerName => ControllerManager.NewLayerName("[FC" + uniqueModelNum + "] " + layerName),
+                    layerName => targetController.NewLayerName("FC - " + layerName),
                     param => rewriteParam(param),
                     RewriteClip,
                     NewBlendTree

@@ -4,23 +4,24 @@ using System.Linq;
 using UnityEditor.Animations;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using VRC.SDKBase;
 
 namespace VF.Builder {
     public class ControllerManager {
-        private static string prefix = "VRCFury";
         private readonly AnimatorController ctrl;
         private readonly Func<ParamManager> paramManager;
-        private VRCAvatarDescriptor.AnimLayerType type;
+        private readonly VRCAvatarDescriptor.AnimLayerType type;
+        private readonly Func<int> currentFeatureNumProvider;
 
         public ControllerManager(
             AnimatorController ctrl,
             Func<ParamManager> paramManager,
-            VRCAvatarDescriptor.AnimLayerType type
+            VRCAvatarDescriptor.AnimLayerType type,
+            Func<int> currentFeatureNumProvider
         ) {
             this.ctrl = ctrl;
             this.paramManager = paramManager;
             this.type = type;
+            this.currentFeatureNumProvider = currentFeatureNumProvider;
         }
 
         public AnimatorController GetRaw() {
@@ -41,8 +42,8 @@ namespace VF.Builder {
             return GetController().NewLayer(NewLayerName(name), insertAt);
         }
 
-        public static string NewLayerName(string name) {
-            return "[" + prefix + "] " + name;
+        public string NewLayerName(string name) {
+            return "[VF" + currentFeatureNumProvider.Invoke() + "] " + name;
         }
 
         public IEnumerable<AnimatorControllerLayer> GetManagedLayers() {
@@ -53,7 +54,7 @@ namespace VF.Builder {
         }
 
         public static bool IsManaged(AnimatorControllerLayer layer) {
-            return layer.name.StartsWith("[" + prefix + "] ");
+            return layer.name.StartsWith("[VF");
         }
 
         public VFABool NewTrigger(string name, bool usePrefix = true) {
@@ -100,57 +101,28 @@ namespace VF.Builder {
             }
             return GetController().NewFloat(name, def);
         }
-        public static string NewParamName(string name) {
-            return prefix + "__" + name;
+        
+        private string NewParamName(string name) {
+            return NewParamName(name, currentFeatureNumProvider.Invoke());
+        }
+        public static string NewParamName(string name, int modelNum) {
+            return "VF" + modelNum + "_" + name;
         }
 
-        public static void PurgeFromAnimator(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
-            // Clean up layers
-            for (var i = 0; i < ctrl.layers.Length; i++) {
-                var layer = ctrl.layers[i];
-                if (layer.name.StartsWith("["+prefix+"]")) {
-                    RemoveLayer(ctrl, i, type);
-                    i--;
-                }
-            }
-            // Clean up parameters
-            for (var i = 0; i < ctrl.parameters.Length; i++) {
-                var param = ctrl.parameters[i];
-                if (param.name.StartsWith("Senky") || param.name.StartsWith(prefix+"__")) {
-                    ctrl.RemoveParameter(param);
-                    i--;
-                }
-            }
-        }
-
-        public static void RemoveLayer(AnimatorController ctrl, int i, VRCAvatarDescriptor.AnimLayerType type) {
-            CorrectLayerReferences(ctrl, i, type, -1);
-            ctrl.RemoveLayer(i);
-        }
-        
-        public static void CorrectLayerReferences(AnimatorController ctrl, int after, VRCAvatarDescriptor.AnimLayerType type, int offset) {
-            if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                foreach (var layer in ctrl.layers) {
-                    AnimatorIterator.ForEachState(layer, state => {
-                        foreach (var b in state.behaviours) {
-                            var layerControl = b as VRCAnimatorLayerControl;
-                            if (layerControl && layerControl.playable == VRC_AnimatorLayerControl.BlendableLayer.FX && layerControl.layer > after) {
-                                layerControl.layer += offset;
-                            }
-                        }
-                    });
-                }
-            }
-        }
-        
         public VFACondition Always() {
-            return NewBool("True", def: true).IsTrue();
+            return NewBool("VF_True", def: true, usePrefix: false).IsTrue();
         }
         public VFANumber GestureLeft() {
             return NewInt("GestureLeft", usePrefix: false);
         }
         public VFANumber GestureRight() {
             return NewInt("GestureRight", usePrefix: false);
+        }
+        public VFANumber GestureLeftWeight() {
+            return NewFloat("GestureLeftWeight", usePrefix: false);
+        }
+        public VFANumber GestureRightWeight() {
+            return NewFloat("GestureRightWeight", usePrefix: false);
         }
         public VFANumber Viseme() {
             return NewInt("Viseme", usePrefix: false);

@@ -97,7 +97,7 @@ namespace VF.Feature {
             }
 
             var fx = GetFx();
-            var merger = new ControllerMerger(rewriteLayerName: layerName => ControllerManager.NewLayerName(layerName));
+            var merger = new ControllerMerger(rewriteLayerName: layerName => fx.NewLayerName(layerName));
             merger.Merge(tpsAnimator, fx.GetRaw());
         }
 

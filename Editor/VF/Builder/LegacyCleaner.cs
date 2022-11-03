@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -21,7 +23,7 @@ namespace VF.Builder {
             if (IsVrcfAsset(fx)) {
                 VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
             } else if (fx != null) {
-                ControllerManager.PurgeFromAnimator(fx, VRCAvatarDescriptor.AnimLayerType.FX);
+                PurgeFromAnimator(fx, VRCAvatarDescriptor.AnimLayerType.FX);
             }
 
             var menu = VRCAvatarUtils.GetAvatarMenu(avatar);
@@ -37,13 +39,13 @@ namespace VF.Builder {
             if (IsVrcfAsset(prms)) {
                 VRCAvatarUtils.SetAvatarParams(avatar, null);
             } else if (prms != null) {
-                ParamManager.PurgeFromParams(prms);
+                PurgeFromParams(prms);
             }
 
             EditorUtility.SetDirty(avatar);
         }
         
-        public static void PurgeFromMenu(VRCExpressionsMenu menu) {
+        private static void PurgeFromMenu(VRCExpressionsMenu menu) {
             if (menu == null) return;
             for (var i = 0; i < menu.controls.Count; i++) {
                 var remove = false;
@@ -74,7 +76,34 @@ namespace VF.Builder {
             }
         }
         
-        public static bool IsVrcfAsset(Object obj) {
+        private static void PurgeFromParams(VRCExpressionParameters syncedParams) {
+            var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
+            syncedParamsList.RemoveAll(param => param.name.StartsWith("Senky") || param.name.StartsWith("VRCFury__"));
+            syncedParams.parameters = syncedParamsList.ToArray();
+            EditorUtility.SetDirty(syncedParams);
+        }
+        
+        private static void PurgeFromAnimator(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
+            // Clean up layers
+            var vfac = new VFAController(ctrl, type);
+            for (var i = 0; i < ctrl.layers.Length; i++) {
+                var layer = ctrl.layers[i];
+                if (layer.name.StartsWith("[VRCFury]")) {
+                    vfac.RemoveLayer(i);
+                    i--;
+                }
+            }
+            // Clean up parameters
+            for (var i = 0; i < ctrl.parameters.Length; i++) {
+                var param = ctrl.parameters[i];
+                if (param.name.StartsWith("Senky") || param.name.StartsWith("VRCFury__")) {
+                    ctrl.RemoveParameter(param);
+                    i--;
+                }
+            }
+        }
+        
+        private static bool IsVrcfAsset(Object obj) {
             return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
         }
     }

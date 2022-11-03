@@ -71,15 +71,20 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var on = layer.NewState("On").WithAnimation(clip);
         onState = on;
         param = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
-        if (model.securityEnabled && allFeaturesInRun.Any(f => f is SecurityLock)) {
-            var paramSecuritySync = fx.NewBool("SecurityLockSync");
-            off.TransitionsTo(on).When(param.IsTrue().And(paramSecuritySync.IsTrue()));
-            on.TransitionsTo(off).When(param.IsFalse());
-            on.TransitionsTo(off).When(paramSecuritySync.IsFalse());
-        } else {
-            off.TransitionsTo(on).When(param.IsTrue());
-            on.TransitionsTo(off).When(param.IsFalse());
+        var securityLockUnlocked = allBuildersInRun
+            .Select(f => f as SecurityLockBuilder)
+            .Where(f => f != null)
+            .Select(f => f.GetEnabled())
+            .FirstOrDefault();
+
+        var onCase = param.IsTrue();
+
+        if (model.securityEnabled && securityLockUnlocked != null) {
+            onCase = onCase.And(securityLockUnlocked);
         }
+
+        off.TransitionsTo(on).When(onCase);
+        on.TransitionsTo(off).When(onCase.Not());
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);

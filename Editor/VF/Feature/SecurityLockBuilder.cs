@@ -13,8 +13,21 @@ using VRC.SDKBase;
 namespace VF.Feature {
 
 public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
+    private VFABool _unlockedParam = null;
+    private VFABool GetUnlockedParam() {
+        if (_unlockedParam == null) _unlockedParam = GetFx().NewBool("SecurityLockSync", synced: true);
+        return _unlockedParam;
+    }
+    public VFACondition GetEnabled() {
+        return GetUnlockedParam().IsTrue();
+    }
+    
     [FeatureBuilderAction]
     public void Apply() {
+        if (allFeaturesInRun.Where(m => m is SecurityLock).Count() > 1) {
+            throw new VRCFBuilderException("Cannot have more than one SecurityLock feature on avatar.");
+        }
+        
         var unlockCode = model.pinNumber;
         var digits = unlockCode
             .Select(c => c - '0')
@@ -34,7 +47,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         var numDigitSlots = 10;
 
         var fx = GetFx();
-        var paramSecuritySync = fx.NewBool("SecurityLockSync", synced: true);
+        var paramSecuritySync = GetUnlockedParam();
         // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
         var paramInput = fx.NewInt("SecurityInput", synced: true);
         for (var i = 1; i < 8; i++) {

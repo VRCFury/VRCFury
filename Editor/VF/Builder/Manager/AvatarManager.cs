@@ -12,11 +12,13 @@ namespace VF.Builder {
         private readonly GameObject avatarObject;
         private readonly VRCAvatarDescriptor avatar;
         private readonly string tmpDir;
+        private readonly Func<int> currentFeatureNumProvider;
 
-        public AvatarManager(GameObject avatarObject, string tmpDir) {
+        public AvatarManager(GameObject avatarObject, string tmpDir, Func<int> currentFeatureNumProvider) {
             this.avatarObject = avatarObject;
             this.avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             this.tmpDir = tmpDir;
+            this.currentFeatureNumProvider = currentFeatureNumProvider;
         }
 
         private MenuManager _menu;
@@ -37,7 +39,7 @@ namespace VF.Builder {
             return _menu;
         }
 
-        private Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
+        private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             if (!_controllers.TryGetValue(type, out var output)) {
@@ -57,7 +59,7 @@ namespace VF.Builder {
                 } else {
                     ctrl = VRCFuryAssetDatabase.CopyAsset(origFx, newPath);
                 }
-                output = new ControllerManager(ctrl, () => GetParams(), type);
+                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider);
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
             }
@@ -99,7 +101,7 @@ namespace VF.Builder {
         private ClipStorageManager _clipStorage;
         public ClipStorageManager GetClipStorage() {
             if (_clipStorage == null) {
-                _clipStorage = new ClipStorageManager(tmpDir);
+                _clipStorage = new ClipStorageManager(tmpDir, currentFeatureNumProvider);
             }
             return _clipStorage;
         }

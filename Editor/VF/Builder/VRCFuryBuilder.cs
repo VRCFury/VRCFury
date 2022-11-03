@@ -138,7 +138,8 @@ public class VRCFuryBuilder {
         GameObject avatarObject,
         ProgressBar progress
     ) {
-        var manager = new AvatarManager(avatarObject, tmpDir);
+        var currentModelNumber = 0;
+        var manager = new AvatarManager(avatarObject, tmpDir, () => currentModelNumber);
         var clipBuilder = new ClipBuilder(avatarObject);
         
         var actions = new List<FeatureBuilderAction>();
@@ -158,6 +159,9 @@ public class VRCFuryBuilder {
             builder.uniqueModelNum = ++totalModelCount;
             builder.allFeaturesInRun = collectedModels;
             builder.allBuildersInRun = collectedBuilders;
+            builder.manager = manager;
+            builder.clipBuilder = clipBuilder;
+            builder.avatarObject = avatarObject;
 
             collectedBuilders.Add(builder);
             var builderActions = builder.GetActions();
@@ -185,10 +189,8 @@ public class VRCFuryBuilder {
             var builder = action.GetBuilder();
             var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
                 avatarObject.transform);
-
-            builder.manager = manager;
-            builder.clipBuilder = clipBuilder;
-            builder.avatarObject = avatarObject;
+            
+            currentModelNumber = builder.uniqueModelNum;
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);

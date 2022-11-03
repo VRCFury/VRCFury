@@ -24,7 +24,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
 
         var fx = GetFx();
         var visemes = fx.NewLayer("Visemes");
-        var VisemeParam = fx.NewInt("Viseme", usePrefix: false);
+        var VisemeParam = fx.Viseme();
         void addViseme(int index, string text, State clipState) {
             var clip = LoadState(text, clipState);
             var state = visemes.NewState(text).WithAnimation(clip);

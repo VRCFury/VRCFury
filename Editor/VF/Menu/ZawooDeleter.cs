@@ -88,12 +88,13 @@ namespace VF.Menu {
                     removeItems.Add("Avatar descriptor FX layer setting");
                     if (perform) VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
                 } else {
+                    var vfac = new VFAController(avatarFx, VRCAvatarDescriptor.AnimLayerType.FX);
                     for (var i = 0; i < avatarFx.layers.Length; i++) {
                         var layer = avatarFx.layers[i];
                         if (ShouldRemoveLayer(layer.name)) {
                             removeItems.Add("Layer: " + layer.name);
                             if (perform) {
-                                ControllerManager.RemoveLayer(avatarFx, i, VRCAvatarDescriptor.AnimLayerType.FX);
+                                vfac.RemoveLayer(i);
                                 i--;
                             }
                         }

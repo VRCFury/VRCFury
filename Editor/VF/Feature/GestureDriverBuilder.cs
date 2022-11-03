@@ -38,11 +38,11 @@ namespace VF.Feature {
 
             var fx = GetFx();
             var uniqueNum = i++;
-            var name = "Gesture " + uniqueModelNum + "#" + uniqueNum + " - " + gesture.hand + " " + gesture.sign;
+            var name = "Gesture " + uniqueNum + " - " + gesture.hand + " " + gesture.sign;
             if (gesture.hand == GestureDriver.Hand.COMBO) {
                 name += " " + gesture.comboSign;
             }
-            var uid = "gesture_" + uniqueModelNum + "_" + uniqueNum;
+            var uid = "gesture_" + uniqueNum;
 
             var layer = fx.NewLayer(name);
             var off = layer.NewState("Off");
@@ -58,8 +58,8 @@ namespace VF.Feature {
                 }
             }
 
-            var GestureLeft = fx.NewInt("GestureLeft", usePrefix: false);
-            var GestureRight = fx.NewInt("GestureRight", usePrefix: false);
+            var GestureLeft = fx.GestureLeft();
+            var GestureRight = fx.GestureRight();
 
             VFACondition onCondition;
             int weightHand = 0;
@@ -129,10 +129,10 @@ namespace VF.Feature {
         private void MakeWeightParams() {
             if (leftWeightParam != null) return;
             var fx = GetFx();
-            var GestureLeftWeight = fx.NewFloat("GestureLeftWeight", usePrefix: false);
-            var GestureRightWeight = fx.NewFloat("GestureRightWeight", usePrefix: false);
-            var GestureLeftCondition = fx.NewInt("GestureLeft", usePrefix: false).IsEqualTo(1);
-            var GestureRightCondition = fx.NewInt("GestureRight", usePrefix: false).IsEqualTo(1);
+            var GestureLeftWeight = fx.GestureLeftWeight();
+            var GestureRightWeight = fx.GestureRightWeight();
+            var GestureLeftCondition = fx.GestureLeft().IsEqualTo(1);
+            var GestureRightCondition = fx.GestureRight().IsEqualTo(1);
             leftWeightParam = MakeWeightLayer("left", GestureLeftWeight, GestureLeftCondition);
             rightWeightParam = MakeWeightLayer("right", GestureRightWeight, GestureRightCondition);
         }

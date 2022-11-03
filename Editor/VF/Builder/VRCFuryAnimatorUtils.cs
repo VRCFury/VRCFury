@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Asn1.Cms;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -22,18 +20,41 @@ public class VFAController {
     public VFALayer NewLayer(string name, int insertAt = -1) {
         ctrl.AddLayer(name);
         var layers = ctrl.layers;
-        var layer = layers[ctrl.layers.Length-1];
+        var layer = layers.Last();
         if (insertAt >= 0) {
             for (var i = layers.Length-1; i > insertAt; i--) {
                 layers[i] = layers[i - 1];
             }
             layers[insertAt] = layer;
-            ControllerManager.CorrectLayerReferences(ctrl, insertAt - 1, type,  1);
+            CorrectLayerReferences(layerNum => layerNum >= insertAt ? layerNum + 1 : layerNum);
         }
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);
         ctrl.layers = layers;
         return new VFALayer(layer, this);
+    }
+    
+    public void RemoveLayer(int i) {
+        CorrectLayerReferences(layerNum =>
+            layerNum == i ? 9999 :
+            layerNum > i ? layerNum - 1 :
+            layerNum);
+        ctrl.RemoveLayer(i);
+    }
+        
+    private void CorrectLayerReferences(Func<int,int> correction) {
+        var ctrlType = Enum.GetName(typeof(VRCAvatarDescriptor.AnimLayerType), type);
+        foreach (var layer in ctrl.layers) {
+            AnimatorIterator.ForEachState(layer, state => {
+                foreach (var b in state.behaviours) {
+                    var layerControl = b as VRCAnimatorLayerControl;
+                    if (!layerControl) continue;
+                    var layerControlTarget = Enum.GetName(typeof(VRC_AnimatorLayerControl.BlendableLayer), layerControl.playable);
+                    if (ctrlType != layerControlTarget) continue;
+                    layerControl.layer = correction.Invoke(layerControl.layer);
+                }
+            });
+        }
     }
 
     public VFABool NewTrigger(string name) {
