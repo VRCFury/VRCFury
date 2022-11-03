@@ -13,7 +13,7 @@ Zawoo Using VRCFury
 **Clothing DLC is only compatible with the specific base model it was designed for**
 * Import [VRCFury](https://vrcfury.com) (that's the package you're looking at right now!)
 * Purchase and import the corresponding clothing package from [ZaWoo by Nimbkoll](https://zawoo.gumroad.com/)
-* Drag corresponding VRCFury prefab from this folder onto your avatar's root object
+* Drag the corresponding VRCFury prefab from this folder onto your avatar's root object
 * You're done!
 * If you'd like to use one of the alternate clothing materials, unhide the piece of clothing, drag the material from the Zawoo DLC folder onto it in the 3d view, then hide it again
 * The options will be available in your avatar's Expression Menu under `Clothes`

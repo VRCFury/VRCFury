@@ -1,0 +1,190 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6422153655008026967
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3390576454247852374}
+  - component: {fileID: 9211830430699260827}
+  m_Layer: 0
+  m_Name: FoxHole Bracelet (VRCFury)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3390576454247852374
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6422153655008026967}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 1036051446591834746}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: -89.98, y: 0, z: 0}
+--- !u!114 &9211830430699260827
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6422153655008026967}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+    - id: 1
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        controllers:
+        - controller: {fileID: 9100000, guid: 2a76226ca69c2ab4cbe03615d966ff74, type: 2}
+          type: 5
+          ResetMePlease: 0
+        menus:
+        - menu: {fileID: 11400000, guid: fdecccd2e2f8925409e2f7b9307c9322, type: 2}
+          prefix: FoxHole Bracelet
+          ResetMePlease: 0
+        prms:
+        - parameters: {fileID: 11400000, guid: 519ecbe1d9c09fc47bc63d780985aab1, type: 2}
+          ResetMePlease: 0
+        globalParams: []
+        removePrefixes: []
+        allNonsyncedAreGlobal: 0
+        ignoreSaved: 0
+        toggleParam: 
+        rootObjOverride: {fileID: 0}
+        version: 1
+        controller: {fileID: 0}
+        menu: {fileID: 0}
+        parameters: {fileID: 0}
+        submenu: 
+    00000001:
+      type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        states:
+        - obj: {fileID: 8668697721909478011}
+          action: 0
+          ResetMePlease: 0
+        - obj: {fileID: 6422153655008026967}
+          action: 1
+          ResetMePlease: 0
+--- !u!1001 &2411208433806670533
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 3390576454247852374}
+    m_Modifications:
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071067
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6429789988616927422, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_Name
+      value: foxholebracelet
+      objectReference: {fileID: 0}
+    - target: {fileID: 8430044655545520411, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 56d7cf2580e201b4b830fefcea0a46e8, type: 2}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b26a9e6b47d5fc242a7eda62f5acd7ca, type: 3}
+--- !u!1 &8668697721909478011 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6429789988616927422, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+    type: 3}
+  m_PrefabInstance: {fileID: 2411208433806670533}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1036051446591834746 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3393073120215183551, guid: b26a9e6b47d5fc242a7eda62f5acd7ca,
+    type: 3}
+  m_PrefabInstance: {fileID: 2411208433806670533}
+  m_PrefabAsset: {fileID: 0}
