@@ -1,41 +1,53 @@
 using System;
+using System.Collections;
 using System.Runtime.Serialization;
-using UnityEditor;
 using UnityEngine;
 
 namespace VF.Model {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver {
-        private static readonly int VRCFURY_SER_VERSION = 7;
-        private static bool warningShown = false;
-        
+        private static readonly int VRCFURY_SER_VERSION = 7; 
+
         public int vrcfSerVersion;
         [NonSerialized]
-        private bool failedToLoad = false;
+        public bool failedToLoad = false;
+
+        public bool IsBroken() {
+            return vrcfSerVersion > VRCFURY_SER_VERSION || ContainsNullsInList(this);
+        }
 
         public void OnAfterDeserialize() {
-            if (vrcfSerVersion > VRCFURY_SER_VERSION) {
-                if (!warningShown) {
-                    warningShown = true;
-                    #if UNITY_EDITOR
-                    EditorApplication.delayCall += () => {
-                        EditorUtility.DisplayDialog("VRCFury Error",
-                            "This project contains VRCFury assets newer than the installed VRCFury plugin. " +
-                            "You need to upgrade VRCFury using Tools -> VRCFury -> Upgrade VRCFury.",
-                            "Ok");
-                    };
-                    #endif
-                }
-                failedToLoad = true; 
-                throw new SerializationException("Cannot load VRCFury component, VRCFury plugin is out of date");
+            if (IsBroken()) {
+                failedToLoad = true;
             } else {
                 vrcfSerVersion = VRCFURY_SER_VERSION;
+                failedToLoad = false;
             }
         }
         
         public void OnBeforeSerialize() {
-            if (failedToLoad) {
-                throw new SerializationException("Cannot save VRCFury component, VRCFury plugin is out of date");
+        }
+        
+        private static bool ContainsNullsInList(object obj) {
+            if (obj == null) return false;
+            var objType = obj.GetType();
+            if (!objType.FullName.StartsWith("VF")) return false;
+            var fields = objType.GetFields();
+            foreach (var field in fields) {
+                var value = field.GetValue(obj);
+                if (value is IList) {
+                    var list = value as IList;
+                    foreach (var t in list) {
+                        if (t == null) return true;
+                        if (ContainsNullsInList(t)) return true;
+                    }
+                } else {
+                    var type = field.FieldType;
+                    if (type.IsClass) {
+                        if (ContainsNullsInList(value)) return true;
+                    }
+                }
             }
+            return false;
         }
     }
 }

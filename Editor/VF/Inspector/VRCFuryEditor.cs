@@ -18,6 +18,13 @@ public class VRCFuryEditor : Editor {
     public override VisualElement CreateInspectorGUI() {
         var self = (VRCFury)target;
 
+        if (self.failedToLoad) {
+            return VRCFuryEditorUtils.Error(
+                "The VRCFury component failed to load. It's likely that your VRCFury is out of date." +
+                " Please try Tools -> VRCFury -> Update VRCFury. If this doesn't help, let us know on the " +
+                " discord at https://vrcfury.com/discord");
+        }
+
         var container = new VisualElement();
 
         var features = serializedObject.FindProperty("config.features");
@@ -90,23 +97,10 @@ public class VRCFuryEditor : Editor {
     }
 
     private VisualElement CreateOverrideLabel(SerializedProperty prop) {
-        var overrideLabel = new Label("The VRCFury features in this prefab are overridden on this instance. Please revert them! If you apply, it may corrupt data in the changed features.") {
-            style = {
-                backgroundColor = new Color(0.5f, 0, 0),
-                paddingTop = 5,
-                paddingBottom = 5,
-                unityTextAlign = TextAnchor.MiddleCenter,
-                whiteSpace = WhiteSpace.Normal,
-                marginTop = 5,
-                marginLeft = 20,
-                marginRight = 20,
-                display = DisplayStyle.None
-            }
-        };
-        VRCFuryEditorUtils.Padding(overrideLabel, 5);
-        VRCFuryEditorUtils.BorderColor(overrideLabel, Color.black);
-        VRCFuryEditorUtils.BorderRadius(overrideLabel, 5);
-        VRCFuryEditorUtils.Border(overrideLabel, 1);
+        var overrideLabel = VRCFuryEditorUtils.Error(
+            "The VRCFury features in this prefab are overridden on this instance. Please revert them!" +
+            " If you apply, it may corrupt data in the changed features.");
+        overrideLabel.style.display = DisplayStyle.None;
 
         double lastCheck = 0;
         void CheckOverride() {

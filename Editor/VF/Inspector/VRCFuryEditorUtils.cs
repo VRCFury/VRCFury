@@ -406,6 +406,26 @@ public static class VRCFuryEditorUtils {
     public static float NextFloatDown(float input) {
         return NextFloat(input, 1);
     }
+
+    public static VisualElement Error(string message) {
+        var label = new Label(message) {
+            style = {
+                backgroundColor = new Color(0.5f, 0, 0),
+                paddingTop = 5,
+                paddingBottom = 5,
+                unityTextAlign = TextAnchor.MiddleCenter,
+                whiteSpace = WhiteSpace.Normal,
+                marginTop = 5,
+                marginLeft = 20,
+                marginRight = 20
+            }
+        };
+        Padding(label, 5);
+        BorderColor(label, Color.black);
+        BorderRadius(label, 5);
+        Border(label, 1);
+        return label;
+    }
 }
 
 }
