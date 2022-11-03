@@ -22,8 +22,11 @@ public static class FeatureFinder {
                     if (type.IsAbstract) continue;
                     if (!typeof(FeatureBuilder).IsAssignableFrom(type)) continue;
                     try {
-                        var modelType = type.GetField("model").FieldType;
-                        allFeatures.Add(modelType, type);
+                        var modelField = type.GetField("model");
+                        if (modelField != null) {
+                            var modelType = type.GetField("model").FieldType;
+                            allFeatures.Add(modelType, type);
+                        }
                     } catch(Exception e) { 
                         Debug.LogException(new Exception("VRCFury failed to load feature " + type.Name, e));
                     }
