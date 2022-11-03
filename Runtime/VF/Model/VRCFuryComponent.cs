@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
+using UnityEditor;
 using UnityEngine;
 
 namespace VF.Model {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver {
-        private static readonly int VRCFURY_SER_VERSION = 7; 
+        private static readonly int VRCFURY_SER_VERSION = 7;
+        private static readonly HashSet<string> attemptedReload = new HashSet<string>();
 
         public int vrcfSerVersion;
         [NonSerialized]
@@ -18,6 +21,16 @@ namespace VF.Model {
         public void OnAfterDeserialize() {
             if (IsBroken()) {
                 failedToLoad = true;
+#if UNITY_EDITOR
+                EditorApplication.delayCall += () => {
+                    var path = AssetDatabase.GetAssetPath(this);
+                    if (!string.IsNullOrWhiteSpace(path) && !attemptedReload.Contains(path))) {
+                        Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
+                        attemptedReload.Add(path);
+                        AssetDatabase.ImportAsset(path);
+                    }
+                };
+#endif
             } else {
                 vrcfSerVersion = VRCFURY_SER_VERSION;
                 failedToLoad = false;
