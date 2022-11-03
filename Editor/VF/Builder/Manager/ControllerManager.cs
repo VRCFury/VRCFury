@@ -28,7 +28,7 @@ namespace VF.Builder {
             return ctrl;
         }
 
-        public VRCAvatarDescriptor.AnimLayerType GetType() {
+        public new VRCAvatarDescriptor.AnimLayerType GetType() {
             return type;
         }
 
