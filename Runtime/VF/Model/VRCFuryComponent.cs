@@ -24,7 +24,7 @@ namespace VF.Model {
 #if UNITY_EDITOR
                 EditorApplication.delayCall += () => {
                     var path = AssetDatabase.GetAssetPath(this);
-                    if (!string.IsNullOrWhiteSpace(path) && !attemptedReload.Contains(path))) {
+                    if (!string.IsNullOrWhiteSpace(path) && !attemptedReload.Contains(path)) {
                         Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
                         attemptedReload.Add(path);
                         AssetDatabase.ImportAsset(path);
