@@ -63,7 +63,7 @@ namespace VF.Feature {
 
             foreach (var c in model.controllers) {
                 var type = c.type;
-                var source = (AnimatorController)c.controller;
+                var source = c.controller as AnimatorController;
                 if (source == null) continue;
                 
                 AnimationClip RewriteClip(AnimationClip from) {
