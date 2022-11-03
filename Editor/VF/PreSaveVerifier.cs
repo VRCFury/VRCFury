@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using VF.Model;
 
 namespace VF {
@@ -10,13 +11,24 @@ namespace VF {
         static string[] OnWillSaveAssets(string[] paths) {
             var blocked = new List<string>();
             foreach (var path in paths) {
-                var vrcfuryAssets = AssetDatabase.LoadAllAssetsAtPath(path)
-                    .Select(asset => asset as VRCFuryComponent)
-                    .Where(asset => asset != null);
-                foreach (var asset in vrcfuryAssets) {
-                    if (asset.IsBroken()) {
-                        blocked.Add(path);
+                var isBroken = false;
+                if (typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path)) {
+                    for (int n = 0; n < SceneManager.sceneCount; ++n) {
+                        var scene = SceneManager.GetSceneAt(n);
+                        if (scene.path == path) {
+                            isBroken = scene.GetRootGameObjects()
+                                .SelectMany(obj => obj.GetComponentsInChildren<VRCFuryComponent>())
+                                .Any(vrcf => vrcf.IsBroken());
+                        }
                     }
+                } else {
+                    isBroken = AssetDatabase.LoadAllAssetsAtPath(path)
+                        .Select(asset => asset as VRCFuryComponent)
+                        .Where(asset => asset != null)
+                        .Any(asset => asset.IsBroken());
+                }
+                if (isBroken) {
+                    blocked.Add(path);
                 }
             }
 
