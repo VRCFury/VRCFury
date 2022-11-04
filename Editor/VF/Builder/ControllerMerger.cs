@@ -283,7 +283,7 @@ public class ControllerMerger {
 
     private void CloneTransitions(AnimatorStateMachine from, Dictionary<Object, Object> transitionTargets) {
         var to = (AnimatorStateMachine)transitionTargets[from];
-        foreach (var oldTrans in from.anyStateTransitions.Reverse()) {
+        foreach (var oldTrans in from.anyStateTransitions) {
             CloneTransition(
                 oldTrans,
                 transitionTargets,
@@ -291,7 +291,7 @@ public class ControllerMerger {
                 to.AddAnyStateTransition
             );
         }
-        foreach (var oldTrans in from.entryTransitions.Reverse()) {
+        foreach (var oldTrans in from.entryTransitions) {
             CloneTransition(
                 oldTrans,
                 transitionTargets,
@@ -301,7 +301,7 @@ public class ControllerMerger {
         }
         foreach (var fromState in from.states) {
             var toState = (AnimatorState)transitionTargets[fromState.state];
-            foreach (var oldTrans in fromState.state.transitions.Reverse()) {
+            foreach (var oldTrans in fromState.state.transitions) {
                 if (oldTrans.isExit) {
                     CloneTransition(
                         oldTrans,
