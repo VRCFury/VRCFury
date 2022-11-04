@@ -34,24 +34,31 @@ namespace VF.Inspector {
 
             var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
 
-            var c = Handles.color;
-            try {
-                Handles.color = Color.red;
-                var size = GetCapsuleSize(scr);
-                var length = size.Item1;
-                var radius = size.Item2;
-                OGBPenetratorEditor.DrawCapsule(
-                    scr.gameObject,
-                    forward * -(length / 2),
-                    tightRot,
-                    length,
-                    radius
-                );
-                Handles.Label(scr.transform.position, "Entrance");
-                Handles.Label(scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x), "Inside");
-            } finally {
-                Handles.color = c;
-            }
+            var size = GetCapsuleSize(scr);
+            var length = size.Item1;
+            var radius = size.Item2;
+            OGBPenetratorEditor.DrawCapsule(
+                scr.gameObject,
+                forward * -(length / 2),
+                tightRot,
+                length,
+                radius
+            );
+            VRCFuryGizmoUtils.DrawSphere(
+                scr.transform.position,
+                0.03f,
+                Color.green
+            );
+            VRCFuryGizmoUtils.DrawArrow(
+                scr.transform.position,
+                scr.transform.TransformPoint(forward * -0.1f / scr.transform.lossyScale.x),
+                Color.green
+            );
+            VRCFuryGizmoUtils.DrawText(
+                scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x),
+                "Orifice",
+                Color.white
+            );
         }
         
         public static void Bake(OGBOrifice orifice, List<string> usedNames = null, bool onlySenders = false) {

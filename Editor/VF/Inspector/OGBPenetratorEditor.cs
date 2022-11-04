@@ -34,14 +34,8 @@ namespace VF.Inspector {
 
             var worldPosTip = scr.transform.TransformPoint(forward * worldLength / scr.transform.lossyScale.x);
 
-            var c = Handles.color;
-            try {
-                Handles.color = Color.red;
-                DrawCapsule(scr.gameObject, tightPos, tightRot, worldLength, worldRadius);
-                Handles.Label(worldPosTip, "Tip");
-            } finally {
-                Handles.color = c;
-            }
+            DrawCapsule(scr.gameObject, tightPos, tightRot, worldLength, worldRadius);
+            VRCFuryGizmoUtils.DrawText(worldPosTip, "Tip", Color.white);
         }
 
         public static void DrawCapsule(
@@ -53,7 +47,7 @@ namespace VF.Inspector {
         ) {
             var worldPos = obj.transform.TransformPoint(localPositionInWorldScale / obj.transform.lossyScale.x);
             var worldRot = obj.transform.rotation * localRotation;
-            HandlesUtil.DrawWireCapsule(worldPos, worldRot, worldLength, worldRadius);
+            VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
         
         public static bool MaterialIsDps(Material mat) {

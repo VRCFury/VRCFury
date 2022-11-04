@@ -165,40 +165,24 @@ public class VRCFuryEditor : Editor {
     [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
     static void DrawGizmo(VRCFury vf, GizmoType gizmoType) {
         foreach (var g in vf.config.features.Select(f => f as Gizmo).Where(f => f != null)) {
-            var c = Gizmos.color;
-            Gizmos.color = Color.red;
-            try {
-                var q = Quaternion.Euler(g.rotation);
-                Vector3 getPoint(Vector3 input) {
-                    return vf.transform.TransformPoint(q * input);
-                }
+            var q = Quaternion.Euler(g.rotation);
+            Vector3 getPoint(Vector3 input) {
+                return vf.transform.TransformPoint(q * input);
+            }
 
-                var worldPos = getPoint(Vector3.zero);
+            var worldPos = getPoint(Vector3.zero);
 
-                if (g.arrowLength > 0) {
-                    var tip = getPoint(new Vector3(0, 0, g.arrowLength));
-                    var left = getPoint(new Vector3(g.arrowLength*0.1f, 0, g.arrowLength*0.9f));
-                    var right = getPoint(new Vector3(g.arrowLength*-0.1f, 0, g.arrowLength*0.9f));
-                    var up = getPoint(new Vector3(0, g.arrowLength*0.1f, g.arrowLength*0.9f));
-                    var down = getPoint(new Vector3(0, g.arrowLength*-0.1f, g.arrowLength*0.9f));
-                    Gizmos.DrawLine(worldPos, tip);
-                    Gizmos.DrawLine(tip, left);
-                    Gizmos.DrawLine(tip, right);
-                    Gizmos.DrawLine(tip, up);
-                    Gizmos.DrawLine(tip, down);
-                }
+            if (g.arrowLength > 0) {
+                var tip = getPoint(new Vector3(0, 0, g.arrowLength));
+                VRCFuryGizmoUtils.DrawArrow(worldPos, tip, Color.red);
+            }
 
-                if (!string.IsNullOrWhiteSpace(g.text)) {
-                    var centeredStyle = new GUIStyle(GUI.skin.label);
-                    centeredStyle.alignment = TextAnchor.UpperCenter;
-                    Handles.Label(worldPos, g.text, centeredStyle);
-                }
+            if (!string.IsNullOrWhiteSpace(g.text)) {
+                VRCFuryGizmoUtils.DrawText(worldPos, g.text, Color.white);
+            }
 
-                if (g.sphereRadius > 0) {
-                    Gizmos.DrawWireSphere(worldPos, g.sphereRadius * vf.transform.lossyScale.x);
-                }
-            } finally {
-                Gizmos.color = c;
+            if (g.sphereRadius > 0) {
+                VRCFuryGizmoUtils.DrawSphere(worldPos, g.sphereRadius * vf.transform.lossyScale.x, Color.red);
             }
         }
     }
