@@ -69,6 +69,7 @@ namespace VF.Model.Feature {
         public bool ignoreSaved;
         public string toggleParam;
         public GameObject rootObjOverride;
+        public bool rootBindingsApplyToAvatar;
         
         public int version;
         

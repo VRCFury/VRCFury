@@ -94,7 +94,13 @@ public class ClipBuilder {
         BlendShape(clip, skin, blendShape, OneFrame(value));
     }
 
-    public void CopyWithAdjustedPrefixes(AnimationClip clip, AnimationClip copy, GameObject oldRoot, List<string> removePrefixes = null) {
+    public void CopyWithAdjustedPrefixes(
+        AnimationClip clip,
+        AnimationClip copy,
+        GameObject oldRoot,
+        List<string> removePrefixes = null,
+        bool rootBindingsApplyToAvatar = false
+    ) {
         var prefix = oldRoot == baseObject ? "" : GetPath(oldRoot);
 
         string rewritePath(string path) {
@@ -107,6 +113,9 @@ public class ClipBuilder {
                     }
                 }
             }
+            if (path == "" && rootBindingsApplyToAvatar) {
+                return "";
+            }
             path = Join(prefix, path);
             return path;
         }
@@ -117,8 +126,14 @@ public class ClipBuilder {
             bindingFromProp.path = rewritePath(bindingFromProp.path);
             var curve = AnimationUtility.GetEditorCurve(clip, bindingFromAvatar);
             var existsOnProp = AnimationUtility.GetFloatValue(baseObject, bindingFromProp, out _);
-            var existsOnAvatar = AnimationUtility.GetFloatValue(baseObject, bindingFromAvatar, out _);
+            var existsOnAvatar = AnimationUtility.GetFloatValue(baseObject, bindingFromAvatar, out var avatarValue);
             var useAvatarBinding = existsOnAvatar && !existsOnProp;
+            if (bindingFromProp.path == "" && bindingFromProp.propertyName.StartsWith("m_LocalScale.")) {
+                curve.keys = curve.keys.Select(k => {
+                    k.value *= avatarValue;
+                    return k;
+                }).ToArray();
+            }
             AnimationUtility.SetEditorCurve(copy, useAvatarBinding ? bindingFromAvatar : bindingFromProp, curve);
         }
         var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);

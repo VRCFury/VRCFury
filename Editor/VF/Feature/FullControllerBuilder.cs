@@ -76,7 +76,7 @@ namespace VF.Feature {
                         rewritten = from;
                     } else {
                         rewritten = manager.GetClipStorage().NewClip(from.name);
-                        clipBuilder.CopyWithAdjustedPrefixes(from, rewritten, baseObject, model.removePrefixes);
+                        clipBuilder.CopyWithAdjustedPrefixes(from, rewritten, baseObject, model.removePrefixes, model.rootBindingsApplyToAvatar);
                     }
 
                     rewrittenClips[from] = rewritten;
@@ -218,9 +218,10 @@ namespace VF.Feature {
                 value = false
             };
             
-            adv.Add(new PropertyField(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
-            adv.Add(new PropertyField(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
-            adv.Add(new PropertyField(prop.FindPropertyRelative("rootObjOverride"), "Root object override"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "Root object override"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameter name for prop toggling. If set, this entire prop will be de-activated whenever" +
                 " this boolean parameter within the Full Controller is false."));

@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 1227330909385755637}
   - component: {fileID: 716628376176490069}
   m_Layer: 0
-  m_Name: VRCFury GogoLoco All
+  m_Name: GogoLoco All (VRCFury)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -76,8 +76,11 @@ MonoBehaviour:
         globalParams: []
         removePrefixes: []
         allNonsyncedAreGlobal: 0
+        ignoreSaved: 0
+        toggleParam: 
+        rootObjOverride: {fileID: 0}
+        rootBindingsApplyToAvatar: 1
         version: 1
-        disableClipRewriting: 0
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
