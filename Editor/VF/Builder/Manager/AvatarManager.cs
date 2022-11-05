@@ -50,7 +50,7 @@ namespace VF.Builder {
                     ctrl = AnimatorController.CreateAnimatorControllerAtPath(newPath);
                     if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                         var mask = new AvatarMask();
-                        foreach (var bodyPart in (AvatarMaskBodyPart[])Enum.GetValues(typeof(AvatarMaskBodyPart))) {
+                        for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                             mask.SetHumanoidBodyPartActive(bodyPart, false);
                         }
                         VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");

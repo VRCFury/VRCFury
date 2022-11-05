@@ -76,7 +76,14 @@ namespace VF.Feature {
                         rewritten = from;
                     } else {
                         rewritten = manager.GetClipStorage().NewClip(from.name);
-                        clipBuilder.CopyWithAdjustedPrefixes(from, rewritten, baseObject, model.removePrefixes, model.rootBindingsApplyToAvatar);
+                        clipBuilder.CopyWithAdjustedPrefixes(
+                            from,
+                            rewritten,
+                            baseObject,
+                            model.removePrefixes,
+                            model.rootBindingsApplyToAvatar,
+                            rewriteParam
+                        );
                     }
 
                     rewrittenClips[from] = rewritten;
@@ -98,7 +105,7 @@ namespace VF.Feature {
                     } else {
                         var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "gestureMask", "mask");
                         var copy = VRCFuryAssetDatabase.CopyAsset(targetMask, newPath);
-                        foreach (var bodyPart in (AvatarMaskBodyPart[])Enum.GetValues(typeof(AvatarMaskBodyPart))) {
+                        for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                             if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
                                 copy.SetHumanoidBodyPartActive(bodyPart, true);
                         }

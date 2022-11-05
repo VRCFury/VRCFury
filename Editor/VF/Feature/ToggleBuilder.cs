@@ -105,7 +105,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var otherTags = other.GetExclusiveTags();
             var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
             if (conflictsWithOther) {
-                onState.Drives(other.GetParam(), false);
+                var otherParam = other.GetParam();
+                if (otherParam != null) {
+                    onState.Drives(other.GetParam(), false);
+                }
             }
         }
     }
