@@ -132,7 +132,7 @@ public class ClipBuilder {
             var bindingToUse = bindingFromProp;
             if (bindingFromAvatar.path == "" && bindingFromAvatar.type == typeof(Animator)) {
                 bindingToUse = bindingFromAvatar;
-                if (rewriteParam != null) {
+                if (rewriteParam != null && !existsOnAvatar) {
                     bindingToUse.propertyName = rewriteParam(bindingToUse.propertyName);
                 }
             } else if (bindingFromProp.path == "" && bindingFromProp.propertyName.StartsWith("m_LocalScale.")) {
