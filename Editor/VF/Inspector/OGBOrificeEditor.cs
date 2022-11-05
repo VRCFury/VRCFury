@@ -55,9 +55,14 @@ namespace VF.Inspector {
                 Color.green
             );
             VRCFuryGizmoUtils.DrawText(
+                scr.transform.position,
+                "Entrance",
+                Color.green
+            );
+            VRCFuryGizmoUtils.DrawText(
                 scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x),
-                "Orifice",
-                Color.white
+                "Hand\nTouch\nZone",
+                Color.red
             );
         }
         
