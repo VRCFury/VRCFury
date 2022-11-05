@@ -17,9 +17,10 @@ namespace VF.Inspector {
             
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name Override"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addLight"), "Add DPS Light"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Depth Override in meters (note, this only affects hand touches, penetrators do not use orifice depth)"));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(serializedObject.FindProperty("length")));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableHandTouchZone"), "Enable hand touch zone?"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
+            container.Add(VRCFuryEditorUtils.PropWithoutLabel(serializedObject.FindProperty("length")));
 
             return container;
         }
@@ -34,16 +35,24 @@ namespace VF.Inspector {
 
             var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
 
-            var size = GetCapsuleSize(scr);
-            var length = size.Item1;
-            var radius = size.Item2;
-            OGBPenetratorEditor.DrawCapsule(
-                scr.gameObject,
-                forward * -(length / 2),
-                tightRot,
-                length,
-                radius
-            );
+            var handTouchZoneSize = GetHandTouchZoneSize(scr);
+            if (handTouchZoneSize != null) {
+                var length = handTouchZoneSize.Item1;
+                var radius = handTouchZoneSize.Item2;
+                OGBPenetratorEditor.DrawCapsule(
+                    scr.gameObject,
+                    forward * -(length / 2),
+                    tightRot,
+                    length,
+                    radius
+                );
+                VRCFuryGizmoUtils.DrawText(
+                    scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x),
+                    "Hand\nTouch\nZone",
+                    Color.red
+                );
+            }
+
             VRCFuryGizmoUtils.DrawSphere(
                 scr.transform.position,
                 0.03f,
@@ -58,11 +67,6 @@ namespace VF.Inspector {
                 scr.transform.position,
                 "Entrance",
                 Color.green
-            );
-            VRCFuryGizmoUtils.DrawText(
-                scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x),
-                "Hand\nTouch\nZone",
-                Color.red
             );
         }
         
@@ -102,20 +106,24 @@ namespace VF.Inspector {
                 }
             } else {
                 // Receivers
-                var size = GetCapsuleSize(orifice);
-                var oscDepth = size.Item1;
-                var closeRadius = size.Item2;
-                var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+                var handTouchZoneSize = GetHandTouchZoneSize(orifice);
+                if (handTouchZoneSize != null) {
+                    var oscDepth = handTouchZoneSize.Item1;
+                    var closeRadius = handTouchZoneSize.Item2;
+                    var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+                    OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
+                    OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                    OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
+                    OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                    // Legacy non-OGB TPS penetrator detection
+                    OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                    OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                }
+
                 var frotRadius = 0.1f;
                 var frotPos = 0.05f;
-                OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
-                OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
@@ -151,7 +159,10 @@ namespace VF.Inspector {
             DestroyImmediate(orifice);
         }
 
-        private static Tuple<float, float> GetCapsuleSize(OGBOrifice orifice) {
+        private static Tuple<float, float> GetHandTouchZoneSize(OGBOrifice orifice) {
+            if (!orifice.enableHandTouchZone) {
+                return null;
+            }
             var length = orifice.length;
             if (length <= 0) length = 0.25f;
             var radius = length / 2.5f;
