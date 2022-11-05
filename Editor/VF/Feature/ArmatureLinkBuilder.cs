@@ -72,7 +72,7 @@ namespace VF.Feature {
                     var newPath = clipBuilder.GetPath(avatarBone);
                     clipMappings.Add(oldPath, newPath);
                 }
-                foreach (var skin in featureBaseObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                     if (boneMapping.TryGetValue(skin.rootBone, out var newRootBone)) {
                         skin.rootBone = newRootBone;
                     }

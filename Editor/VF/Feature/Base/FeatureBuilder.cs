@@ -118,7 +118,7 @@ namespace VF.Feature.Base {
                         break;
                     case BlendShapeAction blendShape:
                         var foundOne = false;
-                        foreach (var skin in GetAllSkins(featureBaseObject)) {
+                        foreach (var skin in GetAllSkins(avatarObject)) {
                             var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
                             if (blendShapeIndex < 0) continue;
                             foundOne = true;
