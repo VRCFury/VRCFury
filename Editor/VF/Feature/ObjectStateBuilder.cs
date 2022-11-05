@@ -10,7 +10,7 @@ namespace VF.Feature {
         [FeatureBuilderAction((int)FeatureOrder.ForceObjectState)]
         public void Apply() {
             foreach (var state in model.states) {
-                if (state.obj == null) return;
+                if (state.obj == null) continue;
                 switch (state.action) {
                     case ObjectState.Action.DELETE:
                         Object.DestroyImmediate(state.obj);
