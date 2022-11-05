@@ -73,7 +73,7 @@ MonoBehaviour:
         ignoreSaved: 0
         toggleParam: 
         rootObjOverride: {fileID: 0}
-        rootBindingsApplyToAvatar: 0
+        rootBindingsApplyToAvatar: 1
         version: 1
         controller: {fileID: 0}
         menu: {fileID: 0}
