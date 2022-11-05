@@ -98,6 +98,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction((int)FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
+        if (onState == null) return;
+
         var myTags = GetExclusiveTags();
         foreach (var other in allBuildersInRun
                      .OfType<ToggleBuilder>()
