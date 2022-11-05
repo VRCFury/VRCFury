@@ -37,7 +37,7 @@ namespace VF.Model.Feature {
         public State outState;
         
         public void OnAfterDeserialize() {
-            if (obj != null) {
+            if (obj) {
                 inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
                 outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
                 obj = null;
@@ -100,15 +100,15 @@ namespace VF.Model.Feature {
         }
 
         public void OnAfterDeserialize() {
-            if (controller != null) {
+            if (controller) {
                 controllers.Add(new ControllerEntry { controller = controller });
                 controller = null;
             }
-            if (menu != null) {
+            if (menu) {
                 menus.Add(new MenuEntry { menu = menu, prefix = submenu });
                 menu = null;
             }
-            if (parameters != null) {
+            if (parameters) {
                 prms.Add(new ParamsEntry { parameters = parameters });
                 parameters = null;
             }
