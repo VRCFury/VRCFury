@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -11,47 +12,14 @@ namespace VF.Feature {
 public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
     [FeatureBuilderAction]
     public void Apply() {
-        var fx = GetFx();
-        var paramScale = fx.NewFloat("Scale", synced: true, def: 0.5f, saved: true);
-        var scaleClip = manager.GetClipStorage().NewClip("Scale");
-        var baseScale = avatarObject.transform.localScale.x;
-        clipBuilder.Scale(scaleClip, avatarObject, ClipBuilder.FromFrames(
-            new Keyframe(0, baseScale * 0.1f),
-            new Keyframe(2, baseScale * 1),
-            new Keyframe(3, baseScale * 2),
-            new Keyframe(4, baseScale * 10)
-        ));
-
-        var layer = fx.NewLayer("Scale");
-        var main = layer.NewState("Scale").WithAnimation(scaleClip).MotionTime(paramScale);
-
-        var menu = manager.GetMenu();
-        menu.NewMenuSlider("Scale/Adjust", paramScale);
-        menu.NewMenuToggle("Scale/40%", paramScale, 0.20f);
-        menu.NewMenuToggle("Scale/60%", paramScale, 0.27f);
-        menu.NewMenuToggle("Scale/80%", paramScale, 0.35f);
-        menu.NewMenuToggle("Scale/100%", paramScale, 0.50f);
-        menu.NewMenuToggle("Scale/125%", paramScale, 0.58f);
-        menu.NewMenuToggle("Scale/150%", paramScale, 0.62f);
-        menu.NewMenuToggle("Scale/200%", paramScale, 0.75f);
-        
-    }
-
-    public override string GetEditorTitle() {
-        return "Avatar Scale Slider";
     }
     
     public override VisualElement CreateEditor(SerializedProperty prop) {
-        var content = new VisualElement();
-        content.Add(new Label() {
-            text = "This feature will add a slider to your menu which will adjust your avatar's size." +
-                   " NOTE: This feature no longer works in the latest release of vrchat.",
-            style = {
-                whiteSpace = WhiteSpace.Normal
-            }
-        });
-        content.Add(new PropertyField(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
-        return content;
+        return VRCFuryEditorUtils.Error(
+            "This Avatar Scale feature is no longer available due to VRChat sdk changes. " +
+                   "Please see the VRCFury/Prefabs/ThatFatKidsStuff/README.md" +
+                   " for instructions on an alternative avatar scale implementation."
+            );
     }
 
     public override bool AvailableOnProps() {
