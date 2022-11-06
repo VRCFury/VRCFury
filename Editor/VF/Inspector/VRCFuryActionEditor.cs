@@ -11,6 +11,38 @@ public class VRCFuryActionDrawer : PropertyDrawer {
     }
 
     public static VisualElement Render(SerializedProperty prop, bool singleLine = false) {
+        
+        if (prop.FindPropertyRelative("mat") != null) {
+            var row = new VisualElement {
+                style = {
+                    flexDirection = FlexDirection.Row,
+                    alignItems = Align.FlexStart
+                }
+            };
+
+            var label = new Label("Material") {
+                style = {
+                    flexGrow = 0,
+                    flexBasis = 100
+                }
+            };
+            row.Add(label);
+
+            var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("obj"));
+            propField.style.flexGrow = 1;
+            row.Add(propField);
+            
+            var propField2 = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("materialIndex"));
+            propField2.style.flexGrow = 0;
+            propField2.style.flexBasis = 50;
+            row.Add(propField2);
+            
+            var propField3 = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("mat"));
+            propField3.style.flexGrow = 1;
+            row.Add(propField3);
+
+            return row;
+        }
 
         if (prop.FindPropertyRelative("frame") != null) {
             var row = new VisualElement {
@@ -20,15 +52,13 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 }
             };
 
-            if (!singleLine) {
-                var label = new Label("Flipbook Frame") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-            }
+            var label = new Label("Flipbook Frame") {
+                style = {
+                    flexGrow = 0,
+                    flexBasis = 100
+                }
+            };
+            row.Add(label);
 
             var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("obj"));
             propField.style.flexGrow = 1;
@@ -50,15 +80,13 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 }
             };
 
-            if (!singleLine) {
-                var label = new Label("Object Scale") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-            }
+            var label = new Label("Scale") {
+                style = {
+                    flexGrow = 0,
+                    flexBasis = 100
+                }
+            };
+            row.Add(label);
 
             var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("obj"));
             propField.style.flexGrow = 1;
@@ -73,7 +101,6 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         }
 
         if (prop.FindPropertyRelative("obj") != null) {
-            if (singleLine) return null;
             var row = new VisualElement {
                 style = {
                     flexDirection = FlexDirection.Row,
@@ -97,7 +124,6 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         }
 
         if (prop.FindPropertyRelative("blendShape") != null) {
-            if (singleLine) return null;
             var row = new VisualElement {
                 style = {
                     flexDirection = FlexDirection.Row,
@@ -134,16 +160,14 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 }
             };
 
-            if (!singleLine) {
-                var label = new Label {
-                    text = "Animation Clip",
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-            }
+            var label = new Label {
+                text = "Animation Clip",
+                style = {
+                    flexGrow = 0,
+                    flexBasis = 100
+                }
+            };
+            row.Add(label);
 
             var propField = VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("clip"));
             propField.style.flexGrow = 1;

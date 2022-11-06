@@ -139,6 +139,17 @@ namespace VF.Feature.Base {
                                 scaleAction.obj.transform.localScale.z * scaleAction.scale);
                         }
                         break;
+                    case MaterialAction matAction:
+                        if (matAction.obj == null) {
+                            Debug.LogWarning("Missing object in action: " + name);
+                            break;
+                        }
+                        if (matAction.mat == null) {
+                            Debug.LogWarning("Missing material in action: " + name);
+                            break;
+                        }
+                        clipBuilder.Material(clip, matAction.obj, matAction.materialIndex, matAction.mat);
+                        break;
                 }
             }
             return clip;

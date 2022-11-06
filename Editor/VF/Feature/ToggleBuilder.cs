@@ -116,7 +116,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     public override string GetEditorTitle() {
-        return "Toggleable Prop";
+        return "Toggle";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {

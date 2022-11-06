@@ -32,7 +32,7 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
 
-            content.Add(new Label("This feature will activate, deactivate, or delete the specified objects during upload."));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will activate, deactivate, or delete the specified objects during upload."));
 
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("states"), (i, el) => {
                 var c = new VisualElement();

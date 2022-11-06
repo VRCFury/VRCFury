@@ -25,6 +25,13 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
+    public class MaterialAction : Action {
+        public GameObject obj;
+        public int materialIndex = 0;
+        public Material mat = null;
+    }
+    
+    [Serializable]
     public class AnimationClipAction : Action {
         public AnimationClip clip;
     }

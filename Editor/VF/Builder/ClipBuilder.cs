@@ -94,6 +94,20 @@ public class ClipBuilder {
         BlendShape(clip, skin, blendShape, OneFrame(value));
     }
 
+    public void Material(AnimationClip clip, GameObject obj, int matSlot, Material mat) {
+        var binding = new EditorCurveBinding {
+            path = GetPath(obj),
+            propertyName = "m_Materials.Array.data[" + matSlot + "]",
+            type = typeof(SkinnedMeshRenderer)
+        };
+        AnimationUtility.SetObjectReferenceCurve(clip, binding, new ObjectReferenceKeyframe[] {
+            new ObjectReferenceKeyframe() {
+                time = 0,
+                value = mat
+            }
+        });
+    }
+
     public void CopyWithAdjustedPrefixes(
         AnimationClip clip,
         AnimationClip copy,

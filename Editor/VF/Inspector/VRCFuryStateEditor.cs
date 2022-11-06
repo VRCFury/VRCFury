@@ -25,8 +25,10 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new AnimationClipAction()); });
             menu.AddItem(new GUIContent("Flipbook Frame"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FlipbookAction()); });
-            menu.AddItem(new GUIContent("Object Scale"), false,
+            menu.AddItem(new GUIContent("Scale"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ScaleAction()); });
+            menu.AddItem(new GUIContent("Material"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialAction()); });
             menu.ShowAsContext();
         }
 
