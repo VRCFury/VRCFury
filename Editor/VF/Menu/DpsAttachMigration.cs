@@ -77,6 +77,7 @@ namespace VF.Menu {
                         ogb.name = name;
                         ogb.addMenuItem = true;
                         obj.name = fullName;
+                        ogb.enableHandTouchZone = name.ToLower().Contains("vagina") || name.ToLower().Contains("anus");
                     }
                 }
             }
