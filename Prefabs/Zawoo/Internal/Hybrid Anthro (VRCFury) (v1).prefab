@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 3344568644173286834}
   - component: {fileID: 3344568644173286833}
   m_Layer: 0
-  m_Name: Hybrid Anthro (VRCFury)
+  m_Name: VRCFury Hybrid Anthro
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -72,8 +72,7 @@ MonoBehaviour:
         ignoreSaved: 1
         toggleParam: peenToggle
         rootObjOverride: {fileID: 6497031174005092706}
-        rootBindingsApplyToAvatar: 0
-        version: 2
+        version: 1
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
@@ -100,12 +99,12 @@ PrefabInstance:
     - target: {fileID: 480237740167935576, guid: 5e66ac2b6b9c05c4492ec497f3274a64,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.0071
+      value: 0.847
       objectReference: {fileID: 0}
     - target: {fileID: 480237740167935576, guid: 5e66ac2b6b9c05c4492ec497f3274a64,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.0675
+      value: 0.165
       objectReference: {fileID: 0}
     - target: {fileID: 480237740167935576, guid: 5e66ac2b6b9c05c4492ec497f3274a64,
         type: 3}

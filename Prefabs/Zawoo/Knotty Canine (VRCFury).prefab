@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 3344568644173286834}
   - component: {fileID: 3344568644173286833}
   m_Layer: 0
-  m_Name: New Knotty
+  m_Name: Knotty Canine (VRCFury)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -72,7 +72,8 @@ MonoBehaviour:
         ignoreSaved: 1
         toggleParam: caninePeenToggle
         rootObjOverride: {fileID: 7889783702869647999}
-        version: 1
+        rootBindingsApplyToAvatar: 0
+        version: 2
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
@@ -104,12 +105,12 @@ PrefabInstance:
     - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.831
+      value: -0.0216
       objectReference: {fileID: 0}
     - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.1221
+      value: 0.028
       objectReference: {fileID: 0}
     - target: {fileID: 8455849325118294506, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
         type: 3}
