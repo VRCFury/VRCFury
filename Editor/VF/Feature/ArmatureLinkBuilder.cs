@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -126,27 +127,42 @@ namespace VF.Feature {
 
         [FeatureBuilderAction((int)FeatureOrder.ArmatureLinkBuilderFixAnimations)]
         public void FixAnimations() {
-            foreach (var layer in GetFx().GetManagedLayers()) {
-                AnimatorIterator.ForEachClip(layer, clip => {
-                    foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                        var newPath = RewriteClipPath(binding.path);
-                        if (newPath != null) {
-                            var b = binding;
-                            b.path = newPath;
-                            AnimationUtility.SetEditorCurve(clip, b, AnimationUtility.GetEditorCurve(clip, binding));
-                            AnimationUtility.SetEditorCurve(clip, binding, null);
+            foreach (var controller in manager.GetAllTouchedControllers()) {
+                for (var layerId = 0; layerId < controller.GetRaw().layers.Length; layerId++) {
+                    var layer = controller.GetRaw().layers[layerId];
+                    AnimatorIterator.ForEachClip(layer, clip => {
+                        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+                            var newPath = RewriteClipPath(binding.path);
+                            if (newPath != null) {
+                                var b = binding;
+                                b.path = newPath;
+                                AnimationUtility.SetEditorCurve(clip, b,
+                                    AnimationUtility.GetEditorCurve(clip, binding));
+                                AnimationUtility.SetEditorCurve(clip, binding, null);
+                            }
                         }
-                    }
-                    foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                        var newPath = RewriteClipPath(binding.path);
-                        if (newPath != null) {
-                            var b = binding;
-                            b.path = newPath;
-                            AnimationUtility.SetObjectReferenceCurve(clip, b, AnimationUtility.GetObjectReferenceCurve(clip, binding));
-                            AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
+
+                        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                            var newPath = RewriteClipPath(binding.path);
+                            if (newPath != null) {
+                                var b = binding;
+                                b.path = newPath;
+                                AnimationUtility.SetObjectReferenceCurve(clip, b,
+                                    AnimationUtility.GetObjectReferenceCurve(clip, binding));
+                                AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
+                            }
                         }
-                    }
-                });
+                    });
+                    controller.ModifyMask(layerId, mask => {
+                        for (var i = 0; i < mask.transformCount; i++) {
+                            var oldPath = mask.GetTransformPath(i);
+                            var newPath = RewriteClipPath(oldPath);
+                            if (oldPath != newPath) {
+                                mask.SetTransformPath(i, newPath);
+                            }
+                        }
+                    });
+                }
             }
         }
 

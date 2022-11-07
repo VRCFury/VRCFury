@@ -43,23 +43,23 @@ namespace VF.Builder {
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             if (!_controllers.TryGetValue(type, out var output)) {
-                var origFx = VRCAvatarUtils.GetAvatarController(avatar, type);
+                var existingController = VRCAvatarUtils.GetAvatarController(avatar, type);
                 var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "VRCFury " + type + " for " + avatarObject.name, "controller");
                 AnimatorController ctrl;
-                if (origFx == null) {
+                if (existingController == null) {
                     ctrl = AnimatorController.CreateAnimatorControllerAtPath(newPath);
-                    if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                        var mask = new AvatarMask();
-                        for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                            mask.SetHumanoidBodyPartActive(bodyPart, false);
-                        }
-                        VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
-                        SetBaseMask(ctrl, mask);
-                    }
                 } else {
-                    ctrl = VRCFuryAssetDatabase.CopyAsset(origFx, newPath);
+                    ctrl = VRCFuryAssetDatabase.CopyAsset(existingController, newPath);
                 }
-                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider);
+                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, tmpDir);
+                if (existingController == null && type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                    var mask = new AvatarMask();
+                    for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                        mask.SetHumanoidBodyPartActive(bodyPart, false);
+                    }
+                    VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
+                    output.SetMask(0, mask);
+                }
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
             }
@@ -170,16 +170,6 @@ namespace VF.Builder {
                 }
             }
             EditorUtility.SetDirty(avatar);
-        }
-
-        public static AvatarMask GetBaseMask(AnimatorController ctrl) {
-            return ctrl.layers[0]?.avatarMask;
-        }
-        public static void SetBaseMask(AnimatorController ctrl, AvatarMask mask) {
-            var layers = ctrl.layers;
-            layers[0].avatarMask = mask;
-            ctrl.layers = layers;
-            EditorUtility.SetDirty(ctrl);
         }
     }
 }

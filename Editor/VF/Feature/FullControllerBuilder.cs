@@ -95,29 +95,22 @@ namespace VF.Feature {
                 }
 
                 var targetController = manager.GetController(type);
-                if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && source.layers.Length > 0 && targetController.GetRaw().layers.Length > 0) {
-                    var sourceMask = AvatarManager.GetBaseMask(source);
-                    var targetMask = AvatarManager.GetBaseMask(targetController.GetRaw());
-                    if (targetMask == null) {
-                        AvatarManager.SetBaseMask(targetController.GetRaw(), sourceMask);
-                    } else if (sourceMask == null) {
-                        // oh well?
-                    } else {
-                        var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "gestureMask", "mask");
-                        var copy = VRCFuryAssetDatabase.CopyAsset(targetMask, newPath);
+                if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && source.layers.Length > 0) {
+                    targetController.ModifyMask(0, mask => {
+                        var sourceMask = source.layers[0].avatarMask;
+                        if (sourceMask == null) return;
                         for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                             if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
-                                copy.SetHumanoidBodyPartActive(bodyPart, true);
+                                mask.SetHumanoidBodyPartActive(bodyPart, true);
                         }
                         for (var i = 0; i < sourceMask.transformCount; i++) {
                             if (sourceMask.GetTransformActive(i)) {
-                                copy.transformCount++;
-                                copy.SetTransformPath(targetMask.transformCount-1, sourceMask.GetTransformPath(i));
-                                copy.SetTransformActive(targetMask.transformCount-1, true);
+                                mask.transformCount++;
+                                mask.SetTransformPath(mask.transformCount-1, sourceMask.GetTransformPath(i));
+                                mask.SetTransformActive(mask.transformCount-1, true);
                             }
                         }
-                        AvatarManager.SetBaseMask(targetController.GetRaw(), copy);
-                    }
+                    });
                 }
                 var merger = new ControllerMerger(
                     layerName => targetController.NewLayerName("FC - " + layerName),

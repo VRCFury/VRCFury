@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
+using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -11,17 +13,21 @@ namespace VF.Builder {
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
+        private readonly HashSet<AvatarMask> managedMasks = new HashSet<AvatarMask>();
+        private readonly string tmpDir;
 
         public ControllerManager(
             AnimatorController ctrl,
             Func<ParamManager> paramManager,
             VRCAvatarDescriptor.AnimLayerType type,
-            Func<int> currentFeatureNumProvider
+            Func<int> currentFeatureNumProvider,
+            string tmpDir
         ) {
             this.ctrl = ctrl;
             this.paramManager = paramManager;
             this.type = type;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
+            this.tmpDir = tmpDir;
         }
 
         public AnimatorController GetRaw() {
@@ -129,6 +135,66 @@ namespace VF.Builder {
         }
         public VFABool IsLocal() {
             return NewBool("IsLocal", usePrefix: false);
+        }
+        
+        public void ModifyMask(int layerId, Action<AvatarMask> makeChanges) {
+            var mask = GetMask(layerId);
+            if (mask == null) {
+                return;
+            }
+            
+            if (managedMasks.Contains(mask)) {
+                makeChanges(mask);
+                EditorUtility.SetDirty(mask);
+                return;
+            }
+
+            var copy = CloneMask(mask);
+            makeChanges(copy);
+            if (MasksEqual(mask, copy)) {
+                return;
+            }
+            
+            managedMasks.Add(copy);
+            SetMask(layerId, copy);
+            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "mask");
+        }
+
+        private static AvatarMask CloneMask(AvatarMask mask) {
+            var copy = new AvatarMask();
+            for (AvatarMaskBodyPart index = AvatarMaskBodyPart.Root; index < AvatarMaskBodyPart.LastBodyPart; ++index)
+                copy.SetHumanoidBodyPartActive(index, mask.GetHumanoidBodyPartActive(index));
+            copy.transformCount = mask.transformCount;
+            for (int index = 0; index < mask.transformCount; ++index) {
+                copy.SetTransformPath(index, mask.GetTransformPath(index));
+                copy.SetTransformActive(index, mask.GetTransformActive(index));
+            }
+            return copy;
+        }
+        private static bool MasksEqual(AvatarMask a, AvatarMask b) {
+            for (AvatarMaskBodyPart index = AvatarMaskBodyPart.Root; index < AvatarMaskBodyPart.LastBodyPart; ++index) {
+                if (a.GetHumanoidBodyPartActive(index) != b.GetHumanoidBodyPartActive(index)) {
+                    return false;
+                }
+            }
+            if (a.transformCount != b.transformCount) return false;
+            for (int index = 0; index < a.transformCount; ++index) {
+                if (a.GetTransformPath(index) != b.GetTransformPath(index)) return false;
+                if (a.GetTransformActive(index) != b.GetTransformActive(index)) return false;
+            }
+            return true;
+        }
+        
+        public AvatarMask GetMask(int layerId) {
+            if (layerId < 0 || layerId >= ctrl.layers.Length) return null;
+            return ctrl.layers[layerId].avatarMask;
+        }
+        public void SetMask(int layerId, AvatarMask mask) {
+            if (layerId < 0 || layerId >= ctrl.layers.Length) return;
+            var layers = ctrl.layers;
+            layers[layerId].avatarMask = mask;
+            ctrl.layers = layers;
+            EditorUtility.SetDirty(ctrl);
         }
     }
 }
