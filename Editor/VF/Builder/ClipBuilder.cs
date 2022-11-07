@@ -108,6 +108,14 @@ public class ClipBuilder {
         });
     }
 
+    private HashSet<string> _humanMuscleList;
+    private HashSet<string> GetHumanMuscleList() {
+        if (_humanMuscleList != null) return _humanMuscleList;
+        _humanMuscleList = new HashSet<string>();
+        _humanMuscleList.UnionWith(HumanTrait.MuscleName);
+        return _humanMuscleList;
+    }
+
     public void CopyWithAdjustedPrefixes(
         AnimationClip clip,
         AnimationClip copy,
@@ -140,22 +148,35 @@ public class ClipBuilder {
             var bindingFromProp = bindingFromAvatar;
             bindingFromProp.path = rewritePath(bindingFromProp.path);
             var curve = AnimationUtility.GetEditorCurve(clip, bindingFromAvatar);
-            var existsOnProp = AnimationUtility.GetFloatValue(baseObject, bindingFromProp, out _);
-            var existsOnAvatar = AnimationUtility.GetFloatValue(baseObject, bindingFromAvatar, out var avatarValue);
-
+            
             var bindingToUse = bindingFromProp;
+
             if (bindingFromAvatar.path == "" && bindingFromAvatar.type == typeof(Animator)) {
                 bindingToUse = bindingFromAvatar;
-                if (rewriteParam != null && !existsOnAvatar) {
+                var propName = bindingFromAvatar.propertyName;
+                if (GetHumanMuscleList().Contains(propName)
+                    || propName.EndsWith(" Stretched")
+                    || propName.EndsWith(".Spread")
+                    || propName.EndsWith(".x")
+                    || propName.EndsWith(".y") || propName.EndsWith(".z") || propName.EndsWith(".w")) {
+                    // Use the muscle
+                } else {
+                    Debug.LogWarning("Rewritten prop found: " + bindingToUse.propertyName);
                     bindingToUse.propertyName = rewriteParam(bindingToUse.propertyName);
                 }
-            } else if (bindingFromProp.path == "" && bindingFromProp.propertyName.StartsWith("m_LocalScale.")) {
+            } else if (bindingFromProp.path == ""
+                       && bindingFromProp.type == typeof(Transform)
+                       && bindingFromProp.propertyName.StartsWith("m_LocalScale.")) {
+                var existsOnAvatar = AnimationUtility.GetFloatValue(baseObject, bindingFromAvatar, out var avatarValue);
                 curve.keys = curve.keys.Select(k => {
                     k.value *= avatarValue;
                     return k;
                 }).ToArray();
-            } else if (existsOnAvatar && !existsOnProp) {
-                bindingToUse = bindingFromAvatar;
+            } else {
+                var existsOnProp = AnimationUtility.GetFloatValue(baseObject, bindingFromProp, out _);
+                var existsOnAvatar = AnimationUtility.GetFloatValue(baseObject, bindingFromAvatar, out var avatarValue);
+                if (existsOnAvatar && !existsOnProp)
+                    bindingToUse = bindingFromAvatar;
             }
 
             AnimationUtility.SetEditorCurve(copy, bindingToUse, curve);

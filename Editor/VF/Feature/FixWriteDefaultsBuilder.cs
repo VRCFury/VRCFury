@@ -96,12 +96,13 @@ namespace VF.Feature {
                 state.writeDefaultValues = false;
                 AnimatorIterator.ForEachClip(state, clip => {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+                        if (binding.type == typeof(Animator)) continue;
                         if (alreadySet.Contains(binding)) continue;
                         alreadySet.Add(binding);
                         var exists = AnimationUtility.GetFloatValue(baseObject, binding, out var value);
                         if (exists) {
                             AnimationUtility.SetEditorCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
-                        } else if (binding.path != "_ignored") {
+                        } else if (!binding.path.Contains("_ignored")) {
                             missingStates.Add(
                                 $"{binding.path}:{binding.type.Name}:{binding.propertyName} in {clip.name} on layer {layer.name}");
                         }
@@ -113,7 +114,7 @@ namespace VF.Feature {
                         var exists = AnimationUtility.GetObjectReferenceValue(baseObject, binding, out var value);
                         if (exists) {
                             AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
-                        } else if (binding.path != "_ignored") {
+                        } else if (!binding.path.Contains("_ignored")) {
                             missingStates.Add(
                                 $"{binding.path}:{binding.type.Name}:{binding.propertyName} in {clip.name} on layer {layer.name}");
                         }
