@@ -35,20 +35,25 @@ namespace VF.Model.Feature {
     public class Breathing : FeatureModel, ISerializationCallbackReceiver {
         public State inState;
         public State outState;
+        public int version;
         
         public void OnAfterDeserialize() {
-            if (obj) {
-                inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
-                outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
-                obj = null;
-            }
-            if (!string.IsNullOrWhiteSpace(blendshape)) {
-                inState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 0 });
-                outState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 100 });
-                blendshape = null;
+            if (version <= 0) {
+                if (obj) {
+                    inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
+                    outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
+                    obj = null;
+                }
+
+                if (!string.IsNullOrWhiteSpace(blendshape)) {
+                    inState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 0 });
+                    outState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 100 });
+                    blendshape = null;
+                }
             }
         }
         public void OnBeforeSerialize() {
+            version = 1;
         }
         
         // legacy
@@ -100,25 +105,28 @@ namespace VF.Model.Feature {
         }
 
         public void OnAfterDeserialize() {
-            if (controller) {
-                controllers.Add(new ControllerEntry { controller = controller });
-                controller = null;
-            }
-            if (menu) {
-                menus.Add(new MenuEntry { menu = menu, prefix = submenu });
-                menu = null;
-            }
-            if (parameters) {
-                prms.Add(new ParamsEntry { parameters = parameters });
-                parameters = null;
-            }
-            if (version == 0) {
+            if (version <= 0) {
                 allNonsyncedAreGlobal = true;
+            }
+
+            if (version <= 1) {
+                if (controller) {
+                    controllers.Add(new ControllerEntry { controller = controller });
+                    controller = null;
+                }
+                if (menu) {
+                    menus.Add(new MenuEntry { menu = menu, prefix = submenu });
+                    menu = null;
+                }
+                if (parameters) {
+                    prms.Add(new ParamsEntry { parameters = parameters });
+                    parameters = null;
+                }
             }
         }
         
         public void OnBeforeSerialize() {
-            version = 1;
+            version = 2;
         }
     }
     
