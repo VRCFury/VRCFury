@@ -75,9 +75,7 @@ namespace VF.Model.Feature {
         public string toggleParam;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
-        
-        public int version;
-        
+
         // obsolete
         public RuntimeAnimatorController controller;
         public VRCExpressionsMenu menu;
