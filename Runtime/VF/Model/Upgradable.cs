@@ -1,6 +1,8 @@
+using System;
 using UnityEngine;
 
 namespace VF.Model {
+    [Serializable]
     public abstract class Upgradable : ISerializationCallbackReceiver {
         public int version = -1;
 
