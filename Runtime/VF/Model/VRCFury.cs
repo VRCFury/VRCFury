@@ -39,7 +39,7 @@ namespace VF.Model {
                 }
             }
             foreach (var f in features) {
-                f.Upgrade();
+                f?.Upgrade();
             }
         }
     }
