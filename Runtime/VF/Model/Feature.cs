@@ -18,7 +18,8 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public abstract class FeatureModel {}
+    public abstract class FeatureModel : Upgradable {
+    }
 
     [Serializable]
     public class AvatarScale : FeatureModel {
@@ -32,14 +33,13 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class Breathing : FeatureModel, ISerializationCallbackReceiver {
+    public class Breathing : FeatureModel {
         public State inState;
         public State outState;
-        public int version;
-        
-        public void OnAfterDeserialize() {
-            if (version <= 0) {
-                if (obj) {
+
+        public override void Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (obj != null) {
                     inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
                     outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
                     obj = null;
@@ -52,8 +52,8 @@ namespace VF.Model.Feature {
                 }
             }
         }
-        public void OnBeforeSerialize() {
-            version = 1;
+        public override int GetLatestVersion() {
+            return 1;
         }
         
         // legacy
@@ -64,7 +64,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class FullController : FeatureModel, ISerializationCallbackReceiver {
+    public class FullController : FeatureModel {
         public List<ControllerEntry> controllers = new List<ControllerEntry>();
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
@@ -104,29 +104,28 @@ namespace VF.Model.Feature {
             public bool ResetMePlease;
         }
 
-        public void OnAfterDeserialize() {
-            if (version <= 0) {
+        public override void Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
                 allNonsyncedAreGlobal = true;
             }
-
-            if (version <= 1) {
-                if (controller) {
+            if (fromVersion < 2) {
+                if (controller != null) {
                     controllers.Add(new ControllerEntry { controller = controller });
                     controller = null;
                 }
-                if (menu) {
+                if (menu != null) {
                     menus.Add(new MenuEntry { menu = menu, prefix = submenu });
                     menu = null;
                 }
-                if (parameters) {
+                if (parameters != null) {
                     prms.Add(new ParamsEntry { parameters = parameters });
                     parameters = null;
                 }
             }
         }
-        
-        public void OnBeforeSerialize() {
-            version = 2;
+
+        public override int GetLatestVersion() {
+            return 2;
         }
     }
     

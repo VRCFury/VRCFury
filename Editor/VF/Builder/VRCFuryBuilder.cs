@@ -172,6 +172,7 @@ public class VRCFuryBuilder {
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
             var config = vrcFury.config;
+            config.Upgrade();
             if (config.features != null) {
                 Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
                 foreach (var feature in config.features) {
