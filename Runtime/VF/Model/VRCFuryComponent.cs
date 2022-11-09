@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Runtime.Serialization;
 using UnityEditor;
 using UnityEngine;
@@ -50,10 +49,8 @@ namespace VF.Model {
                 var value = field.GetValue(obj);
                 if (value is IList) {
                     var list = value as IList;
-                    var type = field.FieldType;
-                    var isRef = type.GetCustomAttribute<SerializeReference>() != null;
                     foreach (var t in list) {
-                        if (t == null && isRef) return true;
+                        if (t == null) return true;
                         if (ContainsNullsInList(t)) return true;
                     }
                 } else {

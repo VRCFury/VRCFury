@@ -18,8 +18,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public abstract class FeatureModel : Upgradable {
-    }
+    public abstract class FeatureModel {}
 
     [Serializable]
     public class AvatarScale : FeatureModel {
@@ -33,13 +32,14 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class Breathing : FeatureModel {
+    public class Breathing : FeatureModel, ISerializationCallbackReceiver {
         public State inState;
         public State outState;
-
-        public override void Upgrade(int fromVersion) {
-            if (fromVersion < 1) {
-                if (obj != null) {
+        public int version;
+        
+        public void OnAfterDeserialize() {
+            if (version <= 0) {
+                if (obj) {
                     inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
                     outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
                     obj = null;
@@ -52,8 +52,8 @@ namespace VF.Model.Feature {
                 }
             }
         }
-        public override int GetLatestVersion() {
-            return 1;
+        public void OnBeforeSerialize() {
+            version = 1;
         }
         
         // legacy
@@ -64,7 +64,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class FullController : FeatureModel {
+    public class FullController : FeatureModel, ISerializationCallbackReceiver {
         public List<ControllerEntry> controllers = new List<ControllerEntry>();
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
@@ -75,7 +75,9 @@ namespace VF.Model.Feature {
         public string toggleParam;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
-
+        
+        public int version;
+        
         // obsolete
         public RuntimeAnimatorController controller;
         public VRCExpressionsMenu menu;
@@ -102,28 +104,29 @@ namespace VF.Model.Feature {
             public bool ResetMePlease;
         }
 
-        public override void Upgrade(int fromVersion) {
-            if (fromVersion < 1) {
+        public void OnAfterDeserialize() {
+            if (version <= 0) {
                 allNonsyncedAreGlobal = true;
             }
-            if (fromVersion < 2) {
-                if (controller != null) {
+
+            if (version <= 1) {
+                if (controller) {
                     controllers.Add(new ControllerEntry { controller = controller });
                     controller = null;
                 }
-                if (menu != null) {
+                if (menu) {
                     menus.Add(new MenuEntry { menu = menu, prefix = submenu });
                     menu = null;
                 }
-                if (parameters != null) {
+                if (parameters) {
                     prms.Add(new ParamsEntry { parameters = parameters });
                     parameters = null;
                 }
             }
         }
-
-        public override int GetLatestVersion() {
-            return 2;
+        
+        public void OnBeforeSerialize() {
+            version = 2;
         }
     }
     

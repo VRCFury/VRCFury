@@ -16,10 +16,12 @@ namespace VF.Model {
     }
     
     [Serializable]
-    public class VRCFuryConfig {
+    public class VRCFuryConfig : ISerializationCallbackReceiver {
         [SerializeReference] public List<FeatureModel> features = new List<FeatureModel>();
 
-        public void Upgrade() {
+        public void OnBeforeSerialize() {
+        }
+        public void OnAfterDeserialize() {
             for (var i = 0; i < features.Count; i++) {
                 if (!(features[i] is Modes modes)) continue;
                 features.RemoveAt(i);
@@ -37,9 +39,6 @@ namespace VF.Model {
                     features.Insert(i, toggle);
                     i++;
                 }
-            }
-            foreach (var f in features) {
-                f?.Upgrade();
             }
         }
     }

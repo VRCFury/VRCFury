@@ -25,9 +25,6 @@ public class VRCFuryEditor : Editor {
                 " discord at https://vrcfury.com/discord");
         }
 
-        self.config.Upgrade();
-        serializedObject.Update();
-
         var container = new VisualElement();
 
         var features = serializedObject.FindProperty("config.features");
