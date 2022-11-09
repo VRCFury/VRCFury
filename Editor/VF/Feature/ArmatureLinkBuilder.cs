@@ -161,7 +161,7 @@ namespace VF.Feature {
                         for (var i = 0; i < mask.transformCount; i++) {
                             var oldPath = mask.GetTransformPath(i);
                             var newPath = RewriteClipPath(oldPath);
-                            if (oldPath != newPath) {
+                            if (newPath != null && oldPath != newPath) {
                                 mask.SetTransformPath(i, newPath);
                             }
                         }
