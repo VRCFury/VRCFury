@@ -9,7 +9,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class AvatarScaleBuilder : FeatureBuilder<AvatarScale> {
+public class AvatarScaleBuilder : FeatureBuilder<AvatarScale2> {
     [FeatureBuilderAction]
     public void Apply() {
     }

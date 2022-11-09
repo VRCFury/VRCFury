@@ -6,7 +6,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix> {
+    public class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [FeatureBuilderAction((int)FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
             var animator = avatarObject.GetComponent<Animator>();

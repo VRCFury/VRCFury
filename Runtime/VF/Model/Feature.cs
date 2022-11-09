@@ -18,28 +18,84 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public abstract class FeatureModel {}
-
-    [Serializable]
-    public class AvatarScale : FeatureModel {
+    public abstract class FeatureModel {
     }
 
     [Serializable]
-    public class Blinking : FeatureModel {
+    public abstract class NewFeatureModel : FeatureModel, ISerializationCallbackReceiver {
+        public int version = -1;
+
+        private int GetVersion() {
+            return version < 0 ? GetLatestVersion() : version;
+        }
+
+        public void Upgrade() {
+            var fromVersion = GetVersion();
+            var latestVersion = GetLatestVersion();
+            if (fromVersion != latestVersion) {
+                Upgrade(fromVersion);
+                version = latestVersion;
+            }
+        }
+
+        public virtual void Upgrade(int fromVersion) {
+        }
+
+        public virtual int GetLatestVersion() {
+            return 0;
+        }
+        
+        public void OnAfterDeserialize() {
+            if (version < 0) {
+                // Object was deserialized, but had no version. Default to version 0.
+                version = 0;
+            }
+        }
+
+        public void OnBeforeSerialize() {
+            if (version < 0) {
+                // Object was created fresh (not deserialized), so it's automatically the newest
+                version = GetLatestVersion();
+            }
+        }
+    }
+    
+    /**
+     * This class exists because of an annoying unity bug. If a class is serialized with no fields (an empty class),
+     * then if you try to deserialize it into a class with fields, unity blows up and fails. This means we can never
+     * add fields to a class which started without any. This, all features must be migrated to NewFeatureModel,
+     * which contains one field by default (version).
+     */
+    [Serializable]
+    public abstract class LegacyFeatureModel : FeatureModel {
+        public abstract NewFeatureModel CreateNewInstance();
+    }
+
+    [Serializable]
+    public class AvatarScale : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new AvatarScale2();
+        }
+    }
+    [Serializable]
+    public class AvatarScale2 : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class Blinking : NewFeatureModel {
         public State state;
         public float transitionTime = -1;
         public float holdTime = -1;
     }
 
     [Serializable]
-    public class Breathing : FeatureModel, ISerializationCallbackReceiver {
+    public class Breathing : NewFeatureModel {
         public State inState;
         public State outState;
-        public int version;
-        
-        public void OnAfterDeserialize() {
-            if (version <= 0) {
-                if (obj) {
+
+        public override void Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (obj != null) {
                     inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
                     outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
                     obj = null;
@@ -52,8 +108,8 @@ namespace VF.Model.Feature {
                 }
             }
         }
-        public void OnBeforeSerialize() {
-            version = 1;
+        public override int GetLatestVersion() {
+            return 1;
         }
         
         // legacy
@@ -64,7 +120,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class FullController : FeatureModel, ISerializationCallbackReceiver {
+    public class FullController : NewFeatureModel {
         public List<ControllerEntry> controllers = new List<ControllerEntry>();
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
@@ -75,9 +131,7 @@ namespace VF.Model.Feature {
         public string toggleParam;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
-        
-        public int version;
-        
+
         // obsolete
         public RuntimeAnimatorController controller;
         public VRCExpressionsMenu menu;
@@ -104,44 +158,48 @@ namespace VF.Model.Feature {
             public bool ResetMePlease;
         }
 
-        public void OnAfterDeserialize() {
-            if (version <= 0) {
+        public override void Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
                 allNonsyncedAreGlobal = true;
             }
-
-            if (version <= 1) {
-                if (controller) {
+            if (fromVersion < 2) {
+                if (controller != null) {
                     controllers.Add(new ControllerEntry { controller = controller });
                     controller = null;
                 }
-                if (menu) {
+                if (menu != null) {
                     menus.Add(new MenuEntry { menu = menu, prefix = submenu });
                     menu = null;
                 }
-                if (parameters) {
+                if (parameters != null) {
                     prms.Add(new ParamsEntry { parameters = parameters });
                     parameters = null;
                 }
             }
         }
-        
-        public void OnBeforeSerialize() {
-            version = 2;
+
+        public override int GetLatestVersion() {
+            return 2;
         }
     }
     
     // Obsolete and removed
     [Serializable]
-    public class LegacyPrefabSupport : FeatureModel {
+    public class LegacyPrefabSupport : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new LegacyPrefabSupport2();
+        }
+    }
+    public class LegacyPrefabSupport2 : NewFeatureModel {
     }
 
     [Serializable]
-    public class ZawooIntegration : FeatureModel {
+    public class ZawooIntegration : NewFeatureModel {
         public string submenu;
     }
 
     [Serializable]
-    public class Modes : FeatureModel {
+    public class Modes : NewFeatureModel {
         public string name;
         public bool saved;
         public bool securityEnabled;
@@ -163,7 +221,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class Toggle : FeatureModel {
+    public class Toggle : NewFeatureModel {
         public string name;
         public State state;
         public bool saved;
@@ -179,7 +237,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class Puppet : FeatureModel {
+    public class Puppet : NewFeatureModel {
         public string name;
         public bool saved;
         public bool slider;
@@ -199,12 +257,12 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class SecurityLock : FeatureModel {
+    public class SecurityLock : NewFeatureModel {
         public string pinNumber;
     }
 
     [Serializable]
-    public class SenkyGestureDriver : FeatureModel {
+    public class SenkyGestureDriver : NewFeatureModel {
         public State eyesClosed;
         public State eyesHappy;
         public State eyesSad;
@@ -222,19 +280,19 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class Talking : FeatureModel {
+    public class Talking : NewFeatureModel {
         public State state;
     }
 
     [Serializable]
-    public class Toes : FeatureModel {
+    public class Toes : NewFeatureModel {
         public State down;
         public State up;
         public State splay;
     }
 
     [Serializable]
-    public class Visemes : FeatureModel {
+    public class Visemes : NewFeatureModel {
         public float transitionTime = -1;
         public State state_sil;
         public State state_PP;
@@ -254,7 +312,7 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    public class ArmatureLink : FeatureModel {
+    public class ArmatureLink : NewFeatureModel {
         public GameObject propBone;
         public HumanBodyBones boneOnAvatar;
         public string bonePathOnAvatar;
@@ -265,47 +323,96 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    public class TPSIntegration : FeatureModel {
+    public class TPSIntegration : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new TPSIntegration2();
+        }
     }
     
     [Serializable]
-    public class BoundingBoxFix : FeatureModel {
+    public class TPSIntegration2 : NewFeatureModel {
+    }
+    
+    [Serializable]
+    public class BoundingBoxFix : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new BoundingBoxFix2();
+        }
+    }
+    
+    [Serializable]
+    public class BoundingBoxFix2 : NewFeatureModel {
     }
 
     [Serializable]
-    public class BoneConstraint : FeatureModel {
+    public class BoneConstraint : NewFeatureModel {
         public GameObject obj;
         public HumanBodyBones bone;
     }
     
     [Serializable]
-    public class MakeWriteDefaultsOff : FeatureModel {
+    public class MakeWriteDefaultsOff : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new MakeWriteDefaultsOff2();
+        }
     }
     
     [Serializable]
-    public class OGBIntegration : FeatureModel {
+    public class MakeWriteDefaultsOff2 : NewFeatureModel {
     }
     
     [Serializable]
-    public class RemoveHandGestures : FeatureModel {
+    public class OGBIntegration : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new OGBIntegration2();
+        }
+    }
+    
+    [Serializable]
+    public class OGBIntegration2 : NewFeatureModel {
+    }
+    
+    [Serializable]
+    public class RemoveHandGestures : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new RemoveHandGestures2();
+        }
+    }
+        
+    [Serializable]
+    public class RemoveHandGestures2 : NewFeatureModel {
     }
 
     [Serializable]
-    public class CrossEyeFix : FeatureModel {
+    public class CrossEyeFix : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new CrossEyeFix2();
+        }
     }
     
     [Serializable]
-    public class AnchorOverrideFix : FeatureModel {
+    public class CrossEyeFix2 : NewFeatureModel {
     }
     
     [Serializable]
-    public class MoveMenuItem : FeatureModel {
+    public class AnchorOverrideFix : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new AnchorOverrideFix2();
+        }
+    }
+    
+    [Serializable]
+    public class AnchorOverrideFix2 : NewFeatureModel {
+    }
+    
+    [Serializable]
+    public class MoveMenuItem : NewFeatureModel {
         public string fromPath;
         public string toPath;
     }
     
     [Serializable]
-    public class GestureDriver : FeatureModel {
+    public class GestureDriver : NewFeatureModel {
         public List<Gesture> gestures = new List<Gesture>();
         
         [Serializable]
@@ -346,7 +453,7 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    public class Gizmo : FeatureModel {
+    public class Gizmo : NewFeatureModel {
         public Vector3 rotation;
         public string text;
         public float sphereRadius;
@@ -354,7 +461,7 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    public class ObjectState : FeatureModel {
+    public class ObjectState : NewFeatureModel {
         public List<ObjState> states = new List<ObjState>();
 
         [Serializable]

@@ -13,8 +13,18 @@ namespace VF.Menu {
     [InitializeOnLoad]
     public class VRCFuryUpdaterStartup {
         static VRCFuryUpdaterStartup() {
+            var updated = false;
+            // legacy location
             if (Directory.Exists(Application.dataPath + "/~vrcfupdated")) {
                 Directory.Delete(Application.dataPath + "/~vrcfupdated");
+                updated = true;
+            }
+            if (Directory.Exists(GetUpdatedMarkerPath())) {
+                Directory.Delete(GetUpdatedMarkerPath());
+                updated = true;
+            }
+
+            if (updated) {
                 EditorUtility.ClearProgressBar();
                 Debug.Log("Upgrade complete");
                 EditorUtility.DisplayDialog(
@@ -23,6 +33,10 @@ namespace VF.Menu {
                     "Ok"
                 );
             }
+        }
+
+        public static string GetUpdatedMarkerPath() {
+            return Path.GetDirectoryName(Application.dataPath) + "/~vrcfupdated";
         }
     }
 
@@ -116,7 +130,7 @@ namespace VF.Menu {
 
                     Directory.Delete(tmpDir, true);
                     Directory.Delete(oldDir, true);
-                    Directory.CreateDirectory(Application.dataPath + "/~vrcfupdated");
+                    Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
                 } finally {
                     EditorApplication.UnlockReloadAssemblies();
                 }

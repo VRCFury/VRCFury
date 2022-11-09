@@ -6,7 +6,7 @@ using VF.Menu;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration> {
+    public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
         [FeatureBuilderAction((int)FeatureOrder.AddOgbComponents)]
         public void Apply() {
             DPSContactUpgradeBuilder.Apply(featureBaseObject);

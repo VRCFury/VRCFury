@@ -5,7 +5,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class MakeWriteDefaultsOffBuilder : FeatureBuilder<MakeWriteDefaultsOff> {
+    public class MakeWriteDefaultsOffBuilder : FeatureBuilder<MakeWriteDefaultsOff2> {
         [FeatureBuilderAction]
         public void DoStuff() {
             // The action of this model actually happens inside FixWriteDefaultsBuilder (which always runs on all builds)

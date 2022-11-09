@@ -57,57 +57,68 @@ public static class FeatureFinder {
     }
 
     public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, GameObject gameObject) {
+        string title = "???";
+        
         try {
             if (model == null) {
-                return new Label("VRCFury doesn't have code for this feature. Is your VRCFury up to date?");
+                return RenderFeatureEditor(
+                    title,
+                    VRCFuryEditorUtils.Error("VRCFury doesn't have code for this feature. Is your VRCFury up to date?")
+                );
             }
             var modelType = model.GetType();
+            title = modelType.Name;
             var found = GetAllFeatures().TryGetValue(modelType, out var implementationType);
             if (!found) {
-                return VRCFuryEditorUtils.WrappedLabel(
-                    "The " + modelType.Name + " feature has been removed in your " +
-                    "version of VRCFury. It may have been replaced with a new feature, check the + menu."
+                return RenderFeatureEditor(
+                    title,
+                    VRCFuryEditorUtils.Error(
+                        "This feature has been removed in your " +
+                        "version of VRCFury. It may have been replaced with a new feature, check the + menu."
+                    )
                 );
             }
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
             featureInstance.editorObject = gameObject;
 
-            var wrapper = new VisualElement();
-            var title = featureInstance.GetEditorTitle();
-            if (title == null) title = modelType.Name;
+            title = featureInstance.GetEditorTitle() ?? title;
 
-            var header = new Label(title);
-            header.style.unityFontStyleAndWeight = FontStyle.Bold;
-            wrapper.Add(header);
-            
-            VisualElement bodyContent;
+            VisualElement body;
             var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
             if (!allowAvatarFeatures && !featureInstance.AvailableOnProps()) {
-                bodyContent = new Label("This feature is not available for props");
+                body = VRCFuryEditorUtils.Error("This feature is not available for props");
             } else if (allowAvatarFeatures && !featureInstance.AvailableOnAvatar()) {
-                bodyContent = new Label("This feature is not available for avatars");
+                body = VRCFuryEditorUtils.Error("This feature is not available for avatars");
             } else {
-                try {
-                    bodyContent = featureInstance.CreateEditor(prop);
-                }
-                catch (Exception e) {
-                    Debug.LogException(e);
-                    bodyContent = new Label("Editor threw an exception, check the unity console");
-                }
-            }
-            if (bodyContent != null) {
-                var body = new VisualElement();
-                body.Add(bodyContent);
-                body.style.marginLeft = 10;
-                body.style.marginTop = 5;
-                wrapper.Add(body);
+                body = featureInstance.CreateEditor(prop);
             }
 
-            return wrapper;
+            return RenderFeatureEditor(title, body);
         } catch(Exception e) {
             Debug.LogException(e);
-            return new Label("Editor threw an exception, check the unity console");
+            return RenderFeatureEditor(
+                title,
+                VRCFuryEditorUtils.Error("Editor threw an exception, check the unity console")
+            );
         }
+    }
+
+    private static VisualElement RenderFeatureEditor(string title, VisualElement bodyContent) {
+        var wrapper = new VisualElement();
+
+        var header = new Label(title);
+        header.style.unityFontStyleAndWeight = FontStyle.Bold;
+        wrapper.Add(header);
+
+        if (bodyContent != null) {
+            var body = new VisualElement();
+            body.Add(bodyContent);
+            body.style.marginLeft = 10;
+            body.style.marginTop = 5;
+            wrapper.Add(body);
+        }
+
+        return wrapper;
     }
 
     public static FeatureBuilder GetBuilder(FeatureModel model, GameObject gameObject) {

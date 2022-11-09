@@ -25,7 +25,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         foreach (var zawooRoot in GetZawooRoots()) {
             ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
         }
-        addOtherFeature(new OGBIntegration());
+        addOtherFeature(new OGBIntegration2());
     }
 
     private List<Tuple<Type, GameObject>> GetZawooRoots() {

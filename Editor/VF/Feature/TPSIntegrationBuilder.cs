@@ -15,13 +15,13 @@ using VF.Menu;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration> {
+    public class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration2> {
         private static readonly BindingFlags b = BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static;
         private int matCounter = 0;
 
         [FeatureBuilderAction]
         public void Apply() {
-            addOtherFeature(new OGBIntegration());
+            addOtherFeature(new OGBIntegration2());
 
             var tpsSetup = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.TPS_Setup");
             if (tpsSetup == null) {

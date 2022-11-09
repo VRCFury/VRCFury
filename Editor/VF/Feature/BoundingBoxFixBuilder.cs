@@ -8,7 +8,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
-    public class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix> {
+    public class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix2> {
 
         [FeatureBuilderAction((int)FeatureOrder.BoundingBoxFix)]
         public void ApplyOnClone() {

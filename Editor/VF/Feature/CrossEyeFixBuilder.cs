@@ -8,7 +8,7 @@ using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix> {
+    public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
         [FeatureBuilderAction]
         public void Apply() {
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();

@@ -16,28 +16,34 @@ namespace VF.Model {
     }
     
     [Serializable]
-    public class VRCFuryConfig : ISerializationCallbackReceiver {
+    public class VRCFuryConfig {
         [SerializeReference] public List<FeatureModel> features = new List<FeatureModel>();
 
-        public void OnBeforeSerialize() {
-        }
-        public void OnAfterDeserialize() {
+        public void Upgrade() {
             for (var i = 0; i < features.Count; i++) {
-                if (!(features[i] is Modes modes)) continue;
-                features.RemoveAt(i);
-                var tag = "mode_" + modes.name.Replace(" ", "").Replace("/", "").Trim();
-                var modeNum = 0;
-                foreach (var mode in modes.modes) {
-                    var toggle = new Toggle();
-                    toggle.name = modes.name + "/Mode " + (++modeNum);
-                    toggle.saved = modes.saved;
-                    toggle.securityEnabled = modes.securityEnabled;
-                    toggle.resetPhysbones = new List<GameObject>(modes.resetPhysbones);
-                    toggle.state = mode.state;
-                    toggle.enableExclusiveTag = true;
-                    toggle.exclusiveTag = tag;
-                    features.Insert(i, toggle);
-                    i++;
+                if (features[i] is Modes modes) {
+                    features.RemoveAt(i--);
+                    var tag = "mode_" + modes.name.Replace(" ", "").Replace("/", "").Trim();
+                    var modeNum = 0;
+                    foreach (var mode in modes.modes) {
+                        var toggle = new Toggle();
+                        toggle.name = modes.name + "/Mode " + (++modeNum);
+                        toggle.saved = modes.saved;
+                        toggle.securityEnabled = modes.securityEnabled;
+                        toggle.resetPhysbones = new List<GameObject>(modes.resetPhysbones);
+                        toggle.state = mode.state;
+                        toggle.enableExclusiveTag = true;
+                        toggle.exclusiveTag = tag;
+                        features.Insert(++i, toggle);
+                    }
+                } else if (features[i] is LegacyFeatureModel legacy) {
+                    features.RemoveAt(i--);
+                    features.Insert(++i, legacy.CreateNewInstance());
+                }
+            }
+            foreach (var f in features) {
+                if (f is NewFeatureModel newf) {
+                    newf.Upgrade();
                 }
             }
         }

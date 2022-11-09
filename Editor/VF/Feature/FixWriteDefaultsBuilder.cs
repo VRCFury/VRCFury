@@ -30,7 +30,7 @@ namespace VF.Feature {
             }
             */
             
-            if (allFeaturesInRun.Any(f => f is MakeWriteDefaultsOff)) {
+            if (allFeaturesInRun.Any(f => f is MakeWriteDefaultsOff2)) {
                 MakeWriteDefaultsOff(true);
                 return;
             }

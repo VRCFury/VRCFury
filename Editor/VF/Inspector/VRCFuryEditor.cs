@@ -20,10 +20,13 @@ public class VRCFuryEditor : Editor {
 
         if (self.failedToLoad) {
             return VRCFuryEditorUtils.Error(
-                "The VRCFury component failed to load. It's likely that your VRCFury is out of date." +
+                "This VRCFury component failed to load. It's likely that your VRCFury is out of date." +
                 " Please try Tools -> VRCFury -> Update VRCFury. If this doesn't help, let us know on the " +
                 " discord at https://vrcfury.com/discord");
         }
+
+        self.config.Upgrade();
+        serializedObject.Update();
 
         var container = new VisualElement();
 
