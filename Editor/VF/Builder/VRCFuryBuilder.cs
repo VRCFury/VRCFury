@@ -12,6 +12,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 using Object = UnityEngine.Object;
@@ -19,34 +20,7 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
 
 public class VRCFuryBuilder {
-    public void TestRun(GameObject originalObject) {
-        if (originalObject.name.StartsWith("VRCF ")) {
-            EditorUtility.DisplayDialog("VRCFury Error", "This object is already the output of a VRCF test build.", "Ok");
-            return;
-        }
-        var cloneName = "VRCF Test Build for " + originalObject.name;
-        var exists = originalObject.scene
-            .GetRootGameObjects()
-            .FirstOrDefault(o => o.name == cloneName);
-        if (exists) {
-            Object.DestroyImmediate(exists);
-        }
-        var clone = Object.Instantiate(originalObject);
-        if (!clone.activeSelf) {
-            clone.SetActive(true);
-        }
-        if (clone.scene != originalObject.scene) {
-            SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
-        }
-        clone.name = cloneName;
-        var result = SafeRun(clone);
-        if (result) {
-            Selection.SetActiveObjectWithContext(clone, clone);
-        } else {
-            Object.DestroyImmediate(clone);
-        }
-    }
-    
+
     public bool SafeRun(GameObject avatarObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
@@ -77,6 +51,12 @@ public class VRCFuryBuilder {
     }
 
     private void Run(GameObject avatarObject) {
+        if (VRCFuryTestBuildMenuItem.IsTestCopy(avatarObject)) {
+            throw new VRCFBuilderException(
+                "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
+                " used to create this test instead.");
+        }
+        
         if (!ShouldRun(avatarObject)) {
             Debug.Log("VRCFury components not found in avatar. Skipping.");
             return;

@@ -25,6 +25,7 @@ public class Startup {
             var whitelist = whitelistField.GetValue(null);
             var updated = new List<string>((string[])whitelist);
             updated.Add(typeof(VRCFury).FullName);
+            updated.Add(typeof(VRCFuryTest).FullName);
             updated.Add(typeof(OGBOrifice).FullName);
             updated.Add(typeof(OGBPenetrator).FullName);
             whitelistField.SetValue(null, updated.ToArray());
@@ -37,6 +38,7 @@ public class Startup {
             var whitelist = whitelistField.GetValue(null);
             var updated = new List<string>((string[])whitelist);
             updated.Add(typeof(VRCFury).FullName);
+            updated.Add(typeof(VRCFuryTest).FullName);
             updated.Add(typeof(OGBOrifice).FullName);
             updated.Add(typeof(OGBPenetrator).FullName);
             whitelistField.SetValue(null, updated.ToArray());

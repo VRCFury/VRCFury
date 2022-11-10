@@ -7,6 +7,7 @@ using VRC.SDK3.Avatars.Components;
 using VF.Builder;
 using VF.Feature;
 using VF.Feature.Base;
+using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 
@@ -85,8 +86,7 @@ public class VRCFuryEditor : Editor {
             box.Add(label);
 
             var genButton = new Button(() => {
-                var builder = new VRCFuryBuilder();
-                builder.TestRun(self.gameObject);
+                VRCFuryTestBuildMenuItem.BuildTestCopy(self.gameObject);
             }) {
                 style = {
                     marginTop = 5
