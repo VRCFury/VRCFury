@@ -41,29 +41,35 @@ namespace VF.Builder {
         }
 
         public static AnimatorController GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
+            AnimatorController foundLayer = null;
             foreach (var layer in GetAllControllers(avatar)) {
                 if (layer.Item3 == type && layer.Item1 != null) {
-                    return layer.Item1;
+                    if (foundLayer != null && foundLayer != layer.Item1) {
+                        throw new VRCFBuilderException(
+                            "Avatar contains multiple expression layers of type " + type +
+                            " with different animators for each!" +
+                            " This is a VRChat bug. You may need to 'reset' the expression layers on the avatar descriptor.");
+                    }
+                    foundLayer = layer.Item1;
                 }
             }
-            return null;
+            return foundLayer;
         }
         
         public static void SetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type, AnimatorController controller) {
-            foreach (var layer in GetAllControllers(avatar)) {
-                if (layer.Item3 == type && layer.Item1 != null) {
-                    layer.Item2.Invoke(controller);
-                    return;
-                }
-            }
+            var setOne = false;
             foreach (var layer in GetAllControllers(avatar)) {
                 if (layer.Item3 == type) {
+                    setOne = true;
                     layer.Item2.Invoke(controller);
-                    return;
                 }
             }
-            throw new VRCFBuilderException(
-                "Failed to find " + type + " layer on avatar. You may need to 'reset' the expression layers on the avatar descriptor.");
+
+            if (!setOne) {
+                throw new VRCFBuilderException(
+                    "Failed to find " + type +
+                    " layer on avatar. You may need to 'reset' the expression layers on the avatar descriptor.");
+            }
         }
 
         public static VRCExpressionsMenu GetAvatarMenu(VRCAvatarDescriptor avatar) {
