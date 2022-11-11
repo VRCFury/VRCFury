@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 5336518606103434083}
   - component: {fileID: 5336518606103434082}
   m_Layer: 0
-  m_Name: VRCFury Chaos Canine DLC1
+  m_Name: Chaos Canine DLC1 (VRCFury)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -61,6 +61,7 @@ MonoBehaviour:
     00000000:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         propBone: {fileID: 4716749107889834844}
         boneOnAvatar: 0
         bonePathOnAvatar: 
@@ -71,6 +72,7 @@ MonoBehaviour:
     00000001:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         name: Clothes/Booty Shorts
         state:
           actions:
@@ -85,6 +87,7 @@ MonoBehaviour:
     00000002:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         name: Clothes/Gloves
         state:
           actions:
@@ -99,6 +102,7 @@ MonoBehaviour:
     00000003:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         name: Clothes/Inner Shirt
         state:
           actions:
@@ -113,6 +117,7 @@ MonoBehaviour:
     00000004:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         name: Clothes/Jacket
         state:
           actions:
@@ -127,6 +132,7 @@ MonoBehaviour:
     00000005:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         name: Clothes/Pants
         state:
           actions:
@@ -141,6 +147,7 @@ MonoBehaviour:
     00000006:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         name: Clothes/Socks
         state:
           actions:
@@ -155,6 +162,7 @@ MonoBehaviour:
     00000007:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         name: Clothes/Tank Top
         state:
           actions:
@@ -331,7 +339,8 @@ PrefabInstance:
       propertyPath: m_Materials.Array.data[0]
       value: 
       objectReference: {fileID: 2100000, guid: 55b282e1a1f0c9b49b8d3ae2aabdfccc, type: 2}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5866666021909216657, guid: 1a1800fd0b9941040bd43d78b00edb73, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 1a1800fd0b9941040bd43d78b00edb73, type: 3}
 --- !u!4 &5586053537808689739 stripped
 Transform:

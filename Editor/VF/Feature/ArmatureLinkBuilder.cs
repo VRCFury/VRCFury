@@ -194,13 +194,35 @@ namespace VF.Feature {
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
                 var animator = avatarObject.GetComponent<Animator>();
                 if (!animator) {
-                    Debug.LogError("No humanoid animator on avatar. Skipping armature link.");
-                    return links;
+                    throw new VRCFBuilderException(
+                        "ArmatureLink found no humanoid animator on avatar.");
                 }
                 avatarBone = animator.GetBoneTransform(model.boneOnAvatar)?.gameObject;
                 if (avatarBone == null) {
-                    Debug.LogError("Failed to find " + model.boneOnAvatar + " bone on avatar. Skipping armature link.");
-                    return links;
+                    throw new VRCFBuilderException(
+                        "ArmatureLink failed to find " + model.boneOnAvatar + " bone on avatar.");
+                }
+                // Unity tries to find the root bone BY NAME, which often might be the wrong one. It might even be the
+                // one in the prop. So we need to find it ourself with better logic.
+                var skeleton = animator.avatar.humanDescription.skeleton;
+                bool IsProbablyInSkeleton(GameObject obj) {
+                    if (obj == null) return false;
+                    if (obj == avatarObject) return true;
+                    if (!skeleton.Any(b => b.name == obj.name)) return false;
+                    return IsProbablyInSkeleton(obj.transform.parent.gameObject);
+                }
+                var eligibleAvatarBones = avatarObject.GetComponentsInChildren<Transform>(true)
+                    .Where(t => t.name == avatarBone.name)
+                    .Select(t => t.gameObject)
+                    .Where(IsProbablyInSkeleton)
+                    .ToList();
+                if (eligibleAvatarBones.Count == 0) {
+                    Debug.LogWarning("ArmatureLink found a matching bone, but it wasn't in the skeleton. Maybe broken?");
+                } else if (eligibleAvatarBones.Count == 1) {
+                    avatarBone = eligibleAvatarBones[0];
+                } else {
+                    throw new VRCFBuilderException(
+                        "ArmatureLink found multiple possible matching " + model.boneOnAvatar + " bones on avatar.");
                 }
             } else {
                 avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
