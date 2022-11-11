@@ -4,7 +4,7 @@ Zawoo Using VRCFury
 ## How to install Knotty Canine / Hybrid Anthro
 * Import [VRCFury](https://vrcfury.com) (that's the package you're looking at right now!)
 * Purchase and import the corresponding package from [ZaWoo by Nimbkoll](https://zawoo.gumroad.com/)
-* Drag the VRCFury prefab from this folder onto your avatar's **Hips bone**, then move it into position
+* Drag the VRCFury prefab from this folder onto your avatar's **Hips bone**, then move and scale it into position
 * DO NOT unpack the prefab or follow any instructions from the Zawoo documentation
 * You're done! Customize the materials if you want, and upload away!
 * The options will be available in your avatar's Expression Menu under `Zawoo`
