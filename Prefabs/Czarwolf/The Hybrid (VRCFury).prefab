@@ -72,6 +72,7 @@ MonoBehaviour:
         globalParams: []
         removePrefixes:
         - Armature/Hips
+        addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: Dick
@@ -100,10 +101,20 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 5986400992718112500}
     m_Modifications:
+    - target: {fileID: 3992204567444500863, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec,
+        type: 3}
+      propertyPath: EmissionModule.rateOverTime.scalar
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3992204567644036575, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec,
         type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3992204567657341505, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec,
+        type: 3}
+      propertyPath: EmissionModule.rateOverTime.scalar
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3992204567939455898, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec,
         type: 3}
@@ -180,7 +191,19 @@ PrefabInstance:
       propertyPath: m_LocalPosition.z
       value: -0.009200126
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    - target: {fileID: 3992204569329542553, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.03
+      objectReference: {fileID: 0}
+    - target: {fileID: 3992204569329542553, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.0025
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 3992204569329542552, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec, type: 3}
+    - {fileID: 3992204567970894495, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: b9cfcfcadc7b46c40b73e41a79f1f9ec, type: 3}
 --- !u!4 &1086465839253374023 stripped
 Transform:
