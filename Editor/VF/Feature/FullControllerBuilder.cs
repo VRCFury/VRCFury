@@ -81,6 +81,7 @@ namespace VF.Feature {
                             rewritten,
                             baseObject,
                             model.removePrefixes,
+                            model.addPrefix,
                             model.rootBindingsApplyToAvatar,
                             rewriteParam
                         );
@@ -226,6 +227,8 @@ namespace VF.Feature {
                 "Parameter name for prop toggling. If set, this entire prop will be de-activated whenever" +
                 " this boolean parameter within the Full Controller is false."));
             adv.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("toggleParam")));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("addPrefix"),
+                "Add prefix to clips"));
 
             content.Add(adv);
 

@@ -121,6 +121,7 @@ public class ClipBuilder {
         AnimationClip copy,
         GameObject oldRoot,
         List<string> removePrefixes = null,
+        string addPrefix = null,
         bool rootBindingsApplyToAvatar = false,
         Func<string,string> rewriteParam = null
     ) {
@@ -138,6 +139,13 @@ public class ClipBuilder {
             }
             if (path == "" && rootBindingsApplyToAvatar) {
                 return "";
+            }
+            if (!string.IsNullOrWhiteSpace(addPrefix)) {
+                if (addPrefix.EndsWith("/")) {
+                    path = addPrefix + path;
+                } else {
+                    path = addPrefix + "/" + path;
+                }
             }
             path = Join(prefix, path);
             return path;

@@ -1,0 +1,153 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2482835903994384090
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2482835903994384091}
+  - component: {fileID: 2482835903994384088}
+  m_Layer: 0
+  m_Name: MultiSpecies Asset - Canine (VRCFury)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2482835903994384091
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2482835903994384090}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 7148492440362658698}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2482835903994384088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2482835903994384090}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+    - id: 1
+    - id: 2
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 2
+        controllers:
+        - controller: {fileID: 9100000, guid: 79c987e9aaa46d4428c2071632fd7dbe, type: 2}
+          type: 5
+          ResetMePlease: 0
+        menus:
+        - menu: {fileID: 11400000, guid: b850a388f526de74aabf73337e2cd60b, type: 2}
+          prefix: WP Asset
+          ResetMePlease: 0
+        prms:
+        - parameters: {fileID: 11400000, guid: 3b5df6628b7231048af3989af94cc083, type: 2}
+          ResetMePlease: 0
+        globalParams: []
+        removePrefixes:
+        - 
+        addPrefix: Penis.Canine
+        allNonsyncedAreGlobal: 0
+        ignoreSaved: 0
+        toggleParam: penis.toggle
+        rootObjOverride: {fileID: 0}
+        rootBindingsApplyToAvatar: 0
+        controller: {fileID: 0}
+        menu: {fileID: 0}
+        parameters: {fileID: 0}
+        submenu: 
+    00000001:
+      type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        states:
+        - obj: {fileID: 7148492441950979772}
+          action: 2
+          ResetMePlease: 0
+    00000002:
+      type: {class: OGBIntegration2, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+--- !u!1001 &2482835905535294628
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 2482835903994384091}
+    m_Modifications:
+    - target: {fileID: 4701830690183157548, guid: 6545e85d6491be746925710000ff38a1,
+        type: 3}
+      propertyPath: m_Name
+      value: Penis.Canine
+      objectReference: {fileID: 0}
+    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4701830690295039404, guid: 6545e85d6491be746925710000ff38a1,
+        type: 3}
+      propertyPath: m_RotationOffsets.Array.data[0].x
+      value: -89.96574
+      objectReference: {fileID: 0}
+    - target: {fileID: 4701830690295039404, guid: 6545e85d6491be746925710000ff38a1,
+        type: 3}
+      propertyPath: m_TranslationOffsets.Array.data[0].z
+      value: -0.18573968
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 4701830690295039404, guid: 6545e85d6491be746925710000ff38a1, type: 3}
+    - {fileID: 4701830688903304958, guid: 6545e85d6491be746925710000ff38a1, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: 6545e85d6491be746925710000ff38a1, type: 3}
+--- !u!4 &7148492440362658698 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+    type: 3}
+  m_PrefabInstance: {fileID: 2482835905535294628}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &7148492441950979772 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4701830688583301656, guid: 6545e85d6491be746925710000ff38a1,
+    type: 3}
+  m_PrefabInstance: {fileID: 2482835905535294628}
+  m_PrefabAsset: {fileID: 0}

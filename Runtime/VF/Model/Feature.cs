@@ -126,6 +126,7 @@ namespace VF.Model.Feature {
         public List<ParamsEntry> prms = new List<ParamsEntry>();
         public List<string> globalParams = new List<string>();
         public List<string> removePrefixes = new List<string>();
+        public string addPrefix = "";
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
         public string toggleParam;
