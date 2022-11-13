@@ -48,7 +48,7 @@ namespace VF.Inspector {
                 );
                 VRCFuryGizmoUtils.DrawText(
                     scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x),
-                    "Hand\nTouch\nZone",
+                    "Hand Touch Zone\n(should be INSIDE)",
                     Color.red
                 );
             }
@@ -65,7 +65,7 @@ namespace VF.Inspector {
             );
             VRCFuryGizmoUtils.DrawText(
                 scr.transform.position,
-                "Entrance",
+                "Entrance\n(Arrow points INWARD)",
                 Color.green
             );
         }
