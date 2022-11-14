@@ -18,6 +18,22 @@ namespace VF {
 [InitializeOnLoad]
 public class Startup {
     static Startup() {
+        Exception preprocessPatchEx = null;
+        try {
+            var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.AvatarValidation");
+            var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var whitelist = whitelistField.GetValue(null);
+            var updated = new List<string>((string[])whitelist);
+            updated.Add(typeof(VRCFury).FullName);
+            updated.Add(typeof(VRCFuryTest).FullName);
+            updated.Add(typeof(OGBOrifice).FullName);
+            updated.Add(typeof(OGBPenetrator).FullName);
+            whitelistField.SetValue(null, updated.ToArray());
+        } catch (Exception e) {
+            preprocessPatchEx = e;
+        }
+
         try {
             var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Validation.AvatarValidation");
             var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
@@ -30,19 +46,9 @@ public class Startup {
             updated.Add(typeof(OGBPenetrator).FullName);
             whitelistField.SetValue(null, updated.ToArray());
         } catch (Exception) {
-        }
-        try {
-            var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.AvatarValidation");
-            var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            var whitelist = whitelistField.GetValue(null);
-            var updated = new List<string>((string[])whitelist);
-            updated.Add(typeof(VRCFury).FullName);
-            updated.Add(typeof(VRCFuryTest).FullName);
-            updated.Add(typeof(OGBOrifice).FullName);
-            updated.Add(typeof(OGBPenetrator).FullName);
-            whitelistField.SetValue(null, updated.ToArray());
-        } catch (Exception) {
+            if (preprocessPatchEx != null) {
+                Debug.LogError(new Exception("VRCFury preprocess patch failed", preprocessPatchEx));
+            }
         }
 
         try {
@@ -56,7 +62,7 @@ public class Startup {
             run = (Action<GameObject>)runField.GetValue(null);
             runField.SetValue(null, VRCFPrefabFixer.Fix + run);
         } catch (Exception e) {
-            Debug.LogWarning(new Exception("VRCF prefab fix patch failed", e));
+            Debug.LogError(new Exception("VRCFury prefab fix patch failed", e));
         }
     }
 }
