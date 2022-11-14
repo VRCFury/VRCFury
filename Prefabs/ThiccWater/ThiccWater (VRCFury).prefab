@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6780827374072423190}
   - component: {fileID: 7807743119708023581}
   m_Layer: 0
-  m_Name: VRCFury ThiccWater
+  m_Name: ThiccWater (VRCFury)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -55,12 +55,29 @@ MonoBehaviour:
     - id: 0
     - id: 1
     - id: 2
+    - id: 3
   somethingIsBroken: 0
   references:
     version: 1
     00000000:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        name: ThiccWater/Enable
+        state:
+          actions:
+          - id: 4
+        saved: 0
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        enableExclusiveTag: 0
+        exclusiveTag: 
+        resetPhysbones: []
+    00000001:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 2
         controllers:
         - controller: {fileID: 9100000, guid: 585538695cedd4440a6b2a4e2a6e7803, type: 2}
           type: 5
@@ -87,29 +104,39 @@ MonoBehaviour:
         globalParams: []
         removePrefixes:
         - ThiccWater
+        addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: 
         rootObjOverride: {fileID: 0}
-        version: 1
+        rootBindingsApplyToAvatar: 0
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
         submenu: 
-    00000001:
+    00000002:
       type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         rotation: {x: -90, y: 0, z: 0}
         text: ThiccWater
         sphereRadius: 0.05
         arrowLength: 0.3
-    00000002:
+    00000003:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 0
         states:
         - obj: {fileID: 8249905940618649458}
           action: 1
           ResetMePlease: 0
+        - obj: {fileID: 8616299105019085890}
+          action: 0
+          ResetMePlease: 0
+    00000004:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 8616299105019085890}
 --- !u!1001 &2038023727494861798
 PrefabInstance:
   m_ObjectHideFlags: 0
