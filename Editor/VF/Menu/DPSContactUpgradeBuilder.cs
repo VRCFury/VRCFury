@@ -92,7 +92,7 @@ namespace VF.Menu {
                             o.addLight = autoInfo.Item2 ? AddLight.Ring : AddLight.Hole;
                         }
                         o.name = GetNameFromBakeMarker(orfMarker.gameObject);
-                        foreach (var light in t.gameObject.GetComponentsInChildren<Light>()) {
+                        foreach (var light in t.gameObject.GetComponentsInChildren<Light>(true)) {
                             OGBUtils.RemoveComponent(light);
                         }
                     }

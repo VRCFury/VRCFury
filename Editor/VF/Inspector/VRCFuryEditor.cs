@@ -86,7 +86,7 @@ public class VRCFuryEditor : Editor {
             box.Add(label);
 
             var genButton = new Button(() => {
-                VRCFuryTestBuildMenuItem.BuildTestCopy(self.gameObject);
+                VRCFuryTestCopyMenuItem.BuildTestCopy(self.gameObject);
             }) {
                 style = {
                     marginTop = 5

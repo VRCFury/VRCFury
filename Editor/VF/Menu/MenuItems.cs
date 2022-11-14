@@ -88,12 +88,12 @@ namespace VF.Menu {
 
         [MenuItem("Tools/VRCFury/Build Test Avatar", priority = 1402)]
         private static void RunForceRun() {
-            VRCFuryTestBuildMenuItem.RunBuildTestCopy();
+            VRCFuryTestCopyMenuItem.RunBuildTestCopy();
         }
 
         [MenuItem("Tools/VRCFury/Build Test Avatar", true)]
         private static bool CheckForceRun() {
-            return VRCFuryTestBuildMenuItem.CheckBuildTestCopy();
+            return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
     }
 }

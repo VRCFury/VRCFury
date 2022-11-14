@@ -44,6 +44,20 @@ public class Startup {
             whitelistField.SetValue(null, updated.ToArray());
         } catch (Exception) {
         }
+
+        try {
+            var sdkBuilder = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.VRC_SdkBuilder");
+            var runField = sdkBuilder.GetField("RunExportAndUploadAvatarBlueprint",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var run = (Action<GameObject>)runField.GetValue(null);
+            runField.SetValue(null, VRCFPrefabFixer.Fix + run);
+            runField = sdkBuilder.GetField("RunExportAndTestAvatarBlueprint",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            run = (Action<GameObject>)runField.GetValue(null);
+            runField.SetValue(null, VRCFPrefabFixer.Fix + run);
+        } catch (Exception e) {
+            Debug.LogWarning(new Exception("VRCF prefab fix patch failed", e));
+        }
     }
 }
 

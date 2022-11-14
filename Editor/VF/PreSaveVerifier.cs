@@ -17,7 +17,7 @@ namespace VF {
                         var scene = SceneManager.GetSceneAt(n);
                         if (scene.path == path) {
                             isBroken = scene.GetRootGameObjects()
-                                .SelectMany(obj => obj.GetComponentsInChildren<VRCFuryComponent>())
+                                .SelectMany(obj => obj.GetComponentsInChildren<VRCFuryComponent>(true))
                                 .Any(vrcf => vrcf.IsBroken());
                         }
                     }

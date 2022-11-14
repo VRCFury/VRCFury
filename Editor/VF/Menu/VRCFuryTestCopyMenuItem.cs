@@ -6,7 +6,7 @@ using VF.Builder;
 using VF.Model;
 
 namespace VF.Menu {
-    public static class VRCFuryTestBuildMenuItem {
+    public static class VRCFuryTestCopyMenuItem {
 
         public static void RunBuildTestCopy() {
             var originalObject = MenuUtils.GetSelectedAvatar();
@@ -18,6 +18,9 @@ namespace VF.Menu {
                 EditorUtility.DisplayDialog("VRCFury Error", "This object is already a VRCF test copy.", "Ok");
                 return;
             }
+
+            VRCFPrefabFixer.Fix(originalObject);
+
             var cloneName = "VRCF Test Copy for " + originalObject.name;
             var exists = originalObject.scene
                 .GetRootGameObjects()
