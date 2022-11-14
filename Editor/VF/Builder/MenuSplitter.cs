@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -11,29 +12,41 @@ namespace VF.Builder {
      * It is capable of splitting menus with more than the maximum allowed controls into separate pages,
      * and also capable of re-joining them back into oversized menus again.
      */
-    public class MenuSplitter {
-        public static void SplitMenus(VRCExpressionsMenu menu) {
-            if (menu == null) return;
-            if (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS) {
-                var nextPath = GetNextPageFilename(menu);
-                var nextMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                AssetDatabase.CreateAsset(nextMenu, nextPath);
-
-                while (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS - 1) {
-                    nextMenu.controls.Insert(0, menu.controls[menu.controls.Count-1]);
-                    menu.controls.RemoveAt(menu.controls.Count-1);
-                }
-                menu.controls.Add(new VRCExpressionsMenu.Control() {
-                    name = "Next",
-                    type = VRCExpressionsMenu.Control.ControlType.SubMenu,
-                    subMenu = nextMenu
-                });
-            }
-            foreach (var control in menu.controls) {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                    SplitMenus(control.subMenu);
+    public static class MenuSplitter {
+        public static void ForEachMenu(VRCExpressionsMenu root, Action<VRCExpressionsMenu> func) {
+            var stack = new Stack<VRCExpressionsMenu>();
+            var seen = new HashSet<VRCExpressionsMenu>();
+            stack.Push(root);
+            while (stack.Count > 0) {
+                var menu = stack.Pop();
+                if (menu == null || seen.Contains(menu)) continue;
+                seen.Add(menu);
+                func.Invoke(menu);
+                foreach (var item in menu.controls) {
+                    if (item.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                        stack.Push(item.subMenu);
+                    }
                 }
             }
+        }
+        
+        public static void SplitMenus(VRCExpressionsMenu root) {
+            ForEachMenu(root, menu => {
+                if (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS) {
+                    var nextPath = GetNextPageFilename(menu);
+                    var nextMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                    AssetDatabase.CreateAsset(nextMenu, nextPath);
+                    while (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS - 1) {
+                        nextMenu.controls.Insert(0, menu.controls[menu.controls.Count - 1]);
+                        menu.controls.RemoveAt(menu.controls.Count - 1);
+                    }
+                    menu.controls.Add(new VRCExpressionsMenu.Control() {
+                        name = "Next",
+                        type = VRCExpressionsMenu.Control.ControlType.SubMenu,
+                        subMenu = nextMenu
+                    });
+                }
+            });
         }
 
         private static string GetNextPageFilename(VRCExpressionsMenu menu) {
@@ -57,22 +70,19 @@ namespace VF.Builder {
                 return newPath;
             }
         }
-        
-        public static void JoinMenus(VRCExpressionsMenu menu) {
-            if (menu == null) return;
-            for (var i = 0; i < menu.controls.Count; i++) {
-                var item = menu.controls[i];
-                if (IsVrcfPageItem(item)) {
-                    menu.controls.RemoveAt(i);
-                    menu.controls.InsertRange(i, item.subMenu.controls);
-                    AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(item.subMenu));
-                    i--;
-                    continue;
+
+        public static void JoinMenus(VRCExpressionsMenu root) {
+            ForEachMenu(root, menu => {
+                for (var i = 0; i < menu.controls.Count; i++) {
+                    var item = menu.controls[i];
+                    if (IsVrcfPageItem(item)) {
+                        menu.controls.RemoveAt(i);
+                        menu.controls.InsertRange(i, item.subMenu.controls);
+                        AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(item.subMenu));
+                        i--;
+                    }
                 }
-                if (item.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                    JoinMenus(item.subMenu);
-                }
-            }
+            });
         }
 
         private static bool IsVrcfPageItem(VRCExpressionsMenu.Control item) {

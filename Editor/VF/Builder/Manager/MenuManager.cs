@@ -122,21 +122,38 @@ namespace VF.Builder {
             MergeMenu(new string[]{}, from, rewriteParamName);
         }
 
-        public void MergeMenu(string[] prefix, VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
+        public void MergeMenu(
+            string[] prefix,
+            VRCExpressionsMenu from,
+            Func<string,string> rewriteParamName = null,
+            Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
+        ) {
+            var to = GetSubmenu(prefix);
+            if (seen == null) {
+                seen = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();
+            }
+            seen.Add(from, to);
+
             var submenuCount = new Dictionary<string,int>();
             int GetNextSubmenuDupId(string name) {
                 return submenuCount[name] = submenuCount.TryGetValue(name, out var value) ? value + 1 : 0;
             }
-            foreach (var control in from.controls) {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
-                    var submenuDupId = GetNextSubmenuDupId(control.name);
-                    var prefix2 = new List<string>(prefix);
-                    prefix2.Add( control.name + (submenuDupId > 0 ? (".dup." + submenuDupId) : ""));
-                    GetSubmenu(prefix2.ToArray(), createFromControl: control, rewriteParamName: rewriteParamName);
-                    MergeMenu(prefix2.ToArray(), control.subMenu, rewriteParamName);
+            foreach (var fromControl in from.controls) {
+                if (fromControl.type == VRCExpressionsMenu.Control.ControlType.SubMenu && fromControl.subMenu != null) {
+                    // Properly handle loops
+                    if (seen.ContainsKey(fromControl.subMenu)) {
+                        var toControl = CloneControl(fromControl, rewriteParamName);
+                        toControl.subMenu = seen[fromControl.subMenu];
+                        to.controls.Add(toControl);
+                    } else {
+                        var submenuDupId = GetNextSubmenuDupId(fromControl.name);
+                        var prefix2 = new List<string>(prefix);
+                        prefix2.Add(fromControl.name + (submenuDupId > 0 ? (".dup." + submenuDupId) : ""));
+                        GetSubmenu(prefix2.ToArray(), createFromControl: fromControl, rewriteParamName: rewriteParamName);
+                        MergeMenu(prefix2.ToArray(), fromControl.subMenu, rewriteParamName, seen);
+                    }
                 } else {
-                    var submenu = GetSubmenu(prefix);
-                    submenu.controls.Add(CloneControl(control, rewriteParamName));
+                    to.controls.Add(CloneControl(fromControl, rewriteParamName));
                 }
             }
         }
