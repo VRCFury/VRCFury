@@ -22,7 +22,8 @@ namespace VF.Builder {
             return rootMenu;
         }
         private VRCExpressionsMenu.Control NewMenuItem(string path) {
-            var split = path.Split('/');
+            path = path.Replace("\\/", "REALSLASH");
+            var split = path.Split('/').Select(s => s.Replace("REALSLASH", "/")).ToArray();
             var control = new VRCExpressionsMenu.Control();
             control.name = split[split.Length-1];
             var submenu = GetSubmenu(Slice(split, split.Length-1));

@@ -28,7 +28,7 @@ namespace VF.Model {
                     if (!string.IsNullOrWhiteSpace(path) && !attemptedReload.Contains(path)) {
                         Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
                         attemptedReload.Add(path);
-                        AssetDatabase.ImportAsset(path);
+                        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                     }
                 };
 #endif

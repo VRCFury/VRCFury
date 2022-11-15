@@ -478,4 +478,10 @@ namespace VF.Model.Feature {
         }
     }
 
+    [Serializable]
+    public class BlendShapeLink : NewFeatureModel {
+        public List<GameObject> objs;
+        public string baseObj;
+    }
+
 }

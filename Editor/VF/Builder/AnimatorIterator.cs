@@ -22,26 +22,33 @@ namespace VF.Builder {
             }
         }
         
-        public static void ForEachClip(AnimatorState state, Action<AnimationClip> action) {
-            var motions = new Stack<Motion>();
-            motions.Push(state.motion);
+        public static void ForEachClip(AnimatorState state, Action<AnimationClip, Action<Motion>> action) {
+            var motions = new Stack<Tuple<Motion, Action<Motion>>>();
+            motions.Push(Tuple.Create(state.motion, (Action<Motion>)(m => state.motion = m)));
             while (motions.Count > 0) {
                 var motion = motions.Pop();
                 if (motion == null) continue;
-                switch (motion) {
+                switch (motion.Item1) {
                     case AnimationClip clip:
-                        action(clip);
+                        action(clip, motion.Item2);
                         break;
                     case BlendTree tree:
-                        foreach (var child in tree.children) {
-                            motions.Push(child.motion);
+                        var children = tree.children;
+                        for (var i = 0; i < children.Length; i++) {
+                            var childNum = i;
+                            var child = children[childNum];
+                            motions.Push(Tuple.Create(child.motion, (Action<Motion>)(m => {
+                                child.motion = m;
+                                children[childNum] = child;
+                                tree.children = children;
+                            })));
                         }
                         break;
                 }
             }
         }
 
-        public static void ForEachClip(AnimatorControllerLayer layer, Action<AnimationClip> action) {
+        public static void ForEachClip(AnimatorControllerLayer layer, Action<AnimationClip, Action<Motion>> action) {
             ForEachState(layer, state => {
                 ForEachClip(state, action);
             });

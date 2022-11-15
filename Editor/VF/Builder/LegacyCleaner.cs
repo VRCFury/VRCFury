@@ -12,7 +12,7 @@ namespace VF.Builder {
         public static void Clean(GameObject avatarObject) {
             var animator = avatarObject.GetComponent<Animator>();
             if (animator != null) {
-                if (IsVrcfAsset(animator.runtimeAnimatorController)) {
+                if (VRCFuryAssetDatabase.IsVrcfAsset(animator.runtimeAnimatorController)) {
                     animator.runtimeAnimatorController = null;
                 }
             }
@@ -20,14 +20,14 @@ namespace VF.Builder {
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             var fx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
-            if (IsVrcfAsset(fx)) {
+            if (VRCFuryAssetDatabase.IsVrcfAsset(fx)) {
                 VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
             } else if (fx != null) {
                 PurgeFromAnimator(fx, VRCAvatarDescriptor.AnimLayerType.FX);
             }
 
             var menu = VRCAvatarUtils.GetAvatarMenu(avatar);
-            if (IsVrcfAsset(menu)) {
+            if (VRCFuryAssetDatabase.IsVrcfAsset(menu)) {
                 VRCAvatarUtils.SetAvatarMenu(avatar, null);
             } else if (menu != null) {
                 MenuSplitter.JoinMenus(menu);
@@ -36,7 +36,7 @@ namespace VF.Builder {
             }
 
             var prms = VRCAvatarUtils.GetAvatarParams(avatar);
-            if (IsVrcfAsset(prms)) {
+            if (VRCFuryAssetDatabase.IsVrcfAsset(prms)) {
                 VRCAvatarUtils.SetAvatarParams(avatar, null);
             } else if (prms != null) {
                 PurgeFromParams(prms);
@@ -54,7 +54,7 @@ namespace VF.Builder {
                         if (control.subMenu.name.StartsWith("VRCFury")) {
                             remove = true;
                         }
-                        if (IsVrcfAsset(control.subMenu)) {
+                        if (VRCFuryAssetDatabase.IsVrcfAsset(control.subMenu)) {
                             remove = true;
                         }
                     }
@@ -100,10 +100,6 @@ namespace VF.Builder {
                     i--;
                 }
             }
-        }
-        
-        private static bool IsVrcfAsset(Object obj) {
-            return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
         }
     }
 }

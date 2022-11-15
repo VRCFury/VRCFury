@@ -7,7 +7,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class ObjectStateBuilder : FeatureBuilder<ObjectState> {
-        [FeatureBuilderAction((int)FeatureOrder.ForceObjectState)]
+        [FeatureBuilderAction(FeatureOrder.ForceObjectState)]
         public void Apply() {
             foreach (var state in model.states) {
                 if (state.obj == null) continue;
@@ -32,7 +32,8 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
 
-            content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will activate, deactivate, or delete the specified objects during upload."));
+            content.Add(VRCFuryEditorUtils.Info(
+                "This feature will activate, deactivate, or delete the specified objects during upload."));
 
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("states"), (i, el) => {
                 var c = new VisualElement();

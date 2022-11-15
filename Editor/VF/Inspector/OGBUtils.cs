@@ -135,7 +135,7 @@ namespace VF.Model {
             foreach (Transform child in obj.transform) {
                 foreach (var sender in child.gameObject.GetComponents<VRCContactSender>()) {
                     if (IsTPSSender(sender)) {
-                        Debug.Log("Deleting OG TPS sender on " + sender.gameObject);
+                        Debug.Log("Deleting TPS sender on " + sender.gameObject);
                         remove.Add(sender);
                     }
                 }

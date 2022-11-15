@@ -3,6 +3,8 @@ namespace VF.Feature.Base {
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1,
         
+        Default = 0,
+        
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver = 1,
         
@@ -20,7 +22,11 @@ namespace VF.Feature.Base {
         
         // Needs to run after most things are done messing with the animation controller,
         // since any changes after this won't have their animations rewritten
-        ArmatureLinkBuilderFixAnimations = 100,
+        ArmatureLinkBuilderFixAnimations = 99,
+        
+        // Needs to run after most things are done messing with animations,
+        // since it'll make copies of the blendshape curves
+        BlendShapeLinkFixAnimations = 100,
         
         // Needs to run after TPS integration (since it may add new TPS material meshes)
         AddOgbComponents = 101,

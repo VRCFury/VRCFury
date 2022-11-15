@@ -5,8 +5,8 @@ namespace VF.Feature.Base {
     public class FeatureBuilderActionAttribute : Attribute, IComparable<FeatureBuilderActionAttribute> {
         public readonly int priority;
 
-        public FeatureBuilderActionAttribute(int priority = 0) {
-            this.priority = priority;
+        public FeatureBuilderActionAttribute(FeatureOrder priority = FeatureOrder.Default) {
+            this.priority = (int)priority;
         }
 
         public int CompareTo(FeatureBuilderActionAttribute other) {

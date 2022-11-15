@@ -46,7 +46,9 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
-        content.Add(VRCFuryEditorUtils.WrappedLabel("This feature will allow you to use animations for your avatar's visemes. Note this will override any LipSync set on the VRC Avatar Descriptor."));
+        content.Add(VRCFuryEditorUtils.Info(
+            "This feature will allow you to use animations for your avatar's visemes."
+        ));
         foreach (var name in visemeNames) {
             content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state_" + name), name));
         }

@@ -17,7 +17,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
         public VFABool param;
     }
 
-    [FeatureBuilderAction((int)FeatureOrder.Blinking)]
+    [FeatureBuilderAction(FeatureOrder.Blinking)]
     public void Apply() {
         if (!StateExists(model.state)) return;
 
@@ -104,7 +104,8 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var c = new VisualElement();
-        c.Add(VRCFuryEditorUtils.WrappedLabel("This feature will manage eye-blinking for your avatar. Note this will disable 'Eyelid Type' on the VRC avatar descriptor."));
+        c.Add(VRCFuryEditorUtils.Info(
+            "This feature will manage eye-blinking for your avatar. Note this will disable 'Eyelid Type' on the VRC avatar descriptor."));
         c.Add(new Label("Blinking state:"));
         c.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state")));
         var adv = new Foldout {

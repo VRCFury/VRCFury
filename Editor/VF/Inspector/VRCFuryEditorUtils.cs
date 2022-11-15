@@ -407,6 +407,30 @@ public static class VRCFuryEditorUtils {
         return NextFloat(input, 1);
     }
 
+    public static VisualElement Info(string message) {
+        var el = new VisualElement() {
+            style = {
+                backgroundColor = new Color(0,0,0,0.1f),
+                marginTop = 5,
+                marginBottom = 10,
+                flexDirection = FlexDirection.Row,
+                alignItems = Align.FlexStart
+            }
+        };
+        Padding(el, 5);
+        BorderRadius(el, 5);
+        var im = new Image {
+            image = EditorGUIUtility.FindTexture("_Help"),
+            scaleMode = ScaleMode.ScaleToFit
+        };
+        el.Add(im);
+        var label = WrappedLabel(message);
+        label.style.flexGrow = 1;
+        label.style.flexBasis = 0;
+        el.Add(label);
+        return el;
+    }
+
     public static VisualElement Error(string message) {
         var label = new Label(message) {
             style = {

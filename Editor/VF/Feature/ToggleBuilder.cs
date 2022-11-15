@@ -96,7 +96,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
-    [FeatureBuilderAction((int)FeatureOrder.CollectToggleExclusiveTags)]
+    [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
         if (onState == null) return;
 

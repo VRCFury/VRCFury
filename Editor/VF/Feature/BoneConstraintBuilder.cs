@@ -34,11 +34,12 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var container = new VisualElement();
-            container.Add(new Label("Adds a parent constraint from the specified object to the specified bone. Useful for props" +
-                                    " which are packaged as VRCFury prefabs.") { style = { whiteSpace = WhiteSpace.Normal }});
+            container.Add(VRCFuryEditorUtils.Info(
+                "Adds a parent constraint from the specified object to the specified bone. Useful for props" +
+                " which are packaged as VRCFury prefabs."));
             
-            container.Add(new PropertyField(prop.FindPropertyRelative("obj"), "Object in prop"));
-            container.Add(new PropertyField(prop.FindPropertyRelative("bone"), "Avatar Bone"));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Object in prop"));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bone"), "Avatar Bone"));
             return container;
         }
 

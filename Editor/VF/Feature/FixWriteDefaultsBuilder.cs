@@ -12,7 +12,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
 
-        [FeatureBuilderAction((int)FeatureOrder.FixWriteDefaults)]
+        [FeatureBuilderAction(FeatureOrder.FixWriteDefaults)]
         public void Apply() {
             // TODO: Bring this back once I can assure it only happens on managed controllers,
             // and ensure it works with gogoloco base layer
@@ -94,7 +94,7 @@ namespace VF.Feature {
                 }
 
                 state.writeDefaultValues = false;
-                AnimatorIterator.ForEachClip(state, clip => {
+                AnimatorIterator.ForEachClip(state, (clip, setClip) => {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                         if (binding.type == typeof(Animator)) continue;
                         if (alreadySet.Contains(binding)) continue;

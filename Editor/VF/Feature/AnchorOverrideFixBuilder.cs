@@ -7,7 +7,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
-        [FeatureBuilderAction((int)FeatureOrder.AnchorOverrideFix)]
+        [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator) return;

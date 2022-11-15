@@ -62,5 +62,9 @@ namespace VF.Builder {
             }
             return copy;
         }
+
+        public static bool IsVrcfAsset(Object obj) {
+            return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
+        }
     }
 }

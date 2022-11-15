@@ -35,7 +35,7 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction((int)FeatureOrder.ArmatureLinkBuilder)]
+        [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
             if (model.propBone == null) {
                 Debug.LogWarning("Root bone is null on armature link.");
@@ -129,17 +129,27 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction((int)FeatureOrder.ArmatureLinkBuilderFixAnimations)]
+        [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilderFixAnimations)]
         public void FixAnimations() {
             foreach (var controller in manager.GetAllTouchedControllers()) {
                 for (var layerId = 0; layerId < controller.GetRaw().layers.Length; layerId++) {
                     var layer = controller.GetRaw().layers[layerId];
-                    AnimatorIterator.ForEachClip(layer, clip => {
+                    AnimatorIterator.ForEachClip(layer, (clip, setClip) => {
+                        void ensureMutable() {
+                            if (!VRCFuryAssetDatabase.IsVrcfAsset(clip)) {
+                                var newClip = manager.GetClipStorage().NewClip(clip.name);
+                                clipBuilder.CopyWithAdjustedPrefixes(clip, newClip);
+                                clip = newClip;
+                                setClip(clip);
+                            }
+                        }
+
                         foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                             var newPath = RewriteClipPath(binding.path);
                             if (newPath != null) {
                                 var b = binding;
                                 b.path = newPath;
+                                ensureMutable();
                                 AnimationUtility.SetEditorCurve(clip, b,
                                     AnimationUtility.GetEditorCurve(clip, binding));
                                 AnimationUtility.SetEditorCurve(clip, binding, null);
@@ -151,6 +161,7 @@ namespace VF.Feature {
                             if (newPath != null) {
                                 var b = binding;
                                 b.path = newPath;
+                                ensureMutable();
                                 AnimationUtility.SetObjectReferenceCurve(clip, b,
                                     AnimationUtility.GetObjectReferenceCurve(clip, binding));
                                 AnimationUtility.SetObjectReferenceCurve(clip, binding, null);

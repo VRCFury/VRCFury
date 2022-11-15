@@ -7,7 +7,7 @@ using VF.Model.StateAction;
 
 namespace VF.Feature {
     public class BakeOGBBuilder : FeatureBuilder {
-        [FeatureBuilderAction((int)FeatureOrder.BakeOgbComponents)]
+        [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
         public void Apply() {
             var usedNames = new List<string>();
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {

@@ -56,6 +56,10 @@ namespace VF.Builder {
                 foreach (var l in dependsOn.Values) l.Remove(next);
             }
 
+            if (reloadOrder.Count > 0) {
+                Debug.Log("VRCFury is force re-importing: " + string.Join(", ", reloadOrder));
+            }
+
             foreach (var path in reloadOrder) {
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
             }

@@ -119,13 +119,13 @@ public class ClipBuilder {
     public void CopyWithAdjustedPrefixes(
         AnimationClip clip,
         AnimationClip copy,
-        GameObject oldRoot,
+        GameObject oldRoot = null,
         List<string> removePrefixes = null,
         string addPrefix = null,
         bool rootBindingsApplyToAvatar = false,
         Func<string,string> rewriteParam = null
     ) {
-        var prefix = oldRoot == baseObject ? "" : GetPath(oldRoot);
+        var prefix = oldRoot == null || oldRoot == baseObject ? "" : GetPath(oldRoot);
 
         string rewritePath(string path) {
             if (removePrefixes != null) {
@@ -169,7 +169,7 @@ public class ClipBuilder {
                     || propName.EndsWith(".y") || propName.EndsWith(".z") || propName.EndsWith(".w")) {
                     // Use the muscle
                 } else {
-                    Debug.LogWarning("Rewritten prop found: " + bindingToUse.propertyName);
+                    //Debug.LogWarning("Rewritten prop found: " + bindingToUse.propertyName);
                     bindingToUse.propertyName = rewriteParam(bindingToUse.propertyName);
                 }
             } else if (bindingFromProp.path == ""

@@ -13,7 +13,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
     public class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
-        [FeatureBuilderAction((int)FeatureOrder.MoveMenuItems)]
+        [FeatureBuilderAction(FeatureOrder.MoveMenuItems)]
         public void Apply() {
             GetMenu(model.fromPath, false, out var fromPath, out var fromPrefix, out var fromName, out var fromMenu);
             if (!fromMenu) {

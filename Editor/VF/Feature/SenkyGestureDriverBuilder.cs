@@ -9,7 +9,7 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
 public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
-    [FeatureBuilderAction((int)FeatureOrder.SenkyGestureDriver)]
+    [FeatureBuilderAction(FeatureOrder.SenkyGestureDriver)]
     public void Apply() {
         var feature = new GestureDriver {
             gestures = {
