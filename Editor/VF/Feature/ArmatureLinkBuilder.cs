@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -195,6 +196,9 @@ namespace VF.Feature {
                 = new Stack<Tuple<GameObject, GameObject>>();
         }
 
+        private static FieldInfo parentNameField = 
+            typeof(SkeletonBone).GetField("parentName", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
         private Links GetLinks() {
             var links = new Links();
 
@@ -216,10 +220,16 @@ namespace VF.Feature {
                 // Unity tries to find the root bone BY NAME, which often might be the wrong one. It might even be the
                 // one in the prop. So we need to find it ourself with better logic.
                 var skeleton = animator.avatar.humanDescription.skeleton;
+                bool DoesBoneMatch(GameObject obj, SkeletonBone bone) {
+                    if (bone.name != obj.name) return false;
+                    var boneParentName = (string)parentNameField.GetValue(bone);
+                    if (boneParentName != obj.transform.parent.name) return false;
+                    return true;
+                }
                 bool IsProbablyInSkeleton(GameObject obj) {
                     if (obj == null) return false;
                     if (obj == avatarObject) return true;
-                    if (!skeleton.Any(b => b.name == obj.name)) return false;
+                    if (!skeleton.Any(b => DoesBoneMatch(obj, b))) return false;
                     return IsProbablyInSkeleton(obj.transform.parent.gameObject);
                 }
                 var eligibleAvatarBones = avatarObject.GetComponentsInChildren<Transform>(true)
