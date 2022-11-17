@@ -48,6 +48,7 @@ public class BreathingBuilder : FeatureBuilder<Breathing> {
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
+        content.Add(VRCFuryEditorUtils.Info("This feature will add a breathing animation to your avatar, toggleable in menu. Only one state is required."));
         content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("inState"), "Breathe-In"));
         content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("outState"), "Breathe-Out"));
         return content;

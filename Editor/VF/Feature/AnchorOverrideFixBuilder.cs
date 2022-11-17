@@ -32,7 +32,7 @@ namespace VF.Feature {
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
-            content.Add(VRCFuryEditorUtils.WrappedLabel(
+            content.Add(VRCFuryEditorUtils.Info(
                 "This feature will set the anchor override for every mesh on your avatar to your chest. " +
                 "This will prevent different meshes from being lit differently on your body."));
             return content;

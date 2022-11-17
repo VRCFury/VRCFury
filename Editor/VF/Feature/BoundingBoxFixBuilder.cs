@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -41,12 +42,10 @@ namespace VF.Feature {
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
-            content.Add(new Label() {
-                text = "This feature will ensure a minimum size of your avatar's bounding boxes. This will prevent small objects on your avatar from disappearing when near the camera.",
-                style = {
-                    whiteSpace = WhiteSpace.Normal
-                }
-            });
+            content.Add(VRCFuryEditorUtils.Info(
+                "This feature will ensure a minimum size of your avatar's bounding boxes. " +
+                "This will prevent small objects on your avatar from disappearing when near the camera."
+            ));
             return content;
         }
     }

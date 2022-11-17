@@ -53,7 +53,7 @@ namespace VF.Feature {
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.WrappedLabel(
+            return VRCFuryEditorUtils.Info(
                 "This feature automatically tweaks your avatar eyes so that they can't go cross-eyed in VRChat." +
                 " It does this by eliminating eye bone roll through fake eye bones and rotation constraints."
             );

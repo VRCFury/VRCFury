@@ -161,6 +161,11 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
+            
+            content.Add(VRCFuryEditorUtils.Info(
+                "This feature will merge the given controller / menu / parameters into the avatar" +
+                " during the upload process."));
+            
             content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers"),
                 (i, el) => {

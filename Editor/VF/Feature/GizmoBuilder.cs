@@ -16,6 +16,7 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
+            content.Add(VRCFuryEditorUtils.Info("This adds an editor gizmo to the current object. Informational only, no changes are made to the avatar."));
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rotation"), "Rotation"));
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("text"), "Text"));
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sphereRadius"), "Sphere Radius"));

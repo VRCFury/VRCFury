@@ -297,7 +297,12 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var container = new VisualElement();
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Root bone in the prop:"));
+            
+            container.Add(VRCFuryEditorUtils.Info(
+                "This feature will link an armature in a prop to the armature on the avatar base." +
+                " It can also be used to link a single object in the prop to a certain bone on the avatar's armature."));
+            
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Root bone/object in the prop:"));
             container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });

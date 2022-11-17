@@ -48,7 +48,7 @@ namespace VF.Feature {
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.WrappedLabel(
+            return VRCFuryEditorUtils.Info(
                 "This feature will remove all usages of hand gestures within the avatar's default animator controllers." +
                 " This is useful if you are using VRCFury to modify a base avatar, and want to disable their default gestures without messing" +
                 " with the stock controllers.");

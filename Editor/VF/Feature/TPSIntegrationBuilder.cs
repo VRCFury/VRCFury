@@ -139,7 +139,10 @@ namespace VF.Feature {
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.WrappedLabel("This feature will automatically run Poiyomi TPS setup on your avatar.");
+            var content = new VisualElement();
+            content.Add(VRCFuryEditorUtils.Info("This feature will automatically run Poiyomi TPS setup on your avatar."));
+            content.Add(VRCFuryEditorUtils.Error("This is highly experimental and not recommended. Don't use this!"));
+            return content;
         }
 
         public override bool AvailableOnProps() {
