@@ -49,12 +49,14 @@ MonoBehaviour:
     features:
     - id: 0
     - id: 1
+    - id: 2
   somethingIsBroken: 0
   references:
     version: 1
     00000000:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 2
         controllers:
         - controller: {fileID: 9100000, guid: 0154f44a0736acf47b2f9c40f1e0fff9, type: 2}
           type: 5
@@ -68,18 +70,28 @@ MonoBehaviour:
           ResetMePlease: 0
         globalParams: []
         removePrefixes: []
+        addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 1
         toggleParam: peenToggle
         rootObjOverride: {fileID: 6497031174005092706}
         rootBindingsApplyToAvatar: 0
-        version: 2
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
         submenu: 
     00000001:
-      type: {class: OGBIntegration, ns: VF.Model.Feature, asm: VRCFury}
+      type: {class: OGBIntegration2, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+    00000002:
+      type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        states:
+        - obj: {fileID: 6497031174005092706}
+          action: 1
+          ResetMePlease: 0
 --- !u!1001 &501443132750613863
 PrefabInstance:
   m_ObjectHideFlags: 0
