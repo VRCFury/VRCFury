@@ -64,8 +64,8 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info("This feature will move a menu item to another location. You can use a slashes to make subfolders."));
-            content.Add(new PropertyField(prop.FindPropertyRelative("fromPath"), "From Path"));
-            content.Add(new PropertyField(prop.FindPropertyRelative("toPath"), "To Path"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("fromPath"), "From Path"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toPath"), "To Path"));
             return content;
         }
 

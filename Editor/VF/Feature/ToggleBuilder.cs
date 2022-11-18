@@ -145,7 +145,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         name.style.flexGrow = 1;
         flex.Add(name);
 
-        var button = new Button(() => {
+        var button = VRCFuryEditorUtils.Button("*", () => {
             var advMenu = new GenericMenu();
             if (savedProp != null) {
                 advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
@@ -153,42 +153,44 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+
             if (sliderProp != null) {
                 advMenu.AddItem(new GUIContent("Use Slider Wheel"), sliderProp.boolValue, () => {
                     sliderProp.boolValue = !sliderProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+
             if (securityEnabledProp != null) {
                 advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
                     securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+
             if (defaultOnProp != null) {
                 advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
                     defaultOnProp.boolValue = !defaultOnProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+
             if (resetPhysboneProp != null) {
                 advMenu.AddItem(new GUIContent("Add PhysBone to Reset"), false, () => {
                     VRCFuryEditorUtils.AddToList(resetPhysboneProp);
                 });
             }
+
             if (enableExclusiveTagProp != null) {
                 advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
                     enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+
             advMenu.ShowAsContext();
-        }) {
-            text = "*",
-            style = {
-                flexGrow = 0
-            }
-        };
+        });
+        button.style.flexGrow = 0;
         flex.Add(button);
 
         if (enableExclusiveTagProp != null) {
@@ -214,7 +216,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tags.Add("Default On");
             var tagsStr = string.Join(" | ", tags.ToArray());
             if (tagsStr != "") {
-                return new Label(tagsStr);
+                return VRCFuryEditorUtils.WrappedLabel(tagsStr);
             }
 
             return new VisualElement();
@@ -231,8 +233,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (resetPhysboneProp.arraySize > 0) {
-                    c.Add(new Label("Reset PhysBones:"));
-                    c.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("resetPhysbones"), renderElement: (i,el) => VRCFuryEditorUtils.PropWithoutLabel(el)));
+                    c.Add(VRCFuryEditorUtils.WrappedLabel("Reset PhysBones:"));
+                    c.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("resetPhysbones")));
                 }
                 return c;
             }, resetPhysboneProp));

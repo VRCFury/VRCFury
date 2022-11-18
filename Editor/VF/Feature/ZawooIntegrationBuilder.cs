@@ -120,16 +120,16 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
 
-        var overrideLabel = VRCFuryEditorUtils.Error(
+        content.Add(VRCFuryEditorUtils.Error(
             "This feature is deprecated! Please remove this, and see the VRCFury/Prefabs/Zawoo/Readme.MD" +
-            " file for details about how to install the Zawoo prefabs the new way!");
+            " file for details about how to install the Zawoo prefabs the new way!"));
         
         var foldout = new Foldout();
         foldout.value = false;
         content.Add(foldout);
         foldout.text = "Advanced";
 
-        foldout.contentContainer.Add(new PropertyField(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
+        foldout.contentContainer.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
 
         return content;
     }

@@ -179,15 +179,15 @@ namespace VF.Feature {
 
             var row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
-            var hand = VRCFuryEditorUtils.PropWithoutLabel(handProp);
+            var hand = VRCFuryEditorUtils.Prop(handProp);
             hand.style.flexBasis = 70;
             row.Add(hand);
             var handSigns = VRCFuryEditorUtils.RefreshOnChange(() => {
                 var w = new VisualElement();
                 w.style.flexDirection = FlexDirection.Row;
                 w.style.alignItems = Align.Center;
-                var leftBox = VRCFuryEditorUtils.PropWithoutLabel(signProp);
-                var rightBox = VRCFuryEditorUtils.PropWithoutLabel(comboSignProp);
+                var leftBox = VRCFuryEditorUtils.Prop(signProp);
+                var rightBox = VRCFuryEditorUtils.Prop(comboSignProp);
                 if ((GestureDriver.Hand)handProp.enumValueIndex == GestureDriver.Hand.COMBO) {
                     w.Add(new Label("L") { style = { flexBasis = 10 }});
                     leftBox.style.flexGrow = 1;
@@ -217,7 +217,7 @@ namespace VF.Feature {
             var exclusiveTagProp = gesture.FindPropertyRelative("exclusiveTag");
             var enableWeightProp = gesture.FindPropertyRelative("enableWeight");
 
-            var button = new Button(() => {
+            var button = VRCFuryEditorUtils.Button("Options", () => {
                 var advMenu = new GenericMenu();
                 advMenu.AddItem(new GUIContent("Disable blinking when active"), disableBlinkProp.boolValue, () => {
                     disableBlinkProp.boolValue = !disableBlinkProp.boolValue;
@@ -227,10 +227,11 @@ namespace VF.Feature {
                     customTransitionTimeProp.boolValue = !customTransitionTimeProp.boolValue;
                     gesture.serializedObject.ApplyModifiedProperties();
                 });
-                advMenu.AddItem(new GUIContent("Add 'Gesture Lock' toggle to menu"), enableLockMenuItemProp.boolValue, () => {
-                    enableLockMenuItemProp.boolValue = !enableLockMenuItemProp.boolValue;
-                    gesture.serializedObject.ApplyModifiedProperties();
-                });
+                advMenu.AddItem(new GUIContent("Add 'Gesture Lock' toggle to menu"), enableLockMenuItemProp.boolValue,
+                    () => {
+                        enableLockMenuItemProp.boolValue = !enableLockMenuItemProp.boolValue;
+                        gesture.serializedObject.ApplyModifiedProperties();
+                    });
                 advMenu.AddItem(new GUIContent("Enable exclusive tag"), enableExclusiveTagProp.boolValue, () => {
                     enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
                     gesture.serializedObject.ApplyModifiedProperties();
@@ -240,20 +241,18 @@ namespace VF.Feature {
                     gesture.serializedObject.ApplyModifiedProperties();
                 });
                 advMenu.ShowAsContext();
-            }) {
-                text = "Options",
-                style = { flexBasis = 70 }
-            };
+            });
+            button.style.flexBasis = 70;
 
             row.Add(button);
             
             wrapper.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var w = new VisualElement();
-                if (disableBlinkProp.boolValue) w.Add(new Label("Blinking disabled when active") { style = { marginLeft = 2 }});
-                if (customTransitionTimeProp.boolValue) w.Add(new PropertyField(transitionTimeProp, "Custom transition time (s)"));
-                if (enableLockMenuItemProp.boolValue) w.Add(new PropertyField(lockMenuItemProp, "Lock menu item path"));
-                if (enableExclusiveTagProp.boolValue) w.Add(new PropertyField(exclusiveTagProp, "Exclusive Tag"));
-                if (enableWeightProp.boolValue) w.Add(new Label("Use gesture weight (fist only)") { style = { marginLeft = 2 }});
+                if (disableBlinkProp.boolValue) w.Add(VRCFuryEditorUtils.WrappedLabel("Blinking disabled when active"));
+                if (customTransitionTimeProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(transitionTimeProp, "Custom transition time (s)"));
+                if (enableLockMenuItemProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(lockMenuItemProp, "Lock menu item path"));
+                if (enableExclusiveTagProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(exclusiveTagProp, "Exclusive Tag"));
+                if (enableWeightProp.boolValue) w.Add(VRCFuryEditorUtils.WrappedLabel("Use gesture weight (fist only)"));
                 return w;
             }, disableBlinkProp, customTransitionTimeProp, enableLockMenuItemProp, enableExclusiveTagProp, enableWeightProp));
             

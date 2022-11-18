@@ -22,11 +22,10 @@ namespace VF.Feature {
                 " will be updated to control these linked objects as well."));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Name of skinned mesh object on avatar:"));
-            content.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("baseObj")));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("baseObj")));
 
             content.Add(VRCFuryEditorUtils.WrappedLabel("Skinned meshes to link:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("objs"), (i,el) => 
-                VRCFuryEditorUtils.PropWithoutLabel(el)));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("objs")));
 
             return content;
         }

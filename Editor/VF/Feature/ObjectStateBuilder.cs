@@ -38,10 +38,10 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("states"), (i, el) => {
                 var c = new VisualElement();
                 c.style.flexDirection = FlexDirection.Row;
-                var a = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("obj"));
+                var a = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("obj"));
                 a.style.flexBasis = 0;
                 a.style.flexGrow = 1;
-                var b = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("action"));
+                var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("action"));
                 b.style.flexBasis = 0;
                 b.style.flexGrow = 1;
                 c.Add(a);

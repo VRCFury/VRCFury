@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -52,7 +54,7 @@ public static class VRCFuryEditorUtils {
                 entries.Add(row);
 
                 VisualElement data = RefreshOnTrigger(
-                    () => renderElement != null ? renderElement(offset, el) : new PropertyField(el),
+                    () => renderElement != null ? renderElement(offset, el) : Prop(el),
                     el.serializedObject,
                     out var triggerRefresh
                 );
@@ -124,12 +126,9 @@ public static class VRCFuryEditorUtils {
                 if (onEmpty != null) {
                     entries.Add(onEmpty());
                 } else {
-                    var label = new Label("This list is empty. Click + to add an entry.") {
-                        style = {
-                            unityTextAlign = TextAnchor.MiddleCenter
-                        }
-                    };
-                    VRCFuryEditorUtils.Padding(label, 5);
+                    var label = WrappedLabel("This list is empty. Click + to add an entry.");
+                    label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    Padding(label, 5);
                     entries.Add(label);
                 }
             }
@@ -186,6 +185,13 @@ public static class VRCFuryEditorUtils {
         return newEntry;
     }
 
+    public static void Margin(VisualElement el, float topbottom, float leftright) {
+        el.style.marginTop = el.style.marginBottom = topbottom;
+        el.style.marginLeft = el.style.marginRight = leftright;
+    }
+    public static void Margin(VisualElement el, float all) {
+        Margin(el, all, all);
+    }
     public static void Padding(VisualElement el, float topbottom, float leftright) {
         el.style.paddingTop = el.style.paddingBottom = topbottom;
         el.style.paddingLeft = el.style.paddingRight = leftright;
@@ -221,40 +227,101 @@ public static class VRCFuryEditorUtils {
         return field;
     }
 
-    public static VisualElement Prop(SerializedProperty prop, string label) {
-        var field = new PropertyField(prop, label);
-        field.style.marginLeft = -2;
-        return field;
+    public static VisualElement Button(string text, Action onPress) {
+        var b = new Button(onPress) {
+            text = text,
+        };
+        Margin(b, 0);
+        return b;
     }
 
-    public static int LABEL_WIDTH = 153;
-    public static VisualElement PropWithoutLabel(SerializedProperty prop) {
-        var wrapper = new VisualElement();
-        wrapper.style.overflow = Overflow.Hidden;
+    public static VisualElement Prop(SerializedProperty prop, string label = null, int labelWidth = 100) {
+        VisualElement f = null;
+        var setMargin = true;
+        var labelHandled = false;
         switch (prop.propertyType) {
-            case SerializedPropertyType.String:
-                wrapper.Add(new TextField {
-                    bindingPath = prop.propertyPath
-                });
+            case SerializedPropertyType.Vector3: {
+                f = new Vector3Field { bindingPath = prop.propertyPath };
                 break;
-            case SerializedPropertyType.Integer:
-                wrapper.Add(new IntegerField() {
-                    bindingPath = prop.propertyPath
-                });
+            }
+            case SerializedPropertyType.Boolean: {
+                f = new Toggle { bindingPath = prop.propertyPath };
                 break;
-            case SerializedPropertyType.Float:
-                wrapper.Add(new FloatField() {
-                    bindingPath = prop.propertyPath
-                });
+            }
+            case SerializedPropertyType.String: {
+                f = new TextField { bindingPath = prop.propertyPath };
                 break;
-            default:
-                wrapper.Add(new PropertyField(prop, " ") {
-                    style = {
-                        marginLeft = -LABEL_WIDTH
-                    }
-                });
+            }
+            case SerializedPropertyType.Integer: {
+                f = new IntegerField { bindingPath = prop.propertyPath };
                 break;
+            }
+            case SerializedPropertyType.Float: {
+                f = new FloatField { bindingPath = prop.propertyPath };
+                break;
+            }
+            case SerializedPropertyType.Enum: {
+                f = new PopupField<string>(prop.enumDisplayNames.ToList(),
+                    prop.enumValueIndex) { bindingPath = prop.propertyPath };
+                break;
+            }
+            case SerializedPropertyType.ObjectReference: {
+                Type type = null;
+                if ((bool)ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.NativeClassExtensionUtilities")
+                    .GetMethod("ExtendsANativeType", new[]{typeof(UnityEngine.Object)})
+                    .Invoke(null, new object[] { prop.serializedObject.targetObject })) {
+                    var args = new object[] { prop, null };
+                    ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility")
+                        .GetMethod("GetFieldInfoFromProperty", BindingFlags.Static|BindingFlags.NonPublic)
+                        .Invoke(null, args);
+                    type = (Type)args[1];
+                }
+                if (type == null)
+                    type = typeof (UnityEngine.Object);
+                f = new ObjectField() { objectType = type, bindingPath = prop.propertyPath };
+                break;
+            }
+            case SerializedPropertyType.Generic: {
+                if (prop.type == "State") {
+                    f = VRCFuryStateEditor.render(prop, label, labelWidth);
+                    labelHandled = true;
+                }
+                break;
+            }
+            case SerializedPropertyType.ManagedReference: {
+                if (prop.managedReferenceFieldTypename == "VRCFury VF.Model.StateAction.Action") {
+                    f = VRCFuryActionDrawer.Render(prop);
+                }
+                break;
+            }
         }
+
+        if (f == null) {
+            var str = "Unknown type " + prop.propertyType + " " + prop.type;
+            if (prop.propertyType == SerializedPropertyType.ManagedReference) {
+                str += "\n" + prop.managedReferenceFieldTypename + "\n" + prop.managedReferenceFullTypename;
+            }
+            f = WrappedLabel(str);
+            f.style.backgroundColor = Color.red;
+        }
+        
+        var wrapper = new VisualElement();
+        if (setMargin) Margin(f, 0);
+        wrapper.Add(f);
+
+        if (label != null && !labelHandled) {
+            var flex = new VisualElement();
+            flex.style.flexDirection = FlexDirection.Row;
+            var l = new Label(label);
+            l.style.minWidth = labelWidth;
+            l.style.flexGrow = 0;
+            flex.Add(l);
+            var field = Prop(prop);
+            field.style.flexGrow = 1;
+            flex.Add(field);
+            return flex;
+        }
+        
         return wrapper;
     }
 
@@ -439,9 +506,7 @@ public static class VRCFuryEditorUtils {
                 paddingBottom = 5,
                 unityTextAlign = TextAnchor.MiddleCenter,
                 whiteSpace = WhiteSpace.Normal,
-                marginTop = 5,
-                marginLeft = 20,
-                marginRight = 20
+                marginTop = 5
             }
         };
         Padding(label, 5);

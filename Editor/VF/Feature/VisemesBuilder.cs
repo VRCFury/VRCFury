@@ -50,15 +50,15 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             "This feature will allow you to use animations for your avatar's visemes."
         ));
         foreach (var name in visemeNames) {
-            content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state_" + name), name));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state_" + name), name, 50));
         }
         
         var adv = new Foldout {
             text = "Advanced",
             value = false
         };
-        adv.Add(new PropertyField(prop.FindPropertyRelative("transitionTime"), "Transition Time (s)"));
-        adv.Add(new Label("-1 will use VRCFury recommended value"));
+        adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionTime"), "Transition Time (s)"));
+        adv.Add(VRCFuryEditorUtils.WrappedLabel("-1 will use VRCFury recommended value"));
         content.Add(adv);
         
         return content;

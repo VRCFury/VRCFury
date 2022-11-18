@@ -171,11 +171,11 @@ namespace VF.Feature {
                 (i, el) => {
                     var wrapper = new VisualElement();
                     wrapper.style.flexDirection = FlexDirection.Row;
-                    var a = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("controller"));
+                    var a = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("controller"));
                     a.style.flexBasis = 0;
                     a.style.flexGrow = 1;
                     wrapper.Add(a);
-                    var b = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("type"));
+                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("type"));
                     b.style.flexBasis = 0;
                     b.style.flexGrow = 1;
                     wrapper.Add(b);
@@ -188,11 +188,11 @@ namespace VF.Feature {
                 (i, el) => {
                     var wrapper = new VisualElement();
                     wrapper.style.flexDirection = FlexDirection.Row;
-                    var a = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("menu"));
+                    var a = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("menu"));
                     a.style.flexBasis = 0;
                     a.style.flexGrow = 1;
                     wrapper.Add(a);
-                    var b = VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("prefix"));
+                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("prefix"));
                     b.style.flexBasis = 0;
                     b.style.flexGrow = 1;
                     wrapper.Add(b);
@@ -201,23 +201,21 @@ namespace VF.Feature {
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms"),
-                (i, el) => VRCFuryEditorUtils.PropWithoutLabel(el.FindPropertyRelative("parameters"))));
+                (i, el) => VRCFuryEditorUtils.Prop(el.FindPropertyRelative("parameters"))));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameters in this list will have their name kept as is, allowing you to interact with " +
                 "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
                 "parameters (such as gestures) are included by default."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams"),
-                (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Remove prefixes from clips:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Strings in this list will be removed from the start of every animated key, useful if the animations" +
                 " in the controller were originally written to be based from the avatar root, " +
                 "but you are now trying to use as a VRCFury prop."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("removePrefixes"),
-                (i,prmProp) => VRCFuryEditorUtils.PropWithoutLabel(prmProp)));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("removePrefixes")));
 
             var adv = new Foldout {
                 text = "Advanced Options",
@@ -231,7 +229,7 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameter name for prop toggling. If set, this entire prop will be de-activated whenever" +
                 " this boolean parameter within the Full Controller is false."));
-            adv.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("toggleParam")));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam")));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("addPrefix"),
                 "Add prefix to clips"));
 

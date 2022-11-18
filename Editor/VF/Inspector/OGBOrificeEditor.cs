@@ -20,7 +20,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableHandTouchZone"), "Enable hand touch zone?"));
             container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(serializedObject.FindProperty("length")));
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
 
             return container;
         }

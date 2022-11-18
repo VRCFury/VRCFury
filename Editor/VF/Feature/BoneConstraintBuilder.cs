@@ -34,6 +34,11 @@ namespace VF.Feature {
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var container = new VisualElement();
+            
+            container.Add(VRCFuryEditorUtils.Error(
+                "This feature is deprecated. Please use Armature Link instead. It can do everything" +
+                " this feature can do and more."));
+            
             container.Add(VRCFuryEditorUtils.Info(
                 "Adds a parent constraint from the specified object to the specified bone. Useful for props" +
                 " which are packaged as VRCFury prefabs."));

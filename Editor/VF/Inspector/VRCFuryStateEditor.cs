@@ -8,9 +8,7 @@ using VF.Model.StateAction;
 namespace VF.Inspector {
 
 public class VRCFuryStateEditor {
-    public static VisualElement render(SerializedProperty prop, string myLabel = "") {
-        if (myLabel == null) myLabel = prop.name;
-
+    public static VisualElement render(SerializedProperty prop, string myLabel = null, int labelWidth = 100) {
         var container = new VisualElement();
 
         var list = prop.FindPropertyRelative("actions");
@@ -37,10 +35,10 @@ public class VRCFuryStateEditor {
         container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var body = new VisualElement();
 
-            var showLabel = myLabel != "";
+            var showLabel = myLabel != null;
             VisualElement singleLineEditor = null;
             if (list.arraySize == 1) {
-                singleLineEditor = VRCFuryActionDrawer.Render(list.GetArrayElementAtIndex(0), true);
+                singleLineEditor = VRCFuryActionDrawer.Render(list.GetArrayElementAtIndex(0));
             }
 
             var showPlus = singleLineEditor != null || list.arraySize == 0;
@@ -55,27 +53,25 @@ public class VRCFuryStateEditor {
 
                 if (showLabel) {
                     var label = new Label(myLabel);
-                    label.style.flexBasis = 100;
+                    label.style.flexBasis = labelWidth;
                     label.style.flexGrow = 0;
                     segments.Add(label);
                 }
                 if (showSingleLineEditor) {
                     singleLineEditor.style.flexGrow = 1;
                     segments.Add(singleLineEditor);
-                    var x = new Button(() => {
+                    var x = VRCFuryEditorUtils.Button("x", () => {
                         list.DeleteArrayElementAtIndex(0);
                         list.serializedObject.ApplyModifiedProperties();
-                    }) {
-                        style = { flexGrow = 0 },
-                        text = "x",
-                    };
+                    });
+                    x.style.flexGrow = 0;
+                    x.style.flexBasis = 20;
                     segments.Add(x);
                 }
                 if (showPlus) {
-                    var plus = new Button(OnPlus) {
-                        style = { flexGrow = showSingleLineEditor ? 0 : 1 },
-                        text = "+",
-                    };
+                    var plus = VRCFuryEditorUtils.Button("+", OnPlus);
+                    plus.style.flexGrow = showSingleLineEditor ? 0 : 1;
+                    plus.style.flexBasis = 20;
                     segments.Add(plus);
                 }
             }

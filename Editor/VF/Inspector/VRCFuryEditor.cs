@@ -33,7 +33,7 @@ public class VRCFuryEditor : Editor {
 
         var features = serializedObject.FindProperty("config.features");
         if (features == null) {
-            container.Add(new Label("Feature list is missing? This is a bug."));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Feature list is missing? This is a bug."));
         } else {
             var disabled = PrefabUtility.IsPartOfPrefabInstance(self);
             container.Add(CreateOverrideLabel(features));
@@ -50,20 +50,11 @@ public class VRCFuryEditor : Editor {
                 onEmpty: () => {
                     var c = new VisualElement();
                     VRCFuryEditorUtils.Padding(c, 10);
-                    var l = new Label {
-                        text = "You haven't added any VRCFury features yet.",
-                        style = {
-                            unityTextAlign = TextAnchor.MiddleCenter
-                        }
-                    };
+                    var l = VRCFuryEditorUtils.WrappedLabel(
+                        "You haven't added any VRCFury features yet.\n" + 
+                        "Click the + to add your first one!");
+                    l.style.unityTextAlign = TextAnchor.MiddleCenter;
                     c.Add(l);
-                    var l2 = new Label {
-                        text = "Click the + to add your first one!",
-                        style = {
-                            unityTextAlign = TextAnchor.MiddleCenter
-                        }
-                    };
-                    c.Add(l2);
                     return c;
                 }
             );
@@ -77,22 +68,18 @@ public class VRCFuryEditor : Editor {
             box.style.marginTop = box.style.marginBottom = 10;
             container.Add(box);
 
-            var label = new Label(
+            var label = VRCFuryEditorUtils.WrappedLabel(
                 "VRCFury only applies changes to a temporary copy of your avatar while uploading." + 
                 " If you wish to verify these changes in your editor, clicking this button will generate" +
                 " a clone object with the VRCFury changes applied.");
             VRCFuryEditorUtils.Padding(box, 5);
-            label.style.whiteSpace = WhiteSpace.Normal;
+            VRCFuryEditorUtils.BorderRadius(box, 5);
             box.Add(label);
 
-            var genButton = new Button(() => {
+            var genButton = VRCFuryEditorUtils.Button("Build a Test Copy", () => {
                 VRCFuryTestCopyMenuItem.BuildTestCopy(self.gameObject);
-            }) {
-                style = {
-                    marginTop = 5
-                },
-                text = "Build a Test Copy"
-            };
+            });
+            genButton.style.marginTop = 5;
             box.Add(genButton);
         }
 
@@ -135,6 +122,7 @@ public class VRCFuryEditor : Editor {
                 marginTop = 5,
                 marginLeft = 20,
                 marginRight = 20,
+                marginBottom = 0,
                 borderTopWidth = 1,
                 borderLeftWidth = 1,
                 borderRightWidth = 1,

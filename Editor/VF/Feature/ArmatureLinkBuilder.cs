@@ -303,32 +303,32 @@ namespace VF.Feature {
                 " It can also be used to link a single object in the prop to a certain bone on the avatar's armature."));
             
             container.Add(VRCFuryEditorUtils.WrappedLabel("Root bone/object in the prop:"));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("propBone")));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.WrappedLabel("Path to corresponding root bone from root of avatar:"));
-                container.Add(VRCFuryEditorUtils.WrappedLabel("(If full string path is given, humanoid bone dropdown will be ignored)"));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("boneOnAvatar")));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("bonePathOnAvatar")));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("(If full string path is given, humanoid bone dropdown will be ignored)"));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.WrappedLabel("Keep bone offsets:"));
-                container.Add(VRCFuryEditorUtils.WrappedLabel("If false, linked bones will be rigidly locked to the transform of the corresponding avatar bone." +
+            container.Add(VRCFuryEditorUtils.WrappedLabel("If false, linked bones will be rigidly locked to the transform of the corresponding avatar bone." +
                                                               " If true, prop bones will maintain their initial offset to the corresponding avatar bone. This is unusual."));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("keepBoneOffsets")));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepBoneOffsets")));
             
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.WrappedLabel("Use Bone Merging (fragile):"));
-                container.Add(VRCFuryEditorUtils.WrappedLabel("If true, skinned meshes in this prop will be modified during upload to use the actual bones from the avatar armature." +
+            container.Add(VRCFuryEditorUtils.WrappedLabel("If true, skinned meshes in this prop will be modified during upload to use the actual bones from the avatar armature." +
                                                               " This means that your prop's bones will not count toward the avatar's bone count (more efficient)." +
                                                               " Beware that this may cause the prop mesh to be broken in game if the armature (including fbx export settings) does not match the avatar's EXACTLY."));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("useBoneMerging")));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useBoneMerging")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.WrappedLabel("Remove bone suffix/prefix:"));
-                container.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
+            container.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
                                                               "something like _PropName to the end of every bone, breaking AvatarLink in the process."));
-            container.Add(VRCFuryEditorUtils.PropWithoutLabel(prop.FindPropertyRelative("removeBoneSuffix")));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
 
             return container;
         }

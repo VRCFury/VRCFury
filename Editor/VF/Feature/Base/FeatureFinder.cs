@@ -106,7 +106,7 @@ public static class FeatureFinder {
     private static VisualElement RenderFeatureEditor(string title, VisualElement bodyContent) {
         var wrapper = new VisualElement();
 
-        var header = new Label(title);
+        var header = VRCFuryEditorUtils.WrappedLabel(title);
         header.style.unityFontStyleAndWeight = FontStyle.Bold;
         wrapper.Add(header);
 
