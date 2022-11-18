@@ -89,6 +89,9 @@ MonoBehaviour:
         - obj: {fileID: 3588963455240442421}
           action: 2
           ResetMePlease: 0
+        - obj: {fileID: 3588963454680776449}
+          action: 1
+          ResetMePlease: 0
     00000002:
       type: {class: OGBIntegration2, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -134,6 +137,12 @@ PrefabInstance:
     - {fileID: 3738764014577934691, guid: 8bc72574054c79b45a8e30f12bc87178, type: 3}
     - {fileID: 3738764013117518385, guid: 8bc72574054c79b45a8e30f12bc87178, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 8bc72574054c79b45a8e30f12bc87178, type: 3}
+--- !u!1 &3588963454680776449 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3738764014387934179, guid: 8bc72574054c79b45a8e30f12bc87178,
+    type: 3}
+  m_PrefabInstance: {fileID: 156584958901619938}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &3588963454680776451 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3738764014387934177, guid: 8bc72574054c79b45a8e30f12bc87178,
