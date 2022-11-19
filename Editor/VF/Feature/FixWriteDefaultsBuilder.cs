@@ -7,10 +7,10 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Model.Feature;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
+        public HashSet<EditorCurveBinding> forceRecordBindings = new HashSet<EditorCurveBinding>();
 
         [FeatureBuilderAction(FeatureOrder.FixWriteDefaults)]
         public void Apply() {
@@ -31,36 +31,28 @@ namespace VF.Feature {
             */
             
             if (allFeaturesInRun.Any(f => f is MakeWriteDefaultsOff2)) {
-                MakeWriteDefaultsOff(true);
+                ApplyToAvatar(true, false);
                 return;
             }
             
             var useWriteDefaults = DetectExistingWriteDefaults();
-            if (!useWriteDefaults) {
-                Debug.Log("Detected 'Write Defaults Off', adjusting VRCFury states to use it too.");
-                MakeWriteDefaultsOff(false);
-            } else {
-                // Usually the VRCF layers will all have writeDefaults = on by default, but some won't (like full controllers)
-                foreach (var controller in manager.GetAllTouchedControllers()) {
-                    foreach (var layer in controller.GetManagedLayers()) {
-                        AnimatorIterator.ForEachState(layer, state => state.writeDefaultValues = true);
-                    }
-                }
-            }
+            Debug.Log("Detected avatar is using write defaults " + (useWriteDefaults ? "ON" : "OFF"));
+            ApplyToAvatar(false, useWriteDefaults);
         }
         
-        private void MakeWriteDefaultsOff(bool applyToUnmanagedLayers) {
+        private void ApplyToAvatar(bool applyToUnmanagedLayers, bool useWriteDefaults) {
             var missingStates = new List<string>();
+            var noopClip = manager.GetClipStorage().GetNoopClip();
             foreach (var controller in applyToUnmanagedLayers ? manager.GetAllUsedControllers() : manager.GetAllTouchedControllers()) {
                 var defaultClip = manager.GetClipStorage().NewClip("Defaults " + controller.GetType());
                 var defaultLayer = controller.NewLayer("Defaults", 1);
                 defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
                 foreach (var layer in controller.GetManagedLayers()) {
-                    MakeWriteDefaultsOff(layer, defaultClip, manager.GetClipStorage().GetNoopClip(), avatarObject, missingStates);
+                    ApplyToLayer(layer, defaultClip, noopClip, avatarObject, missingStates, useWriteDefaults);
                 }
                 if (applyToUnmanagedLayers) {
                     foreach (var layer in controller.GetUnmanagedLayers()) {
-                        MakeWriteDefaultsOff(layer, defaultClip, manager.GetClipStorage().GetNoopClip(), avatarObject, missingStates);
+                        ApplyToLayer(layer, defaultClip, noopClip, avatarObject, missingStates, useWriteDefaults);
                     }
                 }
             }
@@ -69,35 +61,43 @@ namespace VF.Feature {
             }
         }
 
-        private static void MakeWriteDefaultsOff(AnimatorControllerLayer layer, AnimationClip defaultClip, AnimationClip noopClip, GameObject baseObject, List<string> missingStates) {
+        private void ApplyToLayer(
+            AnimatorControllerLayer layer,
+            AnimationClip defaultClip,
+            AnimationClip noopClip,
+            GameObject baseObject,
+            List<string> missingStates,
+            bool useWriteDefaults
+        ) {
             var alreadySet = new HashSet<EditorCurveBinding>();
             foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
 
-            AnimatorIterator.ForEachBlendTree(layer, tree => {
-                if (tree.blendType == BlendTreeType.Direct) {
-                    throw new VRCFBuilderException(
-                        "You've requested VRCFury to use Write Defaults Off, but this avatar contains a Direct BlendTree in layer " + layer.name + "." +
-                        " Due to a Unity bug, Write Default Off and Direct BlendTrees are incompatible.");
-                }
-            });
+            if (!useWriteDefaults) {
+                AnimatorIterator.ForEachBlendTree(layer, tree => {
+                    if (tree.blendType == BlendTreeType.Direct) {
+                        throw new VRCFBuilderException(
+                            "You've requested VRCFury to use Write Defaults Off, but this avatar contains a Direct BlendTree in layer " +
+                            layer.name + "." +
+                            " Due to a Unity bug, Write Default Off and Direct BlendTrees are incompatible.");
+                    }
+                });
+            }
 
             AnimatorIterator.ForEachState(layer, state => {
-                if (state.motion == null) {
-                    state.motion = noopClip;
+                if (useWriteDefaults) { 
+                    state.writeDefaultValues = true;
+                } else {
+                    if (state.motion == null) state.motion = noopClip;
+                    if (!state.writeDefaultValues) return;
                     state.writeDefaultValues = false;
-                    return;
                 }
 
-                if (!state.writeDefaultValues) {
-                    return;
-                }
-
-                state.writeDefaultValues = false;
                 AnimatorIterator.ForEachClip(state, (clip, setClip) => {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                         if (binding.type == typeof(Animator)) continue;
                         if (alreadySet.Contains(binding)) continue;
+                        if (useWriteDefaults && !forceRecordBindings.Contains(binding)) continue;
                         alreadySet.Add(binding);
                         var exists = AnimationUtility.GetFloatValue(baseObject, binding, out var value);
                         if (exists) {
@@ -110,6 +110,7 @@ namespace VF.Feature {
 
                     foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
                         if (alreadySet.Contains(binding)) continue;
+                        if (useWriteDefaults && !forceRecordBindings.Contains(binding)) continue;
                         alreadySet.Add(binding);
                         var exists = AnimationUtility.GetObjectReferenceValue(baseObject, binding, out var value);
                         if (exists) {

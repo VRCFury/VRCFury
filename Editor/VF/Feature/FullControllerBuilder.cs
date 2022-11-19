@@ -142,13 +142,20 @@ namespace VF.Feature {
             }
 
             if (!string.IsNullOrWhiteSpace(model.toggleParam)) {
+                addOtherFeature(new ObjectState {
+                    states = {
+                        new ObjectState.ObjState {
+                            action = ObjectState.Action.DEACTIVATE,
+                            obj = baseObject
+                        }
+                    }
+                });
                 addOtherFeature(new Toggle {
                     name = rewriteParam(model.toggleParam),
                     state = new State {
                         actions = { new ObjectToggleAction { obj = baseObject } }
                     },
                     securityEnabled = true,
-                    forceOffForUpload = true,
                     addMenuItem = false,
                     usePrefixOnParam = false
                 });

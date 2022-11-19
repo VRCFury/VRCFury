@@ -10,6 +10,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using Object = UnityEngine.Object;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -17,6 +18,7 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFAState onState;
     private VFABool param;
+    private AnimationClip clip;
 
     public ISet<string> GetExclusiveTags() {
         if (model.enableExclusiveTag) {
@@ -54,19 +56,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
-        
-        if (model.forceOffForUpload) {
-            foreach (var action in model.state.actions) {
-                if (action is ObjectToggleAction toggleAction && toggleAction.obj != null) {
-                    toggleAction.obj.SetActive(false);
-                }
-            }
-        }
 
         var layerName = model.name;
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
-        var clip = LoadState(model.name, model.state);
+        clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
         onState = on;
@@ -76,6 +70,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             .Where(f => f != null)
             .Select(f => f.GetEnabled())
             .FirstOrDefault();
+
+        if (model.includeInRest) {
+            var defaultsManager = allBuildersInRun
+                .OfType<FixWriteDefaultsBuilder>()
+                .First();
+            defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
+            defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
+        }
 
         var onCase = param.IsTrue();
 
@@ -115,6 +117,45 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
+    /**
+     * This method is needed, because:
+     * 1. If you clip.SampleAnimation on the avatar while it has a humanoid Avatar set on its Animator, it'll
+     *    bake into motorcycle pose.
+     * 2. If you change the avatar or controller on the Animator, the Animator will reset all transforms of all
+     *    children objects back to the way they were at the start of the frame.
+     * Only destroying the animator then recreating it seems to "reset" this "start of frame" state.
+     */
+    private static void WithoutAnimator(GameObject obj, System.Action func) {
+        var animator = obj.GetComponent<Animator>();
+        if (!animator) {
+            func();
+            return;
+        }
+
+        var controller = animator.runtimeAnimatorController;
+        var avatar = animator.avatar;
+        var applyRootMotion = animator.applyRootMotion;
+        var updateMode = animator.updateMode;
+        var cullingMode = animator.cullingMode;
+        Object.DestroyImmediate(animator);
+        animator = obj.AddComponent<Animator>();
+        animator.applyRootMotion = applyRootMotion;
+        animator.updateMode = updateMode;
+        animator.cullingMode = cullingMode;
+        func();
+        animator.runtimeAnimatorController = controller;
+        animator.avatar = avatar;
+    }
+
+    [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
+    public void ApplyRestingState() {
+        if (onState == null) return;
+        if (!model.includeInRest) return;
+        WithoutAnimator(avatarObject, () => {
+            clip.SampleAnimation(avatarObject, 0);
+        });
+    }
+
     public override string GetEditorTitle() {
         return "Toggle";
     }
@@ -130,6 +171,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var sliderProp = prop.FindPropertyRelative("slider");
         var securityEnabledProp = prop.FindPropertyRelative("securityEnabled");
         var defaultOnProp = prop.FindPropertyRelative("defaultOn");
+        var includeInRestProp = prop.FindPropertyRelative("includeInRest");
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
 
@@ -175,6 +217,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (includeInRestProp != null) {
+                advMenu.AddItem(new GUIContent("Show in Rest Pose"), includeInRestProp.boolValue, () => {
+                    includeInRestProp.boolValue = !includeInRestProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             if (resetPhysboneProp != null) {
                 advMenu.AddItem(new GUIContent("Add PhysBone to Reset"), false, () => {
                     VRCFuryEditorUtils.AddToList(resetPhysboneProp);
@@ -214,6 +263,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tags.Add("Security");
             if (defaultOnProp != null && defaultOnProp.boolValue)
                 tags.Add("Default On");
+            if (includeInRestProp != null && includeInRestProp.boolValue)
+                tags.Add("Shown in Rest Pose");
             var tagsStr = string.Join(" | ", tags.ToArray());
             if (tagsStr != "") {
                 return VRCFuryEditorUtils.WrappedLabel(tagsStr);
@@ -224,7 +275,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             savedProp,
             sliderProp,
             securityEnabledProp,
-            defaultOnProp
+            defaultOnProp,
+            includeInRestProp
         ));
 
         renderBody(content);

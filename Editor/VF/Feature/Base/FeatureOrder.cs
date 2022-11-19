@@ -42,5 +42,8 @@ namespace VF.Feature.Base {
         
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags = 10002,
+        
+        // Needs to run after FixWriteDefaults collects the defaults for the defaults layer
+        ApplyToggleRestingState = 10003,
     }
 }

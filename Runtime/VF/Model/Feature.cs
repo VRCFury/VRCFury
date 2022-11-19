@@ -229,10 +229,10 @@ namespace VF.Model.Feature {
         public bool slider;
         public bool securityEnabled;
         public bool defaultOn;
+        public bool includeInRest;
         public bool enableExclusiveTag;
         public string exclusiveTag;
         public List<GameObject> resetPhysbones = new List<GameObject>();
-        [NonSerialized] public bool forceOffForUpload = false;
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
     }
