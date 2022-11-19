@@ -164,7 +164,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return CreateEditor(prop, content => content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state"))));
     }
 
-    public static VisualElement CreateEditor(SerializedProperty prop, Action<VisualElement> renderBody) {
+    private static VisualElement CreateEditor(SerializedProperty prop, Action<VisualElement> renderBody) {
         var content = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
@@ -241,6 +241,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         });
         button.style.flexGrow = 0;
         flex.Add(button);
+        
+        renderBody(content);
+
+        if (resetPhysboneProp != null) {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (resetPhysboneProp.arraySize > 0) {
+                    c.Add(VRCFuryEditorUtils.WrappedLabel("Reset PhysBones:"));
+                    c.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("resetPhysbones")));
+                }
+                return c;
+            }, resetPhysboneProp));
+        }
 
         if (enableExclusiveTagProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -265,12 +278,20 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tags.Add("Default On");
             if (includeInRestProp != null && includeInRestProp.boolValue)
                 tags.Add("Shown in Rest Pose");
-            var tagsStr = string.Join(" | ", tags.ToArray());
-            if (tagsStr != "") {
-                return VRCFuryEditorUtils.WrappedLabel(tagsStr);
+
+            var row = new VisualElement();
+            row.style.flexWrap = Wrap.Wrap;
+            row.style.flexDirection = FlexDirection.Row;
+            foreach (var tag in tags) {
+                var flag = new Label(tag);
+                flag.style.width = StyleKeyword.Auto;
+                flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+                flag.style.borderTopRightRadius = 5;
+                VRCFuryEditorUtils.Padding(flag, 2, 4);
+                row.Add(flag);
             }
 
-            return new VisualElement();
+            return row;
         },
             savedProp,
             sliderProp,
@@ -278,19 +299,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultOnProp,
             includeInRestProp
         ));
-
-        renderBody(content);
-
-        if (resetPhysboneProp != null) {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (resetPhysboneProp.arraySize > 0) {
-                    c.Add(VRCFuryEditorUtils.WrappedLabel("Reset PhysBones:"));
-                    c.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("resetPhysbones")));
-                }
-                return c;
-            }, resetPhysboneProp));
-        }
 
         return content;
     }
