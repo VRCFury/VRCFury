@@ -72,10 +72,6 @@ public class VRCFuryBuilder {
 
         // Nuke all our old generated assets
         progress.Progress(0.1, "Clearing generated assets");
-        var avatarPath = avatarObject.scene.path;
-        if (string.IsNullOrEmpty(avatarPath)) {
-            throw new Exception("Failed to find file path to avatar scene");
-        }
         var tmpDir = "Assets/_VRCFury/" + VRCFuryAssetDatabase.MakeFilenameSafe(name);
         if (Directory.Exists(tmpDir)) {
             foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDir })) {
