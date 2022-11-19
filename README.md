@@ -171,6 +171,13 @@ The name you put in the prop's text field will be used as the name of the toggle
 
 Want to add an idle animation or "default prop" to your avatar? Create a new prop, click the `*` and select `Default On`. Your idle animation or prop will now be on all the time (but you can also trigger it back off in game!)
 
+**Show in Rest Pose**
+
+If set, this toggle will be enabled in the avatar's "Rest Pose".
+This means the toggle will shown "on" in the in-game avatar selector, during
+full body calibration, and for users who have disabled your avatar's
+animations.
+
 **Slider**
 
 Select `Slider` from the `*` menu, and VRC Fury will make the prop into a slider rather than a toggle. 0 will be the avatar default state, and 100% will be your "enabled" state.
