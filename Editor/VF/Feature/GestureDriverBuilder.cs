@@ -141,18 +141,18 @@ namespace VF.Feature {
             var layer = fx.NewLayer("GestureWeight_" + name);
             var output = fx.NewFloat(input.Name() + "_cached");
             
-            var initClip = manager.GetClipStorage().NewClip("GestureWeightInit_" + output.Name());
-            initClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 600, 1));
+            //var initClip = manager.GetClipStorage().NewClip("GestureWeightInit_" + output.Name());
+            //initClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 600, 1));
             var driveClip = manager.GetClipStorage().NewClip("GestureWeightDrive_" + output.Name());
             driveClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Linear(0, 0, 600, 1));
 
-            var init = layer.NewState("Init");
+            //var init = layer.NewState("Init");
             var off = layer.NewState("Off").Move(1,-1);
             var on = layer.NewState("On");
-            var whenWeightSeen = input.IsGreaterThan(0);
+            //var whenWeightSeen = input.IsGreaterThan(0);
 
-            init.TransitionsTo(on).When(whenWeightSeen);
-            init.WithAnimation(initClip);
+            //init.TransitionsTo(on).When(whenWeightSeen);
+            //init.WithAnimation(initClip);
             off.TransitionsTo(on).When(whenEnabled);
             off.WithAnimation(driveClip).MotionTime(output);
             on.TransitionsTo(off).When(whenEnabled.Not());
