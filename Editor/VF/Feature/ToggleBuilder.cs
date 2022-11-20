@@ -101,6 +101,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
         if (onState == null) return;
+        
+        var fx = GetFx();
+        var allOthersOffCondition = fx.Always();
 
         var myTags = GetExclusiveTags();
         foreach (var other in allBuildersInRun
@@ -111,9 +114,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (conflictsWithOther) {
                 var otherParam = other.GetParam();
                 if (otherParam != null) {
-                    onState.Drives(other.GetParam(), false);
+                    onState.Drives(otherParam, false);
+                    allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
                 }
             }
+        }
+
+        if (model.exclusiveOffState) {
+            var layer = fx.NewLayer(model.name + " - Off Trigger");
+            var off = layer.NewState("Idle");
+            var on = layer.NewState("Trigger");
+            off.TransitionsTo(on).When(allOthersOffCondition);
+            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(param.IsFalse()));
+            on.Drives(param, true);
         }
     }
 
@@ -172,6 +185,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var securityEnabledProp = prop.FindPropertyRelative("securityEnabled");
         var defaultOnProp = prop.FindPropertyRelative("defaultOn");
         var includeInRestProp = prop.FindPropertyRelative("includeInRest");
+        var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
 
@@ -187,7 +201,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         name.style.flexGrow = 1;
         flex.Add(name);
 
-        var button = VRCFuryEditorUtils.Button("*", () => {
+        var button = VRCFuryEditorUtils.Button("Options", () => {
             var advMenu = new GenericMenu();
             if (savedProp != null) {
                 advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
@@ -236,6 +250,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+            
+            if (exclusiveOffStateProp != null) {
+                advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
+                    exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
 
             advMenu.ShowAsContext();
         });
@@ -278,6 +299,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tags.Add("Default On");
             if (includeInRestProp != null && includeInRestProp.boolValue)
                 tags.Add("Shown in Rest Pose");
+            if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
+                tags.Add("This is the Exclusive Off State");
 
             var row = new VisualElement();
             row.style.flexWrap = Wrap.Wrap;
@@ -287,6 +310,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 flag.style.width = StyleKeyword.Auto;
                 flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
                 flag.style.borderTopRightRadius = 5;
+                flag.style.marginRight = 5;
                 VRCFuryEditorUtils.Padding(flag, 2, 4);
                 row.Add(flag);
             }
@@ -297,7 +321,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             sliderProp,
             securityEnabledProp,
             defaultOnProp,
-            includeInRestProp
+            includeInRestProp,
+            exclusiveOffStateProp
         ));
 
         return content;

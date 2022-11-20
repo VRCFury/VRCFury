@@ -230,6 +230,7 @@ namespace VF.Model.Feature {
         public bool securityEnabled;
         public bool defaultOn;
         public bool includeInRest;
+        public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
         public List<GameObject> resetPhysbones = new List<GameObject>();

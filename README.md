@@ -196,6 +196,19 @@ Got an animation that changes parameters on a physbone?
 
 Click the advanced `*` button on the VRC Fury prop for the animation, then click `Add PhysBone to Reset`. Drag the object for the physbone into the box (it should be on an empty by itself). VRC Fury will automatically flip the bone off and on any time your animation is run or reset, causing the physbone to reload your changed settings.
 
+**Exclusive Tags**
+
+If multiple toggles contain the same Exclusive Tag, only one can be active at a time. For example,
+if you have multiple sets of clothing which interfere with each other, you can give them the
+same tag. When one is enabled, all other toggles with the same tag will be disabled. Multiple tags
+can be given, separated by commas.
+
+**Exclusive Tag Off State**
+
+If set, this toggle will automatically be activated when all other toggles with the same
+`Exclusive Tags` are disabled. This makes it usable as an "Off" state for a set of conflicting
+toggles.
+
 ### TPS Integration
 
 This feature automatically runs TPS setup on your avatar during each upload. This can resolve many... strange TPS bugs which occur when you change material settings or forget to run the wizard yourself. If you use this, you never need to run the TPS setup wizard yourself at all!
