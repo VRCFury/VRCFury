@@ -115,12 +115,21 @@ public class ControllerMerger {
     }
 
     private void CloneBehaviours(StateMachineBehaviour[] from, Func<Type, StateMachineBehaviour> AddUnchecked, string source) {
-        T Add<T>() where T : StateMachineBehaviour => AddUnchecked(typeof (T)) as T;
+        T Add<T>() where T : StateMachineBehaviour {
+            var added = AddUnchecked(typeof(T)) as T;
+            if (added == null) {
+                throw new Exception(
+                    "Failed to create state behaviour of type " + typeof(T).Name + "." +
+                    " Usually this means you have unresolved script compilation errors. Click 'Clear' on the" +
+                    " top left of the unity log, and fix any red errors that remain after clearing.");
+            }
+            return added;
+        }
+
         foreach (var b in from) {
             switch (b) {
                 case VRCAvatarParameterDriver oldB: {
                     var newB = Add<VRCAvatarParameterDriver>();
-                    if (newB == null) throw new Exception("Added parameter driver is null");
                     if (newB.parameters == null) throw new Exception("Added parameter driver params are null");
                     foreach (var p in oldB.parameters) {
                         newB.parameters.Add(CloneDriverParameter(p));
