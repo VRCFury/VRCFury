@@ -74,6 +74,7 @@ MonoBehaviour:
         allNonsyncedAreGlobal: 0
         ignoreSaved: 1
         toggleParam: caninePeenToggle
+        useSecurityForToggle: 1
         rootObjOverride: {fileID: 7889783702869647999}
         rootBindingsApplyToAvatar: 0
         controller: {fileID: 0}

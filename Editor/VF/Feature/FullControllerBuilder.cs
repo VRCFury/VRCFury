@@ -45,9 +45,12 @@ namespace VF.Feature {
                 return ControllerManager.NewParamName(name, uniqueModelNum);
             };
 
+            var toggleIsInt = false;
             foreach (var p in model.prms) {
                 if (p.parameters == null) continue;
                 foreach (var param in p.parameters.parameters) {
+                    if (param.name == model.toggleParam && param.valueType == VRCExpressionParameters.ValueType.Int)
+                        toggleIsInt = true;
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
                     var newParam = new VRCExpressionParameters.Parameter {
                         name = rewriteParam(param.name),
@@ -155,9 +158,10 @@ namespace VF.Feature {
                     state = new State {
                         actions = { new ObjectToggleAction { obj = baseObject } }
                     },
-                    securityEnabled = true,
+                    securityEnabled = model.useSecurityForToggle,
                     addMenuItem = false,
-                    usePrefixOnParam = false
+                    usePrefixOnParam = false,
+                    useInt = toggleIsInt
                 });
             }
         }
@@ -237,6 +241,7 @@ namespace VF.Feature {
                 "Parameter name for prop toggling. If set, this entire prop will be de-activated whenever" +
                 " this boolean parameter within the Full Controller is false."));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam")));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useSecurityForToggle"), "Use security for toggle"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("addPrefix"),
                 "Add prefix to clips"));
 

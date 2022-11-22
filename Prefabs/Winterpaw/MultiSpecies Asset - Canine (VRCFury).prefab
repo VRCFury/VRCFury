@@ -75,6 +75,7 @@ MonoBehaviour:
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: penis.toggle
+        useSecurityForToggle: 1
         rootObjOverride: {fileID: 0}
         rootBindingsApplyToAvatar: 0
         controller: {fileID: 0}

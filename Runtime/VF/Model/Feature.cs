@@ -130,6 +130,7 @@ namespace VF.Model.Feature {
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
         public string toggleParam;
+        public bool useSecurityForToggle = false;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
 
@@ -236,6 +237,7 @@ namespace VF.Model.Feature {
         public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
+        [NonSerialized] public bool useInt = false;
     }
 
     [Serializable]

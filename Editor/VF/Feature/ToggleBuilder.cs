@@ -64,7 +64,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
         onState = on;
-        param = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+        VFACondition onCase;
+
+        if (model.useInt) {
+            var numParam = fx.NewInt(model.name, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
+            onCase = numParam.IsNotEqualTo(0);
+        } else {
+            var boolParam = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            param = boolParam;
+            onCase = boolParam.IsTrue();
+        }
+
         var securityLockUnlocked = allBuildersInRun
             .Select(f => f as SecurityLockBuilder)
             .Where(f => f != null)
@@ -78,8 +88,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
             defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
         }
-
-        var onCase = param.IsTrue();
 
         if (model.securityEnabled && securityLockUnlocked != null) {
             onCase = onCase.And(securityLockUnlocked);
@@ -120,7 +128,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        if (model.exclusiveOffState) {
+        if (model.exclusiveOffState && param != null) {
             var layer = fx.NewLayer(model.name + " - Off Trigger");
             var off = layer.NewState("Idle");
             var on = layer.NewState("Trigger");
