@@ -124,7 +124,7 @@ namespace VF.Feature {
         private void RemoveFromPhysbones(GameObject obj) {
             foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
                 var root = physbone.GetRootTransform();
-                if (obj.transform.IsChildOf(root)) {
+                if (obj.transform != root && obj.transform.IsChildOf(root)) {
                     physbone.ignoreTransforms.Add(obj.transform);
                 }
             }
@@ -132,7 +132,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilderFixAnimations)]
         public void FixAnimations() {
-            foreach (var controller in manager.GetAllTouchedControllers()) {
+            foreach (var controller in manager.GetAllUsedControllers()) {
                 for (var layerId = 0; layerId < controller.GetRaw().layers.Length; layerId++) {
                     var layer = controller.GetRaw().layers[layerId];
                     AnimatorIterator.ForEachClip(layer, (clip, setClip) => {
