@@ -1,6 +1,6 @@
 # VRC Fury - All in one VRChat Prop / Inventory / Gesture Manager
 
-Set up your avatar's props, gestures, and other animations without ever touching a layer or menu!
+Set up your avatar's toggles, gestures, sliders, clothing, and more without ever touching a layer or menu!
 
 ## Need Help?
 
@@ -8,7 +8,7 @@ Set up your avatar's props, gestures, and other animations without ever touching
 
 ## Benefits
 * **Easy to use**
-  * Define props, puppets, item modes and more using a simple GUI in Unity
+  * Define toggles, gestures, item modes and more using a simple GUI in Unity
 * **No more layers, no more menu editing**
   * The animation controller, VRC Menu, and synced parameters are all generated automatically by VRC Fury.
 * **Great for asset artists**
@@ -51,7 +51,7 @@ Set up your avatar's props, gestures, and other animations without ever touching
 
 ## Feature Modules
 
-Once you add a VRCFury component to your avatar (or prop), you can add any combination of these feature modules. These are in alphabetical order, but one of the most popular is Togglable Prop.
+Once you add a VRCFury component to your avatar (or prop), you can add any combination of these feature modules. These are in alphabetical order, but one of the most popular is the `Toggle`.
 
 ### Advanced Visemes
 
@@ -159,7 +159,7 @@ This feature sets up gestures the way that Senky likes them! Probably not super 
 
 Given an animation for up, down, and out, this creates a puppet for toe control in your menu.
 
-### Toggleable Prop
+### Toggle
 
 Use this for a normal "on / off" prop. For simple object props, click the plus, choose Object toggle, and then drag the object into the field. If you choose blendshape, the blendshape will be set to 100 when "on" (only works on root skinned meshes). For more advanced "on" states, you can provide an animation clip instead.
 
