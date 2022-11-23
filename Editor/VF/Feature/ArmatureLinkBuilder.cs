@@ -68,6 +68,7 @@ namespace VF.Feature {
                 var boneMapping = new Dictionary<Transform, Transform>();
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
+                    SanityCheckMergedBone(propBone);
                     var avatarBone = mergeBone.Item2;
                     boneMapping[propBone.transform] = avatarBone.transform;
                     var oldPath = clipBuilder.GetPath(propBone);
@@ -92,23 +93,13 @@ namespace VF.Feature {
                 }
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
-                    foreach (var c in propBone.GetComponents<Component>()) {
-                        if (c is Transform) {
-                        } else if (c is ParentConstraint) {
-                        } else {
-                            var oldPath = clipBuilder.GetPath(propBone);
-                            throw new VRCFBuilderException(
-                                "Prop bone " + oldPath + " contains a " + c.GetType().Name + " component" +
-                                " which would be lost during Armature Link because the bone is being merged." +
-                                " If this component needs to be kept, it should be moved to a child object.");
-                        }
-                    }
                     Object.DestroyImmediate(propBone);
                 }
             } else {
                 // Otherwise, we move all the prop bones into their matching avatar bones (as children)
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
+                    SanityCheckMergedBone(propBone);
                     var avatarBone = mergeBone.Item2;
                     var oldPath = clipBuilder.GetPath(propBone);
                     
@@ -122,24 +113,37 @@ namespace VF.Feature {
                         propBone.transform.localRotation = Quaternion.identity;
                     }
 
-                    foreach (var c in propBone.GetComponents<Component>()) {
-                        if (c is Transform) {
-                        } else if (c is ParentConstraint) {
-                            Object.DestroyImmediate(c);
-                        } else {
-                            throw new VRCFBuilderException(
-                                "Prop bone " + oldPath + " contains a " + c.GetType().Name + " component" +
-                                " which would be lost during Armature Link because the bone is being merged." +
-                                " If this component needs to be kept, it should be moved to a child object.");
-                        }
-                    }
-                    
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(propBone);
                     
                     // Remember how we need to rewrite animations later
                     var newPath = clipBuilder.GetPath(propBone);
                     clipMappings.Add(oldPath, newPath);
+                }
+            }
+        }
+
+        private void SanityCheckMergedBone(GameObject propBone) {
+            foreach (var c in propBone.GetComponents<Component>()) {
+                if (c is Transform) {
+                } else if (c is ParentConstraint) {
+                    Object.DestroyImmediate(c);
+                } else {
+                    var path = clipBuilder.GetPath(propBone);
+                    throw new VRCFBuilderException(
+                        "Prop bone " + path + " contains a " + c.GetType().Name + " component" +
+                        " which would be lost during Armature Link because the bone is being merged." +
+                        " If this component needs to be kept, it should be moved to a child object.");
+                }
+            }
+            foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
+                var root = physbone.GetRootTransform();
+                if (propBone.transform == root) {
+                    var physbonePath = clipBuilder.GetPath(physbone.gameObject);
+                    throw new VRCFBuilderException(
+                        "Physbone " + physbonePath + " points to a bone that is going to" +
+                        " stop existing because it is being merged into the avatar using Armature Link." +
+                        " If this physbone needs to exist, it should be placed on a new child object of the linked bone.");
                 }
             }
         }
