@@ -109,22 +109,22 @@ This is the one-stop shop for adding hand gestures to your avatar! For each hand
 
 Advanced options for each gesture:
 
-#### Disable Blinking when Active
+`Disable Blinking when Active`
 
 If enabled, this gesture will automatically prevent your avatar from blinking while the gesture
 is active. Useful if the gesture does something like sad eyes or eyes closed. Note: Only works
 if your avatar's blinking is controlled by the VrcFury Blink Controller.
 
-#### Customize Transition Time
+`Customize Transition Time`
 
 By default, gestures will active in 0.1 seconds. You can adjust this with this option.
 
-#### Gesture Lock
+`Gesture Lock`
 
 Set a menu path here, and an item will be created in your expression menu at the given path. The
 menu item will allow you to easily lock the gesture "on" without having to hold the hand sign.
 
-#### Exclusive Tag
+`Exclusive Tag`
 
 If multiple gestures contain the same Exclusive Tag, only one can be active at a time. For instance,
 if you have a Sad and an Angry gesture, you could give them both the same tag, and the system will
@@ -163,47 +163,47 @@ Given an animation for up, down, and out, this creates a puppet for toe control 
 
 Use this for a normal "on / off" prop. For simple object props, click the plus, choose Object toggle, and then drag the object into the field. If you choose blendshape, the blendshape will be set to 100 when "on" (only works on root skinned meshes). For more advanced "on" states, you can provide an animation clip instead.
 
-**Menu Entry**
+`Menu Entry`
 
 The name you put in the prop's text field will be used as the name of the toggle in your VRChat menu. If you wish to put the prop in a sub-menu, use slashes. Ex: `Props/My Cool Piano`
 
-**Default On**
+`Default On`
 
 Want to add an idle animation or "default prop" to your avatar? Create a new prop, click the `*` and select `Default On`. Your idle animation or prop will now be on all the time (but you can also trigger it back off in game!)
 
-**Show in Rest Pose**
+`Show in Rest Pose`
 
 If set, this toggle will be enabled in the avatar's "Rest Pose".
 This means the toggle will shown "on" in the in-game avatar selector, during
 full body calibration, and for users who have disabled your avatar's
 animations.
 
-**Slider**
+`Slider`
 
 Select `Slider` from the `*` menu, and VRC Fury will make the prop into a slider rather than a toggle. 0 will be the avatar default state, and 100% will be your "enabled" state.
 
-**Saved**
+`Saved`
 
 Not everything in VRC Fury has to be a temporary prop. Want to save your clothes (or anything else?) across worlds? Select `Saved between worlds` in the `*` menu.
 
-**Security**
+`Security`
 
 When a prop is flagged with the `Security` flag, it can only be enabled when the Security Lock feature is unlocked on your avatar (see the Security Lock section for more details).
 
-**Physbone Reset**
+`Physbone Reset`
 
 Got an animation that changes parameters on a physbone?
 
 Click the advanced `*` button on the VRC Fury prop for the animation, then click `Add PhysBone to Reset`. Drag the object for the physbone into the box (it should be on an empty by itself). VRC Fury will automatically flip the bone off and on any time your animation is run or reset, causing the physbone to reload your changed settings.
 
-**Exclusive Tags**
+`Exclusive Tags`
 
 If multiple toggles contain the same Exclusive Tag, only one can be active at a time. For example,
 if you have multiple sets of clothing which interfere with each other, you can give them the
 same tag. When one is enabled, all other toggles with the same tag will be disabled. Multiple tags
 can be given, separated by commas.
 
-**Exclusive Tag Off State**
+`Exclusive Tag Off State`
 
 If set, this toggle will automatically be activated when all other toggles with the same
 `Exclusive Tags` are disabled. This makes it usable as an "Off" state for a set of conflicting
