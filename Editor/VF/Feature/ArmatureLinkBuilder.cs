@@ -92,6 +92,17 @@ namespace VF.Feature {
                 }
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
+                    foreach (var c in propBone.GetComponents<Component>()) {
+                        if (c is Transform) {
+                        } else if (c is ParentConstraint) {
+                        } else {
+                            var oldPath = clipBuilder.GetPath(propBone);
+                            throw new VRCFBuilderException(
+                                "Prop bone " + oldPath + " contains a " + c.GetType().Name + " component" +
+                                " which would be lost during Armature Link because the bone is being merged." +
+                                " If this component needs to be kept, it should be moved to a child object.");
+                        }
+                    }
                     Object.DestroyImmediate(propBone);
                 }
             } else {
@@ -109,6 +120,18 @@ namespace VF.Feature {
                     if (!model.keepBoneOffsets) {
                         propBone.transform.localPosition = Vector3.zero;
                         propBone.transform.localRotation = Quaternion.identity;
+                    }
+
+                    foreach (var c in propBone.GetComponents<Component>()) {
+                        if (c is Transform) {
+                        } else if (c is ParentConstraint) {
+                            Object.DestroyImmediate(c);
+                        } else {
+                            throw new VRCFBuilderException(
+                                "Prop bone " + oldPath + " contains a " + c.GetType().Name + " component" +
+                                " which would be lost during Armature Link because the bone is being merged." +
+                                " If this component needs to be kept, it should be moved to a child object.");
+                        }
                     }
                     
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
