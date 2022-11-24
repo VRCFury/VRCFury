@@ -68,8 +68,9 @@ namespace VF.Feature {
                 var boneMapping = new Dictionary<Transform, Transform>();
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
-                    SanityCheckMergedBone(propBone);
                     var avatarBone = mergeBone.Item2;
+                    FailIfComponents(propBone);
+                    UpdatePhysbones(propBone, avatarBone);
                     boneMapping[propBone.transform] = avatarBone.transform;
                     var oldPath = clipBuilder.GetPath(propBone);
                     var newPath = clipBuilder.GetPath(avatarBone);
@@ -99,8 +100,9 @@ namespace VF.Feature {
                 // Otherwise, we move all the prop bones into their matching avatar bones (as children)
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
-                    SanityCheckMergedBone(propBone);
                     var avatarBone = mergeBone.Item2;
+                    FailIfComponents(propBone);
+                    UpdatePhysbones(propBone, avatarBone);
                     var oldPath = clipBuilder.GetPath(propBone);
                     
                     // Move the object
@@ -123,7 +125,7 @@ namespace VF.Feature {
             }
         }
 
-        private void SanityCheckMergedBone(GameObject propBone) {
+        private void FailIfComponents(GameObject propBone) {
             foreach (var c in propBone.GetComponents<Component>()) {
                 if (c is Transform) {
                 } else if (c is ParentConstraint) {
@@ -136,14 +138,21 @@ namespace VF.Feature {
                         " If this component needs to be kept, it should be moved to a child object.");
                 }
             }
+        }
+
+        private void UpdatePhysbones(GameObject propBone, GameObject avatarBone) {
             foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
                 var root = physbone.GetRootTransform();
                 if (propBone.transform == root) {
-                    var physbonePath = clipBuilder.GetPath(physbone.gameObject);
-                    throw new VRCFBuilderException(
-                        "Physbone " + physbonePath + " points to a bone that is going to" +
-                        " stop existing because it is being merged into the avatar using Armature Link." +
-                        " If this physbone needs to exist, it should be placed on a new child object of the linked bone.");
+                    if (model.physbonesOnAvatarBones) {
+                        physbone.rootTransform = avatarBone.transform;
+                    } else {
+                        var physbonePath = clipBuilder.GetPath(physbone.gameObject);
+                        throw new VRCFBuilderException(
+                            "Physbone " + physbonePath + " points to a bone that is going to" +
+                            " stop existing because it is being merged into the avatar using Armature Link." +
+                            " If this physbone needs to exist, it should be placed on a new child object of the linked bone.");
+                    }
                 }
             }
         }
@@ -356,6 +365,13 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
                                                               "something like _PropName to the end of every bone, breaking AvatarLink in the process."));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
+            
+            container.Add(new VisualElement { style = { paddingTop = 10 } });
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Allow prop physbones to target avatar bone transforms (unusual):"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("If checked, physbones in the prop pointing to bones on the avatar will be updated " +
+                                                          "to point to the corresponding bone on the base armature. This is extremely unusual. Don't use this " +
+                                                          "unless you know what you are doing."));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physbonesOnAvatarBones")));
 
             return container;
         }
