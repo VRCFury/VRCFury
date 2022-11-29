@@ -234,8 +234,13 @@ public static class VRCFuryEditorUtils {
         Margin(b, 0);
         return b;
     }
-
-    public static VisualElement Prop(SerializedProperty prop, string label = null, int labelWidth = 100) {
+    
+    public static VisualElement Prop(
+        SerializedProperty prop,
+        string label = null,
+        int labelWidth = 100,
+        Func<string,string> formatEnum = null
+    ) {
         VisualElement f = null;
         var setMargin = true;
         var labelHandled = false;
@@ -261,8 +266,12 @@ public static class VRCFuryEditorUtils {
                 break;
             }
             case SerializedPropertyType.Enum: {
-                f = new PopupField<string>(prop.enumDisplayNames.ToList(),
-                    prop.enumValueIndex) { bindingPath = prop.propertyPath };
+                f = new PopupField<string>(
+                    prop.enumDisplayNames.ToList(),
+                    prop.enumValueIndex,
+                    formatSelectedValueCallback: formatEnum,
+                    formatListItemCallback: formatEnum
+                ) { bindingPath = prop.propertyPath };
                 break;
             }
             case SerializedPropertyType.ObjectReference: {

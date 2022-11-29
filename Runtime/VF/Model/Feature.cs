@@ -317,14 +317,36 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class ArmatureLink : NewFeatureModel {
+        public enum ArmatureLinkMode {
+            SKIN_REWRITE,
+            REPARENTING,
+            PARENT_CONSTRAINT
+        }
+
+        public ArmatureLinkMode linkMode;
         public GameObject propBone;
         public HumanBodyBones boneOnAvatar;
         public string bonePathOnAvatar;
-        public bool useOptimizedUpload;
         public bool keepBoneOffsets;
-        public bool useBoneMerging;
         public string removeBoneSuffix;
         public bool physbonesOnAvatarBones;
+        
+        // legacy
+        public bool useOptimizedUpload;
+        public bool useBoneMerging;
+        
+        public override void Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (useBoneMerging) {
+                    linkMode = ArmatureLinkMode.SKIN_REWRITE;
+                } else {
+                    linkMode = ArmatureLinkMode.REPARENTING;
+                }
+            }
+        }
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]

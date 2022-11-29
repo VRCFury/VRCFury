@@ -17,15 +17,12 @@ namespace VF.Feature {
     public class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
         [FeatureBuilderAction]
         public void Link() {
-            if (model.obj == null) {
-                return;
-            }
-
-            var animator = avatarObject.GetComponent<Animator>();
-            if (!animator) return;
-            var bone = animator.GetBoneTransform(model.bone)?.gameObject;
-            if (!bone) return;
-            ArmatureLinkBuilder.Constrain(model.obj, bone);
+            addOtherFeature(new ArmatureLink {
+                boneOnAvatar = model.bone,
+                keepBoneOffsets = false,
+                linkMode = ArmatureLink.ArmatureLinkMode.PARENT_CONSTRAINT,
+                propBone = model.obj
+            });
         }
 
         public override string GetEditorTitle() {
