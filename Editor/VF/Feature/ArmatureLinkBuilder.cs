@@ -262,8 +262,10 @@ namespace VF.Feature {
                 var skeleton = animator.avatar.humanDescription.skeleton;
                 bool DoesBoneMatch(GameObject obj, SkeletonBone bone) {
                     if (bone.name != obj.name) return false;
-                    var boneParentName = (string)parentNameField.GetValue(bone);
-                    if (boneParentName != obj.transform.parent.name) return false;
+                    if (obj.transform.parent.gameObject != avatarObject) {
+                        var boneParentName = (string)parentNameField.GetValue(bone);
+                        if (boneParentName != obj.transform.parent.name) return false;
+                    }
                     return true;
                 }
                 bool IsProbablyInSkeleton(GameObject obj) {
