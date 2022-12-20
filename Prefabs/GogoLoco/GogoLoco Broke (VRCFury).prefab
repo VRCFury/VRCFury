@@ -56,6 +56,7 @@ MonoBehaviour:
     00000000:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 2
         controllers:
         - controller: {fileID: 9100000, guid: 4485bd5c6aea29e48bf1428a18876fcc, type: 2}
           type: 4
@@ -82,14 +83,17 @@ MonoBehaviour:
         prms:
         - parameters: {fileID: 11400000, guid: 1320e51753e1e8b4595fd3b810d01836, type: 2}
           ResetMePlease: 0
-        globalParams: []
+        globalParams:
+        - Go/Float
+        - Go/Stationary
         removePrefixes: []
+        addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: 
+        useSecurityForToggle: 0
         rootObjOverride: {fileID: 0}
         rootBindingsApplyToAvatar: 1
-        version: 1
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
@@ -97,13 +101,16 @@ MonoBehaviour:
     00000001:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
+        version: 1
+        linkMode: 1
         propBone: {fileID: 1537329925289959692}
         boneOnAvatar: 10
         bonePathOnAvatar: 
-        useOptimizedUpload: 0
         keepBoneOffsets: 0
-        useBoneMerging: 0
         removeBoneSuffix: 
+        physbonesOnAvatarBones: 0
+        useOptimizedUpload: 0
+        useBoneMerging: 0
 --- !u!1 &1537329925289959692
 GameObject:
   m_ObjectHideFlags: 0
