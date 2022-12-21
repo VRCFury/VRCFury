@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: -340790334, guid: 67cc4cb7839cd3741b63733d5adf0442, type: 3}
-  m_Name: ScaleMenu
+  m_Name: ScaleMenu (v1.0.3)
   m_EditorClassIdentifier: 
   controls:
   - name: Scaling
@@ -22,5 +22,5 @@ MonoBehaviour:
     style: 0
     subMenu: {fileID: 0}
     subParameters:
-    - name: Avatar Scale
+    - name: AvatarScale
     labels: []
