@@ -21,13 +21,13 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    public bool SafeRun(GameObject avatarObject) {
+    public bool SafeRun(GameObject avatarObject, GameObject originalObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = true;
         try {
             AssetDatabase.StartAssetEditing();
-            Run(avatarObject);
+            Run(avatarObject, originalObject);
         } catch(Exception e) {
             result = false;
             Debug.LogException(e);
@@ -50,7 +50,7 @@ public class VRCFuryBuilder {
         return false;
     }
 
-    private void Run(GameObject avatarObject) {
+    private void Run(GameObject avatarObject, GameObject originalObject) {
         if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
@@ -88,6 +88,7 @@ public class VRCFuryBuilder {
         ApplyFuryConfigs(
             tmpDir,
             avatarObject,
+            originalObject,
             progress.Partial(0.2, 0.8)
         );
 
@@ -107,6 +108,7 @@ public class VRCFuryBuilder {
     private static void ApplyFuryConfigs(
         string tmpDir,
         GameObject avatarObject,
+        GameObject originalObject,
         ProgressBar progress
     ) {
         var currentModelNumber = 0;
@@ -129,6 +131,7 @@ public class VRCFuryBuilder {
             builder.manager = manager;
             builder.clipBuilder = clipBuilder;
             builder.avatarObject = avatarObject;
+            builder.originalObject = originalObject;
 
             collectedBuilders.Add(builder);
             var builderActions = builder.GetActions();

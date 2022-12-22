@@ -236,56 +236,19 @@ namespace VF.Feature {
                 = new Stack<Tuple<GameObject, GameObject>>();
         }
 
-        private static FieldInfo parentNameField = 
-            typeof(SkeletonBone).GetField("parentName", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
         private Links GetLinks() {
             var links = new Links();
 
             var propBone = model.propBone;
             if (propBone == null) return links;
 
-            GameObject avatarBone;
+            GameObject avatarBone = null;
+
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
-                var animator = avatarObject.GetComponent<Animator>();
-                if (!animator) {
-                    throw new VRCFBuilderException(
-                        "ArmatureLink found no humanoid animator on avatar.");
-                }
-                avatarBone = animator.GetBoneTransform(model.boneOnAvatar)?.gameObject;
-                if (avatarBone == null) {
+                avatarBone = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, model.boneOnAvatar);
+                if (!avatarBone) {
                     throw new VRCFBuilderException(
                         "ArmatureLink failed to find " + model.boneOnAvatar + " bone on avatar.");
-                }
-                // Unity tries to find the root bone BY NAME, which often might be the wrong one. It might even be the
-                // one in the prop. So we need to find it ourself with better logic.
-                var skeleton = animator.avatar.humanDescription.skeleton;
-                bool DoesBoneMatch(GameObject obj, SkeletonBone bone) {
-                    if (bone.name != obj.name) return false;
-                    if (obj.transform.parent.gameObject != avatarObject) {
-                        var boneParentName = (string)parentNameField.GetValue(bone);
-                        if (boneParentName != obj.transform.parent.name) return false;
-                    }
-                    return true;
-                }
-                bool IsProbablyInSkeleton(GameObject obj) {
-                    if (obj == null) return false;
-                    if (obj == avatarObject) return true;
-                    if (!skeleton.Any(b => DoesBoneMatch(obj, b))) return false;
-                    return IsProbablyInSkeleton(obj.transform.parent.gameObject);
-                }
-                var eligibleAvatarBones = avatarObject.GetComponentsInChildren<Transform>(true)
-                    .Where(t => t.name == avatarBone.name)
-                    .Select(t => t.gameObject)
-                    .Where(IsProbablyInSkeleton)
-                    .ToList();
-                if (eligibleAvatarBones.Count == 0) {
-                    Debug.LogWarning("ArmatureLink found a matching bone, but it wasn't in the skeleton. Maybe broken?");
-                } else if (eligibleAvatarBones.Count == 1) {
-                    avatarBone = eligibleAvatarBones[0];
-                } else {
-                    throw new VRCFBuilderException(
-                        "ArmatureLink found multiple possible matching " + model.boneOnAvatar + " bones on avatar.");
                 }
             } else {
                 avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;

@@ -6,6 +6,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Model;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -30,14 +31,61 @@ namespace VF.Feature {
             }
             */
             
-            if (allFeaturesInRun.Any(f => f is MakeWriteDefaultsOff2)) {
-                ApplyToAvatar(true, false);
-                return;
+            var analysis = DetectExistingWriteDefaults();
+            var broken = analysis.Item1;
+            var shouldBeOn = analysis.Item2;
+            var reason = analysis.Item3;
+            var badStates = analysis.Item4;
+
+            var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
+            var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
+            if (fixSetting != null) {
+                mode = fixSetting.mode;
+            } else if (broken) {
+                var ask = EditorUtility.DisplayDialogComplex("VRCFury",
+                    "VRCFury has detected a (likely) broken mix of Write Defaults on your avatar base" +
+                    " (" + reason + ")." +
+                    " This may cause weird issues to happen with your animations," +
+                    " such as toggles or animations sticking on or off forever.\n\n" +
+                    "VRCFury can try to fix this for you automatically. Should it try?",
+                    "Auto-Fix",
+                    "Skip",
+                    "Skip and stop asking");
+                if (ask == 0) {
+                    mode = FixWriteDefaults.FixWriteDefaultsMode.Auto;
+                }
+                if ((ask == 0 || ask == 2) && originalObject) {
+                    var newComponent = originalObject.AddComponent<VRCFury>();
+                    var newFeature = new FixWriteDefaults();
+                    if (ask == 2) newFeature.mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
+                    newComponent.config.features.Add(newFeature);
+                }
+            }
+
+            bool applyToUnmanagedLayers;
+            bool useWriteDefaults;
+            if (mode == FixWriteDefaults.FixWriteDefaultsMode.Auto) {
+                applyToUnmanagedLayers = true;
+                useWriteDefaults = shouldBeOn;
+            } else if (mode == FixWriteDefaults.FixWriteDefaultsMode.ForceOff) {
+                applyToUnmanagedLayers = true;
+                useWriteDefaults = false;
+            } else if (mode == FixWriteDefaults.FixWriteDefaultsMode.ForceOn) {
+                applyToUnmanagedLayers = true;
+                useWriteDefaults = true;
+            } else {
+                applyToUnmanagedLayers = false;
+                useWriteDefaults = shouldBeOn;
             }
             
-            var useWriteDefaults = DetectExistingWriteDefaults();
-            Debug.Log("Detected avatar is using write defaults " + (useWriteDefaults ? "ON" : "OFF"));
-            ApplyToAvatar(false, useWriteDefaults);
+            Debug.Log("VRCFury is fixing write defaults "
+                      + (applyToUnmanagedLayers ? "(ALL layers)" : "(Only managed layers)") + " -> "
+                      + (useWriteDefaults ? "ON" : "OFF")
+                      + " because (" + reason + " | " + mode + ")"
+                      + (badStates.Count > 0 ? ("\n\nWeird states: " + string.Join(",", badStates)) : "")
+            );
+            
+            ApplyToAvatar(applyToUnmanagedLayers, useWriteDefaults);
         }
         
         private void ApplyToAvatar(bool applyToUnmanagedLayers, bool useWriteDefaults) {
@@ -72,17 +120,6 @@ namespace VF.Feature {
             var alreadySet = new HashSet<EditorCurveBinding>();
             foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
-
-            if (!useWriteDefaults) {
-                AnimatorIterator.ForEachBlendTree(layer, tree => {
-                    if (tree.blendType == BlendTreeType.Direct) {
-                        throw new VRCFBuilderException(
-                            "You've requested VRCFury to use Write Defaults Off, but this avatar contains a Direct BlendTree in layer " +
-                            layer.name + "." +
-                            " Due to a Unity bug, Write Default Off and Direct BlendTrees are incompatible.");
-                    }
-                });
-            }
 
             AnimatorIterator.ForEachState(layer, state => {
                 if (useWriteDefaults) { 
@@ -124,42 +161,44 @@ namespace VF.Feature {
             });
         }
         
-        private bool DetectExistingWriteDefaults() {
-            var offStates = 0;
-            var onStates = 0;
+        // Returns: Broken, Should Use Write Defaults, Reason, Bad States
+        private Tuple<bool, bool, string, List<string>> DetectExistingWriteDefaults() {
+            var onStates = new List<string>();
+            var offStates = new List<string>();
+            var directBlendTrees = 0;
+            var additiveLayers = 0;
 
             var allUnmanagedLayers = manager.GetAllUsedControllersRaw()
                 .Select(c => c.Item2)
-                .SelectMany(controller => controller.layers)
-                .Where(layer => !ControllerManager.IsManaged(layer));
+                .SelectMany(controller => controller.layers);
 
             foreach (var layer in allUnmanagedLayers) {
-                AnimatorIterator.ForEachState(layer, state => {
-                    if (state.writeDefaultValues) onStates++;
-                    else offStates++;
-                });
-            }
-
-            if (onStates > 0 && offStates > 0) {
-                var weirdStates = new List<string>();
-                var weirdAreOn = offStates > onStates;
-                foreach (var layer in allUnmanagedLayers) {
+                if (!ControllerManager.IsManaged(layer)) {
                     AnimatorIterator.ForEachState(layer, state => {
-                        if (state.writeDefaultValues == weirdAreOn) {
-                            weirdStates.Add(layer.name + "." + state.name);
-                        }
+                        (state.writeDefaultValues ? onStates : offStates).Add(layer.name + "." + state.name);
                     });
                 }
-
-                Debug.LogWarning("Your animation controller contains a mix of Write Defaults ON and Write Defaults OFF states." +
-                                 " (" + onStates + " on, " + offStates + " off)." +
-                                 " Doing this may cause weird issues to happen with your animations in game." +
-                                 " This is not an issue with VRCFury, but an issue with your avatar's custom animation controller.");
-                Debug.LogWarning("The broken states are most likely: " + String.Join(",", weirdStates));
+                AnimatorIterator.ForEachBlendTree(layer, tree => {
+                    if (tree.blendType == BlendTreeType.Direct) {
+                        directBlendTrees++;
+                    }
+                });
+                if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
+                    additiveLayers++;
+                }
             }
-        
-            // If half of the old states use writeDefaults, safe to assume it should be used everywhere
-            return onStates >= offStates && onStates > 0;
+
+            var shouldBeOn = directBlendTrees > 0 || additiveLayers > 0 || onStates.Count > offStates.Count;
+            var weirdStates = shouldBeOn ? offStates : onStates;
+            var outList = new List<string>();
+            if (onStates.Count > 0) outList.Add(onStates.Count + " on");
+            if (offStates.Count > 0) outList.Add(offStates.Count + " off");
+            if (directBlendTrees > 0) outList.Add(directBlendTrees + " direct");
+            if (additiveLayers > 0) outList.Add(additiveLayers + " additive");
+
+            var broken = weirdStates.Count > 0;
+            var reason = string.Join(", ", outList);
+            return Tuple.Create(broken, shouldBeOn, reason, weirdStates);
         }
     }
 }

@@ -380,12 +380,31 @@ namespace VF.Model.Feature {
     [Serializable]
     public class MakeWriteDefaultsOff : LegacyFeatureModel {
         public override NewFeatureModel CreateNewInstance() {
-            return new MakeWriteDefaultsOff2();
+            return new FixWriteDefaults {
+                mode = FixWriteDefaults.FixWriteDefaultsMode.ForceOff
+            };
         }
     }
     
     [Serializable]
-    public class MakeWriteDefaultsOff2 : NewFeatureModel {
+    public class MakeWriteDefaultsOff2 : LegacyFeatureModel {
+        public override NewFeatureModel CreateNewInstance() {
+            return new FixWriteDefaults {
+                mode = FixWriteDefaults.FixWriteDefaultsMode.ForceOff
+            };
+        }
+    }
+    
+    [Serializable]
+    [NoBuilder]
+    public class FixWriteDefaults : NewFeatureModel {
+        public enum FixWriteDefaultsMode {
+            Auto,
+            ForceOff,
+            ForceOn,
+            Disabled
+        }
+        public FixWriteDefaultsMode mode = FixWriteDefaultsMode.Auto;
     }
     
     [Serializable]

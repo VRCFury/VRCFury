@@ -130,11 +130,9 @@ public static class FeatureFinder {
         if (modelType.GetCustomAttribute<NoBuilder>() != null) {
             return null;
         }
-        
-        var implementationType = GetAllFeatures()[modelType];
-        if (implementationType == null) {
-            Debug.LogError("Failed to find feature implementation for " + modelType.Name + " while building");
-            return null;
+
+        if (!GetAllFeatures().TryGetValue(modelType, out var implementationType)) {
+            throw new VRCFBuilderException("Failed to find feature implementation for " + modelType.Name + " while building");
         }
 
         var featureImpl = (FeatureBuilder)Activator.CreateInstance(implementationType);

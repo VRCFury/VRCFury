@@ -16,6 +16,7 @@ namespace VF.Feature.Base {
         public ClipBuilder clipBuilder;
         public string tmpDir;
         public GameObject avatarObject;
+        public GameObject originalObject;
         public GameObject featureBaseObject;
         public Action<FeatureModel> addOtherFeature;
         public int uniqueModelNum;

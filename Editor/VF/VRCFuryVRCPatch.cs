@@ -80,8 +80,8 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
 
         // Clean up junk from the original avatar, in case it still has junk from way back when we used to
         // dirty the original
+        GameObject original = null;
         {
-            GameObject original = null;
             foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
                 if (desc.gameObject.name + "(Clone)" == vrcCloneObject.name && desc.gameObject.activeInHierarchy) {
                     original = desc.gameObject;
@@ -95,7 +95,7 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
         }
 
         var builder = new VRCFuryBuilder();
-        var vrcFurySuccess = builder.SafeRun(vrcCloneObject);
+        var vrcFurySuccess = builder.SafeRun(vrcCloneObject, original);
         if (!vrcFurySuccess) return false;
 
         // Try to detect conflicting parameter names that break OSC
