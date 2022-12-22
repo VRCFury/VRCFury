@@ -35,7 +35,7 @@ Set up your avatar's toggles, gestures, sliders, clothing, and more without ever
 ## How to install and use
 
 * Delete the VRCFury directory from your project (if upgrading).
-* Download the latest Unity Package from the [Releases Page](https://gitlab.com/VRCFury/VRCFury/-/releases)
+* [Download the latest VRCFury Unity Package](https://vrcfury.com/download)
 * Drag the package into your project's Project tab (where the folders are) and click OK to import
 * If you are using just VRCFury because an artist said you needed if for their prefab:
   * You can stop here! You're done! Just follow their directions to add their prefab to your avatar, and VRC Fury will handle the rest.
