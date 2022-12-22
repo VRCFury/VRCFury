@@ -2,7 +2,8 @@ ThatFatKidsStuff Avatar Scale Using VRCFury
 ==
 
 ## How to install
-* Import [VRCFury](https://vrcfury.com) (that's the package you're looking at right now!)
+* Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Avatar Scale by ThatFatKidsStuff](https://thatfatkidsmom.gumroad.com/l/dbezuo)
-* Drag the `TFKS Avatar Scaling (VRCFury)` prefab from this folder onto the root of your avatar
+* Find the `Assets/VRCFury/Prefabs/ThatFatKidsStuff/TFKS Avatar Scaling (VRCFury)` file in the unity folder browser
+* Drag the file onto the root object of your avatar
 * You're done! None of the additional install instructions are needed. Upload!
