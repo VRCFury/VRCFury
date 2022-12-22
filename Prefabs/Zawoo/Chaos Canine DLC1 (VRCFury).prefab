@@ -55,20 +55,23 @@ MonoBehaviour:
     - id: 5
     - id: 6
     - id: 7
+    - id: 8
   somethingIsBroken: 0
   references:
     version: 1
     00000000:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 0
+        version: 1
+        linkMode: 0
         propBone: {fileID: 4716749107889834844}
         boneOnAvatar: 0
         bonePathOnAvatar: 
-        useOptimizedUpload: 0
         keepBoneOffsets: 0
-        useBoneMerging: 1
         removeBoneSuffix: 
+        physbonesOnAvatarBones: 0
+        useOptimizedUpload: 0
+        useBoneMerging: 1
     00000001:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -76,11 +79,13 @@ MonoBehaviour:
         name: Clothes/Booty Shorts
         state:
           actions:
-          - id: 8
+          - id: 9
         saved: 1
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
         enableExclusiveTag: 1
         exclusiveTag: zawooBottom
         resetPhysbones: []
@@ -91,11 +96,13 @@ MonoBehaviour:
         name: Clothes/Gloves
         state:
           actions:
-          - id: 9
+          - id: 10
         saved: 1
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
@@ -106,11 +113,13 @@ MonoBehaviour:
         name: Clothes/Inner Shirt
         state:
           actions:
-          - id: 10
+          - id: 11
         saved: 1
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
@@ -121,11 +130,13 @@ MonoBehaviour:
         name: Clothes/Jacket
         state:
           actions:
-          - id: 11
+          - id: 12
         saved: 1
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
         enableExclusiveTag: 1
         exclusiveTag: zawooTop
         resetPhysbones: []
@@ -136,11 +147,13 @@ MonoBehaviour:
         name: Clothes/Pants
         state:
           actions:
-          - id: 12
+          - id: 13
         saved: 1
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
         enableExclusiveTag: 1
         exclusiveTag: zawooBottom
         resetPhysbones: []
@@ -151,11 +164,13 @@ MonoBehaviour:
         name: Clothes/Socks
         state:
           actions:
-          - id: 13
+          - id: 14
         saved: 1
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
@@ -166,42 +181,82 @@ MonoBehaviour:
         name: Clothes/Tank Top
         state:
           actions:
-          - id: 14
+          - id: 15
+          - id: 16
         saved: 1
         slider: 0
         securityEnabled: 0
         defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
         enableExclusiveTag: 1
         exclusiveTag: zawooTop
         resetPhysbones: []
     00000008:
-      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        obj: {fileID: 7943762549164159254}
+        version: 0
+        states:
+        - obj: {fileID: 5336518606103434084}
+          action: 1
+          ResetMePlease: 0
+        - obj: {fileID: 5102145944059048177}
+          action: 1
+          ResetMePlease: 0
+        - obj: {fileID: 7943762549164159254}
+          action: 0
+          ResetMePlease: 0
+        - obj: {fileID: 556973191268872845}
+          action: 0
+          ResetMePlease: 0
+        - obj: {fileID: 1638235677583281402}
+          action: 0
+          ResetMePlease: 0
+        - obj: {fileID: 8995110481931812500}
+          action: 0
+          ResetMePlease: 0
+        - obj: {fileID: 663692081000692448}
+          action: 0
+          ResetMePlease: 0
+        - obj: {fileID: 1654274140622547601}
+          action: 0
+          ResetMePlease: 0
+        - obj: {fileID: 6548976861997957624}
+          action: 0
+          ResetMePlease: 0
     00000009:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
-        obj: {fileID: 556973191268872845}
+        obj: {fileID: 7943762549164159254}
     0000000A:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
-        obj: {fileID: 1638235677583281402}
+        obj: {fileID: 556973191268872845}
     0000000B:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
-        obj: {fileID: 8995110481931812500}
+        obj: {fileID: 1638235677583281402}
     0000000C:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
-        obj: {fileID: 663692081000692448}
+        obj: {fileID: 8995110481931812500}
     0000000D:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
-        obj: {fileID: 1654274140622547601}
+        obj: {fileID: 663692081000692448}
     0000000E:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
+        obj: {fileID: 1654274140622547601}
+    0000000F:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
         obj: {fileID: 6548976861997957624}
+    00000010:
+      type: {class: BlendShapeAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        blendShape: shape_fitOverTank
+        blendShapeValue: 100
 --- !u!1001 &5336518605596773792
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -282,12 +337,12 @@ PrefabInstance:
     - target: {fileID: -4378916058236258496, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -3623749191439417555, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -2536639174769277832, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
@@ -297,7 +352,7 @@ PrefabInstance:
     - target: {fileID: -2523644214232733903, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -1308504623849856002, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
@@ -322,7 +377,7 @@ PrefabInstance:
     - target: {fileID: 3952491650154754868, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6418192721369052034, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
@@ -332,7 +387,7 @@ PrefabInstance:
     - target: {fileID: 6679737435492106586, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8212245817392820110, guid: 1a1800fd0b9941040bd43d78b00edb73,
         type: 3}
@@ -342,6 +397,12 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 5866666021909216657, guid: 1a1800fd0b9941040bd43d78b00edb73, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 1a1800fd0b9941040bd43d78b00edb73, type: 3}
+--- !u!1 &5102145944059048177 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 1a1800fd0b9941040bd43d78b00edb73,
+    type: 3}
+  m_PrefabInstance: {fileID: 5336518605596773792}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &5586053537808689739 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1a1800fd0b9941040bd43d78b00edb73,
