@@ -35,5 +35,6 @@ release:
     tag_name: '$VERSION'
     assets:
       links:
-        - name: 'Download Unity Package'
+        - name: 'VRCFury.unitypackage'
           url: '${PACKAGE_URL}'
+          filepath: 'VRCFury.unitypackage'
