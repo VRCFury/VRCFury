@@ -19,7 +19,7 @@ namespace VF.Feature {
                 "Auto - Will force all states to on or off, whichever requires the fewest changes to the existing avatar\n" +
                 "Force On - Forces all states to WD on\n" +
                 "Force Off - Forces all states to WD off\n" +
-                "Disabled - Don't try to fix anything and don't warn"));
+                "Disabled - Don't try to fix anything and don't warn even if it looks broken"));
             return container;
         }
     }
