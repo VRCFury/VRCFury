@@ -37,4 +37,4 @@ release:
       links:
         - name: 'VRCFury.unitypackage'
           url: '${PACKAGE_URL}'
-          filepath: 'VRCFury.unitypackage'
+          filepath: '/VRCFury.unitypackage'
