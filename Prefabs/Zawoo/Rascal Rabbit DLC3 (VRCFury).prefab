@@ -52,6 +52,8 @@ MonoBehaviour:
     - id: 2
     - id: 3
     - id: 4
+    - id: 5
+    - id: 6
   somethingIsBroken: 0
   references:
     version: 1
@@ -75,7 +77,7 @@ MonoBehaviour:
         name: Clothes/Wetsuit
         state:
           actions:
-          - id: 5
+          - id: 7
         saved: 1
         slider: 0
         securityEnabled: 0
@@ -92,7 +94,7 @@ MonoBehaviour:
         name: Clothes/Wetsuit Gloves
         state:
           actions:
-          - id: 6
+          - id: 8
         saved: 1
         slider: 0
         securityEnabled: 0
@@ -109,7 +111,7 @@ MonoBehaviour:
         name: Clothes/Wetsuit Socks
         state:
           actions:
-          - id: 7
+          - id: 9
         saved: 1
         slider: 0
         securityEnabled: 0
@@ -120,6 +122,40 @@ MonoBehaviour:
         exclusiveTag: 
         resetPhysbones: []
     00000004:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        name: Clothes/Latex Suit
+        state:
+          actions:
+          - id: 10
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
+        enableExclusiveTag: 0
+        exclusiveTag: 
+        resetPhysbones: []
+    00000005:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        name: Clothes/Toy Suit
+        state:
+          actions:
+          - id: 11
+        saved: 1
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        includeInRest: 0
+        exclusiveOffState: 0
+        enableExclusiveTag: 0
+        exclusiveTag: 
+        resetPhysbones: []
+    00000006:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
         version: 0
@@ -148,18 +184,26 @@ MonoBehaviour:
         - obj: {fileID: 6018032992931505445}
           action: 0
           ResetMePlease: 0
-    00000005:
-      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
-      data:
-        obj: {fileID: 3974520271539212491}
-    00000006:
-      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
-      data:
-        obj: {fileID: 1501267043710245672}
     00000007:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
+        obj: {fileID: 3974520271539212491}
+    00000008:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 1501267043710245672}
+    00000009:
+      type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
         obj: {fileID: 6018032992931505445}
+    0000000A:
+      type: {class: AnimationClipAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        clip: {fileID: 7400000, guid: af1de31c4edb5094f97cc563565b1572, type: 2}
+    0000000B:
+      type: {class: AnimationClipAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        clip: {fileID: 7400000, guid: 06486b83eb9d1124d8ac1dce02709035, type: 2}
 --- !u!1001 &8285141173135163303
 PrefabInstance:
   m_ObjectHideFlags: 0
