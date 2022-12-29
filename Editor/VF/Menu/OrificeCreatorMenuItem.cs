@@ -18,7 +18,7 @@ namespace VF.Menu {
             var newObj = new GameObject(ring ? "Ring" : "Hole");
 
             var o = newObj.AddComponent<OGBOrifice>();
-            o.addLight = ring ? AddLight.Ring : AddLight.Hole;
+            o.addLight = ring ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole;
             o.addMenuItem = true;
 
             if (Selection.activeGameObject) {

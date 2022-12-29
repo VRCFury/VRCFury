@@ -16,7 +16,7 @@ namespace VF.Builder {
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator || !animator.avatar) {
                 throw new VRCFBuilderException(
-                    "ArmatureLink found no humanoid animator on avatar.");
+                    "Found no humanoid animator on avatar.");
             }
 
             var humanDescription = animator.avatar.humanDescription;
@@ -52,7 +52,7 @@ namespace VF.Builder {
             }
             if (eligibleAvatarBones.Count > 1) {
                 throw new VRCFBuilderException(
-                    "ArmatureLink found multiple possible matching " + findBone + " bones on avatar.");
+                    "Found multiple possible matching " + findBone + " bones on avatar.");
             }
             return eligibleAvatarBones[0];
         }

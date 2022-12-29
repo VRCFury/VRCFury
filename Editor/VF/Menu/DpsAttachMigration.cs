@@ -73,11 +73,10 @@ namespace VF.Menu {
                             ogb = obj.AddComponent<OGBOrifice>();
                             obj.transform.Rotate(90, 0, 0);
                         }
-                        ogb.addLight = isHole ? AddLight.Hole : AddLight.Ring;
+                        ogb.addLight = isHole ? OGBOrifice.AddLight.Hole : OGBOrifice.AddLight.Ring;
                         ogb.name = name;
                         ogb.addMenuItem = true;
                         obj.name = fullName;
-                        ogb.enableHandTouchZone = name.ToLower().Contains("vagina") || name.ToLower().Contains("anus");
                     }
                 }
             }

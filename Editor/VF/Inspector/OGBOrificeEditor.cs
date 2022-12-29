@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Model;
 using VRC.Dynamics;
 
@@ -18,7 +19,8 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name Override"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addLight"), "Add DPS Light"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableHandTouchZone"), "Enable hand touch zone?"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Enable hand touch zone? (Auto will add only if child of Hips)"));
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableHandTouchZone2")));
             container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
 
@@ -131,7 +133,7 @@ namespace VF.Inspector {
             
             OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders, false);
 
-            if (autoInfo == null && orifice.addLight != AddLight.None) {
+            if (autoInfo == null && orifice.addLight != OGBOrifice.AddLight.None) {
                 foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
                     OGBUtils.RemoveComponent(light);
                 }
@@ -141,7 +143,7 @@ namespace VF.Inspector {
                 var mainLight = main.AddComponent<Light>();
                 mainLight.type = LightType.Point;
                 mainLight.color = Color.black;
-                mainLight.range = orifice.addLight == AddLight.Ring ? 0.42f : 0.41f;
+                mainLight.range = orifice.addLight == OGBOrifice.AddLight.Ring ? 0.42f : 0.41f;
                 mainLight.shadows = LightShadows.None;
                 mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -160,7 +162,14 @@ namespace VF.Inspector {
         }
 
         private static Tuple<float, float> GetHandTouchZoneSize(OGBOrifice orifice) {
-            if (!orifice.enableHandTouchZone) {
+            bool enableHandTouchZone = false;
+            if (orifice.enableHandTouchZone2 == OGBOrifice.EnableTouchZone.On) {
+                enableHandTouchZone = true;
+            } else if (orifice.enableHandTouchZone2 == OGBOrifice.EnableTouchZone.Auto) {
+                var animator = orifice.gameObject.GetComponentInParent<Animator>();
+                enableHandTouchZone = animator && ShouldProbablyHaveTouchZone(animator.gameObject, orifice);
+            }
+            if (!enableHandTouchZone) {
                 return null;
             }
             var length = orifice.length;
@@ -211,6 +220,22 @@ namespace VF.Inspector {
             }
 
             return Tuple.Create(forward, isRing);
+        }
+
+        public static bool ShouldProbablyHaveTouchZone(GameObject avatarObject, OGBOrifice orf) {
+            if (!IsChildOfBone(avatarObject, orf, HumanBodyBones.Hips)) return false;
+            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Chest)) return false;
+            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Spine)) return false;
+            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperArm)) return false;
+            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperLeg)) return false;
+            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperArm)) return false;
+            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperLeg)) return false;
+            return true;
+        }
+
+        private static bool IsChildOfBone(GameObject avatarObject, OGBOrifice orf, HumanBodyBones bone) {
+            var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
+            return boneObj && orf.transform.IsChildOf(boneObj.transform);
         }
     }
 }

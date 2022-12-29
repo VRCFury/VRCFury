@@ -89,7 +89,7 @@ namespace VF.Menu {
                     if (o) {
                         var autoInfo = OGBOrificeEditor.GetInfoFromLights(t.gameObject);
                         if (autoInfo != null) {
-                            o.addLight = autoInfo.Item2 ? AddLight.Ring : AddLight.Hole;
+                            o.addLight = autoInfo.Item2 ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole;
                         }
                         o.name = GetNameFromBakeMarker(orfMarker.gameObject);
                         foreach (var light in t.gameObject.GetComponentsInChildren<Light>(true)) {
@@ -128,14 +128,14 @@ namespace VF.Menu {
                 var holeMarker = t.Find("OGB_Marker_Hole");
                 if (holeMarker) {
                     var o = addOrifice(t.gameObject);
-                    if (o) o.addLight = AddLight.Hole;
+                    if (o) o.addLight = OGBOrifice.AddLight.Hole;
                     DeleteIfNotInPrefab(holeMarker.gameObject);
                 }
                 
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
                     var o = addOrifice(t.gameObject);
-                    if (o) o.addLight = AddLight.Ring;
+                    if (o) o.addLight = OGBOrifice.AddLight.Ring;
                     DeleteIfNotInPrefab(ringMarker.gameObject);
                 }
             }
