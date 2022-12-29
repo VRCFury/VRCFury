@@ -222,6 +222,21 @@ namespace VF.Inspector {
             return Tuple.Create(forward, isRing);
         }
 
+        public static void ClaimLights(OGBOrifice orifice) {
+            var info = GetInfoFromLights(orifice.gameObject);
+            foreach (var light in orifice.gameObject.GetComponentsInChildren<Light>(true)) {
+                if (IsRing(light) || IsHole(light) || IsNormal(light)) {
+                    OGBUtils.RemoveComponent(light);
+                }
+            }
+            if (info != null) {
+                var forward = info.Item1;
+                var isRing = info.Item2;
+                orifice.transform.rotation *= Quaternion.LookRotation(forward);
+                orifice.addLight = isRing ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole;
+            }
+        }
+
         public static bool ShouldProbablyHaveTouchZone(GameObject avatarObject, OGBOrifice orf) {
             if (!IsChildOfBone(avatarObject, orf, HumanBodyBones.Hips)) return false;
             if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Chest)) return false;

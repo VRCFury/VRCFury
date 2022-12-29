@@ -139,6 +139,11 @@ namespace VF.Menu {
                     DeleteIfNotInPrefab(ringMarker.gameObject);
                 }
             }
+            
+            // Claim lights on all OGB components
+            foreach (var orifice in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
+                OGBOrificeEditor.ClaimLights(orifice);
+            }
 
             // Clean up
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
