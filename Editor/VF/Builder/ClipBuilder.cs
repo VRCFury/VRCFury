@@ -178,6 +178,8 @@ public class ClipBuilder {
                 var existsOnAvatar = AnimationUtility.GetFloatValue(baseObject, bindingFromAvatar, out var avatarValue);
                 curve.keys = curve.keys.Select(k => {
                     k.value *= avatarValue;
+                    k.inTangent *= avatarValue;
+                    k.outTangent *= avatarValue;
                     return k;
                 }).ToArray();
             } else {
