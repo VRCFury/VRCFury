@@ -101,6 +101,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             on.Drives(physBoneResetter, true);
         }
 
+        if (model.enableDriveGlobalParam != null && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
+            var driveGlobal = fx.NewBool(
+                model.driveGlobalParam,
+                synced: false,
+                saved: false,
+                def: false,
+                usePrefix: false
+            );
+            off.Drives(driveGlobal, false);
+            on.Drives(driveGlobal, true);
+        }
+
         if (model.addMenuItem) {
             manager.GetMenu().NewMenuToggle(
                 model.name,
@@ -201,6 +213,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
+        var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
 
         var flex = new VisualElement {
             style = {
@@ -277,6 +290,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+            
+            if (enableDriveGlobalParamProp != null) {
+                advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
+                    enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
 
             advMenu.ShowAsContext();
         });
@@ -314,6 +334,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
                 return c;
             }, enableIconProp));
+        }
+
+        if (enableDriveGlobalParamProp != null) {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableDriveGlobalParamProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("driveGlobalParam"), "Drive Global Param"));
+                    c.Add(VRCFuryEditorUtils.Warn(
+                        "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
+                        "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +
+                        "manually-created state transitions in your avatar. This should NEVER be used on vrcfury props, as any merged " +
+                        "full controllers will have their parameters rewritten."));
+                }
+                return c;
+            }, enableDriveGlobalParamProp));
         }
 
         // Tags

@@ -524,6 +524,12 @@ public static class VRCFuryEditorUtils {
         Border(label, 1);
         return label;
     }
+
+    public static VisualElement Warn(string message) {
+        var i = Error(message);
+        i.style.backgroundColor = new Color(0.5f, 0.25f, 0);
+        return i;
+    }
 }
 
 }

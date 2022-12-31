@@ -240,6 +240,8 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool useInt = false;
         public bool enableIcon;
         public Texture2D icon;
+        public bool enableDriveGlobalParam;
+        public string driveGlobalParam;
     }
 
     [Serializable]
