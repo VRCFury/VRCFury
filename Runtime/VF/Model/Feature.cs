@@ -238,6 +238,8 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public bool useInt = false;
+        public bool enableIcon;
+        public Texture2D icon;
     }
 
     [Serializable]
@@ -528,5 +530,12 @@ namespace VF.Model.Feature {
         public List<GameObject> objs;
         public string baseObj;
     }
+    
+    [Serializable]
+    public class SetIcon : NewFeatureModel {
+        public string path;
+        public Texture2D icon;
+    }
+    
 
 }

@@ -38,12 +38,14 @@ namespace VF.Feature.Base {
         FixWriteDefaults = 10000,
         
         // Needs to run after anything that creates menu items, so the user can relocate them if they wish
-        MoveMenuItems = 10001,
+        SetMenuIcons1 = 10001,
+        MoveMenuItems = 10002,
+        SetMenuIcons2 = 10003,
         
         // Needs to run after all possible toggles have been created and applied
-        CollectToggleExclusiveTags = 10002,
+        CollectToggleExclusiveTags = 10004,
         
         // Needs to run after FixWriteDefaults collects the defaults for the defaults layer
-        ApplyToggleRestingState = 10003,
+        ApplyToggleRestingState = 10005,
     }
 }

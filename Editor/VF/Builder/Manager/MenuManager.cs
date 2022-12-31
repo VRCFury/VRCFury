@@ -77,19 +77,21 @@ namespace VF.Builder {
             }
             return current;
         }
-        public void NewMenuToggle(string path, VFAParam param, float value = 1) {
+        public void NewMenuToggle(string path, VFAParam param, float value = 1, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
-            var menuParam = new VRCExpressionsMenu.Control.Parameter();
-            menuParam.name = param.Name();
-            control.parameter = menuParam;
+            control.parameter = new VRCExpressionsMenu.Control.Parameter {
+                name = param.Name()
+            };
             control.value = value;
+            control.icon = icon;
         }
         public void NewMenuSlider(string path, VFANumber param) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
-            var menuParam = new VRCExpressionsMenu.Control.Parameter();
-            menuParam.name = param.Name();
+            var menuParam = new VRCExpressionsMenu.Control.Parameter {
+                name = param.Name()
+            };
             control.subParameters = new[]{menuParam};
         }
         public void NewMenuPuppet(string path, VFANumber x, VFANumber y) {

@@ -102,7 +102,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (model.addMenuItem) {
-            manager.GetMenu().NewMenuToggle(model.name, param);
+            manager.GetMenu().NewMenuToggle(
+                model.name,
+                param,
+                icon: model.enableIcon ? model.icon : null
+            );
         }
     }
 
@@ -196,6 +200,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
+        var enableIconProp = prop.FindPropertyRelative("enableIcon");
 
         var flex = new VisualElement {
             style = {
@@ -266,6 +271,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (enableIconProp != null) {
+                advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
+                    enableIconProp.boolValue = !enableIconProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             advMenu.ShowAsContext();
         });
         button.style.flexGrow = 0;
@@ -292,6 +304,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
                 return c;
             }, enableExclusiveTagProp));
+        }
+        
+        if (enableIconProp != null) {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableIconProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("icon"), "Menu Icon"));
+                }
+                return c;
+            }, enableIconProp));
         }
 
         // Tags
