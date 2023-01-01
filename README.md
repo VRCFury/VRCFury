@@ -95,9 +95,9 @@ This is usually only useful for prefab artists. Provide a controller, menu, and 
 NOTE: Animation clips in your specified controller should have animated paths relative
 to your prop's root. VRCF will automatically add prefixes to all the animations so they
 work wherever it is installed on the avatar. If you wish to animate properties on the avatar
-itself (outside of your prop), you can prefix the animated property with a slash. For
-instance, if you animate the property `/Body`, your animation will apply to the avatar's
-Body object instead of a Body object within your prop.
+itself (outside of your prop), you can specify a path from the root of the avatar (as you traditionally would), and they will
+still work. VRCFury will automatically determine if the path is from the avatar root or from the prop root, and rewrite them
+appropriately if needed.
 
 ### Gestures
 
