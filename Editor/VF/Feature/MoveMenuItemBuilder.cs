@@ -21,16 +21,20 @@ namespace VF.Feature {
                 return;
             }
             
-            GetMenu(manager.GetMenu(), model.toPath, true, out var toPath, out var toPrefix, out var toName, out var toMenu);
-
             var fromControls = fromMenu.controls.Where(c => c.name == fromName).ToList();
             if (fromControls.Count == 0) {
                 Debug.LogWarning("No menu control matched fromPath");
                 return;
             }
-
             fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
+
+            if (string.IsNullOrWhiteSpace(model.toPath)) {
+                // Just delete them!
+                return;
+            }
+
             var menuManager = manager.GetMenu();
+            GetMenu(menuManager, model.toPath, true, out var toPath, out var toPrefix, out var toName, out var toMenu);
             foreach (var control in fromControls) {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
                     menuManager.GetSubmenu(toPath, createFromControl: control);
