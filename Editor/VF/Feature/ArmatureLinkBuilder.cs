@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -53,6 +54,7 @@ namespace VF.Feature {
                     var avatarBone = mergeBone.Item2;
                     FailIfComponents(propBone);
                     UpdatePhysbones(propBone, avatarBone);
+                    UpdateConstraints(propBone, avatarBone);
                     boneMapping[propBone.transform] = avatarBone.transform;
                     var oldPath = clipBuilder.GetPath(propBone);
                     var newPath = clipBuilder.GetPath(avatarBone);
@@ -142,6 +144,30 @@ namespace VF.Feature {
                 }
             }
         }
+        
+        private void UpdateConstraints(GameObject propBone, GameObject avatarBone) {
+            foreach (var c in avatarObject.GetComponentsInChildren<IConstraint>(true)) {
+                UpdateConstraint(propBone, avatarBone, c);
+            }
+        }
+
+        private void UpdateConstraint(GameObject propBone, GameObject avatarBone, IConstraint constraint) {
+            List<ConstraintSource> sources = new List<ConstraintSource>();
+            constraint.GetSources(sources);
+            var changed = false;
+            for (var i = 0; i < sources.Count; i++) {
+                if (sources[i].sourceTransform == propBone.transform) {
+                    var newSource = sources[i];
+                    newSource.sourceTransform = avatarBone.transform;
+                    sources[i] = newSource;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                constraint.SetSources(sources);
+            }
+            // TODO: Update the rest offsets if the bone moved as a result of the merge
+        }
 
         private void UpdatePhysbones(GameObject propBone, GameObject avatarBone) {
             foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
@@ -158,7 +184,6 @@ namespace VF.Feature {
                     }
                 }
             }
-            // TODO: Update parent, position constraints, etc
         }
 
         private void RemoveFromPhysbones(GameObject obj) {
