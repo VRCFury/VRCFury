@@ -230,3 +230,7 @@ Note: If a client wishes to use your VRCFury-enabled prefab in a project WITHOUT
 ## Controller-Less Setup
 
 Your avatar doesn't even need to have a FX layer, menu, or params! If these are unset, VRCFury will create them automatically, and manage them fully (meaning it will be deleted and recreated from scratch before each upload). Beware of this! If you want to make your own changes to your controller, menu, or params, then you should create one yourself outside of the vrcf temp directory.
+
+## VRCF Global Contact Senders
+
+VRCFury can be used to add globally-synced contact senders to any bone on your avatar. This means you can put one on your foot, your nose, or anywhere else you can imagine, then bap people with them! Simply create an empty on the bone you'd like to add a global contact to, then add a `VRCF Global Contact Sender` component to that empty.
