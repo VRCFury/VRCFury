@@ -14,8 +14,17 @@ namespace VF.Builder {
                     output += '_';
                 }
             }
-            output = output.Trim();
-            if (output.Length > 64) output = output.Substring(0, 32);
+            
+            if (output.Length > 64) output = output.Substring(0, 64);
+
+            // Unity will reject importing folders / files that start or end with a dot (this is undocumented)
+            while (output.StartsWith(" ") || output.StartsWith(".")) {
+                output = output.Substring(1);
+            }
+            while (output.EndsWith(" ") || output.EndsWith(".")) {
+                output = output.Substring(0, output.Length-1);
+            }
+
             if (output.Length == 0) output = "Unknown";
             return output;
         }
