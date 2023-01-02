@@ -52,13 +52,13 @@ namespace VF.Builder {
         public static T CopyAsset<T>(T obj, string toPath) where T : Object {
             AssetDatabase.StopAssetEditing();
             if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(obj), toPath)) {
-                throw new VRCFBuilderException("Failed to copy asset " + obj);
+                throw new VRCFBuilderException("Failed to copy asset " + obj + " to " + toPath);
             }
 
             var copy = AssetDatabase.LoadAssetAtPath<T>(toPath);
             AssetDatabase.StartAssetEditing();
             if (copy == null) {
-                throw new VRCFBuilderException("Failed to load copy asset " + obj);
+                throw new VRCFBuilderException("Failed to load copied asset " + obj + " from " + toPath);
             }
             return copy;
         }
