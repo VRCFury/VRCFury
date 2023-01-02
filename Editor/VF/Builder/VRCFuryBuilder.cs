@@ -44,10 +44,18 @@ public class VRCFuryBuilder {
     }
 
     private bool ShouldRun(GameObject avatarObject) {
-        if (avatarObject.GetComponentsInChildren<VRCFury>(true).Length > 0) return true;
-        if (avatarObject.GetComponentsInChildren<OGBPenetrator>(true).Length > 0) return true;
-        if (avatarObject.GetComponentsInChildren<OGBOrifice>(true).Length > 0) return true;
-        return false;
+        return Startup.GetVRCFuryComponentTypes()
+            .Any(type => avatarObject.GetComponentsInChildren(type, true).Length > 0);
+    }
+
+    public static void StripAllVrcfComponents(GameObject obj) {
+        // Make absolutely positively certain that we've removed every non-standard component from the avatar
+        // before it gets uploaded
+        foreach (var type in Startup.GetVRCFuryComponentTypes()) {
+            foreach (var c in obj.GetComponentsInChildren(type, true)) {
+                Object.DestroyImmediate(c);
+            }
+        }
     }
 
     private void Run(GameObject avatarObject, GameObject originalObject) {
@@ -92,11 +100,10 @@ public class VRCFuryBuilder {
             progress.Partial(0.2, 0.8)
         );
 
-        progress.Progress(0.9, "Removing Junk Components");
+        progress.Progress(0.9, "Removing Junk Animators");
         foreach (var c in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var animator = c.gameObject.GetComponent<Animator>();
             if (animator != null && c.gameObject != avatarObject) Object.DestroyImmediate(animator);
-            Object.DestroyImmediate(c);
         }
 
         progress.Progress(1, "Finishing Up");
@@ -162,6 +169,7 @@ public class VRCFuryBuilder {
 
         AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
         AddBuilder(new BakeOGBBuilder(), avatarObject);
+        AddBuilder(new BakeGlobalContactsBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();

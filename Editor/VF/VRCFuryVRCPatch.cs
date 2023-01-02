@@ -8,6 +8,7 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using VF.Builder;
+using VF.Inspector;
 using VF.Model;
 using VRC.Core;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -24,12 +25,7 @@ public class Startup {
             var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             var whitelist = whitelistField.GetValue(null);
-            var updated = new List<string>((string[])whitelist);
-            updated.Add(typeof(VRCFury).FullName);
-            updated.Add(typeof(VRCFuryTest).FullName);
-            updated.Add(typeof(OGBOrifice).FullName);
-            updated.Add(typeof(OGBPenetrator).FullName);
-            whitelistField.SetValue(null, updated.ToArray());
+            whitelistField.SetValue(null, UpdateComponentList((string[])whitelist));
         } catch (Exception e) {
             preprocessPatchEx = e;
         }
@@ -39,12 +35,7 @@ public class Startup {
             var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             var whitelist = whitelistField.GetValue(null);
-            var updated = new List<string>((string[])whitelist);
-            updated.Add(typeof(VRCFury).FullName);
-            updated.Add(typeof(VRCFuryTest).FullName);
-            updated.Add(typeof(OGBOrifice).FullName);
-            updated.Add(typeof(OGBPenetrator).FullName);
-            whitelistField.SetValue(null, updated.ToArray());
+            whitelistField.SetValue(null, UpdateComponentList((string[])whitelist));
         } catch (Exception) {
             if (preprocessPatchEx != null) {
                 Debug.LogError(new Exception("VRCFury preprocess patch failed", preprocessPatchEx));
@@ -64,6 +55,24 @@ public class Startup {
         } catch (Exception e) {
             Debug.LogError(new Exception("VRCFury prefab fix patch failed", e));
         }
+    }
+
+    private static string[] UpdateComponentList(string[] list) {
+        var updated = new List<string>(list);
+        foreach (var type in GetVRCFuryComponentTypes()) {
+            updated.Add(type.FullName);
+        }
+        return updated.ToArray();
+    }
+
+    public static List<Type> GetVRCFuryComponentTypes() {
+        return new List<Type> {
+            typeof(VRCFury),
+            typeof(VRCFuryTest),
+            typeof(OGBOrifice),
+            typeof(OGBPenetrator),
+            typeof(VRCFGlobalContactSender),
+        };
     }
 }
 
@@ -123,6 +132,10 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
         } catch (Exception e) {
             Debug.LogException(e);
         }
+        
+        // Make absolutely positively certain that we've removed every non-standard component from the avatar
+        // before it gets uploaded
+        VRCFuryBuilder.StripAllVrcfComponents(vrcCloneObject);
 
         return true;
     }

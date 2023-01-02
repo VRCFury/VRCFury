@@ -1,3 +1,4 @@
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,8 +9,7 @@ namespace VF.Inspector {
             Vector3 worldEnd,
             Color color
         ) {
-            var cbak = Gizmos.color;
-            try {
+            WithGizmos(() => {
                 Gizmos.color = color;
                 var dir = worldEnd - worldStart;
                 var length = dir.magnitude;
@@ -24,9 +24,7 @@ namespace VF.Inspector {
                 Gizmos.DrawLine(worldEnd, b);
                 Gizmos.DrawLine(worldEnd, c);
                 Gizmos.DrawLine(worldEnd, d);
-            } finally {
-                Gizmos.color = cbak;
-            }
+            });
         }
 
         public static void DrawCapsule(
@@ -36,27 +34,21 @@ namespace VF.Inspector {
             float worldRadius,
             Color color
         ) {
-            var cbak = Handles.color;
-            try {
+            WithHandles(() => {
                 Handles.color = color;
                 HandlesUtil.DrawWireCapsule(worldPos, worldRot, worldLength, worldRadius);
-            } finally {
-                Handles.color = cbak;
-            }
+            });
         }
         
         public static void DrawSphere(
             Vector3 worldPos,
-            float worldScale,
+            float worldRadius,
             Color color
         ) {
-            var cbak = Gizmos.color;
-            try {
+            WithGizmos(() => {
                 Gizmos.color = color;
-                Gizmos.DrawWireSphere(worldPos, worldScale);
-            } finally {
-                Gizmos.color = cbak;
-            }
+                Gizmos.DrawWireSphere(worldPos, worldRadius);
+            });
         }
 
         public static void DrawText(
@@ -67,7 +59,31 @@ namespace VF.Inspector {
             var style = new GUIStyle(GUI.skin.label);
             style.alignment = TextAnchor.UpperCenter;
             style.normal.textColor = color;
-            Handles.Label(worldPos, text, style);
+            WithHandles(() => {
+                Handles.Label(worldPos, text, style);                
+            });
+        }
+
+        private static void WithHandles(Action func) {
+            var cbak = Handles.color;
+            var mbak = Handles.matrix;
+            try {
+                Handles.color = Color.white;
+                Handles.matrix = Matrix4x4.identity;
+                func.Invoke();
+            } finally {
+                Handles.color = cbak;
+                Handles.matrix = mbak;
+            }
+        }
+        private static void WithGizmos(Action func) {
+            var cbak = Gizmos.color;
+            try {
+                Gizmos.color = Color.white;
+                func.Invoke();
+            } finally {
+                Gizmos.color = cbak;
+            }
         }
     }
 }
