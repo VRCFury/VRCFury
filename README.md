@@ -234,3 +234,5 @@ Your avatar doesn't even need to have a FX layer, menu, or params! If these are 
 ## VRCF Global Contact Senders
 
 VRCFury can be used to add globally-synced contact senders to any bone on your avatar. This means you can put one on your foot, your nose, or anywhere else you can imagine, then bap people with them! Simply create an empty on the bone you'd like to add a global contact to, then add a `VRCF Global Contact Sender` component to that empty.
+
+Beware that this feature steals colliders from your fingers, so the more you add, the fewer contacts there will be on your fingers. It will try to steal from the least important fingers first. You've been warned!
