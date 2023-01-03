@@ -4,10 +4,10 @@ using UnityEngine.UIElements;
 using VF.Model;
 
 namespace VF.Inspector {
-    [CustomEditor(typeof(VRCFGlobalContactSender), true)]
+    [CustomEditor(typeof(VRCFGlobalCollider), true)]
     public class VRCFGlobalContactSenderEditor : Editor {
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(VRCFGlobalContactSender contact, GizmoType gizmoType) {
+        static void DrawGizmo(VRCFGlobalCollider contact, GizmoType gizmoType) {
             var worldRadius = contact.radius * contact.transform.lossyScale.x;
 
             VRCFuryGizmoUtils.DrawCapsule(
@@ -20,7 +20,7 @@ namespace VF.Inspector {
         }
         
         public override VisualElement CreateInspectorGUI() {
-            var self = (VRCFGlobalContactSender)target;
+            var self = (VRCFGlobalCollider)target;
 
             var container = new VisualElement();
             

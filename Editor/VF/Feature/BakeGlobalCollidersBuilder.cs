@@ -11,7 +11,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
         public void Apply() {
 
-            var globalContacts = avatarObject.GetComponentsInChildren<VRCFGlobalContactSender>(true);
+            var globalContacts = avatarObject.GetComponentsInChildren<VRCFGlobalCollider>(true);
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             var fingers = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)> {
