@@ -71,7 +71,7 @@ public class Startup {
             typeof(VRCFuryTest),
             typeof(OGBOrifice),
             typeof(OGBPenetrator),
-            typeof(VRCFGlobalContactSender),
+            typeof(VRCFGlobalCollider),
         };
     }
 }

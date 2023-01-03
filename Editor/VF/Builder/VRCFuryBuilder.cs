@@ -169,7 +169,7 @@ public class VRCFuryBuilder {
 
         AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
         AddBuilder(new BakeOGBBuilder(), avatarObject);
-        AddBuilder(new BakeGlobalContactsBuilder(), avatarObject);
+        AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();

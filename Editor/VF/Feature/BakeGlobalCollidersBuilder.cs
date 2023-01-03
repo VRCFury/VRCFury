@@ -7,7 +7,7 @@ using VF.Model;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class BakeGlobalContactsBuilder : FeatureBuilder {
+    public class BakeGlobalCollidersBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
         public void Apply() {
 
@@ -45,7 +45,7 @@ namespace VF.Feature {
             }
             
             if (globalContacts.Length > fingers.Count) {
-                throw new VRCFBuilderException("Too many VRCF global contacts are present on this avatar");
+                throw new VRCFBuilderException("Too many VRCF global colliders are present on this avatar");
             }
 
             var i = 0;
@@ -63,7 +63,7 @@ namespace VF.Feature {
                 // Because vrchat recalculates the capsule length based on distance between child and parent,
                 // we place the collider on an identical child object, essentially ensuring the capsule height is 0 (sphere)
                 var childObj = new GameObject("GlobalContact");
-                childObj.transform.SetParent(globalContact.transform, false);
+                childObj.transform.SetParent(globalContact.GetTransform(), false);
                 finger.transform = childObj.transform;
                 setFinger(finger);
                 i++;

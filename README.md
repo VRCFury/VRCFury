@@ -231,8 +231,8 @@ Note: If a client wishes to use your VRCFury-enabled prefab in a project WITHOUT
 
 Your avatar doesn't even need to have a FX layer, menu, or params! If these are unset, VRCFury will create them automatically, and manage them fully (meaning it will be deleted and recreated from scratch before each upload). Beware of this! If you want to make your own changes to your controller, menu, or params, then you should create one yourself outside of the vrcf temp directory.
 
-## VRCF Global Contact Senders
+## VRCF Global Colliders
 
-VRCFury can be used to add globally-synced contact senders to any bone on your avatar. This means you can put one on your foot, your nose, or anywhere else you can imagine, then bap people with them! Simply create an empty on the bone you'd like to add a global contact to, then add a `VRCF Global Contact Sender` component to that empty.
+VRCFury can be used to add globally-synced colliders to any bone on your avatar. This means you can put one on your foot, your nose, or anywhere else you can imagine, then bap people with them! Simply create an empty on the bone you'd like to add a collider to, then add a `VRCF Global Collider` component to that empty.
 
 Beware that this feature steals colliders from your fingers, so the more you add, the fewer contacts there will be on your fingers. It will try to steal from the least important fingers first. You've been warned!
