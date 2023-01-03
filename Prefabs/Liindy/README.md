@@ -1,6 +1,8 @@
 Liindy Sniper Using VRCFury
 ==
 
+> This prefab was contributed by `Morghus`, thank you!
+
 ## How to install
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Interactable Sniper Rifle (VRCHAT/SDK3)](https://liindy.gumroad.com/l/Tac300Sniper)
