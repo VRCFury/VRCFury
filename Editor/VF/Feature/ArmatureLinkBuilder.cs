@@ -272,6 +272,12 @@ namespace VF.Feature {
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
                 avatarBone = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, model.boneOnAvatar);
                 if (!avatarBone) {
+                    foreach (var fallback in model.fallbackBones) {
+                        avatarBone = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, fallback);
+                        if (avatarBone) break;
+                    }
+                }
+                if (!avatarBone) {
                     throw new VRCFBuilderException(
                         "ArmatureLink failed to find " + model.boneOnAvatar + " bone on avatar.");
                 }
@@ -371,11 +377,24 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
             
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Allow prop physbones to target avatar bone transforms (unusual):"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("If checked, physbones in the prop pointing to bones on the avatar will be updated " +
-                                                          "to point to the corresponding bone on the base armature. This is extremely unusual. Don't use this " +
-                                                          "unless you know what you are doing."));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physbonesOnAvatarBones")));
+            
+            var adv = new Foldout {
+                text = "Advanced Options",
+                value = false
+            };
+            container.Add(adv);
+            
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Allow prop physbones to target avatar bone transforms (unusual):"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If checked, physbones in the prop pointing to bones on the avatar will be updated " +
+                                                    "to point to the corresponding bone on the base armature. This is extremely unusual. Don't use this " +
+                                                    "unless you know what you are doing."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physbonesOnAvatarBones")));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Fallback bones:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If the given bone cannot be found on the avatar, these bones will also be attempted before failing."));
+            adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("fallbackBones")));
 
             return container;
         }

@@ -334,6 +334,7 @@ namespace VF.Model.Feature {
         public bool keepBoneOffsets;
         public string removeBoneSuffix;
         public bool physbonesOnAvatarBones;
+        public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         
         // legacy
         public bool useOptimizedUpload;
