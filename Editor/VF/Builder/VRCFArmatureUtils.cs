@@ -9,7 +9,7 @@ namespace VF.Builder {
             typeof(SkeletonBone).GetField("parentName", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         
         /**
-         * This basically does what animator.GetBoneTransform SHOULD do, except GetBoneTransform randomly sometimes
+         * This basically does what Animator.GetBoneTransform SHOULD do, except GetBoneTransform randomly sometimes
          * returns bones on clothing armatures instead of the avatar, and also sometimes returns null for no reason.
          */
         public static GameObject FindBoneOnArmature(GameObject avatarObject, HumanBodyBones findBone) {
@@ -20,13 +20,11 @@ namespace VF.Builder {
             }
 
             var humanDescription = animator.avatar.humanDescription;
-            var humanBoneName = Enum.GetName(typeof(HumanBodyBones), findBone);
+            var humanBoneName = HumanTrait.BoneName[(int)findBone];
             var avatarBoneName = humanDescription.human
                 .FirstOrDefault(humanBone => humanBone.humanName == humanBoneName)
                 .boneName;
 
-            // Unity tries to find the root bone BY NAME, which often might be the wrong one. It might even be the
-            // one in the prop. So we need to find it ourself with better logic.
             var skeleton = humanDescription.skeleton;
             bool DoesBoneMatch(GameObject obj, SkeletonBone bone) {
                 if (bone.name != obj.name) return false;
