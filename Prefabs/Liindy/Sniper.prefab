@@ -1,5 +1,237 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &33437302591066331
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 491030572591340266}
+  - component: {fileID: 8336541042877151117}
+  m_Layer: 0
+  m_Name: Gizmo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &491030572591340266
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 33437302591066331}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 5685850259954378009}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8336541042877151117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 33437302591066331}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Move to palm of left hand
+        sphereRadius: 0
+        arrowLength: 0
+--- !u!1 &493472705843012010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6838938143831448746}
+  - component: {fileID: 2355836468936866692}
+  m_Layer: 0
+  m_Name: Gizmo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6838938143831448746
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493472705843012010}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 5685850260956892301}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2355836468936866692
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493472705843012010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Move to shoulder
+        sphereRadius: 0
+        arrowLength: 0
+--- !u!1 &2890222026660491331
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1622732144326005284}
+  - component: {fileID: 7886093145412217771}
+  m_Layer: 0
+  m_Name: Gizmo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1622732144326005284
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2890222026660491331}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 5685850260795168302}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7886093145412217771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2890222026660491331}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Move to right hand
+        sphereRadius: 0
+        arrowLength: 0
+--- !u!1 &5447438061669606059
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5542064214441494863}
+  - component: {fileID: 4191680303276113363}
+  m_Layer: 0
+  m_Name: Gizmo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5542064214441494863
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5447438061669606059}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 5685850259475689526}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4191680303276113363
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5447438061669606059}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Move to back
+        sphereRadius: 0
+        arrowLength: 0
 --- !u!114 &7145081530519591835
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -44,7 +276,7 @@ MonoBehaviour:
         addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
-        toggleParam: 
+        toggleParam: SniperToggle
         useSecurityForToggle: 0
         rootObjOverride: {fileID: 0}
         rootBindingsApplyToAvatar: 0
@@ -117,6 +349,64 @@ MonoBehaviour:
         physbonesOnAvatarBones: 0
         useOptimizedUpload: 0
         useBoneMerging: 0
+--- !u!1 &6453882984388211507
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3103719567883202096}
+  - component: {fileID: 7581615728868234600}
+  m_Layer: 0
+  m_Name: Gizmo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3103719567883202096
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6453882984388211507}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 5685850259395624215}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7581615728868234600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6453882984388211507}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Move to left hand
+        sphereRadius: 0
+        arrowLength: 0
 --- !u!1001 &5970839874018177297
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -338,9 +628,21 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 5970839874018177297}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &5685850259954378009 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2032422593972392968, guid: f821c1075d2c86143b9f519348de9fa8,
+    type: 3}
+  m_PrefabInstance: {fileID: 5970839874018177297}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5685850259395624214 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2032422593394494471, guid: f821c1075d2c86143b9f519348de9fa8,
+    type: 3}
+  m_PrefabInstance: {fileID: 5970839874018177297}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5685850259395624215 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2032422593394494470, guid: f821c1075d2c86143b9f519348de9fa8,
     type: 3}
   m_PrefabInstance: {fileID: 5970839874018177297}
   m_PrefabAsset: {fileID: 0}
@@ -350,15 +652,33 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 5970839874018177297}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &5685850260795168302 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2032422594947671871, guid: f821c1075d2c86143b9f519348de9fa8,
+    type: 3}
+  m_PrefabInstance: {fileID: 5970839874018177297}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5685850259475689525 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2032422593642561828, guid: f821c1075d2c86143b9f519348de9fa8,
     type: 3}
   m_PrefabInstance: {fileID: 5970839874018177297}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &5685850259475689526 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2032422593642561831, guid: f821c1075d2c86143b9f519348de9fa8,
+    type: 3}
+  m_PrefabInstance: {fileID: 5970839874018177297}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5685850260956892300 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2032422595125755293, guid: f821c1075d2c86143b9f519348de9fa8,
+    type: 3}
+  m_PrefabInstance: {fileID: 5970839874018177297}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5685850260956892301 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2032422595125755292, guid: f821c1075d2c86143b9f519348de9fa8,
     type: 3}
   m_PrefabInstance: {fileID: 5970839874018177297}
   m_PrefabAsset: {fileID: 0}
