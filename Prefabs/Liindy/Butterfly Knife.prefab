@@ -412,6 +412,7 @@ MonoBehaviour:
         keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 1c0000001b000000
         useOptimizedUpload: 0
         useBoneMerging: 0
     00000002:
@@ -425,6 +426,7 @@ MonoBehaviour:
         keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 
         useOptimizedUpload: 0
         useBoneMerging: 0
     00000003:
@@ -438,6 +440,7 @@ MonoBehaviour:
         keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 2b0000002a000000
         useOptimizedUpload: 0
         useBoneMerging: 0
     00000004:
@@ -451,6 +454,7 @@ MonoBehaviour:
         keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 
         useOptimizedUpload: 0
         useBoneMerging: 0
     00000005:
@@ -464,6 +468,7 @@ MonoBehaviour:
         keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 
         useOptimizedUpload: 0
         useBoneMerging: 0
     00000006:
@@ -477,6 +482,7 @@ MonoBehaviour:
         keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 
         useOptimizedUpload: 0
         useBoneMerging: 0
 --- !u!1001 &8280769015933524219
