@@ -324,7 +324,8 @@ namespace VF.Model.Feature {
         public enum ArmatureLinkMode {
             SKIN_REWRITE,
             REPARENTING,
-            PARENT_CONSTRAINT
+            PARENT_CONSTRAINT,
+            REPARENTING_ROOT_ONLY,
         }
 
         public ArmatureLinkMode linkMode;

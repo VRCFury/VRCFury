@@ -80,13 +80,21 @@ namespace VF.Feature {
                     var propBone = mergeBone.Item1;
                     Object.DestroyImmediate(propBone);
                 }
-            } else if (model.linkMode == ArmatureLink.ArmatureLinkMode.REPARENTING) {
+            } else if (model.linkMode == ArmatureLink.ArmatureLinkMode.REPARENTING || model.linkMode == ArmatureLink.ArmatureLinkMode.REPARENTING_ROOT_ONLY) {
+                var rootOnly = model.linkMode == ArmatureLink.ArmatureLinkMode.REPARENTING_ROOT_ONLY;
                 // Otherwise, we move all the prop bones into their matching avatar bones (as children)
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
                     var avatarBone = mergeBone.Item2;
-                    FailIfComponents(propBone);
-                    UpdatePhysbones(propBone, avatarBone);
+                    if (rootOnly) {
+                        if (propBone != model.propBone) {
+                            continue;
+                        }
+                    } else {
+                        FailIfComponents(propBone);
+                        UpdatePhysbones(propBone, avatarBone);
+                    }
+
                     var oldPath = clipBuilder.GetPath(propBone);
                     
                     // Move the object
@@ -351,12 +359,15 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Link Mode:"));
             container.Add(VRCFuryEditorUtils.WrappedLabel("(Skin Rewrite) Rewrites skinned meshes to use avatar's own bones. Excellent performance, but breaks some clothing."));
             container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting) Makes prop bones into children of the avatar's bones. Medium performance, but often works when Skin Rewrite doesn't."));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting (Root Only)) Similar to bone reparenting, but only the root object is reparented. Useful if you just want to move a simple object onto a bone."));
             container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Constraint) Adds a parent constraint to every prop bone, linking it to the avatar bone. Awful performance, pretty much never use this."));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("linkMode"), formatEnum: str => {
                 if (str == ArmatureLink.ArmatureLinkMode.SKIN_REWRITE.ToString()) {
                     return "Skin Rewrite (Best Performance)";
                 } else if (str == ArmatureLink.ArmatureLinkMode.REPARENTING.ToString()) {
                     return "Bone Reparenting (Best Compatibility)";
+                } else if (str == ArmatureLink.ArmatureLinkMode.REPARENTING_ROOT_ONLY.ToString()) {
+                    return "Bone Reparenting (Root Only)";
                 } else if (str == ArmatureLink.ArmatureLinkMode.PARENT_CONSTRAINT.ToString()) {
                     return "Bone Constraint (Awful Performance)";
                 }
