@@ -15,8 +15,7 @@ namespace VF.Builder {
         public static GameObject FindBoneOnArmature(GameObject avatarObject, HumanBodyBones findBone) {
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator || !animator.avatar) {
-                throw new VRCFBuilderException(
-                    "Found no humanoid animator on avatar.");
+                return null;
             }
 
             var humanDescription = animator.avatar.humanDescription;

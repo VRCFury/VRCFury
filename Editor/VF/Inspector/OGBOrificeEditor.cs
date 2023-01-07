@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Model;
 using VRC.Dynamics;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(OGBOrifice), true)]
@@ -166,8 +167,8 @@ namespace VF.Inspector {
             if (orifice.enableHandTouchZone2 == OGBOrifice.EnableTouchZone.On) {
                 enableHandTouchZone = true;
             } else if (orifice.enableHandTouchZone2 == OGBOrifice.EnableTouchZone.Auto) {
-                var animator = orifice.gameObject.GetComponentInParent<Animator>();
-                enableHandTouchZone = animator && ShouldProbablyHaveTouchZone(animator.gameObject, orifice);
+                var avatarObject = orifice.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+                enableHandTouchZone = avatarObject && ShouldProbablyHaveTouchZone(avatarObject, orifice);
             }
             if (!enableHandTouchZone) {
                 return null;
