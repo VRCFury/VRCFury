@@ -250,18 +250,21 @@ public class ControllerMerger {
     private void CloneTransition(
         AnimatorTransitionBase from,
         Dictionary<Object, Object> transitionTargets,
-        Func<AnimatorState,AnimatorTransitionBase> makeNewWithState,
-        Func<AnimatorStateMachine,AnimatorTransitionBase> makeNewWithMachine
+        Func<AnimatorTransitionBase> makeNewToExit,
+        Func<AnimatorState,AnimatorTransitionBase> makeNewToState,
+        Func<AnimatorStateMachine,AnimatorTransitionBase> makeNewToMachine
     ) {
         AnimatorTransitionBase to;
         if (from.isExit) {
-            to = makeNewWithState(null);
+            to = makeNewToExit();
         } else if (from.destinationState != null) {
             var newDest = (AnimatorState)transitionTargets[from.destinationState];
-            to = makeNewWithState(newDest);
+            if (!newDest) throw new VRCFBuilderException("Failed to find transition target " + from.destinationState);
+            to = makeNewToState(newDest);
         } else {
             var newDest = (AnimatorStateMachine)transitionTargets[from.destinationStateMachine];
-            to = makeNewWithMachine(newDest);
+            if (!newDest) throw new VRCFBuilderException("Failed to find transition target " + from.destinationState);
+            to = makeNewToMachine(newDest);
         }
 
         to.solo = from.solo;
@@ -296,6 +299,7 @@ public class ControllerMerger {
             CloneTransition(
                 oldTrans,
                 transitionTargets,
+                null,
                 to.AddAnyStateTransition,
                 to.AddAnyStateTransition
             );
@@ -304,6 +308,7 @@ public class ControllerMerger {
             CloneTransition(
                 oldTrans,
                 transitionTargets,
+                null,
                 to.AddEntryTransition,
                 to.AddEntryTransition
             );
@@ -311,25 +316,29 @@ public class ControllerMerger {
         foreach (var fromState in from.states) {
             var toState = (AnimatorState)transitionTargets[fromState.state];
             foreach (var oldTrans in fromState.state.transitions) {
-                if (oldTrans.isExit) {
-                    CloneTransition(
-                        oldTrans,
-                        transitionTargets,
-                        s => toState.AddExitTransition(),
-                        null
-                    );
-                } else {
-                    CloneTransition(
-                        oldTrans,
-                        transitionTargets,
-                        toState.AddTransition,
-                        toState.AddTransition
-                    );
-                }
+                CloneTransition(
+                    oldTrans,
+                    transitionTargets,
+                    toState.AddExitTransition,
+                    toState.AddTransition,
+                    toState.AddTransition
+                );
             }
         }
         foreach (var fromMachineOuter in from.stateMachines) {
-            CloneTransitions(fromMachineOuter.stateMachine, transitionTargets);
+            var fromMachine = fromMachineOuter.stateMachine;
+            var toMachine = (AnimatorStateMachine)transitionTargets[fromMachine];
+            CloneTransitions(fromMachine, transitionTargets);
+
+            foreach (var oldTrans in from.GetStateMachineTransitions(fromMachine)) {
+                CloneTransition(
+                    oldTrans,
+                    transitionTargets,
+                    () => to.AddStateMachineExitTransition(toMachine),
+                    (newTo) => to.AddStateMachineTransition(toMachine, newTo),
+                    (newTo) => to.AddStateMachineTransition(toMachine, newTo)
+                );
+            }
         }
     }
     
