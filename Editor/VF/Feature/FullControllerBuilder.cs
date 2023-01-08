@@ -40,6 +40,9 @@ namespace VF.Feature {
                 if (model.globalParams.Contains(name)) {
                     return name;
                 }
+                if (model.globalParams.Contains("*")) {
+                    return name;
+                }
 
                 rewrittenParams.Add(name);
                 return ControllerManager.NewParamName(name, uniqueModelNum);
