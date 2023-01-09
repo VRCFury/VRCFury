@@ -182,6 +182,7 @@ MonoBehaviour:
   config:
     features:
     - id: 0
+    - id: 1
   somethingIsBroken: 0
   references:
     version: 1
@@ -191,8 +192,74 @@ MonoBehaviour:
         version: 0
         rotation: {x: 0, y: 0, z: 0}
         text: Selfie Stick
-        sphereRadius: 0.1
+        sphereRadius: 0.05
         arrowLength: 0.4
+    00000001:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 90, y: 0, z: 0}
+        text: 
+        sphereRadius: 0
+        arrowLength: 0.2
+--- !u!1 &5370428586686154072
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8097534175028829411}
+  - component: {fileID: 945437640058284216}
+  m_Layer: 0
+  m_Name: Toward Thumb
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8097534175028829411
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5370428586686154072}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 4035118845165094238}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &945437640058284216
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5370428586686154072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Toward Thumb
+        sphereRadius: 0
+        arrowLength: 0
 --- !u!114 &4210671646414957091
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -219,6 +286,64 @@ MonoBehaviour:
         rotation: {x: 0, y: 0, z: 0}
         text: Stomach Sounds
         sphereRadius: 0.1
+        arrowLength: 0
+--- !u!1 &6909405808888565122
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5537833097365800504}
+  - component: {fileID: 5177381548723186354}
+  m_Layer: 0
+  m_Name: Toward Out
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5537833097365800504
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6909405808888565122}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 4035118845165094238}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5177381548723186354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6909405808888565122}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Toward Fingers
+        sphereRadius: 0
         arrowLength: 0
 --- !u!1001 &4210671646414957096
 PrefabInstance:
@@ -344,6 +469,12 @@ GameObject:
 --- !u!1 &4734856233210183209 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8924684367835829249, guid: ec379d112fbb91447abef5ac282d4b2b,
+    type: 3}
+  m_PrefabInstance: {fileID: 4210671646414957096}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4035118845165094238 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 977510609288671094, guid: ec379d112fbb91447abef5ac282d4b2b,
     type: 3}
   m_PrefabInstance: {fileID: 4210671646414957096}
   m_PrefabAsset: {fileID: 0}
