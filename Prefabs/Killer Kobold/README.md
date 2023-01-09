@@ -10,6 +10,6 @@ Killer Kobold System Using VRCFury
 * DO NOT unpack the prefab or follow any instructions from the system's documentation
 * Position the `Burps` child object over your throat (do NOT drag it to a bone in the hierarchy!)
 * Position the `Stomach Sounds` child object in your stomach (do NOT drag it to a bone in the hierarchy!)
-* Position the `Selfie Stick` child object on your right hand. The big arrow should point toward your thumb (that's the selfie stick will point) (do NOT drag it to a bone in the hierarchy!)
+* Position the `Selfie Stick` child object on your right hand. The big arrow should point toward your thumb, that's the direction the selfie stick will point. (do NOT drag it to a bone in the hierarchy!)
 * You're done! Upload!
 * The options will be available in your avatar's Expression Menu under `Killer Kobold`
