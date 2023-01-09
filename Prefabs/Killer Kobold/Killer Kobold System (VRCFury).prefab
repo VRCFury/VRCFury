@@ -90,7 +90,7 @@ MonoBehaviour:
         propBone: {fileID: 5477670289642340153}
         boneOnAvatar: 7
         bonePathOnAvatar: 
-        keepBoneOffsets: 0
+        keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
@@ -104,13 +104,27 @@ MonoBehaviour:
         propBone: {fileID: 751582935064500187}
         boneOnAvatar: 10
         bonePathOnAvatar: 
-        keepBoneOffsets: 0
+        keepBoneOffsets: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
         useOptimizedUpload: 0
         useBoneMerging: 0
     00000002:
+      type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 1
+        linkMode: 3
+        propBone: {fileID: 4734856233210183209}
+        boneOnAvatar: 18
+        bonePathOnAvatar: 
+        keepBoneOffsets: 1
+        removeBoneSuffix: 
+        physbonesOnAvatarBones: 0
+        fallbackBones: 
+        useOptimizedUpload: 0
+        useBoneMerging: 0
+    00000003:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
         version: 0
@@ -124,20 +138,6 @@ MonoBehaviour:
         - obj: {fileID: 5553836580620044099}
           action: 1
           ResetMePlease: 0
-    00000003:
-      type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
-      data:
-        version: 1
-        linkMode: 3
-        propBone: {fileID: 4734856233210183209}
-        boneOnAvatar: 18
-        bonePathOnAvatar: 
-        keepBoneOffsets: 0
-        removeBoneSuffix: 
-        physbonesOnAvatarBones: 0
-        fallbackBones: 
-        useOptimizedUpload: 0
-        useBoneMerging: 0
     00000004:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
