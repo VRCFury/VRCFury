@@ -1,0 +1,337 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &4210671646414957100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 751582935064500187}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Burps
+        sphereRadius: 0.1
+        arrowLength: 0
+--- !u!1 &4210671647162266759
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4210671647162266757}
+  - component: {fileID: 4210671647162266758}
+  m_Layer: 0
+  m_Name: Killer Kobold System (VRCFury)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4210671647162266757
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4210671647162266759}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 7308844511983675299}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4210671647162266758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4210671647162266759}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+    - id: 1
+    - id: 2
+    - id: 3
+    - id: 4
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 1
+        linkMode: 0
+        propBone: {fileID: 5477670289642340153}
+        boneOnAvatar: 7
+        bonePathOnAvatar: 
+        keepBoneOffsets: 0
+        removeBoneSuffix: 
+        physbonesOnAvatarBones: 0
+        fallbackBones: 
+        useOptimizedUpload: 0
+        useBoneMerging: 0
+    00000001:
+      type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 1
+        linkMode: 3
+        propBone: {fileID: 751582935064500187}
+        boneOnAvatar: 10
+        bonePathOnAvatar: 
+        keepBoneOffsets: 0
+        removeBoneSuffix: 
+        physbonesOnAvatarBones: 0
+        fallbackBones: 
+        useOptimizedUpload: 0
+        useBoneMerging: 0
+    00000002:
+      type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        states:
+        - obj: {fileID: 1847832853386650455}
+          action: 1
+          ResetMePlease: 0
+    00000003:
+      type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 1
+        linkMode: 3
+        propBone: {fileID: 4734856233210183209}
+        boneOnAvatar: 18
+        bonePathOnAvatar: 
+        keepBoneOffsets: 0
+        removeBoneSuffix: 
+        physbonesOnAvatarBones: 0
+        fallbackBones: 
+        useOptimizedUpload: 0
+        useBoneMerging: 0
+    00000004:
+      type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 2
+        controllers:
+        - controller: {fileID: 9100000, guid: cf9362b41548fe24f91115c24c2cb522, type: 2}
+          type: 5
+          ResetMePlease: 0
+        menus:
+        - menu: {fileID: 11400000, guid: 2c51f03ee109e214384a8faff65ff477, type: 2}
+          prefix: Killer Kobold
+          ResetMePlease: 0
+        prms:
+        - parameters: {fileID: 11400000, guid: 299f44c78a57ca74abcda8a694489792, type: 2}
+          ResetMePlease: 0
+        globalParams: []
+        removePrefixes: []
+        addPrefix: 
+        allNonsyncedAreGlobal: 0
+        ignoreSaved: 0
+        toggleParam: 
+        useSecurityForToggle: 0
+        rootObjOverride: {fileID: 0}
+        rootBindingsApplyToAvatar: 0
+        controller: {fileID: 0}
+        menu: {fileID: 0}
+        parameters: {fileID: 0}
+        submenu: 
+--- !u!114 &4210671646414957088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4734856233210183209}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Selfie Stick
+        sphereRadius: 0.1
+        arrowLength: 0.4
+--- !u!114 &4210671646414957091
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5477670289642340153}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vrcfSerVersion: 7
+  config:
+    features:
+    - id: 0
+  somethingIsBroken: 0
+  references:
+    version: 1
+    00000000:
+      type: {class: Gizmo, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        rotation: {x: 0, y: 0, z: 0}
+        text: Stomach Sounds
+        sphereRadius: 0.1
+        arrowLength: 0
+--- !u!1001 &4210671646414957096
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 4210671647162266757}
+    m_Modifications:
+    - target: {fileID: 2579328647617251711, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2937658425713908046, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.31350753
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6845881352546864535, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_Name
+      value: VoreSystem
+      objectReference: {fileID: 0}
+    - target: {fileID: 7689523924605926171, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.910383e-11
+      objectReference: {fileID: 0}
+    - target: {fileID: 7689523924605926171, guid: ec379d112fbb91447abef5ac282d4b2b,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.02528572
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 6903721698933533057, guid: ec379d112fbb91447abef5ac282d4b2b, type: 3}
+    - {fileID: 6903721699147985511, guid: ec379d112fbb91447abef5ac282d4b2b, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: ec379d112fbb91447abef5ac282d4b2b, type: 3}
+--- !u!4 &7308844511983675299 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6845881352546864523, guid: ec379d112fbb91447abef5ac282d4b2b,
+    type: 3}
+  m_PrefabInstance: {fileID: 4210671646414957096}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5477670289642340153 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8533150962062775569, guid: ec379d112fbb91447abef5ac282d4b2b,
+    type: 3}
+  m_PrefabInstance: {fileID: 4210671646414957096}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &751582935064500187 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3459159509641772531, guid: ec379d112fbb91447abef5ac282d4b2b,
+    type: 3}
+  m_PrefabInstance: {fileID: 4210671646414957096}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1847832853386650455 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2579328647617251711, guid: ec379d112fbb91447abef5ac282d4b2b,
+    type: 3}
+  m_PrefabInstance: {fileID: 4210671646414957096}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &4734856233210183209 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8924684367835829249, guid: ec379d112fbb91447abef5ac282d4b2b,
+    type: 3}
+  m_PrefabInstance: {fileID: 4210671646414957096}
+  m_PrefabAsset: {fileID: 0}
