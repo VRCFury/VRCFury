@@ -19,6 +19,13 @@ namespace VF.Inspector {
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name Override"));
             container.Add(new PropertyField(serializedObject.FindProperty("length"), "Length Override"));
             container.Add(new PropertyField(serializedObject.FindProperty("radius"), "Radius Override"));
+            
+            var adv = new Foldout {
+                text = "Advanced",
+                value = false
+            };
+            container.Add(adv);
+            adv.Add(new PropertyField(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
 
             return container;
         }
@@ -147,6 +154,10 @@ namespace VF.Inspector {
         private static Tuple<float, float> GetSize(OGBPenetrator pen) {
             var length = pen.length;
             var radius = pen.radius;
+            if (!pen.unitsInMeters) {
+                length *= pen.transform.lossyScale.x;
+                radius *= pen.transform.lossyScale.x;
+            }
             if (length == 0 || radius == 0) {
                 var autoSize = GetAutoSize(pen.gameObject);
                 if (autoSize != null) {
