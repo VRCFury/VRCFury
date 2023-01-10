@@ -42,16 +42,15 @@ namespace VF.Menu {
             var dryRunMigrate = new List<string>();
 
             var oldParentsToDelete = new HashSet<GameObject>();
-            foreach (var light in avatarObj.GetComponentsInChildren<Light>(true)) {
-                var isHole = OGBOrificeEditor.IsHole(light);
-                var isRing = OGBOrificeEditor.IsRing(light);
-                if (!isHole && !isRing) continue;
-                var parent = light.transform.parent;
-                if (!parent) continue;
-                if (oldParentsToDelete.Contains(parent.gameObject)) continue;
+            foreach (var parent in avatarObj.GetComponentsInChildren<Transform>(true)) {
                 var constraint = parent.gameObject.GetComponent<ParentConstraint>();
                 if (constraint == null) continue;
                 if (constraint.sourceCount < 2) continue;
+                
+                var isParent = GetIsParent(parent.gameObject);
+                if (isParent == IsDps.NO) continue;
+                var isHole = isParent == IsDps.HOLE;
+
                 oldParentsToDelete.Add(parent.gameObject);
                 
                 for (var i = 0; i < constraint.sourceCount; i++) {
@@ -136,6 +135,23 @@ namespace VF.Menu {
                    + string.Join("\n", dryRunMigrate)
                    + "\n\nThese objects will be deleted:\n"
                    + string.Join("\n", deletions);
+        }
+        
+        enum IsDps {
+            NO,
+            HOLE,
+            RING
+        }
+        private static IsDps GetIsParent(GameObject obj) {
+            foreach (Transform child in obj.transform) {
+                var light = child.gameObject.GetComponent<Light>();
+                if (OGBOrificeEditor.IsHole(light)) return IsDps.HOLE;
+                if (OGBOrificeEditor.IsRing(light)) return IsDps.RING;
+            }
+
+            if (obj.name == "__dps_lightobject") return IsDps.RING;
+
+            return IsDps.NO;
         }
     }
 }
