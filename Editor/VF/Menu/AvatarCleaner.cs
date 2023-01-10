@@ -89,15 +89,23 @@ namespace VF.Menu {
 
             void CheckMenu(VRCExpressionsMenu menu) {
                 for (var i = 0; i < menu.controls.Count; i++) {
-                    if (menu.controls[i].type != VRCExpressionsMenu.Control.ControlType.SubMenu) continue;
-                    if (menu.controls[i].subMenu == null) continue;
-                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(menu.controls[i].subMenu)) {
+                    var shouldRemove =
+                        menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.SubMenu
+                        && menu.controls[i].subMenu
+                        && ShouldRemoveAsset != null
+                        && ShouldRemoveAsset(menu.controls[i].subMenu);
+                    shouldRemove |=
+                        menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.Toggle
+                        && menu.controls[i].parameter != null
+                        && ShouldRemoveParam != null
+                        && ShouldRemoveParam(menu.controls[i].parameter.name);
+                    if (shouldRemove) {
                         removeItems.Add("Menu Item: " + menu.controls[i].name);
                         if (perform) {
                             menu.controls.RemoveAt(i);
                             i--;
                         }
-                    } else {
+                    } else if (menu.controls[i].subMenu) {
                         CheckMenu(menu.controls[i].subMenu);
                     }
                 }

@@ -50,12 +50,12 @@ namespace VF.Menu {
             OrificeCreatorMenuItem.RunRing();
         }
         
-        [MenuItem("Tools/VRCFury/Migrate DPSAttach to OGB", priority = 1204)]
+        [MenuItem("Tools/VRCFury/Migrate DPSAttach+__dps to OGB", priority = 1204)]
         private static void RunMigrateDPSAttach() {
             DpsAttachMigration.Run(MenuUtils.GetSelectedAvatar());
         }
         
-        [MenuItem("Tools/VRCFury/Migrate DPSAttach to OGB", true)]
+        [MenuItem("Tools/VRCFury/Migrate DPSAttach+__dps to OGB", true)]
         private static bool CheckMigrateDPSAttach() {
             return MenuUtils.GetSelectedAvatar() != null;
         }

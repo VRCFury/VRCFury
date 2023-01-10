@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -64,16 +65,36 @@ namespace VF.Menu {
                     id = name.IndexOf(")");
                     if (id >= 0) name = name.Substring(0, id);
 
-                    var fullName = (isHole ? "Hole" : "Ring") + " (" + name + ")";
+                    var sourceIsHole = isHole;
+                    if (name.StartsWith("__dps_")) {
+                        name = name.Substring(6);
+                        name = name.Replace('_', ' ');
+                        name = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(name);
+                        sourceIsHole = obj.name.EndsWith("ssy")
+                                       || obj.name.EndsWith("outh")
+                                       || obj.name.EndsWith("ss");
+                    }
+
+                    var fullName = (sourceIsHole ? "Hole" : "Ring") + " (" + name + ")";
 
                     dryRunMigrate.Add(obj.name + " -> " + fullName);
                     if (!dryRun) {
                         var ogb = obj.GetComponent<OGBOrifice>();
                         if (ogb == null) {
                             ogb = obj.AddComponent<OGBOrifice>();
-                            obj.transform.Rotate(90, 0, 0);
+                            var rotate = new Vector3(90, 0, 0);
+                            obj.transform.localRotation *= Quaternion.Euler(rotate);
+                            var parentConstraint = obj.GetComponent<ParentConstraint>();
+                            if (parentConstraint) {
+                                parentConstraint.rotationAtRest += rotate;
+                                for (var sourceI = 0; sourceI < parentConstraint.sourceCount; sourceI++) {
+                                    var rotOffset = parentConstraint.GetRotationOffset(sourceI);
+                                    rotOffset.x += 90;
+                                    parentConstraint.SetRotationOffset(sourceI, rotOffset);
+                                }
+                            }
                         }
-                        ogb.addLight = isHole ? OGBOrifice.AddLight.Hole : OGBOrifice.AddLight.Ring;
+                        ogb.addLight = sourceIsHole ? OGBOrifice.AddLight.Hole : OGBOrifice.AddLight.Ring;
                         ogb.name = name;
                         ogb.addMenuItem = true;
                         obj.name = fullName;
@@ -100,12 +121,14 @@ namespace VF.Menu {
                 ShouldRemoveLayer: layer => {
                     return layer == "DPS_Holes"
                            || layer == "DPS_Rings"
-                           || layer == "HotDog";
+                           || layer == "HotDog"
+                           || layer == "DPS Orifice";
                 },
                 ShouldRemoveParam: param => {
                     return param == "DPS_Hole"
                            || param == "DPS_Ring"
-                           || param == "HotDog";
+                           || param == "HotDog"
+                           || param == "fluff/dps/orifice";
                 }
             );
 
