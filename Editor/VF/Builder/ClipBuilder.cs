@@ -168,7 +168,7 @@ public class ClipBuilder {
                     || propName.EndsWith(".x")
                     || propName.EndsWith(".y") || propName.EndsWith(".z") || propName.EndsWith(".w")) {
                     // Use the muscle
-                } else {
+                } else if (rewriteParam != null) {
                     //Debug.LogWarning("Rewritten prop found: " + bindingToUse.propertyName);
                     bindingToUse.propertyName = rewriteParam(bindingToUse.propertyName);
                 }
