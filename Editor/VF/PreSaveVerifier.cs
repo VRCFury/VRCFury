@@ -11,24 +11,26 @@ namespace VF {
         static string[] OnWillSaveAssets(string[] paths) {
             var blocked = new List<string>();
             foreach (var path in paths) {
-                var isBroken = false;
                 if (typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path)) {
                     for (int n = 0; n < SceneManager.sceneCount; ++n) {
                         var scene = SceneManager.GetSceneAt(n);
                         if (scene.path == path) {
-                            isBroken = scene.GetRootGameObjects()
+                            var brokenComponents = scene.GetRootGameObjects()
                                 .SelectMany(obj => obj.GetComponentsInChildren<VRCFuryComponent>(true))
-                                .Any(vrcf => vrcf.IsBroken());
+                                .Where(vrcf => vrcf.IsBroken());
+                            foreach (var brokenComponent in brokenComponents) {
+                                blocked.Add(brokenComponent.gameObject.name + " in " + path);
+                            }
                         }
                     }
                 } else {
-                    isBroken = AssetDatabase.LoadAllAssetsAtPath(path)
+                    var isBroken = AssetDatabase.LoadAllAssetsAtPath(path)
                         .Select(asset => asset as VRCFuryComponent)
                         .Where(asset => asset != null)
                         .Any(asset => asset.IsBroken());
-                }
-                if (isBroken) {
-                    blocked.Add(path);
+                    if (isBroken) {
+                        blocked.Add(path);
+                    }
                 }
             }
 
