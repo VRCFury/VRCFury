@@ -15,10 +15,10 @@ namespace VF.Feature {
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             var fingers = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)> {
-                ( HumanBodyBones.LeftLittleIntermediate, avatar.collider_fingerLittleL, c => avatar.collider_fingerLittleL = c ),
-                ( HumanBodyBones.RightLittleIntermediate, avatar.collider_fingerLittleR, c => avatar.collider_fingerLittleR = c ),
                 ( HumanBodyBones.LeftRingIntermediate, avatar.collider_fingerRingL, c => avatar.collider_fingerRingL = c ),
                 ( HumanBodyBones.RightRingIntermediate, avatar.collider_fingerRingR, c => avatar.collider_fingerRingR = c ),
+                ( HumanBodyBones.LeftLittleIntermediate, avatar.collider_fingerLittleL, c => avatar.collider_fingerLittleL = c ),
+                ( HumanBodyBones.RightLittleIntermediate, avatar.collider_fingerLittleR, c => avatar.collider_fingerLittleR = c ),
                 ( HumanBodyBones.LeftMiddleIntermediate, avatar.collider_fingerMiddleL, c => avatar.collider_fingerMiddleL = c ),
                 ( HumanBodyBones.RightMiddleIntermediate, avatar.collider_fingerMiddleR, c => avatar.collider_fingerMiddleR = c ),
             };
