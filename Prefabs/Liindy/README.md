@@ -43,3 +43,25 @@ Liindy Butterfly Knife Using VRCFury
    - 'Knife_Hip_Target' - Move to side of hip
 * Done! VRCFury merges all the parameters, menus and animation controllers and re-parents the target
   objects automatically once you upload your avatar.
+
+
+Liindy Death Sickles
+==
+
+> This prefab was contributed by `Morghus`, thank you!
+
+## How to install
+* Download and import [VRCFury](https://vrcfury.com/download)
+* Import [Death Sickles (VRCHAT/SDK3)](https://liindy.gumroad.com/l/DeathSickles)
+* Find the `Assets/VRCFury/Prefabs/Liindy` folder in the unity folder browser
+* Drag the 'DeathSickles' prefab file from the folder onto the root of your avatar
+* DO NOT UNPACK or follow the instructions that came with the original prefab
+* Expand the 'DeathSickles' object that's now in your hierarchy, then expand the 'DeathSickles_Stuff' 
+  object. Move all of the 'Sickle' objects to their correct positions. Do not move them in the hierarchy, 
+  just change the position and rotation in the scene using the move or rotation tools.
+   - 'Sickle_HandL' - Move to the palm of your left hand, the sickle stock should be snug against your thumb.
+   - 'Sickle_HandR' - Move to the palm of your right hand, the sickle stock should be snug against your thumb.
+   - 'SickleHipL' - Move to the left side of your hips where you want the sickles to be stored
+   - 'SickleHipR' - Move to the right side of your hips where you want the sickles to be stored
+* Done! VRCFury merges all the parameters, menus and animation controllers and re-parents the target
+  objects automatically once you upload your avatar.
