@@ -145,8 +145,10 @@ namespace VF.Menu {
         private static IsDps GetIsParent(GameObject obj) {
             foreach (Transform child in obj.transform) {
                 var light = child.gameObject.GetComponent<Light>();
-                if (OGBOrificeEditor.IsHole(light)) return IsDps.HOLE;
-                if (OGBOrificeEditor.IsRing(light)) return IsDps.RING;
+                if (light != null) {
+                    if (OGBOrificeEditor.IsHole(light)) return IsDps.HOLE;
+                    if (OGBOrificeEditor.IsRing(light)) return IsDps.RING;
+                }
             }
 
             if (obj.name == "__dps_lightobject") return IsDps.RING;
