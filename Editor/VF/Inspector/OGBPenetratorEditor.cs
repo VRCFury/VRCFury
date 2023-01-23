@@ -33,6 +33,11 @@ namespace VF.Inspector {
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(OGBPenetrator scr, GizmoType gizmoType) {
             var size = GetSize(scr);
+            if (size == null) {
+                VRCFuryGizmoUtils.DrawText(scr.transform.position, "Invalid Penetrator Size", Color.white);
+                return;
+            }
+            
             var worldLength = size.Item1;
             var worldRadius = size.Item2;
             var forward = new Vector3(0, 0, 1);
@@ -139,14 +144,19 @@ namespace VF.Inspector {
             var worldScale = obj.transform.lossyScale.x;
             var forward = new Vector3(0, 0, 1);
             var length = mesh.vertices
-                .Select(v => Vector3.Dot(v, forward)).Max() * worldScale;
+                .Select(v => Vector3.Dot(v, forward))
+                .DefaultIfEmpty(0)
+                .Max() * worldScale;
             var verticesInFront = mesh.vertices.Where(v => v.z > 0);
             var verticesInFrontCount = verticesInFront.Count();
             float radius = verticesInFront
                 .Select(v => new Vector2(v.x, v.y).magnitude)
                 .OrderBy(m => m)
                 .Where((m, i) => i <= verticesInFrontCount*0.75)
+                .DefaultIfEmpty(0)
                 .Max() * worldScale;
+
+            if (length <= 0 || radius <= 0) return null;
 
             return Tuple.Create(length, radius);
         }
@@ -165,6 +175,7 @@ namespace VF.Inspector {
                     if (radius == 0) radius = autoSize.Item2;
                 }
             }
+            if (length <= 0 || radius <= 0) return null;
             return Tuple.Create(length, radius);
         }
 
@@ -176,6 +187,7 @@ namespace VF.Inspector {
             OGBUtils.AssertValidScale(obj, "penetrator");
 
             var size = GetSize(pen);
+            if (size == null) return;
             var length = size.Item1;
             var radius = size.Item2;
 
