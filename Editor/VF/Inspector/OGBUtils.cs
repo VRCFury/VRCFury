@@ -173,43 +173,53 @@ namespace VF.Model {
             }
         }
 
-        public static bool IsZeroScale(GameObject obj) {
-            var scale = obj.transform.lossyScale;
+        private static bool IsZeroScale(GameObject obj) {
+            var scale = obj.transform.localScale;
             return scale.x == 0 || scale.y == 0 || scale.z == 0;
         }
-
-        public static bool IsNegativeScale(GameObject obj) {
-            var scale = obj.transform.lossyScale;
+        private static bool IsNegativeScale(GameObject obj) {
+            var scale = obj.transform.localScale;
             return scale.x < 0 || scale.y < 0 || scale.z < 0;
         }
-        public static bool IsNonUniformScale(GameObject obj) {
-            var scale = obj.transform.lossyScale;
+        private static bool IsNonUniformScale(GameObject obj) {
+            var scale = obj.transform.localScale;
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
         }
         public static void AssertValidScale(GameObject obj, string type) {
             var path = AnimationUtility.CalculateTransformPath(obj.transform, obj.transform.root);
-            if (IsZeroScale(obj)) {
-                throw new Exception(
-                    "An OGB " + type + " exists on an object with zero scale." +
-                    " This object must not be zero scale or size calculation will fail.\n\n" +
-                    path);
-            }
-            if (IsNegativeScale(obj)) {
-                throw new Exception(
-                    "An OGB " + type + " exists on an object with negative scale." +
-                    " This object must have a positive scale or size calculation will fail.\n\n" +
-                    path);
-            }
-            if (IsNonUniformScale(obj)) {
-                var bypass = obj.transform.Find("ItsOkayThatOgbMightBeBroken") != null;
-                if (!bypass) {
+
+            var current = obj;
+            while (true) {
+                if (IsZeroScale(current)) {
                     throw new Exception(
-                        "An OGB " + type + " exists on an object with a non-uniform scale." +
-                        " This object (and all parents) must have an X, Y, and Z scale value that match" +
-                        " each other, or size calculation will fail.\n\n" +
-                        path);
+                        "An OGB " + type + " exists on an object with zero scale." +
+                        " This object must not be zero scale or size calculation will fail.\n\n" +
+                        "Component path: " + path + "\n" +
+                        "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
                 }
+                if (IsNegativeScale(current)) {
+                    throw new Exception(
+                        "An OGB " + type + " exists on an object with negative scale." +
+                        " This object must have a positive scale or size calculation will fail.\n\n" +
+                        "Component path: " + path + "\n" +
+                        "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
+                }
+                if (IsNonUniformScale(current)) {
+                    var bypass = obj.transform.Find("ItsOkayThatOgbMightBeBroken") != null;
+                    if (!bypass) {
+                        throw new Exception(
+                            "An OGB " + type + " exists on an object with a non-uniform scale." +
+                            " This object (and all parents) must have an X, Y, and Z scale value that match" +
+                            " each other, or size calculation will fail.\n\n" +
+                            "Component path: " + path + "\n" +
+                            "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
+                    }
+                }
+
+                var parent = current.transform.parent;
+                if (parent == null) break;
+                current = parent.gameObject;
             }
         }
     }
