@@ -93,8 +93,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = onCase.And(securityLockUnlocked);
         }
 
-        off.TransitionsTo(on).When(onCase);
-        on.TransitionsTo(off).When(onCase.Not());
+        if (!model.separateLocal) {
+            off.TransitionsTo(on).When(onCase);
+            on.TransitionsTo(off).When(onCase.Not());
+        } else {
+            VFACondition isLocal = fx.IsLocal().IsTrue();
+            AnimationClip localClip = LoadState(model.name + " Local", model.localState);
+            var onLocal = layer.NewState("On Local").WithAnimation(localClip).Move(off,0,-1);
+            off.TransitionsTo(on).When(onCase.And(isLocal.Not()));
+            on.TransitionsTo(off).When(onCase.Not());
+            off.TransitionsTo(onLocal).When(onCase.And(isLocal));
+            onLocal.TransitionsTo(off).When(onCase.Not());
+        }
+		
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
@@ -214,6 +225,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
+		var separateLocalProp = prop.FindPropertyRelative("separateLocal");
 
         var flex = new VisualElement {
             style = {
@@ -298,6 +310,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (separateLocalProp != null)
+            {
+                advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
+                    separateLocalProp.boolValue = !separateLocalProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             advMenu.ShowAsContext();
         });
         button.style.flexGrow = 0;
@@ -351,8 +371,20 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, enableDriveGlobalParamProp));
         }
 
-        // Tags
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+        if (separateLocalProp != null)
+        {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (separateLocalProp.boolValue)
+                {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localState"), "Local State"));
+                }
+                return c;
+            }, separateLocalProp));
+        }
+
+            // Tags
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var tags = new List<string>();
             if (savedProp != null && savedProp.boolValue)
                 tags.Add("Saved");
@@ -366,6 +398,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tags.Add("Shown in Rest Pose");
             if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
                 tags.Add("This is the Exclusive Off State");
+            if (separateLocalProp != null && separateLocalProp.boolValue)
+                tags.Add("Separate Local State");
 
             var row = new VisualElement();
             row.style.flexWrap = Wrap.Wrap;
@@ -387,8 +421,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             securityEnabledProp,
             defaultOnProp,
             includeInRestProp,
-            exclusiveOffStateProp
-        ));
+            exclusiveOffStateProp,
+			separateLocalProp
+            ));
 
         return content;
     }

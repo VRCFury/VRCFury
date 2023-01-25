@@ -242,6 +242,8 @@ namespace VF.Model.Feature {
         public Texture2D icon;
         public bool enableDriveGlobalParam;
         public string driveGlobalParam;
+		public bool separateLocal;
+        public State localState;
     }
 
     [Serializable]
