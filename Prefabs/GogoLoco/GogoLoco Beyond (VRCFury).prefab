@@ -64,9 +64,6 @@ MonoBehaviour:
         - controller: {fileID: 9100000, guid: bde5983a4f3eaa149ba18853e5bf4c4c, type: 2}
           type: 0
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: 0103712d0581d3046a9cb1b95411b8ec, type: 2}
-          type: 3
-          ResetMePlease: 0
         - controller: {fileID: 9100000, guid: 22aa2a9fb13faf540afa2a5c86efd0c4, type: 2}
           type: 6
           ResetMePlease: 0
@@ -106,6 +103,7 @@ MonoBehaviour:
         keepBoneOffsets: 0
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 
         useOptimizedUpload: 0
         useBoneMerging: 0
 --- !u!1 &1917436837784818295
