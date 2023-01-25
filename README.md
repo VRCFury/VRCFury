@@ -209,6 +209,10 @@ If set, this toggle will automatically be activated when all other toggles with 
 `Exclusive Tags` are disabled. This makes it usable as an "Off" state for a set of conflicting
 toggles.
 
+`Separate Local State`
+
+If set, this creates a separate animation for local and remote machines. The local state will be seen by the user in the avatar, and the remote state will be seen by everyone else.
+
 ### TPS Integration
 
 This feature automatically runs TPS setup on your avatar during each upload. This can resolve many... strange TPS bugs which occur when you change material settings or forget to run the wizard yourself. If you use this, you never need to run the TPS setup wizard yourself at all!
