@@ -17,6 +17,7 @@ namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFAState onState;
+    private VFAState onStateLocal;
     private VFABool param;
     private AnimationClip clip;
 
@@ -93,16 +94,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = onCase.And(securityLockUnlocked);
         }
 
-        if (!model.separateLocal) {
-            off.TransitionsTo(on).When(onCase);
-            on.TransitionsTo(off).When(onCase.Not());
-        } else {
+        var transitionToOn = off.TransitionsTo(on).When(onCase);
+        var transitionToOff = on.TransitionsTo(off).When(onCase.Not());
+         
+        if (model.separateLocal) {
             VFACondition isLocal = fx.IsLocal().IsTrue();
             AnimationClip localClip = LoadState(model.name + " Local", model.localState);
             var onLocal = layer.NewState("On Local").WithAnimation(localClip).Move(off,0,-1);
-            off.TransitionsTo(on).When(onCase.And(isLocal.Not()));
-            on.TransitionsTo(off).When(onCase.Not());
-            off.TransitionsTo(onLocal).When(onCase.And(isLocal));
+            onStateLocal = onLocal;
+            transitionToOn.AddCondition(isLocal.Not());
+            off.TransitionsTo(onLocal).When(isLocal.And(onCase));
             onLocal.TransitionsTo(off).When(onCase.Not());
         }
 		
@@ -122,6 +123,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             );
             off.Drives(driveGlobal, false);
             on.Drives(driveGlobal, true);
+            if (onStateLocal != null) {
+                onStateLocal.Drives(driveGlobal, true);
+            }
         }
 
         if (model.addMenuItem) {
@@ -133,9 +137,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
-    [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
-    public void ApplyExclusiveTags() {
-        if (onState == null) return;
+     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
+    public void ApplyExclusiveTags () {
+        ApplyExclusiveTagsInternal(onState);
+        ApplyExclusiveTagsInternal(onStateLocal);
+    }
+    public void ApplyExclusiveTagsInternal(VFAState state) {
+        if (state == null) return;
         
         var fx = GetFx();
         var allOthersOffCondition = fx.Always();
@@ -149,7 +157,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (conflictsWithOther) {
                 var otherParam = other.GetParam();
                 if (otherParam != null) {
-                    onState.Drives(otherParam, false);
+                    state.Drives(otherParam, false);
                     allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
                 }
             }
