@@ -16,9 +16,10 @@ namespace VF.Builder {
         private readonly Func<string> currentFeatureNameProvider;
         private readonly HashSet<AvatarMask> managedMasks = new HashSet<AvatarMask>();
         private readonly string tmpDir;
-        private readonly HashSet<AnimatorControllerLayer> managedLayers = new HashSet<AnimatorControllerLayer>();
-        public readonly Dictionary<AnimatorControllerLayer, string> layerOwners =
-            new Dictionary<AnimatorControllerLayer, string>();
+        // These can't use AnimatorControllerLayer, because AnimatorControllerLayer is generated on request, not consistent
+        private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
+        private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
+            new Dictionary<AnimatorStateMachine, string>();
     
         public ControllerManager(
             AnimatorController ctrl,
@@ -48,7 +49,7 @@ namespace VF.Builder {
             }
             
             for (var i = 1; i < ctrl.layers.Length; i++) {
-                layerOwners[ctrl.layers[i]] = "Base Avatar";
+                layerOwners[ctrl.layers[i].stateMachine] = "Base Avatar";
             }
             
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && GetMask(0) == null) {
@@ -80,8 +81,8 @@ namespace VF.Builder {
 
         public VFALayer NewLayer(string name, int insertAt = -1) {
             var newLayer = GetController().NewLayer(NewLayerName(name), insertAt);
-            managedLayers.Add(newLayer.GetRaw());
-            layerOwners[newLayer.GetRaw()] = currentFeatureNameProvider();
+            managedLayers.Add(newLayer.GetRaw().stateMachine);
+            layerOwners[newLayer.GetRaw().stateMachine] = currentFeatureNameProvider();
             return newLayer;
         }
 
@@ -97,7 +98,7 @@ namespace VF.Builder {
         }
 
         private bool IsManaged(AnimatorControllerLayer layer) {
-            return managedLayers.Contains(layer);
+            return managedLayers.Contains(layer.stateMachine);
         }
 
         public VFABool NewTrigger(string name, bool usePrefix = true) {
@@ -256,6 +257,21 @@ namespace VF.Builder {
             layers[layerId].name = name;
             ctrl.layers = layers;
             EditorUtility.SetDirty(ctrl);
+        }
+
+        public IList<string> GetLayerOwners() {
+            return layerOwners.Values.Distinct().ToList();
+        }
+        public string GetLayerOwner(int layerId) {
+            if (layerId < 0 || layerId >= ctrl.layers.Length) return null;
+            return GetLayerOwner(ctrl.layers[layerId]);
+        }
+        public string GetLayerOwner(AnimatorControllerLayer layer) {
+            var stateMachine = layer.stateMachine;
+            if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
+                return null;
+            }
+            return layerOwner;
         }
     }
 }
