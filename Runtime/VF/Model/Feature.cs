@@ -244,6 +244,8 @@ namespace VF.Model.Feature {
         public string driveGlobalParam;
 		public bool separateLocal;
         public State localState;
+        public bool hasTransition;
+        public State transitionState;
         public float defaultSliderValue;
     }
 

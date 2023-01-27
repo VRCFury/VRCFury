@@ -18,6 +18,7 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFAState onState;
     private VFAState onStateLocal;
+    private VFAState transitionState;
     private VFABool param;
     private AnimationClip clip;
 
@@ -107,11 +108,35 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             off.TransitionsTo(onLocal).When(isLocal.And(onCase));
             onLocal.TransitionsTo(off).When(onCase.Not());
         }
+
+        if (model.hasTransition) {
+            AnimationClip transitionClip = LoadState(model.name + " Local", model.transitionState);
+            var transitionIn = layer.NewState("Transition In").WithAnimation(transitionClip);
+            var transitionOut = layer.NewState("Transition Out").WithAnimation(transitionClip).Speed(-1);
+
+            transitionState = transitionIn;
+
+            on.RemoveTransitions();
+            off.RemoveTransitions();
+
+            off.TransitionsTo(transitionIn).When(onCase);
+            transitionIn.TransitionsTo(on).When().WithTransitionExitTime(1);
+            on.TransitionsTo(transitionOut).When(onCase.Not());
+            transitionOut.TransitionsToExit().When().WithTransitionExitTime(1);
+
+            transitionIn.Move(off,0,1);
+            on.Move(transitionIn,1,0);
+            transitionOut.Move(on,1,0);
+        }
 		
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
             on.Drives(physBoneResetter, true);
+            if (model.separateLocal)
+                onStateLocal.Drives(physBoneResetter, true);
+            if (model.hasTransition)
+                transitionState.Drives(physBoneResetter, true);
         }
 
         if (model.enableDriveGlobalParam != null && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
@@ -126,6 +151,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             on.Drives(driveGlobal, true);
             if (model.separateLocal)
                 onStateLocal.Drives(driveGlobal, true);
+            if (model.hasTransition)
+                transitionState.Drives(driveGlobal, true);
+        
         }
 
         if (model.addMenuItem) {
@@ -234,6 +262,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
 		var separateLocalProp = prop.FindPropertyRelative("separateLocal");
+        var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
 
         var flex = new VisualElement {
@@ -327,6 +356,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (hasTransitionProp != null)
+            {
+                advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
+                    hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             advMenu.ShowAsContext();
         });
         button.style.flexGrow = 0;
@@ -403,6 +440,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, separateLocalProp));
         }
 
+        if (separateLocalProp != null)
+        {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (hasTransitionProp.boolValue)
+                {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionState"), "Transition State"));
+                }
+                return c;
+            }, hasTransitionProp));
+        }
+
             // Tags
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var tags = new List<string>();
@@ -420,6 +469,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tags.Add("This is the Exclusive Off State");
             if (separateLocalProp != null && separateLocalProp.boolValue)
                 tags.Add("Separate Local State");
+            if (hasTransitionProp != null && hasTransitionProp.boolValue)
+                tags.Add("Has Transition State");
 
             var row = new VisualElement();
             row.style.flexWrap = Wrap.Wrap;
