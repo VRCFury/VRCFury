@@ -265,15 +265,18 @@ namespace VF.Builder {
         public IList<string> GetLayerOwners() {
             return layerOwners.Values.Distinct().ToList();
         }
-        public string GetLayerOwner(int layerId) {
-            if (layerId < 0 || layerId >= ctrl.layers.Length) return null;
-            return GetLayerOwner(ctrl.layers[layerId].stateMachine);
-        }
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
             if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
                 return null;
             }
             return layerOwner;
+        }
+        public void SetWeight(AnimatorStateMachine stateMachine, float weight) {
+            var layers = ctrl.layers;
+            var layer = layers.FirstOrDefault(l => l.stateMachine == stateMachine);
+            if (layer == null) throw new VRCFBuilderException("Failed to find layer for stateMachine");
+            layer.defaultWeight = weight;
+            ctrl.layers = layers;
         }
     }
 }

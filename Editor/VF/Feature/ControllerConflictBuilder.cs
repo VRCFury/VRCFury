@@ -62,7 +62,7 @@ namespace VF.Feature {
                             });
 
                             if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
-                                
+                                controller.SetWeight(layer, 0);
                             }
                         }
                     }
