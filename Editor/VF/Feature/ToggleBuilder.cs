@@ -168,7 +168,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 localTransitionState.Drives(physBoneResetter, true);
         }
 
-        if (model.enableDriveGlobalParam != null && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
+        if (model.enableDriveGlobalParam && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
             var driveGlobal = fx.NewBool(
                 model.driveGlobalParam,
                 synced: false,

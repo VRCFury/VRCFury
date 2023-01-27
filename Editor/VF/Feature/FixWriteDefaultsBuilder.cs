@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -110,7 +111,7 @@ namespace VF.Feature {
         }
 
         private void ApplyToLayer(
-            AnimatorControllerLayer layer,
+            AnimatorStateMachine layer,
             AnimationClip defaultClip,
             AnimationClip noopClip,
             GameObject baseObject,
@@ -168,17 +169,21 @@ namespace VF.Feature {
             var directBlendTrees = 0;
             var additiveLayers = 0;
 
-            var allUnmanagedLayers = manager.GetAllUsedControllersRaw()
+            var allLayers = manager.GetAllUsedControllersRaw()
                 .Select(c => c.Item2)
                 .SelectMany(controller => controller.layers);
+            var allManagedStateMachines = manager.GetAllTouchedControllers()
+                .SelectMany(controller => controller.GetManagedLayers())
+                .ToImmutableHashSet();
 
-            foreach (var layer in allUnmanagedLayers) {
-                if (!ControllerManager.IsManaged(layer)) {
-                    AnimatorIterator.ForEachState(layer, state => {
+            foreach (var layer in allLayers) {
+                var isManaged = allManagedStateMachines.Contains(layer.stateMachine);
+                if (!isManaged) {
+                    AnimatorIterator.ForEachState(layer.stateMachine, state => {
                         (state.writeDefaultValues ? onStates : offStates).Add(layer.name + "." + state.name);
                     });
                 }
-                AnimatorIterator.ForEachBlendTree(layer, tree => {
+                AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
                     if (tree.blendType == BlendTreeType.Direct) {
                         directBlendTrees++;
                     }

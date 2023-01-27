@@ -69,7 +69,7 @@ public class VRCFuryStateEditor {
                     segments.Add(x);
                 }
                 if (showPlus) {
-                    var plus = VRCFuryEditorUtils.Button("+", OnPlus);
+                    var plus = VRCFuryEditorUtils.Button(singleLineEditor != null ? "+" : "Add Action +", OnPlus);
                     plus.style.flexGrow = showSingleLineEditor ? 0 : 1;
                     plus.style.flexBasis = 20;
                     segments.Add(plus);

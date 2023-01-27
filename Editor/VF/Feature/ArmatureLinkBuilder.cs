@@ -206,8 +206,9 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilderFixAnimations)]
         public void FixAnimations() {
             foreach (var controller in manager.GetAllUsedControllers()) {
-                for (var layerId = 0; layerId < controller.GetRaw().layers.Length; layerId++) {
-                    var layer = controller.GetRaw().layers[layerId];
+                var layers = controller.GetLayers().ToList();
+                for (var layerId = 0; layerId < layers.Count; layerId++) {
+                    var layer = layers[layerId];
                     AnimatorIterator.ForEachClip(layer, (clip, setClip) => {
                         void ensureMutable() {
                             if (!VRCFuryAssetDatabase.IsVrcfAsset(clip)) {

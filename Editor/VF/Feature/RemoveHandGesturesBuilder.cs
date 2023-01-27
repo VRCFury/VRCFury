@@ -12,8 +12,8 @@ namespace VF.Feature {
         public void Apply() {
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetUnmanagedLayers()) {
-                    foreach (var t in layer.stateMachine.entryTransitions) AdjustTransition(controller, t);
-                    foreach (var t in layer.stateMachine.anyStateTransitions) AdjustTransition(controller, t);
+                    foreach (var t in layer.entryTransitions) AdjustTransition(controller, t);
+                    foreach (var t in layer.anyStateTransitions) AdjustTransition(controller, t);
                     AnimatorIterator.ForEachState(layer, state => {
                         foreach (var t in state.transitions) AdjustTransition(controller, t);
                     });

@@ -103,29 +103,15 @@ namespace VF.Feature {
 
                 var targetController = manager.GetController(type);
                 if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && source.layers.Length > 0) {
-                    targetController.ModifyMask(0, mask => {
-                        var sourceMask = source.layers[0].avatarMask;
-                        if (sourceMask == null) return;
-                        for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                            if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
-                                mask.SetHumanoidBodyPartActive(bodyPart, true);
-                        }
-                        for (var i = 0; i < sourceMask.transformCount; i++) {
-                            if (sourceMask.GetTransformActive(i)) {
-                                mask.transformCount++;
-                                mask.SetTransformPath(mask.transformCount-1, sourceMask.GetTransformPath(i));
-                                mask.SetTransformActive(mask.transformCount-1, true);
-                            }
-                        }
-                    });
+                    targetController.UnionBaseMask(source.layers[0].avatarMask);
                 }
                 var merger = new ControllerMerger(
-                    layerName => targetController.NewLayerName("FC - " + layerName),
+                    layerName => "FC - " + layerName,
                     param => rewriteParam(param),
                     RewriteClip,
                     NewBlendTree
                 );
-                merger.Merge(source, targetController.GetRaw());
+                merger.Merge(source, targetController);
             }
 
             foreach (var m in model.menus) {
