@@ -56,7 +56,7 @@ namespace VF.Feature {
                                         layerControl.blendDuration = playableControl.blendDuration;
                                         layerControl.debugString = playableControl.debugString;
                                     }
-                                    return false;
+                                    //return false;
                                 }
                                 return true;
                             });
