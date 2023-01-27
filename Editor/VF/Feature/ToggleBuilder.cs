@@ -124,9 +124,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             );
             off.Drives(driveGlobal, false);
             on.Drives(driveGlobal, true);
-            if (onStateLocal != null) {
+            if (model.separateLocal)
                 onStateLocal.Drives(driveGlobal, true);
-            }
         }
 
         if (model.addMenuItem) {
