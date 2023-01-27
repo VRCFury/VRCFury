@@ -244,6 +244,7 @@ namespace VF.Model.Feature {
         public string driveGlobalParam;
 		public bool separateLocal;
         public State localState;
+        public float defaultSliderValue;
     }
 
     [Serializable]
@@ -252,6 +253,8 @@ namespace VF.Model.Feature {
         public bool saved;
         public bool slider;
         public List<Stop> stops = new List<Stop>();
+        public float defaultX;
+        public float defaultY;
         
         [Serializable]
         public class Stop {

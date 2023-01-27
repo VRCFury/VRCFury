@@ -51,6 +51,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 saved = model.saved,
                 slider = true,
                 stops = stops,
+                defaultX = model.slider && model.defaultOn ? model.defaultSliderValue : 0
             };
             addOtherFeature(puppet);
             return;
@@ -234,6 +235,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
 		var separateLocalProp = prop.FindPropertyRelative("separateLocal");
+        var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
 
         var flex = new VisualElement {
             style = {
@@ -353,6 +355,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 return c;
             }, enableExclusiveTagProp));
         }
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (sliderProp.boolValue && defaultOnProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default Value"));
+                defaultSliderProp.floatValue = 1;
+            } else {
+                defaultSliderProp.floatValue = 0;
+            }
+            return c;
+        }, sliderProp, defaultOnProp));
         
         if (enableIconProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
