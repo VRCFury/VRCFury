@@ -467,10 +467,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tags.Add("Shown in Rest Pose");
             if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
                 tags.Add("This is the Exclusive Off State");
-            if (separateLocalProp != null && separateLocalProp.boolValue)
-                tags.Add("Separate Local State");
-            if (hasTransitionProp != null && hasTransitionProp.boolValue)
-                tags.Add("Has Transition State");
 
             var row = new VisualElement();
             row.style.flexWrap = Wrap.Wrap;

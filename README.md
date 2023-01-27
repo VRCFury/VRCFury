@@ -214,7 +214,7 @@ toggles.
 
 If set, this creates a separate animation for local and remote machines. The local state will be seen by the user in the avatar, and the remote state will be seen by everyone else.
 
-`Enable Transition State
+`Enable Transition State`
 
 If set, this will create 2 additional states for animating a transition between the off and on state. The transition animation will be played forwards when transitioning from off to on and backwards when transitioning from on to off.
 
