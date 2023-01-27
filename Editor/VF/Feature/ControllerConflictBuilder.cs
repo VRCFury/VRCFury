@@ -40,10 +40,10 @@ namespace VF.Feature {
                     }
 
                     foreach (var owner in uniqueOwners) {
-                        var layers = controller.GetRaw().layers;
+                        var layers = controller.GetLayers().ToList();
                         var ownedLayers = layers
                             .Where(layer => controller.GetLayerOwner(layer) == owner).ToList();
-                        var ownedLayerIds = ownedLayers.Select(layer => Array.FindIndex(layers, l => l == layer)).ToList();
+                        var ownedLayerIds = ownedLayers.Select(layer => layers.FindIndex(l => l == layer)).ToList();
 
                         foreach (var layer in ownedLayers) {
                             AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
@@ -60,6 +60,10 @@ namespace VF.Feature {
                                 }
                                 return true;
                             });
+
+                            if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
+                                
+                            }
                         }
                     }
                 }

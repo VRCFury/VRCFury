@@ -75,14 +75,14 @@ namespace VF.Builder {
 
         private VFAController _controller;
         private VFAController GetController() {
-            if (_controller == null) _controller = new VFAController(GetRaw(), type);
+            if (_controller == null) _controller = new VFAController(ctrl, type);
             return _controller;
         }
 
         public VFALayer NewLayer(string name, int insertAt = -1) {
             var newLayer = GetController().NewLayer(NewLayerName(name), insertAt);
-            managedLayers.Add(newLayer.GetRaw().stateMachine);
-            layerOwners[newLayer.GetRaw().stateMachine] = currentFeatureNameProvider();
+            managedLayers.Add(newLayer.GetRawStateMachine());
+            layerOwners[newLayer.GetRawStateMachine()] = currentFeatureNameProvider();
             return newLayer;
         }
 
@@ -90,15 +90,18 @@ namespace VF.Builder {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
-        public IEnumerable<AnimatorControllerLayer> GetManagedLayers() {
-            return GetRaw().layers.Where(IsManaged);
+        public IEnumerable<AnimatorStateMachine> GetLayers() {
+            return ctrl.layers.Select(l => l.stateMachine);
         }
-        public IEnumerable<AnimatorControllerLayer> GetUnmanagedLayers() {
-            return GetRaw().layers.Where(l => !IsManaged(l));
+        public IEnumerable<AnimatorStateMachine> GetManagedLayers() {
+            return GetLayers().Where(IsManaged);
+        }
+        public IEnumerable<AnimatorStateMachine> GetUnmanagedLayers() {
+            return GetLayers().Where(l => !IsManaged(l));
         }
 
-        private bool IsManaged(AnimatorControllerLayer layer) {
-            return managedLayers.Contains(layer.stateMachine);
+        private bool IsManaged(AnimatorStateMachine layer) {
+            return managedLayers.Contains(layer);
         }
 
         public VFABool NewTrigger(string name, bool usePrefix = true) {
@@ -264,10 +267,9 @@ namespace VF.Builder {
         }
         public string GetLayerOwner(int layerId) {
             if (layerId < 0 || layerId >= ctrl.layers.Length) return null;
-            return GetLayerOwner(ctrl.layers[layerId]);
+            return GetLayerOwner(ctrl.layers[layerId].stateMachine);
         }
-        public string GetLayerOwner(AnimatorControllerLayer layer) {
-            var stateMachine = layer.stateMachine;
+        public string GetLayerOwner(AnimatorStateMachine stateMachine) {
             if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
                 return null;
             }

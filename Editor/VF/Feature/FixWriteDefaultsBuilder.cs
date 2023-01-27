@@ -111,7 +111,7 @@ namespace VF.Feature {
         }
 
         private void ApplyToLayer(
-            AnimatorControllerLayer layer,
+            AnimatorStateMachine layer,
             AnimationClip defaultClip,
             AnimationClip noopClip,
             GameObject baseObject,
@@ -172,18 +172,18 @@ namespace VF.Feature {
             var allLayers = manager.GetAllUsedControllersRaw()
                 .Select(c => c.Item2)
                 .SelectMany(controller => controller.layers);
-            var allManagedLayers = manager.GetAllTouchedControllers()
+            var allManagedStateMachines = manager.GetAllTouchedControllers()
                 .SelectMany(controller => controller.GetManagedLayers())
                 .ToImmutableHashSet();
 
             foreach (var layer in allLayers) {
-                var isManaged = allManagedLayers.Contains(layer);
+                var isManaged = allManagedStateMachines.Contains(layer.stateMachine);
                 if (!isManaged) {
-                    AnimatorIterator.ForEachState(layer, state => {
+                    AnimatorIterator.ForEachState(layer.stateMachine, state => {
                         (state.writeDefaultValues ? onStates : offStates).Add(layer.name + "." + state.name);
                     });
                 }
-                AnimatorIterator.ForEachBlendTree(layer, tree => {
+                AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
                     if (tree.blendType == BlendTreeType.Direct) {
                         directBlendTrees++;
                     }

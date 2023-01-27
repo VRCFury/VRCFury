@@ -62,8 +62,7 @@ namespace VF.Feature {
             }
 
             foreach (var controller in manager.GetAllUsedControllers()) {
-                for (var layerId = 0; layerId < controller.GetRaw().layers.Length; layerId++) {
-                    var layer = controller.GetRaw().layers[layerId];
+                foreach (var layer in controller.GetLayers()) {
                     AnimatorIterator.ForEachClip(layer, (clip, setClip) => {
                         void ensureMutable() {
                             if (!VRCFuryAssetDatabase.IsVrcfAsset(clip)) {

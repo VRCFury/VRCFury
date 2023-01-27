@@ -150,7 +150,7 @@ namespace VF.Builder {
          */
         private void RebuildDebugHashes(ControllerManager manager) {
             foreach (var layer in manager.GetManagedLayers()) {
-                ProcessStateMachine(layer.stateMachine, "");
+                ProcessStateMachine(layer, "");
                 void ProcessStateMachine(AnimatorStateMachine stateMachine, string prefix) {
                     //Update prefix
                     prefix = prefix + stateMachine.name + ".";
@@ -160,7 +160,7 @@ namespace VF.Builder {
                         VRCAvatarDescriptor.DebugHash hash = new VRCAvatarDescriptor.DebugHash();
                         string fullName = prefix + state.state.name;
                         hash.hash = Animator.StringToHash(fullName);
-                        hash.name = fullName.Remove(0, layer.stateMachine.name.Length + 1);
+                        hash.name = fullName.Remove(0, layer.name.Length + 1);
                         avatar.animationHashSet.Add(hash);
                     }
 

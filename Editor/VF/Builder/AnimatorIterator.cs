@@ -10,9 +10,9 @@ namespace VF.Builder {
      * Collects the resting value for every animated property in an animator, and puts them all into a clip.
      */
     public static class AnimatorIterator {
-        public static void ForEachStateMachine(AnimatorControllerLayer layer, Action<AnimatorStateMachine> action) {
+        public static void ForEachStateMachine(AnimatorStateMachine root, Action<AnimatorStateMachine> action) {
             var stateMachines = new Stack<AnimatorStateMachine>();
-            stateMachines.Push(layer.stateMachine);
+            stateMachines.Push(root);
 
             while (stateMachines.Count > 0) {
                 var stateMachine = stateMachines.Pop();
@@ -22,18 +22,18 @@ namespace VF.Builder {
             }
         }
         
-        public static void ForEachState(AnimatorControllerLayer layer, Action<AnimatorState> action) {
-            ForEachStateMachine(layer, stateMachine => {
+        public static void ForEachState(AnimatorStateMachine root, Action<AnimatorState> action) {
+            ForEachStateMachine(root, stateMachine => {
                 foreach (var state in stateMachine.states)
                     action(state.state);
             });
         }
 
         public static void ForEachBehaviour(
-            AnimatorControllerLayer layer,
+            AnimatorStateMachine root,
             Func<StateMachineBehaviour, Func<Type, StateMachineBehaviour>, bool> action
         ) {
-            ForEachStateMachine(layer, stateMachine => {
+            ForEachStateMachine(root, stateMachine => {
                 for (var i = 0; i < stateMachine.behaviours.Length; i++) {
                     var keep = action(stateMachine.behaviours[i], stateMachine.AddStateMachineBehaviour);
                     if (!keep) {
@@ -44,7 +44,7 @@ namespace VF.Builder {
                     }
                 }
             });
-            ForEachState(layer, state => {
+            ForEachState(root, state => {
                 for (var i = 0; i < state.behaviours.Length; i++) {
                     var keep = action(state.behaviours[i], state.AddStateMachineBehaviour);
                     if (!keep) {
@@ -83,8 +83,8 @@ namespace VF.Builder {
             }
         }
 
-        public static void ForEachClip(AnimatorControllerLayer layer, Action<AnimationClip, Action<Motion>> action) {
-            ForEachState(layer, state => {
+        public static void ForEachClip(AnimatorStateMachine root, Action<AnimationClip, Action<Motion>> action) {
+            ForEachState(root, state => {
                 ForEachClip(state, action);
             });
         }
@@ -106,8 +106,8 @@ namespace VF.Builder {
             }
         }
         
-        public static void ForEachBlendTree(AnimatorControllerLayer layer, Action<BlendTree> action) {
-            ForEachState(layer, state => {
+        public static void ForEachBlendTree(AnimatorStateMachine root, Action<BlendTree> action) {
+            ForEachState(root, state => {
                 ForEachBlendTree(state, action);
             });
         }

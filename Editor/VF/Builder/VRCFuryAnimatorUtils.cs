@@ -31,7 +31,7 @@ public class VFAController {
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);
         ctrl.layers = layers;
-        return new VFALayer(layer, this);
+        return new VFALayer(layer.stateMachine, this);
     }
     
     public void RemoveLayer(int i) {
@@ -44,7 +44,7 @@ public class VFAController {
         
     private void AdjustAnimatorLayerControl(Func<int,int> correction) {
         foreach (var layer in ctrl.layers) {
-            AnimatorIterator.ForEachBehaviour(layer, (b, _) => {
+            AnimatorIterator.ForEachBehaviour(layer.stateMachine, (b, _) => {
                 if (b is VRCAnimatorLayerControl layerControl) {
                     if (VRCFEnumUtils.GetName(type) == VRCFEnumUtils.GetName(layerControl.playable)) {
                         layerControl.layer = correction.Invoke(layerControl.layer);
@@ -58,7 +58,7 @@ public class VFAController {
 
     public void InflatePlayableLayerControl(AnimatorControllerLayer layer, int minLayer, int maxLayer) {
         var ctrlType = VRCFEnumUtils.GetName(type);
-        AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
+        AnimatorIterator.ForEachBehaviour(layer.stateMachine, (b, add) => {
             if (b is VRCPlayableLayerControl layerControl) {
                 var layerControlTarget = VRCFEnumUtils.GetName(layerControl.layer);
                 if (ctrlType == layerControlTarget) {
@@ -102,54 +102,54 @@ public class VFAController {
 }
 
 public class VFALayer {
-    private readonly AnimatorControllerLayer layer;
+    private readonly AnimatorStateMachine stateMachine;
     private readonly VFAController ctrl;
 
-    public VFALayer(AnimatorControllerLayer layer, VFAController ctrl) {
-        this.layer = layer;
+    public VFALayer(AnimatorStateMachine stateMachine, VFAController ctrl) {
+        this.stateMachine = stateMachine;
         this.ctrl = ctrl;
     }
 
     public VFAState NewState(string name) {
         var lastNode = GetLastNodeForPositioning();
-        layer.stateMachine.AddState(name);
+        stateMachine.AddState(name);
         var node = GetLastNode().Value;
         node.state.writeDefaultValues = true;
 
-        var state = new VFAState(node, layer);
+        var state = new VFAState(node, stateMachine);
         if (lastNode.HasValue) state.Move(lastNode.Value.position, 0, 1);
-        else state.Move(layer.stateMachine.entryPosition, 1, 0);
+        else state.Move(stateMachine.entryPosition, 1, 0);
         return state;
     }
 
     private ChildAnimatorState? GetLastNodeForPositioning() {
-        var states = layer.stateMachine.states;
+        var states = stateMachine.states;
         var index = Array.FindLastIndex(states, state => !state.state.name.StartsWith("_"));
         if (index < 0) return null;
         return states[index];
     }
 
     private ChildAnimatorState? GetLastNode() {
-        var states = layer.stateMachine.states;
+        var states = stateMachine.states;
         if (states.Length == 0) return null;
         return states[states.Length-1];
     }
 
-    public AnimatorControllerLayer GetRaw() {
-        return layer;
+    public AnimatorStateMachine GetRawStateMachine() {
+        return stateMachine;
     }
 }
 
 public class VFAState {
     private ChildAnimatorState node;
-    private readonly AnimatorControllerLayer layer;
+    private readonly AnimatorStateMachine stateMachine;
 
     private static readonly float X_OFFSET = 250;
     private static readonly float Y_OFFSET = 80;
 
-    public VFAState(ChildAnimatorState node, AnimatorControllerLayer layer) {
+    public VFAState(ChildAnimatorState node, AnimatorStateMachine stateMachine) {
         this.node = node;
-        this.layer = layer;
+        this.stateMachine = stateMachine;
     }
 
     public static Vector3 MovePos(Vector3 orig, float x, float y) {
@@ -160,11 +160,11 @@ public class VFAState {
     }
     public VFAState Move(Vector3 orig, float x, float y) {
         node.position = MovePos(orig, x, y);
-        var states = layer.stateMachine.states;
+        var states = stateMachine.states;
         var index = Array.FindIndex(states, n => n.state == node.state);
         if (index >= 0) {
             states[index] = node;
-            layer.stateMachine.states = states;
+            stateMachine.states = states;
         }
         return this;
     }
@@ -239,10 +239,10 @@ public class VFAState {
     }
 
     public VFAEntryTransition TransitionsFromEntry() {
-        return new VFAEntryTransition(() => layer.stateMachine.AddEntryTransition(node.state));
+        return new VFAEntryTransition(() => stateMachine.AddEntryTransition(node.state));
     }
     public VFATransition TransitionsFromAny() {
-        return new VFATransition(() => layer.stateMachine.AddAnyStateTransition(node.state));
+        return new VFATransition(() => stateMachine.AddAnyStateTransition(node.state));
     }
     public VFATransition TransitionsTo(VFAState other) {
         return new VFATransition(() => node.state.AddTransition(other.node.state));
