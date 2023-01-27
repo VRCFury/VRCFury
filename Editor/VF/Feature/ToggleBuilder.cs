@@ -545,8 +545,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             securityEnabledProp,
             defaultOnProp,
             includeInRestProp,
-            exclusiveOffStateProp,
-            separateLocalProp
+            exclusiveOffStateProp
             ));
 
         return content;
