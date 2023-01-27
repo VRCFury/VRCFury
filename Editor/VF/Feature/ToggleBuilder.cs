@@ -19,6 +19,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFAState onState;
     private VFAState onStateLocal;
     private VFAState transitionState;
+    private VFAState localTransitionState;
     private VFABool param;
     private AnimationClip clip;
 
@@ -68,6 +69,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var on = layer.NewState("On").WithAnimation(clip);
         onState = on;
         VFACondition onCase;
+        VFACondition isLocal = fx.IsLocal().IsTrue();
 
         if (model.useInt) {
             var numParam = fx.NewInt(model.name, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
@@ -100,26 +102,29 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var transitionToOff = on.TransitionsTo(off).When(onCase.Not());
          
         if (model.separateLocal) {
-            VFACondition isLocal = fx.IsLocal().IsTrue();
             AnimationClip localClip = LoadState(model.name + " Local", model.localState);
             var onLocal = layer.NewState("On Local").WithAnimation(localClip).Move(off,0,-1);
             onStateLocal = onLocal;
             transitionToOn.AddCondition(isLocal.Not());
             off.TransitionsTo(onLocal).When(isLocal.And(onCase));
-            onLocal.TransitionsTo(off).When(onCase.Not());
+            
+            if (!model.hasTransition) 
+                onLocal.TransitionsTo(off).When(onCase.Not());
         }
 
         if (model.hasTransition) {
-            AnimationClip transitionClip = LoadState(model.name + " Local", model.transitionState);
-            var transitionIn = layer.NewState("Transition In").WithAnimation(transitionClip);
-            var transitionOut = layer.NewState("Transition Out").WithAnimation(transitionClip).Speed(-1);
+            AnimationClip transitionClipIn = LoadState(model.name + " In", model.transitionStateIn);
+            AnimationClip transitionClipOut = LoadState(model.name + " Out", model.transitionStateOut);
+            var simple = model.simpleOutTransition;
+            var transitionIn = layer.NewState("Transition In").WithAnimation(transitionClipIn);
+            var transitionOut = layer.NewState("Transition Out").WithAnimation(simple ? transitionClipIn : transitionClipOut).Speed(simple ? -1 : 1);
 
             transitionState = transitionIn;
 
             on.RemoveTransitions();
             off.RemoveTransitions();
 
-            off.TransitionsTo(transitionIn).When(onCase);
+            var transitionToTransition = off.TransitionsTo(transitionIn).When(onCase);
             transitionIn.TransitionsTo(on).When().WithTransitionExitTime(1);
             on.TransitionsTo(transitionOut).When(onCase.Not());
             transitionOut.TransitionsToExit().When().WithTransitionExitTime(1);
@@ -127,9 +132,31 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             transitionIn.Move(off,0,1);
             on.Move(transitionIn,1,0);
             transitionOut.Move(on,1,0);
+
+            if (model.separateLocal)
+                transitionToTransition.AddCondition(isLocal.Not());
+                
+        }
+
+        if (model.separateLocal && model.hasTransition) {
+            AnimationClip localTransitionClipIn = LoadState(model.name + " Local In", model.localTransitionStateIn);
+            AnimationClip localTransitionClipOut = LoadState(model.name + " Local Out", model.localTransitionStateOut);
+            var simple = model.simpleOutTransition;
+            var localTransitionIn = layer.NewState("Local Transition In").WithAnimation(localTransitionClipIn);
+            var localTransitionOut = layer.NewState("Local Transition Out").WithAnimation(simple ? localTransitionClipIn : localTransitionClipOut).Speed(simple ? -1 : 1);
+
+            localTransitionState = localTransitionIn;
+
+            off.TransitionsTo(localTransitionIn).When(isLocal.And(onCase));
+            localTransitionIn.TransitionsTo(onStateLocal).When().WithTransitionExitTime(1);
+            onStateLocal.TransitionsTo(localTransitionOut).When(onCase.Not());
+            localTransitionOut.TransitionsToExit().When().WithTransitionExitTime(1);
+
+            localTransitionIn.Move(off,0,-1);
+            onStateLocal.Move(localTransitionIn,1,0);
+            localTransitionOut.Move(onStateLocal,1,0);
         }
         
-
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
             on.Drives(physBoneResetter, true);
@@ -137,6 +164,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 onStateLocal.Drives(physBoneResetter, true);
             if (model.hasTransition)
                 transitionState.Drives(physBoneResetter, true);
+            if (model.separateLocal && model.hasTransition)
+                localTransitionState.Drives(physBoneResetter, true);
         }
 
         if (model.enableDriveGlobalParam != null && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
@@ -153,6 +182,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 onStateLocal.Drives(driveGlobal, true);
             if (model.hasTransition)
                 transitionState.Drives(driveGlobal, true);
+            if (model.separateLocal && model.hasTransition)
+                localTransitionState.Drives(driveGlobal, true);
         
         }
 
@@ -263,6 +294,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
         var separateLocalProp = prop.FindPropertyRelative("separateLocal");
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
+        var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
 
         var flex = new VisualElement {
@@ -446,11 +478,36 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var c = new VisualElement();
                 if (hasTransitionProp.boolValue)
                 {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionState"), "Transition State"));
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateIn"), "Transition In"));
+
+                    if (!simpleOutTransitionProp.boolValue)
+                        c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateOut"), "Transition Out"));
                 }
                 return c;
-            }, hasTransitionProp));
+            }, hasTransitionProp, simpleOutTransitionProp));
         }
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (separateLocalProp.boolValue && hasTransitionProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateIn"), "Local Trans. In"));
+
+                if (!simpleOutTransitionProp.boolValue)
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateOut"), "Local Trans. Out"));
+                    
+            }
+            return c;
+        }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (hasTransitionProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("simpleOutTransition"), "Transition Out is reverse of Transition In"));
+            }
+            return c;
+        }, simpleOutTransitionProp));
 
             // Tags
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {

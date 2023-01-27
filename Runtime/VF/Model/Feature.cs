@@ -245,7 +245,11 @@ namespace VF.Model.Feature {
         public bool separateLocal;
         public State localState;
         public bool hasTransition;
-        public State transitionState;
+        public State transitionStateIn;
+        public State transitionStateOut;
+        public State localTransitionStateIn;
+        public State localTransitionStateOut;
+        public bool simpleOutTransition = true;
         public float defaultSliderValue;
     }
 
