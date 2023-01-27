@@ -119,7 +119,13 @@ public class VRCFuryBuilder {
         ProgressBar progress
     ) {
         var currentModelNumber = 0;
-        var manager = new AvatarManager(avatarObject, tmpDir, () => currentModelNumber);
+        var currentModelName = "";
+        var manager = new AvatarManager(
+            avatarObject,
+            tmpDir,
+            () => currentModelNumber,
+            () => currentModelName
+        );
         var clipBuilder = new ClipBuilder(avatarObject);
         
         var actions = new List<FeatureBuilderAction>();
@@ -170,6 +176,7 @@ public class VRCFuryBuilder {
         AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
         AddBuilder(new BakeOGBBuilder(), avatarObject);
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
+        AddBuilder(new ControllerConflictBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();
@@ -179,6 +186,7 @@ public class VRCFuryBuilder {
                 avatarObject.transform);
             
             currentModelNumber = builder.uniqueModelNum;
+            currentModelName = action.GetName() + " (Feature " + currentModelNumber + ") from " + configPath;
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);

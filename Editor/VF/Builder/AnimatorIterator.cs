@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -9,7 +10,7 @@ namespace VF.Builder {
      * Collects the resting value for every animated property in an animator, and puts them all into a clip.
      */
     public static class AnimatorIterator {
-        public static void ForEachState(AnimatorControllerLayer layer, Action<AnimatorState> action) {
+        public static void ForEachStateMachine(AnimatorControllerLayer layer, Action<AnimatorStateMachine> action) {
             var stateMachines = new Stack<AnimatorStateMachine>();
             stateMachines.Push(layer.stateMachine);
 
@@ -17,9 +18,43 @@ namespace VF.Builder {
                 var stateMachine = stateMachines.Pop();
                 foreach (var sub in stateMachine.stateMachines)
                     stateMachines.Push(sub.stateMachine);
+                action(stateMachine);
+            }
+        }
+        
+        public static void ForEachState(AnimatorControllerLayer layer, Action<AnimatorState> action) {
+            ForEachStateMachine(layer, stateMachine => {
                 foreach (var state in stateMachine.states)
                     action(state.state);
-            }
+            });
+        }
+
+        public static void ForEachBehaviour(
+            AnimatorControllerLayer layer,
+            Func<StateMachineBehaviour, Func<Type, StateMachineBehaviour>, bool> action
+        ) {
+            ForEachStateMachine(layer, stateMachine => {
+                for (var i = 0; i < stateMachine.behaviours.Length; i++) {
+                    var keep = action(stateMachine.behaviours[i], stateMachine.AddStateMachineBehaviour);
+                    if (!keep) {
+                        var behaviours = stateMachine.behaviours.ToList();
+                        behaviours.RemoveAt(i);
+                        stateMachine.behaviours = behaviours.ToArray();
+                        i--;
+                    }
+                }
+            });
+            ForEachState(layer, state => {
+                for (var i = 0; i < state.behaviours.Length; i++) {
+                    var keep = action(state.behaviours[i], state.AddStateMachineBehaviour);
+                    if (!keep) {
+                        var behaviours = state.behaviours.ToList();
+                        behaviours.RemoveAt(i);
+                        state.behaviours = behaviours.ToArray();
+                        i--;
+                    }
+                }
+            });
         }
         
         public static void ForEachClip(AnimatorState state, Action<AnimationClip, Action<Motion>> action) {

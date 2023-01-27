@@ -13,21 +13,55 @@ namespace VF.Builder {
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
+        private readonly Func<string> currentFeatureNameProvider;
         private readonly HashSet<AvatarMask> managedMasks = new HashSet<AvatarMask>();
         private readonly string tmpDir;
-
+        private readonly HashSet<AnimatorControllerLayer> managedLayers = new HashSet<AnimatorControllerLayer>();
+        public readonly Dictionary<AnimatorControllerLayer, string> layerOwners =
+            new Dictionary<AnimatorControllerLayer, string>();
+    
         public ControllerManager(
             AnimatorController ctrl,
             Func<ParamManager> paramManager,
             VRCAvatarDescriptor.AnimLayerType type,
             Func<int> currentFeatureNumProvider,
+            Func<string> currentFeatureNameProvider,
             string tmpDir
         ) {
             this.ctrl = ctrl;
             this.paramManager = paramManager;
             this.type = type;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
+            this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.tmpDir = tmpDir;
+
+            if (ctrl.layers.Length == 0) {
+                // There was no base layer, just make one
+                GetController().NewLayer("Base Mask");
+            } else if (ctrl.layers[0].stateMachine.entryTransitions.Length > 0) {
+                // The base layer has stuff in it?
+                GetController().NewLayer("Base Mask", 0);
+                SetMask(0, GetMask(1));
+                SetMask(1, null);
+            } else {
+                SetName(0, "Base Mask");
+            }
+            
+            for (var i = 1; i < ctrl.layers.Length; i++) {
+                layerOwners[ctrl.layers[i]] = "Base Avatar";
+            }
+            
+            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && GetMask(0) == null) {
+                var mask = new AvatarMask();
+                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                    mask.SetHumanoidBodyPartActive(bodyPart, false);
+                }
+                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
+                SetMask(0, mask);
+            }
+            if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
+                SetMask(0, null);
+            }
         }
 
         public AnimatorController GetRaw() {
@@ -45,11 +79,14 @@ namespace VF.Builder {
         }
 
         public VFALayer NewLayer(string name, int insertAt = -1) {
-            return GetController().NewLayer(NewLayerName(name), insertAt);
+            var newLayer = GetController().NewLayer(NewLayerName(name), insertAt);
+            managedLayers.Add(newLayer.GetRaw());
+            layerOwners[newLayer.GetRaw()] = currentFeatureNameProvider();
+            return newLayer;
         }
 
-        public string NewLayerName(string name) {
-            return "[VF" + currentFeatureNumProvider.Invoke() + "] " + name;
+        private string NewLayerName(string name) {
+            return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
         public IEnumerable<AnimatorControllerLayer> GetManagedLayers() {
@@ -59,8 +96,8 @@ namespace VF.Builder {
             return GetRaw().layers.Where(l => !IsManaged(l));
         }
 
-        public static bool IsManaged(AnimatorControllerLayer layer) {
-            return layer.name.StartsWith("[VF");
+        private bool IsManaged(AnimatorControllerLayer layer) {
+            return managedLayers.Contains(layer);
         }
 
         public VFABool NewTrigger(string name, bool usePrefix = true) {
@@ -184,15 +221,39 @@ namespace VF.Builder {
             }
             return true;
         }
+
+        public void UnionBaseMask(AvatarMask sourceMask) {
+            if (sourceMask == null) return;
+            ModifyMask(0, mask => {
+                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                    if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
+                        mask.SetHumanoidBodyPartActive(bodyPart, true);
+                }
+                for (var i = 0; i < sourceMask.transformCount; i++) {
+                    if (sourceMask.GetTransformActive(i)) {
+                        mask.transformCount++;
+                        mask.SetTransformPath(mask.transformCount-1, sourceMask.GetTransformPath(i));
+                        mask.SetTransformActive(mask.transformCount-1, true);
+                    }
+                }
+            });
+        }
         
-        public AvatarMask GetMask(int layerId) {
+        private AvatarMask GetMask(int layerId) {
             if (layerId < 0 || layerId >= ctrl.layers.Length) return null;
             return ctrl.layers[layerId].avatarMask;
         }
-        public void SetMask(int layerId, AvatarMask mask) {
+        private void SetMask(int layerId, AvatarMask mask) {
             if (layerId < 0 || layerId >= ctrl.layers.Length) return;
             var layers = ctrl.layers;
             layers[layerId].avatarMask = mask;
+            ctrl.layers = layers;
+            EditorUtility.SetDirty(ctrl);
+        }
+        private void SetName(int layerId, string name) {
+            if (layerId < 0 || layerId >= ctrl.layers.Length) return;
+            var layers = ctrl.layers;
+            layers[layerId].name = name;
             ctrl.layers = layers;
             EditorUtility.SetDirty(ctrl);
         }

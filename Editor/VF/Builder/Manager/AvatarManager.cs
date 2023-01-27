@@ -13,12 +13,19 @@ namespace VF.Builder {
         private readonly VRCAvatarDescriptor avatar;
         private readonly string tmpDir;
         private readonly Func<int> currentFeatureNumProvider;
+        private readonly Func<string> currentFeatureNameProvider;
 
-        public AvatarManager(GameObject avatarObject, string tmpDir, Func<int> currentFeatureNumProvider) {
+        public AvatarManager(
+            GameObject avatarObject,
+            string tmpDir,
+            Func<int> currentFeatureNumProvider,
+            Func<string> currentFeatureNameProvider
+        ) {
             this.avatarObject = avatarObject;
             this.avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             this.tmpDir = tmpDir;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
+            this.currentFeatureNameProvider = currentFeatureNameProvider;
         }
 
         private MenuManager _menu;
@@ -51,15 +58,7 @@ namespace VF.Builder {
                 } else {
                     ctrl = VRCFuryAssetDatabase.CopyAsset(existingController, newPath);
                 }
-                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, tmpDir);
-                if (existingController == null && type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                    var mask = new AvatarMask();
-                    for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                        mask.SetHumanoidBodyPartActive(bodyPart, false);
-                    }
-                    VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
-                    output.SetMask(0, mask);
-                }
+                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, currentFeatureNameProvider, tmpDir);
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
             }

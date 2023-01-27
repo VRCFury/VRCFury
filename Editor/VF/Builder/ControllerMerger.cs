@@ -30,7 +30,10 @@ public class ControllerMerger {
         this._newBlendTree = NewBlendTree;
     }
 
-    public void Merge(AnimatorController from, AnimatorController to) {
+    public void Merge(AnimatorController from, ControllerManager toMain) {
+        var to = toMain.GetRaw();
+        var oldLayerCount = to.layers.Length;
+        
         foreach (var param in from.parameters) {
             var newName = RewriteParamName(param.name);
             var exists = Array.Find(to.parameters, other => other.name == newName);
@@ -56,7 +59,7 @@ public class ControllerMerger {
                 }
                 fromWeight = 1;
             }
-            to.AddLayer(RewriteLayerName(fromLayer.name));
+            toMain.NewLayer(RewriteLayerName(fromLayer.name));
             var toLayers = to.layers;
             var toLayer = toLayers[to.layers.Length-1];
             toLayer.avatarMask = fromLayer.avatarMask;
@@ -65,18 +68,24 @@ public class ControllerMerger {
             toLayer.defaultWeight = fromWeight;
             to.layers = toLayers;
             var transitionTargets = new Dictionary<Object, Object>();
-            CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, transitionTargets);
+            CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, transitionTargets, toMain.GetType(), oldLayerCount);
             CloneTransitions(fromLayer.stateMachine, transitionTargets);
         }
     }
 
-    private void CloneMachine(AnimatorStateMachine from, AnimatorStateMachine to, Dictionary<Object, Object> transitionTargets) {
+    private void CloneMachine(
+        AnimatorStateMachine from,
+        AnimatorStateMachine to,
+        Dictionary<Object, Object> transitionTargets,
+        VRCAvatarDescriptor.AnimLayerType controllerType,
+        int layerOffset
+    ) {
         transitionTargets[from] = to;
         to.exitPosition = from.exitPosition;
         to.entryPosition = from.entryPosition;
         to.anyStatePosition = from.anyStatePosition;
         to.parentStateMachinePosition = from.parentStateMachinePosition;
-        CloneBehaviours(from.behaviours, to.AddStateMachineBehaviour, "Machine " + from.name);
+        CloneBehaviours(from.behaviours, to.AddStateMachineBehaviour, "Machine " + from.name, controllerType, layerOffset);
 
         // Copy States
         foreach (var fromStateOuter in from.states) {
@@ -99,7 +108,7 @@ public class ControllerMerger {
             toState.timeParameterActive = fromState.timeParameterActive;
 
             toState.motion = CloneMotion(fromState.motion);
-            CloneBehaviours(fromState.behaviours, toState.AddStateMachineBehaviour, "State " + fromState.name);
+            CloneBehaviours(fromState.behaviours, toState.AddStateMachineBehaviour, "State " + fromState.name, controllerType, layerOffset);
 
             if (fromState == from.defaultState) {
                 to.defaultState = toState;
@@ -110,11 +119,17 @@ public class ControllerMerger {
         foreach (var fromMachineOuter in from.stateMachines) {
             var fromMachine = fromMachineOuter.stateMachine;
             var toMachine = to.AddStateMachine(fromMachine.name, fromMachineOuter.position);
-            CloneMachine(fromMachine, toMachine, transitionTargets);
+            CloneMachine(fromMachine, toMachine, transitionTargets, controllerType, layerOffset);
         }
     }
 
-    private void CloneBehaviours(StateMachineBehaviour[] from, Func<Type, StateMachineBehaviour> AddUnchecked, string source) {
+    private void CloneBehaviours(
+        StateMachineBehaviour[] from,
+        Func<Type, StateMachineBehaviour> AddUnchecked,
+        string source,
+        VRCAvatarDescriptor.AnimLayerType controllerType,
+        int layerOffset
+    ) {
         T Add<T>() where T : StateMachineBehaviour {
             var added = AddUnchecked(typeof(T)) as T;
             if (added == null) {
@@ -135,6 +150,18 @@ public class ControllerMerger {
                         newB.parameters.Add(CloneDriverParameter(p));
                     }
                     newB.localOnly = oldB.localOnly;
+                    newB.debugString = oldB.debugString;
+                    break;
+                }
+                case VRCAnimatorLayerControl oldB: {
+                    var newB = Add<VRCAnimatorLayerControl>();
+                    newB.playable = oldB.playable;
+                    newB.layer = oldB.layer;
+                    if (VRCFEnumUtils.GetName(newB.playable) == VRCFEnumUtils.GetName(controllerType)) {
+                        newB.layer += layerOffset;
+                    }
+                    newB.goalWeight = oldB.goalWeight;
+                    newB.blendDuration = oldB.blendDuration;
                     newB.debugString = oldB.debugString;
                     break;
                 }

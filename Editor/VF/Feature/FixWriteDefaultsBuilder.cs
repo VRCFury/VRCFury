@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -168,12 +169,16 @@ namespace VF.Feature {
             var directBlendTrees = 0;
             var additiveLayers = 0;
 
-            var allUnmanagedLayers = manager.GetAllUsedControllersRaw()
+            var allLayers = manager.GetAllUsedControllersRaw()
                 .Select(c => c.Item2)
                 .SelectMany(controller => controller.layers);
+            var allManagedLayers = manager.GetAllTouchedControllers()
+                .SelectMany(controller => controller.GetManagedLayers())
+                .ToImmutableHashSet();
 
-            foreach (var layer in allUnmanagedLayers) {
-                if (!ControllerManager.IsManaged(layer)) {
+            foreach (var layer in allLayers) {
+                var isManaged = allManagedLayers.Contains(layer);
+                if (!isManaged) {
                     AnimatorIterator.ForEachState(layer, state => {
                         (state.writeDefaultValues ? onStates : offStates).Add(layer.name + "." + state.name);
                     });
