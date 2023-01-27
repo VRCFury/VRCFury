@@ -128,7 +128,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             on.Move(transitionIn,1,0);
             transitionOut.Move(on,1,0);
         }
-		
+        
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
@@ -261,7 +261,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
-		var separateLocalProp = prop.FindPropertyRelative("separateLocal");
+        var separateLocalProp = prop.FindPropertyRelative("separateLocal");
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
 
@@ -493,7 +493,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultOnProp,
             includeInRestProp,
             exclusiveOffStateProp,
-			separateLocalProp
+            separateLocalProp
             ));
 
         return content;
