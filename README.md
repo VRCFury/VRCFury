@@ -181,6 +181,7 @@ animations.
 `Slider`
 
 Select `Slider` from the `*` menu, and VRC Fury will make the prop into a slider rather than a toggle. 0 will be the avatar default state, and 100% will be your "enabled" state.
+If `Default On` is also set, an arbitrary starting value can be set.
 
 `Saved`
 
@@ -212,6 +213,10 @@ toggles.
 `Separate Local State`
 
 If set, this creates a separate animation for local and remote machines. The local state will be seen by the user in the avatar, and the remote state will be seen by everyone else.
+
+`Enable Transition State
+
+If set, this will create 2 additional states for animating a transition between the off and on state. The transition animation will be played forwards when transitioning from off to on and backwards when transitioning from on to off.
 
 ### TPS Integration
 
