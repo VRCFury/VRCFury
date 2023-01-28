@@ -108,6 +108,7 @@ namespace VF.Builder {
         public void Finish() {
             if (_menu != null) {
                 MenuSplitter.SplitMenus(_menu.GetRaw());
+                MenuSplitter.FixNulls(_menu.GetRaw());
             }
 
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
