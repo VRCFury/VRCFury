@@ -40,22 +40,17 @@ namespace VF.Menu {
             return DPSContactUpgradeBuilder.Check();
         }
         
-        [MenuItem("Tools/VRCFury/Create Hole", priority = 1202)]
+        [MenuItem("Tools/VRCFury/Create Orifice", priority = 1202)]
         public static void RunHole() {
-            OrificeCreatorMenuItem.RunHole();
+            OrificeCreatorMenuItem.Create();
         }
-        
-        [MenuItem("Tools/VRCFury/Create Ring", priority = 1203)]
-        public static void RunRing() {
-            OrificeCreatorMenuItem.RunRing();
-        }
-        
-        [MenuItem("Tools/VRCFury/Migrate DPSAttach+__dps to OGB", priority = 1204)]
+
+        [MenuItem("Tools/VRCFury/Migrate Parent-Constraint Orifices to OGB (DPSAttach, __dps)", priority = 1204)]
         private static void RunMigrateDPSAttach() {
             DpsAttachMigration.Run(MenuUtils.GetSelectedAvatar());
         }
         
-        [MenuItem("Tools/VRCFury/Migrate DPSAttach+__dps to OGB", true)]
+        [MenuItem("Tools/VRCFury/Migrate Parent-Constraint Orifices to OGB (DPSAttach, __dps)", true)]
         private static bool CheckMigrateDPSAttach() {
             return MenuUtils.GetSelectedAvatar() != null;
         }

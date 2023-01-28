@@ -74,7 +74,7 @@ namespace VF.Menu {
                                        || obj.name.EndsWith("ss");
                     }
 
-                    var fullName = (sourceIsHole ? "Hole" : "Ring") + " (" + name + ")";
+                    var fullName = "Orifice (" + name + ")";
 
                     dryRunMigrate.Add(obj.name + " -> " + fullName);
                     if (!dryRun) {
@@ -93,7 +93,7 @@ namespace VF.Menu {
                                 }
                             }
                         }
-                        ogb.addLight = sourceIsHole ? OGBOrifice.AddLight.Hole : OGBOrifice.AddLight.Ring;
+                        ogb.addLight = OGBOrifice.AddLight.Auto;
                         ogb.name = name;
                         ogb.addMenuItem = true;
                         obj.name = fullName;

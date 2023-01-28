@@ -6,7 +6,8 @@ namespace VF.Model {
         public enum AddLight {
             None,
             Hole,
-            Ring
+            Ring,
+            Auto
         }
 
         public enum EnableTouchZone {
@@ -15,7 +16,7 @@ namespace VF.Model {
             Off
         }
 
-        public AddLight addLight;
+        public AddLight addLight = AddLight.None;
         public new string name;
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
         public float length;

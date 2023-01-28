@@ -6,19 +6,11 @@ using VF.Model;
 namespace VF.Menu {
     public class OrificeCreatorMenuItem {
 
-        public static void RunHole() {
-            Create(false);
-        }
-        
-        public static void RunRing() {
-            Create(true);
-        }
-
-        private static void Create(bool ring) {
-            var newObj = new GameObject(ring ? "Ring" : "Hole");
+        public static void Create() {
+            var newObj = new GameObject("Orifice");
 
             var o = newObj.AddComponent<OGBOrifice>();
-            o.addLight = ring ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole;
+            o.addLight = OGBOrifice.AddLight.Auto;
             o.addMenuItem = true;
 
             if (Selection.activeGameObject) {
@@ -33,8 +25,7 @@ namespace VF.Menu {
             //SceneView.FrameLastActiveSceneView();
             
             EditorUtility.DisplayDialog("OscGB",
-                (ring ? "Ring" : "Hole") +
-                " added.\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so the blue arrow faces outward!", "Ok");
+                "Orifice added.\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so the arrow faces correctly!", "Ok");
         }
 
         public static void RunBake() {
