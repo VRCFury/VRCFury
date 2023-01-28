@@ -76,10 +76,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter, true);
-            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter, false);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
         } else {
-            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter, true);
+            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+        }
+
+        if (model.addMenuItem) {
+            manager.GetMenu().NewMenuToggle(
+                model.name,
+                param,
+                icon: model.enableIcon ? model.icon : null
+            );
         }
     }
     
@@ -92,8 +100,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State action,
         State inAction,
         State outAction,
-        VFABool physBoneResetter,
-        bool primaryToggle
+        VFABool physBoneResetter
     ) {
         var clip = LoadState(model.name + " " + onName, action);
 
@@ -157,13 +164,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState.Drives(driveGlobal, true);
         }
 
-        if (primaryToggle && model.addMenuItem) {
-            manager.GetMenu().NewMenuToggle(
-                model.name,
-                param,
-                icon: model.enableIcon ? model.icon : null
-            );
-        }
     }
 
      [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
