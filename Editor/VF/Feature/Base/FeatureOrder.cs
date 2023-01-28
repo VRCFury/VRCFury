@@ -50,5 +50,8 @@ namespace VF.Feature.Base {
         
         // Needs to run after FixWriteDefaults collects the defaults for the defaults layer
         ApplyToggleRestingState = 10005,
+        
+        // This messes with the raw controller on the avatar, so it has to run after we've done basically everything
+        D4rkOptimizer = 99999,
     }
 }

@@ -6,6 +6,7 @@ using System.Net;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
+using VF.Builder;
 using VF.Inspector;
 
 namespace VF.Menu {
@@ -118,10 +119,8 @@ namespace VF.Menu {
 
             Debug.Log("Overwriting VRCFury install ...");
 
-            try {
-                AssetDatabase.StartAssetEditing();
-                try {
-                    EditorApplication.LockReloadAssemblies();
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                VRCFuryAssetDatabase.WithLockReloadAssemblies(() => {
                     Directory.Move(rootDir, oldDir);
                     Directory.Move(innerDir, rootDir);
                     if (Directory.Exists(oldDir + "/.git")) {
@@ -131,12 +130,8 @@ namespace VF.Menu {
                     Directory.Delete(tmpDir, true);
                     Directory.Delete(oldDir, true);
                     Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
-                } finally {
-                    EditorApplication.UnlockReloadAssemblies();
-                }
-            } finally {
-                AssetDatabase.StopAssetEditing();
-            }
+                });
+            });
 
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             CompilationPipeline.RequestScriptCompilation();

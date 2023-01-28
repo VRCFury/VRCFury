@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Builder.Exceptions;
 using VF.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -26,8 +27,9 @@ public class VRCFuryBuilder {
 
         var result = true;
         try {
-            AssetDatabase.StartAssetEditing();
-            Run(avatarObject, originalObject);
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                Run(avatarObject, originalObject);
+            });
         } catch(Exception e) {
             result = false;
             Debug.LogException(e);
@@ -37,7 +39,6 @@ public class VRCFuryBuilder {
             EditorUtility.DisplayDialog("VRCFury Error", "VRCFury encountered an error.\n\n" + e.Message, "Ok");
         }
 
-        AssetDatabase.StopAssetEditing();
         AssetDatabase.SaveAssets();
         EditorUtility.ClearProgressBar();
         return result;
@@ -177,6 +178,7 @@ public class VRCFuryBuilder {
         AddBuilder(new BakeOGBBuilder(), avatarObject);
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
         AddBuilder(new ControllerConflictBuilder(), avatarObject);
+        AddBuilder(new D4rkOptimizerBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();
@@ -184,6 +186,7 @@ public class VRCFuryBuilder {
             var builder = action.GetBuilder();
             var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
                 avatarObject.transform);
+            if (configPath == "") configPath = "Avatar Root";
             
             currentModelNumber = builder.uniqueModelNum;
             currentModelName = action.GetName() + " (Feature " + currentModelNumber + ") from " + configPath;
@@ -191,7 +194,11 @@ public class VRCFuryBuilder {
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
-            action.Call();
+            try {
+                action.Call();
+            } catch (Exception e) {
+                throw new VRCFActionException(currentModelName, e);
+            }
         }
         
         progress.Progress(1, "Finalizing avatar changes");

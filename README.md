@@ -245,3 +245,7 @@ Your avatar doesn't even need to have a FX layer, menu, or params! If these are 
 VRCFury can be used to add globally-synced colliders to any bone on your avatar. This means you can put one on your foot, your nose, or anywhere else you can imagine, then bap people with them! Simply create an empty on the bone you'd like to add a collider to, then add a `VRCF Global Collider` component to that empty.
 
 Beware that this feature steals colliders from your fingers, so the more you add, the fewer contacts there will be on your fingers. It will try to steal from the least important fingers first. You've been warned!
+
+## D4rk Avatar Optimizer Integration
+
+If your avatar uses the D4rk Optimizer, VRCFury will automatically run the optimizer during your avatar upload. No need to run it manually anymore!
