@@ -32,12 +32,12 @@ namespace VF.Builder {
 
         /**
          * VRChat doesn't care, but SDK3ToCCKConverter crashes if there are any null parameters
-         * in the output menus.
+         * on a submenu
          */
         public static void FixNulls(VRCExpressionsMenu root) {
             ForEachMenu(root, menu => {
                 foreach (var control in menu.controls) {
-                    if (control.parameter == null) {
+                    if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.parameter == null) {
                         control.parameter = new VRCExpressionsMenu.Control.Parameter() {
                             name = ""
                         };
