@@ -76,10 +76,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter, true);
+            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter, false);
         } else {
-            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter, true);
         }
     }
     
@@ -92,7 +92,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State action,
         State inAction,
         State outAction,
-        VFABool physBoneResetter
+        VFABool physBoneResetter,
+        bool primaryToggle
     ) {
         var clip = LoadState(model.name + " " + onName, action);
 
@@ -156,7 +157,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState.Drives(driveGlobal, true);
         }
 
-        if (model.addMenuItem) {
+        if (primaryToggle && model.addMenuItem) {
             manager.GetMenu().NewMenuToggle(
                 model.name,
                 param,
