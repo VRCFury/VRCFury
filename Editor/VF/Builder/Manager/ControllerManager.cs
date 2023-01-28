@@ -44,6 +44,7 @@ namespace VF.Builder {
                 GetController().NewLayer("Base Mask", 0);
                 SetMask(0, GetMask(1));
                 SetMask(1, null);
+                SetWeight(1, 1);
             } else {
                 SetName(0, "Base Mask");
             }
@@ -270,6 +271,12 @@ namespace VF.Builder {
                 return null;
             }
             return layerOwner;
+        }
+        public void SetWeight(int layerId, float weight) {
+            var layers = ctrl.layers;
+            var layer = layers[layerId];
+            layer.defaultWeight = weight;
+            ctrl.layers = layers;
         }
         public void SetWeight(AnimatorStateMachine stateMachine, float weight) {
             var layers = ctrl.layers;
