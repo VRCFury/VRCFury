@@ -81,6 +81,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         } else {
             Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
+
+        if (model.addMenuItem) {
+            manager.GetMenu().NewMenuToggle(
+                model.name,
+                param,
+                icon: model.enableIcon ? model.icon : null
+            );
+        }
     }
     
     private void Apply(
@@ -154,14 +162,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             );
             off.Drives(driveGlobal, false);
             inState.Drives(driveGlobal, true);
-        }
-
-        if (model.addMenuItem) {
-            manager.GetMenu().NewMenuToggle(
-                model.name,
-                param,
-                icon: model.enableIcon ? model.icon : null
-            );
         }
     }
 
