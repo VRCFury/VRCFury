@@ -242,6 +242,15 @@ namespace VF.Model.Feature {
         public Texture2D icon;
         public bool enableDriveGlobalParam;
         public string driveGlobalParam;
+        public bool separateLocal;
+        public State localState;
+        public bool hasTransition;
+        public State transitionStateIn;
+        public State transitionStateOut;
+        public State localTransitionStateIn;
+        public State localTransitionStateOut;
+        public bool simpleOutTransition = true;
+        public float defaultSliderValue;
     }
 
     [Serializable]
@@ -250,6 +259,8 @@ namespace VF.Model.Feature {
         public bool saved;
         public bool slider;
         public List<Stop> stops = new List<Stop>();
+        public float defaultX = 0;
+        public float defaultY = 0;
         
         [Serializable]
         public class Stop {

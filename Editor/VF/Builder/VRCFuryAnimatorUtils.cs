@@ -186,6 +186,10 @@ public class VFAState {
         node.state.timeParameter = param.Name();
         return this;
     }
+    public VFAState Speed(float speed) {
+        node.state.speed = speed;
+        return this;
+    }
 
     public VRCAvatarParameterDriver GetDriver(bool local = false) {
         foreach (var b in node.state.behaviours) {
@@ -250,6 +254,7 @@ public class VFAState {
     public VFATransition TransitionsToExit() {
         return new VFATransition(() => node.state.AddExitTransition());
     }
+
 }
 
 public class VFAParam {
@@ -335,7 +340,10 @@ public class VFATransition {
              return trans;
         };
     }
-
+    public VFATransition When() {
+        var transition = transitionProvider();
+        return this;
+    }
     public VFATransition When(VFACondition cond) {
         foreach (var t in cond.transitions) {
             var transition = transitionProvider();
@@ -363,6 +371,20 @@ public class VFATransition {
         transitionProvider = () => {
             var trans = oldProvider();
             trans.duration = time;
+            return trans;
+        };
+        return this;
+    }
+    public VFATransition WithTransitionExitTime(float time) {
+        foreach (var t in createdTransitions) {
+            t.hasExitTime = true;
+            t.exitTime = time;
+        }
+        var oldProvider = transitionProvider;
+        transitionProvider = () => {
+            var trans = oldProvider();
+            trans.hasExitTime = true;
+            trans.exitTime = time;
             return trans;
         };
         return this;

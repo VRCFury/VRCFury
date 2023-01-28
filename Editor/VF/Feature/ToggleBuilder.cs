@@ -8,6 +8,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using Object = UnityEngine.Object;
@@ -16,9 +17,9 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
-    private VFAState onState;
+    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
-    private AnimationClip clip;
+    private AnimationClip restingClip;
 
     public ISet<string> GetExclusiveTags() {
         if (model.enableExclusiveTag) {
@@ -40,16 +41,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.state.IsEmpty() && model.state.actions.Count > 0) {
             return;
         }
-        
+
         if (model.slider) {
             var stops = new List<Puppet.Stop> {
-                new Puppet.Stop(1,0,model.state)
+                new Puppet.Stop(1, 0, model.state)
             };
             var puppet = new Puppet {
                 name = model.name,
                 saved = model.saved,
                 slider = true,
                 stops = stops,
+                defaultX = model.slider && model.defaultOn ? model.defaultSliderValue : 0
             };
             addOtherFeature(puppet);
             return;
@@ -60,12 +62,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layerName = model.name;
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
-        clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
-        var on = layer.NewState("On").WithAnimation(clip);
-        onState = on;
-        VFACondition onCase;
 
+        VFACondition onCase;
         if (model.useInt) {
             var numParam = fx.NewInt(model.name, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
@@ -74,14 +73,31 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
+        
+        if (model.separateLocal) {
+            var isLocal = fx.IsLocal().IsTrue();
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+        } else {
+            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+        }
+    }
+    
+    private void Apply(
+        ControllerManager fx,
+        VFALayer layer,
+        VFAState off,
+        VFACondition onCase,
+        string onName,
+        State action,
+        State inAction,
+        State outAction,
+        VFABool physBoneResetter
+    ) {
+        var clip = LoadState(model.name + " " + onName, action);
 
-        var securityLockUnlocked = allBuildersInRun
-            .Select(f => f as SecurityLockBuilder)
-            .Where(f => f != null)
-            .Select(f => f.GetEnabled())
-            .FirstOrDefault();
-
-        if (model.includeInRest) {
+        if (restingClip == null && model.includeInRest) {
+            restingClip = clip;
             var defaultsManager = allBuildersInRun
                 .OfType<FixWriteDefaultsBuilder>()
                 .First();
@@ -89,16 +105,43 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
         }
 
-        if (model.securityEnabled && securityLockUnlocked != null) {
-            onCase = onCase.And(securityLockUnlocked);
+        if (model.securityEnabled) {
+            var securityLockUnlocked = allBuildersInRun
+                .Select(f => f as SecurityLockBuilder)
+                .Where(f => f != null)
+                .Select(f => f.GetEnabled())
+                .FirstOrDefault();
+            if (securityLockUnlocked != null) {
+                onCase = onCase.And(securityLockUnlocked);
+            }
         }
 
-        off.TransitionsTo(on).When(onCase);
-        on.TransitionsTo(off).When(onCase.Not());
+        VFAState inState;
+        VFAState onState;
+        if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
+            var transitionClipIn = LoadState(model.name + onName + " In", inAction);
+            inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
+            onState = layer.NewState(onName).WithAnimation(clip);
+            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
+        } else {
+            inState = onState = layer.NewState(onName).WithAnimation(clip);
+        }
+        exclusiveTagTriggeringStates.Add(inState);
+        off.TransitionsTo(inState).When(onCase);
+
+        if (model.simpleOutTransition) outAction = inAction;
+        if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
+            var transitionClipOut = LoadState(model.name + onName + " Out", outAction);
+            var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
+            onState.TransitionsTo(outState).When(onCase.Not());
+            outState.TransitionsToExit().When().WithTransitionExitTime(1);
+        } else {
+            onState.TransitionsToExit().When(onCase.Not());
+        }
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
-            on.Drives(physBoneResetter, true);
+            inState.Drives(physBoneResetter, true);
         }
 
         if (model.enableDriveGlobalParam && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
@@ -110,7 +153,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 usePrefix: false
             );
             off.Drives(driveGlobal, false);
-            on.Drives(driveGlobal, true);
+            inState.Drives(driveGlobal, true);
         }
 
         if (model.addMenuItem) {
@@ -122,9 +165,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
-    [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
-    public void ApplyExclusiveTags() {
-        if (onState == null) return;
+     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
+     public void ApplyExclusiveTags() {
+        if (exclusiveTagTriggeringStates.Count == 0) return;
         
         var fx = GetFx();
         var allOthersOffCondition = fx.Always();
@@ -138,7 +181,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (conflictsWithOther) {
                 var otherParam = other.GetParam();
                 if (otherParam != null) {
-                    onState.Drives(otherParam, false);
+                    foreach (var state in exclusiveTagTriggeringStates) {
+                        state.Drives(otherParam, false);
+                    }
                     allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
                 }
             }
@@ -186,11 +231,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
     public void ApplyRestingState() {
-        if (onState == null) return;
-        if (!model.includeInRest) return;
-        WithoutAnimator(avatarObject, () => {
-            clip.SampleAnimation(avatarObject, 0);
-        });
+        if (restingClip != null) {
+            WithoutAnimator(avatarObject, () => { restingClip.SampleAnimation(avatarObject, 0); });
+        }
     }
 
     public override string GetEditorTitle() {
@@ -214,6 +257,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
+        var separateLocalProp = prop.FindPropertyRelative("separateLocal");
+        var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
+        var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
+        var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
 
         var flex = new VisualElement {
             style = {
@@ -298,6 +345,22 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (separateLocalProp != null)
+            {
+                advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
+                    separateLocalProp.boolValue = !separateLocalProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
+            if (hasTransitionProp != null)
+            {
+                advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
+                    hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             advMenu.ShowAsContext();
         });
         button.style.flexGrow = 0;
@@ -325,6 +388,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 return c;
             }, enableExclusiveTagProp));
         }
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (sliderProp.boolValue && defaultOnProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default Value"));
+                defaultSliderProp.floatValue = 1;
+            } else {
+                defaultSliderProp.floatValue = 0;
+            }
+            return c;
+        }, sliderProp, defaultOnProp));
         
         if (enableIconProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -351,37 +425,83 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, enableDriveGlobalParamProp));
         }
 
+        if (separateLocalProp != null)
+        {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (separateLocalProp.boolValue)
+                {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localState"), "Local State"));
+                }
+                return c;
+            }, separateLocalProp));
+        }
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (hasTransitionProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateIn"), "Transition In"));
+
+                if (!simpleOutTransitionProp.boolValue)
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateOut"), "Transition Out"));
+            }
+            return c;
+        }, hasTransitionProp, simpleOutTransitionProp));
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (separateLocalProp.boolValue && hasTransitionProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateIn"), "Local Trans. In"));
+
+                if (!simpleOutTransitionProp.boolValue)
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateOut"), "Local Trans. Out"));
+                    
+            }
+            return c;
+        }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (hasTransitionProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("simpleOutTransition"), "Transition Out is reverse of Transition In"));
+            }
+            return c;
+        }, hasTransitionProp));
+
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var tags = new List<string>();
-            if (savedProp != null && savedProp.boolValue)
-                tags.Add("Saved");
-            if (sliderProp != null && sliderProp.boolValue)
-                tags.Add("Slider");
-            if (securityEnabledProp != null && securityEnabledProp.boolValue)
-                tags.Add("Security");
-            if (defaultOnProp != null && defaultOnProp.boolValue)
-                tags.Add("Default On");
-            if (includeInRestProp != null && includeInRestProp.boolValue)
-                tags.Add("Shown in Rest Pose");
-            if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
-                tags.Add("This is the Exclusive Off State");
+                var tags = new List<string>();
+                if (savedProp != null && savedProp.boolValue)
+                    tags.Add("Saved");
+                if (sliderProp != null && sliderProp.boolValue)
+                    tags.Add("Slider");
+                if (securityEnabledProp != null && securityEnabledProp.boolValue)
+                    tags.Add("Security");
+                if (defaultOnProp != null && defaultOnProp.boolValue)
+                    tags.Add("Default On");
+                if (includeInRestProp != null && includeInRestProp.boolValue)
+                    tags.Add("Shown in Rest Pose");
+                if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
+                    tags.Add("This is the Exclusive Off State");
 
-            var row = new VisualElement();
-            row.style.flexWrap = Wrap.Wrap;
-            row.style.flexDirection = FlexDirection.Row;
-            foreach (var tag in tags) {
-                var flag = new Label(tag);
-                flag.style.width = StyleKeyword.Auto;
-                flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
-                flag.style.borderTopRightRadius = 5;
-                flag.style.marginRight = 5;
-                VRCFuryEditorUtils.Padding(flag, 2, 4);
-                row.Add(flag);
-            }
+                var row = new VisualElement();
+                row.style.flexWrap = Wrap.Wrap;
+                row.style.flexDirection = FlexDirection.Row;
+                foreach (var tag in tags) {
+                    var flag = new Label(tag);
+                    flag.style.width = StyleKeyword.Auto;
+                    flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+                    flag.style.borderTopRightRadius = 5;
+                    flag.style.marginRight = 5;
+                    VRCFuryEditorUtils.Padding(flag, 2, 4);
+                    row.Add(flag);
+                }
 
-            return row;
-        },
+                return row;
+            },
             savedProp,
             sliderProp,
             securityEnabledProp,
