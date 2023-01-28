@@ -76,8 +76,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+        } else {
+            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
     }
     
@@ -88,6 +90,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFACondition onCase,
         string onName,
         State action,
+        State inAction,
+        State outAction,
         VFABool physBoneResetter
     ) {
         var clip = LoadState(model.name + " " + onName, action);
@@ -100,7 +104,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
             defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
         }
-        
 
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
@@ -115,8 +118,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         VFAState inState;
         VFAState onState;
-        if (model.hasTransition && model.transitionStateIn != null && !model.transitionStateIn.IsEmpty()) {
-            var transitionClipIn = LoadState(model.name + onName + " In", model.transitionStateIn);
+        if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
+            var transitionClipIn = LoadState(model.name + onName + " In", inAction);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
             inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
@@ -124,12 +127,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
         exclusiveTagTriggeringStates.Add(inState);
-        
-        State outAction = null;
-        if (model.hasTransition) {
-            outAction = model.simpleOutTransition ? model.transitionStateIn : model.transitionStateOut;
-        }
-        if (outAction != null && !outAction.IsEmpty()) {
+        off.TransitionsTo(inState).When(onCase);
+
+        if (model.simpleOutTransition) outAction = inAction;
+        if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
             var transitionClipOut = LoadState(model.name + onName + " Out", outAction);
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
