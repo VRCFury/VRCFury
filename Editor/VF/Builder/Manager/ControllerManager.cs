@@ -39,7 +39,7 @@ namespace VF.Builder {
             if (ctrl.layers.Length == 0) {
                 // There was no base layer, just make one
                 GetController().NewLayer("Base Mask");
-            } else if (ctrl.layers[0].stateMachine.entryTransitions.Length > 0) {
+            } else if (ctrl.layers[0].stateMachine.defaultState != null) {
                 // The base layer has stuff in it?
                 GetController().NewLayer("Base Mask", 0);
                 SetMask(0, GetMask(1));
