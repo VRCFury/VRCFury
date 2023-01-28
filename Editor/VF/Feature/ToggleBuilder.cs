@@ -393,9 +393,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var c = new VisualElement();
             if (sliderProp.boolValue && defaultOnProp.boolValue) {
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default Value"));
-                defaultSliderProp.floatValue = 1;
-            } else {
-                defaultSliderProp.floatValue = 0;
             }
             return c;
         }, sliderProp, defaultOnProp));
