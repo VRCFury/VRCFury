@@ -8,6 +8,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using Object = UnityEngine.Object;
@@ -16,12 +17,9 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
-    private VFAState onState;
-    private VFAState onStateLocal;
-    private VFAState transitionState;
-    private VFAState localTransitionState;
+    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
-    private AnimationClip clip;
+    private AnimationClip restingClip;
 
     public ISet<string> GetExclusiveTags() {
         if (model.enableExclusiveTag) {
@@ -43,10 +41,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.state.IsEmpty() && model.state.actions.Count > 0) {
             return;
         }
-        
+
         if (model.slider) {
             var stops = new List<Puppet.Stop> {
-                new Puppet.Stop(1,0,model.state)
+                new Puppet.Stop(1, 0, model.state)
             };
             var puppet = new Puppet {
                 name = model.name,
@@ -64,13 +62,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layerName = model.name;
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
-        clip = LoadState(model.name, model.state);
         var off = layer.NewState("Off");
-        var on = layer.NewState("On").WithAnimation(clip);
-        onState = on;
-        VFACondition onCase;
-        VFACondition isLocal = fx.IsLocal().IsTrue();
 
+        VFACondition onCase;
         if (model.useInt) {
             var numParam = fx.NewInt(model.name, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
@@ -79,93 +73,74 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
+        
+        if (model.separateLocal) {
+            var isLocal = fx.IsLocal().IsTrue();
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, physBoneResetter);
+        }
+    }
+    
+    private void Apply(
+        ControllerManager fx,
+        VFALayer layer,
+        VFAState off,
+        VFACondition onCase,
+        string onName,
+        State action,
+        VFABool physBoneResetter
+    ) {
+        var clip = LoadState(model.name + " " + onName, action);
 
-        var securityLockUnlocked = allBuildersInRun
-            .Select(f => f as SecurityLockBuilder)
-            .Where(f => f != null)
-            .Select(f => f.GetEnabled())
-            .FirstOrDefault();
-
-        if (model.includeInRest) {
+        if (restingClip == null && model.includeInRest) {
+            restingClip = clip;
             var defaultsManager = allBuildersInRun
                 .OfType<FixWriteDefaultsBuilder>()
                 .First();
             defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
             defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
         }
-
-        if (model.securityEnabled && securityLockUnlocked != null) {
-            onCase = onCase.And(securityLockUnlocked);
-        }
-
-        var transitionToOn = off.TransitionsTo(on).When(onCase);
-        var transitionToOff = on.TransitionsTo(off).When(onCase.Not());
-         
-        if (model.separateLocal) {
-            AnimationClip localClip = LoadState(model.name + " Local", model.localState);
-            var onLocal = layer.NewState("On Local").WithAnimation(localClip).Move(off,0,-1);
-            onStateLocal = onLocal;
-            transitionToOn.AddCondition(isLocal.Not());
-            off.TransitionsTo(onLocal).When(isLocal.And(onCase));
-            
-            if (!model.hasTransition) 
-                onLocal.TransitionsTo(off).When(onCase.Not());
-        }
-
-        if (model.hasTransition) {
-            AnimationClip transitionClipIn = LoadState(model.name + " In", model.transitionStateIn);
-            AnimationClip transitionClipOut = LoadState(model.name + " Out", model.transitionStateOut);
-            var simple = model.simpleOutTransition;
-            var transitionIn = layer.NewState("Transition In").WithAnimation(transitionClipIn);
-            var transitionOut = layer.NewState("Transition Out").WithAnimation(simple ? transitionClipIn : transitionClipOut).Speed(simple ? -1 : 1);
-
-            transitionState = transitionIn;
-
-            on.RemoveTransitions();
-            off.RemoveTransitions();
-
-            var transitionToTransition = off.TransitionsTo(transitionIn).When(onCase);
-            transitionIn.TransitionsTo(on).When().WithTransitionExitTime(1);
-            on.TransitionsTo(transitionOut).When(onCase.Not());
-            transitionOut.TransitionsToExit().When().WithTransitionExitTime(1);
-
-            transitionIn.Move(off,0,1);
-            on.Move(transitionIn,1,0);
-            transitionOut.Move(on,1,0);
-
-            if (model.separateLocal)
-                transitionToTransition.AddCondition(isLocal.Not());
-                
-        }
-
-        if (model.separateLocal && model.hasTransition) {
-            AnimationClip localTransitionClipIn = LoadState(model.name + " Local In", model.localTransitionStateIn);
-            AnimationClip localTransitionClipOut = LoadState(model.name + " Local Out", model.localTransitionStateOut);
-            var simple = model.simpleOutTransition;
-            var localTransitionIn = layer.NewState("Local Transition In").WithAnimation(localTransitionClipIn);
-            var localTransitionOut = layer.NewState("Local Transition Out").WithAnimation(simple ? localTransitionClipIn : localTransitionClipOut).Speed(simple ? -1 : 1);
-
-            localTransitionState = localTransitionIn;
-
-            off.TransitionsTo(localTransitionIn).When(isLocal.And(onCase));
-            localTransitionIn.TransitionsTo(onStateLocal).When().WithTransitionExitTime(1);
-            onStateLocal.TransitionsTo(localTransitionOut).When(onCase.Not());
-            localTransitionOut.TransitionsToExit().When().WithTransitionExitTime(1);
-
-            localTransitionIn.Move(off,0,-1);
-            onStateLocal.Move(localTransitionIn,1,0);
-            localTransitionOut.Move(onStateLocal,1,0);
-        }
         
+
+        if (model.securityEnabled) {
+            var securityLockUnlocked = allBuildersInRun
+                .Select(f => f as SecurityLockBuilder)
+                .Where(f => f != null)
+                .Select(f => f.GetEnabled())
+                .FirstOrDefault();
+            if (securityLockUnlocked != null) {
+                onCase = onCase.And(securityLockUnlocked);
+            }
+        }
+
+        VFAState inState;
+        VFAState onState;
+        if (model.hasTransition && model.transitionStateIn != null && !model.transitionStateIn.IsEmpty()) {
+            var transitionClipIn = LoadState(model.name + onName + " In", model.transitionStateIn);
+            inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
+            onState = layer.NewState(onName).WithAnimation(clip);
+            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
+        } else {
+            inState = onState = layer.NewState(onName).WithAnimation(clip);
+        }
+        exclusiveTagTriggeringStates.Add(inState);
+        
+        State outAction = null;
+        if (model.hasTransition) {
+            outAction = model.simpleOutTransition ? model.transitionStateIn : model.transitionStateOut;
+        }
+        if (outAction != null && !outAction.IsEmpty()) {
+            var transitionClipOut = LoadState(model.name + onName + " Out", outAction);
+            var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
+            onState.TransitionsTo(outState).When(onCase.Not());
+            outState.TransitionsToExit().When().WithTransitionExitTime(1);
+        } else {
+            onState.TransitionsToExit().When(onCase.Not());
+        }
+
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
-            on.Drives(physBoneResetter, true);
-            if (model.separateLocal)
-                onStateLocal.Drives(physBoneResetter, true);
-            if (model.hasTransition)
-                transitionState.Drives(physBoneResetter, true);
-            if (model.separateLocal && model.hasTransition)
-                localTransitionState.Drives(physBoneResetter, true);
+            inState.Drives(physBoneResetter, true);
         }
 
         if (model.enableDriveGlobalParam && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
@@ -177,14 +152,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 usePrefix: false
             );
             off.Drives(driveGlobal, false);
-            on.Drives(driveGlobal, true);
-            if (model.separateLocal)
-                onStateLocal.Drives(driveGlobal, true);
-            if (model.hasTransition)
-                transitionState.Drives(driveGlobal, true);
-            if (model.separateLocal && model.hasTransition)
-                localTransitionState.Drives(driveGlobal, true);
-        
+            inState.Drives(driveGlobal, true);
         }
 
         if (model.addMenuItem) {
@@ -197,12 +165,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
      [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
-    public void ApplyExclusiveTags () {
-        ApplyExclusiveTagsInternal(onState);
-        ApplyExclusiveTagsInternal(onStateLocal);
-    }
-    public void ApplyExclusiveTagsInternal(VFAState state) {
-        if (state == null) return;
+     public void ApplyExclusiveTags() {
+        if (exclusiveTagTriggeringStates.Count == 0) return;
         
         var fx = GetFx();
         var allOthersOffCondition = fx.Always();
@@ -216,7 +180,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (conflictsWithOther) {
                 var otherParam = other.GetParam();
                 if (otherParam != null) {
-                    state.Drives(otherParam, false);
+                    foreach (var state in exclusiveTagTriggeringStates) {
+                        state.Drives(otherParam, false);
+                    }
                     allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
                 }
             }
@@ -264,11 +230,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
     public void ApplyRestingState() {
-        if (onState == null) return;
-        if (!model.includeInRest) return;
-        WithoutAnimator(avatarObject, () => {
-            clip.SampleAnimation(avatarObject, 0);
-        });
+        if (restingClip != null) {
+            WithoutAnimator(avatarObject, () => { restingClip.SampleAnimation(avatarObject, 0); });
+        }
     }
 
     public override string GetEditorTitle() {

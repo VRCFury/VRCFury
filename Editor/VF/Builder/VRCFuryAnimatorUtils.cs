@@ -254,10 +254,6 @@ public class VFAState {
     public VFATransition TransitionsToExit() {
         return new VFATransition(() => node.state.AddExitTransition());
     }
-    public void RemoveTransitions() {
-        foreach (var t in node.state.transitions)
-            node.state.RemoveTransition(t);
-    }
 
 }
 
@@ -391,16 +387,6 @@ public class VFATransition {
             trans.exitTime = time;
             return trans;
         };
-        return this;
-    }
-    public VFATransition AddCondition(VFACondition cond) {
-        foreach(var t in cond.transitions) {
-            foreach (var t2 in createdTransitions) {
-                var conditions = t2.conditions.ToList();
-                conditions.AddRange(t.ToArray());
-                t2.conditions = conditions.ToArray();
-            }
-        }
         return this;
     }
 }
