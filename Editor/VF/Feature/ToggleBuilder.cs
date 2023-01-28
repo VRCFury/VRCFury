@@ -163,7 +163,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             off.Drives(driveGlobal, false);
             inState.Drives(driveGlobal, true);
         }
-
     }
 
      [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
