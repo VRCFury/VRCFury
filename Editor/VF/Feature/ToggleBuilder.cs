@@ -437,20 +437,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, separateLocalProp));
         }
 
-        if (separateLocalProp != null)
-        {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (hasTransitionProp.boolValue)
-                {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateIn"), "Transition In"));
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (hasTransitionProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateIn"), "Transition In"));
 
-                    if (!simpleOutTransitionProp.boolValue)
-                        c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateOut"), "Transition Out"));
-                }
-                return c;
-            }, hasTransitionProp, simpleOutTransitionProp));
-        }
+                if (!simpleOutTransitionProp.boolValue)
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateOut"), "Transition Out"));
+            }
+            return c;
+        }, hasTransitionProp, simpleOutTransitionProp));
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var c = new VisualElement();
@@ -472,46 +469,46 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("simpleOutTransition"), "Transition Out is reverse of Transition In"));
             }
             return c;
-        }, simpleOutTransitionProp));
+        }, hasTransitionProp));
 
-            // Tags
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var tags = new List<string>();
-            if (savedProp != null && savedProp.boolValue)
-                tags.Add("Saved");
-            if (sliderProp != null && sliderProp.boolValue)
-                tags.Add("Slider");
-            if (securityEnabledProp != null && securityEnabledProp.boolValue)
-                tags.Add("Security");
-            if (defaultOnProp != null && defaultOnProp.boolValue)
-                tags.Add("Default On");
-            if (includeInRestProp != null && includeInRestProp.boolValue)
-                tags.Add("Shown in Rest Pose");
-            if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
-                tags.Add("This is the Exclusive Off State");
+        // Tags
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var tags = new List<string>();
+                if (savedProp != null && savedProp.boolValue)
+                    tags.Add("Saved");
+                if (sliderProp != null && sliderProp.boolValue)
+                    tags.Add("Slider");
+                if (securityEnabledProp != null && securityEnabledProp.boolValue)
+                    tags.Add("Security");
+                if (defaultOnProp != null && defaultOnProp.boolValue)
+                    tags.Add("Default On");
+                if (includeInRestProp != null && includeInRestProp.boolValue)
+                    tags.Add("Shown in Rest Pose");
+                if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
+                    tags.Add("This is the Exclusive Off State");
 
-            var row = new VisualElement();
-            row.style.flexWrap = Wrap.Wrap;
-            row.style.flexDirection = FlexDirection.Row;
-            foreach (var tag in tags) {
-                var flag = new Label(tag);
-                flag.style.width = StyleKeyword.Auto;
-                flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
-                flag.style.borderTopRightRadius = 5;
-                flag.style.marginRight = 5;
-                VRCFuryEditorUtils.Padding(flag, 2, 4);
-                row.Add(flag);
-            }
+                var row = new VisualElement();
+                row.style.flexWrap = Wrap.Wrap;
+                row.style.flexDirection = FlexDirection.Row;
+                foreach (var tag in tags) {
+                    var flag = new Label(tag);
+                    flag.style.width = StyleKeyword.Auto;
+                    flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+                    flag.style.borderTopRightRadius = 5;
+                    flag.style.marginRight = 5;
+                    VRCFuryEditorUtils.Padding(flag, 2, 4);
+                    row.Add(flag);
+                }
 
-            return row;
-        },
+                return row;
+            },
             savedProp,
             sliderProp,
             securityEnabledProp,
             defaultOnProp,
             includeInRestProp,
             exclusiveOffStateProp
-            ));
+        ));
 
         return content;
     }
