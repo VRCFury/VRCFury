@@ -134,9 +134,9 @@ if you have a Sad and an Angry gesture, you could give them both the same tag, a
 prevent them from being active simultaneously. The "highest" one in the list wins. A gesture
 can have multiple Exclusive Tags separated by commas.
 
-### Make Write Defaults Off
+### Fix Write Defaults
 
-This feature will automatically make your avatar use Write Defaults Off. Yes, it's magic. No, you don't even need to configure any options.
+This feature will automatically align Write Defaults for every state on your avatar. If will automatically prefer whichever your avatar is "closest to," meaning it will select On or Off depending on which requires the fewest changes to your avatar. If you'd like, you can override the selection and Force Off or Force On. Yes, it's magic.
 
 ### OGB Integration
 
