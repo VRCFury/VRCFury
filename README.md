@@ -229,26 +229,26 @@ This feature automatically runs TPS setup on your avatar during each upload. Thi
 
 This is a very simple feature which activates the given animation only while the user is "talking" (with any viseme).
 
-## Info for Prefab Artists
+## Additional Features
 
-Distributing your own prefab with animations? 
-* Add the VRC Fury component to the root object of your prefab, and add the props like normal. 
-* Instruct your clients to install VRCFury in their own project.
-* Ship the prefab to them, and instruct them to drag the prefab onto whatever bone on their avatar.
-* When they upload their avatar, your prefab's props will be imported to their menu automatically! Any animation clip paths will be adjusted automatically to work properly, no matter where they've placed it in their avatar.
-
-Note: If a client wishes to use your VRCFury-enabled prefab in a project WITHOUT VRCFury, they will need to remove the VRCFury component from the prefab instance after they drag it in. The VRCSDK will not allow an avatar to be uploaded containing a VRCFury component when VRCFury is not installed in the project.
-
-## Controller-Less Setup
+### Controller-Less Setup
 
 Your avatar doesn't even need to have a FX layer, menu, or params! If these are unset, VRCFury will create them automatically, and manage them fully (meaning it will be deleted and recreated from scratch before each upload). Beware of this! If you want to make your own changes to your controller, menu, or params, then you should create one yourself outside of the vrcf temp directory.
 
-## VRCF Global Colliders
+### VRCF Global Colliders
 
 VRCFury can be used to add globally-synced colliders to any bone on your avatar. This means you can put one on your foot, your nose, or anywhere else you can imagine, then bap people with them! Simply create an empty on the bone you'd like to add a collider to, then add a `VRCF Global Collider` component to that empty.
 
 Beware that this feature steals colliders from your fingers, so the more you add, the fewer contacts there will be on your fingers. It will try to steal from the least important fingers first. You've been warned!
 
-## D4rk Avatar Optimizer Integration
+### D4rk Avatar Optimizer Integration
 
 If your avatar uses the D4rk Optimizer, VRCFury will automatically run the optimizer during your avatar upload. No need to run it manually anymore!
+
+### Write Defaults Auto-Fix
+
+VRCFury will detect if your avatar has a mixture of Write Defaults, and will offer to fix it for you on your first upload. Don't worry, this change isn't destructive -- it simply adds a `Fix Write Defaults` VRCFury component to your avatar root, which you can always remove to undo if you choose.
+
+### Action Controller Conflict Resolution
+
+If you install multiple independent packages of avatar "dances" using vrcfury, they will be rewritten to work together. For instance, you can install GogoLoco AND CuteDancer using VRCFury, and will be able to use the dances from each. Typically this is impossible as the animations from one will override the other, however VRCFury rewrites the playable layer weight drivers to affect only the layers owned by each individual package. Hooray!
