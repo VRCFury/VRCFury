@@ -16,27 +16,12 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.FixWriteDefaults)]
         public void Apply() {
-            // TODO: Bring this back once I can assure it only happens on managed controllers,
-            // and ensure it works with gogoloco base layer
-            /*
-            foreach (var t in manager.GetAllUsedControllers()) {
-                var type = t.GetType();
-                var controller = t.GetRaw();
-                var needsFix = controller.layers.Length == 0
-                               || controller.layers[0].stateMachine.states.Length > 0
-                               || controller.layers[0].avatarMask != null;
-                if (needsFix && type != VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                    var managed = manager.GetController(type);
-                    managed.NewLayer("Base", 0);
-                }
-            }
-            */
-            
             var analysis = DetectExistingWriteDefaults();
             var broken = analysis.Item1;
-            var shouldBeOn = analysis.Item2;
-            var reason = analysis.Item3;
-            var badStates = analysis.Item4;
+            var shouldBeOnIfWeAreInControl = analysis.Item2;
+            var shouldBeOnIfWeAreNotInControl = analysis.Item3;
+            var reason = analysis.Item4;
+            var badStates = analysis.Item5;
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
@@ -67,7 +52,7 @@ namespace VF.Feature {
             bool useWriteDefaults;
             if (mode == FixWriteDefaults.FixWriteDefaultsMode.Auto) {
                 applyToUnmanagedLayers = true;
-                useWriteDefaults = shouldBeOn;
+                useWriteDefaults = shouldBeOnIfWeAreInControl;
             } else if (mode == FixWriteDefaults.FixWriteDefaultsMode.ForceOff) {
                 applyToUnmanagedLayers = true;
                 useWriteDefaults = false;
@@ -76,7 +61,7 @@ namespace VF.Feature {
                 useWriteDefaults = true;
             } else {
                 applyToUnmanagedLayers = false;
-                useWriteDefaults = shouldBeOn;
+                useWriteDefaults = shouldBeOnIfWeAreNotInControl;
             }
             
             Debug.Log("VRCFury is fixing write defaults "
@@ -163,7 +148,7 @@ namespace VF.Feature {
         }
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
-        private Tuple<bool, bool, string, List<string>> DetectExistingWriteDefaults() {
+        private Tuple<bool, bool, bool, string, List<string>> DetectExistingWriteDefaults() {
             var onStates = new List<string>();
             var offStates = new List<string>();
             var directBlendTrees = 0;
@@ -193,8 +178,9 @@ namespace VF.Feature {
                 }
             }
 
-            var shouldBeOn = directBlendTrees > 0 || additiveLayers > 0 || onStates.Count > offStates.Count;
-            var weirdStates = shouldBeOn ? offStates : onStates;
+            var shouldBeOnIfWeAreInControl = directBlendTrees > 0 || additiveLayers > 0 || onStates.Count > offStates.Count;
+            var shouldBeOnIfWeAreNotInControl = onStates.Count > offStates.Count;
+            var weirdStates = shouldBeOnIfWeAreInControl ? offStates : onStates;
             var outList = new List<string>();
             if (onStates.Count > 0) outList.Add(onStates.Count + " on");
             if (offStates.Count > 0) outList.Add(offStates.Count + " off");
@@ -203,7 +189,7 @@ namespace VF.Feature {
 
             var broken = weirdStates.Count > 0;
             var reason = string.Join(", ", outList);
-            return Tuple.Create(broken, shouldBeOn, reason, weirdStates);
+            return Tuple.Create(broken, shouldBeOnIfWeAreInControl, shouldBeOnIfWeAreNotInControl, reason, weirdStates);
         }
     }
 }

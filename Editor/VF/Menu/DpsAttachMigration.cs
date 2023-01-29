@@ -7,22 +7,25 @@ using UnityEngine;
 using UnityEngine.Animations;
 using VF.Inspector;
 using VF.Model;
+using Object = UnityEngine.Object;
 
 namespace VF.Menu {
     public class DpsAttachMigration {
+        private static readonly string dialogTitle = "Parent-Constraint Orifice Migrator";
+        
         public static void Run(GameObject avatarObj) {
             var messages = Migrate(avatarObj, true);
             if (string.IsNullOrWhiteSpace(messages)) {
                 EditorUtility.DisplayDialog(
-                    "DPSAttach Migrator",
-                    "Failed to find DPSAttach on selected avatar",
+                    dialogTitle,
+                    "Failed to find parent-constraint orifice on selected avatar",
                     "Ok"
                 );
                 return;
             }
             
             var doIt = EditorUtility.DisplayDialog(
-                "DPSAttach Migrator",
+                dialogTitle,
                 messages + "\n\nContinue?",
                 "Yes, Do it!",
                 "Cancel"
@@ -32,8 +35,8 @@ namespace VF.Menu {
             Migrate(avatarObj, false);
             
             EditorUtility.DisplayDialog(
-                "DPSAttach Migrator",
-                "Done! You can now delete any holes / rings you don't wish to use (DPSAttach had... a lot of them)",
+                dialogTitle,
+                "Done! You can now delete any orifice objects that you don't wish to use.",
                 "Ok"
             );
         }
@@ -97,6 +100,15 @@ namespace VF.Menu {
                         ogb.name = name;
                         ogb.addMenuItem = true;
                         obj.name = fullName;
+                    }
+                }
+                
+                if (!dryRun) {
+                    // In case we can't delete the object below (because it's part of a prefab), just remove all the components
+                    foreach (var component in parent.gameObject.GetComponentsInChildren<Component>(true)) {
+                        if (!(component is Transform)) {
+                            Object.DestroyImmediate(component);
+                        }
                     }
                 }
             }
