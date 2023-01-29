@@ -21,21 +21,21 @@ namespace VF.Menu {
         
         //
         
-        [MenuItem("Tools/VRCFury/OseGB", priority = 1200)]
-        private static void MarkerOseGB() {
+        [MenuItem("Tools/VRCFury/OGB", priority = 1200)]
+        private static void MarkerOGB() {
         }
 
-        [MenuItem("Tools/VRCFury/OseGB", true)]
-        private static bool MarkerOseGB2() {
+        [MenuItem("Tools/VRCFury/OGB", true)]
+        private static bool MarkerOGB2() {
             return false;
         }
 
-        [MenuItem("Tools/VRCFury/Upgrade avatar for OscGB", priority = 1201)]
+        [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", priority = 1201)]
         private static void Run() {
             DPSContactUpgradeBuilder.Run();
         }
 
-        [MenuItem("Tools/VRCFury/Upgrade avatar for OscGB", true)]
+        [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", true)]
         private static bool Check() {
             return DPSContactUpgradeBuilder.Check();
         }
@@ -45,17 +45,7 @@ namespace VF.Menu {
             OrificeCreatorMenuItem.Create();
         }
 
-        [MenuItem("Tools/VRCFury/Migrate Parent-Constraint Orifices to OGB (DPSAttach, __dps)", priority = 1204)]
-        private static void RunMigrateDPSAttach() {
-            DpsAttachMigration.Run(MenuUtils.GetSelectedAvatar());
-        }
-        
-        [MenuItem("Tools/VRCFury/Migrate Parent-Constraint Orifices to OGB (DPSAttach, __dps)", true)]
-        private static bool CheckMigrateDPSAttach() {
-            return MenuUtils.GetSelectedAvatar() != null;
-        }
-        
-        [MenuItem("Tools/VRCFury/Bake OscGB Component", priority = 1205)]
+        [MenuItem("Tools/VRCFury/Bake OGB Component", priority = 1205)]
         public static void RunBake() {
             OrificeCreatorMenuItem.RunBake();
         }

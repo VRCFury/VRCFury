@@ -1,27 +1,47 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
+using UnityEngine.Animations;
 using VF.Inspector;
 using VF.Model;
-using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
-using Object = UnityEngine.Object;
 
 namespace VF.Menu {
     public class DPSContactUpgradeBuilder {
+        private static string dialogTitle = "OGB Upgrader";
+        
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
             if (avatarObject == null) {
                 avatarObject = Selection.activeGameObject;
                 while (avatarObject.transform.parent != null) avatarObject = avatarObject.transform.parent.gameObject;
             }
-            var msg = Apply(avatarObject);
+
+            var messages = Apply(avatarObject, true);
+            if (string.IsNullOrWhiteSpace(messages)) {
+                EditorUtility.DisplayDialog(
+                    dialogTitle,
+                    "VRCFury failed to find any parts to upgrade! Ask on the discord?",
+                    "Ok"
+                );
+                return;
+            }
+        
+            var doIt = EditorUtility.DisplayDialog(
+                dialogTitle,
+                messages + "\n\nContinue?",
+                "Yes, Do it!",
+                "Cancel"
+            );
+            if (!doIt) return;
+
+            Apply(avatarObject, false);
             EditorUtility.DisplayDialog(
-                "OscGB Upgrade",
-                msg,
+                dialogTitle,
+                "Upgrade complete!",
                 "Ok"
             );
         }
@@ -37,26 +57,35 @@ namespace VF.Menu {
             return false;
         }
 
-        private static void DeleteIfNotInPrefab(GameObject obj) {
-            if (!PrefabUtility.IsPartOfAnyPrefab(obj)) Object.DestroyImmediate(obj);
-        }
-
-        public static string Apply(GameObject avatarObject) {
-            var addedOGB = new List<string>();
+        public static string Apply(GameObject avatarObject, bool dryRun) {
+            var deletions = new List<string>();
+            var addedPen = new List<string>();
+            var addedOrf = new List<string>();
             var alreadyExists = new List<string>();
 
             string GetPath(GameObject obj) {
                 return AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
             }
-            OGBPenetrator addPen(GameObject obj) {
+            OGBPenetrator AddPen(GameObject obj) {
                 if (obj.GetComponentsInParent<OGBPenetrator>(true).Length > 0) return null;
-                addedOGB.Add(GetPath(obj));
+                if (obj.GetComponentsInChildren<OGBPenetrator>(true).Length > 0) return null;
+                addedPen.Add(GetPath(obj));
+                if (dryRun) return null;
                 return obj.AddComponent<OGBPenetrator>();
             }
-            OGBOrifice addOrifice(GameObject obj) {
+            OGBOrifice AddOrifice(GameObject obj) {
                 if (obj.GetComponentsInParent<OGBOrifice>(true).Length > 0) return null;
-                addedOGB.Add(GetPath(obj));
+                if (obj.GetComponentsInChildren<OGBOrifice>(true).Length > 0) return null;
+                addedOrf.Add(GetPath(obj));
+                if (dryRun) return null;
                 return obj.AddComponent<OGBOrifice>();
+            }
+            void Delete(GameObject obj) {
+                if (dryRun) {
+                    deletions.Add(GetPath(obj));
+                    return;
+                }
+                AvatarCleaner.RemoveObject(obj);
             }
 
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
@@ -66,12 +95,68 @@ namespace VF.Menu {
                 alreadyExists.Add(GetPath(c.gameObject));
             }
             
+            // Upgrade "parent-constraint" DPS setups
+            var oldParentsToDelete = new HashSet<GameObject>();
+            foreach (var parent in avatarObject.GetComponentsInChildren<Transform>(true)) {
+                var constraint = parent.gameObject.GetComponent<ParentConstraint>();
+                if (constraint == null) continue;
+                if (constraint.sourceCount < 2) continue;
+                
+                var isParent = GetIsParent(parent.gameObject);
+                if (isParent == IsDps.NO) continue;
+
+                oldParentsToDelete.Add(parent.gameObject);
+                
+                for (var i = 0; i < constraint.sourceCount; i++) {
+                    var source = constraint.GetSource(i);
+                    var t = source.sourceTransform;
+                    if (t == null) continue;
+                    var obj = t.gameObject;
+                    var name = obj.name;
+                    var id = name.IndexOf("(");
+                    if (id >= 0) name = name.Substring(id+1);
+                    id = name.IndexOf(")");
+                    if (id >= 0) name = name.Substring(0, id);
+
+                    if (name.StartsWith("__dps_")) {
+                        name = name.Substring(6);
+                        name = name.Replace('_', ' ');
+                        name = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(name);
+                    }
+
+                    var fullName = "Orifice (" + name + ")";
+
+                    addedOrf.Add(GetPath(obj));
+                    if (!dryRun) {
+                        var ogb = obj.GetComponent<OGBOrifice>();
+                        if (ogb == null) {
+                            ogb = obj.AddComponent<OGBOrifice>();
+                            var rotate = new Vector3(90, 0, 0);
+                            obj.transform.localRotation *= Quaternion.Euler(rotate);
+                            var parentConstraint = obj.GetComponent<ParentConstraint>();
+                            if (parentConstraint) {
+                                parentConstraint.rotationAtRest += rotate;
+                                for (var sourceI = 0; sourceI < parentConstraint.sourceCount; sourceI++) {
+                                    var rotOffset = parentConstraint.GetRotationOffset(sourceI);
+                                    rotOffset.x += 90;
+                                    parentConstraint.SetRotationOffset(sourceI, rotOffset);
+                                }
+                            }
+                        }
+                        ogb.addLight = OGBOrifice.AddLight.Auto;
+                        ogb.name = name;
+                        ogb.addMenuItem = true;
+                        obj.name = fullName;
+                    }
+                }
+            }
+            
             // Un-bake baked components
             foreach (var t in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 if (!t) continue; // this can happen if we're visiting one of the things we deleted below
                 var penMarker = t.Find("OGB_Baked_Pen");
                 if (penMarker) {
-                    var p = addPen(t.gameObject);
+                    var p = AddPen(t.gameObject);
                     if (p) {
                         var size = penMarker.Find("size");
                         if (size) {
@@ -80,12 +165,12 @@ namespace VF.Menu {
                         }
                         p.name = GetNameFromBakeMarker(penMarker.gameObject);
                     }
-                    DeleteIfNotInPrefab(penMarker.gameObject);
+                    Delete(penMarker.gameObject);
                 }
 
                 var orfMarker = t.Find("OGB_Baked_Orf");
                 if (orfMarker) {
-                    var o = addOrifice(t.gameObject);
+                    var o = AddOrifice(t.gameObject);
                     if (o) {
                         var autoInfo = OGBOrificeEditor.GetInfoFromLights(t.gameObject);
                         if (autoInfo != null) {
@@ -93,26 +178,30 @@ namespace VF.Menu {
                         }
                         o.name = GetNameFromBakeMarker(orfMarker.gameObject);
                         foreach (var light in t.gameObject.GetComponentsInChildren<Light>(true)) {
-                            OGBUtils.RemoveComponent(light);
+                            AvatarCleaner.RemoveComponent(light);
                         }
                     }
-                    DeleteIfNotInPrefab(orfMarker.gameObject);
+                    Delete(orfMarker.gameObject);
                 }
             }
             
             // Auto-add DPS and TPS penetrators
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (OGBPenetratorEditor.GetAutoSize(skin.gameObject, true) != null) addPen(skin.gameObject);
+                if (OGBPenetratorEditor.GetAutoSize(skin.gameObject, true) != null)
+                    AddPen(skin.gameObject);
             }
             foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (OGBPenetratorEditor.GetAutoSize(mesh.gameObject, true) != null) addPen(mesh.gameObject);
+                if (OGBPenetratorEditor.GetAutoSize(mesh.gameObject, true) != null)
+                    AddPen(mesh.gameObject);
             }
             
             // Auto-add DPS orifices
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
-                var parent = light.gameObject.transform.parent?.gameObject;
+                var parent = light.gameObject.transform.parent;
                 if (parent) {
-                    if (OGBOrificeEditor.GetInfoFromLights(parent) != null) addOrifice(parent);
+                    var parentObj = parent.gameObject;
+                    if (!oldParentsToDelete.Contains(parentObj) && OGBOrificeEditor.GetInfoFromLights(parentObj) != null)
+                        AddOrifice(parentObj);
                 }
             }
             
@@ -121,61 +210,90 @@ namespace VF.Menu {
                 if (!t) continue; // this can happen if we're visiting one of the things we deleted below
                 var penMarker = t.Find("OGB_Marker_Pen");
                 if (penMarker) {
-                    addPen(t.gameObject);
-                    DeleteIfNotInPrefab(penMarker.gameObject);
+                    AddPen(t.gameObject);
+                    Delete(penMarker.gameObject);
                 }
 
                 var holeMarker = t.Find("OGB_Marker_Hole");
                 if (holeMarker) {
-                    var o = addOrifice(t.gameObject);
+                    var o = AddOrifice(t.gameObject);
                     if (o) o.addLight = OGBOrifice.AddLight.Hole;
-                    DeleteIfNotInPrefab(holeMarker.gameObject);
+                    Delete(holeMarker.gameObject);
                 }
                 
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
-                    var o = addOrifice(t.gameObject);
+                    var o = AddOrifice(t.gameObject);
                     if (o) o.addLight = OGBOrifice.AddLight.Ring;
-                    DeleteIfNotInPrefab(ringMarker.gameObject);
+                    Delete(ringMarker.gameObject);
                 }
             }
             
             // Claim lights on all OGB components
             foreach (var orifice in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
-                OGBOrificeEditor.ClaimLights(orifice);
+                if (dryRun) {
+                    foreach (var light in orifice.gameObject.GetComponentsInChildren<Light>(true)) {
+                        deletions.Add("Light on " + GetPath(light.gameObject));
+                    }
+                } else {
+                    OGBOrificeEditor.ClaimLights(orifice);
+                }
             }
 
             // Clean up
-            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-            if (avatar) {
-                var fx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
-                if (fx) {
-                    for (var i = 0; i < fx.parameters.Length; i++) {
-                        var param = fx.parameters[i];
-                        var isOldTpsVf = param.name.StartsWith("TPS") && param.name.Contains("/VF");
-                        var isOgb = param.name.StartsWith("OGB/");
-                        if (isOldTpsVf || isOgb) {
-                            fx.RemoveParameter(param);
-                            i--;
-                        }
-                    }
+            deletions.AddRange(AvatarCleaner.Cleanup(
+                avatarObject,
+                perform: !dryRun,
+                ShouldRemoveObj: obj => {
+                    return obj.name == "GUIDES_DELETE"
+                           || oldParentsToDelete.Contains(obj);
+                },
+                ShouldRemoveAsset: asset => {
+                    if (asset == null) return false;
+                    var path = AssetDatabase.GetAssetPath(asset);
+                    if (path == null) return false;
+                    var lower = path.ToLower();
+                    if (lower.Contains("dps_attach")) return true;
+                    return false;
+                },
+                ShouldRemoveLayer: layer => {
+                    return layer == "DPS_Holes"
+                           || layer == "DPS_Rings"
+                           || layer == "HotDog"
+                           || layer == "DPS Orifice";
+                },
+                ShouldRemoveParam: param => {
+                    return param == "DPS_Hole"
+                           || param == "DPS_Ring"
+                           || param == "HotDog"
+                           || param == "fluff/dps/orifice"
+                           || (param.StartsWith("TPS") && param.Contains("/VF"))
+                           || param.StartsWith("OGB/")
+                           || param.StartsWith("Nsfw/Ori/");
+                },
+                ShouldRemoveComponent: component => {
+                    if (component is VRCContactSender sender && IsOGBContact(sender, sender.collisionTags)) return true;
+                    if (component is VRCContactReceiver rcv && IsOGBContact(rcv, rcv.collisionTags)) return true;
+                    return false;
                 }
-            }
-            foreach (var c in avatarObject.GetComponentsInChildren<VRCContactSender>(true)) {
-                if (IsOGBContact(c, c.collisionTags)) OGBUtils.RemoveComponent(c);
-            }
-            foreach (var c in avatarObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                if (IsOGBContact(c, c.collisionTags)) OGBUtils.RemoveComponent(c);
-            }
+            ));
 
-            if (addedOGB.Count == 0 && alreadyExists.Count == 0) {
+            if (addedPen.Count == 0 && addedOrf.Count == 0 && deletions.Count == 0 && alreadyExists.Count == 0) {
                 return "VRCFury failed to find any parts to upgrade! Ask on the discord?";
             }
 
-            return "VRCFury upgraded these objects with OscGB support:\n"
-                   + String.Join("\n", addedOGB)
-                   + "\n"
-                   + String.Join("\n", alreadyExists.Select(a => a + " (already upgraded)"));
+            var parts = new List<string>();
+            if (addedPen.Count > 0)
+                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPen));
+            if (addedOrf.Count > 0)
+                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrf));
+            if (deletions.Count > 0)
+                parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
+            if (alreadyExists.Count > 0)
+                parts.Add("OGB already exists on:\n" + string.Join("\n", alreadyExists));
+
+            if (parts.Count == 0) return "";
+            return string.Join("\n\n", parts);
         }
 
         private static string GetNameFromBakeMarker(GameObject marker) {
@@ -185,6 +303,26 @@ namespace VF.Menu {
                 }
             }
             return "";
+        }
+        
+        enum IsDps {
+            NO,
+            HOLE,
+            RING
+        }
+        private static IsDps GetIsParent(GameObject obj) {
+            foreach (Transform child in obj.transform) {
+                var light = child.gameObject.GetComponent<Light>();
+                if (light != null) {
+                    if (OGBOrificeEditor.IsHole(light)) return IsDps.HOLE;
+                    if (OGBOrificeEditor.IsRing(light)) return IsDps.RING;
+                }
+            }
+
+            // For some reason, on some avatars, this one doesn't have child lights even though it's supposed to
+            if (obj.name == "__dps_lightobject") return IsDps.RING;
+
+            return IsDps.NO;
         }
     }
 }

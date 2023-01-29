@@ -5,6 +5,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Menu;
 using VF.Model;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
@@ -150,7 +151,7 @@ namespace VF.Inspector {
             }
             if (autoInfo == null && addLight != OGBOrifice.AddLight.None) {
                 foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
-                    OGBUtils.RemoveComponent(light);
+                    AvatarCleaner.RemoveComponent(light);
                 }
 
                 var main = new GameObject("Root");
@@ -240,7 +241,7 @@ namespace VF.Inspector {
             var info = GetInfoFromLights(orifice.gameObject);
             foreach (var light in orifice.gameObject.GetComponentsInChildren<Light>(true)) {
                 if (IsRing(light) || IsHole(light) || IsNormal(light)) {
-                    OGBUtils.RemoveComponent(light);
+                    AvatarCleaner.RemoveComponent(light);
                 }
             }
             if (info != null) {

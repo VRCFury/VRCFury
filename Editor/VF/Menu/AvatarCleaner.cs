@@ -13,115 +13,148 @@ namespace VF.Menu {
             GameObject avatarObj,
             bool perform = false,
             Func<GameObject, bool> ShouldRemoveObj = null,
+            Func<Component, bool> ShouldRemoveComponent = null,
             Func<Object, bool> ShouldRemoveAsset = null,
             Func<string, bool> ShouldRemoveLayer = null,
             Func<string, bool> ShouldRemoveParam = null
         ) {
             var removeItems = new List<string>();
+            
+            string GetPath(GameObject obj) {
+                return AnimationUtility.CalculateTransformPath(obj.transform, avatarObj.transform);
+            }
 
-            if (ShouldRemoveObj != null) {
+            if (ShouldRemoveObj != null || ShouldRemoveComponent != null) {
                 var checkStack = new Stack<Transform>();
                 checkStack.Push(avatarObj.transform);
                 while (checkStack.Count > 0) {
                     var t = checkStack.Pop();
                     var obj = t.gameObject;
 
-                    if (ShouldRemoveObj(obj) && (!PrefabUtility.IsPartOfPrefabInstance(obj) ||
-                                                 PrefabUtility.IsOutermostPrefabInstanceRoot(obj))) {
-                        removeItems.Add("Object: " + obj.name);
-                        if (perform) Object.DestroyImmediate(obj);
+                    if (ShouldRemoveObj != null && ShouldRemoveObj(obj)) {
+                        removeItems.Add("Object: " + GetPath(obj));
+                        if (perform) RemoveObject(obj);
                     } else {
+                        if (ShouldRemoveComponent != null) {
+                            foreach (var component in obj.GetComponents<Component>()) {
+                                if (!(component is Transform) && ShouldRemoveComponent(component)) {
+                                    removeItems.Add("Component: " + component.GetType().Name + " on " + GetPath(obj));
+                                    if (perform) RemoveComponent(component);
+                                }
+                            }
+                        }
                         foreach (Transform t2 in t) checkStack.Push(t2);
                     }
                 }
             }
 
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
-            var avatarFx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
-            if (avatarFx != null) {
-                if (ShouldRemoveAsset != null && ShouldRemoveAsset(avatarFx)) {
-                    removeItems.Add("Avatar descriptor FX layer setting");
-                    if (perform) VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
-                } else {
-                    var vfac = new VFAController(avatarFx, VRCAvatarDescriptor.AnimLayerType.FX);
-                    for (var i = 0; i < avatarFx.layers.Length; i++) {
-                        var layer = avatarFx.layers[i];
-                        if (ShouldRemoveLayer != null && ShouldRemoveLayer(layer.name)) {
-                            removeItems.Add("Layer: " + layer.name);
-                            if (perform) {
-                                vfac.RemoveLayer(i);
-                                i--;
+            if (avatar != null) {
+                var avatarFx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
+                if (avatarFx != null) {
+                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(avatarFx)) {
+                        removeItems.Add("Avatar descriptor FX layer setting");
+                        if (perform) VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
+                    } else {
+                        var vfac = new VFAController(avatarFx, VRCAvatarDescriptor.AnimLayerType.FX);
+                        for (var i = 0; i < avatarFx.layers.Length; i++) {
+                            var layer = avatarFx.layers[i];
+                            if (ShouldRemoveLayer != null && ShouldRemoveLayer(layer.name)) {
+                                removeItems.Add("Layer: " + layer.name);
+                                if (perform) {
+                                    vfac.RemoveLayer(i);
+                                    i--;
+                                }
                             }
                         }
-                    }
-                    for (var i = 0; i < avatarFx.parameters.Length; i++) {
-                        var prm = avatarFx.parameters[i];
-                        if (ShouldRemoveParam != null && ShouldRemoveParam(prm.name)) {
-                            removeItems.Add("Parameter: " + prm.name);
-                            if (perform) {
-                                avatarFx.RemoveParameter(i);
-                                i--;
+                        for (var i = 0; i < avatarFx.parameters.Length; i++) {
+                            var prm = avatarFx.parameters[i];
+                            if (ShouldRemoveParam != null && ShouldRemoveParam(prm.name)) {
+                                removeItems.Add("Parameter: " + prm.name);
+                                if (perform) {
+                                    avatarFx.RemoveParameter(i);
+                                    i--;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            var syncParams = VRCAvatarUtils.GetAvatarParams(avatar);
-            if (syncParams != null) {
-                if (ShouldRemoveAsset != null && ShouldRemoveAsset(syncParams)) {
-                    removeItems.Add("Avatar descriptor params setting");
-                    if (perform) VRCAvatarUtils.SetAvatarParams(avatar, null);
-                } else {
-                    var prms = new List<VRCExpressionParameters.Parameter>(syncParams.parameters);
-                    for (var i = 0; i < prms.Count; i++) {
-                        if (ShouldRemoveParam != null && ShouldRemoveParam(prms[i].name)) {
-                            removeItems.Add("Synced param: " + prms[i].name);
-                            if (perform) {
-                                prms.RemoveAt(i);
-                                i--;
+                var syncParams = VRCAvatarUtils.GetAvatarParams(avatar);
+                if (syncParams != null) {
+                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(syncParams)) {
+                        removeItems.Add("Avatar descriptor params setting");
+                        if (perform) VRCAvatarUtils.SetAvatarParams(avatar, null);
+                    } else {
+                        var prms = new List<VRCExpressionParameters.Parameter>(syncParams.parameters);
+                        for (var i = 0; i < prms.Count; i++) {
+                            if (ShouldRemoveParam != null && ShouldRemoveParam(prms[i].name)) {
+                                removeItems.Add("Synced param: " + prms[i].name);
+                                if (perform) {
+                                    prms.RemoveAt(i);
+                                    i--;
+                                }
                             }
                         }
+                        if (perform) syncParams.parameters = prms.ToArray();
                     }
-                    if (perform) syncParams.parameters = prms.ToArray();
                 }
-            }
 
-            void CheckMenu(VRCExpressionsMenu menu) {
-                for (var i = 0; i < menu.controls.Count; i++) {
-                    var shouldRemove =
-                        menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.SubMenu
-                        && menu.controls[i].subMenu
-                        && ShouldRemoveAsset != null
-                        && ShouldRemoveAsset(menu.controls[i].subMenu);
-                    shouldRemove |=
-                        menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.Toggle
-                        && menu.controls[i].parameter != null
-                        && ShouldRemoveParam != null
-                        && ShouldRemoveParam(menu.controls[i].parameter.name);
-                    if (shouldRemove) {
-                        removeItems.Add("Menu Item: " + menu.controls[i].name);
-                        if (perform) {
-                            menu.controls.RemoveAt(i);
-                            i--;
+                void CheckMenu(VRCExpressionsMenu menu) {
+                    for (var i = 0; i < menu.controls.Count; i++) {
+                        var shouldRemove =
+                            menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.SubMenu
+                            && menu.controls[i].subMenu
+                            && ShouldRemoveAsset != null
+                            && ShouldRemoveAsset(menu.controls[i].subMenu);
+                        shouldRemove |=
+                            menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.Toggle
+                            && menu.controls[i].parameter != null
+                            && ShouldRemoveParam != null
+                            && ShouldRemoveParam(menu.controls[i].parameter.name);
+                        if (shouldRemove) {
+                            removeItems.Add("Menu Item: " + menu.controls[i].name);
+                            if (perform) {
+                                menu.controls.RemoveAt(i);
+                                i--;
+                            }
+                        } else if (menu.controls[i].subMenu) {
+                            CheckMenu(menu.controls[i].subMenu);
                         }
-                    } else if (menu.controls[i].subMenu) {
-                        CheckMenu(menu.controls[i].subMenu);
                     }
                 }
-            }
 
-            var m = VRCAvatarUtils.GetAvatarMenu(avatar);
-            if (m != null) {
-                if (ShouldRemoveAsset != null && ShouldRemoveAsset(m)) {
-                    removeItems.Add("Avatar descriptor menu setting");
-                    if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
-                } else {
-                    CheckMenu(m);
+                var m = VRCAvatarUtils.GetAvatarMenu(avatar);
+                if (m != null) {
+                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(m)) {
+                        removeItems.Add("Avatar descriptor menu setting");
+                        if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
+                    } else {
+                        CheckMenu(m);
+                    }
                 }
             }
 
             return removeItems;
+        }
+        
+        public static void RemoveComponent(Component c) {
+            if (c.gameObject.GetComponents<Component>().Length == 2 && c.gameObject.transform.childCount == 0)
+                RemoveObject(c.gameObject);
+            else
+                Object.DestroyImmediate(c);
+        }
+        public static void RemoveObject(GameObject obj) {
+            if (!PrefabUtility.IsPartOfPrefabInstance(obj) || PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
+                Object.DestroyImmediate(obj);
+            } else {
+                foreach (var component in obj.GetComponentsInChildren<Component>(true)) {
+                    if (!(component is Transform)) {
+                        Object.DestroyImmediate(component);
+                    }
+                }
+                obj.name = "_deleted_" + obj.name;
+            }
         }
     }
 }
