@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using System.IO;
+using System.Threading;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -118,6 +120,20 @@ namespace VF.Builder {
                 go();
             } finally {
                 EditorApplication.UnlockReloadAssemblies();
+            }
+        }
+
+        /** In case you're running code that counts on the system locale being standardized... */
+        public static void WithStandardizedLocale(Action go) {
+            var oldCulture = Thread.CurrentThread.CurrentCulture;
+            var oldUICulture = Thread.CurrentThread.CurrentUICulture;
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+            try {
+                go();
+            } finally {
+                Thread.CurrentThread.CurrentCulture = oldCulture;
+                Thread.CurrentThread.CurrentUICulture = oldUICulture;
             }
         }
     }

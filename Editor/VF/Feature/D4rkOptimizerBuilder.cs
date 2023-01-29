@@ -38,7 +38,9 @@ namespace VF.Feature {
             }
 
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                optimizeMethod.Invoke(null, new object[] { avatarObject });
+                VRCFuryAssetDatabase.WithStandardizedLocale(() => {
+                    optimizeMethod.Invoke(null, new object[] { avatarObject });
+                });
             });
         }
     }
