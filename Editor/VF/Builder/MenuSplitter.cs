@@ -48,6 +48,7 @@ namespace VF.Builder {
         
         public static void SplitMenus(VRCExpressionsMenu root) {
             ForEachMenu(root, menu => {
+                Debug.Log("Menu " + AssetDatabase.GetAssetPath(menu) + " contains " + menu.controls.Count + "/" + VRCExpressionsMenu.MAX_CONTROLS + " controls");
                 if (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS) {
                     var nextPath = GetNextPageFilename(menu);
                     var nextMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
