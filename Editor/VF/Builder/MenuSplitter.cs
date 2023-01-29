@@ -47,13 +47,13 @@ namespace VF.Builder {
         }
         
         public static void SplitMenus(VRCExpressionsMenu root) {
+            var maxControlsPerPage = GetMaxControlsPerPage();
             ForEachMenu(root, menu => {
-                Debug.Log("Menu " + AssetDatabase.GetAssetPath(menu) + " contains " + menu.controls.Count + "/" + VRCExpressionsMenu.MAX_CONTROLS + " controls");
-                if (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS) {
+                if (menu.controls.Count > maxControlsPerPage) {
                     var nextPath = GetNextPageFilename(menu);
                     var nextMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                     AssetDatabase.CreateAsset(nextMenu, nextPath);
-                    while (menu.controls.Count > VRCExpressionsMenu.MAX_CONTROLS - 1) {
+                    while (menu.controls.Count > maxControlsPerPage - 1) {
                         nextMenu.controls.Insert(0, menu.controls[menu.controls.Count - 1]);
                         menu.controls.RemoveAt(menu.controls.Count - 1);
                     }
@@ -108,6 +108,15 @@ namespace VF.Builder {
             var assetPath = AssetDatabase.GetAssetPath(item.subMenu);
             if (assetPath == null) return false;
             return assetPath.Contains("_vfp");
+        }
+
+        private static int GetMaxControlsPerPage() {
+            var num = VRCExpressionsMenu.MAX_CONTROLS;
+            // In some SDK releases, this seems to be an unreasonable number. Auto-correct it to 8 in that case.
+            if (num > 1000) {
+                num = 8;
+            }
+            return num;
         }
     }
 }
