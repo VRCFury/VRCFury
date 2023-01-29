@@ -1,6 +1,6 @@
 # VRC Fury - All in one VRChat Prop / Inventory / Gesture Manager
 
-Set up your avatar's toggles, gestures, sliders, clothing, and more without ever touching a layer or menu!
+Set up your avatar's toggles, gestures, sliders, clothing, and more without ever touching a layer or menu! Drag props or clothing onto and off of your avatar without having to "install" them!
 
 ## Need Help?
 
