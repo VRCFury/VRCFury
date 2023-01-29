@@ -15,6 +15,7 @@ Set up your avatar's toggles, gestures, sliders, clothing, and more without ever
   * Prefabs can contain their own VRC Fury definitions
   * Distribute your avatar addons with everything needed for the user to add your animations / props to their menu.
   * No more complicated "copy my layers into your fx"! If their project has VRC Fury, they can just drop your prefab into their project, and upload!
+  * For more details, check out [VRCFury for Artists](https://gitlab.com/VRCFury/VRCFury/-/wikis/VRCFury-for-Artists)
 * **No more absolute paths for animations**
   * VRC Fury props defined in prefabs will automatically have their clips rewritten to work properly, no matter where in the hierarchy they are ultimately placed.
   * Write your animation clips from the root of the prefab, and VRCFury will handle rewriting it when it winds up on an avatar.
