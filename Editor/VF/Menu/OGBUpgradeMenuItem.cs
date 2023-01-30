@@ -154,7 +154,7 @@ namespace VF.Menu {
                         obj.name = fullName;
                         
                         if (name.ToLower().Contains("vag")) {
-                            AddBlendshapeIfPresent(avatarObject, ogb, "ORIFICE2", -0.03f, 0);
+                            AddBlendshapeIfPresent(avatarObject, ogb, "ORIFICE2", -0.06f, -0.03f);
                         }
                         if (OGBOrificeEditor.ShouldProbablyHaveTouchZone(ogb)) {
                             AddBlendshapeIfPresent(avatarObject, ogb, "TummyBulge", 0, 0.15f);
