@@ -56,6 +56,16 @@ namespace VF.Builder {
                 }
             });
         }
+
+        public static void ForEachTransition(AnimatorStateMachine root, Action<AnimatorTransitionBase> action) {
+            ForEachStateMachine(root, sm => {
+                foreach (var t in sm.entryTransitions) action(t);
+                foreach (var t in sm.anyStateTransitions) action(t);
+                ForEachState(sm, state => {
+                    foreach (var t in state.transitions) action(t);
+                });
+            });
+        }
         
         public static void ForEachClip(AnimatorState state, Action<AnimationClip, Action<Motion>> action) {
             var motions = new Stack<Tuple<Motion, Action<Motion>>>();

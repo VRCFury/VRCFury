@@ -260,7 +260,8 @@ namespace VF.Menu {
                     return layer == "DPS_Holes"
                            || layer == "DPS_Rings"
                            || layer == "HotDog"
-                           || layer == "DPS Orifice";
+                           || layer == "DPS Orifice"
+                           || layer == "Orifice Position";
                 },
                 ShouldRemoveParam: param => {
                     return param == "DPS_Hole"

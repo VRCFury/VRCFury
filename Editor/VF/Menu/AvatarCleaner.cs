@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VRC.SDK3.Avatars.Components;
@@ -53,35 +54,52 @@ namespace VF.Menu {
             if (avatar != null) {
                 foreach (var (controller, set, type) in VRCAvatarUtils.GetAllControllers(avatar)) {
                     if (controller == null) continue;
+                    var typeName = VRCFEnumUtils.GetName(type);
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {
-                        removeItems.Add("Avatar descriptor " + VRCFEnumUtils.GetName(type) + " playable layer");
+                        removeItems.Add("Avatar Controller: " + typeName);
                         if (perform) set(null);
                     } else {
                         var vfac = new VFAController(controller, type);
-                        for (var i = 0; i < controller.layers.Length; i++) {
-                            var layer = controller.layers[i];
-                            if (ShouldRemoveLayer != null && ShouldRemoveLayer(layer.name)) {
-                                removeItems.Add("Layer: " + layer.name);
+                        var removedLayers = new HashSet<AnimatorStateMachine>();
+                        if (ShouldRemoveLayer != null) {
+                            for (var i = 0; i < controller.layers.Length; i++) {
+                                var layer = controller.layers[i];
+                                if (!ShouldRemoveLayer(layer.name)) continue;
+                                removeItems.Add(typeName + " Layer: " + layer.name);
+                                removedLayers.Add(layer.stateMachine);
                                 if (perform) {
                                     vfac.RemoveLayer(i);
                                     i--;
                                 }
                             }
                         }
-                        // Skipping this for now, since some transitions may still be using these parameters
-                        // (also they're basically free, so keeping isn't a big deal)
-                        /*
-                        for (var i = 0; i < avatarFx.parameters.Length; i++) {
-                            var prm = avatarFx.parameters[i];
-                            if (ShouldRemoveParam != null && ShouldRemoveParam(prm.name)) {
-                                removeItems.Add("Parameter: " + prm.name);
+
+                        if (ShouldRemoveParam != null) {
+                            for (var i = 0; i < controller.parameters.Length; i++) {
+                                var prm = controller.parameters[i].name;
+                                if (!ShouldRemoveParam(prm)) continue;
+
+                                var prmUsed = false;
+                                foreach (var layer in controller.layers) {
+                                    if (removedLayers.Contains(layer.stateMachine)) continue;
+                                    AnimatorIterator.ForEachTransition(layer.stateMachine, t => {
+                                        foreach (var c in t.conditions) {
+                                            if (c.parameter == prm) {
+                                                prmUsed = true;
+                                            }
+                                        }
+                                    });
+                                }
+                                if (prmUsed) continue;
+                            
+                                removeItems.Add(typeName + " Parameter: " + prm);
                                 if (perform) {
-                                    avatarFx.RemoveParameter(i);
+                                    controller.RemoveParameter(i);
                                     i--;
                                 }
                             }
                         }
-                        */
+
                         if (perform) EditorUtility.SetDirty(controller);
                     }
                 }
@@ -89,13 +107,13 @@ namespace VF.Menu {
                 var syncParams = VRCAvatarUtils.GetAvatarParams(avatar);
                 if (syncParams != null) {
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(syncParams)) {
-                        removeItems.Add("Avatar descriptor params setting");
+                        removeItems.Add("All Synced Params");
                         if (perform) VRCAvatarUtils.SetAvatarParams(avatar, null);
                     } else {
                         var prms = new List<VRCExpressionParameters.Parameter>(syncParams.parameters);
                         for (var i = 0; i < prms.Count; i++) {
                             if (ShouldRemoveParam != null && ShouldRemoveParam(prms[i].name)) {
-                                removeItems.Add("Synced param: " + prms[i].name);
+                                removeItems.Add("Synced Param: " + prms[i].name);
                                 if (perform) {
                                     prms.RemoveAt(i);
                                     i--;
@@ -110,8 +128,12 @@ namespace VF.Menu {
                     }
                 }
 
-                void CheckMenu(VRCExpressionsMenu menu) {
+                void CheckMenu(VRCExpressionsMenu menu, IList<string> path) {
                     for (var i = 0; i < menu.controls.Count; i++) {
+                        var controlPath = new List<string>();
+                        controlPath.AddRange(path);
+                        controlPath.Add(menu.controls[i].name);
+
                         var shouldRemove =
                             menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.SubMenu
                             && menu.controls[i].subMenu
@@ -123,14 +145,14 @@ namespace VF.Menu {
                             && ShouldRemoveParam != null
                             && ShouldRemoveParam(menu.controls[i].parameter.name);
                         if (shouldRemove) {
-                            removeItems.Add("Menu Item: " + menu.controls[i].name);
+                            removeItems.Add("Menu Item: " + string.Join("/", controlPath));
                             if (perform) {
                                 menu.controls.RemoveAt(i);
                                 i--;
                                 EditorUtility.SetDirty(menu);
                             }
                         } else if (menu.controls[i].subMenu) {
-                            CheckMenu(menu.controls[i].subMenu);
+                            CheckMenu(menu.controls[i].subMenu, controlPath);
                         }
                     }
                 }
@@ -138,10 +160,10 @@ namespace VF.Menu {
                 var m = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (m != null) {
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(m)) {
-                        removeItems.Add("Avatar descriptor menu setting");
+                        removeItems.Add("All Avatar Menus");
                         if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
                     } else {
-                        CheckMenu(m);
+                        CheckMenu(m, new string[]{});
                     }
                 }
             }
