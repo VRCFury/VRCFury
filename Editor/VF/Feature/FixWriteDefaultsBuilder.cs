@@ -178,7 +178,10 @@ namespace VF.Feature {
                 }
             }
 
-            var shouldBeOnIfWeAreInControl = directBlendTrees > 0 || additiveLayers > 0 || onStates.Count > offStates.Count;
+            var shouldBeOnIfWeAreInControl =
+                directBlendTrees > 0 ||
+                //additiveLayers > 0 ||
+                onStates.Count > offStates.Count;
             var shouldBeOnIfWeAreNotInControl = onStates.Count > offStates.Count;
             var weirdStates = shouldBeOnIfWeAreInControl ? offStates : onStates;
             var outList = new List<string>();
