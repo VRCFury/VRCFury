@@ -241,6 +241,7 @@ public static class VRCFuryEditorUtils {
         int labelWidth = 100,
         Func<string,string> formatEnum = null
     ) {
+        if (prop == null) return WrappedLabel("Prop is null");
         VisualElement f = null;
         var setMargin = true;
         var labelHandled = false;

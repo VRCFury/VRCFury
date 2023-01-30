@@ -37,25 +37,34 @@ namespace VF.Feature {
                     });
                 }
 
-                if (c.enableDepthAction && c.depthAction != null && !c.depthAction.IsEmpty()) {
-                    var maxDepth = c.depthActionLength;
+                VFABool contactingRootParam = null;
+                var actionNum = 0;
+                foreach (var depthAction in c.depthActions) {
+                    actionNum++;
+                    var prefix = name + actionNum;
+                    if (depthAction.state == null || depthAction.state.IsEmpty()) continue;
+
+                    var maxDepth = depthAction.maxDepth;
                     if (maxDepth <= 0) maxDepth = 0.25f;
 
                     var fx = GetFx();
-                    var depthParam = fx.NewFloat(name + "/AnimDepth");
-                    var contactingRootParam = fx.NewBool(name + "/AnimContacting");
 
-                    OGBUtils.AddReceiver(c.gameObject, forward * -maxDepth, depthParam.Name(), "AnimInside", maxDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:c.depthActionSelf, localOnly:true);
-                    OGBUtils.AddReceiver(c.gameObject, Vector3.zero, contactingRootParam.Name(), "AnimRoot", 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:c.depthActionSelf, localOnly:true, type: ContactReceiver.ReceiverType.Constant);
+                    if (contactingRootParam == null) {
+                        contactingRootParam = fx.NewBool(name + "/AnimContacting");
+                        OGBUtils.AddReceiver(c.gameObject, Vector3.zero, contactingRootParam.Name(), "AnimRoot", 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true, type: ContactReceiver.ReceiverType.Constant);
+                    }
+                    
+                    var depthParam = fx.NewFloat(prefix + "/AnimDepth");
+                    OGBUtils.AddReceiver(c.gameObject, forward * -maxDepth, depthParam.Name(), "AnimInside" + actionNum, maxDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true);
 
-                    var layer = fx.NewLayer("Depth Animation for " + name);
+                    var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
                     var off = layer.NewState("Off");
                     var on = layer.NewState("On");
 
-                    var clip = LoadState(name, c.depthAction);
+                    var clip = LoadState(prefix, depthAction.state);
                     var frames = ClipBuilder.GetLengthInFrames(clip);
                     if (frames <= 1) {
-                        var tree = manager.GetClipStorage().NewBlendTree(name + " tree");
+                        var tree = manager.GetClipStorage().NewBlendTree(prefix + " tree");
                         tree.blendType = BlendTreeType.Simple1D;
                         tree.useAutomaticThresholds = false;
                         tree.blendParameter = depthParam.Name();

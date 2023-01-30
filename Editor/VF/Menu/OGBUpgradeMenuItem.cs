@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -7,7 +6,9 @@ using UnityEngine;
 using UnityEngine.Animations;
 using VF.Inspector;
 using VF.Model;
+using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
+using Action = System.Action;
 
 namespace VF.Menu {
     public class OGBUpgradeMenuItem {
@@ -147,6 +148,13 @@ namespace VF.Menu {
                         ogb.name = name;
                         ogb.addMenuItem = true;
                         obj.name = fullName;
+                        
+                        if (name.ToLower().Contains("vag")) {
+                            AddBlendshapeIfPresent(avatarObject, ogb, "ORIFICE2", 0.03f);
+                        }
+                        if (OGBOrificeEditor.ShouldProbablyHaveTouchZone(ogb)) {
+                            AddBlendshapeIfPresent(avatarObject, ogb, "TummyBulge", 0.15f);
+                        }
                     }
                 }
             }
@@ -257,6 +265,10 @@ namespace VF.Menu {
                     return false;
                 },
                 ShouldRemoveLayer: layer => {
+                    var lower = layer.ToLower();
+                    if (oldParentsToDelete.Count > 0 && lower.Contains("tps") && lower.Contains("orifice")) {
+                        return true;
+                    }
                     return layer == "DPS_Holes"
                            || layer == "DPS_Rings"
                            || layer == "HotDog"
@@ -324,6 +336,35 @@ namespace VF.Menu {
             if (obj.name == "__dps_lightobject") return IsDps.RING;
 
             return IsDps.NO;
+        }
+
+        private static void AddBlendshapeIfPresent(
+            GameObject avatarObject,
+            OGBOrifice orf,
+            string name,
+            float maxDepth
+        ) {
+            if (HasBlendshape(avatarObject, name)) {
+                orf.depthActions.Add(new OGBOrifice.DepthAction() {
+                    state = new State() {
+                        actions = {
+                            new BlendShapeAction {
+                                blendShape = name
+                            }
+                        }
+                    },
+                    maxDepth = maxDepth
+                });
+            }
+        }
+        private static bool HasBlendshape(GameObject avatarObject, string name) {
+            var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            foreach (var skin in skins) {
+                var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(name);
+                if (blendShapeIndex < 0) continue;
+                return true;
+            }
+            return false;
         }
     }
 }

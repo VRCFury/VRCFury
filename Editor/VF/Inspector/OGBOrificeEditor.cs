@@ -26,23 +26,17 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
 
-            var animEnabledProp = serializedObject.FindProperty("enableDepthAction");
-            container.Add(VRCFuryEditorUtils.Prop(animEnabledProp, "Enable penetrated animation?"));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(
-                () => {
-                    var c = new VisualElement();
-                    if (animEnabledProp.boolValue) {
-                        c.Add(VRCFuryEditorUtils.Info(
-                            "If you provide an animation clip with more than 2 frames, the clip will run from start " +
-                            "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
-                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("depthAction"), "Penetrated state"));
-                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("depthActionLength"), "Depth of maximum penetration in meters (0 for default)"));
-                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("depthActionSelf"), "Enable animation for penetrators on this same avatar?"));
-                    }
-                    return c;
-                },
-                animEnabledProp
-            ));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when penetrated:"));
+            container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
+                var c = new VisualElement();
+                c.Add(VRCFuryEditorUtils.Info(
+                    "If you provide an animation clip with more than 2 frames, the clip will run from start " +
+                    "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state"), "Penetrated state"));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("maxDepth"), "Depth of maximum penetration in meters (0 for default)"));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableSelf"), "Enable animation for penetrators on this same avatar?"));
+                return c;
+            }));
 
             return container;
         }
