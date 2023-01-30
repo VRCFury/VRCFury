@@ -52,6 +52,7 @@ namespace VF.Menu {
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
                 foreach (var (controller, set, type) in VRCAvatarUtils.GetAllControllers(avatar)) {
+                    if (controller == null) continue;
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {
                         removeItems.Add("Avatar descriptor " + VRCFEnumUtils.GetName(type) + " playable layer");
                         if (perform) set(null);
@@ -67,6 +68,8 @@ namespace VF.Menu {
                                 }
                             }
                         }
+                        // Skipping this for now, since some transitions may still be using these parameters
+                        // (also they're basically free, so keeping isn't a big deal)
                         /*
                         for (var i = 0; i < avatarFx.parameters.Length; i++) {
                             var prm = avatarFx.parameters[i];
