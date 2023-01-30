@@ -30,6 +30,7 @@ namespace VF.Model {
             public State state;
             public float maxDepth;
             public bool enableSelf;
+            public bool ResetMePlease;
         }
     }
 }
