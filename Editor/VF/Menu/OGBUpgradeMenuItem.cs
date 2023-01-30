@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -45,6 +46,9 @@ namespace VF.Menu {
                 "Upgrade complete!",
                 "Ok"
             );
+
+            SceneView sv = EditorWindow.GetWindow<SceneView>();
+            if (sv != null) sv.drawGizmos = true;
         }
 
         public static bool Check() {
