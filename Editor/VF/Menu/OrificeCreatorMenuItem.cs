@@ -58,9 +58,11 @@ namespace VF.Menu {
 
             if (pen) {
                 OGBPenetratorEditor.Bake(pen, onlySenders:true);
+                Object.DestroyImmediate(pen);
             }
             if (orf) {
                 OGBOrificeEditor.Bake(orf, onlySenders:true);
+                Object.DestroyImmediate(orf);
             }
         }
     }

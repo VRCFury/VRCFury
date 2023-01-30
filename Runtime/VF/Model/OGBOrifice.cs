@@ -21,5 +21,10 @@ namespace VF.Model {
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
         public float length;
         public bool addMenuItem = false;
+
+        public bool enableDepthAction;
+        public State depthAction;
+        public float depthActionLength;
+        public bool depthActionSelf;
     }
 }

@@ -26,6 +26,24 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
 
+            var animEnabledProp = serializedObject.FindProperty("enableDepthAction");
+            container.Add(VRCFuryEditorUtils.Prop(animEnabledProp, "Enable penetrated animation?"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(
+                () => {
+                    var c = new VisualElement();
+                    if (animEnabledProp.boolValue) {
+                        c.Add(VRCFuryEditorUtils.Info(
+                            "If you provide an animation clip with more than 2 frames, the clip will run from start " +
+                            "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
+                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("depthAction"), "Penetrated state"));
+                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("depthActionLength"), "Depth of maximum penetration in meters (0 for default)"));
+                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("depthActionSelf"), "Enable animation for penetrators on this same avatar?"));
+                    }
+                    return c;
+                },
+                animEnabledProp
+            ));
+
             return container;
         }
         
@@ -84,7 +102,7 @@ namespace VF.Inspector {
             );
         }
         
-        public static void Bake(OGBOrifice orifice, List<string> usedNames = null, bool onlySenders = false) {
+        public static Tuple<string,Vector3> Bake(OGBOrifice orifice, List<string> usedNames = null, bool onlySenders = false) {
             if (usedNames == null) usedNames = new List<string>();
             var obj = orifice.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
@@ -173,8 +191,8 @@ namespace VF.Inspector {
                 frontLight.shadows = LightShadows.None;
                 frontLight.renderMode = LightRenderMode.ForceVertex;
             }
-            
-            DestroyImmediate(orifice);
+
+            return Tuple.Create(name, forward);
         }
 
         private static Tuple<float, float> GetHandTouchZoneSize(OGBOrifice orifice) {
