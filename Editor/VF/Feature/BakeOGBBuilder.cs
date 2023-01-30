@@ -37,25 +37,27 @@ namespace VF.Feature {
                     });
                 }
 
-                VFABool contactingRootParam = null;
                 var actionNum = 0;
                 foreach (var depthAction in c.depthActions) {
                     actionNum++;
                     var prefix = name + actionNum;
                     if (depthAction.state == null || depthAction.state.IsEmpty()) continue;
 
+                    var minDepth = depthAction.minDepth;
+
                     var maxDepth = depthAction.maxDepth;
                     if (maxDepth <= 0) maxDepth = 0.25f;
+                    if (maxDepth < minDepth) continue;
+
+                    var length = maxDepth - minDepth;
 
                     var fx = GetFx();
 
-                    if (contactingRootParam == null) {
-                        contactingRootParam = fx.NewBool(name + "/AnimContacting");
-                        OGBUtils.AddReceiver(c.gameObject, Vector3.zero, contactingRootParam.Name(), "AnimRoot", 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true, type: ContactReceiver.ReceiverType.Constant);
-                    }
+                    var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
+                    OGBUtils.AddReceiver(c.gameObject, forward * -minDepth, contactingRootParam.Name(), "AnimRoot", 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true, type: ContactReceiver.ReceiverType.Constant);
                     
                     var depthParam = fx.NewFloat(prefix + "/AnimDepth");
-                    OGBUtils.AddReceiver(c.gameObject, forward * -maxDepth, depthParam.Name(), "AnimInside" + actionNum, maxDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true);
+                    OGBUtils.AddReceiver(c.gameObject, forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true);
 
                     var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
                     var off = layer.NewState("Off");

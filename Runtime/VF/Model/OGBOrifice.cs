@@ -28,6 +28,7 @@ namespace VF.Model {
         [Serializable]
         public class DepthAction {
             public State state;
+            public float minDepth;
             public float maxDepth;
             public bool enableSelf;
             public bool ResetMePlease;
