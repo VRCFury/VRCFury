@@ -46,8 +46,8 @@ namespace VF.Feature {
                     var minDepth = depthAction.minDepth;
 
                     var maxDepth = depthAction.maxDepth;
-                    if (maxDepth <= 0) maxDepth = 0.25f;
-                    if (maxDepth < minDepth) continue;
+                    if (maxDepth <= minDepth) maxDepth = 0.25f;
+                    if (maxDepth <= minDepth) continue;
 
                     var length = maxDepth - minDepth;
 
