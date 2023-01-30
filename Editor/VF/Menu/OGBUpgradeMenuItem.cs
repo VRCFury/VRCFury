@@ -10,7 +10,7 @@ using VF.Model;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Menu {
-    public class DPSContactUpgradeBuilder {
+    public class OGBUpgradeMenuItem {
         private static string dialogTitle = "OGB Upgrader";
         
         public static void Run() {

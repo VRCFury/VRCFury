@@ -25,19 +25,11 @@ public class VRCFuryBuilder {
     public bool SafeRun(GameObject avatarObject, GameObject originalObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-        var result = true;
-        try {
+        var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 Run(avatarObject, originalObject);
             });
-        } catch(Exception e) {
-            result = false;
-            Debug.LogException(e);
-            while (e is TargetInvocationException) {
-                e = (e as TargetInvocationException).InnerException;
-            }
-            EditorUtility.DisplayDialog("VRCFury Error", "VRCFury encountered an error.\n\n" + e.Message, "Ok");
-        }
+        });
 
         AssetDatabase.SaveAssets();
         EditorUtility.ClearProgressBar();

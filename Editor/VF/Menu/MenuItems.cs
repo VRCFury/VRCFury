@@ -1,4 +1,5 @@
 using UnityEditor;
+using VF.Builder.Exceptions;
 
 namespace VF.Menu {
     public class MenuItems {
@@ -32,17 +33,21 @@ namespace VF.Menu {
 
         [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", priority = 1201)]
         private static void Run() {
-            DPSContactUpgradeBuilder.Run();
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                OGBUpgradeMenuItem.Run();
+            });
         }
 
         [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", true)]
         private static bool Check() {
-            return DPSContactUpgradeBuilder.Check();
+            return OGBUpgradeMenuItem.Check();
         }
         
         [MenuItem("Tools/VRCFury/Create Orifice", priority = 1202)]
         public static void RunHole() {
-            OrificeCreatorMenuItem.Create();
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                OrificeCreatorMenuItem.Create();
+            });
         }
 
         [MenuItem("Tools/VRCFury/Bake OGB Component", priority = 1205)]
@@ -63,7 +68,9 @@ namespace VF.Menu {
         
         [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", priority = 1401)]
         private static void NukeZawooParts() {
-            ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
+            });
         }
         
         [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", true)]

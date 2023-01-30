@@ -9,7 +9,7 @@ namespace VF.Feature {
     public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
         [FeatureBuilderAction(FeatureOrder.AddOgbComponents)]
         public void Apply() {
-            DPSContactUpgradeBuilder.Apply(featureBaseObject, false);
+            OGBUpgradeMenuItem.Apply(featureBaseObject, false);
         }
         
         public override string GetEditorTitle() {

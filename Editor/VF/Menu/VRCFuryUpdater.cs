@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Inspector;
 
 namespace VF.Menu {
@@ -44,7 +45,7 @@ namespace VF.Menu {
     public static class VRCFuryUpdater {
 
     public static void Upgrade() {
-        WithErrorPopup(() => {
+        VRCFExceptionUtils.ErrorDialogBoundary(() => {
             var client = new WebClient();
             var downloadUrl = "https://gitlab.com/VRCFury/VRCFury/-/archive/main/VRCFury-main.zip";
             var uri = new Uri(downloadUrl);
@@ -56,7 +57,7 @@ namespace VF.Menu {
     }
 
     private static void DownloadFileCallback(object sender, AsyncCompletedEventArgs e) {
-        WithErrorPopup(() => {
+        VRCFExceptionUtils.ErrorDialogBoundary(() => {
             if (e.Cancelled) {
                 throw new Exception("File download was cancelled");
             }
@@ -145,15 +146,6 @@ namespace VF.Menu {
                 "Unity is now recompiling VRCFury.\n\nYou will receive another message when the upgrade is complete.",
                 "Ok");
         });
-    }
-
-    private static void WithErrorPopup(Action stuff) {
-        try {
-            stuff();
-        } catch(Exception e) {
-            Debug.LogException(e);
-            EditorUtility.DisplayDialog("VRCFury Updater", "An error occurred. Check the unity console.", "Ok");
-        }
     }
 }
 
