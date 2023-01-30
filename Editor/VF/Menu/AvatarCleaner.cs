@@ -79,19 +79,11 @@ namespace VF.Menu {
                                 var prm = controller.parameters[i].name;
                                 if (!ShouldRemoveParam(prm)) continue;
 
-                                var prmUsed = false;
-                                foreach (var layer in controller.layers) {
-                                    if (removedLayers.Contains(layer.stateMachine)) continue;
-                                    AnimatorIterator.ForEachTransition(layer.stateMachine, t => {
-                                        foreach (var c in t.conditions) {
-                                            if (c.parameter == prm) {
-                                                prmUsed = true;
-                                            }
-                                        }
-                                    });
-                                }
+                                var prmUsed = controller.layers
+                                    .Where(layer => !removedLayers.Contains(layer.stateMachine))
+                                    .Any(layer => IsParamUsed(layer, prm));
                                 if (prmUsed) continue;
-                            
+
                                 removeItems.Add(typeName + " Parameter: " + prm);
                                 if (perform) {
                                     controller.RemoveParameter(i);
@@ -188,6 +180,26 @@ namespace VF.Menu {
                 }
                 obj.name = "_deleted_" + obj.name;
             }
+        }
+
+        private static bool IsParamUsed(AnimatorControllerLayer layer, string param) {
+            var isUsed = false;
+            AnimatorIterator.ForEachTransition(layer.stateMachine, t => {
+                foreach (var c in t.conditions) {
+                    isUsed |= c.parameter == param;
+                }
+            });
+            AnimatorIterator.ForEachState(layer.stateMachine, state => {
+                isUsed |= state.speedParameter == param;
+                isUsed |= state.cycleOffsetParameter == param;
+                isUsed |= state.mirrorParameter == param;
+                isUsed |= state.timeParameter == param;
+            });
+            AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
+                isUsed |= tree.blendParameter == param;
+                isUsed |= tree.blendParameterY == param;
+            });
+            return isUsed;
         }
     }
 }
