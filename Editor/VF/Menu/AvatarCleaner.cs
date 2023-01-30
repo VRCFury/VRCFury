@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -50,15 +51,14 @@ namespace VF.Menu {
 
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
-                var avatarFx = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
-                if (avatarFx != null) {
-                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(avatarFx)) {
-                        removeItems.Add("Avatar descriptor FX layer setting");
-                        if (perform) VRCAvatarUtils.SetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX, null);
+                foreach (var (controller, set, type) in VRCAvatarUtils.GetAllControllers(avatar)) {
+                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {
+                        removeItems.Add("Avatar descriptor " + VRCFEnumUtils.GetName(type) + " playable layer");
+                        if (perform) set(null);
                     } else {
-                        var vfac = new VFAController(avatarFx, VRCAvatarDescriptor.AnimLayerType.FX);
-                        for (var i = 0; i < avatarFx.layers.Length; i++) {
-                            var layer = avatarFx.layers[i];
+                        var vfac = new VFAController(controller, type);
+                        for (var i = 0; i < controller.layers.Length; i++) {
+                            var layer = controller.layers[i];
                             if (ShouldRemoveLayer != null && ShouldRemoveLayer(layer.name)) {
                                 removeItems.Add("Layer: " + layer.name);
                                 if (perform) {
@@ -67,6 +67,7 @@ namespace VF.Menu {
                                 }
                             }
                         }
+                        /*
                         for (var i = 0; i < avatarFx.parameters.Length; i++) {
                             var prm = avatarFx.parameters[i];
                             if (ShouldRemoveParam != null && ShouldRemoveParam(prm.name)) {
@@ -77,6 +78,8 @@ namespace VF.Menu {
                                 }
                             }
                         }
+                        */
+                        if (perform) EditorUtility.SetDirty(controller);
                     }
                 }
 
@@ -96,7 +99,11 @@ namespace VF.Menu {
                                 }
                             }
                         }
-                        if (perform) syncParams.parameters = prms.ToArray();
+
+                        if (perform) {
+                            syncParams.parameters = prms.ToArray();
+                            EditorUtility.SetDirty(syncParams);
+                        }
                     }
                 }
 
@@ -117,6 +124,7 @@ namespace VF.Menu {
                             if (perform) {
                                 menu.controls.RemoveAt(i);
                                 i--;
+                                EditorUtility.SetDirty(menu);
                             }
                         } else if (menu.controls[i].subMenu) {
                             CheckMenu(menu.controls[i].subMenu);

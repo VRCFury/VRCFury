@@ -25,7 +25,7 @@ namespace VF.Builder {
                     : null;
                 Action<AnimatorController> Set = c => {
                     avatar.customizeAnimationLayers = true;
-                    layer.isDefault = false;
+                    layer.isDefault = c == null;
                     layer.animatorController = c;
                     layers[layerNum] = layer;
                     EditorUtility.SetDirty(avatar);
