@@ -113,11 +113,13 @@ public class VRCFuryBuilder {
     ) {
         var currentModelNumber = 0;
         var currentModelName = "";
+        var currentMenuSortPosition = 0;
         var manager = new AvatarManager(
             avatarObject,
             tmpDir,
             () => currentModelNumber,
-            () => currentModelName
+            () => currentModelName,
+            () => currentMenuSortPosition
         );
         var clipBuilder = new ClipBuilder(avatarObject);
         
@@ -126,12 +128,17 @@ public class VRCFuryBuilder {
         var totalModelCount = 0;
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
+        var menuSortPositionByBuilder = new Dictionary<FeatureBuilder, int>();
 
-        void AddBuilder(FeatureBuilder builder, GameObject configObject) {
+        void AddBuilder(FeatureBuilder builder, GameObject configObject, int menuSortPosition = -1) {
             builder.featureBaseObject = configObject;
             builder.tmpDir = tmpDir;
-            builder.addOtherFeature = m => AddModel(m, configObject);
             builder.uniqueModelNum = ++totalModelCount;
+            if (menuSortPosition < 0) menuSortPosition = builder.uniqueModelNum;
+            menuSortPositionByBuilder[builder] = menuSortPosition;
+            builder.addOtherFeature = m => {
+                AddModel(m, configObject, menuSortPosition);
+            };
             builder.allFeaturesInRun = collectedModels;
             builder.allBuildersInRun = collectedBuilders;
             builder.manager = manager;
@@ -145,12 +152,12 @@ public class VRCFuryBuilder {
             totalActionCount += builderActions.Count;
         }
 
-        void AddModel(FeatureModel model, GameObject configObject) {
+        void AddModel(FeatureModel model, GameObject configObject, int menuSortPosition = -1) {
             collectedModels.Add(model);
-            
+
             var builder = FeatureFinder.GetBuilder(model, configObject);
             if (builder == null) return;
-            AddBuilder(builder, configObject);
+            AddBuilder(builder, configObject, menuSortPosition);
         }
 
         progress.Progress(0, "Collecting features");
@@ -182,6 +189,7 @@ public class VRCFuryBuilder {
             
             currentModelNumber = builder.uniqueModelNum;
             currentModelName = action.GetName() + " (Feature " + currentModelNumber + ") from " + configPath;
+            currentMenuSortPosition = menuSortPositionByBuilder[builder];
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);

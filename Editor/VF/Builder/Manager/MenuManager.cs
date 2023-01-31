@@ -12,19 +12,30 @@ namespace VF.Builder {
     public class MenuManager {
         private readonly VRCExpressionsMenu rootMenu;
         private readonly string tmpDir;
+        private readonly Func<int> currentMenuSortPosition;
+        private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions
+            = new Dictionary<VRCExpressionsMenu.Control, int>();
 
-        public MenuManager(VRCExpressionsMenu menu, string tmpDir) {
+        public MenuManager(VRCExpressionsMenu menu, string tmpDir, Func<int> currentMenuSortPosition) {
             rootMenu = menu;
             this.tmpDir = tmpDir;
+            this.currentMenuSortPosition = currentMenuSortPosition;
         }
 
         public VRCExpressionsMenu GetRaw() {
             return rootMenu;
         }
+
+        private VRCExpressionsMenu.Control NewControl() {
+            var control = new VRCExpressionsMenu.Control();
+            sortPositions[control] = currentMenuSortPosition();
+            return control;
+        }
+
         private VRCExpressionsMenu.Control NewMenuItem(string path) {
             path = path.Replace("\\/", "REALSLASH");
             var split = path.Split('/').Select(s => s.Replace("REALSLASH", "/")).ToArray();
-            var control = new VRCExpressionsMenu.Control();
+            var control = NewControl();
             control.name = split[split.Length-1];
             var submenu = GetSubmenu(Slice(split, split.Length-1));
             submenu.controls.Add(control);
@@ -59,7 +70,7 @@ namespace VF.Builder {
                     if (createFromControl != null && i == path.Length - 1) {
                         folderControl = CloneControl(createFromControl, rewriteParamName);
                     } else {
-                        folderControl = new VRCExpressionsMenu.Control();
+                        folderControl = NewControl();
                     }
                     folderControl.name = folderName;
                     folderControl.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
@@ -164,19 +175,21 @@ namespace VF.Builder {
         }
 
         private VRCExpressionsMenu.Control CloneControl(VRCExpressionsMenu.Control from, Func<string,string> rewriteParamName) {
-            return new VRCExpressionsMenu.Control {
-                name = from.name,
-                icon = from.icon,
-                type = from.type,
-                parameter = CloneControlParam(from.parameter, rewriteParamName),
-                value = from.value,
-                style = from.style,
-                subMenu = from.subMenu,
-                labels = from.labels,
-                subParameters = from.subParameters == null ? null : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
+            var control = NewControl();
+            control.name = from.name;
+            control.icon = from.icon;
+            control.type = from.type;
+            control.parameter = CloneControlParam(from.parameter, rewriteParamName);
+            control.value = from.value;
+            control.style = from.style;
+            control.subMenu = from.subMenu;
+            control.labels = from.labels;
+            control.subParameters = from.subParameters == null
+                ? null
+                : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
                     .Select(p => CloneControlParam(p, rewriteParamName))
-                    .ToArray(),
-            };
+                    .ToArray();
+            return control;
         }
         private VRCExpressionsMenu.Control.Parameter CloneControlParam(VRCExpressionsMenu.Control.Parameter from, Func<string,string> rewriteParamName) {
             if (from == null) return null;
@@ -187,6 +200,16 @@ namespace VF.Builder {
 
         public static string[] Slice(string[] arr, int count) {
             return new ArraySegment<string>(arr, 0, count).ToArray();
+        }
+
+        public void SortMenu() {
+            MenuSplitter.ForEachMenu(rootMenu, (menu, path) => {
+                menu.controls.Sort((a, b) => {
+                    sortPositions.TryGetValue(a, out var aPos);
+                    sortPositions.TryGetValue(b, out var bPos);
+                    return aPos - bPos;
+                });
+            });
         }
 
     }

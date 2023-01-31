@@ -15,18 +15,21 @@ namespace VF.Builder {
         private readonly string tmpDir;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureNameProvider;
+        private readonly Func<int> currentMenuSortPosition;
 
         public AvatarManager(
             GameObject avatarObject,
             string tmpDir,
             Func<int> currentFeatureNumProvider,
-            Func<string> currentFeatureNameProvider
+            Func<string> currentFeatureNameProvider,
+            Func<int> currentMenuSortPosition
         ) {
             this.avatarObject = avatarObject;
             this.avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             this.tmpDir = tmpDir;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureNameProvider = currentFeatureNameProvider;
+            this.currentMenuSortPosition = currentMenuSortPosition;
         }
 
         private MenuManager _menu;
@@ -34,7 +37,8 @@ namespace VF.Builder {
             if (_menu == null) {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                 VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarObject.name);
-                _menu = new MenuManager(menu, tmpDir);
+                var initializing = true;
+                _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : currentMenuSortPosition());
 
                 var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (origMenu != null) {
@@ -43,6 +47,7 @@ namespace VF.Builder {
                 }
                 
                 VRCAvatarUtils.SetAvatarMenu(avatar, menu);
+                initializing = false;
             }
             return _menu;
         }
@@ -108,6 +113,7 @@ namespace VF.Builder {
 
         public void Finish(OverrideMenuSettings menuSettings) {
             if (_menu != null) {
+                _menu.SortMenu();
                 MenuSplitter.SplitMenus(_menu.GetRaw(), menuSettings);
                 MenuSplitter.FixNulls(_menu.GetRaw());
             }
