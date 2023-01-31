@@ -194,7 +194,8 @@ public class VRCFuryBuilder {
         }
         
         progress.Progress(1, "Finalizing avatar changes");
-        manager.Finish();
+        var menuSettings = collectedModels.OfType<OverrideMenuSettings>().FirstOrDefault();
+        manager.Finish(menuSettings);
     }
 }
 

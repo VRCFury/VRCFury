@@ -86,15 +86,16 @@ namespace VF.Builder {
             control.value = value;
             control.icon = icon;
         }
-        public void NewMenuSlider(string path, VFANumber param) {
+        public void NewMenuSlider(string path, VFANumber param, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
             var menuParam = new VRCExpressionsMenu.Control.Parameter {
                 name = param.Name()
             };
             control.subParameters = new[]{menuParam};
+            control.icon = icon;
         }
-        public void NewMenuPuppet(string path, VFANumber x, VFANumber y) {
+        public void NewMenuPuppet(string path, VFANumber x, VFANumber y, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
             var menuParamX = new VRCExpressionsMenu.Control.Parameter();
@@ -102,6 +103,7 @@ namespace VF.Builder {
             var menuParamY = new VRCExpressionsMenu.Control.Parameter();
             menuParamY.name = (y != null) ? y.Name() : "";
             control.subParameters = new[]{menuParamX, menuParamY};
+            control.icon = icon;
         }
 
         private VRCExpressionsMenu CreateNewMenu(string[] path) {

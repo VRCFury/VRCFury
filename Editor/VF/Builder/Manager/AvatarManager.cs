@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -105,9 +106,9 @@ namespace VF.Builder {
             return _clipStorage;
         }
 
-        public void Finish() {
+        public void Finish(OverrideMenuSettings menuSettings) {
             if (_menu != null) {
-                MenuSplitter.SplitMenus(_menu.GetRaw());
+                MenuSplitter.SplitMenus(_menu.GetRaw(), menuSettings);
                 MenuSplitter.FixNulls(_menu.GetRaw());
             }
 

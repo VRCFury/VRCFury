@@ -261,6 +261,8 @@ namespace VF.Model.Feature {
         public List<Stop> stops = new List<Stop>();
         public float defaultX = 0;
         public float defaultY = 0;
+        public bool enableIcon;
+        public Texture2D icon;
         
         [Serializable]
         public class Stop {
@@ -550,6 +552,13 @@ namespace VF.Model.Feature {
     public class SetIcon : NewFeatureModel {
         public string path;
         public Texture2D icon;
+    }
+    
+    [Serializable]
+    [NoBuilder]
+    public class OverrideMenuSettings : NewFeatureModel {
+        public string nextText;
+        public Texture2D nextIcon;
     }
     
 

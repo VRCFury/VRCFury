@@ -51,7 +51,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 saved = model.saved,
                 slider = true,
                 stops = stops,
-                defaultX = model.slider && model.defaultOn ? model.defaultSliderValue : 0
+                defaultX = model.slider && model.defaultOn ? model.defaultSliderValue : 0,
+                enableIcon = model.enableIcon,
+                icon = model.icon,
             };
             addOtherFeature(puppet);
             return;

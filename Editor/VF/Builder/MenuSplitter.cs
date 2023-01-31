@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
@@ -78,7 +79,13 @@ namespace VF.Builder {
             });
         }
         
-        public static void SplitMenus(VRCExpressionsMenu root) {
+        public static void SplitMenus(VRCExpressionsMenu root, OverrideMenuSettings menuSettings = null) {
+            var nextText = "Next";
+            Texture2D nextIcon = null;
+            if (menuSettings != null) {
+                if (!string.IsNullOrEmpty(menuSettings.nextText)) nextText = menuSettings.nextText;
+                if (menuSettings.nextIcon != null) nextIcon = menuSettings.nextIcon;
+            }
             var maxControlsPerPage = GetMaxControlsPerPage();
             ForEachMenu(root, (menu, path) => {
                 if (menu.controls.Count > maxControlsPerPage) {
@@ -90,7 +97,8 @@ namespace VF.Builder {
                         menu.controls.RemoveAt(menu.controls.Count - 1);
                     }
                     menu.controls.Add(new VRCExpressionsMenu.Control() {
-                        name = "Next",
+                        name = nextText,
+                        icon = nextIcon,
                         type = VRCExpressionsMenu.Control.ControlType.SubMenu,
                         subMenu = nextMenu
                     });
