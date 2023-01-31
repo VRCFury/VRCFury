@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder.Exceptions;
 using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -32,12 +33,22 @@ namespace VF.Builder {
             return control;
         }
 
+        public static IList<string> SplitPath(string path) {
+            if (string.IsNullOrWhiteSpace(path))
+                return new string[] { };
+            return path
+                .Replace("\\/", "REALSLASH")
+                .Split('/')
+                .Select(s => s.Replace("REALSLASH", "/"))
+                .ToArray();
+        }
+
         private VRCExpressionsMenu.Control NewMenuItem(string path) {
-            path = path.Replace("\\/", "REALSLASH");
-            var split = path.Split('/').Select(s => s.Replace("REALSLASH", "/")).ToArray();
+            var split = SplitPath(path);
+            if (split.Count == 0) split = new[] { "" };
             var control = NewControl();
-            control.name = split[split.Length-1];
-            var submenu = GetSubmenu(Slice(split, split.Length-1));
+            control.name = split[split.Count-1];
+            var submenu = GetSubmenu(Slice(split, split.Count-1));
             submenu.controls.Add(control);
             return control;
         }
@@ -47,13 +58,13 @@ namespace VF.Builder {
          * If createFromControl is set, we will use it as the basis if creating the folder control is needed.
          */
         public VRCExpressionsMenu GetSubmenu(
-            string[] path,
+            IList<string> path,
             bool createIfMissing = true,
             VRCExpressionsMenu.Control createFromControl = null,
             Func<string,string> rewriteParamName = null
         ) {
             var current = GetRaw();
-            for (var i = 0; i < path.Length; i++) {
+            for (var i = 0; i < path.Count; i++) {
                 var folderName = path[i];
                 var dupIndex = folderName.IndexOf(".dup.");
                 var offset = 0;
@@ -67,7 +78,7 @@ namespace VF.Builder {
                 var folderControl = offset < folderControls.Length ? folderControls[offset] : null;
                 if (folderControl == null) {
                     if (!createIfMissing) return null;
-                    if (createFromControl != null && i == path.Length - 1) {
+                    if (createFromControl != null && i == path.Count - 1) {
                         folderControl = CloneControl(createFromControl, rewriteParamName);
                     } else {
                         folderControl = NewControl();
@@ -117,11 +128,11 @@ namespace VF.Builder {
             control.icon = icon;
         }
 
-        private VRCExpressionsMenu CreateNewMenu(string[] path) {
+        private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             string filename;
-            if (path.Length > 0) filename = "VRCF_Menu_" + string.Join("_", cleanPath);
+            if (path.Count > 0) filename = "VRCF_Menu_" + string.Join("_", cleanPath);
             else filename = tmpDir + "VRCF_Menu";
             VRCFuryAssetDatabase.SaveAsset(newMenu, tmpDir, filename);
             return newMenu;
@@ -139,7 +150,7 @@ namespace VF.Builder {
         }
 
         public void MergeMenu(
-            string[] prefix,
+            IList<string> prefix,
             VRCExpressionsMenu from,
             Func<string,string> rewriteParamName = null,
             Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
@@ -198,8 +209,8 @@ namespace VF.Builder {
             };
         }
 
-        public static string[] Slice(string[] arr, int count) {
-            return new ArraySegment<string>(arr, 0, count).ToArray();
+        public static IList<string> Slice(IEnumerable<string> arr, int count) {
+            return new ArraySegment<string>(arr.ToArray(), 0, count).ToArray();
         }
 
         public void SortMenu() {

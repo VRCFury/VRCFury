@@ -116,9 +116,7 @@ namespace VF.Feature {
 
             foreach (var m in model.menus) {
                 if (m.menu == null) continue;
-                var prefix = string.IsNullOrWhiteSpace(m.prefix)
-                    ? new string[] { }
-                    : m.prefix.Split('/').ToArray();
+                var prefix = MenuManager.SplitPath(m.prefix);
                 manager.GetMenu().MergeMenu(prefix, m.menu, rewriteParam);
             }
             
