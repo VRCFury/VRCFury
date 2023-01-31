@@ -28,11 +28,19 @@ namespace VF.Feature {
         private void MakeGesture(GestureDriver.Gesture gesture) {
             if (gesture.enableWeight && gesture.hand == GestureDriver.Hand.EITHER &&
                 gesture.sign == GestureDriver.HandSign.FIST) {
-                var clone = VRCFuryEditorUtils.DeepCloneSerializable(gesture);
-                clone.hand = GestureDriver.Hand.LEFT;
-                MakeGesture(clone);
-                clone.hand = GestureDriver.Hand.RIGHT;
-                MakeGesture(clone);
+
+                try {
+                    gesture.hand = GestureDriver.Hand.LEFT;
+                    MakeGesture(gesture);
+                } finally {
+                    gesture.hand = GestureDriver.Hand.EITHER;
+                }
+                try {
+                    gesture.hand = GestureDriver.Hand.RIGHT;
+                    MakeGesture(gesture);
+                } finally {
+                    gesture.hand = GestureDriver.Hand.EITHER;
+                }
                 return;
             }
 
