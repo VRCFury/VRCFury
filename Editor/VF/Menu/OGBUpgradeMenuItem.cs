@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -122,12 +123,18 @@ namespace VF.Menu {
                     if (id >= 0) name = name.Substring(id+1);
                     id = name.IndexOf(")");
                     if (id >= 0) name = name.Substring(0, id);
-
-                    if (name.StartsWith("__dps_")) {
-                        name = name.Substring(6);
-                        name = name.Replace('_', ' ');
-                        name = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(name);
+                    // Convert camel case to spaces
+                    name = Regex.Replace(name, "(\\B[A-Z])", " $1");
+                    name = name.ToLower();
+                    name = name.Replace("dps", "");
+                    name = name.Replace("orifice", "");
+                    name = name.Replace('_', ' ');
+                    name = name.Replace('-', ' ');
+                    while (name.Contains("  ")) {
+                        name = name.Replace("  ", " ");
                     }
+                    name = name.Trim();
+                    name = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(name);
 
                     var fullName = "Orifice (" + name + ")";
 
