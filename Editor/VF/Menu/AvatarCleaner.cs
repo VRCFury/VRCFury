@@ -120,40 +120,31 @@ namespace VF.Menu {
                     }
                 }
 
-                void CheckMenu(VRCExpressionsMenu menu, IList<string> path) {
-                    for (var i = 0; i < menu.controls.Count; i++) {
-                        var controlPath = new List<string>();
-                        controlPath.AddRange(path);
-                        controlPath.Add(menu.controls[i].name);
-
-                        var shouldRemove =
-                            menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.SubMenu
-                            && menu.controls[i].subMenu
-                            && ShouldRemoveAsset != null
-                            && ShouldRemoveAsset(menu.controls[i].subMenu);
-                        shouldRemove |=
-                            menu.controls[i].type == VRCExpressionsMenu.Control.ControlType.Toggle
-                            && menu.controls[i].parameter != null
-                            && ShouldRemoveParam != null
-                            && ShouldRemoveParam(menu.controls[i].parameter.name);
-                        if (shouldRemove) {
-                            removeItems.Add("Menu Item: " + string.Join("/", controlPath));
-                            if (perform) {
-                                menu.controls.RemoveAt(i);
-                                i--;
-                                EditorUtility.SetDirty(menu);
-                            }
-                        }
-                    }
-                }
-
                 var m = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (m != null) {
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(m)) {
                         removeItems.Add("All Avatar Menus");
                         if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
                     } else {
-                        MenuSplitter.ForEachMenu(m, CheckMenu);
+                        MenuSplitter.ForEachMenu(m, ForEachItem: (item, path) => {
+                            var shouldRemove =
+                                item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
+                                && item.subMenu
+                                && ShouldRemoveAsset != null
+                                && ShouldRemoveAsset(item.subMenu);
+                            shouldRemove |=
+                                item.type == VRCExpressionsMenu.Control.ControlType.Toggle
+                                && item.parameter != null
+                                && ShouldRemoveParam != null
+                                && ShouldRemoveParam(item.parameter.name);
+                            if (shouldRemove) {
+                                removeItems.Add("Menu Item: " + string.Join("/", path));
+                                return perform
+                                    ? MenuSplitter.ForEachMenuItemResult.Delete
+                                    : MenuSplitter.ForEachMenuItemResult.Skip;
+                            }
+                            return MenuSplitter.ForEachMenuItemResult.Continue;
+                        });
                     }
                 }
             }

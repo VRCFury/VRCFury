@@ -46,32 +46,29 @@ namespace VF.Builder {
         }
         
         private static void PurgeFromMenu(VRCExpressionsMenu root) {
-            MenuSplitter.ForEachMenu(root, (menu,path) => {
-                for (var i = 0; i < menu.controls.Count; i++) {
-                    var remove = false;
-                    var control = menu.controls[i];
-                    if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
-                        if (control.subMenu.name.StartsWith("VRCFury")) {
-                            remove = true;
-                        }
-                        if (VRCFuryAssetDatabase.IsVrcfAsset(control.subMenu)) {
-                            remove = true;
-                        }
-                    }
-                    if (control.name == "SenkyFX" || control.name == "VRCFury") {
+            MenuSplitter.ForEachMenu(root, ForEachItem: (control,path) => {
+                var remove = false;
+                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
+                    if (control.subMenu.name.StartsWith("VRCFury")) {
                         remove = true;
                     }
-                    if (control.parameter != null && control.parameter.name != null && control.parameter.name.StartsWith("VRCFury")) {
+                    if (VRCFuryAssetDatabase.IsVrcfAsset(control.subMenu)) {
                         remove = true;
-                    }
-                    if (control.subParameters != null && control.subParameters.Any(p => p != null && p.name.StartsWith("VRCFury"))) {
-                        remove = true;
-                    }
-                    if (remove) {
-                        menu.controls.RemoveAt(i);
-                        i--;
                     }
                 }
+                if (control.name == "SenkyFX" || control.name == "VRCFury") {
+                    remove = true;
+                }
+                if (control.parameter != null && control.parameter.name != null && control.parameter.name.StartsWith("VRCFury")) {
+                    remove = true;
+                }
+                if (control.subParameters != null && control.subParameters.Any(p => p != null && p.name.StartsWith("VRCFury"))) {
+                    remove = true;
+                }
+
+                return remove ?
+                    MenuSplitter.ForEachMenuItemResult.Delete :
+                    MenuSplitter.ForEachMenuItemResult.Continue;
             });
         }
         

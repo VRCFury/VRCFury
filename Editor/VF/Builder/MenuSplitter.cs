@@ -13,7 +13,15 @@ namespace VF.Builder {
      * and also capable of re-joining them back into oversized menus again.
      */
     public static class MenuSplitter {
-        public static void ForEachMenu(VRCExpressionsMenu root, Action<VRCExpressionsMenu,string[]> func) {
+        /**
+         * This method is our primary way of iterating through menus. It needs to be recursion-aware,
+         * since many avatars have recursion in their menus for some reason.
+         */
+        public static void ForEachMenu(
+            VRCExpressionsMenu root,
+            Action<VRCExpressionsMenu,IList<string>> ForEachMenu = null,
+            Func<VRCExpressionsMenu.Control,IList<string>,ForEachMenuItemResult> ForEachItem = null
+        ) {
             var stack = new Stack<Tuple<string[],VRCExpressionsMenu>>();
             var seen = new HashSet<VRCExpressionsMenu>();
             stack.Push(Tuple.Create(new string[]{}, root));
@@ -21,16 +29,38 @@ namespace VF.Builder {
                 var (path,menu) = stack.Pop();
                 if (menu == null || seen.Contains(menu)) continue;
                 seen.Add(menu);
-                func(menu, path);
-                foreach (var item in menu.controls) {
-                    if (item.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                        var newPath = new List<string>();
-                        newPath.AddRange(path);
-                        newPath.Add(item.name);
-                        stack.Push(Tuple.Create(newPath.ToArray(), item.subMenu));
+                if (ForEachMenu != null)
+                    ForEachMenu(menu, path);
+                for (var i = 0; i < menu.controls.Count; i++) {
+                    var item = menu.controls[i];
+                    var itemPath = new List<string>();
+                    itemPath.AddRange(path);
+                    itemPath.Add(item.name);
+                    var itemPathArr = itemPath.ToArray();
+
+                    var recurse = true;
+                    if (ForEachItem != null) {
+                        var result = ForEachItem(item, itemPathArr);
+                        if (result == ForEachMenuItemResult.Skip) {
+                            recurse = false;
+                        } else if (result == ForEachMenuItemResult.Delete) {
+                            menu.controls.RemoveAt(i);
+                            i--;
+                            EditorUtility.SetDirty(menu);
+                            recurse = false;
+                        }
+                    }
+                    if (recurse && item.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                        stack.Push(Tuple.Create(itemPathArr, item.subMenu));
                     }
                 }
             }
+        }
+        
+        public enum ForEachMenuItemResult {
+            Continue,
+            Delete,
+            Skip
         }
 
         /**
@@ -38,14 +68,13 @@ namespace VF.Builder {
          * on a submenu
          */
         public static void FixNulls(VRCExpressionsMenu root) {
-            ForEachMenu(root, (menu, path) => {
-                foreach (var control in menu.controls) {
-                    if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.parameter == null) {
-                        control.parameter = new VRCExpressionsMenu.Control.Parameter() {
-                            name = ""
-                        };
-                    }
+            ForEachMenu(root, ForEachItem: (control, path) => {
+                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.parameter == null) {
+                    control.parameter = new VRCExpressionsMenu.Control.Parameter() {
+                        name = ""
+                    };
                 }
+                return ForEachMenuItemResult.Continue;
             });
         }
         
