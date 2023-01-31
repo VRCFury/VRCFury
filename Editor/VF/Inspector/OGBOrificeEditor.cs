@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Menu;
@@ -298,7 +299,26 @@ namespace VF.Inspector {
 
         private static bool IsChildOfBone(GameObject avatarObject, OGBOrifice orf, HumanBodyBones bone) {
             var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
-            return boneObj && orf.transform.IsChildOf(boneObj.transform);
+            return boneObj && IsChildOf(boneObj.transform, orf.transform);
+        }
+
+        private static bool IsChildOf(Transform parent, Transform child) {
+            var alreadyChecked = new HashSet<Transform>();
+            var current = child;
+            while (current != null) {
+                alreadyChecked.Add(current);
+                if (current == parent) return true;
+                var constraint = current.GetComponent<IConstraint>();
+                if (constraint != null && constraint.sourceCount > 0) {
+                    var source = constraint.GetSource(0).sourceTransform;
+                    if (source != null && !alreadyChecked.Contains(source)) {
+                        current = source;
+                        continue;
+                    }
+                }
+                current = current.parent;
+            }
+            return false;
         }
     }
 }
