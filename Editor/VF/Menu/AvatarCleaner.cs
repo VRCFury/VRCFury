@@ -143,8 +143,6 @@ namespace VF.Menu {
                                 i--;
                                 EditorUtility.SetDirty(menu);
                             }
-                        } else if (menu.controls[i].subMenu) {
-                            CheckMenu(menu.controls[i].subMenu, controlPath);
                         }
                     }
                 }
@@ -155,7 +153,7 @@ namespace VF.Menu {
                         removeItems.Add("All Avatar Menus");
                         if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
                     } else {
-                        CheckMenu(m, new string[]{});
+                        MenuSplitter.ForEachMenu(m, CheckMenu);
                     }
                 }
             }

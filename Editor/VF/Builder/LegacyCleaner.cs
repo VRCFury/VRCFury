@@ -46,7 +46,7 @@ namespace VF.Builder {
         }
         
         private static void PurgeFromMenu(VRCExpressionsMenu root) {
-            MenuSplitter.ForEachMenu(root, menu => {
+            MenuSplitter.ForEachMenu(root, (menu,path) => {
                 for (var i = 0; i < menu.controls.Count; i++) {
                     var remove = false;
                     var control = menu.controls[i];

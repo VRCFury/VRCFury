@@ -13,18 +13,21 @@ namespace VF.Builder {
      * and also capable of re-joining them back into oversized menus again.
      */
     public static class MenuSplitter {
-        public static void ForEachMenu(VRCExpressionsMenu root, Action<VRCExpressionsMenu> func) {
-            var stack = new Stack<VRCExpressionsMenu>();
+        public static void ForEachMenu(VRCExpressionsMenu root, Action<VRCExpressionsMenu,string[]> func) {
+            var stack = new Stack<Tuple<string[],VRCExpressionsMenu>>();
             var seen = new HashSet<VRCExpressionsMenu>();
-            stack.Push(root);
+            stack.Push(Tuple.Create(new string[]{}, root));
             while (stack.Count > 0) {
-                var menu = stack.Pop();
+                var (path,menu) = stack.Pop();
                 if (menu == null || seen.Contains(menu)) continue;
                 seen.Add(menu);
-                func.Invoke(menu);
+                func(menu, path);
                 foreach (var item in menu.controls) {
                     if (item.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                        stack.Push(item.subMenu);
+                        var newPath = new List<string>();
+                        newPath.AddRange(path);
+                        newPath.Add(item.name);
+                        stack.Push(Tuple.Create(newPath.ToArray(), item.subMenu));
                     }
                 }
             }
@@ -35,7 +38,7 @@ namespace VF.Builder {
          * on a submenu
          */
         public static void FixNulls(VRCExpressionsMenu root) {
-            ForEachMenu(root, menu => {
+            ForEachMenu(root, (menu, path) => {
                 foreach (var control in menu.controls) {
                     if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.parameter == null) {
                         control.parameter = new VRCExpressionsMenu.Control.Parameter() {
@@ -48,7 +51,7 @@ namespace VF.Builder {
         
         public static void SplitMenus(VRCExpressionsMenu root) {
             var maxControlsPerPage = GetMaxControlsPerPage();
-            ForEachMenu(root, menu => {
+            ForEachMenu(root, (menu, path) => {
                 if (menu.controls.Count > maxControlsPerPage) {
                     var nextPath = GetNextPageFilename(menu);
                     var nextMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
@@ -89,7 +92,7 @@ namespace VF.Builder {
         }
 
         public static void JoinMenus(VRCExpressionsMenu root) {
-            ForEachMenu(root, menu => {
+            ForEachMenu(root, (menu, path) => {
                 for (var i = 0; i < menu.controls.Count; i++) {
                     var item = menu.controls[i];
                     if (IsVrcfPageItem(item)) {
