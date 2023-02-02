@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -10,6 +11,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
+using Component = UnityEngine.Component;
 
 namespace VF.Menu {
     public class OGBUpgradeMenuItem {
@@ -108,6 +110,15 @@ namespace VF.Menu {
                 var constraint = parent.gameObject.GetComponent<ParentConstraint>();
                 if (constraint == null) continue;
                 if (constraint.sourceCount < 2) continue;
+                var sourcesWithWeight = 0;
+                for (var i = 0; i < constraint.sourceCount; i++) {
+                    if (constraint.GetSource(i).weight > 0) sourcesWithWeight++;
+                }
+                if (sourcesWithWeight > 1) {
+                    // This is probably not a parent constraint orifice, but rather an actual position splitter.
+                    // (used to position an orifice between two bones)
+                    continue;
+                }
                 
                 var isParent = GetIsParent(parent.gameObject);
                 if (isParent == IsDps.NO) continue;
