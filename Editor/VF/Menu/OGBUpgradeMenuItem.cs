@@ -10,7 +10,6 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
-using Action = System.Action;
 
 namespace VF.Menu {
     public class OGBUpgradeMenuItem {
@@ -65,8 +64,8 @@ namespace VF.Menu {
 
         public static string Apply(GameObject avatarObject, bool dryRun) {
             var deletions = new List<string>();
-            var addedPen = new List<string>();
-            var addedOrf = new List<string>();
+            var addedPen = new HashSet<GameObject>();
+            var addedOrf = new HashSet<GameObject>();
             var alreadyExists = new List<string>();
 
             string GetPath(GameObject obj) {
@@ -75,14 +74,16 @@ namespace VF.Menu {
             OGBPenetrator AddPen(GameObject obj) {
                 if (obj.GetComponentsInParent<OGBPenetrator>(true).Length > 0) return null;
                 if (obj.GetComponentsInChildren<OGBPenetrator>(true).Length > 0) return null;
-                addedPen.Add(GetPath(obj));
+                if (addedPen.Contains(obj)) return null;
+                addedPen.Add(obj);
                 if (dryRun) return null;
                 return obj.AddComponent<OGBPenetrator>();
             }
             OGBOrifice AddOrifice(GameObject obj) {
                 if (obj.GetComponentsInParent<OGBOrifice>(true).Length > 0) return null;
                 if (obj.GetComponentsInChildren<OGBOrifice>(true).Length > 0) return null;
-                addedOrf.Add(GetPath(obj));
+                if (addedOrf.Contains(obj)) return null;
+                addedOrf.Add(obj);
                 if (dryRun) return null;
                 return obj.AddComponent<OGBOrifice>();
             }
@@ -138,7 +139,7 @@ namespace VF.Menu {
 
                     var fullName = "Orifice (" + name + ")";
 
-                    addedOrf.Add(GetPath(obj));
+                    addedOrf.Add(obj);
                     if (!dryRun) {
                         var ogb = obj.GetComponent<OGBOrifice>();
                         if (ogb == null) {
@@ -308,9 +309,9 @@ namespace VF.Menu {
 
             var parts = new List<string>();
             if (addedPen.Count > 0)
-                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPen));
+                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPen.Select(GetPath)));
             if (addedOrf.Count > 0)
-                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrf));
+                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrf.Select(GetPath)));
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
