@@ -139,7 +139,47 @@ namespace VF.Feature {
             var fx = GetFx();
             var layer = fx.NewLayer("GestureWeight_" + name);
             var output = fx.NewFloat(input.Name() + "_cached");
+
+            // == BEGIN Smoothing logic
+            // == Inspired by https://github.com/regzo2/OSCmooth
+
+            //Values: 0 => no smoothing, 1 => no change in value, 0.999 => very smooth
+            //TODO: maybe make this configurable and split between local/remote
+            var smoothParam = fx.NewFloat(input.Name() + "_smooth", def: 0.7f); 
+
+            //FeedbackClips - they drive the feedback values back to the output param
+            var minClip = manager.GetClipStorage().NewClip(input.Name() + "-1");
+            minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, -1f));
+            var maxClip = manager.GetClipStorage().NewClip(input.Name() + "1");
+            maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
+
+            //Input tree - applies the current value to the blend
+            var inputTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_input");
+            inputTree.blendType = BlendTreeType.Simple1D;
+            inputTree.useAutomaticThresholds = false;
+            inputTree.blendParameter = input.Name();
+            inputTree.AddChild(minClip, -1);
+            inputTree.AddChild(maxClip, 1);
             
+            //Driver tree - applies the output value to the blend
+            var driverTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_driver");
+            driverTree.blendType = BlendTreeType.Simple1D;
+            driverTree.useAutomaticThresholds = false;
+            driverTree.blendParameter = output.Name();
+            driverTree.AddChild(minClip, -1);
+            driverTree.AddChild(maxClip, 1);
+
+            //Merges the input and the driver tree together. The smoothParam controls how much from either
+            //the input tree or the driver tree should be applied during each tick
+            var tree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root");
+            tree.blendType = BlendTreeType.Simple1D;
+            tree.useAutomaticThresholds = false;
+            tree.blendParameter = smoothParam.Name();
+            tree.AddChild(inputTree, 0);
+            tree.AddChild(driverTree, 1);
+
+            // == END Smoothing logic
+
             //var initClip = manager.GetClipStorage().NewClip("GestureWeightInit_" + output.Name());
             //initClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 600, 1));
             var driveClip = manager.GetClipStorage().NewClip("GestureWeightDrive_" + output.Name());
@@ -155,8 +195,8 @@ namespace VF.Feature {
             off.TransitionsTo(on).When(whenEnabled);
             off.WithAnimation(driveClip).MotionTime(output);
             on.TransitionsTo(off).When(whenEnabled.Not());
-            on.WithAnimation(driveClip).MotionTime(input);
-            
+            on.WithAnimation(tree);
+
             return output;
         }
 
