@@ -55,7 +55,8 @@ namespace VF.Inspector {
                 forward = autoInfo.Item1;
             }
 
-            var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+            var tightRot = Quaternion.LookRotation(forward) * Quaternion.Euler(90,0,0);
 
             var lightType = scr.addLight;
             if (lightType == OGBOrifice.AddLight.Auto)
@@ -142,7 +143,8 @@ namespace VF.Inspector {
                 if (handTouchZoneSize != null) {
                     var oscDepth = handTouchZoneSize.Item1;
                     var closeRadius = handTouchZoneSize.Item2;
-                    var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+                    // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+                    var tightRot = Quaternion.LookRotation(forward) * Quaternion.Euler(90,0,0);
                     OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
                     OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                     OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);

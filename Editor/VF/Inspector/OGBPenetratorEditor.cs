@@ -40,7 +40,7 @@ namespace VF.Inspector {
             
             var worldLength = size.Item1;
             var worldRadius = size.Item2;
-            var forward = new Vector3(0, 0, 1);
+            var forward = size.Item3;
             var tightPos = forward * (worldLength / 2);
             var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
 
@@ -62,61 +62,75 @@ namespace VF.Inspector {
             VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
         
-        public static bool MaterialIsDps(Material mat) {
-            if (mat == null) return false;
-            if (!mat.shader) return false;
-            if (mat.shader.name == "Raliv/Penetrator") return true; // Raliv
-            if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return true; // XSToon w/ Raliv
-            if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return true; // Poiyomi 7 w/ Raliv
-            if (mat.shader.name.Contains("DPS") && mat.HasProperty("_ReCurvature")) return true; // UnityChanToonShader w/ DPS
-            if (mat.HasProperty("_TPSPenetratorEnabled") && mat.GetFloat("_TPSPenetratorEnabled") > 0) return true; // Poiyomi 8 w/ TPS
-            return false;
+        public static Tuple<Vector3> MaterialIsDps(Material mat) {
+            if (mat == null) return null;
+            if (!mat.shader) return null;
+            if (mat.shader.name == "Raliv/Penetrator") return Tuple.Create(Vector3.forward); // Raliv
+            if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return Tuple.Create(Vector3.forward); // XSToon w/ Raliv
+            if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return Tuple.Create(Vector3.forward); // Poiyomi 7 w/ Raliv
+            if (mat.shader.name.Contains("DPS") && mat.HasProperty("_ReCurvature")) return Tuple.Create(Vector3.forward); // UnityChanToonShader w/ Raliv
+            if (mat.HasProperty("_TPSPenetratorEnabled") && mat.GetFloat("_TPSPenetratorEnabled") > 0) {
+                // Poiyomi 8 w/ TPS
+                var forward = Vector3.forward;
+                if (mat.HasProperty("_TPS_PenetratorForward")) {
+                    var c = mat.GetVector("_TPS_PenetratorForward");
+                    forward = new Vector3(c.x, c.y, c.z).normalized;
+                }
+                return Tuple.Create(forward);
+            }
+            return null;
         }
 
-        public static Tuple<float, float> GetAutoSize(GameObject obj, bool directOnly = false) {
+        public static Tuple<float, float, Vector3> GetAutoSize(GameObject obj, bool directOnly = false) {
             foreach (var skin in obj.GetComponents<SkinnedMeshRenderer>()) {
-                if (skin.sharedMaterials.Any(MaterialIsDps)) {
-                    var auto = GetAutoSize(skin);
-                    if (auto != null) return auto;
-                }
+                var auto = GetAutoSize(skin, true);
+                if (auto != null) return auto;
             }
             foreach (var renderer in obj.GetComponents<MeshRenderer>()) {
-                if (renderer.sharedMaterials.Any(MaterialIsDps)) {
-                    var auto = GetAutoSize(renderer);
-                    if (auto != null) return auto;
-                }
+                var auto = GetAutoSize(renderer, true);
+                if (auto != null) return auto;
             }
             if (directOnly) return null;
             foreach (var skin in obj.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (skin.sharedMaterials.Any(MaterialIsDps)) {
-                    var auto = GetAutoSize(skin);
-                    if (auto != null) return auto;
-                }
-            }
-            foreach (var renderer in obj.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (renderer.sharedMaterials.Any(MaterialIsDps)) {
-                    var auto = GetAutoSize(renderer);
-                    if (auto != null) return auto;
-                }
-            }
-            foreach (var skin in obj.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                var auto = GetAutoSize(skin);
+                var auto = GetAutoSize(skin, true);
                 if (auto != null) return auto;
             }
             foreach (var renderer in obj.GetComponentsInChildren<MeshRenderer>(true)) {
-                var auto = GetAutoSize(renderer);
+                var auto = GetAutoSize(renderer, true);
+                if (auto != null) return auto;
+            }
+            foreach (var skin in obj.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                var auto = GetAutoSize(skin, false);
+                if (auto != null) return auto;
+            }
+            foreach (var renderer in obj.GetComponentsInChildren<MeshRenderer>(true)) {
+                var auto = GetAutoSize(renderer, false);
                 if (auto != null) return auto;
             }
             return null;
         }
         
-        private static Tuple<float, float> GetAutoSize(MeshRenderer renderer) {
+        private static Tuple<float, float, Vector3> GetAutoSize(MeshRenderer renderer, bool useMaterials) {
+            var forward = Vector3.forward;
+            if (useMaterials) {
+                var m = renderer.sharedMaterials.Select(MaterialIsDps).FirstOrDefault(c => c != null);
+                if (m == null) return null;
+                forward = m.Item1;
+            }
+            
             var meshFilter = renderer.GetComponent<MeshFilter>();
             if (!meshFilter || !meshFilter.sharedMesh) return null;
-            return GetAutoSize(renderer.gameObject, meshFilter.sharedMesh);
+            return GetAutoSize(renderer.gameObject, meshFilter.sharedMesh, forward);
         }
         
-        private static Tuple<float, float> GetAutoSize(SkinnedMeshRenderer skin) {
+        private static Tuple<float, float, Vector3> GetAutoSize(SkinnedMeshRenderer skin, bool useMaterials) {
+            var forward = Vector3.forward;
+            if (useMaterials) {
+                var m = skin.sharedMaterials.Select(MaterialIsDps).FirstOrDefault(c => c != null);
+                if (m == null) return null;
+                forward = m.Item1;
+            }
+            
             // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
             // So we have to skip calling BakeMesh, because otherwise we'd apply the inverse scale inappropriately and it would be too small.
             bool actuallySkinned = skin.bones.Any(b => b != null);
@@ -137,12 +151,12 @@ namespace VF.Inspector {
             }
 
             if (!mesh) return null;
-            return GetAutoSize(skin.gameObject, mesh);
+            return GetAutoSize(skin.gameObject, mesh, forward);
         }
 
-        private static Tuple<float, float> GetAutoSize(GameObject obj, Mesh mesh) {
+        private static Tuple<float, float, Vector3> GetAutoSize(GameObject obj, Mesh mesh, Vector3 forward) {
+            forward = forward.normalized;
             var worldScale = obj.transform.lossyScale.x;
-            var forward = new Vector3(0, 0, 1);
             var length = mesh.vertices
                 .Select(v => Vector3.Dot(v, forward))
                 .DefaultIfEmpty(0)
@@ -150,7 +164,7 @@ namespace VF.Inspector {
             var verticesInFront = mesh.vertices.Where(v => v.z > 0);
             var verticesInFrontCount = verticesInFront.Count();
             float radius = verticesInFront
-                .Select(v => new Vector2(v.x, v.y).magnitude)
+                .Select(v => Vector3.Cross(v, forward).magnitude)
                 .OrderBy(m => m)
                 .Where((m, i) => i <= verticesInFrontCount*0.75)
                 .DefaultIfEmpty(0)
@@ -158,25 +172,27 @@ namespace VF.Inspector {
 
             if (length <= 0 || radius <= 0) return null;
 
-            return Tuple.Create(length, radius);
+            return Tuple.Create(length, radius, forward);
         }
 
-        private static Tuple<float, float> GetSize(OGBPenetrator pen) {
+        private static Tuple<float, float, Vector3> GetSize(OGBPenetrator pen) {
             var length = pen.length;
             var radius = pen.radius;
+            var forward = Vector3.forward;
             if (!pen.unitsInMeters) {
                 length *= pen.transform.lossyScale.x;
                 radius *= pen.transform.lossyScale.x;
             }
-            if (length == 0 || radius == 0) {
-                var autoSize = GetAutoSize(pen.gameObject);
-                if (autoSize != null) {
-                    if (length == 0) length = autoSize.Item1;
-                    if (radius == 0) radius = autoSize.Item2;
-                }
+
+            var autoSize = GetAutoSize(pen.gameObject);
+            if (autoSize != null) {
+                if (length == 0) length = autoSize.Item1;
+                if (radius == 0) radius = autoSize.Item2;
+                forward = autoSize.Item3;
             }
+
             if (length <= 0 || radius <= 0) return null;
-            return Tuple.Create(length, radius);
+            return Tuple.Create(length, radius, forward);
         }
 
         public static void Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false) {
@@ -190,15 +206,16 @@ namespace VF.Inspector {
             if (size == null) return;
             var length = size.Item1;
             var radius = size.Item2;
+            var forward = size.Item3;
 
             var name = pen.name;
             if (string.IsNullOrWhiteSpace(name)) {
                 name = obj.name;
             }
 
-            var forward = new Vector3(0, 0, 1);
             var tightPos = forward * (length / 2);
-            var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+            var tightRot = Quaternion.LookRotation(forward) * Quaternion.Euler(90,0,0);
 
             var extraRadiusForTouch = Math.Min(radius, 0.08f /* 8cm */);
             
