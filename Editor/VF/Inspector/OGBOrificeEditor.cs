@@ -175,6 +175,7 @@ namespace VF.Inspector {
                     AvatarCleaner.RemoveComponent(light);
                 }
 
+#if !UNITY_ANDROID
                 var main = new GameObject("Root");
                 main.transform.SetParent(obj.transform, false);
                 var mainLight = main.AddComponent<Light>();
@@ -193,6 +194,7 @@ namespace VF.Inspector {
                 frontLight.range = 0.45f;
                 frontLight.shadows = LightShadows.None;
                 frontLight.renderMode = LightRenderMode.ForceVertex;
+#endif
             }
 
             return Tuple.Create(name, forward);

@@ -178,6 +178,8 @@ public class VRCFuryBuilder {
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
         AddBuilder(new ControllerConflictBuilder(), avatarObject);
         AddBuilder(new D4rkOptimizerBuilder(), avatarObject);
+        AddBuilder(new FakeHeadBuilder(), avatarObject);
+        AddBuilder(new ObjectMoveBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();

@@ -19,20 +19,24 @@ namespace VF.Feature.Base {
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix = 10,
         AnchorOverrideFix = 11,
+
+        // Needs to run after TPS integration (since it may add new TPS material meshes)
+        AddOgbComponents = 100,
+        
+        // Needs to run after all OGB components are in place
+        BakeOgbComponents = 101,
+        
+        // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
+        // an object moved onto the fake head bone
+        FakeHeadBuilder = 102,
         
         // Needs to run after most things are done messing with the animation controller,
         // since any changes after this won't have their animations rewritten
-        ArmatureLinkBuilderFixAnimations = 99,
+        ObjectMoveBuilderFixAnimations = 103,
         
         // Needs to run after most things are done messing with animations,
         // since it'll make copies of the blendshape curves
-        BlendShapeLinkFixAnimations = 100,
-        
-        // Needs to run after TPS integration (since it may add new TPS material meshes)
-        AddOgbComponents = 101,
-        
-        // Needs to run after all OGB components are in place
-        BakeOgbComponents = 102,
+        BlendShapeLinkFixAnimations = 104,
         
         // Needs to run before FixWriteDefaults (which creates its own layer, and thus appears as a "conflict")
         ControllerConflictCheck = 9000,

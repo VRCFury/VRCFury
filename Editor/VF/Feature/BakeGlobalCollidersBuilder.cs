@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
@@ -9,9 +10,10 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class BakeGlobalCollidersBuilder : FeatureBuilder {
-        [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
+        [FeatureBuilderAction]
         public void Apply() {
 
+            var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
             var globalContacts = avatarObject.GetComponentsInChildren<VRCFGlobalCollider>(true);
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
@@ -51,6 +53,7 @@ namespace VF.Feature {
 
             var i = 0;
             foreach (var globalContact in globalContacts) {
+                fakeHead.MarkEligible(globalContact.gameObject);
                 var finger = fingers[i].Item2;
                 var setFinger = fingers[i].Item3;
                 finger.isMirrored = false;
@@ -64,7 +67,7 @@ namespace VF.Feature {
                 // Because vrchat recalculates the capsule length based on distance between child and parent,
                 // we place the collider on an identical child object, essentially ensuring the capsule height is 0 (sphere)
                 var childObj = new GameObject("GlobalContact");
-                childObj.transform.SetParent(globalContact.GetTransform(), false);
+                childObj.transform.SetParent(globalContact.transform, false);
                 finger.transform = childObj.transform;
                 setFinger(finger);
                 i++;

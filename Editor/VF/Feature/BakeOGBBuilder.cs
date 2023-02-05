@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -15,10 +16,12 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
         public void Apply() {
             var usedNames = new List<string>();
+            var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
                 OGBPenetratorEditor.Bake(c, usedNames);
             }
             foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
+                fakeHead.MarkEligible(c.gameObject);
                 var (name,forward) = OGBOrificeEditor.Bake(c, usedNames);
 
                 if (c.addMenuItem) {

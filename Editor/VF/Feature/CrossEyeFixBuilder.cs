@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -11,6 +12,10 @@ namespace VF.Feature {
     public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
         [FeatureBuilderAction]
         public void Apply() {
+#if UNITY_ANDROID
+            return;
+#endif
+
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             if (!avatar.enableEyeLook) return;
             var eyeLeft = avatar.customEyeLookSettings.leftEye;
@@ -19,7 +24,7 @@ namespace VF.Feature {
             if (eyeRight) avatar.customEyeLookSettings.rightEye = AddFakeEye(eyeRight.gameObject).transform;
         }
 
-        private static GameObject AddFakeEye(GameObject originalEye) {
+        private GameObject AddFakeEye(GameObject originalEye) {
             var realEyeUp = new GameObject(originalEye.name + ".Up");
             realEyeUp.transform.SetParent(originalEye.transform, false);
             realEyeUp.transform.rotation = Quaternion.identity;
@@ -33,7 +38,8 @@ namespace VF.Feature {
             fakeEyeUp.transform.SetParent(realEyeUp.transform, false);
             fakeEyeUp.transform.SetParent(fakeEye.transform, true);
             
-            originalEye.transform.SetParent(realEyeUp.transform, true);
+            var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
+            mover.MoveToParent(originalEye, realEyeUp);
 
             var constraint = realEyeUp.AddComponent<RotationConstraint>();
             constraint.AddSource(new ConstraintSource() {

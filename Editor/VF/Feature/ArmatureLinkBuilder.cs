@@ -18,14 +18,14 @@ using Object = UnityEngine.Object;
 namespace VF.Feature {
 
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
-        private Dictionary<string, string> clipMappings = new Dictionary<string, string>();
-
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
             if (model.propBone == null) {
                 Debug.LogWarning("Root bone is null on armature link.");
                 return;
             }
+
+            var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
             
             var links = GetLinks();
             if (model.linkMode == ArmatureLink.ArmatureLinkMode.SKIN_REWRITE) {
@@ -34,18 +34,13 @@ namespace VF.Feature {
                 foreach (var reparent in links.reparent) {
                     var objectToMove = reparent.Item1;
                     var newParent = reparent.Item2;
-                    var oldPath = clipBuilder.GetPath(objectToMove);
 
                     // Move the object
                     objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
-                    objectToMove.transform.SetParent(newParent.transform);
+                    mover.MoveToParent(objectToMove, newParent);
                     
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(objectToMove);
-                    
-                    // Remember how we need to rewrite animations later
-                    var newPath = clipBuilder.GetPath(objectToMove);
-                    clipMappings.Add(oldPath, newPath);
                 }
 
                 // Now, update all the skinned meshes in the prop to use the avatar's bone objects
@@ -57,9 +52,7 @@ namespace VF.Feature {
                     UpdatePhysbones(propBone, avatarBone);
                     UpdateConstraints(propBone, avatarBone);
                     boneMapping[propBone.transform] = avatarBone.transform;
-                    var oldPath = clipBuilder.GetPath(propBone);
-                    var newPath = clipBuilder.GetPath(avatarBone);
-                    clipMappings.Add(oldPath, newPath);
+                    mover.AddDirectRewrite(propBone, avatarBone);
                 }
                 foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                     if (skin.rootBone != null) {
@@ -96,13 +89,11 @@ namespace VF.Feature {
                         UpdatePhysbones(propBone, avatarBone);
                     }
 
-                    var oldPath = clipBuilder.GetPath(propBone);
-                    
                     // Move the object
                     var p = propBone.GetComponent<ParentConstraint>();
                     if (p != null) Object.DestroyImmediate(p);
                     propBone.name = "vrcf_" + uniqueModelNum + "_" + propBone.name;
-                    propBone.transform.SetParent(avatarBone.transform);
+                    mover.MoveToParent(propBone, avatarBone);
                     if (!model.keepBoneOffsets) {
                         propBone.transform.localPosition = Vector3.zero;
                         propBone.transform.localRotation = Quaternion.identity;
@@ -110,10 +101,6 @@ namespace VF.Feature {
 
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(propBone);
-                    
-                    // Remember how we need to rewrite animations later
-                    var newPath = clipBuilder.GetPath(propBone);
-                    clipMappings.Add(oldPath, newPath);
                 }
             } else if (model.linkMode == ArmatureLink.ArmatureLinkMode.PARENT_CONSTRAINT) {
                 foreach (var mergeBone in links.mergeBones) {
@@ -204,59 +191,6 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilderFixAnimations)]
-        public void FixAnimations() {
-            foreach (var controller in manager.GetAllUsedControllers()) {
-                var layers = controller.GetLayers().ToList();
-                for (var layerId = 0; layerId < layers.Count; layerId++) {
-                    var layer = layers[layerId];
-                    AnimatorIterator.ForEachClip(layer, (clip, setClip) => {
-                        void ensureMutable() {
-                            if (!VRCFuryAssetDatabase.IsVrcfAsset(clip)) {
-                                var newClip = manager.GetClipStorage().NewClip(clip.name);
-                                clipBuilder.CopyWithAdjustedPrefixes(clip, newClip);
-                                clip = newClip;
-                                setClip(clip);
-                            }
-                        }
-
-                        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                            var newPath = RewriteClipPath(binding.path);
-                            if (newPath != null) {
-                                var b = binding;
-                                b.path = newPath;
-                                ensureMutable();
-                                AnimationUtility.SetEditorCurve(clip, b,
-                                    AnimationUtility.GetEditorCurve(clip, binding));
-                                AnimationUtility.SetEditorCurve(clip, binding, null);
-                            }
-                        }
-
-                        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                            var newPath = RewriteClipPath(binding.path);
-                            if (newPath != null) {
-                                var b = binding;
-                                b.path = newPath;
-                                ensureMutable();
-                                AnimationUtility.SetObjectReferenceCurve(clip, b,
-                                    AnimationUtility.GetObjectReferenceCurve(clip, binding));
-                                AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
-                            }
-                        }
-                    });
-                    controller.ModifyMask(layerId, mask => {
-                        for (var i = 0; i < mask.transformCount; i++) {
-                            var oldPath = mask.GetTransformPath(i);
-                            var newPath = RewriteClipPath(oldPath);
-                            if (newPath != null && oldPath != newPath) {
-                                mask.SetTransformPath(i, newPath);
-                            }
-                        }
-                    });
-                }
-            }
-        }
-
         private class Links {
             // These are stacks, because it's convenient, and we want to iterate over them in reverse order anyways
             // because when operating on the vrc clone, we delete game objects as we process them, and we want to
@@ -326,15 +260,6 @@ namespace VF.Feature {
             }
 
             return links;
-        }
-        
-        private string RewriteClipPath(string path) {
-            foreach (var pair in clipMappings) {
-                if (path.StartsWith(pair.Key + "/") || path == pair.Key) {
-                    return pair.Value + path.Substring(pair.Key.Length);
-                }
-            }
-            return null;
         }
 
         public override string GetEditorTitle() {
