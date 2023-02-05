@@ -192,6 +192,7 @@ namespace VF.Inspector {
             }
 
             if (length <= 0 || radius <= 0) return null;
+            if (radius > length / 2) radius = length / 2;
             return Tuple.Create(length, radius, forward);
         }
 
