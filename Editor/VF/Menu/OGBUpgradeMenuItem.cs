@@ -385,6 +385,7 @@ namespace VF.Menu {
         private static bool HasBlendshape(GameObject avatarObject, string name) {
             var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             foreach (var skin in skins) {
+                if (!skin.sharedMesh) continue;
                 var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(name);
                 if (blendShapeIndex < 0) continue;
                 return true;
