@@ -161,7 +161,8 @@ namespace VF.Inspector {
                 .Select(v => Vector3.Dot(v, forward))
                 .DefaultIfEmpty(0)
                 .Max() * worldScale;
-            var verticesInFront = mesh.vertices.Where(v => v.z > 0);
+            var verticesInFront = mesh.vertices
+                .Where(v => Vector3.Dot(v, forward) > 0);
             var verticesInFrontCount = verticesInFront.Count();
             float radius = verticesInFront
                 .Select(v => Vector3.Cross(v, forward).magnitude)
