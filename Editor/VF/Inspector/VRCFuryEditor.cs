@@ -76,7 +76,7 @@ public class VRCFuryEditor : Editor {
             VRCFuryEditorUtils.BorderRadius(box, 5);
             box.Add(label);
 
-            var genButton = VRCFuryEditorUtils.Button("Build a Test Copy", () => {
+            var genButton = VRCFuryEditorUtils.Button("Build an Editor Test Copy", () => {
                 VRCFuryTestCopyMenuItem.BuildTestCopy(self.gameObject);
             });
             genButton.style.marginTop = 5;
@@ -155,7 +155,7 @@ public class VRCFuryEditor : Editor {
     
     [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
     static void DrawGizmo(VRCFury vf, GizmoType gizmoType) {
-        foreach (var g in vf.config.features.Select(f => f as Gizmo).Where(f => f != null)) {
+        foreach (var g in vf.config.features.OfType<Gizmo>()) {
             var q = Quaternion.Euler(g.rotation);
             Vector3 getPoint(Vector3 input) {
                 return vf.transform.TransformPoint(q * input);

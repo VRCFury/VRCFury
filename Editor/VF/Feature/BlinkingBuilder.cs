@@ -83,7 +83,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 0, -1);
 
             idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
-            foreach (var prevention in allFeaturesInRun.Select(f => f as BlinkingPrevention).Where(f => f != null)) {
+            foreach (var prevention in allFeaturesInRun.OfType<BlinkingPrevention>()) {
                 checkActive.TransitionsTo(idle).When(prevention.param.IsTrue());
             }
             checkActive.TransitionsTo(blinkStart).When(fx.Always());

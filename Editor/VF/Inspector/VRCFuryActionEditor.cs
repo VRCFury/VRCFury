@@ -14,9 +14,9 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
     public static VisualElement Render(SerializedProperty prop) {
 
-        var type = VRCFuryEditorUtils.GetManagedReferenceType(prop);
+        var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
 
-        switch (type?.Name) {
+        switch (type) {
             case nameof(MaterialAction): {
                 var row = new VisualElement {
                     style = {
@@ -177,7 +177,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             }
         }
 
-        return VRCFuryEditorUtils.WrappedLabel("Unknown action type: " + type?.Name);
+        return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: ${type}");
     }
 }
 

@@ -415,7 +415,6 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class FixWriteDefaults : NewFeatureModel {
         public enum FixWriteDefaultsMode {
             Auto,
@@ -555,10 +554,29 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class OverrideMenuSettings : NewFeatureModel {
         public string nextText;
         public Texture2D nextIcon;
+    }
+
+    [Serializable]
+    public class Customizer : NewFeatureModel {
+        [SerializeReference] public List<CustomizerItem> items = new List<CustomizerItem>();
+        
+        [Serializable]
+        public abstract class CustomizerItem { }
+
+        public class MenuItem : CustomizerItem {
+            public string key;
+            public string title;
+            public string path;
+        }
+        
+        public class ClipItem : CustomizerItem {
+            public string key;
+            public string title;
+            public AnimationClip clip;
+        }
     }
     
 

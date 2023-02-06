@@ -15,7 +15,7 @@ namespace VF.Menu {
         
         public static void BuildTestCopy(GameObject originalObject) {
             if (IsTestCopy(originalObject)) {
-                EditorUtility.DisplayDialog("VRCFury Error", "This object is already a VRCF test copy.", "Ok");
+                EditorUtility.DisplayDialog("VRCFury Error", "This object is already a VRCF editor test copy.", "Ok");
                 return;
             }
 

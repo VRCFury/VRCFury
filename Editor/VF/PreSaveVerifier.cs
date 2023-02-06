@@ -25,8 +25,7 @@ namespace VF {
                     }
                 } else {
                     var isBroken = AssetDatabase.LoadAllAssetsAtPath(path)
-                        .Select(asset => asset as VRCFuryComponent)
-                        .Where(asset => asset != null)
+                        .OfType<VRCFuryComponent>()
                         .Any(asset => asset.IsBroken());
                     if (isBroken) {
                         blocked.Add(path);

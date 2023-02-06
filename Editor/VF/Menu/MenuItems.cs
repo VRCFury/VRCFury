@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEditor;
+using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Menu {
@@ -78,14 +80,35 @@ namespace VF.Menu {
             return MenuUtils.GetSelectedAvatar() != null;
         }
 
-        [MenuItem("Tools/VRCFury/Build a Test Copy", priority = 1402)]
+        [MenuItem("Tools/VRCFury/Build an Editor Test Copy", priority = 1402)]
         private static void RunForceRun() {
             VRCFuryTestCopyMenuItem.RunBuildTestCopy();
         }
 
-        [MenuItem("Tools/VRCFury/Build a Test Copy", true)]
+        [MenuItem("Tools/VRCFury/Build an Editor Test Copy", true)]
         private static bool CheckForceRun() {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
+        
+        /*
+        [MenuItem("Tools/VRCFury/List All Components", priority = 1403)]
+        private static void ListChildComponents() {
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                var obj = Selection.activeGameObject;
+                if (obj == null) return;
+                var list = new List<string>();
+                foreach (var c in obj.GetComponentsInChildren<Component>()) {
+                    if (c is Transform) continue;
+                    list.Add(c.GetType().Name + " in " + AnimationUtility.CalculateTransformPath(c.transform, obj.transform));
+                }
+
+                EditorUtility.DisplayDialog(
+                    "Debug",
+                    string.Join("\n", list),
+                    "Ok"
+                );
+            });
+        }
+        */
     }
 }

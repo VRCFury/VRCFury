@@ -117,8 +117,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
-                .Select(f => f as SecurityLockBuilder)
-                .Where(f => f != null)
+                .OfType<SecurityLockBuilder>()
                 .Select(f => f.GetEnabled())
                 .FirstOrDefault();
             if (securityLockUnlocked != null) {

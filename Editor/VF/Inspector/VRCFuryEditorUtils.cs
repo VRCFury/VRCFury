@@ -542,6 +542,10 @@ public static class VRCFuryEditorUtils {
         }
         return null;
     }
+    
+    public static string GetManagedReferenceTypeName(SerializedProperty prop) {
+        return GetManagedReferenceType(prop)?.Name;
+    }
 }
     
 }
