@@ -175,26 +175,26 @@ namespace VF.Inspector {
                     AvatarCleaner.RemoveComponent(light);
                 }
 
-#if !UNITY_ANDROID
-                var main = new GameObject("Root");
-                main.transform.SetParent(obj.transform, false);
-                var mainLight = main.AddComponent<Light>();
-                mainLight.type = LightType.Point;
-                mainLight.color = Color.black;
-                mainLight.range = addLight == OGBOrifice.AddLight.Ring ? 0.42f : 0.41f;
-                mainLight.shadows = LightShadows.None;
-                mainLight.renderMode = LightRenderMode.ForceVertex;
+                if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                    var main = new GameObject("Root");
+                    main.transform.SetParent(obj.transform, false);
+                    var mainLight = main.AddComponent<Light>();
+                    mainLight.type = LightType.Point;
+                    mainLight.color = Color.black;
+                    mainLight.range = addLight == OGBOrifice.AddLight.Ring ? 0.42f : 0.41f;
+                    mainLight.shadows = LightShadows.None;
+                    mainLight.renderMode = LightRenderMode.ForceVertex;
 
-                var front = new GameObject("Front");
-                front.transform.SetParent(obj.transform, false);
-                var frontLight = front.AddComponent<Light>();
-                front.transform.localPosition = new Vector3(0, 0, 0.01f / obj.transform.lossyScale.x);
-                frontLight.type = LightType.Point;
-                frontLight.color = Color.black;
-                frontLight.range = 0.45f;
-                frontLight.shadows = LightShadows.None;
-                frontLight.renderMode = LightRenderMode.ForceVertex;
-#endif
+                    var front = new GameObject("Front");
+                    front.transform.SetParent(obj.transform, false);
+                    var frontLight = front.AddComponent<Light>();
+                    front.transform.localPosition = new Vector3(0, 0, 0.01f / obj.transform.lossyScale.x);
+                    frontLight.type = LightType.Point;
+                    frontLight.color = Color.black;
+                    frontLight.range = 0.45f;
+                    frontLight.shadows = LightShadows.None;
+                    frontLight.renderMode = LightRenderMode.ForceVertex;
+                }
             }
 
             return Tuple.Create(name, forward);

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
@@ -19,9 +20,9 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.FakeHeadBuilder)]
         public void Apply() {
-#if UNITY_ANDROID
-            return;
-#endif
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+                return;
+            }
 
             var head = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, HumanBodyBones.Head);
             if (!head) return;

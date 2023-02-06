@@ -12,9 +12,9 @@ namespace VF.Feature {
     public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
         [FeatureBuilderAction]
         public void Apply() {
-#if UNITY_ANDROID
-            return;
-#endif
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+                return;
+            }
 
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             if (!avatar.enableEyeLook) return;
