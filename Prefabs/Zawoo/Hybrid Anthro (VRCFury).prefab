@@ -160,7 +160,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: prefab_hybridAnthroPeen
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 2251575780210803240, guid: 5e66ac2b6b9c05c4492ec497f3274a64, type: 3}
+    - {fileID: 2251575780570081674, guid: 5e66ac2b6b9c05c4492ec497f3274a64, type: 3}
+    - {fileID: 2251575780527943218, guid: 5e66ac2b6b9c05c4492ec497f3274a64, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 5e66ac2b6b9c05c4492ec497f3274a64, type: 3}
 --- !u!1 &6497031174005092706 stripped
 GameObject:
