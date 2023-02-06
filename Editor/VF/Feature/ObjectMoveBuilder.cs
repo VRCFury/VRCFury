@@ -12,9 +12,12 @@ namespace VF.Feature {
     public class ObjectMoveBuilder : FeatureBuilder {
         private Dictionary<string, string> clipMappings = new Dictionary<string, string>();
         
-        public void MoveToParent(GameObject obj, GameObject newParent) {
+        public void Move(GameObject obj, GameObject newParent = null, string newName = null) {
             var oldPath = clipBuilder.GetPath(obj);
-            obj.transform.SetParent(newParent.transform);
+            if (newParent != null)
+                obj.transform.SetParent(newParent.transform);
+            if (newName != null)
+                obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);
             clipMappings.Add(oldPath, newPath);
         }
@@ -28,7 +31,11 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.ObjectMoveBuilderFixAnimations)]
         public void FixAnimations() {
             if (clipMappings.Count == 0) return;
-            
+
+            var mappingsLongestFirst = clipMappings
+                .OrderByDescending(entry => entry.Key.Length)
+                .ToList();
+
             foreach (var controller in manager.GetAllUsedControllers()) {
                 var layers = controller.GetLayers().ToList();
                 for (var layerId = 0; layerId < layers.Count; layerId++) {
@@ -44,8 +51,9 @@ namespace VF.Feature {
                         }
 
                         foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                            var newPath = RewriteClipPath(binding.path);
-                            if (newPath != null) {
+                            var oldPath = binding.path;
+                            var newPath = RewriteClipPath(oldPath, mappingsLongestFirst);
+                            if (oldPath != newPath) {
                                 var b = binding;
                                 b.path = newPath;
                                 ensureMutable();
@@ -56,8 +64,9 @@ namespace VF.Feature {
                         }
 
                         foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                            var newPath = RewriteClipPath(binding.path);
-                            if (newPath != null) {
+                            var oldPath = binding.path;
+                            var newPath = RewriteClipPath(oldPath, mappingsLongestFirst);
+                            if (oldPath != newPath) {
                                 var b = binding;
                                 b.path = newPath;
                                 ensureMutable();
@@ -70,8 +79,8 @@ namespace VF.Feature {
                     controller.ModifyMask(layerId, mask => {
                         for (var i = 0; i < mask.transformCount; i++) {
                             var oldPath = mask.GetTransformPath(i);
-                            var newPath = RewriteClipPath(oldPath);
-                            if (newPath != null && oldPath != newPath) {
+                            var newPath = RewriteClipPath(oldPath, mappingsLongestFirst);
+                            if (oldPath != newPath) {
                                 mask.SetTransformPath(i, newPath);
                             }
                         }
@@ -80,13 +89,21 @@ namespace VF.Feature {
             }
         }
         
-        private string RewriteClipPath(string path) {
-            foreach (var pair in clipMappings) {
+        private string RewriteClipPath(string path, IList<KeyValuePair<string,string>> mappingsLongestFirst) {
+            for (var i = 0; i < 10; i++) {
+                var oldPath = path;
+                path = RewriteClipPathOnce(path, mappingsLongestFirst);
+                if (oldPath == path) break;
+            }
+            return path;
+        }
+        private string RewriteClipPathOnce(string path, IEnumerable<KeyValuePair<string,string>> mappingsLongestFirst) {
+            foreach (var pair in mappingsLongestFirst) {
                 if (path.StartsWith(pair.Key + "/") || path == pair.Key) {
                     return pair.Value + path.Substring(pair.Key.Length);
                 }
             }
-            return null;
+            return path;
         }
     }
 }

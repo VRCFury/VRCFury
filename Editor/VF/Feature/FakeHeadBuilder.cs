@@ -47,7 +47,7 @@ namespace VF.Feature {
             p.locked = true;
 
             foreach (var obj in objectsForFakeHead) {
-                mover.MoveToParent(obj, vrcfAlwaysVisibleHead);
+                mover.Move(obj, vrcfAlwaysVisibleHead);
             }
         }
     }

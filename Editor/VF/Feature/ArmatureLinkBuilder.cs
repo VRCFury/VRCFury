@@ -36,8 +36,11 @@ namespace VF.Feature {
                     var newParent = reparent.Item2;
 
                     // Move the object
-                    objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
-                    mover.MoveToParent(objectToMove, newParent);
+                    mover.Move(
+                        objectToMove,
+                        newParent,
+                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name
+                    );
                     
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(objectToMove);
@@ -92,8 +95,11 @@ namespace VF.Feature {
                     // Move the object
                     var p = propBone.GetComponent<ParentConstraint>();
                     if (p != null) Object.DestroyImmediate(p);
-                    propBone.name = "vrcf_" + uniqueModelNum + "_" + propBone.name;
-                    mover.MoveToParent(propBone, avatarBone);
+                    mover.Move(
+                        propBone,
+                        avatarBone,
+                        "vrcf_" + uniqueModelNum + "_" + propBone.name
+                    );
                     if (!model.keepBoneOffsets) {
                         propBone.transform.localPosition = Vector3.zero;
                         propBone.transform.localRotation = Quaternion.identity;

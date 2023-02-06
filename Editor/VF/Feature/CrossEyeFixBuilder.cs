@@ -39,7 +39,7 @@ namespace VF.Feature {
             fakeEyeUp.transform.SetParent(fakeEye.transform, true);
             
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
-            mover.MoveToParent(originalEye, realEyeUp);
+            mover.Move(originalEye, realEyeUp);
 
             var constraint = realEyeUp.AddComponent<RotationConstraint>();
             constraint.AddSource(new ConstraintSource() {
