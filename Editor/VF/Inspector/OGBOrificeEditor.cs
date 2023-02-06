@@ -117,10 +117,7 @@ namespace VF.Inspector {
                 forward = autoInfo.Item1;
             }
 
-            var name = orifice.name;
-            if (string.IsNullOrWhiteSpace(name)) {
-                name = obj.name;
-            }
+            var name = GetName(orifice);
 
             Debug.Log("Baking OGB " + obj + " as " + name);
 
@@ -275,40 +272,49 @@ namespace VF.Inspector {
             }
         }
 
+        private static bool IsDirectChildOfHips(OGBOrifice orf) {
+            return IsChildOfBone(orf, HumanBodyBones.Hips)
+                && !IsChildOfBone(orf, HumanBodyBones.Chest)
+                && !IsChildOfBone(orf, HumanBodyBones.Spine)
+                && !IsChildOfBone(orf, HumanBodyBones.LeftUpperArm)
+                && !IsChildOfBone(orf, HumanBodyBones.LeftUpperLeg)
+                && !IsChildOfBone(orf, HumanBodyBones.RightUpperArm)
+                && !IsChildOfBone(orf, HumanBodyBones.RightUpperLeg);
+        }
+
         public static bool ShouldProbablyHaveTouchZone(OGBOrifice orf) {
-            var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
-            if (!avatarObject) return false;
-            if (!IsChildOfBone(avatarObject, orf, HumanBodyBones.Hips)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Chest)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Spine)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperLeg)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperLeg)) return false;
-            return true;
+            if (IsDirectChildOfHips(orf)) {
+                var name = GetName(orf).ToLower();
+                if (name.Contains("rubbing") || name.Contains("job")) {
+                    return false;
+                }
+                return true;
+            }
+            return false;
         }
         
         public static bool ShouldProbablyBeHole(OGBOrifice orf) {
-            var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
-            if (!avatarObject) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Head)) return true;
-            if (!IsChildOfBone(avatarObject, orf, HumanBodyBones.Hips)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Chest)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Spine)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperLeg)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperLeg)) return false;
-            return true;
+            if (IsChildOfBone(orf, HumanBodyBones.Head)) return true;
+            return ShouldProbablyHaveTouchZone(orf);
         }
 
-        private static bool IsChildOfBone(GameObject avatarObject, OGBOrifice orf, HumanBodyBones bone) {
+        private static bool IsChildOfBone(OGBOrifice orf, HumanBodyBones bone) {
             try {
+                var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+                if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj.transform, orf.transform);
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        private static string GetName(OGBOrifice orifice) {
+            var name = orifice.name;
+            if (string.IsNullOrWhiteSpace(name)) {
+                name = orifice.gameObject.name;
+            }
+            return name;
         }
 
         private static bool IsChildOf(Transform parent, Transform child) {
