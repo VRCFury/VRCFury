@@ -105,16 +105,14 @@ namespace VF.Feature {
                 var fx = GetFx();
                 var layer = fx.NewLayer("OGB Off Temporarily Upon Load");
                 var off = layer.NewState("Off");
-                var mid = layer.NewState("Mid");
                 var on = layer.NewState("On");
-                off.TransitionsTo(mid).When(fx.Always()).WithTransitionDurationSeconds(1);
-                mid.TransitionsTo(on).When(fx.Always());
+                off.TransitionsTo(on).When().WithTransitionExitTime(1);
                 
                 var clip = manager.GetClipStorage().NewClip("ogbLoad");
                 foreach (var obj in objectsToDisableTemporarily) {
                     clipBuilder.Enable(clip, obj, false);
                 }
-                on.WithAnimation(clip);
+                off.WithAnimation(clip);
             }
         }
     }
