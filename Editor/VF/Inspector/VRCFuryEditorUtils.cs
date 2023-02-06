@@ -531,6 +531,17 @@ public static class VRCFuryEditorUtils {
         i.style.backgroundColor = new Color(0.5f, 0.25f, 0);
         return i;
     }
+    
+    public static Type GetManagedReferenceType(SerializedProperty prop) {
+        var typename = prop.managedReferenceFullTypename;
+        var i = typename.IndexOf(' ');
+        if (i > 0) {
+            var assemblyPart = typename.Substring(0, i);
+            var nsClassnamePart = typename.Substring(i);
+            return Type.GetType($"{nsClassnamePart}, {assemblyPart}");
+        }
+        return null;
+    }
 }
-
+    
 }

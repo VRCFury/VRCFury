@@ -120,6 +120,7 @@ namespace VF.Feature.Base {
                     case BlendShapeAction blendShape:
                         var foundOne = false;
                         foreach (var skin in GetAllSkins(avatarObject)) {
+                            if (!skin.sharedMesh) continue;
                             var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
                             if (blendShapeIndex < 0) continue;
                             foundOne = true;

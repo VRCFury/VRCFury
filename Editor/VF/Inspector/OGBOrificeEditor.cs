@@ -55,7 +55,8 @@ namespace VF.Inspector {
                 forward = autoInfo.Item1;
             }
 
-            var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+            var tightRot = Quaternion.LookRotation(forward) * Quaternion.Euler(90,0,0);
 
             var lightType = scr.addLight;
             if (lightType == OGBOrifice.AddLight.Auto)
@@ -142,7 +143,8 @@ namespace VF.Inspector {
                 if (handTouchZoneSize != null) {
                     var oscDepth = handTouchZoneSize.Item1;
                     var closeRadius = handTouchZoneSize.Item2;
-                    var tightRot = Quaternion.LookRotation(forward) * Quaternion.LookRotation(Vector3.up);
+                    // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+                    var tightRot = Quaternion.LookRotation(forward) * Quaternion.Euler(90,0,0);
                     OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
                     OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
                     OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
@@ -150,15 +152,16 @@ namespace VF.Inspector {
                     // Legacy non-OGB TPS penetrator detection
                     OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
                     OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                    
+                    var frotRadius = 0.1f;
+                    var frotPos = 0.05f;
+                    OGBUtils.AddReceiver(obj, forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 }
-
-                var frotRadius = 0.1f;
-                var frotPos = 0.05f;
+                
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
             }
             
             OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders, false);
@@ -172,6 +175,7 @@ namespace VF.Inspector {
                     AvatarCleaner.RemoveComponent(light);
                 }
 
+#if !UNITY_ANDROID
                 var main = new GameObject("Root");
                 main.transform.SetParent(obj.transform, false);
                 var mainLight = main.AddComponent<Light>();
@@ -190,6 +194,7 @@ namespace VF.Inspector {
                 frontLight.range = 0.45f;
                 frontLight.shadows = LightShadows.None;
                 frontLight.renderMode = LightRenderMode.ForceVertex;
+#endif
             }
 
             return Tuple.Create(name, forward);
@@ -298,8 +303,17 @@ namespace VF.Inspector {
         }
 
         private static bool IsChildOfBone(GameObject avatarObject, OGBOrifice orf, HumanBodyBones bone) {
+<<<<<<< HEAD
             var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
             return boneObj && IsChildOf(boneObj.transform, orf.transform);
+=======
+            try {
+                var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
+                return boneObj && IsChildOf(boneObj.transform, orf.transform);
+            } catch (Exception e) {
+                return false;
+            }
+>>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
         }
 
         private static bool IsChildOf(Transform parent, Transform child) {

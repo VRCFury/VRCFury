@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+<<<<<<< HEAD
+=======
+using System.Linq;
+>>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -15,10 +19,15 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
         public void Apply() {
             var usedNames = new List<string>();
+            var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
                 OGBPenetratorEditor.Bake(c, usedNames);
             }
             foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
+<<<<<<< HEAD
+=======
+                fakeHead.MarkEligible(c.gameObject);
+>>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
                 var (name,forward) = OGBOrificeEditor.Bake(c, usedNames);
 
                 if (c.addMenuItem) {
@@ -54,10 +63,17 @@ namespace VF.Feature {
                     var fx = GetFx();
 
                     var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
+<<<<<<< HEAD
                     OGBUtils.AddReceiver(c.gameObject, forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true, type: ContactReceiver.ReceiverType.Constant);
                     
                     var depthParam = fx.NewFloat(prefix + "/AnimDepth");
                     OGBUtils.AddReceiver(c.gameObject, forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, localOnly:true);
+=======
+                    OGBUtils.AddReceiver(c.gameObject, forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
+                    
+                    var depthParam = fx.NewFloat(prefix + "/AnimDepth");
+                    OGBUtils.AddReceiver(c.gameObject, forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
+>>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
 
                     var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
                     var off = layer.NewState("Off");

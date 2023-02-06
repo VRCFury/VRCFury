@@ -39,7 +39,7 @@ namespace VF.Feature {
                 .OrderBy(skin => AnimationUtility.CalculateTransformPath(skin.transform, avatarObject.transform).Length)
                 .FirstOrDefault();
 
-            if (baseSkin == null) {
+            if (baseSkin == null || !baseSkin.sharedMesh) {
                 Debug.LogWarning("Failed to find base skin on avatar");
                 return;
             }
@@ -52,6 +52,7 @@ namespace VF.Feature {
                 .ToArray();
 
             foreach (var skin in linkSkins) {
+                if (!skin.sharedMesh) continue;
                 for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
                     var bsName = skin.sharedMesh.GetBlendShapeName(i);
                     var baseI = baseSkin.sharedMesh.GetBlendShapeIndex(bsName);
@@ -78,6 +79,7 @@ namespace VF.Feature {
                             if (!binding.propertyName.StartsWith("blendShape.")) continue;
                             var blendShapeName = binding.propertyName.Substring(11);
                             foreach (var skin in linkSkins) {
+                                if (!skin.sharedMesh) continue;
                                 var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShapeName);
                                 if (blendShapeIndex < 0) continue;
                                 var newBinding = binding;

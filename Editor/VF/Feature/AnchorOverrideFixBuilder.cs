@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -10,11 +11,11 @@ namespace VF.Feature {
     public class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
-            var animator = avatarObject.GetComponent<Animator>();
-            if (!animator) return;
             var root = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, HumanBodyBones.Chest);
             if (!root) root = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, HumanBodyBones.Hips);
-            if (!root) return;
+            if (!root) {
+                throw new VRCFBuilderException("Failed to find chest or hips bone on avatar");
+            }
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                 skin.probeAnchor = root.transform;
             }
