@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Builder.Exceptions;
 using VF.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -24,20 +25,12 @@ public class VRCFuryBuilder {
     public bool SafeRun(GameObject avatarObject, GameObject originalObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-        var result = true;
-        try {
-            AssetDatabase.StartAssetEditing();
-            Run(avatarObject, originalObject);
-        } catch(Exception e) {
-            result = false;
-            Debug.LogException(e);
-            while (e is TargetInvocationException) {
-                e = (e as TargetInvocationException).InnerException;
-            }
-            EditorUtility.DisplayDialog("VRCFury Error", "VRCFury encountered an error.\n\n" + e.Message, "Ok");
-        }
+        var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                Run(avatarObject, originalObject);
+            });
+        });
 
-        AssetDatabase.StopAssetEditing();
         AssetDatabase.SaveAssets();
         EditorUtility.ClearProgressBar();
         return result;
@@ -120,11 +113,13 @@ public class VRCFuryBuilder {
     ) {
         var currentModelNumber = 0;
         var currentModelName = "";
+        var currentMenuSortPosition = 0;
         var manager = new AvatarManager(
             avatarObject,
             tmpDir,
             () => currentModelNumber,
-            () => currentModelName
+            () => currentModelName,
+            () => currentMenuSortPosition
         );
         var clipBuilder = new ClipBuilder(avatarObject);
         
@@ -133,12 +128,17 @@ public class VRCFuryBuilder {
         var totalModelCount = 0;
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
+        var menuSortPositionByBuilder = new Dictionary<FeatureBuilder, int>();
 
-        void AddBuilder(FeatureBuilder builder, GameObject configObject) {
+        void AddBuilder(FeatureBuilder builder, GameObject configObject, int menuSortPosition = -1) {
             builder.featureBaseObject = configObject;
             builder.tmpDir = tmpDir;
-            builder.addOtherFeature = m => AddModel(m, configObject);
             builder.uniqueModelNum = ++totalModelCount;
+            if (menuSortPosition < 0) menuSortPosition = builder.uniqueModelNum;
+            menuSortPositionByBuilder[builder] = menuSortPosition;
+            builder.addOtherFeature = m => {
+                AddModel(m, configObject, menuSortPosition);
+            };
             builder.allFeaturesInRun = collectedModels;
             builder.allBuildersInRun = collectedBuilders;
             builder.manager = manager;
@@ -152,12 +152,12 @@ public class VRCFuryBuilder {
             totalActionCount += builderActions.Count;
         }
 
-        void AddModel(FeatureModel model, GameObject configObject) {
+        void AddModel(FeatureModel model, GameObject configObject, int menuSortPosition = -1) {
             collectedModels.Add(model);
-            
+
             var builder = FeatureFinder.GetBuilder(model, configObject);
             if (builder == null) return;
-            AddBuilder(builder, configObject);
+            AddBuilder(builder, configObject, menuSortPosition);
         }
 
         progress.Progress(0, "Collecting features");
@@ -177,6 +177,7 @@ public class VRCFuryBuilder {
         AddBuilder(new BakeOGBBuilder(), avatarObject);
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
         AddBuilder(new ControllerConflictBuilder(), avatarObject);
+        AddBuilder(new D4rkOptimizerBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();
@@ -184,18 +185,25 @@ public class VRCFuryBuilder {
             var builder = action.GetBuilder();
             var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
                 avatarObject.transform);
+            if (configPath == "") configPath = "Avatar Root";
             
             currentModelNumber = builder.uniqueModelNum;
             currentModelName = action.GetName() + " (Feature " + currentModelNumber + ") from " + configPath;
+            currentMenuSortPosition = menuSortPositionByBuilder[builder];
             
             var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
-            action.Call();
+            try {
+                action.Call();
+            } catch (Exception e) {
+                throw new VRCFActionException(currentModelName, e);
+            }
         }
         
         progress.Progress(1, "Finalizing avatar changes");
-        manager.Finish();
+        var menuSettings = collectedModels.OfType<OverrideMenuSettings>().FirstOrDefault();
+        manager.Finish(menuSettings);
     }
 }
 

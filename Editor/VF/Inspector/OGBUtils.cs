@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Menu;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
@@ -142,7 +143,7 @@ namespace VF.Model {
             }
 
             foreach (var c in remove) {
-                RemoveComponent(c);
+                AvatarCleaner.RemoveComponent(c);
             }
 
             if (obj.transform.parent) {
@@ -158,11 +159,6 @@ namespace VF.Model {
             return false;
         }
 
-        public static void RemoveComponent(Component c) {
-            if (c.gameObject.GetComponents<Component>().Length == 2 && !PrefabUtility.IsPartOfAnyPrefab(c.gameObject) && c.gameObject.transform.childCount == 0) Object.DestroyImmediate(c.gameObject);
-            else Object.DestroyImmediate(c);
-        }
-        
         public static string GetNextName(List<string> usedNames, string prefix) {
             for (int i = 0; ; i++) {
                 var next = prefix + (i == 0 ? "" : i+"");

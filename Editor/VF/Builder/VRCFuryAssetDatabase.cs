@@ -1,7 +1,12 @@
+using System;
+using System.Globalization;
 using System.IO;
+using System.Threading;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Builder.Exceptions;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     public class VRCFuryAssetDatabase {
@@ -59,13 +64,15 @@ namespace VF.Builder {
         }
         
         public static T CopyAsset<T>(T obj, string toPath) where T : Object {
-            AssetDatabase.StopAssetEditing();
-            if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(obj), toPath)) {
-                throw new VRCFBuilderException("Failed to copy asset " + obj + " to " + toPath);
-            }
+            T copy = null;
 
-            var copy = AssetDatabase.LoadAssetAtPath<T>(toPath);
-            AssetDatabase.StartAssetEditing();
+            WithoutAssetEditing(() => {
+                if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(obj), toPath)) {
+                    throw new VRCFBuilderException("Failed to copy asset " + obj + " to " + toPath);
+                }
+                copy = AssetDatabase.LoadAssetAtPath<T>(toPath);
+            });
+
             if (copy == null) {
                 throw new VRCFBuilderException("Failed to load copied asset " + obj + " from " + toPath);
             }
@@ -74,6 +81,60 @@ namespace VF.Builder {
 
         public static bool IsVrcfAsset(Object obj) {
             return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
+        }
+
+        private static bool assetEditing = false;
+        public static void WithAssetEditing(Action go) {
+            if (!assetEditing) {
+                AssetDatabase.StartAssetEditing();
+                assetEditing = true;
+                try {
+                    go();
+                } finally {
+                    AssetDatabase.StopAssetEditing();
+                    assetEditing = false;
+                }
+            } else {
+                go();
+            }
+        }
+
+        public static void WithoutAssetEditing(Action go) {
+            if (assetEditing) {
+                AssetDatabase.StopAssetEditing();
+                assetEditing = false;
+                try {
+                    go();
+                } finally {
+                    AssetDatabase.StartAssetEditing();
+                    assetEditing = true;
+                }
+            } else {
+                go();
+            }
+        }
+
+        public static void WithLockReloadAssemblies(Action go) {
+            EditorApplication.LockReloadAssemblies();
+            try {
+                go();
+            } finally {
+                EditorApplication.UnlockReloadAssemblies();
+            }
+        }
+
+        /** In case you're running code that counts on the system locale being standardized... */
+        public static void WithStandardizedLocale(Action go) {
+            var oldCulture = Thread.CurrentThread.CurrentCulture;
+            var oldUICulture = Thread.CurrentThread.CurrentUICulture;
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+            try {
+                go();
+            } finally {
+                Thread.CurrentThread.CurrentCulture = oldCulture;
+                Thread.CurrentThread.CurrentUICulture = oldUICulture;
+            }
         }
     }
 }

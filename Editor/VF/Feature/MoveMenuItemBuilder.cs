@@ -52,15 +52,15 @@ namespace VF.Feature {
             MenuManager menu,
             string rawPath,
             bool create,
-            out string[] path,
-            out string[] prefix,
+            out IList<string> path,
+            out IList<string> prefix,
             out string name,
             out VRCExpressionsMenu prefixMenu
         ) {
-            path = string.IsNullOrWhiteSpace(rawPath) ? new string[]{} : rawPath.Split('/');
-            if (path.Length > 0) {
-                prefix = MenuManager.Slice(path, path.Length - 1);
-                name = path[path.Length - 1];
+            path = MenuManager.SplitPath(rawPath);
+            if (path.Count > 0) {
+                prefix = MenuManager.Slice(path, path.Count - 1);
+                name = path[path.Count - 1];
             } else {
                 prefix = new string[]{};
                 name = "";

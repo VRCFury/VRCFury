@@ -1,4 +1,5 @@
 using UnityEditor;
+using VF.Builder.Exceptions;
 
 namespace VF.Menu {
     public class MenuItems {
@@ -21,41 +22,35 @@ namespace VF.Menu {
         
         //
         
-        [MenuItem("Tools/VRCFury/OseGB", priority = 1200)]
-        private static void MarkerOseGB() {
+        [MenuItem("Tools/VRCFury/OGB", priority = 1200)]
+        private static void MarkerOGB() {
         }
 
-        [MenuItem("Tools/VRCFury/OseGB", true)]
-        private static bool MarkerOseGB2() {
+        [MenuItem("Tools/VRCFury/OGB", true)]
+        private static bool MarkerOGB2() {
             return false;
         }
 
-        [MenuItem("Tools/VRCFury/Upgrade avatar for OscGB", priority = 1201)]
+        [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", priority = 1201)]
         private static void Run() {
-            DPSContactUpgradeBuilder.Run();
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                OGBUpgradeMenuItem.Run();
+            });
         }
 
-        [MenuItem("Tools/VRCFury/Upgrade avatar for OscGB", true)]
+        [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", true)]
         private static bool Check() {
-            return DPSContactUpgradeBuilder.Check();
+            return OGBUpgradeMenuItem.Check();
         }
         
         [MenuItem("Tools/VRCFury/Create Orifice", priority = 1202)]
         public static void RunHole() {
-            OrificeCreatorMenuItem.Create();
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                OrificeCreatorMenuItem.Create();
+            });
         }
 
-        [MenuItem("Tools/VRCFury/Migrate Parent-Constraint Orifices to OGB (DPSAttach, __dps)", priority = 1204)]
-        private static void RunMigrateDPSAttach() {
-            DpsAttachMigration.Run(MenuUtils.GetSelectedAvatar());
-        }
-        
-        [MenuItem("Tools/VRCFury/Migrate Parent-Constraint Orifices to OGB (DPSAttach, __dps)", true)]
-        private static bool CheckMigrateDPSAttach() {
-            return MenuUtils.GetSelectedAvatar() != null;
-        }
-        
-        [MenuItem("Tools/VRCFury/Bake OscGB Component", priority = 1205)]
+        [MenuItem("Tools/VRCFury/Bake OGB Component", priority = 1205)]
         public static void RunBake() {
             OrificeCreatorMenuItem.RunBake();
         }
@@ -73,7 +68,9 @@ namespace VF.Menu {
         
         [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", priority = 1401)]
         private static void NukeZawooParts() {
-            ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
+            });
         }
         
         [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", true)]

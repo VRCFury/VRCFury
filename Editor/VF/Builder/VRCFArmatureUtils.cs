@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using VF.Builder.Exceptions;
 
 namespace VF.Builder {
     public class VRCFArmatureUtils {

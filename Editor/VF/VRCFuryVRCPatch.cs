@@ -66,13 +66,18 @@ public class Startup {
     }
 
     public static List<Type> GetVRCFuryComponentTypes() {
-        return new List<Type> {
+        var list = new List<Type> {
             typeof(VRCFury),
             typeof(VRCFuryTest),
             typeof(OGBOrifice),
             typeof(OGBPenetrator),
             typeof(VRCFGlobalCollider),
         };
+        
+        var d4k3 = ReflectionUtils.GetTypeFromAnyAssembly("d4rkAvatarOptimizer");
+        if (d4k3 != null) list.Add(d4k3);
+
+        return list;
     }
 }
 

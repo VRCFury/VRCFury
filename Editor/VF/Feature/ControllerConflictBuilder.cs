@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;

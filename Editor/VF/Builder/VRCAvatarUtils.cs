@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
+using VF.Builder.Exceptions;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -24,7 +25,7 @@ namespace VF.Builder {
                     : null;
                 Action<AnimatorController> Set = c => {
                     avatar.customizeAnimationLayers = true;
-                    layer.isDefault = false;
+                    layer.isDefault = c == null;
                     layer.animatorController = c;
                     layers[layerNum] = layer;
                     EditorUtility.SetDirty(avatar);

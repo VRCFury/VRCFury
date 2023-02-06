@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder.Exceptions;
 using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -12,21 +13,42 @@ namespace VF.Builder {
     public class MenuManager {
         private readonly VRCExpressionsMenu rootMenu;
         private readonly string tmpDir;
+        private readonly Func<int> currentMenuSortPosition;
+        private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions
+            = new Dictionary<VRCExpressionsMenu.Control, int>();
 
-        public MenuManager(VRCExpressionsMenu menu, string tmpDir) {
+        public MenuManager(VRCExpressionsMenu menu, string tmpDir, Func<int> currentMenuSortPosition) {
             rootMenu = menu;
             this.tmpDir = tmpDir;
+            this.currentMenuSortPosition = currentMenuSortPosition;
         }
 
         public VRCExpressionsMenu GetRaw() {
             return rootMenu;
         }
-        private VRCExpressionsMenu.Control NewMenuItem(string path) {
-            path = path.Replace("\\/", "REALSLASH");
-            var split = path.Split('/').Select(s => s.Replace("REALSLASH", "/")).ToArray();
+
+        private VRCExpressionsMenu.Control NewControl() {
             var control = new VRCExpressionsMenu.Control();
-            control.name = split[split.Length-1];
-            var submenu = GetSubmenu(Slice(split, split.Length-1));
+            sortPositions[control] = currentMenuSortPosition();
+            return control;
+        }
+
+        public static IList<string> SplitPath(string path) {
+            if (string.IsNullOrWhiteSpace(path))
+                return new string[] { };
+            return path
+                .Replace("\\/", "REALSLASH")
+                .Split('/')
+                .Select(s => s.Replace("REALSLASH", "/"))
+                .ToArray();
+        }
+
+        private VRCExpressionsMenu.Control NewMenuItem(string path) {
+            var split = SplitPath(path);
+            if (split.Count == 0) split = new[] { "" };
+            var control = NewControl();
+            control.name = split[split.Count-1];
+            var submenu = GetSubmenu(Slice(split, split.Count-1));
             submenu.controls.Add(control);
             return control;
         }
@@ -36,13 +58,13 @@ namespace VF.Builder {
          * If createFromControl is set, we will use it as the basis if creating the folder control is needed.
          */
         public VRCExpressionsMenu GetSubmenu(
-            string[] path,
+            IList<string> path,
             bool createIfMissing = true,
             VRCExpressionsMenu.Control createFromControl = null,
             Func<string,string> rewriteParamName = null
         ) {
             var current = GetRaw();
-            for (var i = 0; i < path.Length; i++) {
+            for (var i = 0; i < path.Count; i++) {
                 var folderName = path[i];
                 var dupIndex = folderName.IndexOf(".dup.");
                 var offset = 0;
@@ -56,10 +78,10 @@ namespace VF.Builder {
                 var folderControl = offset < folderControls.Length ? folderControls[offset] : null;
                 if (folderControl == null) {
                     if (!createIfMissing) return null;
-                    if (createFromControl != null && i == path.Length - 1) {
+                    if (createFromControl != null && i == path.Count - 1) {
                         folderControl = CloneControl(createFromControl, rewriteParamName);
                     } else {
-                        folderControl = new VRCExpressionsMenu.Control();
+                        folderControl = NewControl();
                     }
                     folderControl.name = folderName;
                     folderControl.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
@@ -86,15 +108,16 @@ namespace VF.Builder {
             control.value = value;
             control.icon = icon;
         }
-        public void NewMenuSlider(string path, VFANumber param) {
+        public void NewMenuSlider(string path, VFANumber param, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
             var menuParam = new VRCExpressionsMenu.Control.Parameter {
                 name = param.Name()
             };
             control.subParameters = new[]{menuParam};
+            control.icon = icon;
         }
-        public void NewMenuPuppet(string path, VFANumber x, VFANumber y) {
+        public void NewMenuPuppet(string path, VFANumber x, VFANumber y, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
             var menuParamX = new VRCExpressionsMenu.Control.Parameter();
@@ -102,13 +125,14 @@ namespace VF.Builder {
             var menuParamY = new VRCExpressionsMenu.Control.Parameter();
             menuParamY.name = (y != null) ? y.Name() : "";
             control.subParameters = new[]{menuParamX, menuParamY};
+            control.icon = icon;
         }
 
-        private VRCExpressionsMenu CreateNewMenu(string[] path) {
+        private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             string filename;
-            if (path.Length > 0) filename = "VRCF_Menu_" + string.Join("_", cleanPath);
+            if (path.Count > 0) filename = "VRCF_Menu_" + string.Join("_", cleanPath);
             else filename = tmpDir + "VRCF_Menu";
             VRCFuryAssetDatabase.SaveAsset(newMenu, tmpDir, filename);
             return newMenu;
@@ -126,7 +150,7 @@ namespace VF.Builder {
         }
 
         public void MergeMenu(
-            string[] prefix,
+            IList<string> prefix,
             VRCExpressionsMenu from,
             Func<string,string> rewriteParamName = null,
             Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
@@ -162,19 +186,21 @@ namespace VF.Builder {
         }
 
         private VRCExpressionsMenu.Control CloneControl(VRCExpressionsMenu.Control from, Func<string,string> rewriteParamName) {
-            return new VRCExpressionsMenu.Control {
-                name = from.name,
-                icon = from.icon,
-                type = from.type,
-                parameter = CloneControlParam(from.parameter, rewriteParamName),
-                value = from.value,
-                style = from.style,
-                subMenu = from.subMenu,
-                labels = from.labels,
-                subParameters = from.subParameters == null ? null : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
+            var control = NewControl();
+            control.name = from.name;
+            control.icon = from.icon;
+            control.type = from.type;
+            control.parameter = CloneControlParam(from.parameter, rewriteParamName);
+            control.value = from.value;
+            control.style = from.style;
+            control.subMenu = from.subMenu;
+            control.labels = from.labels;
+            control.subParameters = from.subParameters == null
+                ? null
+                : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
                     .Select(p => CloneControlParam(p, rewriteParamName))
-                    .ToArray(),
-            };
+                    .ToArray();
+            return control;
         }
         private VRCExpressionsMenu.Control.Parameter CloneControlParam(VRCExpressionsMenu.Control.Parameter from, Func<string,string> rewriteParamName) {
             if (from == null) return null;
@@ -183,8 +209,18 @@ namespace VF.Builder {
             };
         }
 
-        public static string[] Slice(string[] arr, int count) {
-            return new ArraySegment<string>(arr, 0, count).ToArray();
+        public static IList<string> Slice(IEnumerable<string> arr, int count) {
+            return new ArraySegment<string>(arr.ToArray(), 0, count).ToArray();
+        }
+
+        public void SortMenu() {
+            MenuSplitter.ForEachMenu(rootMenu, (menu, path) => {
+                menu.controls.Sort((a, b) => {
+                    sortPositions.TryGetValue(a, out var aPos);
+                    sortPositions.TryGetValue(b, out var bPos);
+                    return aPos - bPos;
+                });
+            });
         }
 
     }

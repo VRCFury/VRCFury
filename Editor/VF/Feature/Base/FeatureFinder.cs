@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Inspector;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;

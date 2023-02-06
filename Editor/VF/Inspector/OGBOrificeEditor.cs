@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Menu;
 using VF.Model;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
@@ -24,6 +26,23 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableHandTouchZone2")));
             container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
+
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when penetrated:"));
+            container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
+                var c = new VisualElement();
+                c.Add(VRCFuryEditorUtils.Info(
+                    "If you provide an animation clip with more than 2 frames, the clip will run from start " +
+                    "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
+                c.Add(VRCFuryEditorUtils.WrappedLabel("Penetrated state:"));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
+                c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of minimum penetration in meters (can be slightly negative to trigger outside!):"));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("minDepth")));
+                c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of maximum penetration in meters (0 for default):"));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("maxDepth")));
+                c.Add(VRCFuryEditorUtils.WrappedLabel("Enable animation for penetrators on this same avatar?"));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableSelf")));
+                return c;
+            }));
 
             return container;
         }
@@ -83,7 +102,7 @@ namespace VF.Inspector {
             );
         }
         
-        public static void Bake(OGBOrifice orifice, List<string> usedNames = null, bool onlySenders = false) {
+        public static Tuple<string,Vector3> Bake(OGBOrifice orifice, List<string> usedNames = null, bool onlySenders = false) {
             if (usedNames == null) usedNames = new List<string>();
             var obj = orifice.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
@@ -150,7 +169,7 @@ namespace VF.Inspector {
             }
             if (autoInfo == null && addLight != OGBOrifice.AddLight.None) {
                 foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
-                    OGBUtils.RemoveComponent(light);
+                    AvatarCleaner.RemoveComponent(light);
                 }
 
                 var main = new GameObject("Root");
@@ -172,8 +191,8 @@ namespace VF.Inspector {
                 frontLight.shadows = LightShadows.None;
                 frontLight.renderMode = LightRenderMode.ForceVertex;
             }
-            
-            DestroyImmediate(orifice);
+
+            return Tuple.Create(name, forward);
         }
 
         private static Tuple<float, float> GetHandTouchZoneSize(OGBOrifice orifice) {
@@ -240,7 +259,7 @@ namespace VF.Inspector {
             var info = GetInfoFromLights(orifice.gameObject);
             foreach (var light in orifice.gameObject.GetComponentsInChildren<Light>(true)) {
                 if (IsRing(light) || IsHole(light) || IsNormal(light)) {
-                    OGBUtils.RemoveComponent(light);
+                    AvatarCleaner.RemoveComponent(light);
                 }
             }
             if (info != null) {
@@ -280,7 +299,26 @@ namespace VF.Inspector {
 
         private static bool IsChildOfBone(GameObject avatarObject, OGBOrifice orf, HumanBodyBones bone) {
             var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
-            return boneObj && orf.transform.IsChildOf(boneObj.transform);
+            return boneObj && IsChildOf(boneObj.transform, orf.transform);
+        }
+
+        private static bool IsChildOf(Transform parent, Transform child) {
+            var alreadyChecked = new HashSet<Transform>();
+            var current = child;
+            while (current != null) {
+                alreadyChecked.Add(current);
+                if (current == parent) return true;
+                var constraint = current.GetComponent<IConstraint>();
+                if (constraint != null && constraint.sourceCount > 0) {
+                    var source = constraint.GetSource(0).sourceTransform;
+                    if (source != null && !alreadyChecked.Contains(source)) {
+                        current = source;
+                        continue;
+                    }
+                }
+                current = current.parent;
+            }
+            return false;
         }
     }
 }

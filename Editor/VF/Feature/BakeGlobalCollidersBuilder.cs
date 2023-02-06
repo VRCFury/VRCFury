@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Model;
 using VRC.SDK3.Avatars.Components;

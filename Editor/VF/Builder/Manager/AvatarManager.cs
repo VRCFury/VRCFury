@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -14,18 +15,21 @@ namespace VF.Builder {
         private readonly string tmpDir;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureNameProvider;
+        private readonly Func<int> currentMenuSortPosition;
 
         public AvatarManager(
             GameObject avatarObject,
             string tmpDir,
             Func<int> currentFeatureNumProvider,
-            Func<string> currentFeatureNameProvider
+            Func<string> currentFeatureNameProvider,
+            Func<int> currentMenuSortPosition
         ) {
             this.avatarObject = avatarObject;
             this.avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             this.tmpDir = tmpDir;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureNameProvider = currentFeatureNameProvider;
+            this.currentMenuSortPosition = currentMenuSortPosition;
         }
 
         private MenuManager _menu;
@@ -33,7 +37,8 @@ namespace VF.Builder {
             if (_menu == null) {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                 VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarObject.name);
-                _menu = new MenuManager(menu, tmpDir);
+                var initializing = true;
+                _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : currentMenuSortPosition());
 
                 var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (origMenu != null) {
@@ -42,6 +47,7 @@ namespace VF.Builder {
                 }
                 
                 VRCAvatarUtils.SetAvatarMenu(avatar, menu);
+                initializing = false;
             }
             return _menu;
         }
@@ -105,9 +111,10 @@ namespace VF.Builder {
             return _clipStorage;
         }
 
-        public void Finish() {
+        public void Finish(OverrideMenuSettings menuSettings) {
             if (_menu != null) {
-                MenuSplitter.SplitMenus(_menu.GetRaw());
+                _menu.SortMenu();
+                MenuSplitter.SplitMenus(_menu.GetRaw(), menuSettings);
                 MenuSplitter.FixNulls(_menu.GetRaw());
             }
 
