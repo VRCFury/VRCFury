@@ -415,6 +415,7 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
+    [NoBuilder]
     public class FixWriteDefaults : NewFeatureModel {
         public enum FixWriteDefaultsMode {
             Auto,
@@ -554,6 +555,7 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
+    [NoBuilder]
     public class OverrideMenuSettings : NewFeatureModel {
         public string nextText;
         public Texture2D nextIcon;
