@@ -303,17 +303,12 @@ namespace VF.Inspector {
         }
 
         private static bool IsChildOfBone(GameObject avatarObject, OGBOrifice orf, HumanBodyBones bone) {
-<<<<<<< HEAD
-            var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
-            return boneObj && IsChildOf(boneObj.transform, orf.transform);
-=======
             try {
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj.transform, orf.transform);
             } catch (Exception e) {
                 return false;
             }
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
         }
 
         private static bool IsChildOf(Transform parent, Transform child) {

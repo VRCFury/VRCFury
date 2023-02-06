@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-<<<<<<< HEAD
-=======
 using System.ComponentModel;
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -14,11 +11,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
-<<<<<<< HEAD
-using Action = System.Action;
-=======
 using Component = UnityEngine.Component;
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
 
 namespace VF.Menu {
     public class OGBUpgradeMenuItem {
@@ -73,13 +66,8 @@ namespace VF.Menu {
 
         public static string Apply(GameObject avatarObject, bool dryRun) {
             var deletions = new List<string>();
-<<<<<<< HEAD
-            var addedPen = new List<string>();
-            var addedOrf = new List<string>();
-=======
             var addedPen = new HashSet<GameObject>();
             var addedOrf = new HashSet<GameObject>();
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
             var alreadyExists = new List<string>();
 
             string GetPath(GameObject obj) {
@@ -88,24 +76,16 @@ namespace VF.Menu {
             OGBPenetrator AddPen(GameObject obj) {
                 if (obj.GetComponentsInParent<OGBPenetrator>(true).Length > 0) return null;
                 if (obj.GetComponentsInChildren<OGBPenetrator>(true).Length > 0) return null;
-<<<<<<< HEAD
-                addedPen.Add(GetPath(obj));
-=======
                 if (addedPen.Contains(obj)) return null;
                 addedPen.Add(obj);
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
                 if (dryRun) return null;
                 return obj.AddComponent<OGBPenetrator>();
             }
             OGBOrifice AddOrifice(GameObject obj) {
                 if (obj.GetComponentsInParent<OGBOrifice>(true).Length > 0) return null;
                 if (obj.GetComponentsInChildren<OGBOrifice>(true).Length > 0) return null;
-<<<<<<< HEAD
-                addedOrf.Add(GetPath(obj));
-=======
                 if (addedOrf.Contains(obj)) return null;
                 addedOrf.Add(obj);
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
                 if (dryRun) return null;
                 return obj.AddComponent<OGBOrifice>();
             }
@@ -130,8 +110,6 @@ namespace VF.Menu {
                 var constraint = parent.gameObject.GetComponent<ParentConstraint>();
                 if (constraint == null) continue;
                 if (constraint.sourceCount < 2) continue;
-<<<<<<< HEAD
-=======
                 var sourcesWithWeight = 0;
                 for (var i = 0; i < constraint.sourceCount; i++) {
                     if (constraint.GetSource(i).weight > 0) sourcesWithWeight++;
@@ -141,7 +119,6 @@ namespace VF.Menu {
                     // (used to position an orifice between two bones)
                     continue;
                 }
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
                 
                 var isParent = GetIsParent(parent.gameObject);
                 if (isParent == IsDps.NO) continue;
@@ -173,11 +150,7 @@ namespace VF.Menu {
 
                     var fullName = "Orifice (" + name + ")";
 
-<<<<<<< HEAD
-                    addedOrf.Add(GetPath(obj));
-=======
                     addedOrf.Add(obj);
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
                     if (!dryRun) {
                         var ogb = obj.GetComponent<OGBOrifice>();
                         if (ogb == null) {
@@ -347,15 +320,9 @@ namespace VF.Menu {
 
             var parts = new List<string>();
             if (addedPen.Count > 0)
-<<<<<<< HEAD
-                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPen));
-            if (addedOrf.Count > 0)
-                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrf));
-=======
                 parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPen.Select(GetPath)));
             if (addedOrf.Count > 0)
                 parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrf.Select(GetPath)));
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
@@ -418,10 +385,7 @@ namespace VF.Menu {
         private static bool HasBlendshape(GameObject avatarObject, string name) {
             var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             foreach (var skin in skins) {
-<<<<<<< HEAD
-=======
                 if (!skin.sharedMesh) continue;
->>>>>>> 0772fa9975bfc14ddd8f9170dc02fa372562381b
                 var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(name);
                 if (blendShapeIndex < 0) continue;
                 return true;
