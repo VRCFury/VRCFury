@@ -134,10 +134,13 @@ public class ControllerMerger {
         T Add<T>() where T : StateMachineBehaviour {
             var added = AddUnchecked(typeof(T)) as T;
             if (added == null) {
-                throw new Exception(
-                    "Failed to create state behaviour of type " + typeof(T).Name + "." +
+                throw new VRCFBuilderException(
+                    $"Failed to create state behaviour of type ${typeof(T).Name} at ${source}." +
                     " Usually this means you have unresolved script compilation errors. Click 'Clear' on the" +
-                    " top left of the unity log, and fix any red errors that remain after clearing.");
+                    " top left of the unity log, and fix any red errors that remain after clearing." +
+                    " If there are no errors, try restarting unity. If nothing fixes it, report on" +
+                    " https://vrcfury.com/discord"
+                );
             }
             return added;
         }
@@ -205,7 +208,12 @@ public class ControllerMerger {
                 }
                 default:
                     throw new VRCFBuilderException(
-                        "Unable to copy unknown state machine behavior type: " + b.GetType().Name + " at " + source);
+                        $"Unknown state machine behavior type ${b.GetType().Name} at ${source}" +
+                        " Usually this means you have unresolved script compilation errors. Click 'Clear' on the" +
+                        " top left of the unity log, and fix any red errors that remain after clearing." +
+                        " If there are no errors, try restarting unity. If nothing fixes it, report on" +
+                        " https://vrcfury.com/discord"
+                    );
             }
         }
     }
