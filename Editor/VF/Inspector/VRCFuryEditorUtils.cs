@@ -218,12 +218,13 @@ public static class VRCFuryEditorUtils {
         BorderColor(el, all, all);
     }
     
-    public static VisualElement WrappedLabel(string text) {
+    public static VisualElement WrappedLabel(string text, Action<IStyle> style = null) {
         var field = new Label(text) {
             style = {
                 whiteSpace = WhiteSpace.Normal
             }
         };
+        style?.Invoke(field.style);
         return field;
     }
 
@@ -239,7 +240,8 @@ public static class VRCFuryEditorUtils {
         SerializedProperty prop,
         string label = null,
         int labelWidth = 100,
-        Func<string,string> formatEnum = null
+        Func<string,string> formatEnum = null,
+        Action<IStyle> style = null
     ) {
         if (prop == null) return WrappedLabel("Prop is null");
         VisualElement f = null;
@@ -331,6 +333,8 @@ public static class VRCFuryEditorUtils {
             flex.Add(field);
             return flex;
         }
+        
+        style?.Invoke(wrapper.style);
         
         return wrapper;
     }

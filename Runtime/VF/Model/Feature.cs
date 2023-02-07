@@ -546,6 +546,19 @@ namespace VF.Model.Feature {
     public class BlendShapeLink : NewFeatureModel {
         public List<GameObject> objs;
         public string baseObj;
+        public bool includeAll = true;
+        public List<Exclude> excludes = new List<Exclude>();
+        public List<Include> includes = new List<Include>();
+        
+        [Serializable]
+        public class Exclude {
+            public string name;
+        }
+        [Serializable]
+        public class Include {
+            public string nameOnBase;
+            public string nameOnLinked;
+        }
     }
     
     [Serializable]
