@@ -271,7 +271,7 @@ public class ControllerMerger {
                     motion = CloneMotion(oldChild.motion),
                     threshold = oldChild.threshold,
                     cycleOffset = oldChild.cycleOffset,
-                    directBlendParameter = oldChild.directBlendParameter,
+                    directBlendParameter = RewriteParamName(oldChild.directBlendParameter),
                     mirror = oldChild.mirror,
                     position = oldChild.position,
                     timeScale = oldChild.timeScale
