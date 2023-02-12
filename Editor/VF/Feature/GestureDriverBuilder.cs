@@ -25,29 +25,20 @@ namespace VF.Feature {
             }
         }
 
-        private void MakeGesture(GestureDriver.Gesture gesture) {
-            if (gesture.enableWeight && gesture.hand == GestureDriver.Hand.EITHER &&
+        private void MakeGesture(GestureDriver.Gesture gesture, GestureDriver.Hand handOverride = GestureDriver.Hand.EITHER) {
+            var hand = handOverride == GestureDriver.Hand.EITHER ? gesture.hand : handOverride;
+            
+            if (gesture.enableWeight && hand == GestureDriver.Hand.EITHER &&
                 gesture.sign == GestureDriver.HandSign.FIST) {
-
-                try {
-                    gesture.hand = GestureDriver.Hand.LEFT;
-                    MakeGesture(gesture);
-                } finally {
-                    gesture.hand = GestureDriver.Hand.EITHER;
-                }
-                try {
-                    gesture.hand = GestureDriver.Hand.RIGHT;
-                    MakeGesture(gesture);
-                } finally {
-                    gesture.hand = GestureDriver.Hand.EITHER;
-                }
+                MakeGesture(gesture, GestureDriver.Hand.LEFT);
+                MakeGesture(gesture, GestureDriver.Hand.RIGHT);
                 return;
             }
 
             var fx = GetFx();
             var uniqueNum = i++;
-            var name = "Gesture " + uniqueNum + " - " + gesture.hand + " " + gesture.sign;
-            if (gesture.hand == GestureDriver.Hand.COMBO) {
+            var name = "Gesture " + uniqueNum + " - " + hand + " " + gesture.sign;
+            if (hand == GestureDriver.Hand.COMBO) {
                 name += " " + gesture.comboSign;
             }
             var uid = "gesture_" + uniqueNum;
@@ -71,15 +62,15 @@ namespace VF.Feature {
 
             VFACondition onCondition;
             int weightHand = 0;
-            if (gesture.hand == GestureDriver.Hand.LEFT) {
+            if (hand == GestureDriver.Hand.LEFT) {
                 onCondition = GestureLeft.IsEqualTo((int)gesture.sign);
                 if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
-            } else if (gesture.hand == GestureDriver.Hand.RIGHT) {
+            } else if (hand == GestureDriver.Hand.RIGHT) {
                 onCondition = GestureRight.IsEqualTo((int)gesture.sign);
                 if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 2;
-            } else if (gesture.hand == GestureDriver.Hand.EITHER) {
+            } else if (hand == GestureDriver.Hand.EITHER) {
                 onCondition = GestureLeft.IsEqualTo((int)gesture.sign).Or(GestureRight.IsEqualTo((int)gesture.sign));
-            } else if (gesture.hand == GestureDriver.Hand.COMBO) {
+            } else if (hand == GestureDriver.Hand.COMBO) {
                 onCondition = GestureLeft.IsEqualTo((int)gesture.sign).And(GestureRight.IsEqualTo((int)gesture.comboSign));
                 if (gesture.comboSign == GestureDriver.HandSign.FIST) weightHand = 2;
                 else if(gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
@@ -113,7 +104,7 @@ namespace VF.Feature {
             }
             
             var clip = LoadState(uid, gesture.state);
-            if (weightHand > 0) {
+            if (gesture.enableWeight && weightHand > 0) {
                 MakeWeightParams();
                 var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
                 var tree = manager.GetClipStorage().NewBlendTree(uid + "_blend");
