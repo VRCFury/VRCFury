@@ -69,18 +69,11 @@ public class VRCFuryEditor : Editor {
             container.Add(box);
 
             var label = VRCFuryEditorUtils.WrappedLabel(
-                "VRCFury only applies changes to a temporary copy of your avatar while uploading." + 
-                " If you wish to verify these changes in your editor, clicking this button will generate" +
-                " a clone object with the VRCFury changes applied.");
+                "Beware: VRCFury is non-destructive, which means these features will only be visible" +
+                " when you upload or if you enter the editor Play mode!");
             VRCFuryEditorUtils.Padding(box, 5);
             VRCFuryEditorUtils.BorderRadius(box, 5);
             box.Add(label);
-
-            var genButton = VRCFuryEditorUtils.Button("Build an Editor Test Copy", () => {
-                VRCFuryTestCopyMenuItem.BuildTestCopy(self.gameObject);
-            });
-            genButton.style.marginTop = 5;
-            box.Add(genButton);
         }
 
         return container;
