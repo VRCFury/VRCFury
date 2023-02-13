@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -257,6 +255,10 @@ namespace VF.Feature {
                         childAvatarBone = check.Item2.transform.Find("ChestUp/" + searchName)?.gameObject;
                     }
                     if (childAvatarBone != null) {
+                        var marshmallowChild = GetMarshmallowChild(childAvatarBone);
+                        if (marshmallowChild != null) childAvatarBone = marshmallowChild;
+                    }
+                    if (childAvatarBone != null) {
                         links.mergeBones.Push(Tuple.Create(childPropBone, childAvatarBone));
                         checkStack.Push(Tuple.Create(childPropBone, childAvatarBone));
                     } else {
@@ -266,6 +268,20 @@ namespace VF.Feature {
             }
 
             return links;
+        }
+
+        // Marshmallow PB unity package inserts fake bones in the armature, breaking our link.
+        // Detect if this happens, and return the proper child bone instead.
+        private static GameObject GetMarshmallowChild(GameObject orig) {
+            if (orig.GetComponent<ScaleConstraint>() == null) return null;
+            var pConstraint = orig.GetComponent<ParentConstraint>();
+            if (pConstraint == null) return null;
+            if (pConstraint.sourceCount != 1) return null;
+            var source = pConstraint.GetSource(0);
+            if (source.sourceTransform == null) return null;
+            if (!source.sourceTransform.name.Contains("Constraint")) return null;
+            if (orig.transform.childCount != 1) return null;
+            return orig.transform.GetChild(0).gameObject;
         }
 
         public override string GetEditorTitle() {
