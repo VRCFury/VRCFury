@@ -24,7 +24,7 @@ namespace VF {
 
         // This should absolutely always be false in play mode, but we check just in case
         private static bool ContainsAnyPrefabs(GameObject obj) {
-            foreach (var t in obj.GetComponentsInChildren<Transform>()) {
+            foreach (var t in obj.GetComponentsInChildren<Transform>(true)) {
                 if (PrefabUtility.IsPartOfAnyPrefab(t.gameObject)) {
                     return true;
                 }
@@ -35,7 +35,7 @@ namespace VF {
         private static void ScanScene(Scene scene) {
             var builder = new VRCFuryBuilder();
             foreach (var root in scene.GetRootGameObjects()) {
-                foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>()) {
+                foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>(true)) {
                     if (ContainsAnyPrefabs(avatar.gameObject)) continue;
                     if (avatar.gameObject.name.Contains("(ShadowClone)") ||
                         avatar.gameObject.name.Contains("(MirrorReflection)")) {
@@ -45,12 +45,12 @@ namespace VF {
                     builder.SafeRun(avatar.gameObject);
                     VRCFuryBuilder.StripAllVrcfComponents(avatar.gameObject);
                 }
-                foreach (var o in root.GetComponentsInChildren<OGBOrifice>()) {
+                foreach (var o in root.GetComponentsInChildren<OGBOrifice>(true)) {
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
                     OGBOrificeEditor.Bake(o, onlySenders: true);
                     Object.DestroyImmediate(o);
                 }
-                foreach (var o in root.GetComponentsInChildren<OGBPenetrator>()) {
+                foreach (var o in root.GetComponentsInChildren<OGBPenetrator>(true)) {
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
                     OGBPenetratorEditor.Bake(o, onlySenders: true);
                     Object.DestroyImmediate(o);

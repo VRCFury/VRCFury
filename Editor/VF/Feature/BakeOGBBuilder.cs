@@ -26,7 +26,7 @@ namespace VF.Feature {
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
                 OGBPenetratorEditor.Bake(c, usedNames);
 
-                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>()) {
+                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
                     objectsToDisableTemporarily.Add(r.gameObject);
                 }
             }
@@ -35,7 +35,7 @@ namespace VF.Feature {
                 fakeHead.MarkEligible(c.gameObject);
                 var (name,forward) = OGBOrificeEditor.Bake(c, usedNames);
                 
-                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>()) {
+                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
                     objectsToDisableTemporarily.Add(r.gameObject);
                 }
 
