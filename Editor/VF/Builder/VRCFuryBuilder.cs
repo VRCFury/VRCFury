@@ -22,7 +22,7 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    public bool SafeRun(GameObject avatarObject, GameObject originalObject) {
+    public bool SafeRun(GameObject avatarObject, GameObject originalObject = null) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {

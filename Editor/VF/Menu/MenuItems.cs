@@ -89,7 +89,10 @@ namespace VF.Menu {
         private static bool CheckForceRun() {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
-        
+
+        public const string playMode_name = "Tools/VRCFury/Build during play mode";
+        public const int playMode_priority = 1403;
+
         /*
         [MenuItem("Tools/VRCFury/List All Components", priority = 1403)]
         private static void ListChildComponents() {
