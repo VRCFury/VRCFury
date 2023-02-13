@@ -37,6 +37,11 @@ namespace VF {
             foreach (var root in scene.GetRootGameObjects()) {
                 foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>()) {
                     if (ContainsAnyPrefabs(avatar.gameObject)) continue;
+                    if (avatar.gameObject.name.Contains("(ShadowClone)") ||
+                        avatar.gameObject.name.Contains("(MirrorReflection)")) {
+                        // these are av3emulator temp objects. Building on them doesn't work.
+                        continue;
+                    }
                     builder.SafeRun(avatar.gameObject);
                     VRCFuryBuilder.StripAllVrcfComponents(avatar.gameObject);
                 }
