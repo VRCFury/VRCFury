@@ -550,6 +550,18 @@ public static class VRCFuryEditorUtils {
     public static string GetManagedReferenceTypeName(SerializedProperty prop) {
         return GetManagedReferenceType(prop)?.Name;
     }
+
+    /**
+     * VRLabs Ragdoll System makes a copy of the entire armature, including VRCFury components,
+     * which can result in a lot of duplicates.
+     */
+    public static bool IsInRagdollSystem(Transform obj) {
+        while (obj != null) {
+            if (obj.name == "Ragdoll System") return true;
+            obj = obj.parent;
+        }
+        return false;
+    }
 }
     
 }

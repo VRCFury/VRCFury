@@ -163,6 +163,9 @@ public class VRCFuryBuilder {
         progress.Progress(0, "Collecting features");
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
+            if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
+                continue;
+            }
             var config = vrcFury.config;
             config.Upgrade();
             if (config.features != null) {
