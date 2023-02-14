@@ -13,6 +13,15 @@ namespace VF {
     public class PlayModeTrigger {
         static PlayModeTrigger() {
             SceneManager.sceneLoaded += OnSceneLoaded;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange state) {
+            if (state == PlayModeStateChange.EnteredPlayMode) {
+                for (var i = 0; i < SceneManager.sceneCount; i++) {
+                    OnSceneLoaded(SceneManager.GetSceneAt(i), LoadSceneMode.Additive);
+                }
+            }
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
