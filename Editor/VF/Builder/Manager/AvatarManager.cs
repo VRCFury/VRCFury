@@ -64,6 +64,7 @@ namespace VF.Builder {
                 } else {
                     ctrl = AnimatorController.CreateAnimatorControllerAtPath(newPath);
                     if (existingController != null) {
+                        ctrl.RemoveLayer(0);
                         var merger = new ControllerMerger();
                         merger.Merge(existingController, toRaw: ctrl);
                     }
