@@ -280,8 +280,9 @@ namespace VF.Feature {
             var source = pConstraint.GetSource(0);
             if (source.sourceTransform == null) return null;
             if (!source.sourceTransform.name.Contains("Constraint")) return null;
-            if (orig.transform.childCount != 1) return null;
-            return orig.transform.GetChild(0).gameObject;
+            var child = orig.transform.Find(orig.name);
+            if (!child) return null;
+            return child.gameObject;
         }
 
         public override string GetEditorTitle() {
