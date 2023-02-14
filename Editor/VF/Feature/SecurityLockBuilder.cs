@@ -56,11 +56,13 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         }
         manager.GetMenu().NewMenuToggle("Security/Unlocked", paramInput, 8);
         var layer = fx.NewLayer("Security Lock");
-        var entry = layer.NewState("Entry");
-        entry.Move(1, 0);
         
-        var remote = layer.NewState("Remote").Move(entry, 0, -1);
-        entry.TransitionsTo(remote).When(fx.IsLocal().IsFalse());
+        var remote = layer.NewState("Remote Trap");
+
+        var entry = layer.NewState("Entry")
+            .Move(remote, 1, 0);
+        
+        remote.TransitionsTo(entry).When(fx.IsLocal().IsTrue());
         
         var digitParams = new List<VFANumber>();
         for (var i = 0; i < numDigitSlots; i++) {

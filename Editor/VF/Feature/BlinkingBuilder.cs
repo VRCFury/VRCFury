@@ -32,15 +32,15 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
         {
             var blinkCounter = fx.NewInt("BlinkCounter");
             var layer = fx.NewLayer("Blink - Generator");
+            var remote = layer.NewState("Remote Trap");
             var entry = layer.NewState("Entry");
-            var remote = layer.NewState("Remote").Move(entry, 0, -1);
-            var idle = layer.NewState("Idle").Move(entry, 0, 1);
+            var idle = layer.NewState("Idle");
             var subtract = layer.NewState("Subtract");
             var trigger0 = layer.NewState("Trigger 0").Move(subtract, 1, 0);
             var trigger1 = layer.NewState("Trigger 1").Move(trigger0, 1, 0);
             var randomize = layer.NewState("Randomize").Move(idle, 1, 0);
 
-            entry.TransitionsTo(remote).When(fx.IsLocal().IsFalse());
+            remote.TransitionsTo(entry).When(fx.IsLocal().IsTrue());
             entry.TransitionsTo(idle).When(fx.Always());
 
             idle.TransitionsTo(trigger0).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsTrue()));
