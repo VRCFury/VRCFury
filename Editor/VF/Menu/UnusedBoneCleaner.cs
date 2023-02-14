@@ -58,6 +58,9 @@ namespace VF.Menu {
                 ShouldRemoveObj: obj => {
                     var parent = obj.transform.parent;
                     if (!parent) return false;
+                    if (PrefabUtility.IsPartOfPrefabInstance(obj) && !PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
+                        return false;
+                    }
                     if (!obj.name.Contains(parent.name)) return false;
                     if (obj.name == parent.name + "_end") return false;
                     if (obj.transform.childCount > 0) return false;
