@@ -132,7 +132,7 @@ namespace VF.Menu {
                 for (var i = 0; i < constraint.sourceCount; i++) {
                     var source = constraint.GetSource(i);
                     var sourcePositionOffset = constraint.GetTranslationOffset(i);
-                    var sourceRotationOffset = constraint.GetRotationOffset(i);
+                    var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
                     var t = source.sourceTransform;
                     if (t == null) continue;
                     var obj = t.gameObject;
@@ -160,8 +160,9 @@ namespace VF.Menu {
                     if (!dryRun) {
                         var ogb = obj.GetComponent<OGBOrifice>();
                         if (ogb == null) ogb = obj.AddComponent<OGBOrifice>();
-                        ogb.position = sourcePositionOffset + parentPosition * constraint.transform.lossyScale.x / ogb.transform.lossyScale.x;
-                        ogb.rotation = (Quaternion.Euler(sourceRotationOffset) * parentRotation).eulerAngles;
+                        ogb.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
+                            * constraint.transform.lossyScale.x / ogb.transform.lossyScale.x;
+                        ogb.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
                         ogb.addLight = OGBOrifice.AddLight.Auto;
                         ogb.name = name;
                         ogb.addMenuItem = true;
