@@ -36,7 +36,7 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    private bool ShouldRun(GameObject avatarObject) {
+    public static bool ShouldRun(GameObject avatarObject) {
         return Startup.GetVRCFuryComponentTypes()
             .Any(type => avatarObject.GetComponentsInChildren(type, true).Length > 0);
     }

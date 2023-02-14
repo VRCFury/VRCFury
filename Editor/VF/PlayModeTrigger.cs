@@ -43,6 +43,7 @@ namespace VF {
 
         private static void ScanScene(Scene scene) {
             var builder = new VRCFuryBuilder();
+            var oneChanged = false;
             foreach (var root in scene.GetRootGameObjects()) {
                 foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>(true)) {
                     if (ContainsAnyPrefabs(avatar.gameObject)) continue;
@@ -51,8 +52,10 @@ namespace VF {
                         // these are av3emulator temp objects. Building on them doesn't work.
                         continue;
                     }
+                    if (!VRCFuryBuilder.ShouldRun(avatar.gameObject)) continue;
                     builder.SafeRun(avatar.gameObject);
                     VRCFuryBuilder.StripAllVrcfComponents(avatar.gameObject);
+                    oneChanged = true;
                 }
                 foreach (var o in root.GetComponentsInChildren<OGBOrifice>(true)) {
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
@@ -64,6 +67,27 @@ namespace VF {
                     OGBPenetratorEditor.Bake(o, onlySenders: true);
                     Object.DestroyImmediate(o);
                 }
+            }
+
+            if (oneChanged) {
+                RestartAv3Emulator();
+            }
+        }
+
+        private static void RestartAv3Emulator() {
+            // Restart the av3emulator so it picks up changes
+            var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
+            if (av3EmulatorType == null) return;
+            var restartField = av3EmulatorType.GetField("RestartEmulator");
+            if (restartField == null) return;
+            var emulators = Object.FindObjectsOfType(av3EmulatorType);
+            foreach (var emulator in emulators) {
+                restartField.SetValue(emulator, true);
+            }
+            var av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
+            var runtimes = Object.FindObjectsOfType(av3RuntimeType);
+            foreach (var runtime in runtimes) {
+                Object.Destroy(runtime);
             }
         }
     }
