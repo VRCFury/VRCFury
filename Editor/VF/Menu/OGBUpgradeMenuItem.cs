@@ -181,28 +181,32 @@ namespace VF.Menu {
             // Un-bake baked components
             foreach (var t in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 if (!t) continue; // this can happen if we're visiting one of the things we deleted below
-                var penMarker = t.Find("OGB_Baked_Pen");
-                if (penMarker) {
-                    var p = AddPen(t.gameObject);
+
+                void UnbakePen(Transform baked) {
+                    if (!baked) return;
+                    var p = AddPen(baked.parent.gameObject);
                     if (p) {
-                        var size = penMarker.Find("size");
+                        var size = baked.Find("size");
                         if (size) {
                             p.length = size.localScale.x;
                             p.radius = size.localScale.y;
                         }
-                        p.name = GetNameFromBakeMarker(penMarker.gameObject);
+                        p.name = GetNameFromBakeMarker(baked.gameObject);
                     }
-                    Delete(penMarker.gameObject);
+                    Delete(baked.gameObject);
+                }
+                void UnbakeOrf(Transform baked) {
+                    if (!baked) return;
+                    var o = AddOrifice(baked.parent.gameObject);
+                    if (o) {
+                        o.name = GetNameFromBakeMarker(baked.gameObject);
+                        OGBOrificeEditor.ClaimLights(o);
+                    }
+                    Delete(baked.gameObject);
                 }
 
-                var orfMarker = t.Find("OGB_Baked_Orf");
-                if (orfMarker) {
-                    var o = AddOrifice(t.gameObject);
-                    if (o) {
-                        o.name = GetNameFromBakeMarker(orfMarker.gameObject);
-                    }
-                    Delete(orfMarker.gameObject);
-                }
+                UnbakePen(t.Find("OGB_Baked_Pen"));
+                UnbakeOrf(t.Find("OGB_Baked_Orf"));
             }
             
             // Auto-add DPS and TPS penetrators
@@ -220,7 +224,7 @@ namespace VF.Menu {
                 var parent = light.gameObject.transform.parent;
                 if (parent) {
                     var parentObj = parent.gameObject;
-                    if (!oldParentsToDelete.Contains(parentObj) && OGBOrificeEditor.GetInfoFromLights(parentObj) != null)
+                    if (!oldParentsToDelete.Contains(parentObj) && OGBOrificeEditor.GetInfoFromLights(parentObj, true) != null)
                         AddOrifice(parentObj);
                 }
             }
@@ -331,7 +335,7 @@ namespace VF.Menu {
         }
 
         private static Tuple<OGBOrifice.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
-            var lightInfo = OGBOrificeEditor.GetInfoFromLights(obj);
+            var lightInfo = OGBOrificeEditor.GetInfoFromLights(obj, true);
             if (lightInfo != null) {
                 return lightInfo;
             }

@@ -23,12 +23,12 @@ public class ControllerMerger {
         Func<string, string> rewriteLayerName = null,
         Func<string, string> rewriteParamName = null,
         Func<AnimationClip, AnimationClip> rewriteClip = null,
-        Func<string, BlendTree> NewBlendTree = null
+        Func<string, BlendTree> newBlendTree = null
     ) {
         this._rewriteLayerName = rewriteLayerName;
         this._rewriteParamName = rewriteParamName;
         this._rewriteClip = rewriteClip;
-        this._newBlendTree = NewBlendTree;
+        this._newBlendTree = newBlendTree;
     }
 
     public void Merge(AnimatorController from, ControllerManager toMain = null, AnimatorController toRaw = null) {
@@ -39,10 +39,12 @@ public class ControllerMerger {
             to = toMain.GetRaw();
             addLayer = str => toMain.NewLayer(str);
             type = toMain.GetType();
-        } else {
+        } else if (toRaw != null) {
             to = toRaw;
             addLayer = str => toRaw.AddLayer(str);
             type = VRCAvatarDescriptor.AnimLayerType.Deprecated0;
+        } else {
+            throw new VRCFBuilderException("No controller passed to ControllerMerger?");
         }
 
         var oldLayerCount = to.layers.Length;
@@ -98,7 +100,13 @@ public class ControllerMerger {
         to.entryPosition = from.entryPosition;
         to.anyStatePosition = from.anyStatePosition;
         to.parentStateMachinePosition = from.parentStateMachinePosition;
-        CloneBehaviours(from.behaviours, to.AddStateMachineBehaviour, "Machine " + from.name, controllerType, layerOffset);
+        CloneBehaviours(
+            from.behaviours,
+            type => VRCFAnimatorUtils.AddStateMachineBehaviour(to, type),
+            "Machine " + from.name,
+            controllerType,
+            layerOffset
+        );
 
         // Copy States
         foreach (var fromStateOuter in from.states) {
@@ -121,7 +129,13 @@ public class ControllerMerger {
             toState.timeParameterActive = fromState.timeParameterActive;
 
             toState.motion = CloneMotion(fromState.motion);
-            CloneBehaviours(fromState.behaviours, toState.AddStateMachineBehaviour, "State " + fromState.name, controllerType, layerOffset);
+            CloneBehaviours(
+                fromState.behaviours,
+                type => VRCFAnimatorUtils.AddStateMachineBehaviour(toState, type),
+                "State " + fromState.name,
+                controllerType,
+                layerOffset
+            );
 
             if (fromState == from.defaultState) {
                 to.defaultState = toState;
@@ -138,30 +152,17 @@ public class ControllerMerger {
 
     private void CloneBehaviours(
         StateMachineBehaviour[] from,
-        Func<Type, StateMachineBehaviour> AddUnchecked,
+        Func<Type, StateMachineBehaviour> addUnchecked,
         string source,
         VRCAvatarDescriptor.AnimLayerType controllerType,
         int layerOffset
     ) {
-        T Add<T>() where T : StateMachineBehaviour {
-            var added = AddUnchecked(typeof(T)) as T;
-            if (added == null) {
-                throw new VRCFBuilderException(
-                    $"Failed to create state behaviour of type ${typeof(T).Name} at ${source}." +
-                    " Usually this means you have unresolved script compilation errors. Click 'Clear' on the" +
-                    " top left of the unity log, and fix any red errors that remain after clearing." +
-                    " If there are no errors, try restarting unity. If nothing fixes it, report on" +
-                    " https://vrcfury.com/discord"
-                );
-            }
-            return added;
-        }
+        T Add<T>() where T : StateMachineBehaviour => addUnchecked(typeof(T)) as T;
 
         foreach (var b in from) {
             switch (b) {
                 case VRCAvatarParameterDriver oldB: {
                     var newB = Add<VRCAvatarParameterDriver>();
-                    if (newB.parameters == null) throw new Exception("Added parameter driver params are null");
                     foreach (var p in oldB.parameters) {
                         newB.parameters.Add(CloneDriverParameter(p));
                     }
@@ -219,13 +220,9 @@ public class ControllerMerger {
                     break;
                 }
                 default:
-                    throw new VRCFBuilderException(
-                        $"Unknown state machine behavior type ${b.GetType().Name} at ${source}" +
-                        " Usually this means you have unresolved script compilation errors. Click 'Clear' on the" +
-                        " top left of the unity log, and fix any red errors that remain after clearing." +
-                        " If there are no errors, try restarting unity. If nothing fixes it, report on" +
-                        " https://vrcfury.com/discord"
-                    );
+                    VRCFAnimatorUtils.ThrowProbablyCompileErrorException(
+                        $"Unknown state machine behavior type ${b.GetType().Name} at ${source}.");
+                    break;
             }
         }
     }

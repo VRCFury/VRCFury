@@ -20,7 +20,7 @@ namespace VF.Feature {
             addOtherFeature(new ArmatureLink {
                 boneOnAvatar = model.bone,
                 keepBoneOffsets = false,
-                linkMode = ArmatureLink.ArmatureLinkMode.PARENT_CONSTRAINT,
+                linkMode = ArmatureLink.ArmatureLinkMode.ParentConstraint,
                 propBone = model.obj
             });
         }

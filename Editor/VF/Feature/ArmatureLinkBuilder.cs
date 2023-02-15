@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -26,7 +27,75 @@ namespace VF.Feature {
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
             
             var links = GetLinks();
-            if (model.linkMode == ArmatureLink.ArmatureLinkMode.SKIN_REWRITE) {
+            if (links == null) {
+                return;
+            }
+
+            var linkMode = model.linkMode;
+            if (linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
+                var usesBonesFromProp = false;
+                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>()) {
+                    if (skin.transform.IsChildOf(links.propMain.transform)) continue;
+                    usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(links.propMain.transform);
+                    usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(links.propMain.transform));
+                }
+
+                linkMode = usesBonesFromProp
+                    ? ArmatureLink.ArmatureLinkMode.SkinRewrite
+                    : ArmatureLink.ArmatureLinkMode.ReparentRoot;
+            }
+
+            var keepBoneOffsets = model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
+            if (model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Auto) {
+                keepBoneOffsets = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
+            }
+            
+            if (linkMode == ArmatureLink.ArmatureLinkMode.SkinRewrite) {
+
+                var scalingFactor = model.skinRewriteScalingFactor;
+
+                if (scalingFactor <= 0) {
+                    var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
+                    var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
+                    double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
+                    var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
+                        .OrderBy(GetError)
+                        .First();
+                    scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
+                }
+
+                Debug.Log("Detected scaling factor: " + scalingFactor);
+
+                var scalingRequired = scalingFactor < 0.999 || scalingFactor > 1.001;
+                
+                if (scalingRequired) {
+                    var bonesInProp = links.propMain
+                        .GetComponentsInChildren<Transform>(true)
+                        .ToImmutableHashSet();
+                    var skinsUsingBonesInProp = avatarObject
+                        .GetComponentsInChildren<SkinnedMeshRenderer>(true)
+                        .Where(skin => skin.sharedMesh)
+                        .Where(skin =>
+                            bonesInProp.Contains(skin.rootBone) || skin.bones.Any(b => bonesInProp.Contains(b)));
+                    foreach (var skin in skinsUsingBonesInProp) {
+                        var meshCopy = Object.Instantiate(skin.sharedMesh);
+                        VRCFuryAssetDatabase.SaveAsset(meshCopy, tmpDir, meshCopy.name);
+
+                        meshCopy.bindposes = Enumerable.Zip(skin.bones, meshCopy.bindposes, (a,b) => (a,b))
+                            .Select(boneAndBindPose => {
+                                var bone = boneAndBindPose.a;
+                                var bindPose = boneAndBindPose.b;
+                                var isBoneMerged = links.mergeBones.Any(m => m.Item1 == bone.gameObject);
+                                if (!isBoneMerged) return bindPose;
+                                var rescaledBindPose = Matrix4x4.Scale(new Vector3(scalingFactor, scalingFactor, scalingFactor)) * bindPose;
+                                return rescaledBindPose;
+                            }) 
+                            .ToArray();
+                        EditorUtility.SetDirty(meshCopy);
+                        skin.sharedMesh = meshCopy;
+                        EditorUtility.SetDirty(skin);
+                    }
+                }
 
                 // First, move over all the "new children objects" that aren't bones
                 foreach (var reparent in links.reparent) {
@@ -39,7 +108,7 @@ namespace VF.Feature {
                         newParent,
                         "vrcf_" + uniqueModelNum + "_" + objectToMove.name
                     );
-                    
+
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(objectToMove);
                 }
@@ -75,8 +144,8 @@ namespace VF.Feature {
                     var propBone = mergeBone.Item1;
                     Object.DestroyImmediate(propBone);
                 }
-            } else if (model.linkMode == ArmatureLink.ArmatureLinkMode.REPARENTING || model.linkMode == ArmatureLink.ArmatureLinkMode.REPARENTING_ROOT_ONLY) {
-                var rootOnly = model.linkMode == ArmatureLink.ArmatureLinkMode.REPARENTING_ROOT_ONLY;
+            } else if (linkMode == ArmatureLink.ArmatureLinkMode.MergeAsChildren || linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+                var rootOnly = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
                 // Otherwise, we move all the prop bones into their matching avatar bones (as children)
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
@@ -98,7 +167,7 @@ namespace VF.Feature {
                         avatarBone,
                         "vrcf_" + uniqueModelNum + "_" + propBone.name
                     );
-                    if (!model.keepBoneOffsets) {
+                    if (!keepBoneOffsets) {
                         propBone.transform.localPosition = Vector3.zero;
                         propBone.transform.localRotation = Quaternion.identity;
                     }
@@ -106,7 +175,7 @@ namespace VF.Feature {
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(propBone);
                 }
-            } else if (model.linkMode == ArmatureLink.ArmatureLinkMode.PARENT_CONSTRAINT) {
+            } else if (linkMode == ArmatureLink.ArmatureLinkMode.ParentConstraint) {
                 foreach (var mergeBone in links.mergeBones) {
                     var propBone = mergeBone.Item1;
                     var avatarBone = mergeBone.Item2;
@@ -121,7 +190,7 @@ namespace VF.Feature {
                     p.weight = 1;
                     p.constraintActive = true;
                     p.locked = true;
-                    if (model.keepBoneOffsets) {
+                    if (keepBoneOffsets) {
                         Matrix4x4 inverse = Matrix4x4.TRS(avatarBone.transform.position, avatarBone.transform.rotation, new Vector3(1,1,1)).inverse;
                         p.SetTranslationOffset(0, inverse.MultiplyPoint3x4(p.transform.position));
                         p.SetRotationOffset(0, (Quaternion.Inverse(avatarBone.transform.rotation) * p.transform.rotation).eulerAngles);
@@ -199,6 +268,9 @@ namespace VF.Feature {
             // These are stacks, because it's convenient, and we want to iterate over them in reverse order anyways
             // because when operating on the vrc clone, we delete game objects as we process them, and we want to
             // delete the children first.
+
+            public GameObject propMain;
+            public GameObject avatarMain;
             
             // left=bone in prop | right=bone in avatar
             public readonly Stack<Tuple<GameObject, GameObject>> mergeBones
@@ -210,10 +282,8 @@ namespace VF.Feature {
         }
 
         private Links GetLinks() {
-            var links = new Links();
-
             var propBone = model.propBone;
-            if (propBone == null) return links;
+            if (propBone == null) return null;
 
             GameObject avatarBone = null;
 
@@ -233,9 +303,18 @@ namespace VF.Feature {
                 avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
                 if (avatarBone == null) {
                     Debug.LogError("Failed to find " + model.bonePathOnAvatar + " bone on avatar. Skipping armature link.");
-                    return links;
+                    return null;
                 }
             }
+
+            var removeBoneSuffix = model.removeBoneSuffix;
+            if (string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
+                if (propBone.name.Contains(avatarBone.name) && propBone.name != avatarBone.name) {
+                    removeBoneSuffix = propBone.name.Replace(avatarBone.name, "");
+                }
+            }
+            
+            var links = new Links();
 
             var checkStack = new Stack<Tuple<GameObject, GameObject>>();
             checkStack.Push(Tuple.Create(propBone, avatarBone));
@@ -246,8 +325,8 @@ namespace VF.Feature {
                 foreach (Transform child in check.Item1.transform) {
                     var childPropBone = child.gameObject;
                     var searchName = childPropBone.name;
-                    if (!string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
-                        searchName = searchName.Replace(model.removeBoneSuffix, "");
+                    if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
+                        searchName = searchName.Replace(removeBoneSuffix, "");
                     }
                     var childAvatarBone = check.Item2.transform.Find(searchName)?.gameObject;
                     // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
@@ -266,6 +345,9 @@ namespace VF.Feature {
                     }
                 }
             }
+
+            links.propMain = propBone;
+            links.avatarMain = avatarBone;
 
             return links;
         }
@@ -300,43 +382,9 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Path to corresponding root bone from root of avatar:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(If full string path is given, humanoid bone dropdown will be ignored)"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Corresponding root bone on avatar:"));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
-            
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Link Mode:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Skin Rewrite) Rewrites skinned meshes to use avatar's own bones. Excellent performance, but breaks some clothing."));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting) Makes prop bones into children of the avatar's bones. Medium performance, but often works when Skin Rewrite doesn't."));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting (Root Only)) Similar to bone reparenting, but only the root object is reparented. Useful if you just want to move a simple object onto a bone."));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Constraint) Adds a parent constraint to every prop bone, linking it to the avatar bone. Awful performance, pretty much never use this."));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("linkMode"), formatEnum: str => {
-                if (str == ArmatureLink.ArmatureLinkMode.SKIN_REWRITE.ToString()) {
-                    return "Skin Rewrite (Best Performance)";
-                } else if (str == ArmatureLink.ArmatureLinkMode.REPARENTING.ToString()) {
-                    return "Bone Reparenting (Best Compatibility)";
-                } else if (str == ArmatureLink.ArmatureLinkMode.REPARENTING_ROOT_ONLY.ToString()) {
-                    return "Bone Reparenting (Root Only)";
-                } else if (str == ArmatureLink.ArmatureLinkMode.PARENT_CONSTRAINT.ToString()) {
-                    return "Bone Constraint (Awful Performance)";
-                }
 
-                return str;
-            }));
-
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Keep bone offsets:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("If unchecked, linked bones will be rigidly locked to the transform of the corresponding avatar bone." +
-                                                              " If checked, prop bones will maintain their initial offset to the corresponding avatar bone. This is unusual. Does nothing when using Skin Rewrite."));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepBoneOffsets")));
-            
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Remove bone suffix/prefix:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
-                                                              "something like _PropName to the end of every bone, breaking AvatarLink in the process."));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
-            
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             
             var adv = new Foldout {
@@ -345,6 +393,51 @@ namespace VF.Feature {
             };
             container.Add(adv);
             
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Link Mode:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Skin Rewrite) Rewrites skinned meshes to use avatar's own bones. Excellent performance, but breaks some clothing."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Merge as Children) Makes prop bones into children of the avatar's bones. Medium performance, but often works when Skin Rewrite doesn't."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Reparent Root) The prop object is moved into the avatar's bone. No other merging takes place."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Constraint) Adds a parent constraint to every prop bone, linking it to the avatar bone. Awful performance, pretty much never use this."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Auto) Selects Skin Rewrite if a mesh uses bones from the prop armature, or Reparent Root otherwise."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("linkMode"), formatEnum: str => {
+                if (str == ArmatureLink.ArmatureLinkMode.SkinRewrite.ToString()) {
+                    return "Skin Rewrite";
+                } else if (str == ArmatureLink.ArmatureLinkMode.MergeAsChildren.ToString()) {
+                    return "Merge as Children";
+                } else if (str == ArmatureLink.ArmatureLinkMode.ReparentRoot.ToString()) {
+                    return "Reparent Root";
+                } else if (str == ArmatureLink.ArmatureLinkMode.ParentConstraint.ToString()) {
+                    return "Bone Constraint";
+                } else if (str == ArmatureLink.ArmatureLinkMode.Auto.ToString()) {
+                    return "Auto";
+                }
+
+                return str;
+            }));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Remove bone suffix/prefix:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
+                                                    "something like _PropName to the end of every bone, breaking AvatarLink in the process. If empty, the suffix will be predicted " +
+                                                    "based on the difference between the name of the given root bones."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("String path to bone on avatar:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If provided, humanoid bone dropdown will be ignored."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
+
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Keep bone offsets:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel(
+                "If no, linked bones will be rigidly locked to the transform of the corresponding avatar bone."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel(
+                "If yes, prop bones will maintain their initial offset to the corresponding avatar bone. This is unusual."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel(
+                "If auto, offsets will be kept only if Reparent Root link mode is used."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepBoneOffsets2")));
+
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Allow prop physbones to target avatar bone transforms (unusual):"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("If checked, physbones in the prop pointing to bones on the avatar will be updated " +
                                                     "to point to the corresponding bone on the base armature. This is extremely unusual. Don't use this " +
@@ -356,6 +449,12 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Fallback bones:"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("If the given bone cannot be found on the avatar, these bones will also be attempted before failing."));
             adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("fallbackBones")));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Skin rewrite scaling factor:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Will automatically detect scaling factor if 0)"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("skinRewriteScalingFactor")));
 
             return container;
         }

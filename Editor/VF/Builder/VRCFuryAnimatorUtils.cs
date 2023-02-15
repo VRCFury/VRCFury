@@ -197,7 +197,7 @@ public class VFAState {
             var d = b as VRCAvatarParameterDriver;
             if (d && d.localOnly == local) return d;
         }
-        var driver = node.state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAvatarParameterDriver>(node.state);
         driver.localOnly = local;
         return driver;
     }
