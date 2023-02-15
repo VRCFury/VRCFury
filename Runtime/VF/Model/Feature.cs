@@ -349,7 +349,7 @@ namespace VF.Model.Feature {
         public string removeBoneSuffix;
         public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
-        public float skinRewriteScalingFactor = -1;
+        public float skinRewriteScalingFactor = 0;
         
         // legacy
         public bool useOptimizedUpload;

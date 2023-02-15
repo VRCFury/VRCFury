@@ -416,7 +416,7 @@ namespace VF.Feature {
             adv.Add(new VisualElement { style = { paddingTop = 10 } });
             
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Skin rewrite scaling factor:"));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Will automatically detect scaling factor if negative)"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Will automatically detect scaling factor if 0)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("skinRewriteScalingFactor")));
 
             return container;
