@@ -363,7 +363,7 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Path to corresponding root bone from root of avatar:"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Corresponding root bone on avatar:"));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
