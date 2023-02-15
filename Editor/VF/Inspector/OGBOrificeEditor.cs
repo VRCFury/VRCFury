@@ -165,9 +165,9 @@ namespace VF.Inspector {
             OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders, false);
 
             if (addLight != OGBOrifice.AddLight.None) {
-                foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
+                ForEachPossibleLight(obj.transform, false, light => {
                     AvatarCleaner.RemoveComponent(light);
-                }
+                });
 
                 if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                     var main = new GameObject("Root");
@@ -260,14 +260,6 @@ namespace VF.Inspector {
             if (!directOnly) {
                 foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
                     Visit(light);
-                }
-                while (obj != null) {
-                    foreach (Transform child in obj) {
-                        foreach (var light in child.gameObject.GetComponents<Light>()) {
-                            Visit(light);
-                        }
-                    }
-                    obj = obj.parent;
                 }
             }
         }
