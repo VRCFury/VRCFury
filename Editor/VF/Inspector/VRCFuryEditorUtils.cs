@@ -185,6 +185,7 @@ public static class VRCFuryEditorUtils {
         return newEntry;
     }
 
+
     public static void Margin(VisualElement el, float topbottom, float leftright) {
         el.style.marginTop = el.style.marginBottom = topbottom;
         el.style.marginLeft = el.style.marginRight = leftright;
@@ -303,6 +304,9 @@ public static class VRCFuryEditorUtils {
             case SerializedPropertyType.ManagedReference: {
                 if (prop.managedReferenceFieldTypename == "VRCFury VF.Model.StateAction.Action") {
                     f = VRCFuryActionDrawer.Render(prop);
+                }
+                if (prop.managedReferenceFieldTypename == "VRCFury VF.Model.Feature.EmoteManager/Emote") {
+                    f = VRCFuryEmoteDrawer.Render(prop);
                 }
                 break;
             }

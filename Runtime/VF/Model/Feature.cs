@@ -254,6 +254,29 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
+    public class EmoteManager : NewFeatureModel {
+        
+        [SerializeReference] public List<Emote> standingEmotes = new List<Emote>();
+        public List<Emote> sittingEmotes = new List<Emote>();
+        public State afkState;
+        public State standingState;
+        public State sittingState;
+
+        [Serializable]
+        public class Emote {
+            public string name;
+            public State emoteAnimation;
+            public int number = 0;
+            public bool isToggle = false;
+            public bool hasReset = false;
+            public State resetAnimation;
+            public bool hasExitTime = false;
+            public float exitTime = 1;
+        }
+
+    }
+
+    [Serializable]
     public class Puppet : NewFeatureModel {
         public string name;
         public bool saved;
@@ -593,6 +616,7 @@ namespace VF.Model.Feature {
             public AnimationClip clip;
         }
     }
+
     
 
 }

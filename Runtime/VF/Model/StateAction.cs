@@ -47,5 +47,5 @@ namespace VF.Model.StateAction {
         public GameObject obj;
         public float scale = 1;
     }
-
+    
 }

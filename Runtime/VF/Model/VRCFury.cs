@@ -56,4 +56,6 @@ namespace VF.Model {
             return actions.Count == 0 || actions.All(a => a.IsEmpty());
         }
     }
+
+
 }
