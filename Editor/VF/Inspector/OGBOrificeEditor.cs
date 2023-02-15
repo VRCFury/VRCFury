@@ -240,32 +240,60 @@ namespace VF.Inspector {
 
             return Tuple.Create(OGBOrifice.AddLight.None, Vector3.zero, Quaternion.identity);
         }
-        
-        public static Tuple<OGBOrifice.AddLight, Vector3, Quaternion> GetInfoFromLights(GameObject obj) {
+
+        /**
+         * Visit every light that could possibly be used for this orifice. This includes all children,
+         * and single-deptch children of all parents.
+         */
+        private static void ForEachPossibleLight(Transform obj, bool directOnly, Action<Light> act) {
+            var visited = new HashSet<Light>();
+            void Visit(Light light) {
+                if (visited.Contains(light)) return;
+                visited.Add(light);
+                act(light);
+            }
+            foreach (Transform child in obj) {
+                foreach (var light in child.gameObject.GetComponents<Light>()) {
+                    Visit(light);
+                }
+            }
+            if (!directOnly) {
+                foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
+                    Visit(light);
+                }
+                while (obj != null) {
+                    foreach (Transform child in obj) {
+                        foreach (var light in child.gameObject.GetComponents<Light>()) {
+                            Visit(light);
+                        }
+                    }
+                    obj = obj.parent;
+                }
+            }
+        }
+        public static Tuple<OGBOrifice.AddLight, Vector3, Quaternion> GetInfoFromLights(GameObject obj, bool directOnly = false) {
             var isRing = false;
             Light main = null;
             Light normal = null;
-            foreach (Transform child in obj.transform) {
-                var light = child.gameObject.GetComponent<Light>();
-                if (light != null) {
-                    if (main == null) {
-                        if (IsHole(light)) {
-                            main = light;
-                        } else if (IsRing(light)) {
-                            main = light;
-                            isRing = true;
-                        }
-                    }
-                    if (normal == null && IsNormal(light)) {
-                        normal = light;
+            ForEachPossibleLight(obj.transform, directOnly, light => {
+                if (main == null) {
+                    if (IsHole(light)) {
+                        main = light;
+                    } else if (IsRing(light)) {
+                        main = light;
+                        isRing = true;
                     }
                 }
-            }
+                if (normal == null && IsNormal(light)) {
+                    normal = light;
+                }
+            });
 
             if (main == null || normal == null) return null;
 
-            var position = main.transform.localPosition;
-            var forward = (normal.transform.localPosition - main.transform.localPosition).normalized;
+            var position = obj.transform.InverseTransformPoint(main.transform.position);
+            var normalPosition = obj.transform.InverseTransformPoint(normal.transform.position);
+            var forward = (normalPosition - position).normalized;
             var rotation = Quaternion.LookRotation(forward);
 
             return Tuple.Create(isRing ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole, position, rotation);
@@ -283,11 +311,11 @@ namespace VF.Inspector {
                     orifice.rotation = rotation.eulerAngles;
                 }
             }
-            foreach (var light in orifice.gameObject.GetComponentsInChildren<Light>(true)) {
+            ForEachPossibleLight(orifice.transform, false, light => {
                 if (IsRing(light) || IsHole(light) || IsNormal(light)) {
                     AvatarCleaner.RemoveComponent(light);
                 }
-            }
+            });
         }
 
         private static bool IsDirectChildOfHips(OGBOrifice orf) {

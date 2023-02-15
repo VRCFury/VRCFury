@@ -45,7 +45,11 @@ namespace VF.Menu {
                                 }
                             }
                         }
-                        foreach (Transform t2 in t) checkStack.Push(t2);
+
+                        // Make sure RemoveComponent didn't remove this object!
+                        if (t) {
+                            foreach (Transform t2 in t) checkStack.Push(t2);
+                        }
                     }
                 }
             }
