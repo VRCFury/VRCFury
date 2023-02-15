@@ -335,17 +335,24 @@ namespace VF.Model.Feature {
     [Serializable]
     public class ArmatureLink : NewFeatureModel {
         public enum ArmatureLinkMode {
-            SKIN_REWRITE,
-            REPARENTING,
-            PARENT_CONSTRAINT,
-            REPARENTING_ROOT_ONLY,
+            SkinRewrite,
+            MergeAsChildren,
+            ParentConstraint,
+            ReparentRoot,
+            Auto,
         }
 
-        public ArmatureLinkMode linkMode = ArmatureLinkMode.SKIN_REWRITE;
+        public enum KeepBoneOffsets {
+            Auto,
+            Yes,
+            No
+        }
+
+        public ArmatureLinkMode linkMode = ArmatureLinkMode.Auto;
         public GameObject propBone;
         public HumanBodyBones boneOnAvatar;
         public string bonePathOnAvatar;
-        public bool keepBoneOffsets;
+        public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public string removeBoneSuffix;
         public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
@@ -354,21 +361,25 @@ namespace VF.Model.Feature {
         // legacy
         public bool useOptimizedUpload;
         public bool useBoneMerging;
+        public bool keepBoneOffsets;
         
         public override void Upgrade(int fromVersion) {
             if (fromVersion < 1) {
                 if (useBoneMerging) {
-                    linkMode = ArmatureLinkMode.SKIN_REWRITE;
+                    linkMode = ArmatureLinkMode.SkinRewrite;
                 } else {
-                    linkMode = ArmatureLinkMode.REPARENTING;
+                    linkMode = ArmatureLinkMode.MergeAsChildren;
                 }
             }
             if (fromVersion < 2) {
                 skinRewriteScalingFactor = 1;
             }
+            if (fromVersion < 3) {
+                keepBoneOffsets2 = keepBoneOffsets ? KeepBoneOffsets.Yes : KeepBoneOffsets.No;
+            }
         }
         public override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
     
