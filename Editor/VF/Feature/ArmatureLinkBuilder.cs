@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -26,7 +27,54 @@ namespace VF.Feature {
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
             
             var links = GetLinks();
+            if (links == null) {
+                return;
+            }
+            
             if (model.linkMode == ArmatureLink.ArmatureLinkMode.SKIN_REWRITE) {
+
+                var scalingFactor = 1f;
+
+                var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
+                var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
+                double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
+                var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
+                    .OrderBy(GetError)
+                    .First();
+                scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
+                
+                Debug.Log("Detected scaling factor: " + scalingFactor);
+
+                var scalingRequired = scalingFactor < 0.999 || scalingFactor > 1.001;
+                
+                if (scalingRequired) {
+                    var bonesInProp = links.propMain
+                        .GetComponentsInChildren<Transform>(true)
+                        .ToImmutableHashSet();
+                    var skinsUsingBonesInProp = avatarObject
+                        .GetComponentsInChildren<SkinnedMeshRenderer>(true)
+                        .Where(skin => skin.sharedMesh)
+                        .Where(skin =>
+                            bonesInProp.Contains(skin.rootBone) || skin.bones.Any(b => bonesInProp.Contains(b)));
+                    foreach (var skin in skinsUsingBonesInProp) {
+                        var meshCopy = Object.Instantiate(skin.sharedMesh);
+                        VRCFuryAssetDatabase.SaveAsset(meshCopy, tmpDir, meshCopy.name);
+
+                        meshCopy.bindposes = Enumerable.Zip(skin.bones, meshCopy.bindposes, (a,b) => (a,b))
+                            .Select(boneAndBindPose => {
+                                var bone = boneAndBindPose.a;
+                                var bindPose = boneAndBindPose.b;
+                                var isBoneMerged = links.mergeBones.Any(m => m.Item1 == bone.gameObject);
+                                if (!isBoneMerged) return bindPose;
+                                var rescaledBindPose = Matrix4x4.Scale(new Vector3(scalingFactor, scalingFactor, scalingFactor)) * bindPose;
+                                return rescaledBindPose;
+                            }) 
+                            .ToArray();
+                        EditorUtility.SetDirty(meshCopy);
+                        skin.sharedMesh = meshCopy;
+                        EditorUtility.SetDirty(skin);
+                    }
+                }
 
                 // First, move over all the "new children objects" that aren't bones
                 foreach (var reparent in links.reparent) {
@@ -39,7 +87,7 @@ namespace VF.Feature {
                         newParent,
                         "vrcf_" + uniqueModelNum + "_" + objectToMove.name
                     );
-                    
+
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(objectToMove);
                 }
@@ -199,6 +247,9 @@ namespace VF.Feature {
             // These are stacks, because it's convenient, and we want to iterate over them in reverse order anyways
             // because when operating on the vrc clone, we delete game objects as we process them, and we want to
             // delete the children first.
+
+            public GameObject propMain;
+            public GameObject avatarMain;
             
             // left=bone in prop | right=bone in avatar
             public readonly Stack<Tuple<GameObject, GameObject>> mergeBones
@@ -210,10 +261,8 @@ namespace VF.Feature {
         }
 
         private Links GetLinks() {
-            var links = new Links();
-
             var propBone = model.propBone;
-            if (propBone == null) return links;
+            if (propBone == null) return null;
 
             GameObject avatarBone = null;
 
@@ -233,9 +282,11 @@ namespace VF.Feature {
                 avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
                 if (avatarBone == null) {
                     Debug.LogError("Failed to find " + model.bonePathOnAvatar + " bone on avatar. Skipping armature link.");
-                    return links;
+                    return null;
                 }
             }
+            
+            var links = new Links();
 
             var checkStack = new Stack<Tuple<GameObject, GameObject>>();
             checkStack.Push(Tuple.Create(propBone, avatarBone));
@@ -266,6 +317,9 @@ namespace VF.Feature {
                     }
                 }
             }
+
+            links.propMain = propBone;
+            links.avatarMain = avatarBone;
 
             return links;
         }
