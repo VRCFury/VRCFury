@@ -35,7 +35,7 @@ namespace VF.Builder {
         ) {
             ForEachStateMachine(root, stateMachine => {
                 for (var i = 0; i < stateMachine.behaviours.Length; i++) {
-                    var keep = action(stateMachine.behaviours[i], stateMachine.AddStateMachineBehaviour);
+                    var keep = action(stateMachine.behaviours[i], type => VRCFAnimatorUtils.AddStateMachineBehaviour(stateMachine, type));
                     if (!keep) {
                         var behaviours = stateMachine.behaviours.ToList();
                         behaviours.RemoveAt(i);
@@ -46,7 +46,7 @@ namespace VF.Builder {
             });
             ForEachState(root, state => {
                 for (var i = 0; i < state.behaviours.Length; i++) {
-                    var keep = action(state.behaviours[i], state.AddStateMachineBehaviour);
+                    var keep = action(state.behaviours[i], type => VRCFAnimatorUtils.AddStateMachineBehaviour(state, type));
                     if (!keep) {
                         var behaviours = state.behaviours.ToList();
                         behaviours.RemoveAt(i);
