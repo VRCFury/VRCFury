@@ -26,7 +26,6 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
         var fx = GetFx();
         var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
-        var blinkTrigger = fx.NewTrigger("BlinkTrigger");
 
         // Generator
         {
@@ -59,37 +58,31 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             subtract.TransitionsTo(idle).When(fx.Always());
         }
 
-        // Receiver
-        {
-            var layer = fx.NewLayer("Blink - Receiver");
-            var blink0 = layer.NewState("Trigger == false");
-            var blink1 = layer.NewState("Trigger == true");
-
-            blink0.TransitionsTo(blink1).When(blinkTriggerSynced.IsTrue());
-            blink0.Drives(blinkTrigger, true);
-            blink1.TransitionsTo(blink0).When(blinkTriggerSynced.IsFalse());
-            blink1.Drives(blinkTrigger, true);
-        }
-
-        // Animator
+        // Receiver / Animator
         {
             var blinkClip = LoadState("blink", model.state);
             var blinkDuration = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
             var holdDuration = model.holdTime >= 0 ? model.holdTime : 0;
-            var layer = fx.NewLayer("Blink - Animate");
+            var layer = fx.NewLayer("Blink - Receiver");
             var idle = layer.NewState("Idle");
-            var checkActive = layer.NewState("Check Active");
+            var waitFalse = layer.NewState("Waiting (false)");
+            var waitTrue = layer.NewState("Waiting (true)").Move(waitFalse, 1, 0);
+            var checkActive = layer.NewState("Check Active").Move(waitFalse, 0, 1);
             var blinkStart = layer.NewState("Blink Start").Move(checkActive, 1, 0);
-            var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 0, -1);
+            var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 1, 0);
 
-            idle.TransitionsTo(checkActive).When(blinkTrigger.IsTrue());
+            idle.TransitionsTo(waitFalse).When(blinkTriggerSynced.IsFalse());
+            idle.TransitionsTo(waitTrue).When(blinkTriggerSynced.IsTrue());
+            waitFalse.TransitionsTo(checkActive).When(blinkTriggerSynced.IsTrue());
+            waitTrue.TransitionsTo(checkActive).When(blinkTriggerSynced.IsFalse());
+            
             foreach (var prevention in allFeaturesInRun.OfType<BlinkingPrevention>()) {
                 checkActive.TransitionsTo(idle).When(prevention.param.IsTrue());
             }
             checkActive.TransitionsTo(blinkStart).When(fx.Always());
             blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
             if (holdDuration > 0) {
-                var hold = layer.NewState("Hold").WithAnimation(blinkClip);
+                var hold = layer.NewState("Hold").WithAnimation(blinkClip).Move(blink, 1, 0);
                 blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(fx.Always());
                 hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
             } else {
