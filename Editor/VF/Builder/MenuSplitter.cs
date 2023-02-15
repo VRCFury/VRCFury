@@ -66,11 +66,11 @@ namespace VF.Builder {
 
         /**
          * VRChat doesn't care, but SDK3ToCCKConverter crashes if there are any null parameters
-         * on a submenu
+         * on a submenu. GestureManager crashes if there's any null parameters on ANYTHING.
          */
         public static void FixNulls(VRCExpressionsMenu root) {
             ForEachMenu(root, ForEachItem: (control, path) => {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.parameter == null) {
+                if (control.parameter == null) {
                     control.parameter = new VRCExpressionsMenu.Control.Parameter() {
                         name = ""
                     };
