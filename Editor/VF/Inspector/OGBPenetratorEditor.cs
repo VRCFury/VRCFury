@@ -259,8 +259,6 @@ namespace VF.Inspector {
             }
             
             OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders, true);
-            
-            DestroyImmediate(pen);
         }
     }
 }

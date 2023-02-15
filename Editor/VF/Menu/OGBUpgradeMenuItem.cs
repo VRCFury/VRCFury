@@ -120,13 +120,19 @@ namespace VF.Menu {
                     continue;
                 }
                 
-                var isParent = GetIsParent(parent.gameObject);
-                if (isParent == IsDps.NO) continue;
+                var parentInfo = GetIsParent(parent.gameObject);
+                if (parentInfo == null) continue;
+
+                var parentLightType = parentInfo.Item1;
+                var parentPosition = parentInfo.Item2;
+                var parentRotation = parentInfo.Item3;
 
                 oldParentsToDelete.Add(parent.gameObject);
                 
                 for (var i = 0; i < constraint.sourceCount; i++) {
                     var source = constraint.GetSource(i);
+                    var sourcePositionOffset = constraint.GetTranslationOffset(i);
+                    var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
                     var t = source.sourceTransform;
                     if (t == null) continue;
                     var obj = t.gameObject;
@@ -153,20 +159,10 @@ namespace VF.Menu {
                     addedOrf.Add(obj);
                     if (!dryRun) {
                         var ogb = obj.GetComponent<OGBOrifice>();
-                        if (ogb == null) {
-                            ogb = obj.AddComponent<OGBOrifice>();
-                            var rotate = new Vector3(90, 0, 0);
-                            obj.transform.localRotation *= Quaternion.Euler(rotate);
-                            var parentConstraint = obj.GetComponent<ParentConstraint>();
-                            if (parentConstraint) {
-                                parentConstraint.rotationAtRest += rotate;
-                                for (var sourceI = 0; sourceI < parentConstraint.sourceCount; sourceI++) {
-                                    var rotOffset = parentConstraint.GetRotationOffset(sourceI);
-                                    rotOffset.x += 90;
-                                    parentConstraint.SetRotationOffset(sourceI, rotOffset);
-                                }
-                            }
-                        }
+                        if (ogb == null) ogb = obj.AddComponent<OGBOrifice>();
+                        ogb.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
+                            * constraint.transform.lossyScale.x / ogb.transform.lossyScale.x;
+                        ogb.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
                         ogb.addLight = OGBOrifice.AddLight.Auto;
                         ogb.name = name;
                         ogb.addMenuItem = true;
@@ -203,14 +199,7 @@ namespace VF.Menu {
                 if (orfMarker) {
                     var o = AddOrifice(t.gameObject);
                     if (o) {
-                        var autoInfo = OGBOrificeEditor.GetInfoFromLights(t.gameObject);
-                        if (autoInfo != null) {
-                            o.addLight = autoInfo.Item2 ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole;
-                        }
                         o.name = GetNameFromBakeMarker(orfMarker.gameObject);
-                        foreach (var light in t.gameObject.GetComponentsInChildren<Light>(true)) {
-                            AvatarCleaner.RemoveComponent(light);
-                        }
                     }
                     Delete(orfMarker.gameObject);
                 }
@@ -340,25 +329,19 @@ namespace VF.Menu {
             }
             return "";
         }
-        
-        enum IsDps {
-            NO,
-            HOLE,
-            RING
-        }
-        private static IsDps GetIsParent(GameObject obj) {
-            foreach (Transform child in obj.transform) {
-                var light = child.gameObject.GetComponent<Light>();
-                if (light != null) {
-                    if (OGBOrificeEditor.IsHole(light)) return IsDps.HOLE;
-                    if (OGBOrificeEditor.IsRing(light)) return IsDps.RING;
-                }
+
+        private static Tuple<OGBOrifice.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
+            var lightInfo = OGBOrificeEditor.GetInfoFromLights(obj);
+            if (lightInfo != null) {
+                return lightInfo;
             }
 
             // For some reason, on some avatars, this one doesn't have child lights even though it's supposed to
-            if (obj.name == "__dps_lightobject") return IsDps.RING;
+            if (obj.name == "__dps_lightobject") {
+                return Tuple.Create(OGBOrifice.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0));
+            }
 
-            return IsDps.NO;
+            return null;
         }
 
         private static void AddBlendshapeIfPresent(

@@ -22,7 +22,7 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    public bool SafeRun(GameObject avatarObject, GameObject originalObject) {
+    public bool SafeRun(GameObject avatarObject, GameObject originalObject = null) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
@@ -36,7 +36,7 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    private bool ShouldRun(GameObject avatarObject) {
+    public static bool ShouldRun(GameObject avatarObject) {
         return Startup.GetVRCFuryComponentTypes()
             .Any(type => avatarObject.GetComponentsInChildren(type, true).Length > 0);
     }
@@ -163,6 +163,9 @@ public class VRCFuryBuilder {
         progress.Progress(0, "Collecting features");
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
+            if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
+                continue;
+            }
             var config = vrcFury.config;
             config.Upgrade();
             if (config.features != null) {

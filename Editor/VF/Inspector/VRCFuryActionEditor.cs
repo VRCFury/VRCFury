@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Model;
 using VF.Model.StateAction;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
 
@@ -14,9 +18,9 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
     public static VisualElement Render(SerializedProperty prop) {
 
-        var type = VRCFuryEditorUtils.GetManagedReferenceType(prop);
+        var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
 
-        switch (type?.Name) {
+        switch (type) {
             case nameof(MaterialAction): {
                 var row = new VisualElement {
                     style = {
@@ -141,7 +145,8 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 };
                 row.Add(label);
 
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("blendShape"));
+                var blendshapeProp = prop.FindPropertyRelative("blendShape");
+                var propField = VRCFuryEditorUtils.Prop(blendshapeProp);
                 propField.style.flexGrow = 1;
                 row.Add(propField);
             
@@ -149,6 +154,41 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 valueField.style.flexGrow = 0;
                 valueField.style.flexBasis = 50;
                 row.Add(valueField);
+
+                System.Action selectButtonPress = () => {
+                    var editorObject = prop.serializedObject.targetObject;
+                    var shapes = new Dictionary<string,string>();
+                    if (editorObject is Component c) {
+                        var avatarObject = c.GetComponentInParent<VRCAvatarDescriptor>();
+                        if (avatarObject) {
+                            foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                                if (!skin.sharedMesh) continue;
+                                for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
+                                    var bs = skin.sharedMesh.GetBlendShapeName(i);
+                                    if (shapes.ContainsKey(bs)) {
+                                        shapes[bs] += ", " + skin.gameObject.name;
+                                    } else {
+                                        shapes[bs] = skin.gameObject.name;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    var menu = new GenericMenu();
+                    foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
+                        menu.AddItem(
+                            new GUIContent(entry.Key + " (" + entry.Value + ")"),
+                            false,
+                            () => {
+                                blendshapeProp.stringValue = entry.Key;
+                                blendshapeProp.serializedObject.ApplyModifiedProperties();
+                            });
+                    }
+                    menu.ShowAsContext();
+                };
+                var selectButton = new Button(selectButtonPress) { text = "Select" };
+                row.Add(selectButton);
 
                 return row;
             }
@@ -177,7 +217,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             }
         }
 
-        return VRCFuryEditorUtils.WrappedLabel("Unknown action type: " + type?.Name);
+        return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: ${type}");
     }
 }
 

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -36,8 +34,11 @@ namespace VF.Feature {
                     var newParent = reparent.Item2;
 
                     // Move the object
-                    objectToMove.name = "vrcf_" + uniqueModelNum + "_" + objectToMove.name;
-                    mover.MoveToParent(objectToMove, newParent);
+                    mover.Move(
+                        objectToMove,
+                        newParent,
+                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name
+                    );
                     
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(objectToMove);
@@ -92,8 +93,11 @@ namespace VF.Feature {
                     // Move the object
                     var p = propBone.GetComponent<ParentConstraint>();
                     if (p != null) Object.DestroyImmediate(p);
-                    propBone.name = "vrcf_" + uniqueModelNum + "_" + propBone.name;
-                    mover.MoveToParent(propBone, avatarBone);
+                    mover.Move(
+                        propBone,
+                        avatarBone,
+                        "vrcf_" + uniqueModelNum + "_" + propBone.name
+                    );
                     if (!model.keepBoneOffsets) {
                         propBone.transform.localPosition = Vector3.zero;
                         propBone.transform.localRotation = Quaternion.identity;
@@ -251,6 +255,10 @@ namespace VF.Feature {
                         childAvatarBone = check.Item2.transform.Find("ChestUp/" + searchName)?.gameObject;
                     }
                     if (childAvatarBone != null) {
+                        var marshmallowChild = GetMarshmallowChild(childAvatarBone);
+                        if (marshmallowChild != null) childAvatarBone = marshmallowChild;
+                    }
+                    if (childAvatarBone != null) {
                         links.mergeBones.Push(Tuple.Create(childPropBone, childAvatarBone));
                         checkStack.Push(Tuple.Create(childPropBone, childAvatarBone));
                     } else {
@@ -260,6 +268,21 @@ namespace VF.Feature {
             }
 
             return links;
+        }
+
+        // Marshmallow PB unity package inserts fake bones in the armature, breaking our link.
+        // Detect if this happens, and return the proper child bone instead.
+        private static GameObject GetMarshmallowChild(GameObject orig) {
+            if (orig.GetComponent<ScaleConstraint>() == null) return null;
+            var pConstraint = orig.GetComponent<ParentConstraint>();
+            if (pConstraint == null) return null;
+            if (pConstraint.sourceCount != 1) return null;
+            var source = pConstraint.GetSource(0);
+            if (source.sourceTransform == null) return null;
+            if (!source.sourceTransform.name.Contains("Constraint")) return null;
+            var child = orig.transform.Find(orig.name);
+            if (!child) return null;
+            return child.gameObject;
         }
 
         public override string GetEditorTitle() {

@@ -107,6 +107,14 @@ namespace VF.Feature {
             foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
 
+            // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
+            // absolutely must use wd on.
+            AnimatorIterator.ForEachBlendTree(layer, tree => {
+                if (tree.blendType == BlendTreeType.Direct) {
+                    useWriteDefaults = true;
+                }
+            });
+
             AnimatorIterator.ForEachState(layer, state => {
                 if (useWriteDefaults) { 
                     state.writeDefaultValues = true;

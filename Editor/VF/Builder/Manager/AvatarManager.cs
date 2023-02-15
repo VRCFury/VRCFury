@@ -59,10 +59,15 @@ namespace VF.Builder {
                 var existingController = VRCAvatarUtils.GetAvatarController(avatar, type);
                 var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "VRCFury " + type + " for " + avatarObject.name, "controller");
                 AnimatorController ctrl;
-                if (existingController == null) {
-                    ctrl = AnimatorController.CreateAnimatorControllerAtPath(newPath);
-                } else {
+                if (existingController != null && AssetDatabase.IsMainAsset(existingController)) {
                     ctrl = VRCFuryAssetDatabase.CopyAsset(existingController, newPath);
+                } else {
+                    ctrl = AnimatorController.CreateAnimatorControllerAtPath(newPath);
+                    if (existingController != null) {
+                        ctrl.RemoveLayer(0);
+                        var merger = new ControllerMerger();
+                        merger.Merge(existingController, toRaw: ctrl);
+                    }
                 }
                 output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, currentFeatureNameProvider, tmpDir);
                 _controllers[type] = output;
@@ -90,12 +95,21 @@ namespace VF.Builder {
                 var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
                 var newPath = VRCFuryAssetDatabase.GetUniquePath(tmpDir, "VRCFury Params for " + avatarObject.name, "asset");
                 VRCExpressionParameters prms;
-                if (origParams == null) {
+                if (origParams != null && AssetDatabase.IsMainAsset(origParams)) {
+                    prms = VRCFuryAssetDatabase.CopyAsset(origParams, newPath);
+                } else {
                     prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
                     prms.parameters = new VRCExpressionParameters.Parameter[]{};
                     AssetDatabase.CreateAsset(prms, newPath);
-                } else {
-                    prms = VRCFuryAssetDatabase.CopyAsset(origParams, newPath);
+                    if (origParams != null) {
+                        prms.parameters = origParams.parameters
+                            .Select(prm => new VRCExpressionParameters.Parameter() {
+                                name = prm.name,
+                                valueType = prm.valueType,
+                                defaultValue = prm.defaultValue,
+                                saved = prm.saved,
+                            }).ToArray();
+                    }
                 }
                 VRCAvatarUtils.SetAvatarParams(avatar, prms);
                 _params = new ParamManager(prms);

@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEditor;
+using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Menu {
@@ -77,15 +79,43 @@ namespace VF.Menu {
         private static bool CheckNukeZawooParts() {
             return MenuUtils.GetSelectedAvatar() != null;
         }
+        
+        public const string unusedBones_name = "Tools/VRCFury/Nuke unused bones";
+        public const int unusedBones_priority = 1402;
 
-        [MenuItem("Tools/VRCFury/Build a Test Copy", priority = 1402)]
+        public const string testCopy_name = "Tools/VRCFury/Build an Editor Test Copy";
+        public const int testCopy_priority = 1403;
+        [MenuItem(testCopy_name, priority = testCopy_priority)]
         private static void RunForceRun() {
             VRCFuryTestCopyMenuItem.RunBuildTestCopy();
         }
-
-        [MenuItem("Tools/VRCFury/Build a Test Copy", true)]
+        [MenuItem(testCopy_name, true)]
         private static bool CheckForceRun() {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
+
+        public const string playMode_name = "Tools/VRCFury/Build during play mode";
+        public const int playMode_priority = 1404;
+
+        /*
+        [MenuItem("Tools/VRCFury/List All Components", priority = 1403)]
+        private static void ListChildComponents() {
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                var obj = Selection.activeGameObject;
+                if (obj == null) return;
+                var list = new List<string>();
+                foreach (var c in obj.GetComponentsInChildren<Component>(true)) {
+                    if (c is Transform) continue;
+                    list.Add(c.GetType().Name + " in " + AnimationUtility.CalculateTransformPath(c.transform, obj.transform));
+                }
+
+                EditorUtility.DisplayDialog(
+                    "Debug",
+                    string.Join("\n", list),
+                    "Ok"
+                );
+            });
+        }
+        */
     }
 }

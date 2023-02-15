@@ -27,6 +27,14 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
 
+            var adv = new Foldout {
+                text = "Advanced transform override",
+                value = false,
+            };
+            container.Add(adv);
+            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("position"), "Position"));
+            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("rotation"), "Rotation"));
+
             container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when penetrated:"));
             container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
                 var c = new VisualElement();
@@ -48,56 +56,50 @@ namespace VF.Inspector {
         }
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(OGBOrifice scr, GizmoType gizmoType) {
-            var autoInfo = GetInfoFromLights(scr.gameObject);
-            var forward = Vector3.forward;
-            if (autoInfo != null) {
-                forward = autoInfo.Item1;
-            }
+        static void DrawGizmo(OGBOrifice orf, GizmoType gizmoType) {
+            var autoInfo = GetInfoFromLightsOrComponent(orf);
 
+            var lightType = autoInfo.Item1;
+            var position = autoInfo.Item2;
+            var rotation = autoInfo.Item3;
+            var forward = rotation * Vector3.forward;
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
-            var tightRot = Quaternion.LookRotation(forward) * Quaternion.Euler(90,0,0);
-
-            var lightType = scr.addLight;
-            if (lightType == OGBOrifice.AddLight.Auto)
-                lightType = ShouldProbablyBeHole(scr) ? OGBOrifice.AddLight.Hole : OGBOrifice.AddLight.Ring;
-            if (lightType == OGBOrifice.AddLight.None && autoInfo != null)
-                lightType = autoInfo.Item2 ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole;
-
+            var capsuleRotation = rotation * Quaternion.Euler(90,0,0);
+            
             var text = "Orifice Missing Light";
             if (lightType == OGBOrifice.AddLight.Hole) text = "Hole";
             if (lightType == OGBOrifice.AddLight.Ring) text = "Ring";
 
-            var handTouchZoneSize = GetHandTouchZoneSize(scr);
+            var handTouchZoneSize = GetHandTouchZoneSize(orf);
             if (handTouchZoneSize != null) {
                 var length = handTouchZoneSize.Item1;
                 var radius = handTouchZoneSize.Item2;
                 OGBPenetratorEditor.DrawCapsule(
-                    scr.gameObject,
-                    forward * -(length / 2),
-                    tightRot,
+                    orf.gameObject,
+                    position + forward * -(length / 2),
+                    capsuleRotation,
                     length,
                     radius
                 );
                 VRCFuryGizmoUtils.DrawText(
-                    scr.transform.TransformPoint(forward * -(length / 2) / scr.transform.lossyScale.x),
+                    orf.transform.TransformPoint(position + forward * -(length / 2) / orf.transform.lossyScale.x),
                     "Hand Touch Zone\n(should be INSIDE)",
                     Color.red
                 );
             }
 
             VRCFuryGizmoUtils.DrawSphere(
-                scr.transform.position,
+                orf.transform.TransformPoint(position),
                 0.03f,
                 Color.green
             );
             VRCFuryGizmoUtils.DrawArrow(
-                scr.transform.position,
-                scr.transform.TransformPoint(forward * -0.1f / scr.transform.lossyScale.x),
+                orf.transform.TransformPoint(position),
+                orf.transform.TransformPoint(position + forward * -0.1f / orf.transform.lossyScale.x),
                 Color.green
             );
             VRCFuryGizmoUtils.DrawText(
-                scr.transform.position,
+                orf.transform.TransformPoint(position),
                 text + "\n(Arrow points INWARD)",
                 Color.green
             );
@@ -110,23 +112,21 @@ namespace VF.Inspector {
             
             OGBUtils.AssertValidScale(obj, "orifice");
 
-            var autoInfo = GetInfoFromLights(obj);
+            var autoInfo = GetInfoFromLightsOrComponent(orifice);
+            var addLight = autoInfo.Item1;
+            var position = autoInfo.Item2;
+            var rotation = autoInfo.Item3;
+            var forward = rotation * Vector3.forward;
+            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+            var capsuleRotation = rotation * Quaternion.Euler(90,0,0);
 
-            var forward = Vector3.forward;
-            if (autoInfo != null) {
-                forward = autoInfo.Item1;
-            }
-
-            var name = orifice.name;
-            if (string.IsNullOrWhiteSpace(name)) {
-                name = obj.name;
-            }
+            var name = GetName(orifice);
 
             Debug.Log("Baking OGB " + obj + " as " + name);
 
             // Senders
-            OGBUtils.AddSender(obj, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_ORF_MAIN);
-            OGBUtils.AddSender(obj, forward * 0.01f, "Front", 0.01f, OGBUtils.CONTACT_ORF_NORM);
+            OGBUtils.AddSender(obj, position, "Root", 0.01f, OGBUtils.CONTACT_ORF_MAIN);
+            OGBUtils.AddSender(obj, position + forward * 0.01f, "Front", 0.01f, OGBUtils.CONTACT_ORF_NORM);
             
             var paramPrefix = OGBUtils.GetNextName(usedNames, "OGB/Orf/" + name.Replace('/','_'));
 
@@ -143,58 +143,53 @@ namespace VF.Inspector {
                 if (handTouchZoneSize != null) {
                     var oscDepth = handTouchZoneSize.Item1;
                     var closeRadius = handTouchZoneSize.Item2;
-                    // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
-                    var tightRot = Quaternion.LookRotation(forward) * Quaternion.Euler(90,0,0);
-                    OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
-                    OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
-                    OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
-                    OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                    OGBUtils.AddReceiver(obj, position + forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
+                    OGBUtils.AddReceiver(obj, position + forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
+                    OGBUtils.AddReceiver(obj, position + forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
+                    OGBUtils.AddReceiver(obj, position + forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
                     // Legacy non-OGB TPS penetrator detection
-                    OGBUtils.AddReceiver(obj, forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                    OGBUtils.AddReceiver(obj, forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: tightRot, type: ContactReceiver.ReceiverType.Constant);
+                    OGBUtils.AddReceiver(obj, position + forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                    OGBUtils.AddReceiver(obj, position + forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
                     
                     var frotRadius = 0.1f;
                     var frotPos = 0.05f;
-                    OGBUtils.AddReceiver(obj, forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                    OGBUtils.AddReceiver(obj, position + forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 }
                 
-                OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(obj, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                OGBUtils.AddReceiver(obj, position, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
+                OGBUtils.AddReceiver(obj, position, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
+                OGBUtils.AddReceiver(obj, position, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
+                OGBUtils.AddReceiver(obj, position, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
             }
             
             OGBUtils.AddVersionContacts(obj, paramPrefix, onlySenders, false);
 
-            var addLight = orifice.addLight;
-            if (addLight == OGBOrifice.AddLight.Auto) {
-                addLight = ShouldProbablyBeHole(orifice) ? OGBOrifice.AddLight.Hole : OGBOrifice.AddLight.Ring;
-            }
-            if (autoInfo == null && addLight != OGBOrifice.AddLight.None) {
+            if (addLight != OGBOrifice.AddLight.None) {
                 foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
                     AvatarCleaner.RemoveComponent(light);
                 }
 
-#if !UNITY_ANDROID
-                var main = new GameObject("Root");
-                main.transform.SetParent(obj.transform, false);
-                var mainLight = main.AddComponent<Light>();
-                mainLight.type = LightType.Point;
-                mainLight.color = Color.black;
-                mainLight.range = addLight == OGBOrifice.AddLight.Ring ? 0.42f : 0.41f;
-                mainLight.shadows = LightShadows.None;
-                mainLight.renderMode = LightRenderMode.ForceVertex;
+                if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                    var main = new GameObject("Root");
+                    main.transform.SetParent(obj.transform, false);
+                    main.transform.localPosition = position;
+                    var mainLight = main.AddComponent<Light>();
+                    mainLight.type = LightType.Point;
+                    mainLight.color = Color.black;
+                    mainLight.range = addLight == OGBOrifice.AddLight.Ring ? 0.42f : 0.41f;
+                    mainLight.shadows = LightShadows.None;
+                    mainLight.renderMode = LightRenderMode.ForceVertex;
 
-                var front = new GameObject("Front");
-                front.transform.SetParent(obj.transform, false);
-                var frontLight = front.AddComponent<Light>();
-                front.transform.localPosition = new Vector3(0, 0, 0.01f / obj.transform.lossyScale.x);
-                frontLight.type = LightType.Point;
-                frontLight.color = Color.black;
-                frontLight.range = 0.45f;
-                frontLight.shadows = LightShadows.None;
-                frontLight.renderMode = LightRenderMode.ForceVertex;
-#endif
+                    var front = new GameObject("Front");
+                    front.transform.SetParent(obj.transform, false);
+                    front.transform.localPosition = position + forward * 0.01f / obj.transform.lossyScale.x;
+                    var frontLight = front.AddComponent<Light>();
+                    frontLight.type = LightType.Point;
+                    frontLight.color = Color.black;
+                    frontLight.range = 0.45f;
+                    frontLight.shadows = LightShadows.None;
+                    frontLight.renderMode = LightRenderMode.ForceVertex;
+                }
             }
 
             return Tuple.Create(name, forward);
@@ -228,8 +223,25 @@ namespace VF.Inspector {
             var rangeId = light.range % 0.1;
             return rangeId >= 0.045f && rangeId <= 0.055f;
         }
+
+        public static Tuple<OGBOrifice.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(OGBOrifice orf) {
+            if (orf.addLight != OGBOrifice.AddLight.None) {
+                var type = orf.addLight;
+                if (type == OGBOrifice.AddLight.Auto) type = ShouldProbablyBeHole(orf) ? OGBOrifice.AddLight.Hole : OGBOrifice.AddLight.Ring;
+                var position = orf.position;
+                var rotation = Quaternion.Euler(orf.rotation);
+                return Tuple.Create(type, position, rotation);
+            }
+            
+            var lightInfo = GetInfoFromLights(orf.gameObject);
+            if (lightInfo != null) {
+                return lightInfo;
+            }
+
+            return Tuple.Create(OGBOrifice.AddLight.None, Vector3.zero, Quaternion.identity);
+        }
         
-        public static Tuple<Vector3, bool> GetInfoFromLights(GameObject obj) {
+        public static Tuple<OGBOrifice.AddLight, Vector3, Quaternion> GetInfoFromLights(GameObject obj) {
             var isRing = false;
             Light main = null;
             Light normal = null;
@@ -252,63 +264,75 @@ namespace VF.Inspector {
 
             if (main == null || normal == null) return null;
 
-            var forward = Vector3.forward;
-            if (normal != null) {
-                forward = (normal.transform.localPosition - main.transform.localPosition).normalized;
-            }
+            var position = main.transform.localPosition;
+            var forward = (normal.transform.localPosition - main.transform.localPosition).normalized;
+            var rotation = Quaternion.LookRotation(forward);
 
-            return Tuple.Create(forward, isRing);
+            return Tuple.Create(isRing ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole, position, rotation);
         }
 
         public static void ClaimLights(OGBOrifice orifice) {
-            var info = GetInfoFromLights(orifice.gameObject);
+            if (orifice.addLight == OGBOrifice.AddLight.None) {
+                var info = GetInfoFromLights(orifice.gameObject);
+                if (info != null) {
+                    var type = info.Item1;
+                    var position = info.Item2;
+                    var rotation = info.Item3;
+                    orifice.addLight = type;
+                    orifice.position = position;
+                    orifice.rotation = rotation.eulerAngles;
+                }
+            }
             foreach (var light in orifice.gameObject.GetComponentsInChildren<Light>(true)) {
                 if (IsRing(light) || IsHole(light) || IsNormal(light)) {
                     AvatarCleaner.RemoveComponent(light);
                 }
             }
-            if (info != null) {
-                var forward = info.Item1;
-                var isRing = info.Item2;
-                orifice.transform.rotation *= Quaternion.LookRotation(forward);
-                orifice.addLight = isRing ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole;
-            }
+        }
+
+        private static bool IsDirectChildOfHips(OGBOrifice orf) {
+            return IsChildOfBone(orf, HumanBodyBones.Hips)
+                && !IsChildOfBone(orf, HumanBodyBones.Chest)
+                && !IsChildOfBone(orf, HumanBodyBones.Spine)
+                && !IsChildOfBone(orf, HumanBodyBones.LeftUpperArm)
+                && !IsChildOfBone(orf, HumanBodyBones.LeftUpperLeg)
+                && !IsChildOfBone(orf, HumanBodyBones.RightUpperArm)
+                && !IsChildOfBone(orf, HumanBodyBones.RightUpperLeg);
         }
 
         public static bool ShouldProbablyHaveTouchZone(OGBOrifice orf) {
-            var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
-            if (!avatarObject) return false;
-            if (!IsChildOfBone(avatarObject, orf, HumanBodyBones.Hips)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Chest)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Spine)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperLeg)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperLeg)) return false;
-            return true;
+            if (IsDirectChildOfHips(orf)) {
+                var name = GetName(orf).ToLower();
+                if (name.Contains("rubbing") || name.Contains("job")) {
+                    return false;
+                }
+                return true;
+            }
+            return false;
         }
         
         public static bool ShouldProbablyBeHole(OGBOrifice orf) {
-            var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
-            if (!avatarObject) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Head)) return true;
-            if (!IsChildOfBone(avatarObject, orf, HumanBodyBones.Hips)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Chest)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.Spine)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.LeftUpperLeg)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperArm)) return false;
-            if (IsChildOfBone(avatarObject, orf, HumanBodyBones.RightUpperLeg)) return false;
-            return true;
+            if (IsChildOfBone(orf, HumanBodyBones.Head)) return true;
+            return ShouldProbablyHaveTouchZone(orf);
         }
 
-        private static bool IsChildOfBone(GameObject avatarObject, OGBOrifice orf, HumanBodyBones bone) {
+        private static bool IsChildOfBone(OGBOrifice orf, HumanBodyBones bone) {
             try {
+                var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+                if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj.transform, orf.transform);
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        private static string GetName(OGBOrifice orifice) {
+            var name = orifice.name;
+            if (string.IsNullOrWhiteSpace(name)) {
+                name = orifice.gameObject.name;
+            }
+            return name;
         }
 
         private static bool IsChildOf(Transform parent, Transform child) {

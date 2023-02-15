@@ -31,8 +31,20 @@ public class ControllerMerger {
         this._newBlendTree = NewBlendTree;
     }
 
-    public void Merge(AnimatorController from, ControllerManager toMain) {
-        var to = toMain.GetRaw();
+    public void Merge(AnimatorController from, ControllerManager toMain = null, AnimatorController toRaw = null) {
+        AnimatorController to;
+        Action<string> addLayer;
+        VRCAvatarDescriptor.AnimLayerType type;
+        if (toMain != null) {
+            to = toMain.GetRaw();
+            addLayer = str => toMain.NewLayer(str);
+            type = toMain.GetType();
+        } else {
+            to = toRaw;
+            addLayer = str => toRaw.AddLayer(str);
+            type = VRCAvatarDescriptor.AnimLayerType.Deprecated0;
+        }
+
         var oldLayerCount = to.layers.Length;
         
         foreach (var param in from.parameters) {
@@ -60,7 +72,7 @@ public class ControllerMerger {
                 }
                 fromWeight = 1;
             }
-            toMain.NewLayer(RewriteLayerName(fromLayer.name));
+            addLayer(RewriteLayerName(fromLayer.name));
             var toLayers = to.layers;
             var toLayer = toLayers[to.layers.Length-1];
             toLayer.avatarMask = fromLayer.avatarMask;
@@ -69,7 +81,7 @@ public class ControllerMerger {
             toLayer.defaultWeight = fromWeight;
             to.layers = toLayers;
             var transitionTargets = new Dictionary<Object, Object>();
-            CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, transitionTargets, toMain.GetType(), oldLayerCount);
+            CloneMachine(fromLayer.stateMachine, toLayer.stateMachine, transitionTargets, type, oldLayerCount);
             CloneTransitions(fromLayer.stateMachine, transitionTargets);
         }
     }
@@ -134,10 +146,13 @@ public class ControllerMerger {
         T Add<T>() where T : StateMachineBehaviour {
             var added = AddUnchecked(typeof(T)) as T;
             if (added == null) {
-                throw new Exception(
-                    "Failed to create state behaviour of type " + typeof(T).Name + "." +
+                throw new VRCFBuilderException(
+                    $"Failed to create state behaviour of type ${typeof(T).Name} at ${source}." +
                     " Usually this means you have unresolved script compilation errors. Click 'Clear' on the" +
-                    " top left of the unity log, and fix any red errors that remain after clearing.");
+                    " top left of the unity log, and fix any red errors that remain after clearing." +
+                    " If there are no errors, try restarting unity. If nothing fixes it, report on" +
+                    " https://vrcfury.com/discord"
+                );
             }
             return added;
         }
@@ -205,7 +220,12 @@ public class ControllerMerger {
                 }
                 default:
                     throw new VRCFBuilderException(
-                        "Unable to copy unknown state machine behavior type: " + b.GetType().Name + " at " + source);
+                        $"Unknown state machine behavior type ${b.GetType().Name} at ${source}" +
+                        " Usually this means you have unresolved script compilation errors. Click 'Clear' on the" +
+                        " top left of the unity log, and fix any red errors that remain after clearing." +
+                        " If there are no errors, try restarting unity. If nothing fixes it, report on" +
+                        " https://vrcfury.com/discord"
+                    );
             }
         }
     }
@@ -263,7 +283,7 @@ public class ControllerMerger {
                     motion = CloneMotion(oldChild.motion),
                     threshold = oldChild.threshold,
                     cycleOffset = oldChild.cycleOffset,
-                    directBlendParameter = oldChild.directBlendParameter,
+                    directBlendParameter = RewriteParamName(oldChild.directBlendParameter),
                     mirror = oldChild.mirror,
                     position = oldChild.position,
                     timeScale = oldChild.timeScale

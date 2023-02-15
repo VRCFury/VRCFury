@@ -42,6 +42,10 @@ namespace VF.Menu {
 
         private static bool ShouldRemoveObj(GameObject obj) {
             if (obj == null) return false;
+            if (PrefabUtility.IsPartOfPrefabInstance(obj) && !PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
+                // Don't try to remove if it's part of a prefab, because it's probly inside the VRCFury prefab
+                return false;
+            }
             if (ShouldRemoveAsset(obj)) return true;
             var lower = obj.name.ToLower();
             if (lower.Contains("caninepeen")) return true;

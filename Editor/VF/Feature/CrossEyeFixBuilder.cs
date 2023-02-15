@@ -12,9 +12,9 @@ namespace VF.Feature {
     public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
         [FeatureBuilderAction]
         public void Apply() {
-#if UNITY_ANDROID
-            return;
-#endif
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+                return;
+            }
 
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
             if (!avatar.enableEyeLook) return;
@@ -39,7 +39,7 @@ namespace VF.Feature {
             fakeEyeUp.transform.SetParent(fakeEye.transform, true);
             
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
-            mover.MoveToParent(originalEye, realEyeUp);
+            mover.Move(originalEye, realEyeUp);
 
             var constraint = realEyeUp.AddComponent<RotationConstraint>();
             constraint.AddSource(new ConstraintSource() {

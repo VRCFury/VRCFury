@@ -10,6 +10,7 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using VRC.Dynamics;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     public class BakeOGBBuilder : FeatureBuilder {
@@ -17,12 +18,26 @@ namespace VF.Feature {
         public void Apply() {
             var usedNames = new List<string>();
             var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
+
+            // When you first load into a world, contact receivers already touching a sender register as 0 proximity
+            // until they are removed and then reintroduced to each other.
+            var objectsToDisableTemporarily = new HashSet<GameObject>();
+            
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
                 OGBPenetratorEditor.Bake(c, usedNames);
+
+                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                    objectsToDisableTemporarily.Add(r.gameObject);
+                }
             }
+            
             foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
                 fakeHead.MarkEligible(c.gameObject);
                 var (name,forward) = OGBOrificeEditor.Bake(c, usedNames);
+                
+                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                    objectsToDisableTemporarily.Add(r.gameObject);
+                }
 
                 if (c.addMenuItem) {
                     c.gameObject.SetActive(false);
@@ -84,6 +99,20 @@ namespace VF.Feature {
                     off.TransitionsTo(on).When(onWhen);
                     on.TransitionsTo(off).When(onWhen.Not());
                 }
+            }
+
+            if (objectsToDisableTemporarily.Count > 0) {
+                var fx = GetFx();
+                var layer = fx.NewLayer("OGB Off Temporarily Upon Load");
+                var off = layer.NewState("Off");
+                var on = layer.NewState("On");
+                off.TransitionsTo(on).When().WithTransitionExitTime(1);
+                
+                var clip = manager.GetClipStorage().NewClip("ogbLoad");
+                foreach (var obj in objectsToDisableTemporarily) {
+                    clipBuilder.Enable(clip, obj, false);
+                }
+                off.WithAnimation(clip);
             }
         }
     }

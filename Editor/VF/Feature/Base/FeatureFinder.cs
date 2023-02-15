@@ -48,13 +48,15 @@ public static class FeatureFinder {
             .Select(e => {
                 var impl = (FeatureBuilder)Activator.CreateInstance(e.Value);
                 var title = impl.GetEditorTitle();
-                var allowed = impl.ShowInMenu();
-                allowed &= allowAvatarFeatures ? impl.AvailableOnAvatar() : impl.AvailableOnProps();
-                return Tuple.Create(title, allowed, e);
+                if (title == null) return null;
+                if (!impl.ShowInMenu()) return null;
+                var allowedOnObject = allowAvatarFeatures ? impl.AvailableOnAvatar() : impl.AvailableOnProps();
+                if (!allowedOnObject) return null;
+                return Tuple.Create(title, e);
             })
-            .Where(tuple => tuple.Item1 != null && tuple.Item2)
+            .Where(tuple => tuple != null)
             .OrderBy(tuple => tuple.Item1)
-            .Select(tuple => tuple.Item3);
+            .Select(tuple => tuple.Item2);
     }
 
     public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, GameObject gameObject) {

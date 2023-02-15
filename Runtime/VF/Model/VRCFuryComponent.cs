@@ -26,9 +26,12 @@ namespace VF.Model {
                 EditorApplication.delayCall += () => {
                     var path = AssetDatabase.GetAssetPath(this);
                     if (!string.IsNullOrWhiteSpace(path) && !attemptedReload.Contains(path)) {
-                        Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
+                        //Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
+                        Debug.LogWarning(
+                            $"VRCFury detected VRCFury component in asset at path ${path} is corrupted. " +
+                            "Hopefully it will be fixed during the prefab import auto-fix.");
                         attemptedReload.Add(path);
-                        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                        //AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                     }
                 };
 #endif
