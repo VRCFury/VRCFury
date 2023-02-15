@@ -341,7 +341,7 @@ namespace VF.Model.Feature {
             REPARENTING_ROOT_ONLY,
         }
 
-        public ArmatureLinkMode linkMode;
+        public ArmatureLinkMode linkMode = ArmatureLinkMode.SKIN_REWRITE;
         public GameObject propBone;
         public HumanBodyBones boneOnAvatar;
         public string bonePathOnAvatar;
@@ -349,6 +349,7 @@ namespace VF.Model.Feature {
         public string removeBoneSuffix;
         public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
+        public float skinRewriteScalingFactor = -1;
         
         // legacy
         public bool useOptimizedUpload;
@@ -362,9 +363,12 @@ namespace VF.Model.Feature {
                     linkMode = ArmatureLinkMode.REPARENTING;
                 }
             }
+            if (fromVersion < 2) {
+                skinRewriteScalingFactor = 1;
+            }
         }
         public override int GetLatestVersion() {
-            return 1;
+            return 2;
         }
     }
     

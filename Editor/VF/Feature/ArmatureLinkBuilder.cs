@@ -33,16 +33,18 @@ namespace VF.Feature {
             
             if (model.linkMode == ArmatureLink.ArmatureLinkMode.SKIN_REWRITE) {
 
-                var scalingFactor = 1f;
+                var scalingFactor = model.skinRewriteScalingFactor;
 
-                var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
-                var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
-                double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
-                var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
-                    .OrderBy(GetError)
-                    .First();
-                scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
-                
+                if (scalingFactor <= 0) {
+                    var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
+                    var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
+                    double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
+                    var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
+                        .OrderBy(GetError)
+                        .First();
+                    scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
+                }
+
                 Debug.Log("Detected scaling factor: " + scalingFactor);
 
                 var scalingRequired = scalingFactor < 0.999 || scalingFactor > 1.001;
@@ -410,6 +412,12 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Fallback bones:"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("If the given bone cannot be found on the avatar, these bones will also be attempted before failing."));
             adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("fallbackBones")));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Skin rewrite scaling factor:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Will automatically detect scaling factor if negative)"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("skinRewriteScalingFactor")));
 
             return container;
         }
