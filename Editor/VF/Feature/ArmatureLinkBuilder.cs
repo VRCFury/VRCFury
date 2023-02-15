@@ -287,6 +287,13 @@ namespace VF.Feature {
                     return null;
                 }
             }
+
+            var removeBoneSuffix = model.removeBoneSuffix;
+            if (string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
+                if (propBone.name.Contains(avatarBone.name) && propBone.name != avatarBone.name) {
+                    removeBoneSuffix = propBone.name.Replace(avatarBone.name, "");
+                }
+            }
             
             var links = new Links();
 
@@ -299,8 +306,8 @@ namespace VF.Feature {
                 foreach (Transform child in check.Item1.transform) {
                     var childPropBone = child.gameObject;
                     var searchName = childPropBone.name;
-                    if (!string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
-                        searchName = searchName.Replace(model.removeBoneSuffix, "");
+                    if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
+                        searchName = searchName.Replace(removeBoneSuffix, "");
                     }
                     var childAvatarBone = check.Item2.transform.Find(searchName)?.gameObject;
                     // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
@@ -357,17 +364,22 @@ namespace VF.Feature {
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.WrappedLabel("Path to corresponding root bone from root of avatar:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(If full string path is given, humanoid bone dropdown will be ignored)"));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
-            
+
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Link Mode:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Skin Rewrite) Rewrites skinned meshes to use avatar's own bones. Excellent performance, but breaks some clothing."));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting) Makes prop bones into children of the avatar's bones. Medium performance, but often works when Skin Rewrite doesn't."));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting (Root Only)) Similar to bone reparenting, but only the root object is reparented. Useful if you just want to move a simple object onto a bone."));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Constraint) Adds a parent constraint to every prop bone, linking it to the avatar bone. Awful performance, pretty much never use this."));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("linkMode"), formatEnum: str => {
+            
+            var adv = new Foldout {
+                text = "Advanced Options",
+                value = false
+            };
+            container.Add(adv);
+            
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Link Mode:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Skin Rewrite) Rewrites skinned meshes to use avatar's own bones. Excellent performance, but breaks some clothing."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting) Makes prop bones into children of the avatar's bones. Medium performance, but often works when Skin Rewrite doesn't."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Reparenting (Root Only)) Similar to bone reparenting, but only the root object is reparented. Useful if you just want to move a simple object onto a bone."));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Constraint) Adds a parent constraint to every prop bone, linking it to the avatar bone. Awful performance, pretty much never use this."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("linkMode"), formatEnum: str => {
                 if (str == ArmatureLink.ArmatureLinkMode.SKIN_REWRITE.ToString()) {
                     return "Skin Rewrite (Best Performance)";
                 } else if (str == ArmatureLink.ArmatureLinkMode.REPARENTING.ToString()) {
@@ -380,27 +392,26 @@ namespace VF.Feature {
 
                 return str;
             }));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Remove bone suffix/prefix:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
+                                                    "something like _PropName to the end of every bone, breaking AvatarLink in the process. If empty, the suffix will be predicted " +
+                                                    "based on the difference between the name of the given root bones."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("String path to bone on avatar:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If provided, humanoid bone dropdown will be ignored."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
 
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Keep bone offsets:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("If unchecked, linked bones will be rigidly locked to the transform of the corresponding avatar bone." +
-                                                              " If checked, prop bones will maintain their initial offset to the corresponding avatar bone. This is unusual. Does nothing when using Skin Rewrite."));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepBoneOffsets")));
-            
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Remove bone suffix/prefix:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
-                                                              "something like _PropName to the end of every bone, breaking AvatarLink in the process."));
-            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
-            
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
-            
-            var adv = new Foldout {
-                text = "Advanced Options",
-                value = false
-            };
-            container.Add(adv);
-            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Keep bone offsets:"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If unchecked, linked bones will be rigidly locked to the transform of the corresponding avatar bone." +
+                                                    " If checked, prop bones will maintain their initial offset to the corresponding avatar bone. This is unusual. Does nothing when using Skin Rewrite."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepBoneOffsets")));
+
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Allow prop physbones to target avatar bone transforms (unusual):"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("If checked, physbones in the prop pointing to bones on the avatar will be updated " +
                                                     "to point to the corresponding bone on the base armature. This is extremely unusual. Don't use this " +
