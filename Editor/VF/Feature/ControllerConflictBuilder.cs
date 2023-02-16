@@ -92,6 +92,12 @@ namespace VF.Feature {
                     action.SetWeight(layer, 0);
                 }
             }
+            
+            // TODO: Deal with conflicts when multiple owners:
+            // * turn on/off locomotion
+            // * turn on/off tracking
+            // * turn on/off pose space
+            // * re-enable the defaults layer on action when action is used?
         }
     }
 }
