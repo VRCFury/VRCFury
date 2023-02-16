@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -264,14 +265,17 @@ namespace VF.Builder {
             EditorUtility.SetDirty(ctrl);
         }
 
-        public IList<string> GetLayerOwners() {
-            return layerOwners.Values.Distinct().ToList();
+        public ISet<string> GetLayerOwners() {
+            return layerOwners.Values.Distinct().ToImmutableHashSet();
         }
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
             if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
                 return null;
             }
             return layerOwner;
+        }
+        public float GetWeight(int layerId) {
+            return ctrl.layers[layerId].defaultWeight;
         }
         public void SetWeight(int layerId, float weight) {
             var layers = ctrl.layers;

@@ -258,8 +258,7 @@ namespace VF.Feature {
             "MuteSelf",
             "InStation",
             "AvatarVersion",
-            "GroundProximity",
-            "VRCEmote"
+            "GroundProximity"
         };
     }
 

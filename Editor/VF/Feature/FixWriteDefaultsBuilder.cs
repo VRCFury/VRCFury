@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
@@ -79,8 +80,11 @@ namespace VF.Feature {
             var noopClip = manager.GetClipStorage().GetNoopClip();
             foreach (var controller in applyToUnmanagedLayers ? manager.GetAllUsedControllers() : manager.GetAllTouchedControllers()) {
                 var defaultClip = manager.GetClipStorage().NewClip("Defaults " + controller.GetType());
-                var defaultLayer = controller.NewLayer("Defaults", 1);
-                defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
+                if (controller.GetType() != VRCAvatarDescriptor.AnimLayerType.Action) {
+                    var defaultLayer = controller.NewLayer("Defaults", 1);
+                    defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
+                }
+
                 foreach (var layer in controller.GetManagedLayers()) {
                     ApplyToLayer(layer, defaultClip, noopClip, avatarObject, missingStates, useWriteDefaults);
                 }

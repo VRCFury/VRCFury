@@ -256,6 +256,9 @@ public class VFAState {
         return new VFATransition(() => node.state.AddExitTransition());
     }
 
+    public AnimatorState GetRaw() {
+        return node.state;
+    }
 }
 
 public class VFAParam {
