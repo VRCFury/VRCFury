@@ -187,8 +187,8 @@ namespace VF.Feature {
             remoteTree.AddChild(driverTree, 1);
 
             var off = layer.NewState("Off");
-            var onLocal = layer.NewState("On Local").Move(-1, 2);
-            var onRemote = layer.NewState("On Remote").Move(2, 0);
+            var onLocal = layer.NewState("On Local").Move(off, -0.5f, 2f);
+            var onRemote = layer.NewState("On Remote").Move(onLocal, 1f, 0f);
 
             off.TransitionsTo(onLocal).When(whenEnabled.And(fx.IsLocal().IsTrue()));
             off.TransitionsTo(onRemote).When(whenEnabled.And(fx.IsLocal().IsFalse()));
