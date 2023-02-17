@@ -1,6 +1,6 @@
 ## VRCFury IS DUAL LICENSED. You may choose from one of the following licenses:
 
-### 1. Distribute VRCFury **WITHOUT MODIFICATIONS** for commercial or non-commercial use
+### 1. Distribute VRCFury **IN WHOLE, WITHOUT MODIFICATIONS** for commercial or non-commercial use
 
 ```
 Creative Commons Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0)
