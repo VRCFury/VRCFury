@@ -18,11 +18,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FixWriteDefaults)]
         public void Apply() {
             var analysis = DetectExistingWriteDefaults();
-            var broken = analysis.Item1;
-            var shouldBeOnIfWeAreInControl = analysis.Item2;
-            var shouldBeOnIfWeAreNotInControl = analysis.Item3;
-            var reason = analysis.Item4;
-            var badStates = analysis.Item5;
+            var (broken, shouldBeOnIfWeAreInControl, shouldBeOnIfWeAreNotInControl, debugInfo, badStates) = analysis;
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
@@ -30,11 +26,11 @@ namespace VF.Feature {
                 mode = fixSetting.mode;
             } else if (broken) {
                 var ask = EditorUtility.DisplayDialogComplex("VRCFury",
-                    "VRCFury has detected a (likely) broken mix of Write Defaults on your avatar base" +
-                    " (" + reason + ")." +
+                    "VRCFury has detected a (likely) broken mix of Write Defaults on your avatar base." +
                     " This may cause weird issues to happen with your animations," +
                     " such as toggles or animations sticking on or off forever.\n\n" +
-                    "VRCFury can try to fix this for you automatically. Should it try?",
+                    "VRCFury can try to fix this for you automatically. Should it try?\n\n" +
+                    $"(Debug info: {debugInfo}, VRCF will try to convert to {(shouldBeOnIfWeAreInControl ? "ON" : "OFF")})",
                     "Auto-Fix",
                     "Skip",
                     "Skip and stop asking");
@@ -68,7 +64,8 @@ namespace VF.Feature {
             Debug.Log("VRCFury is fixing write defaults "
                       + (applyToUnmanagedLayers ? "(ALL layers)" : "(Only managed layers)") + " -> "
                       + (useWriteDefaults ? "ON" : "OFF")
-                      + " because (" + reason + " | " + mode + ")"
+                      + $" counts ({debugInfo})"
+                      + $" mode ({mode})"
                       + (badStates.Count > 0 ? ("\n\nWeird states: " + string.Join(",", badStates)) : "")
             );
             
@@ -159,52 +156,84 @@ namespace VF.Feature {
             });
         }
         
+        private class ControllerInfo {
+            public VRCAvatarDescriptor.AnimLayerType type;
+            public List<string> onStates = new List<string>();
+            public List<string> offStates = new List<string>();
+            public List<string> directBlendTrees = new List<string>();
+            public List<string> additiveLayers = new List<string>();
+        }
+        
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
-        private Tuple<bool, bool, bool, string, List<string>> DetectExistingWriteDefaults() {
-            var onStates = new List<string>();
-            var offStates = new List<string>();
-            var directBlendTrees = 0;
-            var additiveLayers = 0;
+        private Tuple<bool, bool, bool, string, IList<string>> DetectExistingWriteDefaults() {
 
-            var allLayers = manager.GetAllUsedControllersRaw()
-                .Select(c => c.Item2)
-                .SelectMany(controller => controller.layers);
             var allManagedStateMachines = manager.GetAllTouchedControllers()
                 .SelectMany(controller => controller.GetManagedLayers())
                 .ToImmutableHashSet();
 
-            foreach (var layer in allLayers) {
-                var isManaged = allManagedStateMachines.Contains(layer.stateMachine);
-                if (!isManaged) {
-                    AnimatorIterator.ForEachState(layer.stateMachine, state => {
-                        (state.writeDefaultValues ? onStates : offStates).Add(layer.name + "." + state.name);
-                    });
-                }
-                AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
-                    if (tree.blendType == BlendTreeType.Direct) {
-                        directBlendTrees++;
+            var controllerInfos = manager.GetAllUsedControllersRaw().Select(tuple => {
+                var (type, controller) = tuple;
+                var info = new ControllerInfo();
+                info.type = type;
+                foreach (var layer in controller.layers) {
+                    var isManaged = allManagedStateMachines.Contains(layer.stateMachine);
+                    if (!isManaged) {
+                        AnimatorIterator.ForEachState(layer.stateMachine,
+                            state => {
+                                (state.writeDefaultValues ? info.onStates : info.offStates).Add(layer.name + "." + state.name);
+                            });
                     }
-                });
-                if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
-                    additiveLayers++;
+
+                    AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
+                        if (tree.blendType == BlendTreeType.Direct) {
+                            info.directBlendTrees.Add(tree.name);
+                        }
+                    });
+                    if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
+                        info.additiveLayers.Add(layer.name);
+                    }
                 }
+
+                return info;
+            }).ToList();
+            
+            var debugList = new List<string>();
+            foreach (var info in controllerInfos) {
+                var entries = new List<string>();
+                if (info.onStates.Count > 0) entries.Add(info.onStates.Count + " on");
+                if (info.offStates.Count > 0) entries.Add(info.offStates.Count + " off");
+                if (info.directBlendTrees.Count > 0) entries.Add(info.directBlendTrees.Count + " direct");
+                if (info.additiveLayers.Count > 0) entries.Add(info.additiveLayers.Count + " additive");
+                if (entries.Count > 0) {
+                    debugList.Add($"{info.type}:{string.Join("|",entries)}");
+                }
+            }
+            var debugInfo = string.Join(", ", debugList);
+
+            IList<string> Collect(Func<ControllerInfo, IEnumerable<string>> fn) {
+                return controllerInfos.SelectMany(info => fn(info).Select(s => $"{info.type} {s}")).ToList();
+            }
+            var onStates = Collect(info => info.onStates);
+            var offStates = Collect(info => info.offStates);
+            var directBlendTrees = Collect(info => info.directBlendTrees);
+            var additiveLayers = Collect(info => info.additiveLayers);
+
+            var fxInfo = controllerInfos.Find(i => i.type == VRCAvatarDescriptor.AnimLayerType.FX);
+            bool shouldBeOnIfWeAreNotInControl;
+            if (fxInfo != null && fxInfo.onStates.Count + fxInfo.offStates.Count > 10) {
+                shouldBeOnIfWeAreNotInControl = fxInfo.onStates.Count > fxInfo.offStates.Count;
+            } else {
+                shouldBeOnIfWeAreNotInControl = onStates.Count > offStates.Count;
             }
 
             var shouldBeOnIfWeAreInControl =
-                directBlendTrees > 0 ||
-                //additiveLayers > 0 ||
-                onStates.Count > offStates.Count;
-            var shouldBeOnIfWeAreNotInControl = onStates.Count > offStates.Count;
+                directBlendTrees.Count > 0 ||
+                shouldBeOnIfWeAreNotInControl;
+            
             var weirdStates = shouldBeOnIfWeAreInControl ? offStates : onStates;
-            var outList = new List<string>();
-            if (onStates.Count > 0) outList.Add(onStates.Count + " on");
-            if (offStates.Count > 0) outList.Add(offStates.Count + " off");
-            if (directBlendTrees > 0) outList.Add(directBlendTrees + " direct");
-            if (additiveLayers > 0) outList.Add(additiveLayers + " additive");
-
             var broken = weirdStates.Count > 0;
-            var reason = string.Join(", ", outList);
-            return Tuple.Create(broken, shouldBeOnIfWeAreInControl, shouldBeOnIfWeAreNotInControl, reason, weirdStates);
+            
+            return Tuple.Create(broken, shouldBeOnIfWeAreInControl, shouldBeOnIfWeAreNotInControl, debugInfo, weirdStates);
         }
     }
 }
