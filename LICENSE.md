@@ -11,7 +11,7 @@ https://creativecommons.org/licenses/by-nd/4.0/legalcode
 ### 2. Modify or use parts of VRCFury for **NON-COMMERCIAL USE ONLY** 
 
 ```
-Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0) WITH AMENDMENT
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
 https://creativecommons.org/licenses/by-nc/4.0/
 https://creativecommons.org/licenses/by-nc/4.0/legalcode
 ```
