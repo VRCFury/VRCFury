@@ -6,6 +6,8 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using static VRC.SDKBase.VRC_AnimatorTrackingControl;
+using static VRC.SDKBase.VRC_PlayableLayerControl;
 
 namespace VF.Builder {
 
@@ -106,6 +108,9 @@ public class VFALayer {
     private readonly AnimatorStateMachine stateMachine;
     private readonly VFAController ctrl;
 
+    private static readonly float X_OFFSET = 250;
+    private static readonly float Y_OFFSET = 80;
+
     public VFALayer(AnimatorStateMachine stateMachine, VFAController ctrl) {
         this.stateMachine = stateMachine;
         this.ctrl = ctrl;
@@ -138,6 +143,21 @@ public class VFALayer {
 
     public AnimatorStateMachine GetRawStateMachine() {
         return stateMachine;
+    }
+        
+    public static Vector3 MovePos(Vector3 orig, float x, float y) {
+        var pos = orig;
+        pos.x += x * X_OFFSET;
+        pos.y += y * Y_OFFSET;
+        return pos;
+    }
+
+    public void MoveExit(Vector3 orig, float x, float y) {
+        stateMachine.exitPosition = MovePos(orig, x, y);
+    }
+
+    public void MoveExit(VFAState other, float x, float y) {
+        MoveExit(other.getPos(), x, y);
     }
 }
 
@@ -201,6 +221,22 @@ public class VFAState {
         driver.localOnly = local;
         return driver;
     }
+    public VRCAnimatorTrackingControl GetTrackingControl() {
+         foreach (var b in node.state.behaviours) {
+            var d = b as VRCAnimatorTrackingControl;
+            if (d) return d;
+        }
+        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAnimatorTrackingControl>(node.state);
+        return driver;
+    }
+    public VRCPlayableLayerControl GetPlayableLayerControl() {
+         foreach (var b in node.state.behaviours) {
+            var d = b as VRCPlayableLayerControl;
+            if (d) return d;
+        }
+        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(node.state);
+        return driver;
+    }
     private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
         var driver = GetDriver(local);
         var p = new VRC_AvatarParameterDriver.Parameter();
@@ -243,6 +279,45 @@ public class VFAState {
         return this;
     }
 
+    public VFAState TrackingController(int trackingHead, int trackingLeftHand, int trackingRightHand, int trackingHip, int trackingLeftFoot, int trackingRightFoot, int trackingLeftFingers, int trackingRightFingers, int trackingEyes, int trackingMouth) {
+        
+        var controller = GetTrackingControl();
+        controller.trackingHead = (TrackingType)trackingHead;
+        controller.trackingLeftHand = (TrackingType)trackingLeftHand;
+        controller.trackingRightHand = (TrackingType)trackingRightHand;
+        controller.trackingHip = (TrackingType)trackingHip;
+        controller.trackingLeftFoot = (TrackingType)trackingLeftFoot;
+        controller.trackingRightFoot = (TrackingType)trackingRightFoot;
+        controller.trackingLeftFingers = (TrackingType)trackingLeftFingers;
+        controller.trackingRightFingers = (TrackingType)trackingRightFingers;
+        controller.trackingEyes = (TrackingType)trackingEyes;
+        controller.trackingMouth = (TrackingType)trackingMouth;
+        return this;
+
+    }
+
+    public VFAState TrackingController(string quickChoise) {
+        switch (quickChoise) {
+            case "allTracking":
+                return TrackingController(1,1,1,1,1,1,1,1,1,1);
+            case "allAnimation":
+                return TrackingController(2,2,2,2,2,2,2,2,2,2);
+            case "emoteTracking":
+                return TrackingController(1,1,1,1,1,1,1,1,0,0);
+            case "emoteAnimation":
+                return TrackingController(2,2,2,2,2,2,2,2,0,0);
+        }
+        return TrackingController(0,0,0,0,0,0,0,0,0,0);
+    }
+
+    public VFAState PlayableLayerController(BlendableLayer layer, float goal, float duration) {
+        var controller = GetPlayableLayerControl();
+        controller.layer = layer;
+        controller.goalWeight = goal;
+        controller.blendDuration = duration;
+        return this;
+    }
+
     public VFAEntryTransition TransitionsFromEntry() {
         return new VFAEntryTransition(() => stateMachine.AddEntryTransition(node.state));
     }
@@ -254,6 +329,10 @@ public class VFAState {
     }
     public VFATransition TransitionsToExit() {
         return new VFATransition(() => node.state.AddExitTransition());
+    }
+
+    public Vector3 getPos() {
+        return node.position;
     }
 
 }

@@ -17,9 +17,14 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
         return Render(prop);
     }
 
+    
+
     public static VisualElement Render(SerializedProperty prop) {
 
-        void addRow(VisualElement container, string propName, string label) {
+        var hasResetProp = prop.FindPropertyRelative("hasReset");
+        var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
+
+        VisualElement addRow(string propName, string label) {
             var row = new VisualElement {
                 style = {
                     flexDirection = FlexDirection.Row,
@@ -38,7 +43,7 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
             var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(propName));
             propField.style.flexGrow = 1;
             row.Add(propField);
-            container.Add(row);
+            return row;
         }
 
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
@@ -47,12 +52,29 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
             case nameof(Emote): {
                 var container = new VisualElement();
 
-                addRow(container, "name", "Name");
-                addRow(container, "emoteAnimation", "Clip");
-                addRow(container, "number", "VRCEmote Value");
-                addRow(container, "isToggle", "Is Toggle");
-                addRow(container, "hasReset", "Has Reset");
-                addRow(container, "hasExitTime", "Has Exit Time");
+
+
+                container.Add(addRow("name", "Name"));
+                container.Add(addRow("emoteAnimation", "Clip"));
+                container.Add(addRow("number", "VRCEmote Value"));
+                container.Add(addRow("icon", "Icon"));
+                container.Add(addRow("isToggle", "Is Toggle"));
+                container.Add(addRow("hasReset", "Has Reset"));
+                container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                    var row = new VisualElement();
+                    if (hasResetProp.boolValue) {
+                        row.Add(addRow("resetAnimation", "Reset Animation"));
+                    }
+                    return row;
+                }, hasResetProp));
+                container.Add(addRow("hasExitTime", "Has Exit Time"));
+                container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                    var row = new VisualElement();
+                    if (hasExitTimeProp.boolValue) {
+                        row.Add(addRow("exitTime", "Exit Time"));
+                    }
+                    return row;
+                }, hasExitTimeProp));
 
                 return container;
             }

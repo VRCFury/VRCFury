@@ -99,6 +99,15 @@ namespace VF.Builder {
             }
             return current;
         }
+        public void NewMenuButton(string path, VFAParam param, float value = 1, Texture2D icon = null) {
+             var control = NewMenuItem(path);
+            control.type = VRCExpressionsMenu.Control.ControlType.Button;
+            control.parameter = new VRCExpressionsMenu.Control.Parameter {
+                name = param.Name()
+            };
+            control.value = value;
+            control.icon = icon;
+        }
         public void NewMenuToggle(string path, VFAParam param, float value = 1, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Toggle;

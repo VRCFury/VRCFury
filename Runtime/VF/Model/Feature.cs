@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
@@ -257,7 +258,7 @@ namespace VF.Model.Feature {
     public class EmoteManager : NewFeatureModel {
         
         [SerializeReference] public List<Emote> standingEmotes = new List<Emote>();
-        public List<Emote> sittingEmotes = new List<Emote>();
+        [SerializeReference] public List<Emote> sittingEmotes = new List<Emote>();
         public State afkState;
         public State standingState;
         public State sittingState;
@@ -267,11 +268,39 @@ namespace VF.Model.Feature {
             public string name;
             public State emoteAnimation;
             public int number = 0;
+            public Texture2D icon;
             public bool isToggle = false;
             public bool hasReset = false;
             public State resetAnimation;
             public bool hasExitTime = false;
             public float exitTime = 1;
+
+            public Emote() {}
+            #if UNITY_EDITOR
+            public Emote(string name, string path, int number, bool isToggle, bool hasReset, string resetPath, bool hasExitTime, double exitTime) {
+                
+                this.name = name;
+                this.number = number;
+                this.isToggle = isToggle;
+                this.hasReset = hasReset;
+                this.hasExitTime = hasExitTime;
+                this.exitTime = (float) exitTime;
+                var clip = (AnimationClip) AssetDatabase.LoadAssetAtPath(path, typeof(AnimationClip));
+                var action = new AnimationClipAction();
+                action.clip = clip;
+                this.emoteAnimation = new State();
+                emoteAnimation.actions.Add(action);
+                 
+
+                if (hasReset) {
+                    clip = (AnimationClip) AssetDatabase.LoadAssetAtPath(resetPath, typeof(AnimationClip));
+                    action = new AnimationClipAction();
+                    action.clip = clip;
+                    this.resetAnimation = new State();
+                    resetAnimation.actions.Add(action);
+                }
+            }
+            #endif
         }
 
     }

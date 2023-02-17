@@ -47,6 +47,7 @@ namespace VF.Feature {
                         var ownedLayerIds = ownedLayers.Select(layer => layers.FindIndex(l => l == layer)).ToList();
 
                         foreach (var layer in ownedLayers) {
+                            if (layer.name.Contains("VRCFury EmoteManaged Action")) continue;
                             AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
                                 if (b is VRCPlayableLayerControl playableControl && VRCFEnumUtils.GetName(playableControl.layer) == typeName) {
                                     foreach (var ownedLayerId in ownedLayerIds) {
@@ -62,7 +63,7 @@ namespace VF.Feature {
                                 return true;
                             });
 
-                            if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
+                            if (type == VRCAvatarDescriptor.AnimLayerType.Action && !layer.name.Contains("VRCFury EmoteManaged Action")) {
                                 controller.SetWeight(layer, 0);
                             }
                         }

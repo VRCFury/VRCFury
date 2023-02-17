@@ -176,8 +176,17 @@ namespace VF.Builder {
         public VFANumber Viseme() {
             return NewInt("Viseme", usePrefix: false);
         }
+        public VFANumber VRCEmote() {
+            return NewInt("VRCEmote", usePrefix: false);
+        }
         public VFABool IsLocal() {
             return NewBool("IsLocal", usePrefix: false);
+        }
+        public VFABool Seated() {
+            return NewBool("Seated", usePrefix: false);
+        }
+         public VFABool AFK() {
+            return NewBool("AFK", usePrefix: false);
         }
         
         public void ModifyMask(int layerId, Action<AvatarMask> makeChanges) {
@@ -285,6 +294,10 @@ namespace VF.Builder {
             if (layer == null) throw new VRCFBuilderException("Failed to find layer for stateMachine");
             layer.defaultWeight = weight;
             ctrl.layers = layers;
+        }
+
+        public void RemoveLayer(int index) {
+            ctrl.RemoveLayer(index);
         }
     }
 }
