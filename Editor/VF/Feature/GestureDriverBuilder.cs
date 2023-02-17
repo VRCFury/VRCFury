@@ -145,7 +145,8 @@ namespace VF.Feature {
 
             //Values: 0 => no smoothing, 1 => no change in value, 0.999 => very smooth
             //TODO: maybe make this configurable and split between local/remote
-            var smoothParam = fx.NewFloat(input.Name() + "_smooth", def: 0.7f); 
+            var localSmoothParam = fx.NewFloat(input.Name() + "_smooth_local", def: 0.65f); 
+            var remoteSmoothParam = fx.NewFloat(input.Name() + "_smooth_remote", def: 0.85f); 
 
             //FeedbackClips - they drive the feedback values back to the output param
             var minClip = manager.GetClipStorage().NewClip(input.Name() + "-1");
@@ -169,33 +170,35 @@ namespace VF.Feature {
             driverTree.AddChild(minClip, -1);
             driverTree.AddChild(maxClip, 1);
 
-            //Merges the input and the driver tree together. The smoothParam controls how much from either
-            //the input tree or the driver tree should be applied during each tick
-            var tree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root");
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.useAutomaticThresholds = false;
-            tree.blendParameter = smoothParam.Name();
-            tree.AddChild(inputTree, 0);
-            tree.AddChild(driverTree, 1);
+            //The following two trees merge the input and the driver tree together. The smoothParam controls 
+            //how much from either the input tree or the driver tree should be applied during each tick
+            var localTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_local");
+            localTree.blendType = BlendTreeType.Simple1D;
+            localTree.useAutomaticThresholds = false;
+            localTree.blendParameter = localSmoothParam.Name();
+            localTree.AddChild(inputTree, 0);
+            localTree.AddChild(driverTree, 1);
 
-            // == END Smoothing logic
+            var remoteTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_remote");
+            remoteTree.blendType = BlendTreeType.Simple1D;
+            remoteTree.useAutomaticThresholds = false;
+            remoteTree.blendParameter = remoteSmoothParam.Name();
+            remoteTree.AddChild(inputTree, 0);
+            remoteTree.AddChild(driverTree, 1);
 
-            //var initClip = manager.GetClipStorage().NewClip("GestureWeightInit_" + output.Name());
-            //initClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 600, 1));
-            var driveClip = manager.GetClipStorage().NewClip("GestureWeightDrive_" + output.Name());
-            driveClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Linear(0, 0, 600, 1));
+            var off = layer.NewState("Off");
+            var onLocal = layer.NewState("On Local").Move(-1, 2);
+            var onRemote = layer.NewState("On Remote").Move(2, 0);
 
-            //var init = layer.NewState("Init");
-            var off = layer.NewState("Off").Move(1,-1);
-            var on = layer.NewState("On");
-            //var whenWeightSeen = input.IsGreaterThan(0);
-
-            //init.TransitionsTo(on).When(whenWeightSeen);
-            //init.WithAnimation(initClip);
-            off.TransitionsTo(on).When(whenEnabled);
-            off.WithAnimation(driveClip).MotionTime(output);
-            on.TransitionsTo(off).When(whenEnabled.Not());
-            on.WithAnimation(tree);
+            off.TransitionsTo(onLocal).When(whenEnabled.And(fx.IsLocal().IsTrue()));
+            off.TransitionsTo(onRemote).When(whenEnabled.And(fx.IsLocal().IsFalse()));
+            off.WithAnimation(driverTree);
+            onLocal.TransitionsTo(off).When(whenEnabled.Not());
+            onLocal.TransitionsTo(onRemote).When(fx.IsLocal().IsFalse());
+            onLocal.WithAnimation(localTree);
+            onRemote.TransitionsTo(off).When(whenEnabled.Not());
+            onRemote.TransitionsTo(onLocal).When(fx.IsLocal().IsTrue());
+            onRemote.WithAnimation(remoteTree);
 
             return output;
         }
