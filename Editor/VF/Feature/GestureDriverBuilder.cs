@@ -139,24 +139,67 @@ namespace VF.Feature {
             var fx = GetFx();
             var layer = fx.NewLayer("GestureWeight_" + name);
             var output = fx.NewFloat(input.Name() + "_cached");
-            
-            //var initClip = manager.GetClipStorage().NewClip("GestureWeightInit_" + output.Name());
-            //initClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 600, 1));
-            var driveClip = manager.GetClipStorage().NewClip("GestureWeightDrive_" + output.Name());
-            driveClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Linear(0, 0, 600, 1));
 
-            //var init = layer.NewState("Init");
-            var off = layer.NewState("Off").Move(1,-1);
-            var on = layer.NewState("On");
-            //var whenWeightSeen = input.IsGreaterThan(0);
+            // == BEGIN Smoothing logic
+            // == Inspired by https://github.com/regzo2/OSCmooth
 
-            //init.TransitionsTo(on).When(whenWeightSeen);
-            //init.WithAnimation(initClip);
-            off.TransitionsTo(on).When(whenEnabled);
-            off.WithAnimation(driveClip).MotionTime(output);
-            on.TransitionsTo(off).When(whenEnabled.Not());
-            on.WithAnimation(driveClip).MotionTime(input);
+            //Values: 0 => no smoothing, 1 => no change in value, 0.999 => very smooth
+            //TODO: maybe make this configurable and split between local/remote
+            var localSmoothParam = fx.NewFloat(input.Name() + "_smooth_local", def: 0.65f); 
+            var remoteSmoothParam = fx.NewFloat(input.Name() + "_smooth_remote", def: 0.85f); 
+
+            //FeedbackClips - they drive the feedback values back to the output param
+            var minClip = manager.GetClipStorage().NewClip(input.Name() + "-1");
+            minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, -1f));
+            var maxClip = manager.GetClipStorage().NewClip(input.Name() + "1");
+            maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
+
+            //Input tree - applies the current value to the blend
+            var inputTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_input");
+            inputTree.blendType = BlendTreeType.Simple1D;
+            inputTree.useAutomaticThresholds = false;
+            inputTree.blendParameter = input.Name();
+            inputTree.AddChild(minClip, -1);
+            inputTree.AddChild(maxClip, 1);
             
+            //Driver tree - applies the output value to the blend
+            var driverTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_driver");
+            driverTree.blendType = BlendTreeType.Simple1D;
+            driverTree.useAutomaticThresholds = false;
+            driverTree.blendParameter = output.Name();
+            driverTree.AddChild(minClip, -1);
+            driverTree.AddChild(maxClip, 1);
+
+            //The following two trees merge the input and the driver tree together. The smoothParam controls 
+            //how much from either the input tree or the driver tree should be applied during each tick
+            var localTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_local");
+            localTree.blendType = BlendTreeType.Simple1D;
+            localTree.useAutomaticThresholds = false;
+            localTree.blendParameter = localSmoothParam.Name();
+            localTree.AddChild(inputTree, 0);
+            localTree.AddChild(driverTree, 1);
+
+            var remoteTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_remote");
+            remoteTree.blendType = BlendTreeType.Simple1D;
+            remoteTree.useAutomaticThresholds = false;
+            remoteTree.blendParameter = remoteSmoothParam.Name();
+            remoteTree.AddChild(inputTree, 0);
+            remoteTree.AddChild(driverTree, 1);
+
+            var off = layer.NewState("Off");
+            var onLocal = layer.NewState("On Local").Move(off, -0.5f, 2f);
+            var onRemote = layer.NewState("On Remote").Move(onLocal, 1f, 0f);
+
+            off.TransitionsTo(onLocal).When(whenEnabled.And(fx.IsLocal().IsTrue()));
+            off.TransitionsTo(onRemote).When(whenEnabled.And(fx.IsLocal().IsFalse()));
+            off.WithAnimation(driverTree);
+            onLocal.TransitionsTo(off).When(whenEnabled.Not());
+            onLocal.TransitionsTo(onRemote).When(fx.IsLocal().IsFalse());
+            onLocal.WithAnimation(localTree);
+            onRemote.TransitionsTo(off).When(whenEnabled.Not());
+            onRemote.TransitionsTo(onLocal).When(fx.IsLocal().IsTrue());
+            onRemote.WithAnimation(remoteTree);
+
             return output;
         }
 
