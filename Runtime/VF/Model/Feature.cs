@@ -609,5 +609,9 @@ namespace VF.Model.Feature {
         }
     }
     
+    [Serializable]
+    public class BlendshapeOptimizer : NewFeatureModel {
+    }
+    
 
 }
