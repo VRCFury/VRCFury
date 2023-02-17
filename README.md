@@ -70,6 +70,10 @@ Benefits:
 
 Is your prop a skinned mesh that "attaches" to the bones of the root avatar? Armature Link is what you need! Give it the root bone (hips) within your prop and the path to that same root bone in the avatar, and VRCFury will automatically parent constraint the entire hierarchy together. Just make sure the bones you want to link are all in the same order and have the same names!
 
+### Blendshape Optimizer
+
+Automatically bakes all non-animated blendshapes into your avatar's meshes. Reduces your VRAM usage for free, no configuration required!
+
 ### Blink Controller
 
 Include a single-frame animation of your avatar with its eyes closed (or click the plus and give it the blend shape name), and VRC Fury will drive your avatar's blink cycle.
