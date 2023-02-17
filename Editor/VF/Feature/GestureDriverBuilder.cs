@@ -154,50 +154,54 @@ namespace VF.Feature {
             var maxClip = manager.GetClipStorage().NewClip(input.Name() + "1");
             maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
 
-            //Input tree - applies the current value to the blend
-            var inputTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_input");
-            inputTree.blendType = BlendTreeType.Simple1D;
-            inputTree.useAutomaticThresholds = false;
-            inputTree.blendParameter = input.Name();
-            inputTree.AddChild(minClip, -1);
-            inputTree.AddChild(maxClip, 1);
+            //Update tree - moves toward the target value
+            var updateTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_input");
+            updateTree.blendType = BlendTreeType.Simple1D;
+            updateTree.useAutomaticThresholds = false;
+            updateTree.blendParameter = input.Name();
+            updateTree.AddChild(minClip, -1);
+            updateTree.AddChild(maxClip, 1);
             
-            //Driver tree - applies the output value to the blend
-            var driverTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_driver");
-            driverTree.blendType = BlendTreeType.Simple1D;
-            driverTree.useAutomaticThresholds = false;
-            driverTree.blendParameter = output.Name();
-            driverTree.AddChild(minClip, -1);
-            driverTree.AddChild(maxClip, 1);
+            //Maintain tree - maintains the current value
+            var maintainTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_driver");
+            maintainTree.blendType = BlendTreeType.Simple1D;
+            maintainTree.useAutomaticThresholds = false;
+            maintainTree.blendParameter = output.Name();
+            maintainTree.AddChild(minClip, -1);
+            maintainTree.AddChild(maxClip, 1);
 
-            //The following two trees merge the input and the driver tree together. The smoothParam controls 
-            //how much from either the input tree or the driver tree should be applied during each tick
+            //The following two trees merge the update and the maintain tree together. The smoothParam controls 
+            //how much from either tree should be applied during each tick
             var localTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_local");
             localTree.blendType = BlendTreeType.Simple1D;
             localTree.useAutomaticThresholds = false;
             localTree.blendParameter = localSmoothParam.Name();
-            localTree.AddChild(inputTree, 0);
-            localTree.AddChild(driverTree, 1);
+            localTree.AddChild(updateTree, 0);
+            localTree.AddChild(maintainTree, 1);
 
             var remoteTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_remote");
             remoteTree.blendType = BlendTreeType.Simple1D;
             remoteTree.useAutomaticThresholds = false;
             remoteTree.blendParameter = remoteSmoothParam.Name();
-            remoteTree.AddChild(inputTree, 0);
-            remoteTree.AddChild(driverTree, 1);
+            remoteTree.AddChild(updateTree, 0);
+            remoteTree.AddChild(maintainTree, 1);
 
             var off = layer.NewState("Off");
             var onLocal = layer.NewState("On Local").Move(off, -0.5f, 2f);
             var onRemote = layer.NewState("On Remote").Move(onLocal, 1f, 0f);
 
-            off.TransitionsTo(onLocal).When(whenEnabled.And(fx.IsLocal().IsTrue()));
-            off.TransitionsTo(onRemote).When(whenEnabled.And(fx.IsLocal().IsFalse()));
-            off.WithAnimation(driverTree);
-            onLocal.TransitionsTo(off).When(whenEnabled.Not());
-            onLocal.TransitionsTo(onRemote).When(fx.IsLocal().IsFalse());
+            var whenLocal = whenEnabled.And(fx.IsLocal().IsTrue());
+            var whenRemote = whenEnabled.And(fx.IsLocal().IsFalse());
+            var whenOff = whenLocal.Not().And(whenRemote.Not());
+
+            off.TransitionsTo(onLocal).When(whenLocal);
+            off.TransitionsTo(onRemote).When(whenRemote);
+            off.WithAnimation(maintainTree);
+            onLocal.TransitionsTo(off).When(whenOff);
+            onLocal.TransitionsTo(onRemote).When(whenRemote);
             onLocal.WithAnimation(localTree);
-            onRemote.TransitionsTo(off).When(whenEnabled.Not());
-            onRemote.TransitionsTo(onLocal).When(fx.IsLocal().IsTrue());
+            onRemote.TransitionsTo(off).When(whenOff);
+            onRemote.TransitionsTo(onLocal).When(whenLocal);
             onRemote.WithAnimation(remoteTree);
 
             return output;
