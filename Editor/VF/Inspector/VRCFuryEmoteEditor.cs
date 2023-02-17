@@ -17,8 +17,6 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
         return Render(prop);
     }
 
-    
-
     public static VisualElement Render(SerializedProperty prop) {
 
         var hasResetProp = prop.FindPropertyRelative("hasReset");
@@ -51,8 +49,6 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
         switch (type) {
             case nameof(Emote): {
                 var container = new VisualElement();
-
-
 
                 container.Add(addRow("name", "Name"));
                 container.Add(addRow("emoteAnimation", "Clip"));
