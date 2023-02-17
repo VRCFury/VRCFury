@@ -77,17 +77,28 @@ namespace VF.Feature {
                 }
                 EditorUtility.SetDirty(meshCopy);
 
+                var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>();
                 foreach (var (skin, weights) in savedWeights) {
                     skin.sharedMesh = meshCopy;
-                    var keptNum = 0;
+                    var newId = 0;
                     for (var id = 0; id < blendshapeCount; id++) {
                         var keep = blendshapeIdsToKeep.Contains(id);
                         if (keep) {
                             for (var weightI = 0; weightI < weights.Length; weightI++) {
-                                skin.SetBlendShapeWeight(keptNum, weights[weightI]);
+                                skin.SetBlendShapeWeight(newId, weights[weightI]);
                             }
-                            // TODO: Fix eyelidsBlendshapes
-                            keptNum++;
+
+                            foreach (var avatar in avatars) {
+                                if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
+                                    for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
+                                        if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
+                                            avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
+                                            EditorUtility.SetDirty(avatar);
+                                        }
+                                    }
+                                }
+                            }
+                            newId++;
                         }
                     }
                     EditorUtility.SetDirty(skin);
