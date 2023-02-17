@@ -84,9 +84,7 @@ namespace VF.Feature {
                     for (var id = 0; id < blendshapeCount; id++) {
                         var keep = blendshapeIdsToKeep.Contains(id);
                         if (keep) {
-                            for (var weightI = 0; weightI < weights.Length; weightI++) {
-                                skin.SetBlendShapeWeight(newId, weights[weightI]);
-                            }
+                            skin.SetBlendShapeWeight(newId, weights[id]);
 
                             foreach (var avatar in avatars) {
                                 if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
