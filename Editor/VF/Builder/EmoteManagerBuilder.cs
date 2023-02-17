@@ -31,11 +31,14 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        
+
+        if (this != allBuildersInRun.OfType<EmoteManagerBuilder>().First()) return ; // only the first Emote Manager will be used
 
         var actionLayer = GetAction();
         var layerIndex = actionLayer.GetLayers().TakeWhile(l => l.name != "Action").Count();
-        actionLayer.RemoveLayer(layerIndex);
+        if (layerIndex < actionLayer.GetLayers().Count()) {
+            actionLayer.RemoveLayer(layerIndex);
+        }
         var layer = actionLayer.NewLayer("VRCFury EmoteManaged Action");
 
         if (model.standingState.actions.Count() == 0){
@@ -151,7 +154,7 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         prepareSitting.Move(sit, 1, 0);
         afkInit.Move(start, 0, model.sittingEmotes.Count() + 2);
         afk.Move(afkInit, 3, 0);
-        afkBlendOut.Move(afk, 4, 0);
+        afkBlendOut.Move(afk, 3, 0);
         standingExit.Move(prepareStanding, 3, 0);
         sittingExit.Move(prepareSitting, 3, 0);
         standingRestore.Move(standingExit, 1, 0);
@@ -197,10 +200,6 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                 );
             }
         }
-
-
-
-
     }
 
     public override string GetEditorTitle() {
@@ -240,38 +239,38 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
 
     private static void ResetToVRCDefault (SerializedProperty prop)
     {
-        (string, string, int, bool, bool, string, bool, double)[] defaultStanding = {
-            ("Wave", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_wave.anim", 0, false, false, "", true, .6),
-            ("Clap", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_clap.anim", 0, true, false, "", false, 0),
-            ("Point", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_point.anim", 0, false, false, "", true, .75),
-            ("Cheer", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_cheer.anim", 0, true, false, "", false, 0),
-            ("Dance", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_dance.anim", 0, true, false, "", false, 0),
-            ("Backflip", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_backflip.anim", 0, false, false, "", true, .8),
-            ("Sad Kick", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_sadkick.anim", 0, false, false, "", true, .75),
-            ("Die", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_die.anim", 0, true, true, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_supine_getup.anim", true, .75)
+        (string, string, int, bool, bool, string, bool, double, string)[] defaultStanding = {
+            ("Wave", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_wave.anim", 0, false, false, "", true, .6, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Expressions Menu/Icons/person_wave.png"),
+            ("Clap", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_clap.anim", 0, true, false, "", false, 0, ""),
+            ("Point", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_point.anim", 0, false, false, "", true, .75, ""),
+            ("Cheer", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_cheer.anim", 0, true, false, "", false, 0, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Expressions Menu/Icons/person_dance.png"),
+            ("Dance", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_dance.anim", 0, true, false, "", false, 0, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Expressions Menu/Icons/person_dance.png"),
+            ("Backflip", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_backflip.anim", 0, false, false, "", true, .8, ""),
+            ("Sad Kick", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_sadkick.anim", 0, false, false, "", true, .75, ""),
+            ("Die", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_die.anim", 0, true, true, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_supine_getup.anim", true, .75, "")
         };
 
-        (string, string, int, bool, bool, string, bool, double)[] defaultSitting = {
-            ("Seated Raise Hand", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_raise_hand.anim", 0, true, false, "", false, 0),
-            ("Seated Clap", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_clap.anim", 0, true, false, "", false, 0),
-            ("Seated Point", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_point.anim", 0, false, false, "", true, 1),
-            ("Seated Laugh", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_laugh.anim", 0, false, false, "", true, 1),
-            ("Seated Drum", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_drum.anim", 0, true, false, "", false, 0),
-            ("Seated Shake Fist", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_shake_fist.anim", 0, false, false, "", true, 1),
-            ("Seated Disaprove", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_disapprove.anim", 0, false, false, "", true, 1),
-            ("Seated Disbelief", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_disbelief.anim", 0, false, false, "", true , 1)
+        (string, string, int, bool, bool, string, bool, double, string)[] defaultSitting = {
+            ("Seated Raise Hand", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_raise_hand.anim", 0, true, false, "", false, 0, ""),
+            ("Seated Clap", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_clap.anim", 0, true, false, "", false, 0, ""),
+            ("Seated Point", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_point.anim", 0, false, false, "", true, 1, ""),
+            ("Seated Laugh", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_laugh.anim", 0, false, false, "", true, 1, ""),
+            ("Seated Drum", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_drum.anim", 0, true, false, "", false, 0, ""),
+            ("Seated Shake Fist", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_shake_fist.anim", 0, false, false, "", true, 1, ""),
+            ("Seated Disaprove", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_disapprove.anim", 0, false, false, "", true, 1, ""),
+            ("Seated Disbelief", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_disbelief.anim", 0, false, false, "", true , 1, "")
         };
+
 
         foreach (var e in defaultStanding) {
-            var emote = new Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8);
+            var emote = new Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8, e.Item9);
             VRCFuryEditorUtils.AddToList(prop.FindPropertyRelative("standingEmotes"), entry => entry.managedReferenceValue = emote);
         }
 
         foreach (var e in defaultSitting) {
-            var emote = new Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8);
+            var emote = new Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8, e.Item9);
             VRCFuryEditorUtils.AddToList(prop.FindPropertyRelative("sittingEmotes"), entry => entry.managedReferenceValue = emote);
         }
-
     }
 
     private void addEmoteToTree(VFAState start, VFAState nexus, VFAState exit, VFALayer layer, VFANumber vrcEmote, Emote emote, int position = -1000) {
@@ -315,10 +314,7 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                 resetState.Move(emoteState, 1, 0);
             }
         }
-
-
     }
-    
 }
 
 }

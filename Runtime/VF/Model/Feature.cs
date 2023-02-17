@@ -276,8 +276,9 @@ namespace VF.Model.Feature {
             public float exitTime = 1;
 
             public Emote() {}
+
             #if UNITY_EDITOR
-            public Emote(string name, string path, int number, bool isToggle, bool hasReset, string resetPath, bool hasExitTime, double exitTime) {
+            public Emote(string name, string path, int number, bool isToggle, bool hasReset, string resetPath, bool hasExitTime, double exitTime, string iconPath) {
                 
                 this.name = name;
                 this.number = number;
@@ -298,6 +299,10 @@ namespace VF.Model.Feature {
                     action.clip = clip;
                     this.resetAnimation = new State();
                     resetAnimation.actions.Add(action);
+                }
+
+                if (iconPath != "") {
+                    icon = (Texture2D) AssetDatabase.LoadAssetAtPath(iconPath, typeof(Texture2D));
                 }
             }
             #endif
