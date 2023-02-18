@@ -42,6 +42,11 @@ namespace VF {
         }
 
         private static void ScanScene(Scene scene) {
+            if (Object.FindObjectsOfType<PipelineSaver>().Length > 0) {
+                // We're uploading
+                return;
+            }
+
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
             foreach (var root in scene.GetRootGameObjects()) {
