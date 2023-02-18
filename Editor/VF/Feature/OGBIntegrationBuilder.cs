@@ -12,14 +12,18 @@ namespace VF.Feature {
             OGBUpgradeMenuItem.Apply(featureBaseObject, false);
         }
         
+        public override bool ShowInMenu() {
+            return false;
+        }
+        
         public override string GetEditorTitle() {
             return "OGB Component Auto-Adder";
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.Info(
-                "This feature will search for TPS/DPS orifices and penetrators that are children of this object, and automatically add OGB components to them." +
-                " You don't need this if you've already run the OGB upgrade tool yourself (which means the components are already added).");
+            var content = new VisualElement();
+            content.Add(VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. Add OGB Orifice and OGB Penetrator (with TPS autoconfiguration) components instead!"));
+            return content;
         }
     }
 }
