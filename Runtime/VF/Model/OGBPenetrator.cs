@@ -7,6 +7,7 @@ namespace VF.Model {
         public float radius;
         public new string name;
         public bool unitsInMeters = false;
+        public bool configureTps = false;
         
         public int version = -1;
 

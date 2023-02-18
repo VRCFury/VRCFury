@@ -26,6 +26,7 @@ namespace VF.Inspector {
             };
             container.Add(adv);
             adv.Add(new PropertyField(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
+            adv.Add(new PropertyField(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
 
             return container;
         }
@@ -176,7 +177,7 @@ namespace VF.Inspector {
             return Tuple.Create(length, radius, forward);
         }
 
-        private static Tuple<float, float, Vector3> GetSize(OGBPenetrator pen) {
+        public static Tuple<float, float, Vector3> GetSize(OGBPenetrator pen) {
             var length = pen.length;
             var radius = pen.radius;
             var forward = Vector3.forward;

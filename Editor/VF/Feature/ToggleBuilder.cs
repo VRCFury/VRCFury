@@ -216,7 +216,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
      *    children objects back to the way they were at the start of the frame.
      * Only destroying the animator then recreating it seems to "reset" this "start of frame" state.
      */
-    private static void WithoutAnimator(GameObject obj, System.Action func) {
+    public static void WithoutAnimator(GameObject obj, System.Action func) {
         var animator = obj.GetComponent<Animator>();
         if (!animator) {
             func();

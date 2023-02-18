@@ -334,7 +334,9 @@ public class VFAState {
     public Vector3 getPos() {
         return node.position;
     }
-
+    public AnimatorState GetRaw() {
+        return node.state;
+    }
 }
 
 public class VFAParam {

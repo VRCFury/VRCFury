@@ -66,9 +66,27 @@ Benefits:
 * You can use bone transforms in your visemes, meaning you can open your jaw rather than using an "open mouth" blend shape.
 * This can enhance some features, such as tongue movement, while your mouth is open during speech.
 
-### Armature Link
+### Anchor Override Fix
 
-Is your prop a skinned mesh that "attaches" to the bones of the root avatar? Armature Link is what you need! Give it the root bone (hips) within your prop and the path to that same root bone in the avatar, and VRCFury will automatically parent constraint the entire hierarchy together. Just make sure the bones you want to link are all in the same order and have the same names!
+Adding this feature ensures that all of your avatar meshes use the same anchor override, which ensures
+different meshes receive the same environment lighting level.
+
+### Armature Link (Attach clothing, props, etc)
+
+Is your prop a skinned mesh that "attaches" to the bones of the root avatar? Armature Link is what you need! Give it the root bone (hips) within your prop and the path to that same root bone in the avatar, and VRCFury will automatically attach the mesh to the avatar's bones. Just make sure the bones you want to link are all in the same order and have the same names.
+
+You can also use this feature to attach an object to an avatar's bone. For instance, if your prop contains a
+empty that must be on the avatar's hand, you can use Armature Link to place it there.
+
+### Blendshape Link
+
+Add this feature, specify a clothing mesh, and a path to the Body object on the avatar, and the blendshapes
+from the clothing will automatically be linked to the avatar body. This means any sliders / toggles affecting
+the body will be reflected in the clothing as well automatically.
+
+### Blendshape Optimizer
+
+Automatically bakes all non-animated blendshapes into your avatar's meshes. Reduces your VRAM usage for free, no configuration required!
 
 ### Blink Controller
 
@@ -79,10 +97,6 @@ Benefits:
 * Unlike vrc's built-in eye tracking disable feature, your eyes will not freeze closed, partially closed, unfreeze unexpectedly due to combo-gestures.
 * Your eye blink will be synchronized with all other clients (I'm unsure if the default vrc eye blink is synced or not).
 
-### Bone Constraint
-
-This feature is mostly useful for prop prefab creators. If your prop depends on attaching something to the user's hand (or other bone), you can use this feature to "link" an object in your prop to the specified avatar bone, without having to ask the user to manually unpack your prefab, setup parent constraints manually, or anything else.
-
 ### Bounding Box Fix
 
 This feature ensures that every mesh on your avatar has a suitably large bounding box. This prevents the issue when some objects on your avatar dissappear when viewed at extreme angles.
@@ -90,6 +104,11 @@ This feature ensures that every mesh on your avatar has a suitably large boundin
 ### Breathing Controller
 
 Automatically creates an animation for your avatar's breathing cycle. Provide either a gameobject (which will be scaled between the provided "min" and "max" scale), or a blendshape, which will be animated between 0 and 1.
+
+### Cross-Eye Fix
+
+VRChat introduces roll to your eye bones in some circumstances, making it appear that you've gone cross-eyed.
+Adding this fix will solve this problem automatically through a combination of rotation constraints to eliminate roll.
 
 ### Emote Manager
 
@@ -120,6 +139,14 @@ If checked, a `Reset Animation` can be set, which will play when exiting the emo
 `Has Exit Time`
 
 If checked, an `Exit Time` can be set, which specifies how long the emote should play at minimum. 
+
+### Fix Write Defaults
+
+This feature will automatically align Write Defaults for every state on your avatar. If will automatically prefer whichever your avatar is "closest to," meaning it will select On or Off depending on which requires the fewest changes to your avatar. If you'd like, you can override the selection and Force Off or Force On. Yes, it's magic.
+
+### Force Object State
+
+This feature can activate, deactivate, or delete an object on your avatar during the upload process. Useful if you want to show clothing on your avatar in the editor but have it "off" during the upload for toggles to work properly. Also useful if you want to delete an object from a prefab without having to unpack it.
 
 ### Full Controller
 
@@ -164,17 +191,25 @@ if you have a Sad and an Angry gesture, you could give them both the same tag, a
 prevent them from being active simultaneously. The "highest" one in the list wins. A gesture
 can have multiple Exclusive Tags separated by commas.
 
-### Fix Write Defaults
+### Gizmo
 
-This feature will automatically align Write Defaults for every state on your avatar. If will automatically prefer whichever your avatar is "closest to," meaning it will select On or Off depending on which requires the fewest changes to your avatar. If you'd like, you can override the selection and Force Off or Force On. Yes, it's magic.
+All this does is show an editor gizmo. It does nothing in game. Useful primarily for prop artists
+who wish to identify something on their prop without including it in the upload.
 
-### OGB Integration
+### Move Menu Item
 
-This feature will refresh the OGB colliders on your avatar automatically whenever it's needed.
+Can move a menu item, either already on the avatar, or one created by VRCFury. Simply enter the path you'd like to move from and move to. For example:
 
-### Prop with Modes
+* From: `My Folder/Clothing/Shirt`
+* To: `Cool Stuff/Clothes/Shirt`
 
-Similar to a Toggleable Prop, but can have multiple separate "on" states instead of just one.
+### Override Menu Icon
+
+Will override the icon for the given item in your menu.
+
+### Override Menu Settings
+
+Allows you to change VRCFury's default "Next" menu item, when there are too many items to fit on a page.
 
 ### Remove Hand Gestures
 
@@ -187,6 +222,12 @@ This feature allows you to set a pin number which, when entered in your avatar's
 ### Senky Gesture Driver
 
 This feature sets up gestures the way that Senky likes them! Probably not super useful for you, unless you want this very specific gesture hand layout.
+
+### Slot 4 Fix
+
+Allows you to animate materials in slot 4 on meshes within your avatar. Typically, attempting to do this
+results in corruption of the material in slot 2 due to a unity bug. This feature resolves the issue by
+moving all slot 4 references to a new slot at the end of the list.
 
 ### Toes Puppet
 
@@ -254,10 +295,6 @@ If set, this will create 2 additional states for animating a transition between 
 `Use Button`
 
 If enabled, the menu item created will be a button instead of a toggle.
-
-### TPS Integration
-
-This feature automatically runs TPS setup on your avatar during each upload. This can resolve many... strange TPS bugs which occur when you change material settings or forget to run the wizard yourself. If you use this, you never need to run the TPS setup wizard yourself at all!
 
 ### When-Talking State
 

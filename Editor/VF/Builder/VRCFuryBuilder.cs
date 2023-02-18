@@ -101,6 +101,8 @@ public class VRCFuryBuilder {
 
         progress.Progress(1, "Finishing Up");
 
+        // Reset animator after the build, just in case something ELSE messed with our animator on this frame (like GestureManager)
+        ToggleBuilder.WithoutAnimator(avatarObject, () => { });
 
         Debug.Log("VRCFury Finished!");
     }

@@ -39,7 +39,7 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         if (layerIndex < actionLayer.GetLayers().Count()) {
             actionLayer.RemoveLayer(layerIndex);
         }
-        var layer = actionLayer.NewLayer("VRCFury EmoteManaged Action");
+        var layer = actionLayer.NewLayer("VRCF EmoteManaged Action");
 
         if (model.standingState.actions.Count() == 0){
             var clip = (AnimationClip) AssetDatabase.LoadAssetAtPath("Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_still.anim", typeof(AnimationClip));
