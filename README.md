@@ -142,10 +142,6 @@ can have multiple Exclusive Tags separated by commas.
 
 This feature will automatically align Write Defaults for every state on your avatar. If will automatically prefer whichever your avatar is "closest to," meaning it will select On or Off depending on which requires the fewest changes to your avatar. If you'd like, you can override the selection and Force Off or Force On. Yes, it's magic.
 
-### OGB Integration
-
-This feature will refresh the OGB colliders on your avatar automatically whenever it's needed.
-
 ### Prop with Modes
 
 Similar to a Toggleable Prop, but can have multiple separate "on" states instead of just one.
@@ -230,10 +226,6 @@ If set, this creates a separate animation for local and remote machines. The loc
 `Enable Transition State`
 
 If set, this will create 2 additional states for animating a transition between the off and on state. The transition animation will be played forwards when transitioning from off to on and backwards when transitioning from on to off when `Transition Out is reverse of Transition In` is on, otherwise an separate out transition can be set. If `Separate Local State` is also on, separate local transitions can also be set.
-
-### TPS Integration
-
-This feature automatically runs TPS setup on your avatar during each upload. This can resolve many... strange TPS bugs which occur when you change material settings or forget to run the wizard yourself. If you use this, you never need to run the TPS setup wizard yourself at all!
 
 ### When-Talking State
 
