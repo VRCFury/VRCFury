@@ -162,6 +162,12 @@ This feature allows you to set a pin number which, when entered in your avatar's
 
 This feature sets up gestures the way that Senky likes them! Probably not super useful for you, unless you want this very specific gesture hand layout.
 
+### Slot 4 Fix
+
+Allows you to animate materials in slot 4 on meshes within your avatar. Typically, attempting to do this
+results in corruption of the material in slot 2 due to a unity bug. This feature resolves the issue by
+moving all slot 4 references to a new slot at the end of the list.
+
 ### Toes Puppet
 
 Given an animation for up, down, and out, this creates a puppet for toe control in your menu.

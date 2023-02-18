@@ -613,5 +613,9 @@ namespace VF.Model.Feature {
     public class BlendshapeOptimizer : NewFeatureModel {
     }
     
+    [Serializable]
+    public class Slot4Fix : NewFeatureModel {
+    }
+    
 
 }
