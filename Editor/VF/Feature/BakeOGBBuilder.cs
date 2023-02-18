@@ -51,8 +51,10 @@ namespace VF.Feature {
                             mat = Object.Instantiate(mat);
                             VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);
                             mats[matI] = mat;
-                            
-                            ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
+
+                            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                                ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
+                            });
                             var scale = skin.transform.lossyScale;
                             var rotation = Quaternion.LookRotation(forward);
 
