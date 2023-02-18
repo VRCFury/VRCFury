@@ -25,6 +25,10 @@ namespace VF.Feature {
             });
         }
 
+        public override bool ShowInMenu() {
+            return false;
+        }
+
         public override string GetEditorTitle() {
             return "Bone Constraint";
         }
