@@ -22,8 +22,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            addOtherFeature(new OGBIntegration2());
-
             var tpsSetup = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.TPS_Setup");
             if (tpsSetup == null) {
                 throw new Exception("TPS Integration Feature cannot run, because Poiyomi TPS is not installed!");
@@ -58,9 +56,8 @@ namespace VF.Feature {
             tpsSetup.GetMethod("ScanForTPS", b).Invoke(setup, new object[]{});
             tpsSetup.GetMethod("RemoveTPSFromAnimator", b).Invoke(setup, new object[]{});
             var penetrators = (IList)tpsSetup.GetField("_penetrators", b).GetValue(setup);
-            var orifices = (IList)tpsSetup.GetField("_orifices", b).GetValue(setup);
 
-            Debug.Log("" + penetrators.Count + " Penetrators + " + orifices.Count + " Orifices");
+            Debug.Log("" + penetrators.Count + " Penetrators");
 
             for (var i = 0; i < penetrators.Count; i++) {
                 callWithOptionalParams(tpsSetup.GetMethod("SetupPenetrator", b), null, 
@@ -73,27 +70,6 @@ namespace VF.Feature {
                     true, // place contacts
                     false, // copy materials
                     true // configure materials
-                );
-            }
-            for (var i = 0; i < orifices.Count; i++) {
-                var o = orifices[i];
-                var otype = o.GetType();
-                otype.GetMethod("ConfigureLights", b).Invoke(o, new object[]{});
-                var Transform = otype.GetField("Transform", b).GetValue(o);
-                var Renderer = otype.GetField("Renderer", b).GetValue(o);
-                var OrificeType = otype.GetField("OrificeType", b).GetValue(o);
-                otype.GetField("BlendShapeIndexEnter", b).SetValue(o, 0);
-                otype.GetField("BlendShapeIndexIn", b).SetValue(o, 0);
-                otype.GetField("MaxDepth", b).SetValue(o, 0.25f); // Max penetration depth meters
-                callWithOptionalParams(tpsSetup.GetMethod("SetupOrifice", b), null,
-                    avatarObject.transform,
-                    tpsAnimator,
-                    Transform,
-                    Renderer,
-                    OrificeType,
-                    o,
-                    i,
-                    tpsClipDir
                 );
             }
 

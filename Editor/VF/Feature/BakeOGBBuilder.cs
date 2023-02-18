@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -25,6 +28,47 @@ namespace VF.Feature {
             
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
                 OGBPenetratorEditor.Bake(c, usedNames);
+                
+                if (c.configureTps) {
+                    var size = OGBPenetratorEditor.GetSize(c);
+                    if (size == null) {
+                        throw new VRCFBuilderException("Failed to get size of penetrator to configure TPS");
+                    }
+                    var (length, radius, forward) = size;
+                    var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+                    var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
+                    foreach (var skin in c.transform.GetComponentsInChildren<SkinnedMeshRenderer>()) {
+                        for (var matI = 0; matI < skin.sharedMaterials.Length; matI++) {
+                            var mat = skin.sharedMaterials[matI];
+                            if (!mat.HasProperty("_TPSPenetratorEnabled")) continue;
+                            if (mat.GetFloat("_TPSPenetratorEnabled") <= 0) continue;
+                            
+                            ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
+                            var scale = skin.transform.lossyScale;
+                            var rotation = Quaternion.LookRotation(forward);
+
+                            Vector4 threeToFour(Vector3 a) =>new Vector4(a.x, a.y, a.z);
+                            mat.SetFloat("_TPS_PenetratorLength", length);
+                            mat.SetVector("_TPS_PenetratorScale", threeToFour(scale));
+                            mat.SetVector("_TPS_PenetratorRight", threeToFour(rotation * Vector3.right));
+                            mat.SetVector("_TPS_PenetratorUp", threeToFour(rotation * Vector3.up));
+                            mat.SetVector("_TPS_PenetratorForward", threeToFour(rotation * Vector3.forward));
+                            mat.SetFloat("_TPS_IsSkinnedMeshRenderer", 1);
+                            mat.EnableKeyword("TPS_IsSkinnedMesh");
+                            
+                            var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
+                            var bakeMethod = bakeUtil.GetMethod("BakePositionsToTexture", new[] { typeof(Renderer), typeof(Texture2D) });
+                            Texture2D tex = null;
+                            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                                tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, skin, null);
+                            });
+                            if (string.IsNullOrWhiteSpace(AssetDatabase.GetAssetPath(tex))) {
+                                throw new VRCFBuilderException("Failed to bake TPS texture");
+                            }
+                            mat.SetTexture("_TPS_BakedMesh", tex);
+                        }
+                    }
+                }
 
                 foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
                     objectsToDisableTemporarily.Add(r.gameObject);
