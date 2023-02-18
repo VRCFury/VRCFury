@@ -96,6 +96,9 @@ namespace VF.Menu {
 
         public const string playMode_name = "Tools/VRCFury/Build during play mode";
         public const int playMode_priority = 1404;
+        
+        public const string autoUpload_name = "Tools/VRCFury/Skip VRChat upload screen";
+        public const int autoUpload_priority = 1405;
 
         /*
         [MenuItem("Tools/VRCFury/List All Components", priority = 1403)]
