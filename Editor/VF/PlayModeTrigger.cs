@@ -26,9 +26,8 @@ namespace VF {
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
             Debug.Log("Scene loaded " + scene);
-            if (!Application.isPlaying) return;
-            if (!PlayModeMenuItem.Get()) return;
-            ScanScene(scene);
+            // Delay a frame so VRCSDK has a chance to show up
+            EditorApplication.delayCall += () => ScanScene(scene);
         }
 
         // This should absolutely always be false in play mode, but we check just in case
@@ -42,7 +41,15 @@ namespace VF {
         }
 
         private static void ScanScene(Scene scene) {
-            if (Object.FindObjectsOfType<PipelineSaver>().Length > 0) {
+            if (scene == null) return;
+            if (!scene.isLoaded) return;
+            if (!Application.isPlaying) return;
+            if (!PlayModeMenuItem.Get()) return;
+
+            var uploading = SceneManager.GetActiveScene().GetRootGameObjects()
+                .Where(o => o.name == "VRCSDK")
+                .Any();
+            if (uploading) {
                 // We're uploading
                 return;
             }
@@ -93,6 +100,15 @@ namespace VF {
             var runtimes = Object.FindObjectsOfType(av3RuntimeType);
             foreach (var runtime in runtimes) {
                 Object.Destroy(runtime);
+            }
+            
+            // Restart gesture manager
+            var gmType = ReflectionUtils.GetTypeFromAnyAssembly("BlackStartX.GestureManager.GestureManager");
+            foreach (var gm in Object.FindObjectsOfType(gmType).OfType<Component>()) {
+                if (gm.gameObject.activeSelf) {
+                    gm.gameObject.SetActive(false);
+                    gm.gameObject.SetActive(true);
+                }
             }
         }
     }
