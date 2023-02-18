@@ -611,6 +611,7 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BlendshapeOptimizer : NewFeatureModel {
+        public bool keepMmdShapes;
     }
     
     [Serializable]

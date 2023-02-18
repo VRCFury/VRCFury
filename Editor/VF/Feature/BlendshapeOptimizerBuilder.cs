@@ -25,6 +25,15 @@ namespace VF.Feature {
                 "This feature will automatically bake all non-animated blendshapes into the mesh," +
                 " saving VRAM for free!"
             ));
+            
+            var adv = new Foldout {
+                text = "Advanced Options",
+                value = false
+            };
+            content.Add(adv);
+            
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepMmdShapes"), "Keep MMD Blendshapes"));
+            
             return content;
         }
 
@@ -38,9 +47,20 @@ namespace VF.Feature {
             foreach (var mesh in GetAllSkinMeshes()) {
                 var blendshapeCount = mesh.blendShapeCount;
                 if (blendshapeCount == 0) continue;
+
+                var animatedBlendshapes = new HashSet<string>();
+                animatedBlendshapes.UnionWith(CollectAnimatedBlendshapesForMesh(mesh));
+                if (model.keepMmdShapes) {
+                    animatedBlendshapes.UnionWith(mmdShapes);
+                }
                 
-                var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(mesh);
-                if (animatedBlendshapes.Count == blendshapeCount) continue;
+                var keepAll = true;
+                foreach (var name in Enumerable.Range(0, blendshapeCount).Select(i => mesh.GetBlendShapeName(i))) {
+                    if (!animatedBlendshapes.Contains(name)) {
+                        keepAll = false;
+                    }
+                }
+                if (keepAll) continue;
 
                 var blendshapeIdsToKeep = Enumerable.Range(0, blendshapeCount)
                     .Where(id => animatedBlendshapes.Contains(mesh.GetBlendShapeName(id)))
@@ -114,7 +134,7 @@ namespace VF.Feature {
                     var weight = mesh.GetBlendShapeFrameWeight(id, i);
                     var v = new Vector3[mesh.vertexCount];
                     var n = new Vector3[mesh.vertexCount];
-                    var t = new Vector3[mesh.vertexCount];;
+                    var t = new Vector3[mesh.vertexCount];
                     mesh.GetBlendShapeFrameVertices(id, i, v, n, t);
                     frames.Add(Tuple.Create(weight, v, n, t));
                 }
@@ -258,5 +278,14 @@ namespace VF.Feature {
 
             return animatedBlendshapes;
         }
+
+        private static readonly HashSet<string> mmdShapes = new HashSet<string> {
+            "通常", "まばたき", "笑い", "ウィンク", "ウィンク右", "ウィンク2", "ウィンク２",
+            "ウィンク2右", "ウィンク２右", "なごみ", "はぅ", "びっくり", "じと目", "ｷﾘｯ", "はちゅ目", "はちゅ目縦潰れ", "はちゅ目横潰れ", "星目",
+            "はぁと", "瞳小", "瞳縦潰れ", "光下", "恐ろしい子！", "ハイライト消し", "映り込み消し", "あ", "い", "う", "え",
+            "お", "あ2", "あ２", "ワ", "ω", "ω□", "にやり", "にやり2", "にやり２", "にっこり", "ぺろっ", "てへぺろ", "てへぺろ2", "てへぺろ２", "口角上げ",
+            "口角下げ", "口横広げ", "歯無し上", "歯無し下", "ハンサム", "真面目", "困る", "にこり", "怒り", "上", "下", "前",
+            "眉頭左", "眉頭右", "照れ", "涙", "がーん", "青ざめる", "髪影消", "輪郭", "メガネ", "みっぱい",
+        };
     }
 }
