@@ -40,9 +40,13 @@ namespace VF.Feature {
                     var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
                     
                     Vector4 threeToFour(Vector3 a) =>new Vector4(a.x, a.y, a.z);
+                    
+                    // TODO: Allow user to set this on component using a tip bone or just setting rotation
+                    forward = Vector3.forward;
 
                     foreach (var skin in c.transform.GetComponentsInChildren<SkinnedMeshRenderer>()) {
                         var mats = skin.sharedMaterials;
+                        var foundOne = false;
                         for (var matI = 0; matI < mats.Length; matI++) {
                             var mat = mats[matI];
                             if (!mat.HasProperty("_TPSPenetratorEnabled")) continue;
@@ -56,13 +60,12 @@ namespace VF.Feature {
                                 ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
                             });
                             var scale = skin.transform.lossyScale;
-                            var rotation = Quaternion.LookRotation(forward);
 
                             mat.SetFloat("_TPS_PenetratorLength", length);
                             mat.SetVector("_TPS_PenetratorScale", threeToFour(scale));
-                            mat.SetVector("_TPS_PenetratorRight", threeToFour(rotation * Vector3.right));
-                            mat.SetVector("_TPS_PenetratorUp", threeToFour(rotation * Vector3.up));
-                            mat.SetVector("_TPS_PenetratorForward", threeToFour(rotation * Vector3.forward));
+                            mat.SetVector("_TPS_PenetratorRight", threeToFour(Vector3.right));
+                            mat.SetVector("_TPS_PenetratorUp", threeToFour(Vector3.up));
+                            mat.SetVector("_TPS_PenetratorForward", threeToFour(Vector3.forward));
                             mat.SetFloat("_TPS_IsSkinnedMeshRenderer", 1);
                             mat.EnableKeyword("TPS_IsSkinnedMesh");
                             
@@ -76,11 +79,22 @@ namespace VF.Feature {
                                 throw new VRCFBuilderException("Failed to bake TPS texture");
                             }
                             mat.SetTexture("_TPS_BakedMesh", tex);
+                            EditorUtility.SetDirty(mat);
+                            foundOne = true;
                         }
-                        skin.sharedMaterials = mats;
+
+                        if (foundOne) {
+                            skin.sharedMaterials = mats;
+                            var root = new GameObject("OGB_TPS_Base");
+                            root.transform.SetParent(skin.transform, false);
+                            root.transform.rotation = Quaternion.LookRotation(forward);
+                            skin.rootBone = root.transform;
+                            EditorUtility.SetDirty(skin);
+                        }
                     }
                     foreach (var skin in c.transform.GetComponentsInChildren<MeshRenderer>()) {
                         var mats = skin.sharedMaterials;
+                        var foundOne = false;
                         for (var matI = 0; matI < mats.Length; matI++) {
                             var mat = skin.sharedMaterials[matI];
                             if (!mat.HasProperty("_TPSPenetratorEnabled")) continue;
@@ -101,8 +115,14 @@ namespace VF.Feature {
                             mat.SetVector("_TPS_PenetratorForward", threeToFour(rotation * Vector3.forward));
                             mat.SetFloat("_TPS_IsSkinnedMeshRenderer", 0);
                             mat.DisableKeyword("TPS_IsSkinnedMesh");
+                            EditorUtility.SetDirty(mat);
+                            foundOne = true;
                         }
-                        skin.sharedMaterials = mats;
+
+                        if (foundOne) {
+                            skin.sharedMaterials = mats;
+                            EditorUtility.SetDirty(skin);
+                        }
                     }
                 }
 
