@@ -87,7 +87,7 @@ namespace VF.Feature {
                             skin.sharedMaterials = mats;
                             var root = new GameObject("OGB_TPS_Base");
                             root.transform.SetParent(skin.transform, false);
-                            root.transform.rotation = Quaternion.LookRotation(forward);
+                            root.transform.localRotation = Quaternion.LookRotation(forward);
                             skin.rootBone = root.transform;
                             EditorUtility.SetDirty(skin);
                         }
