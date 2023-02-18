@@ -24,16 +24,20 @@ namespace VF.Feature {
             if (!animator) return;
 
             var hips = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, HumanBodyBones.Hips);
+            var movedOne = false;
             if (!hips) return;
             var i = 0;
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
             foreach (var child in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 if (child.gameObject != hips && child.gameObject.name == hips.name) {
                     mover.Move(child.gameObject, newName: child.gameObject.name += "_vrcfdup" + (++i));
+                    movedOne = true;
                 }
             }
-            
-            animator.Rebind();
+
+            if (movedOne) {
+                animator.Rebind();
+            }
         }
     }
 }
