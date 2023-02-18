@@ -1,12 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Model;
-using VF.Model.StateAction;
-using VRC.SDK3.Avatars.Components;
 using static VF.Model.Feature.EmoteManager;
 
 namespace VF.Inspector {
