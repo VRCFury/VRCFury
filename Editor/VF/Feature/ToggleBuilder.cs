@@ -85,11 +85,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (model.addMenuItem) {
-            manager.GetMenu().NewMenuToggle(
-                model.name,
-                param,
-                icon: model.enableIcon ? model.icon : null
-            );
+            if (model.isButton) {
+                manager.GetMenu().NewMenuButton(
+                    model.name,
+                    param,
+                    icon: model.enableIcon ? model.icon : null
+                );
+            } else {
+                manager.GetMenu().NewMenuToggle(
+                    model.name,
+                    param,
+                    icon: model.enableIcon ? model.icon : null
+                );
+            }
         }
     }
     
@@ -262,6 +270,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
+        var isButtonProp = prop.FindPropertyRelative("isButton");
 
         var flex = new VisualElement {
             style = {
@@ -361,6 +370,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+
+            advMenu.AddItem(new GUIContent("Is Button"), isButtonProp.boolValue, () => {
+                    isButtonProp.boolValue = !isButtonProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
 
             advMenu.ShowAsContext();
         });
@@ -484,6 +498,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     tags.Add("Shown in Rest Pose");
                 if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
                     tags.Add("This is the Exclusive Off State");
+                if (isButtonProp != null && isButtonProp.boolValue)
+                    tags.Add("Button");
 
                 var row = new VisualElement();
                 row.style.flexWrap = Wrap.Wrap;
@@ -505,7 +521,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             securityEnabledProp,
             defaultOnProp,
             includeInRestProp,
-            exclusiveOffStateProp
+            exclusiveOffStateProp,
+            isButtonProp
         ));
 
         return content;

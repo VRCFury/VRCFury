@@ -252,6 +252,7 @@ namespace VF.Model.Feature {
         public State localTransitionStateOut;
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
+        public bool isButton = false;
     }
 
     [Serializable]

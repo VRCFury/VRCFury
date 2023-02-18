@@ -251,6 +251,10 @@ If set, this creates a separate animation for local and remote machines. The loc
 
 If set, this will create 2 additional states for animating a transition between the off and on state. The transition animation will be played forwards when transitioning from off to on and backwards when transitioning from on to off when `Transition Out is reverse of Transition In` is on, otherwise an separate out transition can be set. If `Separate Local State` is also on, separate local transitions can also be set.
 
+`Use Button`
+
+If enabled, the menu item created will be a button instead of a toggle.
+
 ### TPS Integration
 
 This feature automatically runs TPS setup on your avatar during each upload. This can resolve many... strange TPS bugs which occur when you change material settings or forget to run the wizard yourself. If you use this, you never need to run the TPS setup wizard yourself at all!
