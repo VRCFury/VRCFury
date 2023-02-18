@@ -178,6 +178,7 @@ public class VRCFuryBuilder {
             }
         }
 
+        AddBuilder(new FixDuplicateArmatureBuilder(), avatarObject);
         AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
         AddBuilder(new BakeOGBBuilder(), avatarObject);
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
