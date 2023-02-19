@@ -45,25 +45,32 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
 
                 container.Add(addRow("name", "Name"));
                 container.Add(addRow("emoteAnimation", "Clip"));
-                container.Add(addRow("number", "VRCEmote Value"));
-                container.Add(addRow("icon", "Icon"));
-                container.Add(addRow("isToggle", "Is Toggle"));
-                container.Add(addRow("hasReset", "Has Reset"));
-                container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+
+                var adv = new Foldout {
+                    text = "Advanced Options",
+                    value = false
+                };
+                adv.Add(addRow("number", "VRCEmote Value"));
+                adv.Add(addRow("icon", "Icon"));
+                adv.Add(addRow("isToggle", "Is Toggle"));
+                adv.Add(addRow("hasReset", "Has Reset"));
+                adv.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                     var row = new VisualElement();
                     if (hasResetProp.boolValue) {
                         row.Add(addRow("resetAnimation", "Reset Animation"));
                     }
                     return row;
                 }, hasResetProp));
-                container.Add(addRow("hasExitTime", "Has Exit Time"));
-                container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                adv.Add(addRow("hasExitTime", "Has Exit Time"));
+                adv.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                     var row = new VisualElement();
                     if (hasExitTimeProp.boolValue) {
                         row.Add(addRow("exitTime", "Exit Time"));
                     }
                     return row;
                 }, hasExitTimeProp));
+                VRCFuryEditorUtils.Padding(adv, 0, 10);
+                container.Add(adv);
 
                 return container;
             }

@@ -114,7 +114,7 @@ Adding this fix will solve this problem automatically through a combination of r
 
 Automatically manages the emotes in the Action Layer. Custom standing, sitting, and AFK animations can be set, or else the default proxy animations will be used. Any number of both standing and sitting emotes can be set. Click the "Reset to VRC Defaults" button to populate the Manager with the 16 default VRC emotes
 
-Options for each Emote
+Basic Options for each Emote
 
 `Name`
 
@@ -123,6 +123,8 @@ The name as it will apear in the menu.
 `Clip`
 
 The animation for the emote.
+
+Advanced options for each gesture:
 
 `VRCEmote Value`
 
