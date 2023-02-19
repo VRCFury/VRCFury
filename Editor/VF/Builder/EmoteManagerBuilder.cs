@@ -133,9 +133,9 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         start.TransitionsTo(afkInit).When(afkCondition);
         sit.TransitionsTo(afkInit).When(afkCondition);
 
-        afkInit.TransitionsTo(afk).When();
+        afkInit.TransitionsTo(afk).When().WithTransitionExitTime(0.01f).WithTransitionDurationSeconds(1);
         afk.TransitionsTo(afkBlendOut).When(afkCondition.Not());
-        afkBlendOut.TransitionsToExit().When();
+        afkBlendOut.TransitionsToExit().When().WithTransitionExitTime(0.2f);
 
         var standingExit = layer.NewState("BlendOut Stand").WithAnimation(standingAnimation).PlayableLayerController(BlendableLayer.Action,0,.25f);
         var sittingExit = layer.NewState("BlendOut Sit").WithAnimation(sittingAnimation).PlayableLayerController(BlendableLayer.Action,0,.25f);
