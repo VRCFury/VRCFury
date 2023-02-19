@@ -1,5 +1,8 @@
 namespace VF.Feature.Base {
     public enum FeatureOrder {
+        // Needs to happen before anything starts using the Animator
+        FixDuplicateArmature = -100,
+        
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1,
         

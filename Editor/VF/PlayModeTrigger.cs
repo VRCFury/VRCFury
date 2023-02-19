@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -7,17 +8,39 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase.Editor.BuildPipeline;
+using Object = UnityEngine.Object;
 
 namespace VF {
     [InitializeOnLoad]
-    public class PlayModeTrigger {
+    public class PlayModeTrigger : IVRCSDKPostprocessAvatarCallback {
+        private static string AboutToUploadKey = "vrcf_vrcAboutToUpload";
+        public int callbackOrder => int.MaxValue;
+        public void OnPostprocessAvatar() {
+            EditorPrefs.SetFloat(AboutToUploadKey, Now());
+        }
+
+        private static float Now() {
+            return (float)EditorApplication.timeSinceStartup;
+        }
+
+        private static bool activeNow = false;
         static PlayModeTrigger() {
             SceneManager.sceneLoaded += OnSceneLoaded;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
+            var aboutToUploadTime = EditorPrefs.GetFloat(AboutToUploadKey, 0);
+            var now = Now();
+            activeNow = false;
             if (state == PlayModeStateChange.EnteredPlayMode) {
+                if (aboutToUploadTime < now && aboutToUploadTime > Now() - 10) {
+                    EditorPrefs.DeleteKey(AboutToUploadKey);
+                    return;
+                }
+                EditorPrefs.DeleteKey(AboutToUploadKey);
+                activeNow = true;
                 for (var i = 0; i < SceneManager.sceneCount; i++) {
                     OnSceneLoaded(SceneManager.GetSceneAt(i), LoadSceneMode.Additive);
                 }
@@ -25,9 +48,7 @@ namespace VF {
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
-            Debug.Log("Scene loaded " + scene);
-            // Delay a frame so VRCSDK has a chance to show up
-            EditorApplication.delayCall += () => ScanScene(scene);
+            ScanScene(scene);
         }
 
         // This should absolutely always be false in play mode, but we check just in case
@@ -41,18 +62,10 @@ namespace VF {
         }
 
         private static void ScanScene(Scene scene) {
-            if (scene == null) return;
             if (!scene.isLoaded) return;
             if (!Application.isPlaying) return;
             if (!PlayModeMenuItem.Get()) return;
-
-            var uploading = SceneManager.GetActiveScene().GetRootGameObjects()
-                .Where(o => o.name == "VRCSDK")
-                .Any();
-            if (uploading) {
-                // We're uploading
-                return;
-            }
+            if (!activeNow) return;
 
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
@@ -62,6 +75,9 @@ namespace VF {
                     if (avatar.gameObject.name.Contains("(ShadowClone)") ||
                         avatar.gameObject.name.Contains("(MirrorReflection)")) {
                         // these are av3emulator temp objects. Building on them doesn't work.
+                        continue;
+                    }
+                    if (avatar.gameObject.GetComponentsInChildren<VRCFuryTest>().Length > 0) {
                         continue;
                     }
                     if (!VRCFuryBuilder.ShouldRun(avatar.gameObject)) continue;
