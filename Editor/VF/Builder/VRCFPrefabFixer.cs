@@ -30,12 +30,6 @@ namespace VF.Builder {
             foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInChildren<VRCFury>(true))) {
                 string childPath = null;
                 for (var vrcf = sceneVrcf; vrcf != null; vrcf = PrefabUtility.GetCorrespondingObjectFromSource(vrcf)) {
-                    var mods = GetModifications(vrcf);
-                    if (mods.Count > 0) {
-                        Debug.Log("Reverting overrides on " + vrcf);
-                        PrefabUtility.RevertObjectOverride(vrcf, InteractionMode.AutomatedAction);
-                        EditorUtility.SetDirty(vrcf);
-                    }
                     var path = AssetDatabase.GetAssetPath(vrcf);
                     if (string.IsNullOrWhiteSpace(path)) continue;
                     if (childPath != null) {
@@ -69,6 +63,17 @@ namespace VF.Builder {
 
             foreach (var path in reloadOrder) {
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+            }
+            
+            foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInChildren<VRCFury>(true))) {
+                for (var vrcf = sceneVrcf; vrcf != null; vrcf = PrefabUtility.GetCorrespondingObjectFromSource(vrcf)) {
+                    var mods = GetModifications(vrcf);
+                    if (mods.Count > 0) {
+                        Debug.Log($"Reverting overrides on {vrcf}: {string.Join(", ", mods.Select(m => m.propertyPath))}");
+                        PrefabUtility.RevertObjectOverride(vrcf, InteractionMode.AutomatedAction);
+                        EditorUtility.SetDirty(vrcf);
+                    }
+                }
             }
             
             Debug.Log("Prefab fix completed");
