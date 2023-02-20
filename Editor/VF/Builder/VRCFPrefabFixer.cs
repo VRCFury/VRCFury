@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.Collections;
 using UnityEditor;
 using UnityEngine;
 using VF.Model;
@@ -20,16 +21,22 @@ namespace VF.Builder {
          */
         public static void Fix(ICollection<GameObject> objs) {
             Debug.Log("Running VRCFury prefab fix pass on " + objs);
+
             var dependsOn = new Dictionary<string, HashSet<string>>();
             HashSet<string> GetDependsOn(string childPath) {
                 if (!dependsOn.ContainsKey(childPath)) dependsOn[childPath] = new HashSet<string>();
                 return dependsOn[childPath];
             }
-            foreach (var vrcf in objs.SelectMany(o => o.GetComponentsInChildren<VRCFury>(true))) {
+            foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInChildren<VRCFury>(true))) {
                 string childPath = null;
-                for (var obj = vrcf.gameObject; obj != null; obj = PrefabUtility.GetCorrespondingObjectFromSource(obj)) {
-                    if (!obj.GetComponent<VRCFury>()) continue;
-                    var path = AssetDatabase.GetAssetPath(obj);
+                for (var vrcf = sceneVrcf; vrcf != null; vrcf = PrefabUtility.GetCorrespondingObjectFromSource(vrcf)) {
+                    var mods = GetModifications(vrcf);
+                    if (mods.Count > 0) {
+                        Debug.Log("Reverting overrides on " + vrcf);
+                        PrefabUtility.RevertObjectOverride(vrcf, InteractionMode.AutomatedAction);
+                        EditorUtility.SetDirty(vrcf);
+                    }
+                    var path = AssetDatabase.GetAssetPath(vrcf);
                     if (string.IsNullOrWhiteSpace(path)) continue;
                     if (childPath != null) {
                         GetDependsOn(childPath).Add(path);
@@ -65,6 +72,16 @@ namespace VF.Builder {
             }
             
             Debug.Log("Prefab fix completed");
+        }
+
+        public static ICollection<PropertyModification> GetModifications(Object obj) {
+            var parents = new HashSet<Object>();
+            for (var i = obj; i != null; i = PrefabUtility.GetCorrespondingObjectFromSource(i)) {
+                parents.Add(i);
+            }
+            var mods = PrefabUtility.GetPropertyModifications(obj);
+            if (mods == null) return new PropertyModification[] { };
+            return mods.Where(mod => parents.Contains(mod.target)).ToArray();
         }
     }
 }
