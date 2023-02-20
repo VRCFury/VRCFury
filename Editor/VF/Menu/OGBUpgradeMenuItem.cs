@@ -211,11 +211,11 @@ namespace VF.Menu {
             
             // Auto-add DPS and TPS penetrators
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (OGBPenetratorEditor.GetAutoSize(skin.gameObject, true) != null)
+                if (OGBPenetratorSizeDetector.GetAutoSize(skin.gameObject, true) != null)
                     AddPen(skin.gameObject);
             }
             foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (OGBPenetratorEditor.GetAutoSize(mesh.gameObject, true) != null)
+                if (OGBPenetratorSizeDetector.GetAutoSize(mesh.gameObject, true) != null)
                     AddPen(mesh.gameObject);
             }
             
