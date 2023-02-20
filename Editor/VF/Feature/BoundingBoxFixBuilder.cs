@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,24 +13,105 @@ namespace VF.Feature {
     public class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix2> {
 
         [FeatureBuilderAction(FeatureOrder.BoundingBoxFix)]
-        public void ApplyOnClone() {
+        public void Apply() {
             var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-            foreach (var skin in skins) {
-                var root = skin.rootBone == null ? skin.transform : skin.rootBone;
-                var avgScale = (root.lossyScale.x + root.lossyScale.y + root.lossyScale.z) / 3;
-                var minExtentWorld = 0.5f; // 0.5 meters
-                var minExtentLocal = minExtentWorld / avgScale;
-                var bounds = skin.localBounds;
+            var startBounds = CalculateFullBounds();
+
+            float maxLinear = 0;
+            Renderer maxRenderer = null;
+            foreach (var renderer in avatarObject.GetComponentsInChildren<Renderer>(true)) {
+                var bounds = renderer.bounds;
+                bounds.Encapsulate(avatarObject.transform.position);
                 var extents = bounds.extents;
-                var changed = false;
-                if (extents.x < minExtentLocal) { changed = true; extents.x = minExtentLocal; }
-                if (extents.y < minExtentLocal) { changed = true; extents.y = minExtentLocal; }
-                if (extents.z < minExtentLocal) { changed = true; extents.z = minExtentLocal; }
-                if (changed) {
-                    bounds.extents = extents;
-                    skin.localBounds = bounds;
+                var linear = extents.x + extents.y + extents.z;
+                if (linear > maxLinear) {
+                    maxLinear = linear;
+                    maxRenderer = renderer;
                 }
             }
+
+            if (maxRenderer != null) {
+                Debug.Log($"Largest renderer is {clipBuilder.GetPath(maxRenderer.transform)} with linear size of {maxLinear}");
+            }
+
+            foreach (var skin in skins) {
+                var debug = skin.gameObject.name == "Body";
+                var root = skin.rootBone == null ? skin.transform : skin.rootBone;
+
+                bool ModifyBounds(float sizeX = 0, float sizeY = 0, float sizeZ = 0, float centerX = 0, float centerY = 0, float centerZ = 0) {
+                    var b = skin.localBounds;
+                    var extents = b.extents;
+                    extents.x += sizeX;
+                    extents.y += sizeY;
+                    extents.z += sizeZ;
+                    b.extents = extents;
+                    var center = b.center;
+                    center.x += centerX;
+                    center.y += centerY;
+                    center.z += centerZ;
+                    b.center = center;
+
+                    var fullBak = startBounds;
+                    var updatedBounds = GetUpdatedBounds(skin, b);
+                    var fullNew = fullBak;
+                    fullNew.Encapsulate(updatedBounds);
+                    if (debug) Debug.Log("Expanding to " + b + " updated world bounds: " + updatedBounds);
+                    if (fullNew != fullBak) {
+                        if (debug) Debug.LogError("FAILED");
+                        return false;
+                    }
+                    skin.localBounds = b;
+                    return true;
+                }
+
+                var stepSizeInMeters = 0.05f;
+                var maxSteps = 20;
+                var stepSize = stepSizeInMeters / root.transform.lossyScale.x;
+                for (var i = 0; i < maxSteps; i++) {
+                    ModifyBounds(sizeX: stepSize, centerX: -stepSize);
+                    ModifyBounds(sizeX: stepSize, centerX: stepSize);
+                    ModifyBounds(sizeY: stepSize, centerY: -stepSize);
+                    ModifyBounds(sizeY: stepSize, centerY: stepSize);
+                    ModifyBounds(sizeZ: stepSize, centerZ: -stepSize);
+                    ModifyBounds(sizeZ: stepSize, centerZ: stepSize);
+                }
+
+                EditorUtility.SetDirty(skin);
+            }
+        }
+
+        Bounds GetUpdatedBounds(SkinnedMeshRenderer skin, Bounds newBounds) {
+            var root = skin.rootBone == null ? skin.transform : skin.rootBone;
+
+            List<Vector3> GetLocalCorners(Bounds obj) {
+                var result = new List<Vector3>();
+                for (var x = -1; x <= 1; x += 2)
+                for (var y = -1; y <= 1; y += 2)
+                for (var z = -1; z <= 1; z += 2)
+                    result.Add(obj.center + Times(obj.extents, new Vector3(x, y, z)));
+                return result;
+            }
+        
+            Vector3 Times(Vector3 self, Vector3 other) =>
+                new Vector3(self.x * other.x, self.y * other.y, self.z * other.z);
+
+            var corners = GetLocalCorners(newBounds);
+            var b = new Bounds(root.TransformPoint(newBounds.center), Vector3.zero);
+            foreach (var corner in corners) {
+                b.Encapsulate(root.TransformPoint(corner));
+            }
+
+            return b;
+        }
+
+        private Bounds CalculateFullBounds() {
+            var bounds = new Bounds(avatarObject.transform.position, Vector3.zero);
+            foreach (Renderer renderer in avatarObject.GetComponentsInChildren<Renderer>(true)) {
+                if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+            return bounds;
         }
 
         public override bool AvailableOnProps() {
