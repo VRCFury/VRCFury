@@ -307,10 +307,6 @@ namespace VF.Menu {
                 }
             ));
 
-            if (addedPen.Count == 0 && addedOrf.Count == 0 && deletions.Count == 0 && alreadyExists.Count == 0) {
-                return "VRCFury failed to find any parts to upgrade! Ask on the discord?";
-            }
-
             var parts = new List<string>();
             if (addedPen.Count > 0)
                 parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPen.Select(GetPath)));
