@@ -46,12 +46,13 @@ public class Startup {
             var sdkBuilder = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.VRC_SdkBuilder");
             var runField = sdkBuilder.GetField("RunExportAndUploadAvatarBlueprint",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            void Fix(GameObject obj) => VRCFPrefabFixer.Fix(new[] { obj });
             var run = (Action<GameObject>)runField.GetValue(null);
-            runField.SetValue(null, VRCFPrefabFixer.Fix + run);
+            runField.SetValue(null, Fix + run);
             runField = sdkBuilder.GetField("RunExportAndTestAvatarBlueprint",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             run = (Action<GameObject>)runField.GetValue(null);
-            runField.SetValue(null, VRCFPrefabFixer.Fix + run);
+            runField.SetValue(null, Fix + run);
         } catch (Exception e) {
             Debug.LogError(new Exception("VRCFury prefab fix patch failed", e));
         }

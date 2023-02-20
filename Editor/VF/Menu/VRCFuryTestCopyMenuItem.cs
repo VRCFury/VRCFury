@@ -19,7 +19,7 @@ namespace VF.Menu {
                 return;
             }
 
-            VRCFPrefabFixer.Fix(originalObject);
+            VRCFPrefabFixer.Fix(new[] {originalObject});
 
             var cloneName = "VRCF Test Copy for " + originalObject.name;
             var exists = originalObject.scene

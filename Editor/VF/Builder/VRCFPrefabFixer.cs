@@ -18,14 +18,14 @@ namespace VF.Builder {
          * To combat both of these issues, this method will find all prefabs on the object which contain VRCFury
          * components, then will force-reimport them in bottom-up order.
          */
-        public static void Fix(GameObject avatarObj) {
-            Debug.Log("Running VRCFury prefab fix pass on " + avatarObj);
+        public static void Fix(ICollection<GameObject> objs) {
+            Debug.Log("Running VRCFury prefab fix pass on " + objs);
             var dependsOn = new Dictionary<string, HashSet<string>>();
             HashSet<string> GetDependsOn(string childPath) {
                 if (!dependsOn.ContainsKey(childPath)) dependsOn[childPath] = new HashSet<string>();
                 return dependsOn[childPath];
             }
-            foreach (var vrcf in avatarObj.GetComponentsInChildren<VRCFury>(true)) {
+            foreach (var vrcf in objs.SelectMany(o => o.GetComponentsInChildren<VRCFury>(true))) {
                 string childPath = null;
                 for (var obj = vrcf.gameObject; obj != null; obj = PrefabUtility.GetCorrespondingObjectFromSource(obj)) {
                     if (!obj.GetComponent<VRCFury>()) continue;
@@ -63,6 +63,8 @@ namespace VF.Builder {
             foreach (var path in reloadOrder) {
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
             }
+            
+            Debug.Log("Prefab fix completed");
         }
     }
 }
