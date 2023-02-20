@@ -305,7 +305,7 @@ namespace VF.Builder {
 
         public void RemoveLayer(int index) {
             ctrl.RemoveLayer(index);
-			
+        }
         public void ForEachClip(Action<ImmutableClip> action) {
             foreach (var l in GetLayers()) {
                 AnimatorIterator.ForEachClip(l, (clip, setClip) => {
