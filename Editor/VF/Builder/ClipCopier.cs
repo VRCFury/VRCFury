@@ -45,11 +45,7 @@ namespace VF.Builder {
                     return "";
                 }
                 if (!string.IsNullOrWhiteSpace(addPrefix)) {
-                    if (addPrefix.EndsWith("/")) {
-                        path = addPrefix + path;
-                    } else {
-                        path = addPrefix + "/" + path;
-                    }
+                    path = Join(addPrefix, path);
                 }
                 path = Join(prefix, path);
                 return path;
