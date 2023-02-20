@@ -82,12 +82,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = numParam.IsNotEqualTo(0);
         } else {
             if (model.isParamDriven) {
-                var boolParam = fx.NewBool(model.drivingParam, usePrefix: false);
-                param = boolParam;
-            } else {
-                 var boolParam = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
-                param = boolParam;
+                model.usePrefixOnParam = false;
             }
+            var boolParam = fx.NewBool(model.isParamDriven ? model.drivingParam : model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            param = boolParam;
             onCase = param.IsTrue();
         }
         
