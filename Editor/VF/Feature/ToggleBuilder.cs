@@ -71,7 +71,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var numParam = fx.NewInt(model.name, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
         } else {
-            var boolParam = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            if (model.isParamDriven) {
+                model.usePrefixOnParam = false;
+            }
+            var boolParam = fx.NewBool(model.name, synced: model.isParamDriven ? false : true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
@@ -84,7 +87,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
-        if (model.addMenuItem) {
+        if (model.addMenuItem && !model.isParamDriven) {
             if (model.isButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
@@ -271,6 +274,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
         var isButtonProp = prop.FindPropertyRelative("isButton");
+        var isParamDrivenProp = prop.FindPropertyRelative("isParamDriven");
 
         var flex = new VisualElement {
             style = {
@@ -280,7 +284,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         };
         content.Add(flex);
 
-        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path");
+        var name = VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (isParamDrivenProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Driving Param"));
+            } else {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path"));
+            }
+            return c;
+        }, isParamDrivenProp);
+
         name.style.flexGrow = 1;
         flex.Add(name);
 
@@ -373,6 +387,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             advMenu.AddItem(new GUIContent("Is Button"), isButtonProp.boolValue, () => {
                     isButtonProp.boolValue = !isButtonProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+
+            advMenu.AddItem(new GUIContent("Parameter Driven"), isParamDrivenProp.boolValue, () => {
+                    isParamDrivenProp.boolValue = !isParamDrivenProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
