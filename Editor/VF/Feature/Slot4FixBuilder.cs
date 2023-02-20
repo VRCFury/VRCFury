@@ -35,47 +35,37 @@ namespace VF.Feature {
             var meshesToPatch = new HashSet<Mesh>();
 
             foreach (var c in manager.GetAllUsedControllers()) {
-                foreach (var l in c.GetLayers()) {
-                    AnimatorIterator.ForEachClip(l, (clip, setClip) => {
-                        void ensureMutable() {
-                            if (!VRCFuryAssetDatabase.IsVrcfAsset(clip)) {
-                                var newClip = manager.GetClipStorage().NewClip(clip.name);
-                                clipBuilder.CopyWithAdjustedPrefixes(clip, newClip);
-                                clip = newClip;
-                                setClip(clip);
-                            }
+                c.ForEachClip(clip => {
+                    foreach (var binding in clip.GetObjectBindings()) {
+                        if (binding.propertyName != "m_Materials.Array.data[4]") continue;
+                        var target = avatarObject.transform.Find(binding.path);
+                        if (!target) continue;
+
+                        Mesh mesh = null;
+                        if (binding.type == typeof(SkinnedMeshRenderer)) {
+                            var skin = target.GetComponent<SkinnedMeshRenderer>();
+                            if (!skin) continue;
+                            mesh = skin.sharedMesh;
+                        } else if (binding.type == typeof(MeshRenderer)) {
+                            var renderer = target.GetComponent<MeshFilter>();
+                            if (!renderer) continue;
+                            mesh = renderer.sharedMesh;
                         }
 
-                        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                            if (binding.propertyName != "m_Materials.Array.data[4]") continue;
-                            var target = avatarObject.transform.Find(binding.path);
-                            if (!target) continue;
+                        if (!mesh) continue;
+                        var matCount = mesh.subMeshCount;
+                        if (matCount < 5) continue;
 
-                            Mesh mesh = null;
-                            if (binding.type == typeof(SkinnedMeshRenderer)) {
-                                var skin = target.GetComponent<SkinnedMeshRenderer>();
-                                if (!skin) continue;
-                                mesh = skin.sharedMesh;
-                            } else if (binding.type == typeof(MeshRenderer)) {
-                                var renderer = target.GetComponent<MeshFilter>();
-                                if (!renderer) continue;
-                                mesh = renderer.sharedMesh;
-                            }
+                        meshesToPatch.Add(mesh);
 
-                            if (!mesh) continue;
-                            var matCount = mesh.subMeshCount;
-                            if (matCount < 5) continue;
-
-                            meshesToPatch.Add(mesh);
-                            ensureMutable();
-                            var curve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
-                            AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
-                            var newBinding = binding;
-                            newBinding.propertyName = $"m_Materials.Array.data[{matCount}]";
-                            AnimationUtility.SetObjectReferenceCurve(clip, newBinding, curve);
-                        }
-                    });
-                }
+                        var mutable = clip.GetMutable();
+                        var curve = mutable.GetObjectCurve(binding);
+                        mutable.SetObjectCurve(binding, null);
+                        var newBinding = binding;
+                        newBinding.propertyName = $"m_Materials.Array.data[{matCount}]";
+                        mutable.SetObjectCurve(newBinding, curve);
+                    }
+                });
             }
 
             foreach (var mesh in meshesToPatch) {

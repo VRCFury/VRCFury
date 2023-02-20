@@ -34,8 +34,17 @@ namespace VF {
             var aboutToUploadTime = EditorPrefs.GetFloat(AboutToUploadKey, 0);
             var now = Now();
             activeNow = false;
-            if (state == PlayModeStateChange.EnteredPlayMode) {
-                if (aboutToUploadTime < now && aboutToUploadTime > Now() - 10) {
+            var problyUploading = aboutToUploadTime <= now && aboutToUploadTime > Now() - 10;
+            if (state == PlayModeStateChange.ExitingEditMode) {
+                if (!problyUploading && PlayModeMenuItem.Get()) {
+                    var rootObjects = Enumerable.Range(0, SceneManager.sceneCount)
+                        .Select(i => SceneManager.GetSceneAt(i))
+                        .SelectMany(scene => scene.GetRootGameObjects())
+                        .ToList();
+                    VRCFPrefabFixer.Fix(rootObjects);
+                }
+            } else if (state == PlayModeStateChange.EnteredPlayMode) {
+                if (problyUploading) {
                     EditorPrefs.DeleteKey(AboutToUploadKey);
                     return;
                 }

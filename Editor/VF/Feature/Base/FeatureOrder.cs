@@ -1,5 +1,10 @@
 namespace VF.Feature.Base {
     public enum FeatureOrder {
+        CleanupLegacy = -2000,
+        
+        // Needs to happen before everything
+        FixDoubleFx = -1000,
+
         // Needs to happen before anything starts using the Animator
         FixDuplicateArmature = -100,
         
@@ -61,6 +66,8 @@ namespace VF.Feature.Base {
         // Needs to run after all animations are locked in and done
         BlendshapeOptimizer = 10006,
         Slot4Fix = 10007,
+        
+        RemoveJunkAnimators = 11000,
 
         // This messes with the raw controller on the avatar, so it has to run after we've done basically everything
         D4rkOptimizer = 99999,

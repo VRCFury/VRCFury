@@ -62,44 +62,15 @@ public class VRCFuryBuilder {
             Debug.Log("VRCFury components not found in avatar. Skipping.");
             return;
         }
-        
+
         var progress = new ProgressBar("VRCFury is building ...");
-
-        var name = avatarObject.name;
-
-        // Unhook everything from our assets before we delete them
-        progress.Progress(0, "Cleaning up old VRCF cruft from avatar (in case of old builds)");
-        LegacyCleaner.Clean(avatarObject);
-
-        // Nuke all our old generated assets
-        progress.Progress(0.1, "Clearing generated assets");
-        var tmpDir = "Assets/_VRCFury/" + VRCFuryAssetDatabase.MakeFilenameSafe(name);
-        if (Directory.Exists(tmpDir)) {
-            foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDir })) {
-                var path = AssetDatabase.GUIDToAssetPath(asset);
-                AssetDatabase.DeleteAsset(path);
-            }
-        }
-        // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
-        // old asset and messes with the new copy.
-        tmpDir = tmpDir + "/" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
-        Directory.CreateDirectory(tmpDir);
 
         // Apply configs
         ApplyFuryConfigs(
-            tmpDir,
             avatarObject,
             originalObject,
-            progress.Partial(0.2, 0.8)
+            progress
         );
-
-        progress.Progress(0.9, "Removing Junk Animators");
-        foreach (var c in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
-            var animator = c.gameObject.GetComponent<Animator>();
-            if (animator != null && c.gameObject != avatarObject) Object.DestroyImmediate(animator);
-        }
-
-        progress.Progress(1, "Finishing Up");
 
         // Reset animator after the build, just in case something ELSE messed with our animator on this frame (like GestureManager)
         ToggleBuilder.WithoutAnimator(avatarObject, () => { });
@@ -108,11 +79,15 @@ public class VRCFuryBuilder {
     }
 
     private static void ApplyFuryConfigs(
-        string tmpDir,
         GameObject avatarObject,
         GameObject originalObject,
         ProgressBar progress
     ) {
+        var tmpDirParent = $"Assets/_VRCFury/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
+        // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
+        // old asset and messes with the new copy.
+        var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
+        
         var currentModelNumber = 0;
         var currentModelName = "";
         var currentMenuSortPosition = 0;
@@ -124,7 +99,7 @@ public class VRCFuryBuilder {
             () => currentMenuSortPosition
         );
         var clipBuilder = new ClipBuilder(avatarObject);
-        
+
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
         var totalModelCount = 0;
@@ -134,6 +109,7 @@ public class VRCFuryBuilder {
 
         void AddBuilder(FeatureBuilder builder, GameObject configObject, int menuSortPosition = -1) {
             builder.featureBaseObject = configObject;
+            builder.tmpDirParent = tmpDirParent;
             builder.tmpDir = tmpDir;
             builder.uniqueModelNum = ++totalModelCount;
             if (menuSortPosition < 0) menuSortPosition = builder.uniqueModelNum;
@@ -178,6 +154,9 @@ public class VRCFuryBuilder {
             }
         }
 
+        AddBuilder(new RemoveJunkAnimatorsBuilder(), avatarObject);
+        AddBuilder(new CleanupLegacyBuilder(), avatarObject);
+        AddBuilder(new FixDoubleFxBuilder(), avatarObject);
         AddBuilder(new FixDuplicateArmatureBuilder(), avatarObject);
         AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
         AddBuilder(new BakeOGBBuilder(), avatarObject);

@@ -26,6 +26,20 @@ namespace VF.Menu {
                 return AnimationUtility.CalculateTransformPath(obj.transform, avatarObj.transform);
             }
 
+            if (ShouldRemoveAsset != null) {
+                var animators = avatarObj.GetComponentsInChildren<Animator>(true);
+                foreach (var animator in animators) {
+                    if (animator.runtimeAnimatorController != null &&
+                        ShouldRemoveAsset(animator.runtimeAnimatorController)) {
+                        removeItems.Add("Animator Controller at path " + GetPath(animator.gameObject));
+                        if (perform) {
+                            animator.runtimeAnimatorController = null;
+                            EditorUtility.SetDirty(animator);
+                        }
+                    }
+                }
+            }
+
             if (ShouldRemoveObj != null || ShouldRemoveComponent != null) {
                 var checkStack = new Stack<Transform>();
                 checkStack.Push(avatarObj.transform);

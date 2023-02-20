@@ -220,7 +220,10 @@ namespace VF.Feature {
                     }
                     return clipsInController;
                 })
-                .SelectMany(clip => AnimationUtility.GetCurveBindings(clip))
+                .SelectMany(clip => {
+                    var bindings = AnimationUtility.GetCurveBindings(clip);
+                    return bindings.Select(b => (b, AnimationUtility.GetEditorCurve(clip, b)));
+                })
                 .ToList();
             
             var skins = CollectSkinsUsingMesh(mesh);
@@ -235,12 +238,30 @@ namespace VF.Feature {
             }
             
             var animatedBlendshapes = new HashSet<string>();
-            foreach (var binding in animatedBindings) {
+            foreach (var tuple in animatedBindings) {
+                var (binding, curve) = tuple;
                 if (binding.type != typeof(SkinnedMeshRenderer)) continue;
                 if (!binding.propertyName.StartsWith("blendShape.")) continue;
                 if (!skinPaths.Contains(binding.path)) continue;
                 var blendshape = binding.propertyName.Substring(11);
-                animatedBlendshapes.Add(blendshape);
+                var blendshapeId = mesh.GetBlendShapeIndex(blendshape);
+                var animatesToNondefaultValue = false;
+                if (blendshapeId >= 0) {
+                    var skinDefaultValues = skins
+                        .Select(skin => skin.GetBlendShapeWeight(blendshapeId))
+                        .ToArray();
+                    foreach (var frameValue in curve.keys.Select(key => key.value)) {
+                        foreach (var skinDefaultValue in skinDefaultValues) {
+                            if (!Mathf.Approximately(frameValue, skinDefaultValue)) {
+                                animatesToNondefaultValue = true;
+                            }
+                        }
+                    }
+                }
+
+                if (animatesToNondefaultValue) {
+                    animatedBlendshapes.Add(blendshape);
+                }
             }
 
             foreach (var avatar in avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>()) {

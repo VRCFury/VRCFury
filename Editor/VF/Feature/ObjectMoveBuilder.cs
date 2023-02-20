@@ -34,45 +34,34 @@ namespace VF.Feature {
             if (redirects.Count == 0) return;
 
             foreach (var controller in manager.GetAllUsedControllers()) {
+                controller.ForEachClip(clip => {
+                    foreach (var binding in clip.GetFloatBindings()) {
+                        var oldPath = binding.path;
+                        var newPath = RewriteClipPath(oldPath);
+                        if (oldPath != newPath) {
+                            var newBinding = binding;
+                            newBinding.path = newPath;
+                            var mutable = clip.GetMutable();
+                            mutable.SetFloatCurve(newBinding, mutable.GetFloatCurve(binding));
+                            mutable.SetFloatCurve(binding, null);
+                        }
+                    }
+
+                    foreach (var binding in clip.GetObjectBindings()) {
+                        var oldPath = binding.path;
+                        var newPath = RewriteClipPath(oldPath);
+                        if (oldPath != newPath) {
+                            var newBinding = binding;
+                            newBinding.path = newPath;
+                            var mutable = clip.GetMutable();
+                            mutable.SetObjectCurve(newBinding, mutable.GetObjectCurve(binding));
+                            mutable.SetObjectCurve(binding, null);
+                        }
+                    }
+                });
+                
                 var layers = controller.GetLayers().ToList();
                 for (var layerId = 0; layerId < layers.Count; layerId++) {
-                    var layer = layers[layerId];
-                    AnimatorIterator.ForEachClip(layer, (clip, setClip) => {
-                        void ensureMutable() {
-                            if (!VRCFuryAssetDatabase.IsVrcfAsset(clip)) {
-                                var newClip = manager.GetClipStorage().NewClip(clip.name);
-                                clipBuilder.CopyWithAdjustedPrefixes(clip, newClip);
-                                clip = newClip;
-                                setClip(clip);
-                            }
-                        }
-
-                        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                            var oldPath = binding.path;
-                            var newPath = RewriteClipPath(oldPath);
-                            if (oldPath != newPath) {
-                                var b = binding;
-                                b.path = newPath;
-                                ensureMutable();
-                                AnimationUtility.SetEditorCurve(clip, b,
-                                    AnimationUtility.GetEditorCurve(clip, binding));
-                                AnimationUtility.SetEditorCurve(clip, binding, null);
-                            }
-                        }
-
-                        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                            var oldPath = binding.path;
-                            var newPath = RewriteClipPath(oldPath);
-                            if (oldPath != newPath) {
-                                var b = binding;
-                                b.path = newPath;
-                                ensureMutable();
-                                AnimationUtility.SetObjectReferenceCurve(clip, b,
-                                    AnimationUtility.GetObjectReferenceCurve(clip, binding));
-                                AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
-                            }
-                        }
-                    });
                     controller.ModifyMask(layerId, mask => {
                         for (var i = 0; i < mask.transformCount; i++) {
                             var oldPath = mask.GetTransformPath(i);

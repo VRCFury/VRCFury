@@ -36,7 +36,7 @@ public class VRCFuryEditor : Editor {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Feature list is missing? This is a bug."));
         } else {
             var disabled = PrefabUtility.IsPartOfPrefabInstance(self);
-            container.Add(CreateOverrideLabel(features));
+            container.Add(CreateOverrideLabel());
             if (disabled) {
                 // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
                 // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
@@ -79,19 +79,25 @@ public class VRCFuryEditor : Editor {
         return container;
     }
 
-    private VisualElement CreateOverrideLabel(SerializedProperty prop) {
-        var overrideLabel = VRCFuryEditorUtils.Error(
-            "The VRCFury features in this prefab are overridden on this instance. Please revert them!" +
-            " If you apply, it may corrupt data in the changed features.");
+    private VisualElement CreateOverrideLabel() {
+        var baseText = "The VRCFury features in this prefab are overridden on this instance. Please revert them!" +
+                       " If you apply, it may corrupt data in the changed features.";
+        var overrideLabel = VRCFuryEditorUtils.Error(baseText);
         overrideLabel.style.display = DisplayStyle.None;
 
         double lastCheck = 0;
         void CheckOverride() {
             if (this == null) return; // The editor was deleted
+            var vrcf = (VRCFury)target;
             var now = EditorApplication.timeSinceStartup;
-            if (lastCheck < now - 0.5) {
+            if (lastCheck < now - 1) {
                 lastCheck = now;
-                overrideLabel.style.display = prop.prefabOverride ? DisplayStyle.Flex : DisplayStyle.None;
+                var mods = VRCFPrefabFixer.GetModifications(vrcf);
+                var isModified = mods.Count > 0;
+                overrideLabel.style.display = isModified ? DisplayStyle.Flex : DisplayStyle.None;
+                if (isModified) {
+                    overrideLabel.text = baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath));
+                }
             }
             EditorApplication.delayCall += CheckOverride;
         }

@@ -516,7 +516,7 @@ public static class VRCFuryEditorUtils {
         return el;
     }
 
-    public static VisualElement Error(string message) {
+    public static Label Error(string message) {
         var label = new Label(message) {
             style = {
                 backgroundColor = new Color(0.5f, 0, 0),

@@ -14,6 +14,7 @@ namespace VF.Feature.Base {
     public abstract class FeatureBuilder {
         public AvatarManager manager;
         public ClipBuilder clipBuilder;
+        public string tmpDirParent;
         public string tmpDir;
         public GameObject avatarObject;
         public GameObject originalObject;
@@ -107,7 +108,7 @@ namespace VF.Feature.Base {
                         }
                         break;
                     case AnimationClipAction actionClip:
-                        clipBuilder.CopyWithAdjustedPrefixes(actionClip.clip, clip, featureBaseObject);
+                        ClipCopier.Copy(actionClip.clip, clip, fromObj: featureBaseObject, fromRoot: avatarObject);
                         break;
                     case ObjectToggleAction toggle:
                         if (toggle.obj == null) {

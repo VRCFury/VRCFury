@@ -49,7 +49,7 @@ namespace VF.Builder {
                         throw new VRCFBuilderException(
                             "Avatar contains multiple expression layers of type " + type +
                             " with different animators for each!" +
-                            " This is a VRChat bug. You may need to 'reset' the expression layers on the avatar descriptor.");
+                            " This is a VRChat bug. You may need to 'reset' the playable layers on the avatar descriptor.");
                     }
                     foundLayer = layer.Item1;
                 }
@@ -69,7 +69,7 @@ namespace VF.Builder {
             if (!setOne) {
                 throw new VRCFBuilderException(
                     "Failed to find " + type +
-                    " layer on avatar. You may need to 'reset' the expression layers on the avatar descriptor.");
+                    " layer on avatar. You may need to 'reset' the playable layers on the avatar descriptor, or your FBX may not be configured with a 'humanoid' rig.");
             }
         }
 
