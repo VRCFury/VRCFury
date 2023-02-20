@@ -22,6 +22,7 @@ namespace VF.Builder {
         private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
+        private readonly ClipStorageManager clipStorage;
     
         public ControllerManager(
             AnimatorController ctrl,
@@ -29,7 +30,8 @@ namespace VF.Builder {
             VRCAvatarDescriptor.AnimLayerType type,
             Func<int> currentFeatureNumProvider,
             Func<string> currentFeatureNameProvider,
-            string tmpDir
+            string tmpDir,
+            ClipStorageManager clipStorage
         ) {
             this.ctrl = ctrl;
             this.paramManager = paramManager;
@@ -37,6 +39,7 @@ namespace VF.Builder {
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.tmpDir = tmpDir;
+            this.clipStorage = clipStorage;
 
             if (ctrl.layers.Length == 0) {
                 // There was no base layer, just make one
@@ -289,6 +292,79 @@ namespace VF.Builder {
             if (layer == null) throw new VRCFBuilderException("Failed to find layer for stateMachine");
             layer.defaultWeight = weight;
             ctrl.layers = layers;
+        }
+
+        public void ForEachClip(Action<ImmutableClip> action) {
+            foreach (var l in GetLayers()) {
+                AnimatorIterator.ForEachClip(l, (clip, setClip) => {
+                    action(new ImmutableClip(clip, clipStorage, setClip));
+                });
+            }
+        }
+
+        public class ImmutableClip {
+            protected AnimationClip clip;
+            private Action<AnimationClip> onUpdated;
+            private ClipStorageManager clipStorage;
+            private MutableClip mutableCopy;
+
+            public ImmutableClip(
+                AnimationClip clip,
+                ClipStorageManager clipStorage,
+                Action<AnimationClip> onUpdated
+            ) {
+                this.clip = clip;
+                this.clipStorage = clipStorage;
+                this.onUpdated = onUpdated;
+            }
+
+            public EditorCurveBinding[] GetFloatBindings() {
+                return AnimationUtility.GetCurveBindings(clip);
+            }
+            
+            public EditorCurveBinding[] GetObjectBindings() {
+                return AnimationUtility.GetObjectReferenceCurveBindings(clip);
+            }
+            
+            public AnimationCurve GetFloatCurve(EditorCurveBinding binding) {
+                return AnimationUtility.GetEditorCurve(clip, binding);
+            }
+            
+            public ObjectReferenceKeyframe[] GetObjectCurve(EditorCurveBinding binding) {
+                return AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            }
+
+            public virtual MutableClip GetMutable() {
+                if (mutableCopy == null) {
+                    if (VRCFuryAssetDatabase.IsVrcfAsset(clip)) {
+                        mutableCopy = new MutableClip(clip);
+                    } else {
+                        var copy = clipStorage.NewClip(clip.name);
+                        ClipCopier.Copy(clip, copy);
+                        onUpdated(copy);
+                        mutableCopy = new MutableClip(copy);
+                    }
+                }
+
+                return mutableCopy;
+            }
+        }
+        
+        public class MutableClip : ImmutableClip {
+            public MutableClip(AnimationClip clip) : base(clip, null, null) {
+            }
+
+            public void SetFloatCurve(EditorCurveBinding binding, AnimationCurve curve) {
+                AnimationUtility.SetEditorCurve(clip, binding, curve);
+            }
+            
+            public void SetObjectCurve(EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
+                AnimationUtility.SetObjectReferenceCurve(clip, binding, curve);
+            }
+
+            public override MutableClip GetMutable() {
+                return this;
+            }
         }
     }
 }

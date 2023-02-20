@@ -82,14 +82,15 @@ namespace VF.Feature {
                         rewritten = from;
                     } else {
                         rewritten = manager.GetClipStorage().NewClip(from.name);
-                        clipBuilder.CopyWithAdjustedPrefixes(
+                        ClipCopier.Copy(
                             from,
                             rewritten,
-                            baseObject,
-                            model.removePrefixes,
-                            model.addPrefix,
-                            model.rootBindingsApplyToAvatar,
-                            rewriteParam
+                            fromObj: baseObject,
+                            fromRoot: avatarObject,
+                            removePrefixes: model.removePrefixes,
+                            addPrefix: model.addPrefix,
+                            rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
+                            rewriteParam: rewriteParam
                         );
                     }
 

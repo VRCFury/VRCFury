@@ -69,7 +69,7 @@ public class VRCFuryBuilder {
         ApplyFuryConfigs(
             avatarObject,
             originalObject,
-            progress.Partial(0.2, 0.8)
+            progress
         );
 
         // Reset animator after the build, just in case something ELSE messed with our animator on this frame (like GestureManager)
@@ -99,7 +99,7 @@ public class VRCFuryBuilder {
             () => currentMenuSortPosition
         );
         var clipBuilder = new ClipBuilder(avatarObject);
-        
+
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
         var totalModelCount = 0;

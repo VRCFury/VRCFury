@@ -139,36 +139,27 @@ namespace VF.Feature {
                 }
             }
 
-            foreach (var controller in manager.GetAllUsedControllers()) {
-                foreach (var layer in controller.GetLayers()) {
-                    AnimatorIterator.ForEachClip(layer, (clip, setClip) => {
-                        void ensureMutable() {
-                            if (!VRCFuryAssetDatabase.IsVrcfAsset(clip)) {
-                                var newClip = manager.GetClipStorage().NewClip(clip.name);
-                                clipBuilder.CopyWithAdjustedPrefixes(clip, newClip);
-                                clip = newClip;
-                                setClip(clip);
-                            }
+            foreach (var c in manager.GetAllUsedControllers()) {
+                c.ForEachClip(clip => {
+                    foreach (var binding in clip.GetFloatBindings()) {
+                        if (binding.type != typeof(SkinnedMeshRenderer)) continue;
+                        if (binding.path != baseSkinPath) continue;
+                        if (!binding.propertyName.StartsWith("blendShape.")) continue;
+                        var baseName = binding.propertyName.Substring(11);
+                        if (!baseToLinkedMapping.TryGetValue(baseName, out var linkedName)) continue;
+                        foreach (var linked in linkSkins) {
+                            var linkedI = linked.sharedMesh.GetBlendShapeIndex(linkedName);
+                            if (linkedI < 0) continue;
+                            var newBinding = binding;
+                            newBinding.path =
+                                AnimationUtility.CalculateTransformPath(linked.transform, avatarObject.transform);
+                            newBinding.propertyName = "blendShape." + linkedName;
+
+                            var mutable = clip.GetMutable();
+                            mutable.SetFloatCurve(newBinding, mutable.GetFloatCurve(binding));
                         }
-                        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                            if (binding.type != typeof(SkinnedMeshRenderer)) continue;
-                            if (binding.path != baseSkinPath) continue;
-                            if (!binding.propertyName.StartsWith("blendShape.")) continue;
-                            var baseName = binding.propertyName.Substring(11);
-                            if (!baseToLinkedMapping.TryGetValue(baseName, out var linkedName)) continue;
-                            foreach (var linked in linkSkins) {
-                                var linkedI = linked.sharedMesh.GetBlendShapeIndex(linkedName);
-                                if (linkedI < 0) continue;
-                                var newBinding = binding;
-                                newBinding.path =
-                                    AnimationUtility.CalculateTransformPath(linked.transform, avatarObject.transform);
-                                newBinding.propertyName = "blendShape." + linkedName;
-                                ensureMutable();
-                                AnimationUtility.SetEditorCurve(clip, newBinding, AnimationUtility.GetEditorCurve(clip, binding));
-                            }
-                        }
-                    });
-                }
+                    }
+                });
             }
         }
     }

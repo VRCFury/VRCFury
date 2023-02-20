@@ -108,7 +108,7 @@ namespace VF.Feature.Base {
                         }
                         break;
                     case AnimationClipAction actionClip:
-                        clipBuilder.CopyWithAdjustedPrefixes(actionClip.clip, clip, featureBaseObject);
+                        ClipCopier.Copy(actionClip.clip, clip, fromObj: featureBaseObject, fromRoot: avatarObject);
                         break;
                     case ObjectToggleAction toggle:
                         if (toggle.obj == null) {

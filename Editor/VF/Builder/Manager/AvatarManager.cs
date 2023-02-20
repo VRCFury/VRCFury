@@ -69,7 +69,7 @@ namespace VF.Builder {
                         merger.Merge(existingController, toRaw: ctrl);
                     }
                 }
-                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, currentFeatureNameProvider, tmpDir);
+                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, currentFeatureNameProvider, tmpDir, GetClipStorage());
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
             }
