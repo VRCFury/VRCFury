@@ -46,20 +46,20 @@ namespace VF.Feature {
                         throw new VRCFBuilderException("Failed to get size of penetrator to configure TPS");
                     }
                     var (length, radius, forward) = size;
-                    var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-                    if (shaderOptimizer == null) {
-                        throw new VRCFBuilderException(
-                            "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
-                    }
-                    var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
-                    
+
                     Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);
+                    
+                    var root = new GameObject("OGB_TPSShaderBase");
+                    root.transform.SetParent(c.transform, false);
+                    root.transform.localRotation = Quaternion.LookRotation(forward);
+
+                    var configuredOne = false;
 
                     foreach (var renderer in c.transform.GetComponentsInChildren<Renderer>()) {
                         var skin = renderer as SkinnedMeshRenderer;
                         var shaderRotation = skin ? Quaternion.identity : Quaternion.LookRotation(forward);
                         var mats = renderer.sharedMaterials;
-                        var foundOne = false;
+                        var replacedAMat = false;
                         for (var matI = 0; matI < mats.Length; matI++) {
                             var mat = mats[matI];
                             if (!mat.HasProperty(TpsPenetratorEnabled)) continue;
@@ -69,6 +69,12 @@ namespace VF.Feature {
                             VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);
                             mats[matI] = mat;
 
+                            var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+                            if (shaderOptimizer == null) {
+                                throw new VRCFBuilderException(
+                                    "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+                            }
+                            var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
                             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                                 ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
                             });
@@ -100,19 +106,21 @@ namespace VF.Feature {
                             }
 
                             EditorUtility.SetDirty(mat);
-                            foundOne = true;
+                            replacedAMat = true;
+                            configuredOne = true;
                         }
 
-                        if (foundOne) {
+                        if (replacedAMat) {
                             renderer.sharedMaterials = mats;
-                            if (skin) {
-                                var root = new GameObject("OGB_TPS_Base");
-                                root.transform.SetParent(renderer.transform, false);
-                                root.transform.localRotation = Quaternion.LookRotation(forward);
-                                skin.rootBone = root.transform;
-                            }
+                            if (skin) skin.rootBone = root.transform;
                             EditorUtility.SetDirty(renderer);
                         }
+                    }
+
+                    if (!configuredOne) {
+                        throw new VRCFBuilderException(
+                            "OGB Penetrator has 'auto-configure TPS' enabled, but there were no meshes found inside " +
+                            "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled.");
                     }
                 }
 
