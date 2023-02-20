@@ -30,7 +30,7 @@ namespace VF.Feature {
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
             foreach (var child in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 if (child.gameObject != hips && child.gameObject.name == hips.name) {
-                    mover.Move(child.gameObject, newName: child.gameObject.name += "_vrcfdup" + (++i));
+                    mover.Move(child.gameObject, newName: child.gameObject.name + "_vrcfdup" + (++i));
                     movedOne = true;
                 }
             }
