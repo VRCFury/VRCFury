@@ -102,10 +102,6 @@ public class VRCFuryVRCPatch : IVRCSDKPreprocessAvatarCallback {
                     break;
                 }
             }
-
-            if (original) {
-                LegacyCleaner.Clean(original);
-            }
         }
 
         var builder = new VRCFuryBuilder();

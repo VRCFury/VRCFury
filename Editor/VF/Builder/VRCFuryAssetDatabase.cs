@@ -80,7 +80,10 @@ namespace VF.Builder {
         }
 
         public static bool IsVrcfAsset(Object obj) {
-            return obj != null && AssetDatabase.GetAssetPath(obj).Contains("_VRCFury");
+            if (obj == null) return false;
+            var path = AssetDatabase.GetAssetPath(obj);
+            if (path == null) return false;
+            return path.Contains("_VRCFury/");
         }
 
         private static bool assetEditing = false;

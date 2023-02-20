@@ -14,6 +14,7 @@ namespace VF.Feature.Base {
     public abstract class FeatureBuilder {
         public AvatarManager manager;
         public ClipBuilder clipBuilder;
+        public string tmpDirParent;
         public string tmpDir;
         public GameObject avatarObject;
         public GameObject originalObject;
