@@ -66,17 +66,21 @@ namespace VF.Inspector {
         public static Tuple<float, float, Vector3> GetSize(OGBPenetrator pen) {
             var length = pen.length;
             var radius = pen.radius;
-            var forward = Vector3.forward;
+            Vector3 forward;
+            if (pen.configureTps) {
+                forward = Vector3.forward;
+            } else {
+                forward = OGBPenetratorSizeDetector.GetAutoForward(pen.gameObject) ?? Vector3.forward;
+            }
             if (!pen.unitsInMeters) {
                 length *= pen.transform.lossyScale.x;
                 radius *= pen.transform.lossyScale.x;
             }
 
-            var autoSize = OGBPenetratorSizeDetector.GetAutoSize(pen.gameObject);
+            var autoSize = OGBPenetratorSizeDetector.GetAutoSize(pen.gameObject, false, forward);
             if (autoSize != null) {
                 if (length == 0) length = autoSize.Item1;
                 if (radius == 0) radius = autoSize.Item2;
-                forward = autoSize.Item3;
             }
 
             if (length <= 0 || radius <= 0) return null;
