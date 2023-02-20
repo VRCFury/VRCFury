@@ -34,12 +34,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
 
         if (this != allBuildersInRun.OfType<EmoteManagerBuilder>().First()) return ; // only the first Emote Manager will be used
 
+        var fxLayer = GetFx();
         var actionLayer = GetAction();
-        var layerIndex = actionLayer.GetLayers().TakeWhile(l => l.name != "Action").Count();
-        if (layerIndex < actionLayer.GetLayers().Count()) {
-            actionLayer.RemoveLayer(layerIndex);
-        }
-        var layer = actionLayer.NewLayer("VRCF EmoteManaged Action");
 
         if (model.standingState.actions.Count() == 0){
             var clip = (AnimationClip) AssetDatabase.LoadAssetAtPath("Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_still.anim", typeof(AnimationClip));
@@ -107,25 +103,75 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
             }
         }
 
+        AddClipsToLayer(actionLayer);
+        AddClipsToLayer(fxLayer, false);
+
+        var vrcEmote = actionLayer.VRCEmote();
+
+        foreach (var e in model.standingEmotes) {
+            if (e.isToggle) {
+                manager.GetMenu().NewMenuToggle(
+                    "Standard Emotes/" + (model.sittingEmotes.Count > 0 ? "Standing/" : "") + e.name,
+                    vrcEmote,
+                    e.number,
+                    icon: e.icon ? e.icon : null
+                );
+            } else {
+                manager.GetMenu().NewMenuButton(
+                    "Standard Emotes/" + (model.sittingEmotes.Count > 0 ? "Standing/" : "") + e.name,
+                    vrcEmote,
+                    e.number,
+                    icon: e.icon ? e.icon : null
+                );
+            }
+        }
+
+        foreach (var e in model.sittingEmotes) {
+            if (e.isToggle) {
+                manager.GetMenu().NewMenuToggle(
+                    "Standard Emotes/" + (model.standingEmotes.Count > 0 ? "Sitting/" : "") + e.name,
+                    vrcEmote,
+                    e.number,
+                    icon: e.icon ? e.icon : null
+                );
+            } else {
+                manager.GetMenu().NewMenuButton(
+                    "Standard Emotes/" + (model.standingEmotes.Count > 0 ? "Sitting/" : "") + e.name,
+                    vrcEmote,
+                    e.number,
+                    icon: e.icon ? e.icon : null
+                );
+            }
+        }
+    }
+
+    public void AddClipsToLayer(ControllerManager VRClayer, bool addWieghtsAndTracking = true) {
+
+        var layerIndex = VRClayer.GetLayers().TakeWhile(l => l.name != "Action").Count();
+        if (layerIndex < VRClayer.GetLayers().Count()) {
+            VRClayer.RemoveLayer(layerIndex);
+        }
+        var layer = VRClayer.NewLayer("VRCF EmoteManaged Action");
+
         var topEmote = model.standingEmotes.Count() / -2;
         var bottomEmote = model.sittingEmotes.Count() / 2;
 
-        var vrcEmote = actionLayer.VRCEmote();
+        var vrcEmote = VRClayer.VRCEmote();
 
         var standingAnimation = LoadState("standing", model.standingState);
         var sittingAnimation = LoadState("sitting", model.sittingState);
         var afkAnimation = LoadState("afk", model.afkState);
 
-        var sittingCondition = actionLayer.Seated().IsTrue();
-        var afkCondition = actionLayer.AFK().IsTrue();
+        var sittingCondition = VRClayer.Seated().IsTrue();
+        var afkCondition = VRClayer.AFK().IsTrue();
 
         var start = layer.NewState("WaitForActionOrAFK").WithAnimation(standingAnimation);
         var sit = layer.NewState("Sit").WithAnimation(sittingAnimation);
-        var prepareStanding = layer.NewState("Prepare Standing").WithAnimation(standingAnimation).TrackingController("emoteAnimation").PlayableLayerController(BlendableLayer.Action,1,.5f);
-        var prepareSitting = layer.NewState("Prepare Sitting").WithAnimation(sittingAnimation).TrackingController("emoteAnimation").PlayableLayerController(BlendableLayer.Action,1,.25f);
-        var afkInit = layer.NewState("Afk Init").WithAnimation(afkAnimation).TrackingController("allAnimation").PlayableLayerController(BlendableLayer.Action,1,1);
+        var prepareStanding = layer.NewState("Prepare Standing").WithAnimation(standingAnimation);
+        var prepareSitting = layer.NewState("Prepare Sitting").WithAnimation(sittingAnimation);
+        var afkInit = layer.NewState("Afk Init").WithAnimation(afkAnimation);
         var afk = layer.NewState("AFK").WithAnimation(afkAnimation);
-        var afkBlendOut = layer.NewState("BlendOut").WithAnimation(afkAnimation).TrackingController("allTracking").PlayableLayerController(BlendableLayer.Action,0,.5f);
+        var afkBlendOut = layer.NewState("BlendOut").WithAnimation(afkAnimation);
 
         start.TransitionsTo(sit).When(sittingCondition);
         sit.TransitionsTo(start).When(sittingCondition.Not());
@@ -137,11 +183,22 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         afk.TransitionsTo(afkBlendOut).When(afkCondition.Not());
         afkBlendOut.TransitionsToExit().When().WithTransitionExitTime(0.2f);
 
-        var standingExit = layer.NewState("BlendOut Stand").WithAnimation(standingAnimation).PlayableLayerController(BlendableLayer.Action,0,.25f);
-        var sittingExit = layer.NewState("BlendOut Sit").WithAnimation(sittingAnimation).PlayableLayerController(BlendableLayer.Action,0,.25f);
+        var standingExit = layer.NewState("BlendOut Stand").WithAnimation(standingAnimation);
+        var sittingExit = layer.NewState("BlendOut Sit").WithAnimation(sittingAnimation);
 
-        var standingRestore = layer.NewState("Restore Tracking (stand)").WithAnimation(standingAnimation).TrackingController("emoteTracking");
-        var sittingRestore = layer.NewState("Restore Tracking (sit)").WithAnimation(sittingAnimation).TrackingController("emoteTracking");
+        var standingRestore = layer.NewState("Restore Tracking (stand)").WithAnimation(standingAnimation);
+        var sittingRestore = layer.NewState("Restore Tracking (sit)").WithAnimation(sittingAnimation);
+
+        if (addWieghtsAndTracking) {
+            prepareStanding.TrackingController("emoteAnimation").PlayableLayerController(BlendableLayer.Action,1,.5f);
+            prepareSitting.TrackingController("emoteAnimation").PlayableLayerController(BlendableLayer.Action,1,.25f);
+            afkInit.TrackingController("allAnimation").PlayableLayerController(BlendableLayer.Action,1,1);
+            afkBlendOut.TrackingController("allTracking").PlayableLayerController(BlendableLayer.Action,0,.5f);
+            standingExit.PlayableLayerController(BlendableLayer.Action,0,.25f);
+            sittingExit.PlayableLayerController(BlendableLayer.Action,0,.25f);
+            standingRestore.TrackingController("emoteTracking");
+            sittingRestore.TrackingController("emoteTracking");
+        }
 
         standingExit.TransitionsTo(standingRestore).When().WithTransitionDurationSeconds(.25f).WithTransitionExitTime(1);
         sittingExit.TransitionsTo(sittingRestore).When().WithTransitionDurationSeconds(.25f).WithTransitionExitTime(1);
@@ -162,43 +219,12 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
 
         layer.MoveExit(start, 7, 0);
 
-
         foreach (var e in model.standingEmotes) {
             addEmoteToTree(start, prepareStanding, standingExit, layer, vrcEmote, e, topEmote++);
-            if (e.isToggle) {
-                manager.GetMenu().NewMenuToggle(
-                    "Standard Emotes/" + (model.sittingEmotes.Count > 0 ? "Standing/" : "") + e.name,
-                    vrcEmote,
-                    e.number,
-                    icon: e.icon ? e.icon : null
-                );
-            } else {
-                manager.GetMenu().NewMenuButton(
-                    "Standard Emotes/" + (model.sittingEmotes.Count > 0 ? "Standing/" : "") + e.name,
-                    vrcEmote,
-                    e.number,
-                    icon: e.icon ? e.icon : null
-                );
-            }
         }
 
         foreach (var e in model.sittingEmotes) {
             addEmoteToTree(sit, prepareSitting, sittingExit, layer, vrcEmote, e, bottomEmote--);
-            if (e.isToggle) {
-                manager.GetMenu().NewMenuToggle(
-                    "Standard Emotes/" + (model.standingEmotes.Count > 0 ? "Sitting/" : "") + e.name,
-                    vrcEmote,
-                    e.number,
-                    icon: e.icon ? e.icon : null
-                );
-            } else {
-                manager.GetMenu().NewMenuButton(
-                    "Standard Emotes/" + (model.standingEmotes.Count > 0 ? "Sitting/" : "") + e.name,
-                    vrcEmote,
-                    e.number,
-                    icon: e.icon ? e.icon : null
-                );
-            }
         }
     }
 
@@ -283,12 +309,11 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         var emoteState = layer.NewState(emote.name).WithAnimation(emoteClip);
         nexus.TransitionsTo(emoteState).When(condition).WithTransitionDurationSeconds(.25f);
 
-        AnimationClip resetClip = null;
         VFAState resetState = null;
         VFATransition exitTranistion = null;
 
         if (emote.hasReset){
-            resetClip = LoadState(emote.name + " Reset", emote.resetAnimation);
+            var resetClip = LoadState(emote.name + " Reset", emote.resetAnimation);
             resetState = layer.NewState(emote.name + " Reset").WithAnimation(resetClip);
             exitTranistion = resetState.TransitionsTo(exit).When().WithTransitionDurationSeconds(.4f);
             if (emote.hasExitTime) {
