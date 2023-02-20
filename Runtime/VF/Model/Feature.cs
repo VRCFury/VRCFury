@@ -253,7 +253,6 @@ namespace VF.Model.Feature {
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
         public bool isButton = false;
-        public bool isParamDriven = false;
     }
 
     [Serializable]
