@@ -21,14 +21,24 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFABool param;
     private AnimationClip restingClip;
 
+    public ISet<string> GetExclusives(string objects) {
+
+        return objects.Split(',')
+            .Select(tag => tag.Trim())
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .ToImmutableHashSet();
+    }
+
     public ISet<string> GetExclusiveTags() {
-        if (model.enableExclusiveTag) {
-            return model.exclusiveTag.Split(',')
-                .Select(tag => tag.Trim())
-                .Where(tag => !string.IsNullOrWhiteSpace(tag))
-                .ToImmutableHashSet();
-        }
-        return new HashSet<string>();
+        if(model.enableExclusiveTag)
+            return GetExclusives(model.exclusiveTag);
+        return new HashSet<string>(); 
+    }
+
+    public ISet<string> GetGlobalParams() {
+        if(model.enableDriveGlobalParam)
+            return GetExclusives(model.driveGlobalParam);
+        return new HashSet<string>(); 
     }
     public VFABool GetParam() {
         return param;
@@ -38,7 +48,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     public void Apply() {
         // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
         // Then don't even bother adding it. The user probably removed the object, so the toggle shouldn't be present.
-        if (model.state.IsEmpty() && model.state.actions.Count > 0) {
+        if (model.state.IsEmpty() && model.state.actions.Count > 0 && !model.enableDriveGlobalParam) {
             return;
         }
 
@@ -61,7 +71,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
-        var layerName = model.name;
+        var layerName = string.IsNullOrWhiteSpace(model.name) ? model.drivingParam : model.name;
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
@@ -72,11 +82,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = numParam.IsNotEqualTo(0);
         } else {
             if (model.isParamDriven) {
-                model.usePrefixOnParam = false;
+                var boolParam = fx.NewBool(model.drivingParam, usePrefix: false);
+                param = boolParam;
+            } else {
+                 var boolParam = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+                param = boolParam;
             }
-            var boolParam = fx.NewBool(model.name, synced: model.isParamDriven ? false : true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
-            param = boolParam;
-            onCase = boolParam.IsTrue();
+            onCase = param.IsTrue();
         }
         
         if (model.separateLocal) {
@@ -87,7 +99,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
-        if (model.addMenuItem && !model.isParamDriven) {
+        if (model.addMenuItem && !string.IsNullOrWhiteSpace(model.name)) {
             if (model.isButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
@@ -165,15 +177,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (model.enableDriveGlobalParam && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
-            var driveGlobal = fx.NewBool(
-                model.driveGlobalParam,
-                synced: false,
-                saved: false,
-                def: false,
-                usePrefix: false
-            );
-            off.Drives(driveGlobal, false);
-            inState.Drives(driveGlobal, true);
+            foreach(var p in GetGlobalParams()) {
+                if (string.IsNullOrWhiteSpace(p)) continue;
+                var driveGlobal = fx.NewBool(
+                    p,
+                    synced: false,
+                    saved: false,
+                    def: false,
+                    usePrefix: false
+                );
+                if (!model.keepGlobalParam)
+                    off.Drives(driveGlobal, false);
+                inState.Drives(driveGlobal, true);
+            }
         }
     }
 
@@ -284,17 +300,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         };
         content.Add(flex);
 
-        var name = VRCFuryEditorUtils.RefreshOnChange(() => {
-            var c = new VisualElement();
-            if (isParamDrivenProp.boolValue)
-            {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Driving Param"));
-            } else {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path"));
-            }
-            return c;
-        }, isParamDrivenProp);
-
+        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path");
         name.style.flexGrow = 1;
         flex.Add(name);
 
@@ -441,11 +447,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, enableIconProp));
         }
 
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (isParamDrivenProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("drivingParam"), "Driving Param"));
+            }
+            return c;
+        }, isParamDrivenProp));
+
         if (enableDriveGlobalParamProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableDriveGlobalParamProp.boolValue) {
                     c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("driveGlobalParam"), "Drive Global Param"));
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepGlobalParam"), "Keep Global Param"));
                     c.Add(VRCFuryEditorUtils.Warn(
                         "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
                         "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +

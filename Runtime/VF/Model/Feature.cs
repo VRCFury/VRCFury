@@ -243,6 +243,7 @@ namespace VF.Model.Feature {
         public Texture2D icon;
         public bool enableDriveGlobalParam;
         public string driveGlobalParam;
+        public bool keepGlobalParam = false;
         public bool separateLocal;
         public State localState;
         public bool hasTransition;
@@ -254,6 +255,7 @@ namespace VF.Model.Feature {
         public float defaultSliderValue = 1;
         public bool isButton = false;
         public bool isParamDriven = false;
+        public string drivingParam;
     }
 
     [Serializable]
