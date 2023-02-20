@@ -48,6 +48,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     public void Apply() {
         // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
         // Then don't even bother adding it. The user probably removed the object, so the toggle shouldn't be present.
+        // Toggle should still be added if it drives a global variable
         if (model.state.IsEmpty() && model.state.actions.Count > 0 && !model.enableDriveGlobalParam) {
             return;
         }
