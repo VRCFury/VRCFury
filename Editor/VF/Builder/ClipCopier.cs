@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     public class ClipCopier {
@@ -55,50 +56,58 @@ namespace VF.Builder {
             }
 
             var curvesBindings = AnimationUtility.GetCurveBindings(from);
-            foreach (var bindingFromAvatar in curvesBindings) {
-                var bindingFromProp = bindingFromAvatar;
-                bindingFromProp.path = RewritePath(bindingFromProp.path);
-                var curve = AnimationUtility.GetEditorCurve(from, bindingFromAvatar);
+            foreach (var originalBinding in curvesBindings) {
+                var rewrittenBinding = originalBinding;
+                rewrittenBinding.path = RewritePath(rewrittenBinding.path);
+                var curve = AnimationUtility.GetEditorCurve(from, originalBinding);
                 
-                var bindingToUse = bindingFromProp;
+                var bindingToUse = rewrittenBinding;
 
-                if (bindingFromAvatar.path == "" && bindingFromAvatar.type == typeof(Animator)) {
-                    bindingToUse = bindingFromAvatar;
-                    var propName = bindingFromAvatar.propertyName;
+                if (originalBinding.path == "" && originalBinding.type == typeof(Animator)) {
+                    bindingToUse = originalBinding;
+                    var propName = originalBinding.propertyName;
                     if (GetIsMuscle(propName)) {
                         // Use the muscle
                     } else if (rewriteParam != null) {
                         //Debug.LogWarning("Rewritten prop found: " + bindingToUse.propertyName);
                         bindingToUse.propertyName = rewriteParam(bindingToUse.propertyName);
                     }
-                } else if (bindingFromProp.path == ""
-                           && bindingFromProp.type == typeof(Transform)
-                           && bindingFromProp.propertyName.StartsWith("m_LocalScale.")) {
-                    var existsOnAvatar = AnimationUtility.GetFloatValue(fromRoot, bindingFromAvatar, out var avatarValue);
+                } else if (
+                    rewrittenBinding.path == "" 
+                    && rewrittenBinding.type == typeof(Transform)
+                    && rewrittenBinding.propertyName.StartsWith("m_LocalScale.")
+                    && fromRoot
+                    && GetFloatFromAvatar(fromRoot, originalBinding, out var avatarScale)
+                ) {
                     curve.keys = curve.keys.Select(k => {
-                        k.value *= avatarValue;
-                        k.inTangent *= avatarValue;
-                        k.outTangent *= avatarValue;
+                        k.value *= avatarScale;
+                        k.inTangent *= avatarScale;
+                        k.outTangent *= avatarScale;
                         return k;
                     }).ToArray();
-                } else {
-                    var existsOnProp = AnimationUtility.GetFloatValue(fromRoot, bindingFromProp, out _);
-                    var existsOnAvatar = AnimationUtility.GetFloatValue(fromRoot, bindingFromAvatar, out var avatarValue);
+                } else if (fromRoot) {
+                    var existsOnProp = GetFloatFromAvatar(fromRoot, rewrittenBinding, out _);
+                    var existsOnAvatar = GetFloatFromAvatar(fromRoot, originalBinding, out _);
                     if (existsOnAvatar && !existsOnProp)
-                        bindingToUse = bindingFromAvatar;
+                        bindingToUse = originalBinding;
                 }
 
                 AnimationUtility.SetEditorCurve(to, bindingToUse, curve);
             }
             var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(from);
-            foreach (var bindingFromAvatar in objBindings) {
-                var bindingFromProp = bindingFromAvatar;
-                bindingFromProp.path = RewritePath(bindingFromProp.path);
-                var objectReferenceCurve = AnimationUtility.GetObjectReferenceCurve(from, bindingFromAvatar);
-                var existsOnProp = AnimationUtility.GetObjectReferenceValue(fromRoot, bindingFromProp, out _);
-                var existsOnAvatar = AnimationUtility.GetObjectReferenceValue(fromRoot, bindingFromAvatar, out _);
-                var useAvatarBinding = existsOnAvatar && !existsOnProp;
-                AnimationUtility.SetObjectReferenceCurve(to, useAvatarBinding ? bindingFromAvatar : bindingFromProp, objectReferenceCurve);
+            foreach (var originalBinding in objBindings) {
+                var rewrittenBinding = originalBinding;
+                rewrittenBinding.path = RewritePath(rewrittenBinding.path);
+                var curve = AnimationUtility.GetObjectReferenceCurve(from, originalBinding);
+                var bindingToUse = rewrittenBinding;
+                if (fromRoot) {
+                    var existsOnProp = GetObjectFromAvatar(fromRoot, rewrittenBinding, out _);
+                    var existsOnAvatar = GetObjectFromAvatar(fromRoot, originalBinding, out _);
+                    if (existsOnAvatar && !existsOnProp) {
+                        bindingToUse = originalBinding;
+                    }
+                }
+                AnimationUtility.SetObjectReferenceCurve(to, bindingToUse, curve);
             }
             var prev = new SerializedObject(from);
             var next = new SerializedObject(to);
@@ -111,6 +120,13 @@ namespace VF.Builder {
                 }
             }
             next.ApplyModifiedProperties();
+        }
+
+        private static bool GetFloatFromAvatar(GameObject avatar, EditorCurveBinding binding, out float output) {
+            return AnimationUtility.GetFloatValue(avatar, binding, out output);
+        }
+        private static bool GetObjectFromAvatar(GameObject avatar, EditorCurveBinding binding, out Object output) {
+            return AnimationUtility.GetObjectReferenceValue(avatar, binding, out output);
         }
         
         private static string Join(params string[] paths) {
