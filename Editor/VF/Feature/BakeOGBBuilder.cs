@@ -18,6 +18,16 @@ using Object = UnityEngine.Object;
 
 namespace VF.Feature {
     public class BakeOGBBuilder : FeatureBuilder {
+        private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
+        private static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
+        private static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
+        private static readonly int TpsPenetratorRight = Shader.PropertyToID("_TPS_PenetratorRight");
+        private static readonly int TpsPenetratorUp = Shader.PropertyToID("_TPS_PenetratorUp");
+        private static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
+        private static readonly int TpsIsSkinnedMeshRenderer = Shader.PropertyToID("_TPS_IsSkinnedMeshRenderer");
+        private static readonly string TpsIsSkinnedMeshKeyword = "TPS_IsSkinnedMesh";
+        private static readonly int TpsBakedMesh = Shader.PropertyToID("_TPS_BakedMesh");
+
         [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
         public void Apply() {
             var usedNames = new List<string>();
@@ -43,10 +53,7 @@ namespace VF.Feature {
                     }
                     var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
                     
-                    Vector4 threeToFour(Vector3 a) =>new Vector4(a.x, a.y, a.z);
-                    
-                    // TODO: Allow user to set this on component using a tip bone or just setting rotation
-                    forward = Vector3.forward;
+                    Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);
 
                     foreach (var renderer in c.transform.GetComponentsInChildren<Renderer>()) {
                         var skin = renderer as SkinnedMeshRenderer;
@@ -55,8 +62,8 @@ namespace VF.Feature {
                         var foundOne = false;
                         for (var matI = 0; matI < mats.Length; matI++) {
                             var mat = mats[matI];
-                            if (!mat.HasProperty("_TPSPenetratorEnabled")) continue;
-                            if (mat.GetFloat("_TPSPenetratorEnabled") <= 0) continue;
+                            if (!mat.HasProperty(TpsPenetratorEnabled)) continue;
+                            if (mat.GetFloat(TpsPenetratorEnabled) <= 0) continue;
 
                             mat = Object.Instantiate(mat);
                             VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);
@@ -67,15 +74,15 @@ namespace VF.Feature {
                             });
                             var scale = renderer.transform.lossyScale;
 
-                            mat.SetFloat("_TPS_PenetratorLength", length);
-                            mat.SetVector("_TPS_PenetratorScale", threeToFour(scale));
-                            mat.SetVector("_TPS_PenetratorRight", threeToFour(shaderRotation * Vector3.right));
-                            mat.SetVector("_TPS_PenetratorUp", threeToFour(shaderRotation * Vector3.up));
-                            mat.SetVector("_TPS_PenetratorForward", threeToFour(shaderRotation * Vector3.forward));
+                            mat.SetFloat(TpsPenetratorLength, length);
+                            mat.SetVector(TpsPenetratorScale, ThreeToFour(scale));
+                            mat.SetVector(TpsPenetratorRight, ThreeToFour(shaderRotation * Vector3.right));
+                            mat.SetVector(TpsPenetratorUp, ThreeToFour(shaderRotation * Vector3.up));
+                            mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
 
                             if (skin) {
-                                mat.SetFloat("_TPS_IsSkinnedMeshRenderer", 1);
-                                mat.EnableKeyword("TPS_IsSkinnedMesh");
+                                mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
+                                mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
                             
                                 var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
                                 var bakeMethod = bakeUtil.GetMethod("BakePositionsToTexture", new[] { typeof(Renderer), typeof(Texture2D) });
@@ -86,10 +93,10 @@ namespace VF.Feature {
                                 if (string.IsNullOrWhiteSpace(AssetDatabase.GetAssetPath(tex))) {
                                     throw new VRCFBuilderException("Failed to bake TPS texture");
                                 }
-                                mat.SetTexture("_TPS_BakedMesh", tex);
+                                mat.SetTexture(TpsBakedMesh, tex);
                             } else {
-                                mat.SetFloat("_TPS_IsSkinnedMeshRenderer", 0);
-                                mat.DisableKeyword("TPS_IsSkinnedMesh");
+                                mat.SetFloat(TpsIsSkinnedMeshRenderer, 0);
+                                mat.DisableKeyword(TpsIsSkinnedMeshKeyword);
                             }
 
                             EditorUtility.SetDirty(mat);
