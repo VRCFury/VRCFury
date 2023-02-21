@@ -22,6 +22,7 @@ namespace VF.Model {
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
         public float length;
         public bool addMenuItem = false;
+        public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;
 

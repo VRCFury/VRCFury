@@ -67,11 +67,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var off = layer.NewState("Off");
 
         VFACondition onCase;
+        var paramName = model.paramOverride ?? model.name;
         if (model.useInt) {
-            var numParam = fx.NewInt(model.name, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
+            var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
         } else {
-            var boolParam = fx.NewBool(model.name, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }

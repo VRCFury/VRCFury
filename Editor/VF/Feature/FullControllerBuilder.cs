@@ -141,14 +141,16 @@ namespace VF.Feature {
                         }
                     }
                 });
+                var toggleParam = rewriteParam(model.toggleParam);
                 addOtherFeature(new Toggle {
-                    name = rewriteParam(model.toggleParam),
+                    name = toggleParam,
                     state = new State {
                         actions = { new ObjectToggleAction { obj = baseObject } }
                     },
                     securityEnabled = model.useSecurityForToggle,
                     addMenuItem = false,
                     usePrefixOnParam = false,
+                    paramOverride = toggleParam,
                     useInt = toggleIsInt
                 });
             }

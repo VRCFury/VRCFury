@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -35,8 +36,11 @@ namespace VF.Feature {
             }
 
             foreach (var skin in skins) {
-                var debug = skin.gameObject.name == "Body";
-                var root = skin.rootBone == null ? skin.transform : skin.rootBone;
+                if (model.singleRenderer && model.singleRenderer != skin) {
+                    continue;
+                }
+                //var debug = skin.gameObject.name == "Body";
+                var root = OGBUtils.GetMeshRoot(skin);
 
                 bool ModifyBounds(float sizeX = 0, float sizeY = 0, float sizeZ = 0, float centerX = 0, float centerY = 0, float centerZ = 0) {
                     var b = skin.localBounds;
@@ -55,9 +59,9 @@ namespace VF.Feature {
                     var updatedBounds = GetUpdatedBounds(skin, b);
                     var fullNew = fullBak;
                     fullNew.Encapsulate(updatedBounds);
-                    if (debug) Debug.Log("Expanding to " + b + " updated world bounds: " + updatedBounds);
+                    //if (debug) Debug.Log("Expanding to " + b + " updated world bounds: " + updatedBounds);
                     if (fullNew != fullBak) {
-                        if (debug) Debug.LogError("FAILED");
+                        //if (debug) Debug.LogError("FAILED");
                         return false;
                     }
                     skin.localBounds = b;
@@ -81,7 +85,7 @@ namespace VF.Feature {
         }
 
         Bounds GetUpdatedBounds(SkinnedMeshRenderer skin, Bounds newBounds) {
-            var root = skin.rootBone == null ? skin.transform : skin.rootBone;
+            var root = OGBUtils.GetMeshRoot(skin);
 
             List<Vector3> GetLocalCorners(Bounds obj) {
                 var result = new List<Vector3>();
