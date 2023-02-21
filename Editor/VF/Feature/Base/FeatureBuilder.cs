@@ -49,6 +49,10 @@ namespace VF.Feature.Base {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
 
+        public ControllerManager GetAction() {
+            return manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
+        }
+
         protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {
             if (resetPhysbones == null || resetPhysbones.Count == 0) return null;
 
@@ -156,6 +160,105 @@ namespace VF.Feature.Base {
                 }
             }
             return clip;
+        }
+
+        protected AnimationClip StripToFX(AnimationClip original) {
+            
+            if (original == null || !IsNonhuman(original)) return manager.GetClipStorage().GetNoopClip();
+            if (IsNonhumanOnly(original)) return original;
+
+            var curves = AnimationUtility.GetCurveBindings(original);
+
+            var clip = manager.GetClipStorage().NewClip(original.name + " FX");
+
+            foreach(var c in curves) {
+                if (!GetIsHuman(c.propertyName)) {
+                    AnimationUtility.SetEditorCurve(clip, c, AnimationUtility.GetEditorCurve(original, c));
+                }
+            }
+
+            var prev = new SerializedObject(original);
+            var next = new SerializedObject(clip);
+            SerializedProperty prevIterator = prev.GetIterator();
+            while (prevIterator.NextVisible(true)) {
+                var nextEl = next.FindProperty(prevIterator.propertyPath);
+                if (nextEl != null && nextEl.propertyType == prevIterator.propertyType) {
+                    next.CopyFromSerializedProperty(prevIterator);
+                }
+            }
+            next.ApplyModifiedProperties();
+
+            return clip;
+        }
+
+        protected AnimationClip StripToAction(AnimationClip original) {
+
+            if (original == null || !IsHuman(original)) return manager.GetClipStorage().GetNoopClip();
+            if (IsHumanOnly(original)) return original;
+
+            var curves = AnimationUtility.GetCurveBindings(original);
+
+            var clip = manager.GetClipStorage().NewClip(original.name + " Action");
+
+            foreach(var c in curves) {
+                if (GetIsHuman(c.propertyName)) {
+                    AnimationUtility.SetEditorCurve(clip, c, AnimationUtility.GetEditorCurve(original, c));
+                }
+            }
+
+            var prev = new SerializedObject(original);
+            var next = new SerializedObject(clip);
+            SerializedProperty prevIterator = prev.GetIterator();
+            while (prevIterator.NextVisible(true)) {
+                var nextEl = next.FindProperty(prevIterator.propertyPath);
+                if (nextEl != null && nextEl.propertyType == prevIterator.propertyType) {
+                    next.CopyFromSerializedProperty(prevIterator);
+                }
+            }
+            next.ApplyModifiedProperties();
+
+            return clip;
+        }
+        private bool IsHuman(AnimationClip clip) {
+            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
+                if (GetIsHuman(c.propertyName)) return true; 
+            }
+            return false;
+        }
+        private bool IsHumanOnly(AnimationClip clip) {
+            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
+                if (!GetIsHuman(c.propertyName)) return false; 
+            }
+            return true;
+        }
+        private bool IsNonhuman(AnimationClip clip) {
+            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
+                if (!GetIsHuman(c.propertyName)) return true; 
+            }
+            return false;
+        }
+        private bool IsNonhumanOnly(AnimationClip clip) {
+            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
+                if (GetIsHuman(c.propertyName)) return false; 
+            }
+            return true;
+        }
+
+        private static HashSet<string> _humanMuscleList;
+        private static HashSet<string> GetHumanList() {
+            if (_humanMuscleList != null) return _humanMuscleList;
+            _humanMuscleList = new HashSet<string>();
+            _humanMuscleList.UnionWith(HumanTrait.MuscleName);
+            return _humanMuscleList;
+        }
+        private static bool GetIsHuman(string name) {
+            return GetHumanList().Contains(name)
+                   || name.EndsWith(" Stretched")
+                   || name.EndsWith(".Spread")
+                   || name.EndsWith(".x")
+                   || name.EndsWith(".y")
+                   || name.EndsWith(".z")
+                   || name.EndsWith(".w");
         }
 
         protected static SkinnedMeshRenderer[] GetAllSkins(GameObject parent) {

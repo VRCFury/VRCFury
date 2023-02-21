@@ -278,6 +278,8 @@ namespace VF.Model.Feature {
             public State resetAnimation;
             public bool hasExitTime = false;
             public float exitTime = 1;
+            [NonSerialized] public AnimationClip emoteClip;
+            [NonSerialized] public AnimationClip resetClip;
 
             public Emote() {}
 

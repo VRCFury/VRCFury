@@ -25,10 +25,6 @@ namespace VF.Builder {
  */
 public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
 
-    public ControllerManager GetAction() {
-        return manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
-    }
-
     [FeatureBuilderAction]
     public void Apply() {
 
@@ -70,6 +66,9 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                 }
                 reservedNumbers.Add(e.number);
             }
+            e.emoteClip = LoadState(e.name, e.emoteAnimation);
+            if (e.hasReset) 
+                e.resetClip = LoadState(e.name + " Reset", e.resetAnimation);
         }
 
         foreach (var e in model.sittingEmotes) {
@@ -78,7 +77,11 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                     throw new VRCFBuilderException("No 2 emotes can share a number");
                 }
                 reservedNumbers.Add(e.number);
-            }
+               
+            } 
+            e.emoteClip = LoadState(e.name, e.emoteAnimation);
+            if (e.hasReset) 
+                e.resetClip = LoadState(e.name + " Reset", e.resetAnimation);
         }
 
         var nextNumber = 1;
@@ -103,8 +106,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
             }
         }
 
-        AddClipsToLayer(actionLayer);
-        AddClipsToLayer(fxLayer, false);
+        AddClipsToLayer(actionLayer, StripToAction);
+        AddClipsToLayer(fxLayer, StripToFX, false);
 
         var vrcEmote = actionLayer.VRCEmote();
 
@@ -145,7 +148,7 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         }
     }
 
-    public void AddClipsToLayer(ControllerManager VRClayer, bool addWieghtsAndTracking = true) {
+    public void AddClipsToLayer(ControllerManager VRClayer, Func<AnimationClip, AnimationClip> stripFunc, bool addWieghtsAndTracking = true) {
 
         var layerIndex = VRClayer.GetLayers().TakeWhile(l => l.name != "Action").Count();
         if (layerIndex < VRClayer.GetLayers().Count()) {
@@ -220,11 +223,11 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         layer.MoveExit(start, 7, 0);
 
         foreach (var e in model.standingEmotes) {
-            addEmoteToTree(start, prepareStanding, standingExit, layer, vrcEmote, e, topEmote++);
+            addEmoteToTree(start, prepareStanding, standingExit, layer, vrcEmote, e, stripFunc, topEmote++);
         }
 
         foreach (var e in model.sittingEmotes) {
-            addEmoteToTree(sit, prepareSitting, sittingExit, layer, vrcEmote, e, bottomEmote--);
+            addEmoteToTree(sit, prepareSitting, sittingExit, layer, vrcEmote, e, stripFunc, bottomEmote--);
         }
     }
 
@@ -299,13 +302,19 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         }
     }
 
-    private void addEmoteToTree(VFAState start, VFAState nexus, VFAState exit, VFALayer layer, VFANumber vrcEmote, Emote emote, int position = -1000) {
+    private void addEmoteToTree(VFAState start, VFAState nexus, VFAState exit, VFALayer layer, VFANumber vrcEmote, Emote emote, Func<AnimationClip, AnimationClip> stripFunc, int position = -1000) {
+
+        var emoteClip = emote.emoteClip;
+        var resetClip = emote.resetClip;
+        emoteClip = stripFunc(emoteClip);
+        resetClip = stripFunc(resetClip);
+
+        if (emoteClip == manager.GetClipStorage().GetNoopClip() && resetClip == manager.GetClipStorage().GetNoopClip()) return;
 
         var condition = vrcEmote.IsEqualTo(emote.number);
         
         start.TransitionsTo(nexus).When(condition);
 
-        var emoteClip = LoadState(emote.name, emote.emoteAnimation);
         var emoteState = layer.NewState(emote.name).WithAnimation(emoteClip);
         nexus.TransitionsTo(emoteState).When(condition).WithTransitionDurationSeconds(.25f);
 
@@ -313,7 +322,6 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         VFATransition exitTranistion = null;
 
         if (emote.hasReset){
-            var resetClip = LoadState(emote.name + " Reset", emote.resetAnimation);
             resetState = layer.NewState(emote.name + " Reset").WithAnimation(resetClip);
             exitTranistion = resetState.TransitionsTo(exit).When().WithTransitionDurationSeconds(.4f);
             if (emote.hasExitTime) {
