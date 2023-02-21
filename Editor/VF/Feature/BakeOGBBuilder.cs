@@ -189,7 +189,7 @@ namespace VF.Feature {
             VFABool autoOn = null;
             AnimationClip autoOnClip = null;
             if (enableAuto) {
-                autoOn = GetFx().NewBool("autoMode");
+                autoOn = GetFx().NewBool("autoMode", synced: true);
                 manager.GetMenu().NewMenuToggle("Holes/Auto", autoOn);
                 autoOnClip = manager.GetClipStorage().NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = GetFx().NewLayer("Auto - Enable Receivers");
@@ -206,7 +206,7 @@ namespace VF.Feature {
                 .Length >= 1;
             VFABool stealthOn = null;
             if (enableStealth) {
-                stealthOn = GetFx().NewBool("stealth");
+                stealthOn = GetFx().NewBool("stealth", synced: true);
                 manager.GetMenu().NewMenuToggle("Holes/Stealth", stealthOn);
             }
 
