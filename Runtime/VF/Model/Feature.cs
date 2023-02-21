@@ -238,7 +238,6 @@ namespace VF.Model.Feature {
         public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
-        [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
         public bool enableIcon;
         public Texture2D icon;
@@ -256,7 +255,7 @@ namespace VF.Model.Feature {
         public float defaultSliderValue = 1;
         public bool isButton = false;
         public bool isParamDriven = false;
-        public string drivingParam;
+        public string paramOverride = null;
     }
 
     [Serializable]

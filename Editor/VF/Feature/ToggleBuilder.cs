@@ -72,13 +72,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
-        var layerName = string.IsNullOrWhiteSpace(model.name) ? model.drivingParam : model.name;
+        var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
 
         VFACondition onCase;
-        var paramName = model.paramOverride ?? model.name;
+        var paramName = string.IsNullOrWhiteSpace(model.paramOverride) ? model.name : model.paramOverride;
         if (model.useInt) {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
@@ -451,7 +451,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var c = new VisualElement();
             if (isParamDrivenProp.boolValue)
             {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("drivingParam"), "Driving Param"));
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("paramOverride"), "Driving Param"));
             }
             return c;
         }, isParamDrivenProp));
