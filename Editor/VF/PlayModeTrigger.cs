@@ -113,29 +113,38 @@ namespace VF {
         }
 
         private static void RestartAv3Emulator() {
-            var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
-            if (av3EmulatorType == null) return;
-            var restartField = av3EmulatorType.GetField("RestartEmulator");
-            if (restartField == null) return;
-            var emulators = Object.FindObjectsOfType(av3EmulatorType);
-            foreach (var emulator in emulators) {
-                restartField.SetValue(emulator, true);
-            }
-            var av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
-            var runtimes = Object.FindObjectsOfType(av3RuntimeType);
-            foreach (var runtime in runtimes) {
-                Object.Destroy(runtime);
+            try {
+                var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
+                if (av3EmulatorType == null) return;
+                var restartField = av3EmulatorType.GetField("RestartEmulator");
+                if (restartField == null) return;
+                var emulators = Object.FindObjectsOfType(av3EmulatorType);
+                foreach (var emulator in emulators) {
+                    restartField.SetValue(emulator, true);
+                }
+
+                var av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
+                var runtimes = Object.FindObjectsOfType(av3RuntimeType);
+                foreach (var runtime in runtimes) {
+                    Object.Destroy(runtime);
+                }
+            } catch (Exception e) {
+                Debug.LogException(e);
             }
         }
 
         private static void RestartGestureManager() {
-            var gmType = ReflectionUtils.GetTypeFromAnyAssembly("BlackStartX.GestureManager.GestureManager");
-            if (gmType == null) return;
-            foreach (var gm in Object.FindObjectsOfType(gmType).OfType<Component>()) {
-                if (gm.gameObject.activeSelf) {
-                    gm.gameObject.SetActive(false);
-                    gm.gameObject.SetActive(true);
+            try {
+                var gmType = ReflectionUtils.GetTypeFromAnyAssembly("BlackStartX.GestureManager.GestureManager");
+                if (gmType == null) return;
+                foreach (var gm in Object.FindObjectsOfType(gmType).OfType<Component>()) {
+                    if (gm.gameObject.activeSelf) {
+                        gm.gameObject.SetActive(false);
+                        gm.gameObject.SetActive(true);
+                    }
                 }
+            } catch (Exception e) {
+                Debug.LogException(e);
             }
         }
     }
