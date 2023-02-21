@@ -108,11 +108,11 @@ namespace VF {
 
             if (oneChanged) {
                 RestartAv3Emulator();
+                RestartGestureManager();
             }
         }
 
         private static void RestartAv3Emulator() {
-            // Restart the av3emulator so it picks up changes
             var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
             if (av3EmulatorType == null) return;
             var restartField = av3EmulatorType.GetField("RestartEmulator");
@@ -126,9 +126,11 @@ namespace VF {
             foreach (var runtime in runtimes) {
                 Object.Destroy(runtime);
             }
-            
-            // Restart gesture manager
+        }
+
+        private static void RestartGestureManager() {
             var gmType = ReflectionUtils.GetTypeFromAnyAssembly("BlackStartX.GestureManager.GestureManager");
+            if (gmType == null) return;
             foreach (var gm in Object.FindObjectsOfType(gmType).OfType<Component>()) {
                 if (gm.gameObject.activeSelf) {
                     gm.gameObject.SetActive(false);
