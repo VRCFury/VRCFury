@@ -558,6 +558,10 @@ namespace VF.Model.Feature {
     [Serializable]
     public class GestureDriver : NewFeatureModel {
         public List<Gesture> gestures = new List<Gesture>();
+        public bool disableable = false;
+        public bool defaultEnable = false;
+        public bool saveEnable = false;
+        public string enablePath;
         
         [Serializable]
         public class Gesture {
@@ -581,7 +585,8 @@ namespace VF.Model.Feature {
             EITHER,
             LEFT,
             RIGHT,
-            COMBO
+            COMBO,
+            NEITHER
         }
         
         public enum HandSign {

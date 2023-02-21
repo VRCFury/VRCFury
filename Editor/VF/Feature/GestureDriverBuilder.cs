@@ -17,11 +17,24 @@ namespace VF.Feature {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
+        private readonly Dictionary<string, List<VFAState>> exclusiveLockStates = new Dictionary<string, List<VFAState>>();
+        private readonly Dictionary<string, List<VFABool>> exclusiveLockBools = new Dictionary<string, List<VFABool>>();
+        private readonly Dictionary<string, List<float>> excluseLockTransitionTimes = new Dictionary<string, List<float>>();
+
+
         
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var gesture in model.gestures) {
                 MakeGesture(gesture);
+            }
+            ApplyLockExclusives();
+
+            if (model.disableable && !string.IsNullOrWhiteSpace(model.enablePath)) {
+                var fx = GetFx();
+                var enabledParam = fx.NewBool("VRCFury Gestures Enabled", synced: true, usePrefix: false, saved: model.saveEnable, def: model.defaultEnable);
+
+                manager.GetMenu().NewMenuToggle(model.enablePath, enabledParam);
             }
         }
 
@@ -37,7 +50,10 @@ namespace VF.Feature {
 
             var fx = GetFx();
             var uniqueNum = i++;
-            var name = "Gesture " + uniqueNum + " - " + hand + " " + gesture.sign;
+            var name = "Gesture " + uniqueNum + " - " + hand;
+            if (hand != GestureDriver.Hand.NEITHER) {
+                name += " " + gesture.sign;
+            }
             if (hand == GestureDriver.Hand.COMBO) {
                 name += " " + gesture.comboSign;
             }
@@ -46,6 +62,7 @@ namespace VF.Feature {
             var layer = fx.NewLayer(name);
             var off = layer.NewState("Off");
             var on = layer.NewState("On");
+            var onLock = layer.NewState("On Lock");
 
             VFABool lockMenuParam = null;
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
@@ -74,27 +91,47 @@ namespace VF.Feature {
                 onCondition = GestureLeft.IsEqualTo((int)gesture.sign).And(GestureRight.IsEqualTo((int)gesture.comboSign));
                 if (gesture.comboSign == GestureDriver.HandSign.FIST) weightHand = 2;
                 else if(gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
+            } else if (hand == GestureDriver.Hand.NEITHER) {
+                onCondition = fx.Never();
             } else {
                 throw new Exception("Unknown hand type");
-            }
-
-            if (lockMenuParam != null) {
-                onCondition = onCondition.Or(lockMenuParam.IsTrue());
             }
 
             if (gesture.enableExclusiveTag) {
                 foreach (var tag in gesture.exclusiveTag.Split(',')) {
                     var trimmedTag = tag.Trim();
                     if (!string.IsNullOrWhiteSpace(trimmedTag)) {
-                        if (excludeConditions.TryGetValue(trimmedTag, out var excludeCondition)) {
-                            excludeConditions[trimmedTag] = excludeCondition.Or(onCondition);
-                            onCondition = onCondition.And(excludeCondition.Not());
-                        } else {
-                            excludeConditions[trimmedTag] = onCondition;
+                        if(hand != GestureDriver.Hand.NEITHER) {
+                            if (excludeConditions.TryGetValue(trimmedTag, out var excludeCondition)) {
+                                excludeConditions[trimmedTag] = excludeCondition.Or(onCondition);
+                                onCondition = onCondition.And(excludeCondition.Not());
+                            } else {
+                                excludeConditions[trimmedTag] = onCondition;
+                            }
                         }
+
+                        if (lockMenuParam != null) {
+                            if (!exclusiveLockStates.ContainsKey(trimmedTag)) {
+                                exclusiveLockStates[trimmedTag] = new List<VFAState>();
+                                exclusiveLockStates[trimmedTag].Add(onLock);
+                                exclusiveLockBools[trimmedTag] = new List<VFABool>();
+                                exclusiveLockBools[trimmedTag].Add(lockMenuParam);
+                                excluseLockTransitionTimes[trimmedTag] = new List<float>();
+                                excluseLockTransitionTimes[trimmedTag].Add(gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f);
+                            } else {
+                                exclusiveLockStates[trimmedTag].Add(onLock);
+                                exclusiveLockBools[trimmedTag].Add(lockMenuParam);
+                                excluseLockTransitionTimes[trimmedTag].Add(gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f);
+                            }
+                        }
+                        var lockBool = fx.NewBool("exclusive_gesture_lock_" + trimmedTag);
+                        onLock.Drives(lockBool, true);
+                        off.Drives(lockBool, false);
+                        onCondition = onCondition.And(lockBool.IsFalse());
                     }
                 }
             }
+            
 
             if (gesture.disableBlinking) {
                 var disableBlinkParam = fx.NewBool(uid + "_disableBlink");
@@ -114,13 +151,29 @@ namespace VF.Feature {
                 tree.AddChild(manager.GetClipStorage().GetNoopClip(), 0);
                 tree.AddChild(clip, 1);
                 on.WithAnimation(tree);
+                onLock.WithAnimation(tree);
             } else {
                 on.WithAnimation(clip);
+                onLock.WithAnimation(clip);
             }
 
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
-            off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
-            on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+
+            var enabledParam = fx.True();
+
+            if (model.disableable && !string.IsNullOrWhiteSpace(model.enablePath)) {
+                enabledParam = fx.NewBool("VRCFury Gestures Enabled", synced: true, usePrefix: false, saved: model.saveEnable, def: model.defaultEnable);
+            }
+
+            off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition.And(enabledParam.IsTrue()));
+            on.TransitionsToExit().WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+
+            if (lockMenuParam != null) {
+                off.TransitionsTo(onLock).WithTransitionDurationSeconds(transitionTime).When(lockMenuParam.IsTrue());
+                on.TransitionsTo(onLock).When(lockMenuParam.IsTrue());
+                onLock.TransitionsToExit().WithTransitionDurationSeconds(transitionTime).When(lockMenuParam.IsFalse());
+            } 
+
         }
 
         private VFANumber leftWeightParam;
@@ -207,13 +260,54 @@ namespace VF.Feature {
             return output;
         }
 
+        private void ApplyLockExclusives() {
+            foreach (var key in exclusiveLockStates.Keys){
+                for (var i = 0; i < exclusiveLockStates[key].Count; i++) {
+                    for (var k = 0; k < exclusiveLockBools[key].Count; k++) {
+                        if (i != k) {
+                            exclusiveLockStates[key][i].Drives(exclusiveLockBools[key][k], false);
+                            exclusiveLockStates[key][i].TransitionsToExit().WithTransitionDurationSeconds(excluseLockTransitionTimes[key][i]).When(exclusiveLockBools[key][k].IsTrue());
+                        }
+                    }
+                }
+                
+            }
+        }
+
         public override string GetEditorTitle() {
             return "Gestures";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"),
-                (i,el) => RenderGestureEditor(el));
+            var content = new VisualElement();
+
+            var disableableProp = prop.FindPropertyRelative("disableable");
+
+            var button = VRCFuryEditorUtils.Button("Options", () => {
+            var advMenu = new GenericMenu();
+                advMenu.AddItem(new GUIContent("Disableable"), disableableProp.boolValue, () => {
+                    disableableProp.boolValue = !disableableProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+                advMenu.ShowAsContext();
+            });
+            content.Add(button);
+
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (disableableProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enablePath"), "Menu Path for Disable Toggle"));
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultEnable"), "Enable Gestures by Default"));
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("saveEnable"), "Save Gesture Disable Status"));
+                }
+                return c;
+            }, disableableProp));
+
+
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"),
+                (i,el) => RenderGestureEditor(el)));
+
+            return content;
         }
 
         private VisualElement RenderGestureEditor(SerializedProperty gesture) {
@@ -241,7 +335,7 @@ namespace VF.Feature {
                     w.Add(new Label("R") { style = { flexBasis = 10 }});
                     rightBox.style.flexGrow = 1;
                     w.Add(rightBox);
-                } else {
+                } else if ((GestureDriver.Hand)handProp.enumValueIndex != GestureDriver.Hand.NEITHER) {
                     leftBox.style.flexGrow = 1;
                     w.Add(leftBox);
                 }
