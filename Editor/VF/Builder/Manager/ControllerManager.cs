@@ -162,8 +162,14 @@ namespace VF.Builder {
             return "VF" + modelNum + "_" + name;
         }
 
+        public VFABool True() {
+            return NewBool("VF_True", def: true, usePrefix: false);
+        }
         public VFACondition Always() {
-            return NewBool("VF_True", def: true, usePrefix: false).IsTrue();
+            return True().IsTrue();
+        }
+        public VFACondition Never() {
+            return True().IsFalse();
         }
         public VFANumber GestureLeft() {
             return NewInt("GestureLeft", usePrefix: false);

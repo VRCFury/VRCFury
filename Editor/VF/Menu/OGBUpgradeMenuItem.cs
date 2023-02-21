@@ -184,38 +184,44 @@ namespace VF.Menu {
 
                 void UnbakePen(Transform baked) {
                     if (!baked) return;
+                    var info = baked.Find("Info");
+                    if (!info) info = baked;
                     var p = AddPen(baked.parent.gameObject);
                     if (p) {
-                        var size = baked.Find("size");
+                        var size = info.Find("size");
                         if (size) {
                             p.length = size.localScale.x;
                             p.radius = size.localScale.y;
                         }
-                        p.name = GetNameFromBakeMarker(baked.gameObject);
+                        p.name = GetNameFromBakeInfo(info.gameObject);
                     }
                     Delete(baked.gameObject);
                 }
                 void UnbakeOrf(Transform baked) {
                     if (!baked) return;
+                    var info = baked.Find("Info");
+                    if (!info) info = baked;
                     var o = AddOrifice(baked.parent.gameObject);
                     if (o) {
-                        o.name = GetNameFromBakeMarker(baked.gameObject);
+                        o.name = GetNameFromBakeInfo(info.gameObject);
                         OGBOrificeEditor.ClaimLights(o);
                     }
                     Delete(baked.gameObject);
                 }
 
                 UnbakePen(t.Find("OGB_Baked_Pen"));
+                UnbakePen(t.Find("BakedOGBPenetrator"));
                 UnbakeOrf(t.Find("OGB_Baked_Orf"));
+                UnbakeOrf(t.Find("BakedOGBOrifice"));
             }
             
             // Auto-add DPS and TPS penetrators
             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (OGBPenetratorSizeDetector.GetAutoSize(skin.gameObject, true) != null)
+                if (OGBPenetratorSizeDetector.GetAutoWorldSize(skin.gameObject, true) != null)
                     AddPen(skin.gameObject);
             }
             foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (OGBPenetratorSizeDetector.GetAutoSize(mesh.gameObject, true) != null)
+                if (OGBPenetratorSizeDetector.GetAutoWorldSize(mesh.gameObject, true) != null)
                     AddPen(mesh.gameObject);
             }
             
@@ -321,7 +327,7 @@ namespace VF.Menu {
             return string.Join("\n\n", parts);
         }
 
-        private static string GetNameFromBakeMarker(GameObject marker) {
+        private static string GetNameFromBakeInfo(GameObject marker) {
             foreach (Transform child in marker.transform) {
                 if (child.name.StartsWith("name=")) {
                     return child.name.Substring(5);

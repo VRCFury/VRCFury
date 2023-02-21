@@ -56,7 +56,7 @@ namespace VF.Model {
             bool worldScale = true
         ) {
             var child = new GameObject();
-            child.name = "OGB_Sender_" + objName;
+            child.name = objName;
             child.transform.SetParent(obj.transform, false);
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
@@ -75,24 +75,26 @@ namespace VF.Model {
         }
 
         public static void AddVersionContacts(GameObject obj, string paramPrefix, bool baked, bool isPen) {
+            var versionLocal = new GameObject("VersionLocal");
+            versionLocal.transform.SetParent(obj.transform, false);
             // Version Local
             var varName = baked ? "BakedVersion" : "Version";
             var versionLocalTag = RandomTag();
-            AddSender(obj, Vector3.zero, varName, 0.01f, versionLocalTag);
+            AddSender(versionLocal, Vector3.zero, "Sender", 0.01f, versionLocalTag);
             // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-            var versionLocal = isPen ? penVersion : orfVersion;
-            AddReceiver(obj, Vector3.one * 0.01f, paramPrefix + "/" + varName + "/" + versionLocal, varName, 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
+            var versionLocalNum = isPen ? penVersion : orfVersion;
+            AddReceiver(versionLocal, Vector3.one * 0.01f, paramPrefix + "/" + varName + "/" + versionLocalNum, "Receiver", 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
 
             // Version Remote
             var versionBeaconTag = "OGB_VERSION_" + beaconVersion;
             AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
             if (!baked) {
-                AddReceiver(obj, Vector3.zero, paramPrefix + "/VersionMatch", "VersionBeacon", 1f,
+                AddReceiver(versionLocal, Vector3.zero, paramPrefix + "/VersionMatch", "BeaconReceiver", 1f,
                     new[] { versionBeaconTag, "TPS_" + RandomTag() }, allowSelf: false, localOnly: true);
             }
         }
 
-        public static void AddReceiver(
+        public static GameObject AddReceiver(
             GameObject obj,
             Vector3 pos,
             String param,
@@ -108,7 +110,7 @@ namespace VF.Model {
             bool worldScale = true
         ) {
             var child = new GameObject();
-            child.name = "OGB_Receiver_" + objName;
+            child.name = objName;
             child.transform.SetParent(obj.transform, false);
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
@@ -129,6 +131,7 @@ namespace VF.Model {
                 receiver.radius /= child.transform.lossyScale.x;
                 receiver.height /= child.transform.lossyScale.x;
             }
+            return child;
         }
 
         public static void RemoveTPSSenders(GameObject obj) {
@@ -217,6 +220,13 @@ namespace VF.Model {
                 if (parent == null) break;
                 current = parent.gameObject;
             }
+        }
+
+        public static Transform GetMeshRoot(Renderer r) {
+            if (r is SkinnedMeshRenderer skin && skin.rootBone) {
+                return skin.rootBone;
+            }
+            return r.transform;
         }
     }
 }

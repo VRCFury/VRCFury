@@ -38,26 +38,26 @@ namespace VF.Feature {
             var objectsToDisableTemporarily = new HashSet<GameObject>();
             
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-                OGBPenetratorEditor.Bake(c, usedNames);
-                
-                if (c.configureTps) {
-                    var size = OGBPenetratorEditor.GetSize(c);
-                    if (size == null) {
-                        throw new VRCFBuilderException("Failed to get size of penetrator to configure TPS");
-                    }
-                    var (length, radius, forward) = size;
+                var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames);
 
+                if (c.configureTps) {
                     Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);
                     
-                    var root = new GameObject("OGB_TPSShaderBase");
-                    root.transform.SetParent(c.transform, false);
-                    root.transform.localRotation = Quaternion.LookRotation(forward);
+                    if (bakeInfo == null) {
+                        throw new VRCFBuilderException("Failed to get size of penetrator to configure TPS");
+                    }
+                    var (name, bakeRoot, worldLength, worldRadius) = bakeInfo;
 
                     var configuredOne = false;
 
                     foreach (var renderer in c.transform.GetComponentsInChildren<Renderer>()) {
+                        var root = new GameObject("OGBTPSShaderRoot");
+                        root.transform.SetParent(bakeRoot.transform, false);
+                        root.transform.SetParent(renderer.transform, true);
+                        // TODO: Convert MeshRenderers into SkinnedMeshRenderers so we can take advantage of the base offset
+
                         var skin = renderer as SkinnedMeshRenderer;
-                        var shaderRotation = skin ? Quaternion.identity : Quaternion.LookRotation(forward);
+                        var shaderRotation = skin ? Quaternion.identity : root.transform.localRotation;
                         var mats = renderer.sharedMaterials;
                         var replacedAMat = false;
                         for (var matI = 0; matI < mats.Length; matI++) {
@@ -78,10 +78,10 @@ namespace VF.Feature {
                             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                                 ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
                             });
-                            var scale = renderer.transform.lossyScale;
+                            var localScale = skin ? root.transform.lossyScale : renderer.transform.lossyScale;
 
-                            mat.SetFloat(TpsPenetratorLength, length);
-                            mat.SetVector(TpsPenetratorScale, ThreeToFour(scale));
+                            mat.SetFloat(TpsPenetratorLength, worldLength);
+                            mat.SetVector(TpsPenetratorScale, ThreeToFour(localScale));
                             mat.SetVector(TpsPenetratorRight, ThreeToFour(shaderRotation * Vector3.right));
                             mat.SetVector(TpsPenetratorUp, ThreeToFour(shaderRotation * Vector3.up));
                             mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
@@ -89,12 +89,27 @@ namespace VF.Feature {
                             if (skin) {
                                 mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
                                 mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
-                            
+
                                 var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
-                                var bakeMethod = bakeUtil.GetMethod("BakePositionsToTexture", new[] { typeof(Renderer), typeof(Texture2D) });
+                                var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
+                                var meshInfo = Activator.CreateInstance(meshInfoType);
+                                var bakedMesh = MeshBaker.BakeMesh(skin, root.transform);
+                                if (bakedMesh == null)
+                                    throw new VRCFBuilderException("Failed to bake mesh for TPS configuration"); 
+                                meshInfoType.GetField("bakedVertices").SetValue(meshInfo, bakedMesh.vertices);
+                                meshInfoType.GetField("bakedNormals").SetValue(meshInfo, bakedMesh.normals);
+                                meshInfoType.GetField("ownerRenderer").SetValue(meshInfo, skin);
+                                meshInfoType.GetField("sharedMesh").SetValue(meshInfo, skin.sharedMesh);
+                                var bakeMethod = bakeUtil.GetMethod(
+                                    "BakePositionsToTexture", 
+                                    BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
+                                    null,
+                                    new[] { meshInfoType, typeof(Texture2D) },
+                                    null
+                                );
                                 Texture2D tex = null;
                                 VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                                    tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, renderer, null);
+                                    tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, meshInfo, null);
                                 });
                                 if (string.IsNullOrWhiteSpace(AssetDatabase.GetAssetPath(tex))) {
                                     throw new VRCFBuilderException("Failed to bake TPS texture");
@@ -112,7 +127,10 @@ namespace VF.Feature {
 
                         if (replacedAMat) {
                             renderer.sharedMaterials = mats;
-                            if (skin) skin.rootBone = root.transform;
+                            if (skin) {
+                                skin.rootBone = root.transform;
+                                addOtherFeature(new BoundingBoxFix2() { singleRenderer = skin });
+                            }
                             EditorUtility.SetDirty(renderer);
                         }
                     }
@@ -124,33 +142,113 @@ namespace VF.Feature {
                     }
                 }
 
-                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                    objectsToDisableTemporarily.Add(r.gameObject);
+                if (bakeInfo != null) {
+                    var (name, bakeRoot, worldLength, worldRadius) = bakeInfo;
+                    foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                        objectsToDisableTemporarily.Add(r.gameObject);
+                    }
                 }
             }
+
+            var enableAuto = avatarObject.GetComponentsInChildren<OGBOrifice>(true)
+                .Where(o => o.addMenuItem && o.enableAuto)
+                .ToArray()
+                .Length >= 2;
+            VFABool autoOn = null;
+            AnimationClip autoOnClip = null;
+            if (enableAuto) {
+                autoOn = GetFx().NewBool("autoMode");
+                manager.GetMenu().NewMenuToggle("Holes/Auto", autoOn);
+                autoOnClip = manager.GetClipStorage().NewClip("EnableAutoReceivers");
+                var autoReceiverLayer = GetFx().NewLayer("Auto - Enable Receivers");
+                var off = autoReceiverLayer.NewState("Off");
+                var on = autoReceiverLayer.NewState("On").WithAnimation(autoOnClip);
+                var whenOn = autoOn.IsTrue().And(GetFx().IsLocal().IsTrue());
+                off.TransitionsTo(on).When(whenOn);
+                on.TransitionsTo(off).When(whenOn.Not());
+            }
             
+            var enableStealth = avatarObject.GetComponentsInChildren<OGBOrifice>(true)
+                .Where(o => o.addMenuItem)
+                .ToArray()
+                .Length >= 1;
+            VFABool stealthOn = null;
+            if (enableStealth) {
+                stealthOn = GetFx().NewBool("stealth");
+                manager.GetMenu().NewMenuToggle("Holes/Stealth", stealthOn);
+            }
+
+            var autoOrifices = new List<Tuple<string, VFABool, VFANumber>>();
+            var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
             foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
                 fakeHead.MarkEligible(c.gameObject);
-                var (name,forward) = OGBOrificeEditor.Bake(c, usedNames);
+                var (name,bakeRoot) = OGBOrificeEditor.Bake(c, usedNames);
                 
-                foreach (var r in c.gameObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
                     objectsToDisableTemporarily.Add(r.gameObject);
                 }
 
                 if (c.addMenuItem) {
-                    c.gameObject.SetActive(false);
-                    addOtherFeature(new Toggle() {
-                        name = "Holes/" + name,
-                        state = new State() {
-                            actions = {
-                                new ObjectToggleAction() {
-                                    obj = c.gameObject
-                                }
-                            }
-                        },
-                        enableExclusiveTag = true,
-                        exclusiveTag = "OGBOrificeToggles"
-                    });
+                    c.gameObject.SetActive(true);
+
+                    ICollection<GameObject> FindChildren(params string[] names) {
+                        return names.Select(n => bakeRoot.transform.Find(n))
+                            .Where(t => t != null)
+                            .Select(t => t.gameObject)
+                            .ToArray();
+                    }
+
+                    foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "VersionBeacon")) {
+                        obj.SetActive(false);
+                    }
+                    var onLocalClip = manager.GetClipStorage().NewClip($"{name}_onLocal");
+                    foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal")) {
+                        clipBuilder.Enable(onLocalClip, obj);
+                    }
+                    var onRemoteClip = manager.GetClipStorage().NewClip($"{name}_onRemote");
+                    foreach (var obj in FindChildren("Senders", "Lights", "VersionBeacon")) {
+                        clipBuilder.Enable(onRemoteClip, obj);
+                    }
+                    var onStealthClip = manager.GetClipStorage().NewClip($"{name}_stealth");
+                    foreach (var obj in FindChildren("Receivers", "VersionLocal")) {
+                        clipBuilder.Enable(onStealthClip, obj);
+                    }
+
+                    var holeOn = GetFx().NewBool(name, synced: true);
+                    manager.GetMenu().NewMenuToggle($"Holes/{name}", holeOn);
+
+                    var layer = GetFx().NewLayer(name);
+                    var offState = layer.NewState("Off");
+                    var onLocalState = layer.NewState("On Local").WithAnimation(onLocalClip).Move(offState, 1, 0);
+                    var onRemoteState = layer.NewState("On Remote").WithAnimation(onRemoteClip);
+                    var stealthState = layer.NewState("Stealth").WithAnimation(onStealthClip);
+
+                    var whenOn = holeOn.IsTrue();
+                    var whenOnAndLocal = whenOn.And(GetFx().IsLocal().IsTrue());
+                    var whenStealthEnabled = stealthOn?.IsTrue() ?? GetFx().Never();
+
+                    var whenStealth = whenOnAndLocal.And(whenStealthEnabled);
+                    var whenOnLocal = whenOnAndLocal.And(whenStealth.Not());
+                    var whenOnRemote = whenOn.And(whenStealthEnabled.Not()).And(whenStealth.Not()).And(whenOnLocal.Not());
+                    var whenOff = whenStealth.Not().And(whenOnLocal.Not()).And(whenOnRemote.Not());
+
+                    foreach (var state in new[] { offState, onLocalState, onRemoteState, stealthState }) {
+                        if (state != offState) state.TransitionsTo(offState).When(whenOff);
+                        if (state != onLocalState) state.TransitionsTo(onLocalState).When(whenOnLocal);
+                        if (state != onRemoteState) state.TransitionsTo(onRemoteState).When(whenOnRemote);
+                        if (state != stealthState) state.TransitionsTo(stealthState).When(whenStealth);
+                    }
+
+                    exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
+
+                    if (c.enableAuto) {
+                        var distParam = GetFx().NewFloat(name + "/AutoDistance");
+                        var distReceiver = OGBUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
+                            new[] { OGBUtils.CONTACT_PEN_MAIN });
+                        distReceiver.SetActive(false);
+                        clipBuilder.Enable(autoOnClip, distReceiver);
+                        autoOrifices.Add(Tuple.Create(name, holeOn, distParam));
+                    }
                 }
 
                 var actionNum = 0;
@@ -170,10 +268,10 @@ namespace VF.Feature {
                     var fx = GetFx();
 
                     var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
-                    OGBUtils.AddReceiver(c.gameObject, forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
+                    OGBUtils.AddReceiver(bakeRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
                     
                     var depthParam = fx.NewFloat(prefix + "/AnimDepth");
-                    OGBUtils.AddReceiver(c.gameObject, forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
+                    OGBUtils.AddReceiver(bakeRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
 
                     var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
                     var off = layer.NewState("Off");
@@ -197,6 +295,93 @@ namespace VF.Feature {
                     off.TransitionsTo(on).When(onWhen);
                     on.TransitionsTo(off).When(onWhen.Not());
                 }
+            }
+
+            foreach (var i in Enumerable.Range(0, exclusiveTriggers.Count)) {
+                var (_, state) = exclusiveTriggers[i];
+                foreach (var j in Enumerable.Range(0, exclusiveTriggers.Count)) {
+                    if (i == j) continue;
+                    var (param, _) = exclusiveTriggers[j];
+                    state.Drives(param, false);
+                }
+            }
+
+            if (autoOn != null) {
+                var fx = GetFx();
+                var layer = fx.NewLayer("Auto OGB Mode");
+                var remoteTrap = layer.NewState("Remote trap");
+                var stopped = layer.NewState("Stopped");
+                remoteTrap.TransitionsTo(stopped).When(fx.IsLocal().IsTrue());
+                var start = layer.NewState("Start").Move(stopped, 1, 0);
+                stopped.TransitionsTo(start).When(autoOn.IsTrue());
+                var stop = layer.NewState("Stop").Move(start, 1, 0);
+                start.TransitionsTo(stop).When(autoOn.IsFalse());
+                foreach (var auto in autoOrifices) {
+                    var (name, enabled, dist) = auto;
+                    stop.Drives(enabled, false);
+                }
+                stop.TransitionsTo(stopped).When(fx.Always());
+
+                var vsParam = fx.NewFloat("comparison");
+                var vs1 = manager.GetClipStorage().NewClip("vs1");
+                vs1.SetCurve("", typeof(Animator), vsParam.Name(), AnimationCurve.Constant(0, 0, 1f));
+                var vs0 = manager.GetClipStorage().NewClip("vs0");
+                vs0.SetCurve("", typeof(Animator), vsParam.Name(), AnimationCurve.Constant(0, 0, 0f));
+
+                var states = new Dictionary<Tuple<int, int>, VFAState>();
+                for (var i = 0; i < autoOrifices.Count; i++) {
+                    var (aName, aEnabled, aDist) = autoOrifices[i];
+                    var triggerOn = layer.NewState($"Start {aName}").Move(start, i, 2);
+                    triggerOn.Drives(aEnabled, true);
+                    states[Tuple.Create(i,-1)] = triggerOn;
+                    var triggerOff = layer.NewState($"Stop {aName}");
+                    triggerOff.Drives(aEnabled, false);
+                    triggerOff.TransitionsTo(start).When(fx.Always());
+                    states[Tuple.Create(i,-2)] = triggerOff;
+                    for (var j = 0; j < autoOrifices.Count; j++) {
+                        if (i == j) continue;
+                        var (bName, bEnabled, bDist) = autoOrifices[j];
+                        var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
+                        var tree = manager.GetClipStorage().NewBlendTree($"{aName} vs {bName}");
+                        tree.useAutomaticThresholds = false;
+                        tree.blendType = BlendTreeType.FreeformCartesian2D;
+                        tree.AddChild(vs0, new Vector2(1f, 0));
+                        tree.AddChild(vs1, new Vector2(0, 1f));
+                        tree.blendParameter = aDist.Name();
+                        tree.blendParameterY = bDist.Name();
+                        vs.WithAnimation(tree);
+                        states[Tuple.Create(i,j)] = vs;
+                    }
+                }
+                
+                for (var i = 0; i < autoOrifices.Count; i++) {
+                    var (name, enabled, dist) = autoOrifices[i];
+                    var triggerOn = states[Tuple.Create(i, -1)];
+                    var triggerOff = states[Tuple.Create(i, -2)];
+                    var firstComparison = states[Tuple.Create(i, i == 0 ? 1 : 0)];
+                    start.TransitionsTo(firstComparison).When(enabled.IsTrue());
+                    triggerOn.TransitionsTo(firstComparison).When(fx.Always());
+                    
+                    for (var j = 0; j < autoOrifices.Count; j++) {
+                        if (i == j) continue;
+                        var current = states[Tuple.Create(i, j)];
+                        var otherActivate = states[Tuple.Create(j, -1)];
+
+                        current.TransitionsTo(otherActivate).When(vsParam.IsGreaterThan(0.51f));
+                        
+                        var nextI = j + 1;
+                        if (nextI == i) nextI++;
+                        if (nextI == autoOrifices.Count) {
+                            current.TransitionsTo(triggerOff).When(dist.IsGreaterThan(0).Not());
+                            current.TransitionsTo(start).When(fx.Always());
+                        } else {
+                            var next = states[Tuple.Create(i, nextI)];
+                            current.TransitionsTo(next).When(fx.Always());
+                        }
+                    }
+                }
+
+                start.TransitionsTo(states[Tuple.Create(0, 1)]).When(fx.Always());
             }
 
             if (objectsToDisableTemporarily.Count > 0) {

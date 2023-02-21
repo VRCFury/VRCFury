@@ -238,6 +238,7 @@ namespace VF.Model.Feature {
         public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
+        [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
         public bool enableIcon;
         public Texture2D icon;
@@ -466,6 +467,7 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BoundingBoxFix2 : NewFeatureModel {
+        [NonSerialized] public SkinnedMeshRenderer singleRenderer;
     }
 
     [Serializable]
