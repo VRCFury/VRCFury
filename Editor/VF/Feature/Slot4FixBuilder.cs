@@ -78,31 +78,29 @@ namespace VF.Feature {
                 EditorUtility.SetDirty(meshCopy);
 
                 foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                    if (skin.sharedMesh == mesh) {
-                        skin.sharedMesh = meshCopy;
-                        var mats = skin.sharedMaterials.ToList();
-                        while (mats.Count < meshCopy.subMeshCount) mats.Add(null);
-                        mats[meshCopy.subMeshCount - 1] = mats[4];
-                        mats[4] = null;
-                        skin.sharedMaterials = mats.ToArray();
-                        EditorUtility.SetDirty(skin);
-                    }
+                    if (skin.sharedMesh != mesh) continue;
+                    skin.sharedMesh = meshCopy;
+                    var mats = skin.sharedMaterials.ToList();
+                    while (mats.Count < meshCopy.subMeshCount) mats.Add(null);
+                    mats[meshCopy.subMeshCount - 1] = mats[4];
+                    mats[4] = null;
+                    skin.sharedMaterials = mats.ToArray();
+                    EditorUtility.SetDirty(skin);
                 }
                 foreach (var skin in avatarObject.GetComponentsInChildren<MeshFilter>(true)) {
-                    if (skin.sharedMesh == mesh) {
-                        skin.sharedMesh = meshCopy;
-                        EditorUtility.SetDirty(skin);
-                    }
+                    if (skin.sharedMesh != mesh) continue;
+                    skin.sharedMesh = meshCopy;
+                    EditorUtility.SetDirty(skin);
 
                     var renderer = skin.GetComponent<MeshRenderer>();
-                    if (renderer) {
-                        var mats = renderer.sharedMaterials.ToList();
-                        while (mats.Count < meshCopy.subMeshCount) mats.Add(null);
-                        mats[meshCopy.subMeshCount - 1] = mats[4];
-                        mats[4] = null;
-                        renderer.sharedMaterials = mats.ToArray();
-                        EditorUtility.SetDirty(renderer);
-                    }
+                    if (!renderer) continue;
+
+                    var mats = renderer.sharedMaterials.ToList();
+                    while (mats.Count < meshCopy.subMeshCount) mats.Add(null);
+                    mats[meshCopy.subMeshCount - 1] = mats[4];
+                    mats[4] = null;
+                    renderer.sharedMaterials = mats.ToArray();
+                    EditorUtility.SetDirty(renderer);
                 }
             }
         }
