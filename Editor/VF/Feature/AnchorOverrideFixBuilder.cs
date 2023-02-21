@@ -16,10 +16,7 @@ namespace VF.Feature {
             if (!root) {
                 throw new VRCFBuilderException("Failed to find chest or hips bone on avatar");
             }
-            foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                skin.probeAnchor = root.transform;
-            }
-            foreach (var skin in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
+            foreach (var skin in avatarObject.GetComponentsInChildren<Renderer>(true)) {
                 skin.probeAnchor = root.transform;
             }
         }

@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using Object = UnityEngine.Object;
 
 namespace VF.Feature {
     public class Slot4FixBuilder : FeatureBuilder<Slot4Fix> {
@@ -68,41 +69,25 @@ namespace VF.Feature {
                 });
             }
 
-            foreach (var mesh in meshesToPatch) {
-                var meshCopy = Object.Instantiate(mesh);
-                VRCFuryAssetDatabase.SaveAsset(meshCopy, tmpDir, "s4fix_" + meshCopy.name);
-                var submesh = meshCopy.GetSubMesh(4);
-                meshCopy.SetSubMesh(4, new SubMeshDescriptor());
-                meshCopy.subMeshCount++;
-                meshCopy.SetSubMesh(meshCopy.subMeshCount - 1, submesh);
-                EditorUtility.SetDirty(meshCopy);
+            foreach (var oldMesh in meshesToPatch) {
+                var newMesh = Object.Instantiate(oldMesh);
+                VRCFuryAssetDatabase.SaveAsset(newMesh, tmpDir, "s4fix_" + newMesh.name);
+                var submesh = newMesh.GetSubMesh(4);
+                newMesh.SetSubMesh(4, new SubMeshDescriptor());
+                newMesh.subMeshCount++;
+                newMesh.SetSubMesh(newMesh.subMeshCount - 1, submesh);
+                EditorUtility.SetDirty(newMesh);
 
-                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                    if (skin.sharedMesh == mesh) {
-                        skin.sharedMesh = meshCopy;
-                        var mats = skin.sharedMaterials.ToList();
-                        while (mats.Count < meshCopy.subMeshCount) mats.Add(null);
-                        mats[meshCopy.subMeshCount - 1] = mats[4];
-                        mats[4] = null;
-                        skin.sharedMaterials = mats.ToArray();
-                        EditorUtility.SetDirty(skin);
-                    }
-                }
-                foreach (var skin in avatarObject.GetComponentsInChildren<MeshFilter>(true)) {
-                    if (skin.sharedMesh == mesh) {
-                        skin.sharedMesh = meshCopy;
-                        EditorUtility.SetDirty(skin);
-                    }
-
-                    var renderer = skin.GetComponent<MeshRenderer>();
-                    if (renderer) {
-                        var mats = renderer.sharedMaterials.ToList();
-                        while (mats.Count < meshCopy.subMeshCount) mats.Add(null);
-                        mats[meshCopy.subMeshCount - 1] = mats[4];
-                        mats[4] = null;
-                        renderer.sharedMaterials = mats.ToArray();
-                        EditorUtility.SetDirty(renderer);
-                    }
+                foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
+                    var (renderer, mesh, setMesh) = tuple;
+                    if (mesh != oldMesh) continue;
+                    setMesh(newMesh);
+                    var mats = renderer.sharedMaterials.ToList();
+                    while (mats.Count < newMesh.subMeshCount) mats.Add(null);
+                    mats[newMesh.subMeshCount - 1] = mats[4];
+                    mats[4] = null;
+                    renderer.sharedMaterials = mats.ToArray();
+                    EditorUtility.SetDirty(renderer);
                 }
             }
         }

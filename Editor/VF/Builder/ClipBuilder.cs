@@ -109,15 +109,15 @@ public class ClipBuilder {
     }
 
     public void Material(AnimationClip clip, GameObject obj, int matSlot, Material mat) {
-        Material(clip, obj.GetComponent<SkinnedMeshRenderer>(), matSlot, mat);
-        Material(clip, obj.GetComponent<MeshRenderer>(), matSlot, mat);
+        foreach (var renderer in obj.GetComponents<Renderer>()) {
+            Material(clip, renderer, matSlot, mat);
+        }
     }
-    private void Material(AnimationClip clip, Component c, int matSlot, Material mat) {
-        if (!c) return;
+    private void Material(AnimationClip clip, Renderer renderer, int matSlot, Material mat) {
         var binding = new EditorCurveBinding {
-            path = GetPath(c.gameObject),
+            path = GetPath(renderer.gameObject),
             propertyName = "m_Materials.Array.data[" + matSlot + "]",
-            type = c.GetType()
+            type = renderer.GetType()
         };
         AnimationUtility.SetObjectReferenceCurve(clip, binding, new[] {
             new ObjectReferenceKeyframe() {

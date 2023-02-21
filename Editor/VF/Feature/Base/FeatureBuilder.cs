@@ -124,7 +124,7 @@ namespace VF.Feature.Base {
                         break;
                     case BlendShapeAction blendShape:
                         var foundOne = false;
-                        foreach (var skin in GetAllSkins(avatarObject)) {
+                        foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                             if (!skin.sharedMesh) continue;
                             var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
                             if (blendShapeIndex < 0) continue;
@@ -161,7 +161,6 @@ namespace VF.Feature.Base {
             }
             return clip;
         }
-
         protected AnimationClip StripToFX(AnimationClip original) {
             
             if (original == null || !IsNonhuman(original)) return manager.GetClipStorage().GetNoopClip();

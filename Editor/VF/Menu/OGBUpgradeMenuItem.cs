@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
+using VF.Builder;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.StateAction;
@@ -216,13 +217,10 @@ namespace VF.Menu {
             }
             
             // Auto-add DPS and TPS penetrators
-            foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                if (OGBPenetratorSizeDetector.GetAutoWorldSize(skin.gameObject, true) != null)
-                    AddPen(skin.gameObject);
-            }
-            foreach (var mesh in avatarObject.GetComponentsInChildren<MeshRenderer>(true)) {
-                if (OGBPenetratorSizeDetector.GetAutoWorldSize(mesh.gameObject, true) != null)
-                    AddPen(mesh.gameObject);
+            foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
+                var (renderer, _, _) = tuple;
+                if (OGBPenetratorSizeDetector.GetAutoWorldSize(renderer.gameObject, true) != null)
+                    AddPen(renderer.gameObject);
             }
             
             // Auto-add DPS orifices

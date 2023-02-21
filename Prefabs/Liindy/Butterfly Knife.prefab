@@ -389,7 +389,8 @@ MonoBehaviour:
         - parameters: {fileID: 11400000, guid: 5031f0a29b702e046ac2f8ce950ab626, type: 2}
           ResetMePlease: 0
         globalParams: []
-        removePrefixes: []
+        removePrefixes:
+        - Butterfly Knife Folder/
         addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
@@ -404,87 +405,99 @@ MonoBehaviour:
     00000001:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 3
         linkMode: 1
         propBone: {fileID: 3308034576663590758}
         boneOnAvatar: 29
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 1c0000001b000000
+        skinRewriteScalingFactor: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000002:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 3
         linkMode: 1
         propBone: {fileID: 3308034577448967996}
         boneOnAvatar: 17
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000003:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 3
         linkMode: 1
         propBone: {fileID: 3308034576040748062}
         boneOnAvatar: 44
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 2b0000002a000000
+        skinRewriteScalingFactor: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000004:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 3
         linkMode: 1
         propBone: {fileID: 3308034576591488438}
         boneOnAvatar: 18
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000005:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 3
         linkMode: 1
         propBone: {fileID: 3308034577628579599}
         boneOnAvatar: 0
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000006:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 3
         linkMode: 1
         propBone: {fileID: 3308034577597874134}
         boneOnAvatar: 0
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
 --- !u!1001 &8280769015933524219
 PrefabInstance:
   m_ObjectHideFlags: 0
