@@ -241,7 +241,7 @@ namespace VF.Feature {
 
                     exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
 
-                    if (c.enableAuto) {
+                    if (c.enableAuto && autoOnClip) {
                         var distParam = GetFx().NewFloat(name + "/AutoDistance");
                         var distReceiver = OGBUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
                             new[] { OGBUtils.CONTACT_PEN_MAIN });
