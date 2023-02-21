@@ -12,7 +12,7 @@ namespace VF.Builder {
             if (renderer is SkinnedMeshRenderer skin) {
                 // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
                 // So we have to skip calling BakeMesh, because otherwise we'd apply the inverse scale inappropriately and it would be too small.
-                var actuallySkinned = skin.bones.Any(b => b != null);
+                var actuallySkinned = skin.sharedMesh && skin.sharedMesh.boneWeights.Length > 0;
                 if (actuallySkinned) {
                     var temporaryMesh = new Mesh();
                     skin.BakeMesh(temporaryMesh);
