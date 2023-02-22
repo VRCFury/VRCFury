@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
@@ -239,6 +240,9 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public bool useInt = false;
+        [NonSerialized] public IEnumerable<IEnumerable<AnimatorCondition>> altCondition = null;
+        [NonSerialized] public Motion motionOverride;
+        [NonSerialized] public float transitionTime = 0;
         public bool enableIcon;
         public Texture2D icon;
         public bool enableDriveGlobalParam;

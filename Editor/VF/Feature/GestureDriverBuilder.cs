@@ -15,10 +15,7 @@ using VF.Model.Feature;
 namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
-        private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
-        private readonly Dictionary<string, List<VFAState>> exclusiveLockStates = new Dictionary<string, List<VFAState>>();
-        private readonly Dictionary<string, List<VFABool>> exclusiveLockBools = new Dictionary<string, List<VFABool>>();
 
 
         
@@ -27,7 +24,6 @@ namespace VF.Feature {
             foreach (var gesture in model.gestures) {
                 MakeGesture(gesture);
             }
-            ApplyLockExclusives();
 
             if (model.disableable && !string.IsNullOrWhiteSpace(model.enablePath)) {
                 var fx = GetFx();
@@ -57,22 +53,6 @@ namespace VF.Feature {
                 name += " " + gesture.comboSign;
             }
             var uid = "gesture_" + uniqueNum;
-
-            var layer = fx.NewLayer(name);
-            var off = layer.NewState("Off");
-            var on = layer.NewState("On");
-            var onLock = layer.NewState("On Lock");
-            var lockReset = layer.NewState("Lock Reset");
-
-            VFABool lockMenuParam = null;
-            if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
-                if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
-                    // This doesn't actually need synced, but vrc gets annoyed if the menu is using an unsynced param
-                    lockMenuParam = fx.NewBool(uid + "_lock", synced: true);
-                    manager.GetMenu().NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
-                    lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
-                }
-            }
 
             var GestureLeft = fx.GestureLeft();
             var GestureRight = fx.GestureRight();
@@ -109,35 +89,21 @@ namespace VF.Feature {
                                 excludeConditions[trimmedTag] = onCondition;
                             }
                         }
-
-                        if (lockMenuParam != null) {
-                            if (!exclusiveLockStates.ContainsKey(trimmedTag)) {
-                                exclusiveLockStates[trimmedTag] = new List<VFAState>();
-                                exclusiveLockStates[trimmedTag].Add(onLock);
-                                exclusiveLockBools[trimmedTag] = new List<VFABool>();
-                                exclusiveLockBools[trimmedTag].Add(lockMenuParam);
-                            } else {
-                                exclusiveLockStates[trimmedTag].Add(onLock);
-                                exclusiveLockBools[trimmedTag].Add(lockMenuParam);
-                            }
-                        }
-                        var lockBool = fx.NewBool("exclusive_gesture_lock_" + trimmedTag);
-                        onLock.Drives(lockBool, true);
-                        lockReset.Drives(lockBool, false);
-                        onCondition = onCondition.And(lockBool.IsFalse());
                     }
                 }
             }
             
+            string disableBlinkingName = null;
 
             if (gesture.disableBlinking) {
-                var disableBlinkParam = fx.NewBool(uid + "_disableBlink");
-                off.Drives(disableBlinkParam, false);
-                on.Drives(disableBlinkParam, true);
+                disableBlinkingName = uid + "_disableBlink";
+                var disableBlinkParam = fx.NewBool(disableBlinkingName);
                 addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
             }
-            
+
             var clip = LoadState(uid, gesture.state);
+
+            Motion motion;
             if (gesture.enableWeight && weightHand > 0) {
                 MakeWeightParams();
                 var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
@@ -147,13 +113,9 @@ namespace VF.Feature {
                 tree.blendParameter = weightParam.Name();
                 tree.AddChild(manager.GetClipStorage().GetNoopClip(), 0);
                 tree.AddChild(clip, 1);
-                on.WithAnimation(tree);
-                onLock.WithAnimation(tree);
-                lockReset.WithAnimation(tree);
+                motion = tree;
             } else {
-                on.WithAnimation(clip);
-                onLock.WithAnimation(clip);
-                lockReset.WithAnimation(clip);
+                motion = clip;
             }
 
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
@@ -164,16 +126,22 @@ namespace VF.Feature {
                 enabledParam = fx.NewBool("VRCFury Gestures Enabled", synced: true, usePrefix: false, saved: model.saveEnable, def: model.defaultEnable);
             }
 
-            off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition.And(enabledParam.IsTrue()));
-            on.TransitionsToExit().WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+            onCondition = onCondition.And(enabledParam.IsTrue());
 
-            if (lockMenuParam != null) {
-                off.TransitionsTo(onLock).WithTransitionDurationSeconds(transitionTime).When(lockMenuParam.IsTrue());
-                on.TransitionsTo(onLock).When(lockMenuParam.IsTrue());
-                onLock.TransitionsTo(lockReset).When(lockMenuParam.IsFalse());
-                lockReset.TransitionsToExit().When().WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(0);
-            } 
+            var toggle = new Model.Feature.Toggle {
+                name = gesture.lockMenuItem ?? uid,
+                addMenuItem = gesture.lockMenuItem != null,
+                state = gesture.state,
+                motionOverride = motion,
+                altCondition = onCondition.transitions,
+                enableDriveGlobalParam = gesture.disableBlinking,
+                driveGlobalParam = disableBlinkingName,
+                enableExclusiveTag = gesture.enableExclusiveTag,
+                exclusiveTag = gesture.exclusiveTag,
+                transitionTime = transitionTime
+            };
 
+            addOtherFeature(toggle);
         }
 
         private VFANumber leftWeightParam;
@@ -258,19 +226,6 @@ namespace VF.Feature {
             onRemote.WithAnimation(remoteTree);
 
             return output;
-        }
-
-        private void ApplyLockExclusives() {
-            foreach (var key in exclusiveLockStates.Keys){
-                for (var i = 0; i < exclusiveLockStates[key].Count; i++) {
-                    for (var k = 0; k < exclusiveLockBools[key].Count; k++) {
-                        if (i != k) {
-                            exclusiveLockStates[key][i].Drives(exclusiveLockBools[key][k], false);
-                        }
-                    }
-                }
-                
-            }
         }
 
         public override string GetEditorTitle() {

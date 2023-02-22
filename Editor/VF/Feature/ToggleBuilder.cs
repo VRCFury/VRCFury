@@ -49,7 +49,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
         // Then don't even bother adding it. The user probably removed the object, so the toggle shouldn't be present.
         // Toggle should still be added if it drives a global variable
-        if (model.state.IsEmpty() && model.state.actions.Count > 0 && !model.enableDriveGlobalParam) {
+        if (model.state.IsEmpty() && model.state.actions.Count > 0  && !model.enableDriveGlobalParam) {
             return;
         }
 
@@ -127,7 +127,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State outAction,
         VFABool physBoneResetter
     ) {
-        var clip = LoadState(model.name + " " + onName, action);
+        var clip = (AnimationClip)model.motionOverride ?? LoadState(model.name + " " + onName, action);
 
         if (restingClip == null && model.includeInRest) {
             restingClip = clip;
@@ -148,6 +148,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
+        if (model.altCondition != null) {
+            var altCondition = new VFACondition { transitions = model.altCondition };
+            onCase = onCase.Or(altCondition.And(onCase.Not()));
+        }
+
         VFAState inState;
         VFAState onState;
         if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
@@ -159,16 +164,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
         exclusiveTagTriggeringStates.Add(inState);
-        off.TransitionsTo(inState).When(onCase);
+        off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(model.transitionTime);
 
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
             var transitionClipOut = LoadState(model.name + onName + " Out", outAction);
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
-            outState.TransitionsToExit().When().WithTransitionExitTime(1);
+            outState.TransitionsToExit().When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
         } else {
-            onState.TransitionsToExit().When(onCase.Not());
+            onState.TransitionsToExit().When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime);
         }
 
         if (physBoneResetter != null) {
