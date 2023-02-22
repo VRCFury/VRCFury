@@ -161,86 +161,16 @@ namespace VF.Feature.Base {
             }
             return clip;
         }
-        protected AnimationClip StripToFX(AnimationClip original) {
-            
-            if (original == null || !IsNonhuman(original)) return manager.GetClipStorage().GetNoopClip();
-            if (IsNonhumanOnly(original)) return original;
 
-            var curves = AnimationUtility.GetCurveBindings(original);
-
-            var clip = manager.GetClipStorage().NewClip(original.name + " FX");
-
-            foreach(var c in curves) {
-                if (!GetIsHuman(c.propertyName)) {
-                    AnimationUtility.SetEditorCurve(clip, c, AnimationUtility.GetEditorCurve(original, c));
-                }
-            }
-
-            var prev = new SerializedObject(original);
-            var next = new SerializedObject(clip);
-            SerializedProperty prevIterator = prev.GetIterator();
-            while (prevIterator.NextVisible(true)) {
-                var nextEl = next.FindProperty(prevIterator.propertyPath);
-                if (nextEl != null && nextEl.propertyType == prevIterator.propertyType) {
-                    next.CopyFromSerializedProperty(prevIterator);
-                }
-            }
-            next.ApplyModifiedProperties();
-
-            return clip;
+        protected bool HasHuman(AnimationClip clip) {
+            return clip.humanMotion;
         }
 
-        protected AnimationClip StripToAction(AnimationClip original) {
-
-            if (original == null || !IsHuman(original)) return manager.GetClipStorage().GetNoopClip();
-            if (IsHumanOnly(original)) return original;
-
-            var curves = AnimationUtility.GetCurveBindings(original);
-
-            var clip = manager.GetClipStorage().NewClip(original.name + " Action");
-
-            foreach(var c in curves) {
-                if (GetIsHuman(c.propertyName)) {
-                    AnimationUtility.SetEditorCurve(clip, c, AnimationUtility.GetEditorCurve(original, c));
-                }
-            }
-
-            var prev = new SerializedObject(original);
-            var next = new SerializedObject(clip);
-            SerializedProperty prevIterator = prev.GetIterator();
-            while (prevIterator.NextVisible(true)) {
-                var nextEl = next.FindProperty(prevIterator.propertyPath);
-                if (nextEl != null && nextEl.propertyType == prevIterator.propertyType) {
-                    next.CopyFromSerializedProperty(prevIterator);
-                }
-            }
-            next.ApplyModifiedProperties();
-
-            return clip;
-        }
-        private bool IsHuman(AnimationClip clip) {
-            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
-                if (GetIsHuman(c.propertyName)) return true; 
-            }
-            return false;
-        }
-        private bool IsHumanOnly(AnimationClip clip) {
-            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
-                if (!GetIsHuman(c.propertyName)) return false; 
-            }
-            return true;
-        }
-        private bool IsNonhuman(AnimationClip clip) {
+        protected bool HasNonhuman(AnimationClip clip) {
             foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
                 if (!GetIsHuman(c.propertyName)) return true; 
             }
             return false;
-        }
-        private bool IsNonhumanOnly(AnimationClip clip) {
-            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
-                if (GetIsHuman(c.propertyName)) return false; 
-            }
-            return true;
         }
 
         private static HashSet<string> _humanMuscleList;

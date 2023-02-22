@@ -106,8 +106,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
             }
         }
 
-        AddClipsToLayer(actionLayer, StripToAction);
-        AddClipsToLayer(fxLayer, StripToFX, false);
+        AddClipsToLayer(actionLayer, true);
+        AddClipsToLayer(fxLayer, false);
 
         var vrcEmote = actionLayer.VRCEmote();
 
@@ -148,7 +148,7 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         }
     }
 
-    public void AddClipsToLayer(ControllerManager VRClayer, Func<AnimationClip, AnimationClip> stripFunc, bool addWieghtsAndTracking = true) {
+    public void AddClipsToLayer(ControllerManager VRClayer, bool actionLayer) {
 
         var layerIndex = VRClayer.GetLayers().TakeWhile(l => l.name != "Action").Count();
         if (layerIndex < VRClayer.GetLayers().Count()) {
@@ -192,7 +192,7 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         var standingRestore = layer.NewState("Restore Tracking (stand)").WithAnimation(standingAnimation);
         var sittingRestore = layer.NewState("Restore Tracking (sit)").WithAnimation(sittingAnimation);
 
-        if (addWieghtsAndTracking) {
+        if (actionLayer) {
             prepareStanding.TrackingController("emoteAnimation").PlayableLayerController(BlendableLayer.Action,1,.5f);
             prepareSitting.TrackingController("emoteAnimation").PlayableLayerController(BlendableLayer.Action,1,.25f);
             afkInit.TrackingController("allAnimation").PlayableLayerController(BlendableLayer.Action,1,1);
@@ -223,11 +223,11 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         layer.MoveExit(start, 7, 0);
 
         foreach (var e in model.standingEmotes) {
-            addEmoteToTree(start, prepareStanding, standingExit, layer, vrcEmote, e, stripFunc, topEmote++);
+            addEmoteToTree(start, prepareStanding, standingExit, layer, vrcEmote, e, actionLayer, topEmote++);
         }
 
         foreach (var e in model.sittingEmotes) {
-            addEmoteToTree(sit, prepareSitting, sittingExit, layer, vrcEmote, e, stripFunc, bottomEmote--);
+            addEmoteToTree(sit, prepareSitting, sittingExit, layer, vrcEmote, e, actionLayer, bottomEmote--);
         }
     }
 
@@ -302,14 +302,13 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         }
     }
 
-    private void addEmoteToTree(VFAState start, VFAState nexus, VFAState exit, VFALayer layer, VFANumber vrcEmote, Emote emote, Func<AnimationClip, AnimationClip> stripFunc, int position = -1000) {
+    private void addEmoteToTree(VFAState start, VFAState nexus, VFAState exit, VFALayer layer, VFANumber vrcEmote, Emote emote, bool actionLayer, int position = -1000) {
 
         var emoteClip = emote.emoteClip;
         var resetClip = emote.resetClip;
-        emoteClip = stripFunc(emoteClip);
-        resetClip = stripFunc(resetClip);
 
-        if (emoteClip == manager.GetClipStorage().GetNoopClip() && resetClip == manager.GetClipStorage().GetNoopClip()) return;
+        if (actionLayer && (!emoteClip || !HasHuman(emoteClip)) && (!resetClip || !HasHuman(resetClip))) return;
+        if (!actionLayer && (!emoteClip || !HasNonhuman(emoteClip)) && (!resetClip || !HasNonhuman(resetClip))) return;
 
         var condition = vrcEmote.IsEqualTo(emote.number);
         
