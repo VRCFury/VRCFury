@@ -19,7 +19,6 @@ namespace VF.Feature {
         private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
         private readonly Dictionary<string, List<VFAState>> exclusiveLockStates = new Dictionary<string, List<VFAState>>();
         private readonly Dictionary<string, List<VFABool>> exclusiveLockBools = new Dictionary<string, List<VFABool>>();
-        private readonly Dictionary<string, List<float>> excluseLockTransitionTimes = new Dictionary<string, List<float>>();
 
 
         
@@ -63,6 +62,7 @@ namespace VF.Feature {
             var off = layer.NewState("Off");
             var on = layer.NewState("On");
             var onLock = layer.NewState("On Lock");
+            var lockReset = layer.NewState("Lock Reset");
 
             VFABool lockMenuParam = null;
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
@@ -116,17 +116,14 @@ namespace VF.Feature {
                                 exclusiveLockStates[trimmedTag].Add(onLock);
                                 exclusiveLockBools[trimmedTag] = new List<VFABool>();
                                 exclusiveLockBools[trimmedTag].Add(lockMenuParam);
-                                excluseLockTransitionTimes[trimmedTag] = new List<float>();
-                                excluseLockTransitionTimes[trimmedTag].Add(gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f);
                             } else {
                                 exclusiveLockStates[trimmedTag].Add(onLock);
                                 exclusiveLockBools[trimmedTag].Add(lockMenuParam);
-                                excluseLockTransitionTimes[trimmedTag].Add(gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f);
                             }
                         }
                         var lockBool = fx.NewBool("exclusive_gesture_lock_" + trimmedTag);
                         onLock.Drives(lockBool, true);
-                        off.Drives(lockBool, false);
+                        lockReset.Drives(lockBool, false);
                         onCondition = onCondition.And(lockBool.IsFalse());
                     }
                 }
@@ -152,9 +149,11 @@ namespace VF.Feature {
                 tree.AddChild(clip, 1);
                 on.WithAnimation(tree);
                 onLock.WithAnimation(tree);
+                lockReset.WithAnimation(tree);
             } else {
                 on.WithAnimation(clip);
                 onLock.WithAnimation(clip);
+                lockReset.WithAnimation(clip);
             }
 
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
@@ -171,7 +170,8 @@ namespace VF.Feature {
             if (lockMenuParam != null) {
                 off.TransitionsTo(onLock).WithTransitionDurationSeconds(transitionTime).When(lockMenuParam.IsTrue());
                 on.TransitionsTo(onLock).When(lockMenuParam.IsTrue());
-                onLock.TransitionsToExit().WithTransitionDurationSeconds(transitionTime).When(lockMenuParam.IsFalse());
+                onLock.TransitionsTo(lockReset).When(lockMenuParam.IsFalse());
+                lockReset.TransitionsToExit().When().WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(0);
             } 
 
         }
@@ -266,7 +266,6 @@ namespace VF.Feature {
                     for (var k = 0; k < exclusiveLockBools[key].Count; k++) {
                         if (i != k) {
                             exclusiveLockStates[key][i].Drives(exclusiveLockBools[key][k], false);
-                            exclusiveLockStates[key][i].TransitionsToExit().WithTransitionDurationSeconds(excluseLockTransitionTimes[key][i]).When(exclusiveLockBools[key][k].IsTrue());
                         }
                     }
                 }
