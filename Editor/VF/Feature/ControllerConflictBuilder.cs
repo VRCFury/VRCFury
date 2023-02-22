@@ -44,7 +44,6 @@ namespace VF.Feature {
 
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
-                    if (layer.name.Contains("VRCF EmoteManaged Action")) continue;
                     var layerOwner = controller.GetLayerOwner(layer);
                     AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
                         if (b is VRCPlayableLayerControl playableControl) {
@@ -90,7 +89,6 @@ namespace VF.Feature {
                 enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 enableControl.goalWeight = 1;
                 foreach (var layer in action.GetLayers()) {
-                    if (layer.name.Contains("VRCF EmoteManaged Action")) continue;
                     action.SetWeight(layer, 0);
                 }
             }
