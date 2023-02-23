@@ -237,6 +237,14 @@ public class VFAState {
         var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(node.state);
         return driver;
     }
+    public VRCAnimatorLayerControl GetAnimationLayerControl() {
+         foreach (var b in node.state.behaviours) {
+            var d = b as VRCAnimatorLayerControl;
+            if (d) return d;
+        }
+        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAnimatorLayerControl>(node.state);
+        return driver;
+    }
     private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
         var driver = GetDriver(local);
         var p = new VRC_AvatarParameterDriver.Parameter();
@@ -312,6 +320,14 @@ public class VFAState {
 
     public VFAState PlayableLayerController(BlendableLayer layer, float goal, float duration) {
         var controller = GetPlayableLayerControl();
+        controller.layer = layer;
+        controller.goalWeight = goal;
+        controller.blendDuration = duration;
+        return this;
+    }
+
+    public VFAState AnimationLayerController(int layer, float goal, float duration) {
+        var controller = GetAnimationLayerControl();
         controller.layer = layer;
         controller.goalWeight = goal;
         controller.blendDuration = duration;
@@ -461,6 +477,7 @@ public class VFATransition {
         return this;
     }
     public VFATransition WithTransitionExitTime(float time) {
+        if (time == 0f) return this;
         foreach (var t in createdTransitions) {
             t.hasExitTime = true;
             t.exitTime = time;

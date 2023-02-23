@@ -24,6 +24,7 @@ namespace VF.Feature.Base {
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
         public GameObject editorObject;
+        public static int emoteBaseLayerIndex;
 
         public virtual string GetEditorTitle() {
             return null;
@@ -88,6 +89,9 @@ namespace VF.Feature.Base {
         }
 
         protected AnimationClip LoadState(string name, State state) {
+            if (state == null) {
+                return manager.GetClipStorage().GetNoopClip();
+            }
             if (state.actions.Count == 1 && state.actions[0] is AnimationClipAction && featureBaseObject == avatarObject) {
                 return (state.actions[0] as AnimationClipAction).clip;
             }

@@ -50,7 +50,6 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
                     text = "Advanced Options",
                     value = false
                 };
-                adv.Add(addRow("number", "VRCEmote Value"));
                 adv.Add(addRow("icon", "Icon"));
                 adv.Add(addRow("isToggle", "Is Toggle"));
                 adv.Add(addRow("hasReset", "Has Reset"));

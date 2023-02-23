@@ -243,6 +243,10 @@ namespace VF.Model.Feature {
         [NonSerialized] public IEnumerable<IEnumerable<AnimatorCondition>> altCondition = null;
         [NonSerialized] public Motion motionOverride;
         [NonSerialized] public float transitionTime = 0;
+        [NonSerialized] public AnimationClip passiveAction = null;
+        [NonSerialized] public bool isEmote = false;
+        [NonSerialized] public bool sittingEmote = false;
+        [NonSerialized] public float exitTime = 0;
         public bool enableIcon;
         public Texture2D icon;
         public bool enableDriveGlobalParam;
@@ -275,23 +279,21 @@ namespace VF.Model.Feature {
         public class Emote {
             public string name;
             public State emoteAnimation;
-            public int number = 0;
             public Texture2D icon;
             public bool isToggle = false;
             public bool hasReset = false;
             public State resetAnimation;
             public bool hasExitTime = false;
-            public float exitTime = 1;
+            public float exitTime = 0;
             [NonSerialized] public AnimationClip emoteClip;
             [NonSerialized] public AnimationClip resetClip;
 
             public Emote() {}
 
             #if UNITY_EDITOR
-            public Emote(string name, string path, int number, bool isToggle, bool hasReset, string resetPath, bool hasExitTime, double exitTime, string iconPath) {
+            public Emote(string name, string path, bool isToggle, bool hasReset, string resetPath, bool hasExitTime, double exitTime, string iconPath) {
                 
                 this.name = name;
-                this.number = number;
                 this.isToggle = isToggle;
                 this.hasReset = hasReset;
                 this.hasExitTime = hasExitTime;

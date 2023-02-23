@@ -11,6 +11,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using static VRC.SDKBase.VRC_PlayableLayerControl;
 using Object = UnityEngine.Object;
 using Toggle = VF.Model.Feature.Toggle;
 
@@ -90,6 +91,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             param = boolParam;
             onCase = param.IsTrue();
         }
+
+        if (model.isEmote) {
+            var seatedParam = fx.Seated();
+            onCase = onCase.And(model.sittingEmote ? seatedParam.IsTrue() : seatedParam.IsFalse());
+        }
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
@@ -117,7 +123,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
     
     private void Apply(
-        ControllerManager fx,
+        ControllerManager controller,
         VFALayer layer,
         VFAState off,
         VFACondition onCase,
@@ -128,6 +134,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFABool physBoneResetter
     ) {
         var clip = (AnimationClip)model.motionOverride ?? LoadState(model.name + " " + onName, action);
+
+        var needsAction = clip.isHumanMotion;
 
         if (restingClip == null && model.includeInRest) {
             restingClip = clip;
@@ -155,14 +163,28 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         VFAState inState;
         VFAState onState;
-        if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
-            var transitionClipIn = LoadState(model.name + onName + " In", inAction);
-            inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
-            onState = layer.NewState(onName).WithAnimation(clip);
-            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
+        if (!needsAction) {
+            if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
+                var transitionClipIn = LoadState(model.name + onName + " In", inAction);
+                inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
+                onState = layer.NewState(onName).WithAnimation(clip);
+                inState.TransitionsTo(onState).When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+            } else {
+                inState = onState = layer.NewState(onName).WithAnimation(clip);
+            }
         } else {
-            inState = onState = layer.NewState(onName).WithAnimation(clip);
+            inState = layer.NewState(onName + " In");
+            onState = layer.NewState(onName).WithAnimation(clip);
+            inState.TransitionsTo(onState).When(controller.Always()).WithTransitionDurationSeconds(model.transitionTime);
         }
+
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
+            inState.WithAnimation(model.passiveAction);
+            inState.PlayableLayerController(BlendableLayer.Action,1,model.transitionTime).AnimationLayerController(emoteBaseLayerIndex, 1, 0);
+            inState.TrackingController("emoteAnimation");
+            onState.AnimationLayerController(emoteBaseLayerIndex, 1, 0);
+        }
+
         exclusiveTagTriggeringStates.Add(inState);
         off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(model.transitionTime);
 
@@ -171,9 +193,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var transitionClipOut = LoadState(model.name + onName + " Out", outAction);
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
-            outState.TransitionsToExit().When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+            if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
+                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(BlendableLayer.Action,0,model.transitionTime).AnimationLayerController(emoteBaseLayerIndex, 1, 0);
+                outState.TransitionsTo(blendOut).When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                blendOut.TransitionsToExit().When().WithTransitionExitTime(1);
+            } else {
+                outState.TransitionsToExit().When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+            }
         } else {
-            onState.TransitionsToExit().When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime);
+            if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
+                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(BlendableLayer.Action,0,model.transitionTime).AnimationLayerController(emoteBaseLayerIndex, 1, 0);
+                onState.TransitionsTo(blendOut).When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                blendOut.TransitionsToExit().When().WithTransitionExitTime(1);
+            } else {
+                onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+            }
         }
 
         if (physBoneResetter != null) {
@@ -184,7 +218,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.enableDriveGlobalParam && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
             foreach(var p in GetGlobalParams()) {
                 if (string.IsNullOrWhiteSpace(p)) continue;
-                var driveGlobal = fx.NewBool(
+                var driveGlobal = controller.NewBool(
                     p,
                     synced: false,
                     saved: false,
@@ -195,6 +229,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     off.Drives(driveGlobal, false);
                 inState.Drives(driveGlobal, true);
             }
+        }
+
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && needsAction) {
+            var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
+            var actionLayer = GetAction();
+            var layer2 = actionLayer.NewLayer(layerName);
+            var off2 = layer2.NewState("Off");
+            var seatedParam = actionLayer.Seated();
+            var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            var onCase2 = boolParam2.IsTrue();
+            onCase2 = onCase2.And(model.sittingEmote ? seatedParam.IsTrue() : seatedParam.IsFalse());
+            off2.WithAnimation(model.passiveAction);
+            off2.TrackingController("allTracking");
+            off2.AnimationLayerController(emoteBaseLayerIndex, 0, 0);
+            Apply(actionLayer, layer2, off2, onCase2, onName, action, null, outAction, physBoneResetter);
         }
     }
 
