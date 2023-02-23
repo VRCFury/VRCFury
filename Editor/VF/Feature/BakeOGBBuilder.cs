@@ -182,6 +182,9 @@ namespace VF.Feature {
                 }
             }
 
+            var holesMenu = "Holes";
+            var optionsFolder = $"{holesMenu}/<b>Hole Options";
+
             var enableAuto = avatarObject.GetComponentsInChildren<OGBOrifice>(true)
                 .Where(o => o.addMenuItem && o.enableAuto)
                 .ToArray()
@@ -190,7 +193,7 @@ namespace VF.Feature {
             AnimationClip autoOnClip = null;
             if (enableAuto) {
                 autoOn = GetFx().NewBool("autoMode", synced: true);
-                manager.GetMenu().NewMenuToggle("Holes/Auto", autoOn);
+                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to an OGB penetrator", autoOn);
                 autoOnClip = manager.GetClipStorage().NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = GetFx().NewLayer("Auto - Enable Receivers");
                 var off = autoReceiverLayer.NewState("Off");
@@ -207,8 +210,24 @@ namespace VF.Feature {
             VFABool stealthOn = null;
             if (enableStealth) {
                 stealthOn = GetFx().NewBool("stealth", synced: true);
-                manager.GetMenu().NewMenuToggle("Holes/Stealth", stealthOn);
+                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
+            
+            var enableMulti = avatarObject.GetComponentsInChildren<OGBOrifice>(true)
+                .Where(o => o.addMenuItem)
+                .ToArray()
+                .Length >= 2;
+            VFABool multiOn = null;
+            if (enableMulti) {
+                multiOn = GetFx().NewBool("multi", synced: true);
+                var multiFolder = $"{optionsFolder}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active holes";
+                manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
+                manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use TPS, >NO DPS!<");
+                manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Nobody else can use a hole at the same time");
+                manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>DO NOT ENABLE MORE THAN 2");
+            }
+
+            manager.GetMenu().SetIconGuid(optionsFolder, "16e0846165acaa1429417e757c53ef9b");
 
             var autoOrifices = new List<Tuple<string, VFABool, VFANumber>>();
             var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
@@ -251,25 +270,23 @@ namespace VF.Feature {
 
                     var layer = GetFx().NewLayer(name);
                     var offState = layer.NewState("Off");
-                    var onLocalState = layer.NewState("On Local").WithAnimation(onLocalClip).Move(offState, 1, 0);
+                    var stealthState = layer.NewState("On Local Stealth").WithAnimation(onStealthClip).Move(offState, 1, 0);
+                    var onLocalMultiState = layer.NewState("On Local Multi").WithAnimation(onLocalClip);
+                    var onLocalState = layer.NewState("On Local").WithAnimation(onLocalClip);
                     var onRemoteState = layer.NewState("On Remote").WithAnimation(onRemoteClip);
-                    var stealthState = layer.NewState("Stealth").WithAnimation(onStealthClip);
 
                     var whenOn = holeOn.IsTrue();
-                    var whenOnAndLocal = whenOn.And(GetFx().IsLocal().IsTrue());
+                    var whenLocal = GetFx().IsLocal().IsTrue();
                     var whenStealthEnabled = stealthOn?.IsTrue() ?? GetFx().Never();
+                    var whenMultiEnabled = multiOn?.IsTrue() ?? GetFx().Never();
 
-                    var whenStealth = whenOnAndLocal.And(whenStealthEnabled);
-                    var whenOnLocal = whenOnAndLocal.And(whenStealth.Not());
-                    var whenOnRemote = whenOn.And(whenStealthEnabled.Not()).And(whenStealth.Not()).And(whenOnLocal.Not());
-                    var whenOff = whenStealth.Not().And(whenOnLocal.Not()).And(whenOnRemote.Not());
-
-                    foreach (var state in new[] { offState, onLocalState, onRemoteState, stealthState }) {
-                        if (state != offState) state.TransitionsTo(offState).When(whenOff);
-                        if (state != onLocalState) state.TransitionsTo(onLocalState).When(whenOnLocal);
-                        if (state != onRemoteState) state.TransitionsTo(onRemoteState).When(whenOnRemote);
-                        if (state != stealthState) state.TransitionsTo(stealthState).When(whenStealth);
-                    }
+                    VFAState.FakeAnyState(
+                        (offState, whenOn.Not()),
+                        (stealthState, whenLocal.And(whenStealthEnabled)),
+                        (onLocalMultiState, whenLocal.And(whenMultiEnabled)),
+                        (onLocalState, whenLocal),
+                        (onRemoteState, GetFx().Always())
+                    );
 
                     exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
 

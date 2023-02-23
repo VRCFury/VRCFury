@@ -1,15 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
-using VF.Menu;
 using VF.Model.Feature;
-using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
     public class SetIconBuilder : FeatureBuilder<SetIcon> {
@@ -25,20 +19,9 @@ namespace VF.Feature {
         }
         
         public void Apply() {
-            MoveMenuItemBuilder.GetMenu(manager.GetMenu(), model.path, false, out _, out _, out var controlName, out var parentMenu);
-            if (!parentMenu) {
-                Debug.LogWarning("Parent menu did not exist");
-                return;
-            }
-
-            var controls = parentMenu.controls.Where(c => c.name == controlName).ToList();
-            if (controls.Count == 0) {
-                Debug.LogWarning("No menu control matched path");
-                return;
-            }
-
-            foreach (var control in controls) {
-                control.icon = model.icon;
+            var result = manager.GetMenu().SetIcon(model.path, model.icon);
+            if (!result) {
+                Debug.LogWarning("Failed to find menu item to set icon");
             }
         }
 

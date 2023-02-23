@@ -99,7 +99,6 @@ namespace VF.Inspector {
         }
 
         public static Tuple<string, GameObject, float, float> Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false) {
-            if (usedNames == null) usedNames = new List<string>();
             var obj = pen.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
 
@@ -113,6 +112,7 @@ namespace VF.Inspector {
             if (string.IsNullOrWhiteSpace(name)) {
                 name = obj.name;
             }
+            if (usedNames != null) name = OGBUtils.GetNextName(usedNames, name);
             
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
@@ -138,7 +138,7 @@ namespace VF.Inspector {
             OGBUtils.AddSender(senders, halfWay, "Envelope", worldRadius, OGBUtils.CONTACT_PEN_CLOSE, rotation: capsuleRotation, height: worldLength);
             OGBUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_PEN_ROOT);
             
-            var paramPrefix = OGBUtils.GetNextName(usedNames, "OGB/Pen/" + name.Replace('/','_'));
+            var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
 
             if (onlySenders) {
                 var info = new GameObject("Info");
