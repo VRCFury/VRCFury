@@ -69,7 +69,10 @@ namespace VF.Builder {
                         merger.Merge(existingController, toRaw: ctrl);
                         if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                             string printLayer(AnimatorControllerLayer layer) =>
-                                " " + layer?.name + " " + layer?.stateMachine.defaultState + " " + layer?.stateMachine.states.Length + " " + layer?.avatarMask.name;
+                                " " + layer?.name + " "
+                                + layer?.stateMachine?.defaultState + " "
+                                + layer?.stateMachine?.states?.Length + " "
+                                + layer?.avatarMask?.name;
 
                             Debug.LogError("GESTURE CONTROLLER COPY BEFORE: "
                                            + " " + existingController.layers.Length
