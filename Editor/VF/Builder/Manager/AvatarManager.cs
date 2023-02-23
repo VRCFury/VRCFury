@@ -67,26 +67,6 @@ namespace VF.Builder {
                         ctrl.RemoveLayer(0);
                         var merger = new ControllerMerger();
                         merger.Merge(existingController, toRaw: ctrl);
-                        if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                            string printLayer(AnimatorControllerLayer layer) =>
-                                " " + layer?.name + " "
-                                + layer?.stateMachine?.defaultState + " "
-                                + layer?.stateMachine?.states?.Length + " "
-                                + layer?.avatarMask?.name;
-
-                            Debug.LogError("GESTURE CONTROLLER COPY BEFORE: "
-                                           + " " + existingController.layers.Length
-                                           + (existingController.layers.Length > 0 ? printLayer(existingController.layers[0]) : "")
-                                           + (existingController.layers.Length > 1 ? printLayer(existingController.layers[1]) : "")
-                                           + (existingController.layers.Length > 2 ? printLayer(existingController.layers[2]) : "")
-                                           + (existingController.layers.Length > 3 ? printLayer(existingController.layers[3]) : ""));
-                            Debug.LogError("GESTURE CONTROLLER COPY AFTER: "
-                                           + " " + ctrl.layers.Length
-                                           + (ctrl.layers.Length > 0 ? printLayer(ctrl.layers[0]) : "")
-                                           + (ctrl.layers.Length > 1 ? printLayer(ctrl.layers[1]) : "")
-                                           + (ctrl.layers.Length > 2 ? printLayer(ctrl.layers[2]) : "")
-                                           + (ctrl.layers.Length > 3 ? printLayer(ctrl.layers[3]) : ""));
-                        }
                     }
                 }
                 output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, currentFeatureNameProvider, tmpDir, GetClipStorage());
