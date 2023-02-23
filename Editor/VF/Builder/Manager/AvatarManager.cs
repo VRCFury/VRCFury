@@ -76,16 +76,16 @@ namespace VF.Builder {
 
                             Debug.LogError("GESTURE CONTROLLER COPY BEFORE: "
                                            + " " + existingController.layers.Length
-                                           + printLayer(existingController.layers[0])
-                                           + printLayer(existingController.layers[1])
-                                           + printLayer(existingController.layers[2])
-                                           + printLayer(existingController.layers[3]));
+                                           + (existingController.layers.Length > 0 ? printLayer(existingController.layers[0]) : "")
+                                           + (existingController.layers.Length > 1 ? printLayer(existingController.layers[1]) : "")
+                                           + (existingController.layers.Length > 2 ? printLayer(existingController.layers[2]) : "")
+                                           + (existingController.layers.Length > 3 ? printLayer(existingController.layers[3]) : ""));
                             Debug.LogError("GESTURE CONTROLLER COPY AFTER: "
                                            + " " + ctrl.layers.Length
-                                           + printLayer(ctrl.layers[0])
-                                           + printLayer(ctrl.layers[1])
-                                           + printLayer(ctrl.layers[2])
-                                           + printLayer(ctrl.layers[3]));
+                                           + (ctrl.layers.Length > 0 ? printLayer(ctrl.layers[0]) : "")
+                                           + (ctrl.layers.Length > 1 ? printLayer(ctrl.layers[1]) : "")
+                                           + (ctrl.layers.Length > 2 ? printLayer(ctrl.layers[2]) : "")
+                                           + (ctrl.layers.Length > 3 ? printLayer(ctrl.layers[3]) : ""));
                         }
                     }
                 }
