@@ -53,11 +53,79 @@ namespace VF.Builder {
             return control;
         }
 
+        public bool SetIconGuid(string path, string guid) {
+            var iconPath = AssetDatabase.GUIDToAssetPath(guid);
+            if (string.IsNullOrWhiteSpace(iconPath)) return false;
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(iconPath);
+            if (!icon) return false;
+            return SetIcon(path, icon);
+        }
+
+        public bool SetIcon(string path, Texture2D icon) {
+            GetSubmenuAndItem(path, false, out _, out _, out var controlName, out var parentMenu);
+            if (!parentMenu) return false;
+
+            var controls = parentMenu.controls.Where(c => c.name == controlName).ToList();
+            if (controls.Count == 0) return false;
+
+            foreach (var control in controls) {
+                control.icon = icon;
+            }
+            return true;
+        }
+
+        public bool Move(string from, string to) {
+            GetSubmenuAndItem(from, false, out var fromPath, out var fromPrefix, out var fromName, out var fromMenu);
+            if (!fromMenu) return false;
+            
+            var fromControls = fromMenu.controls.Where(c => c.name == fromName).ToList();
+            if (fromControls.Count == 0) return false;
+            fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
+
+            if (string.IsNullOrWhiteSpace(to)) {
+                // Just delete them!
+                return true;
+            }
+
+            GetSubmenuAndItem(to, true, out var toPath, out var toPrefix, out var toName, out var toMenu);
+            foreach (var control in fromControls) {
+                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                    GetSubmenu(toPath, createFromControl: control);
+                    MergeMenu(toPath, control.subMenu);
+                } else {
+                    control.name = toName;
+                    var tmpMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                    tmpMenu.controls.Add(control);
+                    MergeMenu(toPrefix, tmpMenu);
+                }
+            }
+            return true;
+        }
+
+        private void GetSubmenuAndItem(
+            string rawPath,
+            bool create,
+            out IList<string> path,
+            out IList<string> prefix,
+            out string name,
+            out VRCExpressionsMenu prefixMenu
+        ) {
+            path = SplitPath(rawPath);
+            if (path.Count > 0) {
+                prefix = Slice(path, path.Count - 1);
+                name = path[path.Count - 1];
+            } else {
+                prefix = new string[]{};
+                name = "";
+            }
+            prefixMenu = GetSubmenu(prefix, createIfMissing: create);
+        }
+
         /**
          * Gets the VRC menu for the path specified, recursively creating if it doesn't exist.
          * If createFromControl is set, we will use it as the basis if creating the folder control is needed.
          */
-        public VRCExpressionsMenu GetSubmenu(
+        private VRCExpressionsMenu GetSubmenu(
             IList<string> path,
             bool createIfMissing = true,
             VRCExpressionsMenu.Control createFromControl = null,
@@ -98,6 +166,15 @@ namespace VF.Builder {
                 current = folder;
             }
             return current;
+        }
+        public void NewMenuButton(string path, VFAParam param = null, float value = 1, Texture2D icon = null) {
+            var control = NewMenuItem(path);
+            control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+            control.parameter = new VRCExpressionsMenu.Control.Parameter {
+                name = param != null ? param.Name() : ""
+            };
+            control.value = value;
+            control.icon = icon;
         }
         public void NewMenuToggle(string path, VFAParam param, float value = 1, Texture2D icon = null) {
             var control = NewMenuItem(path);

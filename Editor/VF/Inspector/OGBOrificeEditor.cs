@@ -106,7 +106,6 @@ namespace VF.Inspector {
         }
         
         public static Tuple<string,GameObject> Bake(OGBOrifice orifice, List<string> usedNames = null, bool onlySenders = false) {
-            if (usedNames == null) usedNames = new List<string>();
             var obj = orifice.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
             
@@ -117,6 +116,7 @@ namespace VF.Inspector {
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
             var name = GetName(orifice);
+            if (usedNames != null) name = OGBUtils.GetNextName(usedNames, name);
 
             Debug.Log("Baking OGB " + obj + " as " + name);
 
@@ -132,7 +132,7 @@ namespace VF.Inspector {
             OGBUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_ORF_MAIN);
             OGBUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.01f, OGBUtils.CONTACT_ORF_NORM);
             
-            var paramPrefix = OGBUtils.GetNextName(usedNames, "OGB/Orf/" + name.Replace('/','_'));
+            var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
 
             if (onlySenders) {
                 var info = new GameObject("Info");

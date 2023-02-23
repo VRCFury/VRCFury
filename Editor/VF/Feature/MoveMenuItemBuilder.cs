@@ -15,59 +15,12 @@ namespace VF.Feature {
     public class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
         [FeatureBuilderAction(FeatureOrder.MoveMenuItems)]
         public void Apply() {
-            GetMenu(manager.GetMenu(), model.fromPath, false, out var fromPath, out var fromPrefix, out var fromName, out var fromMenu);
-            if (!fromMenu) {
-                Debug.LogWarning("From menu did not exist");
-                return;
-            }
-            
-            var fromControls = fromMenu.controls.Where(c => c.name == fromName).ToList();
-            if (fromControls.Count == 0) {
-                Debug.LogWarning("No menu control matched fromPath");
-                return;
-            }
-            fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
-
-            if (string.IsNullOrWhiteSpace(model.toPath)) {
-                // Just delete them!
-                return;
-            }
-
-            var menuManager = manager.GetMenu();
-            GetMenu(menuManager, model.toPath, true, out var toPath, out var toPrefix, out var toName, out var toMenu);
-            foreach (var control in fromControls) {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                    menuManager.GetSubmenu(toPath, createFromControl: control);
-                    menuManager.MergeMenu(toPath, control.subMenu);
-                } else {
-                    control.name = toName;
-                    var tmpMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                    tmpMenu.controls.Add(control);
-                    menuManager.MergeMenu(toPrefix, tmpMenu);
-                }
+            var result = manager.GetMenu().Move(model.fromPath, model.toPath);
+            if (!result) {
+                Debug.LogWarning("Failed to find items in menu to move");
             }
         }
 
-        public static void GetMenu(
-            MenuManager menu,
-            string rawPath,
-            bool create,
-            out IList<string> path,
-            out IList<string> prefix,
-            out string name,
-            out VRCExpressionsMenu prefixMenu
-        ) {
-            path = MenuManager.SplitPath(rawPath);
-            if (path.Count > 0) {
-                prefix = MenuManager.Slice(path, path.Count - 1);
-                name = path[path.Count - 1];
-            } else {
-                prefix = new string[]{};
-                name = "";
-            }
-            prefixMenu = menu.GetSubmenu(prefix, createIfMissing: create);
-        }
-        
         public override string GetEditorTitle() {
             return "Move Menu Item";
         }

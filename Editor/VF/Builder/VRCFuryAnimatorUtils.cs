@@ -259,6 +259,25 @@ public class VFAState {
     public AnimatorState GetRaw() {
         return node.state;
     }
+
+    public static void FakeAnyState(params (VFAState,VFACondition)[] states) {
+        VFACondition above = null;
+        foreach (var (state, when) in states) {
+            VFACondition myWhen;
+            if (state == states[states.Length - 1].Item1) {
+                if (above == null) throw new VRCFBuilderException("Cannot use FakeAnyState with 1 state.");
+                myWhen = above.Not();
+            } else if (above == null) {
+                above = myWhen = when;
+            } else {
+                myWhen = when.And(above.Not());
+                above = above.Or(when);
+            }
+            foreach (var (other,_) in states) {
+                other.TransitionsTo(state).When(myWhen);
+            }
+        }
+    }
 }
 
 public class VFAParam {
