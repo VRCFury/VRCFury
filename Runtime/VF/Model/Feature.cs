@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+#if UNITY_EDITOR
 using UnityEditor.Animations;
+#endif
 using UnityEngine;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
@@ -240,7 +242,9 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public bool useInt = false;
+        #if UNITY_EDITOR
         [NonSerialized] public IEnumerable<IEnumerable<AnimatorCondition>> altCondition = null;
+        #endif
         [NonSerialized] public Motion motionOverride;
         [NonSerialized] public float transitionTime = 0;
         [NonSerialized] public AnimationClip passiveAction = null;
