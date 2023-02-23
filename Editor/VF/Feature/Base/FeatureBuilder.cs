@@ -88,7 +88,7 @@ namespace VF.Feature.Base {
             return state != null;
         }
 
-        protected AnimationClip LoadState(string name, State state) {
+        protected AnimationClip LoadState(string name, State state, bool checkForProxy = false) {
             if (state == null) {
                 return manager.GetClipStorage().GetNoopClip();
             }
@@ -97,6 +97,14 @@ namespace VF.Feature.Base {
             }
             if (state.actions.Count == 0) {
                 return manager.GetClipStorage().GetNoopClip();
+            }
+            if (checkForProxy) {
+                foreach (var action in state.actions) {
+                    if (action is AnimationClipAction) {
+                        var c = (action as AnimationClipAction).clip;
+                        if (c.name.Contains("proxy_")) return c;
+                    }
+                }
             }
             var clip = manager.GetClipStorage().NewClip(name);
             foreach (var action in state.actions) {
