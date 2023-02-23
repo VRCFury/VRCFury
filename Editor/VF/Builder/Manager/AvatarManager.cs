@@ -68,18 +68,21 @@ namespace VF.Builder {
                         var merger = new ControllerMerger();
                         merger.Merge(existingController, toRaw: ctrl);
                         if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                            string printLayer(AnimatorControllerLayer layer) =>
+                                " " + layer?.name + " " + layer?.stateMachine.defaultState + " " + layer?.stateMachine.states.Length + " " + layer?.avatarMask.name;
+
                             Debug.LogError("GESTURE CONTROLLER COPY BEFORE: "
                                            + " " + existingController.layers.Length
-                                           + " " + existingController.layers[0]?.name + " " + existingController.layers[0]?.avatarMask.name
-                                           + " " + existingController.layers[1]?.name + " " + existingController.layers[1]?.avatarMask.name
-                                           + " " + existingController.layers[2]?.name + " " + existingController.layers[2]?.avatarMask.name
-                                           + " " + existingController.layers[3]?.name + " " + existingController.layers[3]?.avatarMask.name);
+                                           + printLayer(existingController.layers[0])
+                                           + printLayer(existingController.layers[1])
+                                           + printLayer(existingController.layers[2])
+                                           + printLayer(existingController.layers[3]));
                             Debug.LogError("GESTURE CONTROLLER COPY AFTER: "
                                            + " " + ctrl.layers.Length
-                                           + " " + ctrl.layers[0]?.name + " " + ctrl.layers[0]?.avatarMask.name
-                                           + " " + ctrl.layers[1]?.name + " " + ctrl.layers[1]?.avatarMask.name
-                                           + " " + ctrl.layers[2]?.name + " " + ctrl.layers[2]?.avatarMask.name
-                                           + " " + ctrl.layers[3]?.name + " " + ctrl.layers[3]?.avatarMask.name);
+                                           + printLayer(ctrl.layers[0])
+                                           + printLayer(ctrl.layers[1])
+                                           + printLayer(ctrl.layers[2])
+                                           + printLayer(ctrl.layers[3]));
                         }
                     }
                 }
