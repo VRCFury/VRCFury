@@ -281,11 +281,11 @@ namespace VF.Feature {
                     var whenMultiEnabled = multiOn?.IsTrue() ?? GetFx().Never();
 
                     VFAState.FakeAnyState(
-                        (offState, whenOn.Not()),
-                        (stealthState, whenLocal.And(whenStealthEnabled)),
-                        (onLocalMultiState, whenLocal.And(whenMultiEnabled)),
-                        (onLocalState, whenLocal),
-                        (onRemoteState, GetFx().Always())
+                        (stealthState, whenOn.And(whenLocal.And(whenStealthEnabled))),
+                        (onLocalMultiState, whenOn.And(whenLocal.And(whenMultiEnabled))),
+                        (onLocalState, whenOn.And(whenLocal)),
+                        (onRemoteState, whenOn.And(whenStealthEnabled.Not())),
+                        (offState, GetFx().Always())
                     );
 
                     exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));

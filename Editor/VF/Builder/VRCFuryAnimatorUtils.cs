@@ -368,6 +368,7 @@ public class VFAState {
                 above = above.Or(when);
             }
             foreach (var (other,_) in states) {
+                if (other == state) continue;
                 other.TransitionsTo(state).When(myWhen);
             }
         }

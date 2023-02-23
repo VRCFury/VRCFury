@@ -49,7 +49,11 @@ namespace VF.Feature {
                         if (b is VRCPlayableLayerControl playableControl) {
                             var drivesTypeName = VRCFEnumUtils.GetName(playableControl.layer);
                             var drivesType = VRCFEnumUtils.Parse<VRCAvatarDescriptor.AnimLayerType>(drivesTypeName);
-                            var uniqueOwnersOnType = ownersByController[drivesType];
+                            if (!ownersByController.TryGetValue(drivesType, out var uniqueOwnersOnType)) {
+                                // They're driving a controller that doesn't exist?
+                                // uhh... keep it I guess
+                                return true;
+                            }
                             if (!uniqueOwnersOnType.Contains(layerOwner)) return false;
                             if (uniqueOwnersOnType.Count == 1) return true;
 

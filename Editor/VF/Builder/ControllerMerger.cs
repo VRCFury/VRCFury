@@ -68,10 +68,6 @@ public class ControllerMerger {
             var fromWeight = fromLayer.defaultWeight;
             if (fromFirstLayer) {
                 fromFirstLayer = false;
-                if (fromLayer.stateMachine.states.Length == 0) {
-                    // empty base layer -- just throw it out
-                    continue;
-                }
                 fromWeight = 1;
             }
             addLayer(RewriteLayerName(fromLayer.name));
