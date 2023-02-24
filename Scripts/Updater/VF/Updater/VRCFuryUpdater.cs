@@ -95,8 +95,8 @@ namespace VF.Updater {
                     rootDir = Path.GetDirectoryName(rootDir);
                 }
 
-                if (AssetDatabase.LoadMainAssetAtPath(rootDir + "/Runtime/VRCFury.asmdef") == null) {
-                    throw new Exception("Failed to find asmdef");
+                if (AssetDatabase.LoadMainAssetAtPath(rootDir + "/Scripts/Updater/VF/Updater/VRCFuryUpdaterMarker.cs") == null) {
+                    throw new Exception("Found wrong VRCFury install dir? " + rootDir);
                 }
 
                 Debug.Log(rootDir);
