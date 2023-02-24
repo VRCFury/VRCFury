@@ -86,7 +86,7 @@ namespace VF.Updater {
                 if (string.IsNullOrEmpty(rootDir)) {
                     throw new Exception("Couldn't find VRCFury install dir");
                 }
-                if (AssetDatabase.LoadMainAssetAtPath(rootDir + "/VRCFuryEditor.cs") == null) {
+                if (AssetDatabase.LoadMainAssetAtPath(rootDir + "/VRCFuryUpdaterMarker.cs") == null) {
                     throw new Exception("Found wrong VRCFury install dir? " + rootDir);
                 }
 
