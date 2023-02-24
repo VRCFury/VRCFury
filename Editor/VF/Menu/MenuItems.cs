@@ -5,23 +5,7 @@ using VF.Builder.Exceptions;
 
 namespace VF.Menu {
     public class MenuItems {
-        
-        //
-        
-        [MenuItem("Tools/VRCFury/Update", priority = 1000)]
-        private static void MarkerUpdate() {
-        }
 
-        [MenuItem("Tools/VRCFury/Update", true)]
-        private static bool MarkerUpdate2() {
-            return false;
-        }
-
-        [MenuItem("Tools/VRCFury/Update VRCFury", priority = 1001)]
-        private static void Upgrade() {
-            VRCFuryUpdater.Upgrade();
-        }
-        
         //
         
         [MenuItem("Tools/VRCFury/OGB", priority = 1200)]
