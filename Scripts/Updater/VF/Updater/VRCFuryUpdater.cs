@@ -129,6 +129,9 @@ namespace VF.Updater {
                 }
 
                 var oldDir = tmpDir + ".old";
+                if (Directory.Exists(oldDir)) {
+                    Directory.Delete(oldDir, true);
+                }
 
                 Debug.Log("Overwriting VRCFury install ...");
 
