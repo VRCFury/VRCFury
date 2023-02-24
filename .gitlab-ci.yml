@@ -8,7 +8,7 @@ build_files:
     name: mikefarah/yq:4.18.1
     entrypoint: [""]
   script:
-    - cp Build/release.sh /tmp/release.sh
+    - cp Scripts/Build/release.sh /tmp/release.sh
     - chmod +x /tmp/release.sh
     - VERSION="1.$(date +%Y%m%d.%H%M%S)"
     - echo "Version $VERSION"

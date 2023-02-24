@@ -12,10 +12,6 @@ function make_meta_directory() {
     meta_file=$(echo "$1" | cut -d/ -f2-)
     asset_file=${meta_file%.*}
     
-    if [[ $(echo "$meta_file" | cut -d/ -f1) == "Build" ]]; then
-      return
-    fi
-    
     if [[ ! -e "$asset_file" ]]; then
       echo "Cannot find corresponding asset file $asset_file" >&2
       return
