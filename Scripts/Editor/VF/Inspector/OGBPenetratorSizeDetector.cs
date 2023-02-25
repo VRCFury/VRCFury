@@ -28,7 +28,7 @@ namespace VF.Inspector {
             found = Try(obj.GetComponents<Renderer>().Where(IsDps));
             if (found) return found;
 
-            found = Try(obj.GetComponentsInChildren<Renderer>().Where(IsDps));
+            found = Try(obj.GetComponentsInChildren<Renderer>(true).Where(IsDps));
             if (found) return found;
             
             var parent = obj.transform.parent;

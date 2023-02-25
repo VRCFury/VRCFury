@@ -11,7 +11,7 @@ namespace VF.Feature {
     public class FixDoubleFxBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixDoubleFx)]
         public void Apply() {
-            var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>();
+            var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>(true);
             foreach (var avatar in avatars) {
                 var fxLayers = new List<RuntimeAnimatorController>();
                 var fxLayerIds = new List<int>();

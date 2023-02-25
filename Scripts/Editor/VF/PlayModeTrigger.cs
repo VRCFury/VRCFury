@@ -86,7 +86,7 @@ namespace VF {
                         // these are av3emulator temp objects. Building on them doesn't work.
                         continue;
                     }
-                    if (avatar.gameObject.GetComponentsInChildren<VRCFuryTest>().Length > 0) {
+                    if (avatar.gameObject.GetComponentsInChildren<VRCFuryTest>(true).Length > 0) {
                         continue;
                     }
                     if (!VRCFuryBuilder.ShouldRun(avatar.gameObject)) continue;

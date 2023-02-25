@@ -97,7 +97,7 @@ namespace VF.Feature {
                 }
                 EditorUtility.SetDirty(meshCopy);
 
-                var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>();
+                var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>(true);
                 foreach (var (skin, weights) in savedWeights) {
                     skin.sharedMesh = meshCopy;
                     var newId = 0;
@@ -264,7 +264,7 @@ namespace VF.Feature {
                 }
             }
 
-            foreach (var avatar in avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>()) {
+            foreach (var avatar in avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>(true)) {
                 if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
                     if (skins.Contains(avatar.customEyeLookSettings.eyelidsSkinnedMesh)) {
                         foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {
