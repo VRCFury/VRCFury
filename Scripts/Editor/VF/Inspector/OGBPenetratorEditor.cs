@@ -85,7 +85,12 @@ namespace VF.Inspector {
                 worldRadius *= pen.transform.lossyScale.x;
             }
             if (worldLength <= 0 || worldRadius <= 0) {
-                var autoSize = OGBPenetratorSizeDetector.GetAutoWorldSize(pen.gameObject, false, worldPosition, worldRotation);
+                var autoSize = OGBPenetratorSizeDetector.GetAutoWorldSize(
+                    (pen.configureTps && pen.configureTpsMesh != null) ? pen.configureTpsMesh.gameObject : pen.gameObject,
+                    false,
+                    worldPosition,
+                    worldRotation
+                );
                 if (autoSize != null) {
                     if (worldLength <= 0) worldLength = autoSize.Item1;
                     if (worldRadius <= 0) worldRadius = autoSize.Item2;

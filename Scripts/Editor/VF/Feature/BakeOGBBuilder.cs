@@ -101,7 +101,7 @@ namespace VF.Feature {
                     // Convert unweighted (static) meshes, to true skinned, rigged meshes
                     if (skin.sharedMesh.boneWeights.Length == 0) {
                         var mainBone = new GameObject("MainBone");
-                        mainBone.transform.SetParent(renderer.transform, false);
+                        mainBone.transform.SetParent(bakeRoot.transform, false);
                         var meshCopy = Object.Instantiate(skin.sharedMesh);
                         VRCFuryAssetDatabase.SaveAsset(meshCopy, tmpDir, "withbones_" + meshCopy.name);
                         meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
@@ -116,7 +116,6 @@ namespace VF.Feature {
 
                     var root = new GameObject("OGBTPSShaderRoot");
                     root.transform.SetParent(bakeRoot.transform, false);
-                    root.transform.SetParent(renderer.transform, true);
 
                     var shaderRotation = Quaternion.identity;
                     var mat = skin.sharedMaterials[matSlot];
