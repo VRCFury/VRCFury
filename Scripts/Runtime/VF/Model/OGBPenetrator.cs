@@ -8,6 +8,7 @@ namespace VF.Model {
         public new string name;
         public bool unitsInMeters = false;
         public bool configureTps = false;
+        public Renderer configureTpsMesh = null;
         
         public int version = -1;
 

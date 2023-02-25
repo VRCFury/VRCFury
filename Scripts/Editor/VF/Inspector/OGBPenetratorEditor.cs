@@ -26,6 +26,7 @@ namespace VF.Inspector {
             container.Add(adv);
             adv.Add(new PropertyField(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             adv.Add(new PropertyField(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
+            adv.Add(new PropertyField(serializedObject.FindProperty("configureTpsMesh"), "Auto-configure TPS Mesh (extremely experimental, finds automatically if unset)"));
 
             return container;
         }

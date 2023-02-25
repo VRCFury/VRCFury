@@ -51,7 +51,14 @@ namespace VF.Feature {
                     Renderer renderer = null;
                     int matSlot = 0;
 
-                    foreach (var r in c.transform.GetComponentsInChildren<Renderer>()) {
+                    var renderersToCheck = new List<Renderer>();
+                    if (c.configureTpsMesh != null) {
+                        renderersToCheck.Add(c.configureTpsMesh);
+                    } else {
+                        renderersToCheck.AddRange(c.transform.GetComponentsInChildren<Renderer>());
+                    }
+
+                    foreach (var r in renderersToCheck) {
                         var mats = r.sharedMaterials;
                         for (var matI = 0; matI < mats.Length; matI++) {
                             var searchMat = mats[matI];
