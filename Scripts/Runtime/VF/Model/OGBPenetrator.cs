@@ -4,7 +4,11 @@ using UnityEngine;
 
 namespace VF.Model {
     public class OGBPenetrator : VRCFuryComponent {
+        public bool autoRenderer = true;
+        public bool autoPosition = true;
+        public bool autoLength = true;
         public float length;
+        public bool autoRadius = true;
         public float radius;
         public new string name;
         public bool unitsInMeters = false;
@@ -23,10 +27,16 @@ namespace VF.Model {
                 unitsInMeters = true;
                 version = 1;
             }
+            if (version < 2) {
+                autoRenderer = configureTpsMesh.Count == 0;
+                autoLength = length == 0;
+                autoRadius = radius == 0;
+                version = 2;
+            }
         }
         public override void OnBeforeSerialize() {
             base.OnBeforeSerialize();
-            version = 1;
+            version = 2;
         }
     }
 }
