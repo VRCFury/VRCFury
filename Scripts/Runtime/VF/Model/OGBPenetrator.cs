@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace VF.Model {
@@ -8,6 +9,7 @@ namespace VF.Model {
         public new string name;
         public bool unitsInMeters = false;
         public bool configureTps = false;
+        public List<Renderer> configureTpsMesh = new List<Renderer>();
         
         public int version = -1;
 

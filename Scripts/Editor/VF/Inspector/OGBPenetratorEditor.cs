@@ -24,8 +24,10 @@ namespace VF.Inspector {
                 value = false
             };
             container.Add(adv);
-            adv.Add(new PropertyField(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
-            adv.Add(new PropertyField(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
+            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
+            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Auto-configure TPS Mesh (extremely experimental, finds automatically if unset)"));
+            adv.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("configureTpsMesh")));
 
             return container;
         }
@@ -84,7 +86,14 @@ namespace VF.Inspector {
                 worldRadius *= pen.transform.lossyScale.x;
             }
             if (worldLength <= 0 || worldRadius <= 0) {
-                var autoSize = OGBPenetratorSizeDetector.GetAutoWorldSize(pen.gameObject, false, worldPosition, worldRotation);
+                var autoSize = OGBPenetratorSizeDetector.GetAutoWorldSize(
+                    (pen.configureTps && pen.configureTpsMesh.Count > 0)
+                        ? pen.configureTpsMesh[0].gameObject
+                        : pen.gameObject,
+                    false,
+                    worldPosition,
+                    worldRotation
+                );
                 if (autoSize != null) {
                     if (worldLength <= 0) worldLength = autoSize.Item1;
                     if (worldRadius <= 0) worldRadius = autoSize.Item2;
