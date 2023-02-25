@@ -1,55 +1,61 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Model;
 
 namespace VF.Inspector {
     static class OGBPenetratorSizeDetector {
-        public static Quaternion? GetAutoWorldRotation(GameObject obj, bool directOnly = false) {
-            var t = ForEachMesh(obj, directOnly, renderer => {
-                var localRotation = GetMaterialDpsRotation(renderer);
-                return localRotation != null ? Tuple.Create(OGBUtils.GetMeshRoot(renderer).rotation * localRotation) : null;
-            });
-            return t?.Item1;
+        public static Renderer GetAutoRenderer(GameObject obj) {
+            return GetAutoRenderer(obj, true) ?? GetAutoRenderer(obj, false);
         }
         
-        public static Vector3? GetAutoWorldPosition(GameObject obj, bool directOnly = false) {
-            var t = ForEachMesh(obj, directOnly, renderer => {
-                return Tuple.Create(OGBUtils.GetMeshRoot(renderer).transform.position);
-            });
-            return t?.Item1;
-        }
+        private static Renderer GetAutoRenderer(GameObject obj, bool dpsOnly) {
+            bool IsDps(Renderer r) => !dpsOnly || GetMaterialDpsRotation(r) != null;
+            Renderer Try(IEnumerable<Renderer> enumerable) {
+                var arr = enumerable.ToArray();
+                if (arr.Length > 1) {
+                    throw new VRCFBuilderException(
+                        "Penetrator found multiple possible meshes. Please specify mesh in component manually.");
+                }
+                return arr.Length == 1 ? arr[0] : null;
+            }
+            
+            Renderer found;
+                
+            found = Try(obj.GetComponents<Renderer>().Where(IsDps));
+            if (found) return found;
 
-        public static Tuple<float, float> GetAutoWorldSize(GameObject obj, bool directOnly, Vector3? worldPosition_ = null, Quaternion? worldRotation_ = null) {
-            Quaternion worldRotation = worldRotation_ ?? GetAutoWorldRotation(obj, directOnly) ?? obj.transform.rotation;
-            Vector3 worldPosition = worldPosition_ ?? GetAutoWorldPosition(obj, directOnly) ?? obj.transform.position;
-            return ForEachMesh(obj, directOnly, renderer => {
-                return GetAutoWorldSize(renderer, worldPosition, worldRotation);
-            });
-        }
+            found = Try(obj.GetComponentsInChildren<Renderer>(true).Where(IsDps));
+            if (found) return found;
+            
+            var parent = obj.transform.parent;
+            while (parent != null) {
+                found = Try(Enumerable.Range(0, parent.childCount)
+                    .Select(childNum => parent.GetChild(childNum))
+                    .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps)));
+                if (found) return found;
+                parent = parent.parent;
+            }
 
-        private static T ForEachMesh<T>(GameObject obj, bool directOnly, Func<Renderer, T> each) where T : class {
-            foreach (var r in obj.GetComponents<Renderer>()) {
-                if (GetMaterialDpsRotation(r) == null) continue;
-                var auto = each(r);
-                if (auto != null) return auto;
-            }
-            if (directOnly) return null;
-            foreach (var r in obj.GetComponentsInChildren<Renderer>(true)) {
-                if (GetMaterialDpsRotation(r) == null) continue;
-                var auto = each(r);
-                if (auto != null) return auto;
-            }
-            foreach (var r in obj.GetComponentsInChildren<Renderer>(true)) {
-                if (GetMaterialDpsRotation(r) != null) continue;
-                var auto = each(r);
-                if (auto != null) return auto;
-            }
             return null;
         }
+        
+        public static Quaternion GetAutoWorldRotation(Renderer renderer) {
+            var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
+            return OGBUtils.GetMeshRoot(renderer).rotation * localRotation;
+        }
+        
+        public static Vector3 GetAutoWorldPosition(Renderer renderer) {
+            return OGBUtils.GetMeshRoot(renderer).transform.position;
+        }
 
-        private static Tuple<float, float> GetAutoWorldSize(Renderer renderer, Vector3 worldPosition, Quaternion worldRotation) {
+        public static Tuple<float, float> GetAutoWorldSize(Renderer renderer, Vector3? worldPosition_ = null, Quaternion? worldRotation_ = null) {
+            Quaternion worldRotation = worldRotation_ ?? GetAutoWorldRotation(renderer);
+            Vector3 worldPosition = worldPosition_ ?? GetAutoWorldPosition(renderer);
+            
             var bakedMesh = MeshBaker.BakeMesh(renderer);
             if (bakedMesh == null) return null;
 

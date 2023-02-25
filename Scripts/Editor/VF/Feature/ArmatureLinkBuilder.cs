@@ -34,7 +34,7 @@ namespace VF.Feature {
             var linkMode = model.linkMode;
             if (linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
                 var usesBonesFromProp = false;
-                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>()) {
+                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                     if (skin.transform.IsChildOf(links.propMain.transform)) continue;
                     usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(links.propMain.transform);
                     usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(links.propMain.transform));

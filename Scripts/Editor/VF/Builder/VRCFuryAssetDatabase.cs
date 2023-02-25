@@ -39,7 +39,11 @@ namespace VF.Builder {
 
             string fullPath;
             for (int i = 0;; i++) {
-                fullPath = dir + "/" + safeFilename + (i > 0 ? "_" + i : "") + (ext != "" ? "." + ext : "");
+                fullPath = dir
+                           + "/"
+                           + safeFilename + (i > 0 ? "_" + i : "")
+                           + (filename.Contains("(VF_1_G_BAKED)") ? "(VF_1_G_BAKED)" : "")
+                           + (ext != "" ? "." + ext : "");
                 if (!File.Exists(fullPath)) break;
             }
             return fullPath;

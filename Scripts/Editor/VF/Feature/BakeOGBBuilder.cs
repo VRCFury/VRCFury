@@ -46,17 +46,9 @@ namespace VF.Feature {
                     if (bakeInfo == null) {
                         throw new VRCFBuilderException("Failed to get size of penetrator to configure TPS");
                     }
-                    var (name, bakeRoot, worldLength, worldRadius) = bakeInfo;
+                    var (name, bakeRoot, renderersToCheck, worldLength, worldRadius) = bakeInfo;
 
                     var renderers = new List<(Renderer, int)>();
-
-                    var renderersToCheck = new List<Renderer>();
-                    if (c.configureTpsMesh.Count > 0) {
-                        renderersToCheck.AddRange(c.configureTpsMesh);
-                    } else {
-                        renderersToCheck.AddRange(c.transform.GetComponentsInChildren<Renderer>());
-                    }
-
                     foreach (var r in renderersToCheck) {
                         var mats = r.sharedMaterials;
                         for (var matI = 0; matI < mats.Length; matI++) {
@@ -177,7 +169,7 @@ namespace VF.Feature {
                 }
 
                 if (bakeInfo != null) {
-                    var (name, bakeRoot, worldLength, worldRadius) = bakeInfo;
+                    var (name, bakeRoot, renderer, worldLength, worldRadius) = bakeInfo;
                     foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
                         objectsToDisableTemporarily.Add(r.gameObject);
                     }

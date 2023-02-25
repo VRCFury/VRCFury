@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder.Exceptions;
 using VF.Model;
 using VRC.Dynamics;
 
@@ -15,9 +17,40 @@ namespace VF.Inspector {
 
             var container = new VisualElement();
             
-            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name Override"));
-            container.Add(new PropertyField(serializedObject.FindProperty("length"), "Length Override"));
-            container.Add(new PropertyField(serializedObject.FindProperty("radius"), "Radius Override"));
+            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in OGB"));
+            
+            var autoMesh = serializedObject.FindProperty("autoRenderer");
+            container.Add(VRCFuryEditorUtils.Prop(autoMesh, "Automatically find mesh"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!autoMesh.boolValue) {
+                    c.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("configureTpsMesh")));
+                }
+                return c;
+            }, autoMesh));
+
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("autoPosition"), "Detect position/rotation from mesh"));
+
+            var autoLength = serializedObject.FindProperty("autoLength");
+            container.Add(VRCFuryEditorUtils.Prop(autoLength, "Detect length from mesh"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!autoLength.boolValue) {
+                    c.Add(new PropertyField(serializedObject.FindProperty("length"), "Length"));
+                }
+                return c;
+            }, autoLength));
+
+            var autoRadius = serializedObject.FindProperty("autoRadius");
+            container.Add(VRCFuryEditorUtils.Prop(autoRadius, "Detect radius from mesh"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!autoRadius.boolValue) {
+                    c.Add(new PropertyField(serializedObject.FindProperty("radius"), "Radius"));
+                }
+                return c;
+            }, autoRadius));
+            
             
             var adv = new Foldout {
                 text = "Advanced",
@@ -26,21 +59,21 @@ namespace VF.Inspector {
             container.Add(adv);
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("Auto-configure TPS Mesh (extremely experimental, finds automatically if unset)"));
-            adv.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("configureTpsMesh")));
 
             return container;
         }
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(OGBPenetrator scr, GizmoType gizmoType) {
-            var size = GetWorldSize(scr);
-            if (size == null) {
-                VRCFuryGizmoUtils.DrawText(scr.transform.position, "Invalid Penetrator Size", Color.white);
+            (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
+            try {
+                size = GetWorldSize(scr);
+            } catch (Exception e) {
+                VRCFuryGizmoUtils.DrawText(scr.transform.position, e.Message, Color.white);
                 return;
             }
             
-            var (worldLength, worldRadius, localRotation, localPosition) = size;
+            var (renderers, worldLength, worldRadius, localRotation, localPosition) = size;
             var localLength = worldLength / scr.transform.lossyScale.x;
             var localRadius = worldRadius / scr.transform.lossyScale.x;
             var localForward = localRotation * Vector3.forward;
@@ -65,57 +98,74 @@ namespace VF.Inspector {
             VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
 
-        public static Tuple<float, float, Quaternion, Vector3> GetWorldSize(OGBPenetrator pen) {
+        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(OGBPenetrator pen) {
+
+            var renderers = new List<Renderer>();
+            if (pen.autoRenderer) {
+                var r = OGBPenetratorSizeDetector.GetAutoRenderer(pen.gameObject);
+                if (r != null) renderers.Add(r);
+            } else {
+                renderers.AddRange(pen.configureTpsMesh.Where(r => r != null));
+            }
 
             Quaternion worldRotation = pen.transform.rotation;
             Vector3 worldPosition = pen.transform.position;
-            if (!pen.configureTps) {
-                worldRotation = OGBPenetratorSizeDetector.GetAutoWorldRotation(pen.gameObject) ?? worldRotation;
-                worldPosition = OGBPenetratorSizeDetector.GetAutoWorldPosition(pen.gameObject) ?? worldPosition;
+            if (pen.autoPosition && renderers.Count > 0) {
+                if (!pen.configureTps) worldRotation = OGBPenetratorSizeDetector.GetAutoWorldRotation(renderers[0]);
+                worldPosition = OGBPenetratorSizeDetector.GetAutoWorldPosition(renderers[0]);
             }
             var testBase = pen.transform.Find("OGBTestBase");
             if (testBase != null) {
                 worldPosition = testBase.position;
                 worldRotation = testBase.rotation;
             }
-            
-            var worldLength = pen.length;
-            var worldRadius = pen.radius;
-            if (!pen.unitsInMeters) {
-                worldLength *= pen.transform.lossyScale.x;
-                worldRadius *= pen.transform.lossyScale.x;
-            }
-            if (worldLength <= 0 || worldRadius <= 0) {
-                var autoSize = OGBPenetratorSizeDetector.GetAutoWorldSize(
-                    (pen.configureTps && pen.configureTpsMesh.Count > 0)
-                        ? pen.configureTpsMesh[0].gameObject
-                        : pen.gameObject,
-                    false,
-                    worldPosition,
-                    worldRotation
-                );
-                if (autoSize != null) {
-                    if (worldLength <= 0) worldLength = autoSize.Item1;
-                    if (worldRadius <= 0) worldRadius = autoSize.Item2;
+
+            float worldLength = 0;
+            float worldRadius = 0;
+            if (pen.autoRadius || pen.autoLength) {
+                if (renderers.Count == 0) {
+                    throw new VRCFBuilderException("Penetrator failed to find renderer");
+                }
+                foreach (var renderer in renderers) {
+                    var autoSize = OGBPenetratorSizeDetector.GetAutoWorldSize(renderer, worldPosition, worldRotation);
+                    if (autoSize == null) continue;
+                    if (pen.autoLength) worldLength = autoSize.Item1;
+                    if (pen.autoRadius) worldRadius = autoSize.Item2;
+                    break;
                 }
             }
 
-            if (worldLength <= 0 || worldRadius <= 0) return null;
+            if (!pen.autoLength) {
+                worldLength = pen.length;
+                if (!pen.unitsInMeters) worldLength *= pen.transform.lossyScale.x;
+            }
+            if (!pen.autoRadius) {
+                worldRadius = pen.radius;
+                if (!pen.unitsInMeters) worldRadius *= pen.transform.lossyScale.x;
+            }
+
+            if (worldLength <= 0) throw new VRCFBuilderException("Penetrator failed to detect length");
+            if (worldRadius <= 0) throw new VRCFBuilderException("Penetrator failed to detect radius");
             if (worldRadius > worldLength / 2) worldRadius = worldLength / 2;
             var localRotation = Quaternion.Inverse(pen.transform.rotation) * worldRotation;
             var localPosition = pen.transform.InverseTransformPoint(worldPosition);
-            return Tuple.Create(worldLength, worldRadius, localRotation, localPosition);
+            return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, GameObject, float, float> Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false) {
+        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false) {
             var obj = pen.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
 
             OGBUtils.AssertValidScale(obj, "penetrator");
 
-            var size = GetWorldSize(pen);
-            if (size == null) return null;
-            var (worldLength, worldRadius, localRotation, localPosition) = size;
+            (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
+            try {
+                size = GetWorldSize(pen);
+            } catch (Exception) {
+                return null;
+            }
+
+            var (renderers, worldLength, worldRadius, localRotation, localPosition) = size;
 
             var name = pen.name;
             if (string.IsNullOrWhiteSpace(name)) {
@@ -177,7 +227,7 @@ namespace VF.Inspector {
             
             OGBUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
 
-            return Tuple.Create(name, bakeRoot, worldLength, worldRadius);
+            return Tuple.Create(name, bakeRoot, renderers, worldLength, worldRadius);
         }
     }
 }
