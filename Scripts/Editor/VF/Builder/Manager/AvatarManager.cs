@@ -157,10 +157,15 @@ namespace VF.Builder {
             if (_clipStorage != null) _clipStorage.Finish();
 
             if (_params != null) {
-                if (_params.GetRaw().CalcTotalCost() > VRCExpressionParameters.MAX_PARAMETER_COST) {
+                var maxParams = VRCExpressionParameters.MAX_PARAMETER_COST;
+                if (maxParams > 9999) {
+                    // Some versions of the VRChat SDK have a broken value for this
+                    maxParams = 256;
+                }
+                if (_params.GetRaw().CalcTotalCost() > maxParams) {
                     throw new Exception(
                         "Avatar is out of space for parameters! Used "
-                        + _params.GetRaw().CalcTotalCost() + "/" + VRCExpressionParameters.MAX_PARAMETER_COST
+                        + _params.GetRaw().CalcTotalCost() + "/" + maxParams
                         + ". Delete some params from your avatar's param file, or disable some VRCFury features.");
                 }
             }
