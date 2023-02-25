@@ -37,6 +37,7 @@ namespace VF.Inspector {
                     .Select(childNum => parent.GetChild(childNum))
                     .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps)));
                 if (found) return found;
+                parent = parent.parent;
             }
 
             return null;
