@@ -92,13 +92,14 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
             addOtherFeature(t);
         }
 
+        var submenu = model.sittingEmotes.Count() > 0 ? "Standing/" : "";
 
         foreach (var e in model.standingEmotes) {
             var t = new Model.Feature.Toggle {
                 isEmote = true,
                 sittingEmote = false,
                 passiveAction = standingAnimation,
-                name = "Standard Emotes/" + e.name,
+                name = "Standard Emotes/" + submenu + e.name,
                 state = e.emoteAnimation,
                 hasTransition = true,
                 transitionStateIn = null,
@@ -116,12 +117,14 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
             addOtherFeature(t);
         }
 
+        submenu = model.standingEmotes.Count() > 0 ? "Sitting/" : "";
+
         foreach (var e in model.sittingEmotes) {
             var t = new Model.Feature.Toggle {
                 isEmote = true,
                 sittingEmote = true,
                 passiveAction = sittingAnimation,
-                name = "Standard Emotes/" + e.name,
+                name = "Standard Emotes/" + submenu + e.name,
                 state = e.emoteAnimation,
                 hasTransition = true,
                 transitionStateIn = null,
