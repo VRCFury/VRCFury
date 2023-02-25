@@ -59,7 +59,6 @@ namespace VF.Inspector {
             container.Add(adv);
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("Auto-configure TPS Mesh (extremely experimental, finds automatically if unset)"));
 
             return container;
         }
