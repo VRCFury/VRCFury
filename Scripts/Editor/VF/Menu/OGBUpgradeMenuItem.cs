@@ -219,7 +219,7 @@ namespace VF.Menu {
             // Auto-add DPS and TPS penetrators
             foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 var (renderer, _, _) = tuple;
-                if (OGBPenetratorSizeDetector.GetAutoWorldSize(renderer) != null)
+                if (OGBPenetratorSizeDetector.HasDpsMaterial(renderer) && OGBPenetratorSizeDetector.GetAutoWorldSize(renderer) != null)
                     AddPen(renderer.gameObject);
             }
             
