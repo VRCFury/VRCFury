@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -165,6 +166,11 @@ namespace VF {
                     if (gm.gameObject.activeSelf) {
                         gm.gameObject.SetActive(false);
                         gm.gameObject.SetActive(true);
+                    }
+
+                    if (Selection.activeGameObject == gm.gameObject) {
+                        Selection.activeGameObject = null;
+                        EditorApplication.delayCall += () => Selection.activeGameObject = gm.gameObject;
                     }
                 }
             } catch (Exception e) {
