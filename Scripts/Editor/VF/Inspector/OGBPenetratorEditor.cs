@@ -6,6 +6,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
+using VF.Builder.Ogb;
 using VF.Model;
 using VRC.Dynamics;
 
@@ -101,7 +102,7 @@ namespace VF.Inspector {
         public static ICollection<Renderer> GetRenderers(OGBPenetrator pen) {
             var renderers = new List<Renderer>();
             if (pen.autoRenderer) {
-                var r = OGBPenetratorSizeDetector.GetAutoRenderer(pen.gameObject);
+                var r = PenetratorSizeDetector.GetAutoRenderer(pen.gameObject);
                 if (r != null) renderers.Add(r);
             } else {
                 renderers.AddRange(pen.configureTpsMesh.Where(r => r != null));
@@ -117,8 +118,8 @@ namespace VF.Inspector {
             Vector3 worldPosition = pen.transform.position;
             if (pen.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
-                if (!pen.configureTps) worldRotation = OGBPenetratorSizeDetector.GetAutoWorldRotation(firstRenderer);
-                worldPosition = OGBPenetratorSizeDetector.GetAutoWorldPosition(firstRenderer);
+                if (!pen.configureTps) worldRotation = PenetratorSizeDetector.GetAutoWorldRotation(firstRenderer);
+                worldPosition = PenetratorSizeDetector.GetAutoWorldPosition(firstRenderer);
             }
             var testBase = pen.transform.Find("OGBTestBase");
             if (testBase != null) {
@@ -133,7 +134,7 @@ namespace VF.Inspector {
                     throw new VRCFBuilderException("Penetrator failed to find renderer");
                 }
                 foreach (var renderer in renderers) {
-                    var autoSize = OGBPenetratorSizeDetector.GetAutoWorldSize(renderer, worldPosition, worldRotation);
+                    var autoSize = PenetratorSizeDetector.GetAutoWorldSize(renderer, worldPosition, worldRotation);
                     if (autoSize == null) continue;
                     if (pen.autoLength) worldLength = autoSize.Item1;
                     if (pen.autoRadius) worldRadius = autoSize.Item2;

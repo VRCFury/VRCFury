@@ -1,27 +1,26 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
-using VF.Builder;
 using VF.Inspector;
+using VF.Menu;
 using VF.Model;
 using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Component = UnityEngine.Component;
 
-namespace VF.Menu {
-    public class OGBUpgradeMenuItem {
+namespace VF.Builder.Ogb {
+    public class OgbUpgrader {
         private static string dialogTitle = "OGB Upgrader";
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
-            if (avatarObject == null) {
+            if (avatarObject == null) { 
                 avatarObject = Selection.activeGameObject;
                 while (avatarObject.transform.parent != null) avatarObject = avatarObject.transform.parent.gameObject;
             }
@@ -220,7 +219,7 @@ namespace VF.Menu {
             // Auto-add DPS and TPS penetrators
             foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 var (renderer, _, _) = tuple;
-                if (OGBPenetratorSizeDetector.HasDpsMaterial(renderer) && OGBPenetratorSizeDetector.GetAutoWorldSize(renderer) != null)
+                if (PenetratorSizeDetector.HasDpsMaterial(renderer) && PenetratorSizeDetector.GetAutoWorldSize(renderer) != null)
                     AddPen(renderer.gameObject);
             }
             

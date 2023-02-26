@@ -333,7 +333,7 @@ namespace VF.Inspector {
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj.transform, orf.transform);
-            } catch (Exception e) {
+            } catch (Exception) {
                 return false;
             }
         }

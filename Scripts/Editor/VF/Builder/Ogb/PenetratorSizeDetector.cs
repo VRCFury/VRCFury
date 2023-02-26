@@ -2,13 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Model;
 
-namespace VF.Inspector {
-    static class OGBPenetratorSizeDetector {
-        private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
+namespace VF.Builder.Ogb {
+    internal static class PenetratorSizeDetector {
         private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
         private static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
 
@@ -105,7 +103,7 @@ namespace VF.Inspector {
             if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return Quaternion.identity; // XSToon w/ Raliv
             if (mat.HasProperty(Poi7PenetratorEnabled) && mat.GetFloat(Poi7PenetratorEnabled) > 0) return Quaternion.identity; // Poiyomi 7 w/ Raliv
             if (mat.shader.name.Contains("DPS") && mat.HasProperty("_ReCurvature")) return Quaternion.identity; // UnityChanToonShader w/ Raliv
-            if (IsTps(mat)) {
+            if (TpsConfigurer.IsTps(mat)) {
                 // Poiyomi 8 w/ TPS
                 if (mat.HasProperty(TpsPenetratorForward)) {
                     var c = mat.GetVector(TpsPenetratorForward);
@@ -114,10 +112,6 @@ namespace VF.Inspector {
                 return Quaternion.identity;
             }
             return null;
-        }
-
-        public static bool IsTps(Material mat) {
-            return mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
         }
     }
 }
