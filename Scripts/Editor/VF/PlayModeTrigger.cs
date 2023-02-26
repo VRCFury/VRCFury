@@ -14,6 +14,7 @@ using Object = UnityEngine.Object;
 namespace VF {
     [InitializeOnLoad]
     public class PlayModeTrigger : IVRCSDKPostprocessAvatarCallback {
+        private static double lastRescan = 0;
         private static string AboutToUploadKey = "vrcf_vrcAboutToUpload";
         public int callbackOrder => int.MaxValue;
         public void OnPostprocessAvatar() {
@@ -28,6 +29,13 @@ namespace VF {
         static PlayModeTrigger() {
             SceneManager.sceneLoaded += OnSceneLoaded;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            EditorApplication.update += () => {
+                var now = Now();
+                if (now > lastRescan + 0.5) {
+                    lastRescan = now;
+                    Rescan();
+                }
+            };
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
@@ -57,7 +65,7 @@ namespace VF {
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
-            ScanScene(scene);
+            Rescan();
         }
 
         // This should absolutely always be false in play mode, but we check just in case
@@ -70,19 +78,18 @@ namespace VF {
             return false;
         }
 
-        private static void ScanScene(Scene scene) {
-            if (!scene.isLoaded) return;
+        private static void Rescan() {
             if (!Application.isPlaying) return;
             if (!PlayModeMenuItem.Get()) return;
             if (!activeNow) return;
 
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
-            foreach (var root in scene.GetRootGameObjects()) {
+            ForEachRootObject(root => {
                 foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>(true)) {
+                    if (!avatar.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(avatar.gameObject)) continue;
-                    if (avatar.gameObject.name.Contains("(ShadowClone)") ||
-                        avatar.gameObject.name.Contains("(MirrorReflection)")) {
+                    if (IsAv3EmulatorClone(avatar.gameObject)) {
                         // these are av3emulator temp objects. Building on them doesn't work.
                         continue;
                     }
@@ -104,12 +111,24 @@ namespace VF {
                     OGBPenetratorEditor.Bake(o, onlySenders: true);
                     Object.DestroyImmediate(o);
                 }
-            }
+            });
 
             if (oneChanged) {
                 RestartAv3Emulator();
                 RestartGestureManager();
             }
+        }
+
+        private static void ForEachRootObject(Action<GameObject> fn) {
+            foreach (var scene in Enumerable.Range(0, SceneManager.sceneCount).Select(SceneManager.GetSceneAt)) {
+                foreach (var root in scene.GetRootGameObjects()) {
+                    fn(root);
+                }
+            }
+        }
+
+        private static bool IsAv3EmulatorClone(GameObject obj) {
+            return obj.name.Contains("(ShadowClone)") || obj.name.Contains("(MirrorReflection)");
         }
 
         private static void RestartAv3Emulator() {
@@ -124,10 +143,15 @@ namespace VF {
                 }
 
                 var av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
-                var runtimes = Object.FindObjectsOfType(av3RuntimeType);
-                foreach (var runtime in runtimes) {
+                foreach (var runtime in Object.FindObjectsOfType(av3RuntimeType)) {
                     Object.Destroy(runtime);
                 }
+
+                ForEachRootObject(root => {
+                    if (IsAv3EmulatorClone(root)) {
+                        Object.DestroyImmediate(root);
+                    }
+                });
             } catch (Exception e) {
                 Debug.LogException(e);
             }
