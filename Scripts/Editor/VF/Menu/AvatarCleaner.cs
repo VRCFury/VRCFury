@@ -47,14 +47,28 @@ namespace VF.Menu {
                     var t = checkStack.Pop();
                     var obj = t.gameObject;
 
-                    if (ShouldRemoveObj != null && ShouldRemoveObj(obj)) {
+                    // TODO: ShouldRemoveObj should maybe verify if anything else in the avatar is using the object
+                    // (constraints and things)
+                    
+                    var removeObject = ShouldRemoveObj != null && ShouldRemoveObj(obj);
+                    if (ShouldRemoveComponent != null && obj.gameObject.transform.childCount == 0) {
+                        var allComponents = obj.GetComponents<Component>()
+                            .Where(c => !(c is Transform))
+                            .ToArray();
+                        if (allComponents.Length > 0) {
+                            var allComponentsAreRemoved = allComponents.All(ShouldRemoveComponent);
+                            removeObject |= allComponentsAreRemoved;
+                        }
+                    }
+
+                    if (removeObject) {
                         removeItems.Add("Object: " + GetPath(obj));
                         if (perform) RemoveObject(obj);
                     } else {
                         if (ShouldRemoveComponent != null) {
                             foreach (var component in obj.GetComponents<Component>()) {
                                 if (!(component is Transform) && ShouldRemoveComponent(component)) {
-                                    removeItems.Add("Component: " + component.GetType().Name + " on " + GetPath(obj));
+                                    removeItems.Add(component.GetType().Name + " on " + GetPath(obj));
                                     if (perform) RemoveComponent(component);
                                 }
                             }

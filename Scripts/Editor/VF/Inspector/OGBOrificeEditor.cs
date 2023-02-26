@@ -254,11 +254,12 @@ namespace VF.Inspector {
          * Visit every light that could possibly be used for this orifice. This includes all children,
          * and single-deptch children of all parents.
          */
-        private static void ForEachPossibleLight(Transform obj, bool directOnly, Action<Light> act) {
+        public static void ForEachPossibleLight(Transform obj, bool directOnly, Action<Light> act) {
             var visited = new HashSet<Light>();
             void Visit(Light light) {
                 if (visited.Contains(light)) return;
                 visited.Add(light);
+                if (!IsHole(light) && !IsRing(light) && !IsNormal(light)) return;
                 act(light);
             }
             foreach (Transform child in obj) {
@@ -298,25 +299,6 @@ namespace VF.Inspector {
             var rotation = Quaternion.LookRotation(forward);
 
             return Tuple.Create(isRing ? OGBOrifice.AddLight.Ring : OGBOrifice.AddLight.Hole, position, rotation);
-        }
-
-        public static void ClaimLights(OGBOrifice orifice) {
-            if (orifice.addLight == OGBOrifice.AddLight.None) {
-                var info = GetInfoFromLights(orifice.gameObject);
-                if (info != null) {
-                    var type = info.Item1;
-                    var position = info.Item2;
-                    var rotation = info.Item3;
-                    orifice.addLight = type;
-                    orifice.position = position;
-                    orifice.rotation = rotation.eulerAngles;
-                }
-            }
-            ForEachPossibleLight(orifice.transform, false, light => {
-                if (IsRing(light) || IsHole(light) || IsNormal(light)) {
-                    AvatarCleaner.RemoveComponent(light);
-                }
-            });
         }
 
         private static bool IsDirectChildOfHips(OGBOrifice orf) {
