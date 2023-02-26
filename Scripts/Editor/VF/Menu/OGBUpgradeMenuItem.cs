@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
@@ -66,47 +67,47 @@ namespace VF.Menu {
         }
 
         public static string Apply(GameObject avatarObject, bool dryRun) {
-            var deletions = new List<string>();
-            var addedPen = new HashSet<GameObject>();
-            var addedOrf = new HashSet<GameObject>();
-            var alreadyExists = new List<string>();
+            var objectsToDelete = new List<GameObject>();
+            var componentsToDelete = new List<Component>();
+            var hasExistingOrifice = new HashSet<Transform>();
+            var hasExistingPenetrator = new HashSet<Transform>();
+            var addedOrifice = new HashSet<Transform>();
+            var addedPenetrator = new HashSet<Transform>();
+            var foundParentConstraint = false;
 
-            string GetPath(GameObject obj) {
-                return AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
+            bool AlreadyExistsAboveOrBelow(GameObject obj, IEnumerable<Transform> list) {
+                return obj.GetComponentsInChildren<Transform>(true)
+                    .Concat(obj.GetComponentsInParent<Transform>(true))
+                    .Any(list.Contains);
+            }
+
+            string GetPath(Transform obj) {
+                return AnimationUtility.CalculateTransformPath(obj, avatarObject.transform);
             }
             OGBPenetrator AddPen(GameObject obj) {
-                if (obj.GetComponentsInParent<OGBPenetrator>(true).Length > 0) return null;
-                if (obj.GetComponentsInChildren<OGBPenetrator>(true).Length > 0) return null;
-                if (addedPen.Contains(obj)) return null;
-                addedPen.Add(obj);
+                if (AlreadyExistsAboveOrBelow(obj, hasExistingPenetrator.Concat(addedPenetrator))) return null;
+                addedPenetrator.Add(obj.transform);
                 if (dryRun) return null;
                 return obj.AddComponent<OGBPenetrator>();
             }
             OGBOrifice AddOrifice(GameObject obj) {
-                if (obj.GetComponentsInParent<OGBOrifice>(true).Length > 0) return null;
-                if (obj.GetComponentsInChildren<OGBOrifice>(true).Length > 0) return null;
-                if (addedOrf.Contains(obj)) return null;
-                addedOrf.Add(obj);
+                if (AlreadyExistsAboveOrBelow(obj, hasExistingOrifice.Concat(addedOrifice))) return null;
+                addedOrifice.Add(obj.transform);
                 if (dryRun) return null;
                 return obj.AddComponent<OGBOrifice>();
             }
-            void Delete(GameObject obj) {
-                if (dryRun) {
-                    deletions.Add(GetPath(obj));
-                    return;
-                }
-                AvatarCleaner.RemoveObject(obj);
-            }
 
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-                alreadyExists.Add(GetPath(c.gameObject));
+                hasExistingPenetrator.Add(c.transform);
+                foreach (var renderer in OGBPenetratorEditor.GetRenderers(c)) {
+                    hasExistingPenetrator.Add(renderer.transform);
+                }
             }
             foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
-                alreadyExists.Add(GetPath(c.gameObject));
+                hasExistingOrifice.Add(c.transform);
             }
             
             // Upgrade "parent-constraint" DPS setups
-            var oldParentsToDelete = new HashSet<GameObject>();
             foreach (var parent in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 var constraint = parent.gameObject.GetComponent<ParentConstraint>();
                 if (constraint == null) continue;
@@ -128,7 +129,8 @@ namespace VF.Menu {
                 var parentPosition = parentInfo.Item2;
                 var parentRotation = parentInfo.Item3;
 
-                oldParentsToDelete.Add(parent.gameObject);
+                foundParentConstraint = true;
+                objectsToDelete.Add(parent.gameObject);
                 
                 for (var i = 0; i < constraint.sourceCount; i++) {
                     var source = constraint.GetSource(i);
@@ -157,7 +159,7 @@ namespace VF.Menu {
 
                     var fullName = "Orifice (" + name + ")";
 
-                    addedOrf.Add(obj);
+                    addedOrifice.Add(obj.transform);
                     if (!dryRun) {
                         var ogb = obj.GetComponent<OGBOrifice>();
                         if (ogb == null) ogb = obj.AddComponent<OGBOrifice>();
@@ -196,7 +198,7 @@ namespace VF.Menu {
                         }
                         p.name = GetNameFromBakeInfo(info.gameObject);
                     }
-                    Delete(baked.gameObject);
+                    objectsToDelete.Add(baked.gameObject);
                 }
                 void UnbakeOrf(Transform baked) {
                     if (!baked) return;
@@ -205,9 +207,8 @@ namespace VF.Menu {
                     var o = AddOrifice(baked.parent.gameObject);
                     if (o) {
                         o.name = GetNameFromBakeInfo(info.gameObject);
-                        OGBOrificeEditor.ClaimLights(o);
                     }
-                    Delete(baked.gameObject);
+                    objectsToDelete.Add(baked.gameObject);
                 }
 
                 UnbakePen(t.Find("OGB_Baked_Pen"));
@@ -228,7 +229,7 @@ namespace VF.Menu {
                 var parent = light.gameObject.transform.parent;
                 if (parent) {
                     var parentObj = parent.gameObject;
-                    if (!oldParentsToDelete.Contains(parentObj) && OGBOrificeEditor.GetInfoFromLights(parentObj, true) != null)
+                    if (!objectsToDelete.Contains(parentObj) && OGBOrificeEditor.GetInfoFromLights(parentObj, true) != null)
                         AddOrifice(parentObj);
                 }
             }
@@ -239,42 +240,54 @@ namespace VF.Menu {
                 var penMarker = t.Find("OGB_Marker_Pen");
                 if (penMarker) {
                     AddPen(t.gameObject);
-                    Delete(penMarker.gameObject);
+                    objectsToDelete.Add(penMarker.gameObject);
                 }
 
                 var holeMarker = t.Find("OGB_Marker_Hole");
                 if (holeMarker) {
                     var o = AddOrifice(t.gameObject);
                     if (o) o.addLight = OGBOrifice.AddLight.Hole;
-                    Delete(holeMarker.gameObject);
+                    objectsToDelete.Add(holeMarker.gameObject);
                 }
                 
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
                     var o = AddOrifice(t.gameObject);
                     if (o) o.addLight = OGBOrifice.AddLight.Ring;
-                    Delete(ringMarker.gameObject);
+                    objectsToDelete.Add(ringMarker.gameObject);
                 }
             }
             
             // Claim lights on all OGB components
-            foreach (var orifice in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
-                if (dryRun) {
-                    foreach (var light in orifice.gameObject.GetComponentsInChildren<Light>(true)) {
-                        deletions.Add("Light on " + GetPath(light.gameObject));
+            foreach (var transform in hasExistingOrifice.Concat(addedOrifice)) {
+                if (!dryRun) {
+                    foreach (var orifice in transform.GetComponents<OGBOrifice>()) {
+                        if (orifice.addLight == OGBOrifice.AddLight.None) {
+                            var info = OGBOrificeEditor.GetInfoFromLights(orifice.gameObject);
+                            if (info != null) {
+                                var type = info.Item1;
+                                var position = info.Item2;
+                                var rotation = info.Item3;
+                                orifice.addLight = type;
+                                orifice.position = position;
+                                orifice.rotation = rotation.eulerAngles;
+                            }
+                        }
                     }
-                } else {
-                    OGBOrificeEditor.ClaimLights(orifice);
                 }
+
+                OGBOrificeEditor.ForEachPossibleLight(transform, false, light => {
+                    componentsToDelete.Add(light);
+                });
             }
 
             // Clean up
-            deletions.AddRange(AvatarCleaner.Cleanup(
+            var deletions = AvatarCleaner.Cleanup(
                 avatarObject,
                 perform: !dryRun,
                 ShouldRemoveObj: obj => {
                     return obj.name == "GUIDES_DELETE"
-                           || oldParentsToDelete.Contains(obj);
+                           || objectsToDelete.Contains(obj);
                 },
                 ShouldRemoveAsset: asset => {
                     if (asset == null) return false;
@@ -286,7 +299,7 @@ namespace VF.Menu {
                 },
                 ShouldRemoveLayer: layer => {
                     var lower = layer.ToLower();
-                    if (oldParentsToDelete.Count > 0 && lower.Contains("tps") && lower.Contains("orifice")) {
+                    if (foundParentConstraint && lower.Contains("tps") && lower.Contains("orifice")) {
                         return true;
                     }
                     return layer == "DPS_Holes"
@@ -307,19 +320,23 @@ namespace VF.Menu {
                 ShouldRemoveComponent: component => {
                     if (component is VRCContactSender sender && IsOGBContact(sender, sender.collisionTags)) return true;
                     if (component is VRCContactReceiver rcv && IsOGBContact(rcv, rcv.collisionTags)) return true;
+                    if (componentsToDelete.Contains(component)) return true;
                     return false;
                 }
-            ));
+            );
 
             var parts = new List<string>();
-            if (addedPen.Count > 0)
-                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPen.Select(GetPath)));
-            if (addedOrf.Count > 0)
-                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrf.Select(GetPath)));
+            var alreadyExists = hasExistingOrifice
+                .Concat(hasExistingPenetrator)
+                .ToImmutableHashSet();
+            if (addedPenetrator.Count > 0)
+                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPenetrator.Select(GetPath)));
+            if (addedOrifice.Count > 0)
+                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrifice.Select(GetPath)));
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
-                parts.Add("OGB already exists on:\n" + string.Join("\n", alreadyExists));
+                parts.Add("OGB already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
 
             if (parts.Count == 0) return "";
             return string.Join("\n\n", parts);

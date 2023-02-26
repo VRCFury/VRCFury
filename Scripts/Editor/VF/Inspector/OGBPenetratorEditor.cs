@@ -98,8 +98,7 @@ namespace VF.Inspector {
             VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
 
-        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(OGBPenetrator pen) {
-
+        public static ICollection<Renderer> GetRenderers(OGBPenetrator pen) {
             var renderers = new List<Renderer>();
             if (pen.autoRenderer) {
                 var r = OGBPenetratorSizeDetector.GetAutoRenderer(pen.gameObject);
@@ -107,12 +106,19 @@ namespace VF.Inspector {
             } else {
                 renderers.AddRange(pen.configureTpsMesh.Where(r => r != null));
             }
+            return renderers;
+        }
+
+        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(OGBPenetrator pen) {
+
+            var renderers = GetRenderers(pen);
 
             Quaternion worldRotation = pen.transform.rotation;
             Vector3 worldPosition = pen.transform.position;
             if (pen.autoPosition && renderers.Count > 0) {
-                if (!pen.configureTps) worldRotation = OGBPenetratorSizeDetector.GetAutoWorldRotation(renderers[0]);
-                worldPosition = OGBPenetratorSizeDetector.GetAutoWorldPosition(renderers[0]);
+                var firstRenderer = renderers.First();
+                if (!pen.configureTps) worldRotation = OGBPenetratorSizeDetector.GetAutoWorldRotation(firstRenderer);
+                worldPosition = OGBPenetratorSizeDetector.GetAutoWorldPosition(firstRenderer);
             }
             var testBase = pen.transform.Find("OGBTestBase");
             if (testBase != null) {
