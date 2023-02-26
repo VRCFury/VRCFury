@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Builder.Ogb;
 
 namespace VF.Menu {
     public class MenuItems {
@@ -20,13 +21,13 @@ namespace VF.Menu {
         [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", priority = 1201)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                OGBUpgradeMenuItem.Run();
+                OgbUpgrader.Run();
             });
         }
 
         [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", true)]
         private static bool Check() {
-            return OGBUpgradeMenuItem.Check();
+            return OgbUpgrader.Check();
         }
         
         [MenuItem("Tools/VRCFury/Create Orifice", priority = 1202)]

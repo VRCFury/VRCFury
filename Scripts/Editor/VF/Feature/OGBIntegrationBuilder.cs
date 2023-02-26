@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine.UIElements;
+using VF.Builder.Ogb;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Menu;
@@ -9,7 +10,7 @@ namespace VF.Feature {
     public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
         [FeatureBuilderAction(FeatureOrder.AddOgbComponents)]
         public void Apply() {
-            OGBUpgradeMenuItem.Apply(featureBaseObject, false);
+            OgbUpgrader.Apply(featureBaseObject, false);
         }
         
         public override bool ShowInMenu() {

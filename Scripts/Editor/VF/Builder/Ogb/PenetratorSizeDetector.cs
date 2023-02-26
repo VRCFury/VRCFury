@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Model;
 
-namespace VF.Inspector {
-    static class OGBPenetratorSizeDetector {
+namespace VF.Builder.Ogb {
+    internal static class PenetratorSizeDetector {
+        private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
+        private static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
+
         public static Renderer GetAutoRenderer(GameObject obj) {
             return GetAutoRenderer(obj, true) ?? GetAutoRenderer(obj, false);
         }
@@ -99,12 +101,12 @@ namespace VF.Inspector {
             if (!mat.shader) return null;
             if (mat.shader.name == "Raliv/Penetrator") return Quaternion.identity; // Raliv
             if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return Quaternion.identity; // XSToon w/ Raliv
-            if (mat.HasProperty("_PenetratorEnabled") && mat.GetFloat("_PenetratorEnabled") > 0) return Quaternion.identity; // Poiyomi 7 w/ Raliv
+            if (mat.HasProperty(Poi7PenetratorEnabled) && mat.GetFloat(Poi7PenetratorEnabled) > 0) return Quaternion.identity; // Poiyomi 7 w/ Raliv
             if (mat.shader.name.Contains("DPS") && mat.HasProperty("_ReCurvature")) return Quaternion.identity; // UnityChanToonShader w/ Raliv
-            if (mat.HasProperty("_TPSPenetratorEnabled") && mat.GetFloat("_TPSPenetratorEnabled") > 0) {
+            if (TpsConfigurer.IsTps(mat)) {
                 // Poiyomi 8 w/ TPS
-                if (mat.HasProperty("_TPS_PenetratorForward")) {
-                    var c = mat.GetVector("_TPS_PenetratorForward");
+                if (mat.HasProperty(TpsPenetratorForward)) {
+                    var c = mat.GetVector(TpsPenetratorForward);
                     return Quaternion.LookRotation(new Vector3(c.x, c.y, c.z));
                 }
                 return Quaternion.identity;
