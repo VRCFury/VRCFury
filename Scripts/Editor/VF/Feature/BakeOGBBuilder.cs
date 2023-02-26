@@ -48,18 +48,11 @@ namespace VF.Feature {
                     }
                     var (name, bakeRoot, renderersToCheck, worldLength, worldRadius) = bakeInfo;
 
-                    var renderers = new List<(Renderer, int)>();
-                    foreach (var r in renderersToCheck) {
-                        var mats = r.sharedMaterials;
-                        for (var matI = 0; matI < mats.Length; matI++) {
-                            var searchMat = mats[matI];
-                            if (!searchMat.HasProperty(TpsPenetratorEnabled)) continue;
-                            if (searchMat.GetFloat(TpsPenetratorEnabled) <= 0) continue;
-                            renderers.Add((r, matI));
-                        }
-                    }
-                    
-                    if (renderers.Count == 0) {
+                    var renderersWithTps = renderersToCheck
+                        .Where(r => r.sharedMaterials.Any(m => OGBPenetratorSizeDetector.IsTps(m)))
+                        .ToArray();
+
+                    if (renderersWithTps.Length == 0) {
                         throw new VRCFBuilderException(
                             "OGB Penetrator has 'auto-configure TPS' enabled, but there were no meshes found inside " +
                             "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled.");
@@ -68,7 +61,7 @@ namespace VF.Feature {
                     var root = new GameObject("OGBTPSShaderRoot");
                     root.transform.SetParent(bakeRoot.transform, false);
 
-                    foreach (var (renderer_, matSlot) in renderers) {
+                    foreach (var renderer_ in renderersWithTps) {
                         var renderer = renderer_;
 
                         // Convert MeshRenderer to SkinnedMeshRenderer
@@ -104,62 +97,65 @@ namespace VF.Feature {
                             EditorUtility.SetDirty(skin);
                         }
 
-                        var shaderRotation = Quaternion.identity;
-                        var mat = skin.sharedMaterials[matSlot];
-                        mat = Object.Instantiate(mat);
-                        VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);
-                        {
-                            var mats = skin.sharedMaterials;
-                            mats[matSlot] = mat;
-                            skin.sharedMaterials = mats;
-                            EditorUtility.SetDirty(skin);
-                        }
+                        foreach (var matSlot in Enumerable.Range(0, skin.sharedMaterials.Length)) {
+                            var shaderRotation = Quaternion.identity;
+                            var mat = skin.sharedMaterials[matSlot];
+                            if (!OGBPenetratorSizeDetector.IsTps(mat)) continue;
+                            mat = Object.Instantiate(mat);
+                            VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);
+                            {
+                                var mats = skin.sharedMaterials;
+                                mats[matSlot] = mat;
+                                skin.sharedMaterials = mats;
+                                EditorUtility.SetDirty(skin);
+                            }
 
-                        var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-                        if (shaderOptimizer == null) {
-                            throw new VRCFBuilderException(
-                                "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
-                        }
-                        var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
-                        VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                            ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
-                        });
-                        var localScale = root.transform.lossyScale;
+                            var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+                            if (shaderOptimizer == null) {
+                                throw new VRCFBuilderException(
+                                    "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+                            }
+                            var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
+                            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                                ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
+                            });
+                            var localScale = root.transform.lossyScale;
 
-                        mat.SetFloat(TpsPenetratorLength, worldLength);
-                        mat.SetVector(TpsPenetratorScale, ThreeToFour(localScale));
-                        mat.SetVector(TpsPenetratorRight, ThreeToFour(shaderRotation * Vector3.right));
-                        mat.SetVector(TpsPenetratorUp, ThreeToFour(shaderRotation * Vector3.up));
-                        mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
-                        mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
-                        mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
+                            mat.SetFloat(TpsPenetratorLength, worldLength);
+                            mat.SetVector(TpsPenetratorScale, ThreeToFour(localScale));
+                            mat.SetVector(TpsPenetratorRight, ThreeToFour(shaderRotation * Vector3.right));
+                            mat.SetVector(TpsPenetratorUp, ThreeToFour(shaderRotation * Vector3.up));
+                            mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
+                            mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
+                            mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
 
-                        var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
-                        var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
-                        var meshInfo = Activator.CreateInstance(meshInfoType);
-                        var bakedMesh = MeshBaker.BakeMesh(skin, root.transform);
-                        if (bakedMesh == null)
-                            throw new VRCFBuilderException("Failed to bake mesh for TPS configuration"); 
-                        meshInfoType.GetField("bakedVertices").SetValue(meshInfo, bakedMesh.vertices);
-                        meshInfoType.GetField("bakedNormals").SetValue(meshInfo, bakedMesh.normals);
-                        meshInfoType.GetField("ownerRenderer").SetValue(meshInfo, skin);
-                        meshInfoType.GetField("sharedMesh").SetValue(meshInfo, skin.sharedMesh);
-                        var bakeMethod = bakeUtil.GetMethod(
-                            "BakePositionsToTexture", 
-                            BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
-                            null,
-                            new[] { meshInfoType, typeof(Texture2D) },
-                            null
-                        );
-                        Texture2D tex = null;
-                        VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                            tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, meshInfo, null);
-                        });
-                        if (string.IsNullOrWhiteSpace(AssetDatabase.GetAssetPath(tex))) {
-                            throw new VRCFBuilderException("Failed to bake TPS texture");
+                            var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
+                            var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
+                            var meshInfo = Activator.CreateInstance(meshInfoType);
+                            var bakedMesh = MeshBaker.BakeMesh(skin, root.transform);
+                            if (bakedMesh == null)
+                                throw new VRCFBuilderException("Failed to bake mesh for TPS configuration"); 
+                            meshInfoType.GetField("bakedVertices").SetValue(meshInfo, bakedMesh.vertices);
+                            meshInfoType.GetField("bakedNormals").SetValue(meshInfo, bakedMesh.normals);
+                            meshInfoType.GetField("ownerRenderer").SetValue(meshInfo, skin);
+                            meshInfoType.GetField("sharedMesh").SetValue(meshInfo, skin.sharedMesh);
+                            var bakeMethod = bakeUtil.GetMethod(
+                                "BakePositionsToTexture", 
+                                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
+                                null,
+                                new[] { meshInfoType, typeof(Texture2D) },
+                                null
+                            );
+                            Texture2D tex = null;
+                            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                                tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, meshInfo, null);
+                            });
+                            if (string.IsNullOrWhiteSpace(AssetDatabase.GetAssetPath(tex))) {
+                                throw new VRCFBuilderException("Failed to bake TPS texture");
+                            }
+                            mat.SetTexture(TpsBakedMesh, tex);
+                            EditorUtility.SetDirty(mat);
                         }
-                        mat.SetTexture(TpsBakedMesh, tex);
-                        EditorUtility.SetDirty(mat);
 
                         skin.rootBone = root.transform;
                         EditorUtility.SetDirty(skin);
