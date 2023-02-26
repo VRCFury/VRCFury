@@ -13,7 +13,7 @@ namespace VF.Inspector {
         }
         
         private static Renderer GetAutoRenderer(GameObject obj, bool dpsOnly) {
-            bool IsDps(Renderer r) => !dpsOnly || GetMaterialDpsRotation(r) != null;
+            bool IsDps(Renderer r) => !dpsOnly || HasDpsMaterial(r);
             Renderer Try(IEnumerable<Renderer> enumerable) {
                 var arr = enumerable.ToArray();
                 if (arr.Length > 1) {
@@ -84,6 +84,10 @@ namespace VF.Inspector {
             if (length <= 0 || radius <= 0) return null;
 
             return Tuple.Create(length, radius);
+        }
+
+        public static bool HasDpsMaterial(Renderer r) {
+            return GetMaterialDpsRotation(r) != null;
         }
 
         private static Quaternion? GetMaterialDpsRotation(Renderer r) {
