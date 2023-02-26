@@ -120,6 +120,7 @@ namespace VF.Builder {
         }
         public VFABool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
             if (usePrefix) name = NewParamName(name);
+            if (VRChatGlobalParams.Contains(name)) synced = false;
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
                 param.name = name;
@@ -384,5 +385,29 @@ namespace VF.Builder {
                 return this;
             }
         }
+
+        private static HashSet<string> VRChatGlobalParams = new HashSet<string> {
+            "IsLocal",
+            "Viseme",
+            "Voice",
+            "GestureLeft",
+            "GestureRight",
+            "GestureLeftWeight",
+            "GestureRightWeight",
+            "AngularY",
+            "VelocityX",
+            "VelocityY",
+            "VelocityZ",
+            "Upright",
+            "Grounded",
+            "Seated",
+            "AFK",
+            "TrackingType",
+            "VRMode",
+            "MuteSelf",
+            "InStation",
+            "AvatarVersion",
+            "GroundProximity"
+        };
     }
 }
