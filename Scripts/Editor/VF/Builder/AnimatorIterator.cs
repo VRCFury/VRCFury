@@ -71,10 +71,14 @@ namespace VF.Builder {
         }
         
         public static void ForEachClip(AnimatorState state, Action<AnimationClip> action) {
+            ForEachClip(state.motion, action);
+        }
+        
+        public static void ForEachClip(Motion root, Action<AnimationClip> action) {
             action = NoDupesWrapper(action);
 
             var motions = new Stack<Motion>();
-            motions.Push(state.motion);
+            motions.Push(root);
             while (motions.Count > 0) {
                 var motion = motions.Pop();
                 if (motion == null) continue;

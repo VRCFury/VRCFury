@@ -143,6 +143,29 @@ public class ClipBuilder {
         return string.Join("/", parts);
     }
 
+    public static bool IsStaticAnimation(Motion motion) {
+        var isStatic = true;
+        AnimatorIterator.ForEachClip(motion, clip => {
+            isStatic &= IsStaticAnimation(clip);
+        });
+        return isStatic;
+    }
+
+    private static bool IsStaticAnimation(AnimationClip clip) {
+        var isStatic = true;
+        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+            var curve = AnimationUtility.GetEditorCurve(clip, binding);
+            if (curve.keys.All(key => key.time != 0)) isStatic = false;
+            if (curve.keys.Select(k => k.value).Distinct().Count() > 1) isStatic = false;
+        }
+        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+            var curve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            if (curve.All(key => key.time != 0)) isStatic = false;
+            if (curve.Select(k => k.value).Distinct().Count() > 1) isStatic = false;
+        }
+        return isStatic;
+    }
+
 }
 
 }
