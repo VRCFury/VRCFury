@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -24,6 +25,7 @@ namespace VF.Feature.Base {
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
         public GameObject editorObject;
+        public MutableManager mutableManager;
 
         public virtual string GetEditorTitle() {
             return null;
@@ -84,13 +86,27 @@ namespace VF.Feature.Base {
         }
 
         protected AnimationClip LoadState(string name, State state) {
-            if (state.actions.Count == 1 && state.actions[0] is AnimationClipAction && featureBaseObject == avatarObject) {
-                return (state.actions[0] as AnimationClipAction).clip;
-            }
             if (state.actions.Count == 0) {
                 return manager.GetClipStorage().GetNoopClip();
             }
-            var clip = manager.GetClipStorage().NewClip(name);
+
+            var firstClip = state.actions
+                .OfType<AnimationClipAction>()
+                .Select(action => action.clip)
+                .FirstOrDefault();
+
+            void RewriteClip(AnimationClip c) {
+                ClipCopier.Rewrite(c, fromObj: featureBaseObject, fromRoot: avatarObject);
+            }
+
+            AnimationClip clip;
+            if (firstClip) {
+                clip = mutableManager.CopyRecursive(firstClip, saveParent: manager.GetClipStorage().GetStorageRoot());
+                RewriteClip(clip);
+            } else {
+                clip = manager.GetClipStorage().NewClip(name);
+            }
+
             foreach (var action in state.actions) {
                 switch (action) {
                     case FlipbookAction flipbook:
@@ -108,7 +124,12 @@ namespace VF.Feature.Base {
                         }
                         break;
                     case AnimationClipAction actionClip:
-                        ClipCopier.Copy(actionClip.clip, clip, fromObj: featureBaseObject, fromRoot: avatarObject);
+                        if (actionClip.clip != firstClip) {
+                            var copy = mutableManager.CopyRecursive(actionClip.clip, "Copy of " + actionClip.clip.name);
+                            RewriteClip(copy);
+                            ClipCopier.Copy(copy, clip);
+                            AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
+                        }
                         break;
                     case ObjectToggleAction toggle:
                         if (toggle.obj == null) {

@@ -8,9 +8,21 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     public class ClipCopier {
+
         public static void Copy(
             AnimationClip from,
-            AnimationClip to,
+            AnimationClip to
+        ) {
+            var fromC = new ControllerManager.MutableClip(from);
+            var toC = new ControllerManager.MutableClip(to);
+            foreach (var binding in fromC.GetFloatBindings())
+                toC.SetFloatCurve(binding, fromC.GetFloatCurve(binding));
+            foreach (var binding in fromC.GetObjectBindings())
+                toC.SetObjectCurve(binding, fromC.GetObjectCurve(binding));
+        }
+
+        public static void Rewrite(
+            AnimationClip clip_,
             GameObject fromObj = null,
             GameObject fromRoot = null,
             List<string> removePrefixes = null,
@@ -18,6 +30,8 @@ namespace VF.Builder {
             bool rootBindingsApplyToAvatar = false,
             Func<string,string> rewriteParam = null
         ) {
+            var clip = new ControllerManager.MutableClip(clip_);
+            
             string prefix;
             if (fromObj == null) {
                 prefix = "";
@@ -51,11 +65,10 @@ namespace VF.Builder {
                 return path;
             }
 
-            var curvesBindings = AnimationUtility.GetCurveBindings(from);
-            foreach (var originalBinding in curvesBindings) {
+            foreach (var originalBinding in clip.GetFloatBindings()) {
                 var rewrittenBinding = originalBinding;
                 rewrittenBinding.path = RewritePath(rewrittenBinding.path);
-                var curve = AnimationUtility.GetEditorCurve(from, originalBinding);
+                var curve = clip.GetFloatCurve(originalBinding);
                 
                 var bindingToUse = rewrittenBinding;
 
@@ -88,13 +101,15 @@ namespace VF.Builder {
                         bindingToUse = originalBinding;
                 }
 
-                AnimationUtility.SetEditorCurve(to, bindingToUse, curve);
+                if (originalBinding != bindingToUse) {
+                    clip.SetFloatCurve(originalBinding, null);
+                    clip.SetFloatCurve(bindingToUse, curve);
+                }
             }
-            var objBindings = AnimationUtility.GetObjectReferenceCurveBindings(from);
-            foreach (var originalBinding in objBindings) {
+            foreach (var originalBinding in clip.GetObjectBindings()) {
                 var rewrittenBinding = originalBinding;
                 rewrittenBinding.path = RewritePath(rewrittenBinding.path);
-                var curve = AnimationUtility.GetObjectReferenceCurve(from, originalBinding);
+                var curve = clip.GetObjectCurve(originalBinding);
                 var bindingToUse = rewrittenBinding;
                 if (fromRoot) {
                     var existsOnProp = GetObjectFromAvatar(fromRoot, rewrittenBinding, out _);
@@ -103,19 +118,12 @@ namespace VF.Builder {
                         bindingToUse = originalBinding;
                     }
                 }
-                AnimationUtility.SetObjectReferenceCurve(to, bindingToUse, curve);
-            }
-            var prev = new SerializedObject(from);
-            var next = new SerializedObject(to);
-            //next.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = prev.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
-            SerializedProperty prevIterator = prev.GetIterator();
-            while (prevIterator.NextVisible(true)) {
-                var nextEl = next.FindProperty(prevIterator.propertyPath);
-                if (nextEl != null && nextEl.propertyType == prevIterator.propertyType) {
-                    next.CopyFromSerializedProperty(prevIterator);
+
+                if (originalBinding != bindingToUse) {
+                    clip.SetObjectCurve(originalBinding, null);
+                    clip.SetObjectCurve(bindingToUse, curve);
                 }
             }
-            next.ApplyModifiedProperties();
         }
 
         private static bool GetFloatFromAvatar(GameObject avatar, EditorCurveBinding binding, out float output) {

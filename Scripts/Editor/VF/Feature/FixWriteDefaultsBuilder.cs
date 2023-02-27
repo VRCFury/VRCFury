@@ -76,8 +76,9 @@ namespace VF.Feature {
             var missingStates = new List<string>();
             var noopClip = manager.GetClipStorage().GetNoopClip();
             foreach (var controller in applyToUnmanagedLayers ? manager.GetAllUsedControllers() : manager.GetAllTouchedControllers()) {
-                var defaultClip = manager.GetClipStorage().NewClip("Defaults " + controller.GetType());
-                if (controller.GetType() != VRCAvatarDescriptor.AnimLayerType.Action) {
+                AnimationClip defaultClip = null;
+                if (controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
+                    defaultClip = manager.GetClipStorage().NewClip("Defaults " + controller.GetType());
                     var defaultLayer = controller.NewLayer("Defaults", 1);
                     defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
                 }
@@ -104,28 +105,12 @@ namespace VF.Feature {
             List<string> missingStates,
             bool useWriteDefaults
         ) {
-            var alreadySet = new HashSet<EditorCurveBinding>();
-            foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
-            foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
-
-            // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
-            // absolutely must use wd on.
-            AnimatorIterator.ForEachBlendTree(layer, tree => {
-                if (tree.blendType == BlendTreeType.Direct) {
-                    useWriteDefaults = true;
-                }
-            });
-
-            AnimatorIterator.ForEachState(layer, state => {
-                if (useWriteDefaults) { 
-                    state.writeDefaultValues = true;
-                } else {
-                    if (state.motion == null) state.motion = noopClip;
-                    if (!state.writeDefaultValues) return;
-                    state.writeDefaultValues = false;
-                }
-
-                AnimatorIterator.ForEachClip(state, (clip, setClip) => {
+            // Record default values for things
+            if (defaultClip) {
+                var alreadySet = new HashSet<EditorCurveBinding>();
+                foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
+                foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
+                AnimatorIterator.ForEachClip(layer, clip => {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                         if (binding.type == typeof(Animator)) continue;
                         if (alreadySet.Contains(binding)) continue;
@@ -146,13 +131,32 @@ namespace VF.Feature {
                         alreadySet.Add(binding);
                         var exists = AnimationUtility.GetObjectReferenceValue(baseObject, binding, out var value);
                         if (exists) {
-                            AnimationUtility.SetObjectReferenceCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
+                            AnimationUtility.SetObjectReferenceCurve(defaultClip, binding,
+                                ClipBuilder.OneFrame(value));
                         } else if (!binding.path.Contains("_ignored")) {
                             missingStates.Add(
                                 $"{binding.path}:{binding.type.Name}:{binding.propertyName} in {clip.name} on layer {layer.name}");
                         }
                     }
                 });
+            }
+
+            // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
+            // absolutely must use wd on.
+            AnimatorIterator.ForEachBlendTree(layer, tree => {
+                if (tree.blendType == BlendTreeType.Direct) {
+                    useWriteDefaults = true;
+                }
+            });
+
+            AnimatorIterator.ForEachState(layer, state => {
+                if (useWriteDefaults) { 
+                    state.writeDefaultValues = true;
+                } else {
+                    if (state.motion == null) state.motion = noopClip;
+                    if (!state.writeDefaultValues) return;
+                    state.writeDefaultValues = false;
+                }
             });
         }
         

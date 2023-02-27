@@ -72,7 +72,7 @@ namespace VF.Feature {
                                 layerControl.playable =
                                     VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
                                 layerControl.layer = drivesLayerId;
-                                layerControl.goalWeight = playableControl.goalWeight * existingLayerWeight;
+                                layerControl.goalWeight = playableControl.goalWeight;
                                 layerControl.blendDuration = playableControl.blendDuration;
                                 layerControl.debugString = playableControl.debugString;
                             }
@@ -92,8 +92,10 @@ namespace VF.Feature {
                 var enableControl = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(enable.GetRaw());
                 enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 enableControl.goalWeight = 1;
+                var i = 0;
                 foreach (var layer in action.GetLayers()) {
-                    action.SetWeight(layer, 0);
+                    var layerNum = i++;
+                    if (layerNum != 0) action.SetWeight(layer, 0);
                 }
             }
             

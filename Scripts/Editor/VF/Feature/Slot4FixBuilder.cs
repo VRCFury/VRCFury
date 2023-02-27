@@ -59,12 +59,11 @@ namespace VF.Feature {
 
                         meshesToPatch.Add(mesh);
 
-                        var mutable = clip.GetMutable();
-                        var curve = mutable.GetObjectCurve(binding);
-                        mutable.SetObjectCurve(binding, null);
+                        var curve = clip.GetObjectCurve(binding);
+                        clip.SetObjectCurve(binding, null);
                         var newBinding = binding;
                         newBinding.propertyName = $"m_Materials.Array.data[{matCount}]";
-                        mutable.SetObjectCurve(newBinding, curve);
+                        clip.SetObjectCurve(newBinding, curve);
                     }
                 });
             }

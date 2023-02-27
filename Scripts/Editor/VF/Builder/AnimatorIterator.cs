@@ -59,41 +59,40 @@ namespace VF.Builder {
 
         public static void ForEachTransition(AnimatorStateMachine root, Action<AnimatorTransitionBase> action) {
             ForEachStateMachine(root, sm => {
+                foreach (var childSm in sm.stateMachines) {
+                    foreach (var t in sm.GetStateMachineTransitions(childSm.stateMachine)) action(t);
+                }
                 foreach (var t in sm.entryTransitions) action(t);
                 foreach (var t in sm.anyStateTransitions) action(t);
-                ForEachState(sm, state => {
-                    foreach (var t in state.transitions) action(t);
-                });
+                foreach (var child in sm.states) {
+                    foreach (var t in child.state.transitions) action(t);
+                }
             });
         }
         
-        public static void ForEachClip(AnimatorState state, Action<AnimationClip, Action<Motion>> action) {
-            var motions = new Stack<Tuple<Motion, Action<Motion>>>();
-            motions.Push(Tuple.Create(state.motion, (Action<Motion>)(m => state.motion = m)));
+        public static void ForEachClip(AnimatorState state, Action<AnimationClip> action) {
+            var motions = new Stack<Motion>();
+            motions.Push(state.motion);
             while (motions.Count > 0) {
                 var motion = motions.Pop();
                 if (motion == null) continue;
-                switch (motion.Item1) {
+                switch (motion) {
                     case AnimationClip clip:
-                        action(clip, motion.Item2);
+                        action(clip);
                         break;
                     case BlendTree tree:
                         var children = tree.children;
                         for (var i = 0; i < children.Length; i++) {
                             var childNum = i;
                             var child = children[childNum];
-                            motions.Push(Tuple.Create(child.motion, (Action<Motion>)(m => {
-                                child.motion = m;
-                                children[childNum] = child;
-                                tree.children = children;
-                            })));
+                            motions.Push(child.motion);
                         }
                         break;
                 }
             }
         }
 
-        public static void ForEachClip(AnimatorStateMachine root, Action<AnimationClip, Action<Motion>> action) {
+        public static void ForEachClip(AnimatorStateMachine root, Action<AnimationClip> action) {
             ForEachState(root, state => {
                 ForEachClip(state, action);
             });

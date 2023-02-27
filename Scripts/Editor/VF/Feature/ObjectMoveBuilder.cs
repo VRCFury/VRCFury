@@ -41,9 +41,8 @@ namespace VF.Feature {
                         if (oldPath != newPath) {
                             var newBinding = binding;
                             newBinding.path = newPath;
-                            var mutable = clip.GetMutable();
-                            mutable.SetFloatCurve(newBinding, mutable.GetFloatCurve(binding));
-                            mutable.SetFloatCurve(binding, null);
+                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                            clip.SetFloatCurve(binding, null);
                         }
                     }
 
@@ -53,9 +52,8 @@ namespace VF.Feature {
                         if (oldPath != newPath) {
                             var newBinding = binding;
                             newBinding.path = newPath;
-                            var mutable = clip.GetMutable();
-                            mutable.SetObjectCurve(newBinding, mutable.GetObjectCurve(binding));
-                            mutable.SetObjectCurve(binding, null);
+                            clip.SetObjectCurve(newBinding, clip.GetObjectCurve(binding));
+                            clip.SetObjectCurve(binding, null);
                         }
                     }
                 });

@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -9,7 +10,7 @@ using VF.Builder.Exceptions;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public class VRCFuryAssetDatabase {
+    public static class VRCFuryAssetDatabase {
         public static string MakeFilenameSafe(string str) {
             var output = "";
             foreach (var c in str) {
@@ -66,22 +67,6 @@ namespace VF.Builder {
             var fullPath = GetUniquePath(dir, filename, ext);
             AssetDatabase.CreateAsset(obj, fullPath);
         }
-        
-        public static T CopyAsset<T>(T obj, string toPath) where T : Object {
-            T copy = null;
-
-            WithoutAssetEditing(() => {
-                if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(obj), toPath)) {
-                    throw new VRCFBuilderException("Failed to copy asset " + obj + " to " + toPath);
-                }
-                copy = AssetDatabase.LoadAssetAtPath<T>(toPath);
-            });
-
-            if (copy == null) {
-                throw new VRCFBuilderException("Failed to load copied asset " + obj + " from " + toPath);
-            }
-            return copy;
-        }
 
         public static bool IsVrcfAsset(Object obj) {
             if (obj == null) return false;
@@ -118,15 +103,6 @@ namespace VF.Builder {
                 }
             } else {
                 go();
-            }
-        }
-
-        public static void WithLockReloadAssemblies(Action go) {
-            EditorApplication.LockReloadAssemblies();
-            try {
-                go();
-            } finally {
-                EditorApplication.UnlockReloadAssemblies();
             }
         }
 
