@@ -16,7 +16,6 @@ namespace VF.Builder {
         private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureNameProvider;
-        private readonly HashSet<AvatarMask> managedMasks = new HashSet<AvatarMask>();
         private readonly string tmpDir;
         // These can't use AnimatorControllerLayer, because AnimatorControllerLayer is generated on request, not consistent
         private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
@@ -46,20 +45,7 @@ namespace VF.Builder {
             if (ctrl.layers.Length == 0) {
                 // There was no base layer, just make one
                 GetController().NewLayer("Base Mask");
-            } else if (ctrl.layers[0].stateMachine.defaultState != null) {
-                // The base layer has stuff in it?
-                GetController().NewLayer("Base Mask", 0);
-                SetMask(0, GetMask(1));
-                SetMask(1, null);
-                SetWeight(1, 1);
-            } else {
-                SetName(0, "Base Mask");
             }
-            
-            // We don't actually need to do this because unity always treats layer 0 as full weight,
-            // but Gesture Manager shows 0 on the base mask even though it's not true, so let's just set
-            // it to make it clear.
-            SetWeight(0, 1);
             
             for (var i = 1; i < ctrl.layers.Length; i++) {
                 layerOwners[ctrl.layers[i].stateMachine] = "Base Avatar";
@@ -72,9 +58,6 @@ namespace VF.Builder {
                 }
                 VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
                 SetMask(0, mask);
-            }
-            if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                SetMask(0, null);
             }
         }
 
@@ -216,84 +199,37 @@ namespace VF.Builder {
         public VFABool IsLocal() {
             return NewBool("IsLocal", usePrefix: false);
         }
-        
-        public void ModifyMask(int layerId, Action<AvatarMask> makeChanges) {
-            var mask = GetMask(layerId);
-            if (mask == null) {
-                return;
-            }
-            
-            if (managedMasks.Contains(mask)) {
-                makeChanges(mask);
-                EditorUtility.SetDirty(mask);
-                return;
-            }
-
-            var copy = CloneMask(mask);
-            makeChanges(copy);
-            if (MasksEqual(mask, copy)) {
-                return;
-            }
-            
-            managedMasks.Add(copy);
-            SetMask(layerId, copy);
-            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "mask");
-        }
-
-        private static AvatarMask CloneMask(AvatarMask mask) {
-            var copy = new AvatarMask();
-            for (AvatarMaskBodyPart index = AvatarMaskBodyPart.Root; index < AvatarMaskBodyPart.LastBodyPart; ++index)
-                copy.SetHumanoidBodyPartActive(index, mask.GetHumanoidBodyPartActive(index));
-            copy.transformCount = mask.transformCount;
-            for (int index = 0; index < mask.transformCount; ++index) {
-                copy.SetTransformPath(index, mask.GetTransformPath(index));
-                copy.SetTransformActive(index, mask.GetTransformActive(index));
-            }
-            return copy;
-        }
-        private static bool MasksEqual(AvatarMask a, AvatarMask b) {
-            for (AvatarMaskBodyPart index = AvatarMaskBodyPart.Root; index < AvatarMaskBodyPart.LastBodyPart; ++index) {
-                if (a.GetHumanoidBodyPartActive(index) != b.GetHumanoidBodyPartActive(index)) {
-                    return false;
-                }
-            }
-            if (a.transformCount != b.transformCount) return false;
-            for (int index = 0; index < a.transformCount; ++index) {
-                if (a.GetTransformPath(index) != b.GetTransformPath(index)) return false;
-                if (a.GetTransformActive(index) != b.GetTransformActive(index)) return false;
-            }
-            return true;
-        }
 
         public void UnionBaseMask(AvatarMask sourceMask) {
             if (sourceMask == null) return;
-            ModifyMask(0, mask => {
-                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                    if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
-                        mask.SetHumanoidBodyPartActive(bodyPart, true);
+            var mask = GetMask(0);
+            if (mask == null) return;
+
+            for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
+                    mask.SetHumanoidBodyPartActive(bodyPart, true);
+            }
+            for (var i = 0; i < sourceMask.transformCount; i++) {
+                if (sourceMask.GetTransformActive(i)) {
+                    mask.transformCount++;
+                    mask.SetTransformPath(mask.transformCount-1, sourceMask.GetTransformPath(i));
+                    mask.SetTransformActive(mask.transformCount-1, true);
                 }
-                for (var i = 0; i < sourceMask.transformCount; i++) {
-                    if (sourceMask.GetTransformActive(i)) {
-                        mask.transformCount++;
-                        mask.SetTransformPath(mask.transformCount-1, sourceMask.GetTransformPath(i));
-                        mask.SetTransformActive(mask.transformCount-1, true);
-                    }
-                }
-            });
+            }
         }
         
-        private AvatarMask GetMask(int layerId) {
+        public AvatarMask GetMask(int layerId) {
             if (layerId < 0 || layerId >= ctrl.layers.Length) return null;
             return ctrl.layers[layerId].avatarMask;
         }
-        private void SetMask(int layerId, AvatarMask mask) {
+        public void SetMask(int layerId, AvatarMask mask) {
             if (layerId < 0 || layerId >= ctrl.layers.Length) return;
             var layers = ctrl.layers;
             layers[layerId].avatarMask = mask;
             ctrl.layers = layers;
             EditorUtility.SetDirty(ctrl);
         }
-        private void SetName(int layerId, string name) {
+        public void SetName(int layerId, string name) {
             if (layerId < 0 || layerId >= ctrl.layers.Length) return;
             var layers = ctrl.layers;
             layers[layerId].name = name;

@@ -27,7 +27,6 @@ public class VFAController {
                 layers[i] = layers[i - 1];
             }
             layers[insertAt] = layer;
-            AdjustAnimatorLayerControl(layerNum => layerNum >= insertAt ? layerNum + 1 : layerNum);
         }
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);
@@ -36,46 +35,7 @@ public class VFAController {
     }
     
     public void RemoveLayer(int i) {
-        AdjustAnimatorLayerControl(layerNum =>
-            layerNum == i ? -1 :
-            layerNum > i ? layerNum - 1 :
-            layerNum);
         ctrl.RemoveLayer(i);
-    }
-        
-    private void AdjustAnimatorLayerControl(Func<int,int> correction) {
-        foreach (var layer in ctrl.layers) {
-            AnimatorIterator.ForEachBehaviour(layer.stateMachine, (b, _) => {
-                if (b is VRCAnimatorLayerControl layerControl) {
-                    if (VRCFEnumUtils.GetName(type) == VRCFEnumUtils.GetName(layerControl.playable)) {
-                        layerControl.layer = correction.Invoke(layerControl.layer);
-                        if (layerControl.layer < 0) return false;
-                    }
-                }
-                return true;
-            });
-        }
-    }
-
-    public void InflatePlayableLayerControl(AnimatorControllerLayer layer, int minLayer, int maxLayer) {
-        var ctrlType = VRCFEnumUtils.GetName(type);
-        AnimatorIterator.ForEachBehaviour(layer.stateMachine, (b, add) => {
-            if (b is VRCPlayableLayerControl layerControl) {
-                var layerControlTarget = VRCFEnumUtils.GetName(layerControl.layer);
-                if (ctrlType == layerControlTarget) {
-                    for (var i = minLayer; i <= maxLayer; i++) {
-                        var newB = add(typeof(VRCAnimatorLayerControl)) as VRCAnimatorLayerControl;
-                        newB.layer = i;
-                        newB.playable = VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(ctrlType);
-                        newB.goalWeight = layerControl.goalWeight;
-                        newB.blendDuration = layerControl.blendDuration;
-                        newB.debugString = layerControl.debugString;
-                    }
-                    return false;
-                }
-            }
-            return true;
-        });
     }
 
     public VFABool NewTrigger(string name) {

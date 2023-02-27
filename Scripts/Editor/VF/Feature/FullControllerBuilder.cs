@@ -1,9 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -24,30 +22,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var baseObject = model.rootObjOverride;
-            if (baseObject == null) {
-                baseObject = featureBaseObject;
-            }
-
-            var rewrittenParams = new HashSet<string>();
-            Func<string,string> rewriteParam = name => {
-                if (string.IsNullOrWhiteSpace(name)) return name;
-                if (VRChatGlobalParams.Contains(name)) return name;
-                if (model.allNonsyncedAreGlobal) {
-                    var synced = model.prms.Any(p => p.parameters.parameters.Any(param => param.name == name));
-                    if (!synced) return name;
-                }
-                if (model.globalParams.Contains(name)) {
-                    return name;
-                }
-                if (model.globalParams.Contains("*")) {
-                    return name;
-                }
-
-                rewrittenParams.Add(name);
-                return ControllerManager.NewParamName(name, uniqueModelNum);
-            };
-
             var toggleIsInt = false;
             foreach (var p in model.prms) {
                 if (p.parameters == null) continue;
@@ -56,7 +30,7 @@ namespace VF.Feature {
                         toggleIsInt = true;
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
                     var newParam = new VRCExpressionParameters.Parameter {
-                        name = rewriteParam(param.name),
+                        name = RewriteParamName(param.name),
                         valueType = param.valueType,
                         saved = param.saved && !model.ignoreSaved,
                         defaultValue = param.defaultValue
@@ -65,51 +39,38 @@ namespace VF.Feature {
                 }
             }
 
+            var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
             foreach (var c in model.controllers) {
                 var type = c.type;
                 var source = c.controller as AnimatorController;
                 if (source == null) continue;
-                
-                void RewriteClip(AnimationClip clip) {
-                    if (clip == null) return;
-                    if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
+                var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
+                toMerge.Add((type, copy));
+            }
 
-                    ClipCopier.Rewrite(
-                        clip,
-                        fromObj: baseObject,
-                        fromRoot: avatarObject,
-                        removePrefixes: model.removePrefixes,
-                        addPrefix: model.addPrefix,
-                        rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
-                        rewriteParam: rewriteParam
-                    );
-                }
+            // Record the offsets so we can fix them later
+            var offsetBuilder = allBuildersInRun.OfType<AnimatorLayerControlOffsetBuilder>().First();
+            offsetBuilder.RegisterControllerSet(toMerge);
 
+            foreach (var (type, from) in toMerge) {
                 var targetController = manager.GetController(type);
-                if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && source.layers.Length > 0) {
-                    targetController.UnionBaseMask(source.layers[0].avatarMask);
-                }
-                var merger = new ControllerMerger(
-                    param => rewriteParam(param),
-                    RewriteClip
-                );
-                merger.Merge(source, targetController, mutableManager);
+                Merge(from, targetController);
             }
 
             foreach (var m in model.menus) {
                 if (m.menu == null) continue;
                 var prefix = MenuManager.SplitPath(m.prefix);
-                manager.GetMenu().MergeMenu(prefix, m.menu, rewriteParam);
+                manager.GetMenu().MergeMenu(prefix, m.menu, RewriteParamName);
             }
             
-            foreach (var receiver in baseObject.GetComponentsInChildren<VRCContactReceiver>(true)) {
+            foreach (var receiver in GetBaseObject().GetComponentsInChildren<VRCContactReceiver>(true)) {
                 if (rewrittenParams.Contains(receiver.parameter)) {
-                    receiver.parameter = rewriteParam(receiver.parameter);
+                    receiver.parameter = RewriteParamName(receiver.parameter);
                 }
             }
-            foreach (var physbone in baseObject.GetComponentsInChildren<VRCPhysBone>(true)) {
+            foreach (var physbone in GetBaseObject().GetComponentsInChildren<VRCPhysBone>(true)) {
                 if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed") || rewrittenParams.Contains(physbone.parameter + "_Angle") || rewrittenParams.Contains(physbone.parameter + "_Stretch")) {
-                    physbone.parameter = rewriteParam(physbone.parameter);
+                    physbone.parameter = RewriteParamName(physbone.parameter);
                 }
             }
 
@@ -118,15 +79,15 @@ namespace VF.Feature {
                     states = {
                         new ObjectState.ObjState {
                             action = ObjectState.Action.DEACTIVATE,
-                            obj = baseObject
+                            obj = GetBaseObject()
                         }
                     }
                 });
-                var toggleParam = rewriteParam(model.toggleParam);
+                var toggleParam = RewriteParamName(model.toggleParam);
                 addOtherFeature(new Toggle {
                     name = toggleParam,
                     state = new State {
-                        actions = { new ObjectToggleAction { obj = baseObject } }
+                        actions = { new ObjectToggleAction { obj = GetBaseObject() } }
                     },
                     securityEnabled = model.useSecurityForToggle,
                     addMenuItem = false,
@@ -135,6 +96,108 @@ namespace VF.Feature {
                     useInt = toggleIsInt
                 });
             }
+        }
+        
+        private readonly HashSet<string> rewrittenParams = new HashSet<string>();
+        
+        string RewriteParamName(string name) {
+            if (string.IsNullOrWhiteSpace(name)) return name;
+            if (VRChatGlobalParams.Contains(name)) return name;
+            if (model.allNonsyncedAreGlobal) {
+                var synced = model.prms.Any(p => p.parameters.parameters.Any(param => param.name == name));
+                if (!synced) return name;
+            }
+            if (model.globalParams.Contains(name)) return name;
+            if (model.globalParams.Contains("*")) return name;
+            rewrittenParams.Add(name);
+            return ControllerManager.NewParamName(name, uniqueModelNum);
+        }
+            
+        void RewriteClip(AnimationClip clip) {
+            if (clip == null) return;
+            if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
+
+            ClipCopier.Rewrite(
+                clip,
+                fromObj: GetBaseObject(),
+                fromRoot: avatarObject,
+                removePrefixes: model.removePrefixes,
+                addPrefix: model.addPrefix,
+                rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
+                rewriteParam: RewriteParamName
+            );
+        }
+        
+        private void Merge(AnimatorController from, ControllerManager toMain) {
+            var to = toMain.GetRaw();
+            var type = toMain.GetType();
+
+            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
+                toMain.UnionBaseMask(from.layers[0].avatarMask);
+            }
+
+            var newParams = from.parameters
+                .Concat(from.parameters.Select(p => {
+                    p.name = RewriteParamName(p.name);
+                    return p;
+                }))
+                .Where(p => {
+                    var exists = to.parameters.Any(existing => existing.name == p.name);
+                    return !exists;
+                });
+            to.parameters = to.parameters.Concat(newParams).ToArray();
+
+            foreach (var layer in from.layers) {
+                AnimatorIterator.ForEachState(layer.stateMachine, state => {
+                    state.speedParameter = RewriteParamName(state.speedParameter);
+                    state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
+                    state.mirrorParameter = RewriteParamName(state.mirrorParameter);
+                    state.timeParameter = RewriteParamName(state.timeParameter);
+                });
+                AnimatorIterator.ForEachBehaviour(layer.stateMachine, (b, add) => {
+                    switch (b) {
+                        case VRCAvatarParameterDriver oldB: {
+                            foreach (var p in oldB.parameters) {
+                                p.name = RewriteParamName(p.name);
+                                p.source = RewriteParamName(p.source);
+                            }
+                            break;
+                        }
+                    }
+                    return true;
+                });
+                AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
+                    tree.blendParameter = RewriteParamName(tree.blendParameter);
+                    tree.blendParameterY = RewriteParamName(tree.blendParameterY);
+                    tree.children = tree.children.Select(child => {
+                        child.directBlendParameter = RewriteParamName(child.directBlendParameter);
+                        return child;
+                    }).ToArray();
+                });
+                var allClips = new HashSet<AnimationClip>();
+                AnimatorIterator.ForEachClip(layer.stateMachine, clip => {
+                    allClips.Add(clip);
+                });
+                foreach (var clip in allClips) {
+                    RewriteClip(clip);
+                }
+
+                AnimatorIterator.ForEachTransition(layer.stateMachine, transition => {
+                    transition.conditions = transition.conditions.Select(c => {
+                        c.parameter = RewriteParamName(c.parameter);
+                        return c;
+                    }).ToArray();
+                    EditorUtility.SetDirty(transition);
+                });
+            }
+
+            toMain.TakeLayersFrom(from);
+            AssetDatabase.RemoveObjectFromAsset(from);
+        }
+
+        GameObject GetBaseObject() {
+            if (model.rootObjOverride) return model.rootObjOverride;
+            return featureBaseObject;
         }
 
         public override string GetEditorTitle() {
