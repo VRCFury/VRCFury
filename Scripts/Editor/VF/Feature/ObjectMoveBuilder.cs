@@ -60,15 +60,15 @@ namespace VF.Feature {
                 
                 var layers = controller.GetLayers().ToList();
                 for (var layerId = 0; layerId < layers.Count; layerId++) {
-                    controller.ModifyMask(layerId, mask => {
-                        for (var i = 0; i < mask.transformCount; i++) {
-                            var oldPath = mask.GetTransformPath(i);
-                            var newPath = RewriteClipPath(oldPath);
-                            if (oldPath != newPath) {
-                                mask.SetTransformPath(i, newPath);
-                            }
+                    var mask = controller.GetMask(layerId);
+                    if (mask == null) continue;
+                    for (var i = 0; i < mask.transformCount; i++) {
+                        var oldPath = mask.GetTransformPath(i);
+                        var newPath = RewriteClipPath(oldPath);
+                        if (oldPath != newPath) {
+                            mask.SetTransformPath(i, newPath);
                         }
-                    });
+                    }
                 }
             }
         }

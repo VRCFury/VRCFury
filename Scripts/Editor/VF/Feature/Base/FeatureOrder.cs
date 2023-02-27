@@ -8,6 +8,9 @@ namespace VF.Feature.Base {
         // Needs to happen before anything starts using the Animator
         FixDuplicateArmature = -100,
         
+        // Needs to be the first thing to instantiate the ControllerManagers
+        AnimatorLayerControlRecordBase = -10,
+        
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1,
         
@@ -48,9 +51,6 @@ namespace VF.Feature.Base {
         
         // Needs to run after animations are done, but before FixWriteDefaults
         DirectTreeOptimizer = 8000,
-        
-        // Needs to run before FixWriteDefaults (which creates its own layer, and thus appears as a "conflict")
-        ControllerConflictCheck = 9000,
 
         // Needs to run after everything is done touching the animation controller
         FixWriteDefaults = 10000,
@@ -69,6 +69,11 @@ namespace VF.Feature.Base {
         // Needs to run after all animations are locked in and done
         BlendshapeOptimizer = 10011,
         Slot4Fix = 10012,
+        
+        // Needs to happen after everything is done adding / removing controller layers
+        CleanupBaseMasks = 10013,
+        AnimatorLayerControlFix = 10014,
+        ControllerConflictCheck = 10015,
         
         RemoveJunkAnimators = 11000,
 

@@ -21,6 +21,7 @@ namespace VF.Builder {
             typeof(AnimatorState),
             typeof(AnimatorTransitionBase),
             typeof(StateMachineBehaviour),
+            typeof(AvatarMask),
 
             // Clips and blend trees
             typeof(Motion),
