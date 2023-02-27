@@ -38,19 +38,13 @@ namespace VF.Builder {
         private MenuManager _menu;
         public MenuManager GetMenu() {
             if (_menu == null) {
-                VRCExpressionsMenu menu;
-                var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
-                var filename = "VRCFury Menu for " + avatarObject.name;
-                if (origMenu) {
-                    menu = mutableManager.CopyRecursive(origMenu, filename);
-                    MenuSplitter.JoinMenus(menu);
-                } else {
-                    menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                    VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, filename);
-                }
-
+                var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarObject.name);
                 var initializing = true;
                 _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : currentMenuSortPosition());
+
+                var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
+                if (origMenu != null) _menu.MergeMenu(origMenu);
                 
                 VRCAvatarUtils.SetAvatarMenu(avatar, menu);
                 initializing = false;
