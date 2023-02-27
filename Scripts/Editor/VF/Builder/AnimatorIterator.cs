@@ -71,6 +71,8 @@ namespace VF.Builder {
         }
         
         public static void ForEachClip(AnimatorState state, Action<AnimationClip> action) {
+            action = NoDupesWrapper(action);
+
             var motions = new Stack<Motion>();
             motions.Push(state.motion);
             while (motions.Count > 0) {
@@ -93,12 +95,16 @@ namespace VF.Builder {
         }
 
         public static void ForEachClip(AnimatorStateMachine root, Action<AnimationClip> action) {
+            action = NoDupesWrapper(action);
+
             ForEachState(root, state => {
                 ForEachClip(state, action);
             });
         }
         
         public static void ForEachBlendTree(AnimatorState state, Action<BlendTree> action) {
+            action = NoDupesWrapper(action);
+
             var motions = new Stack<Motion>();
             motions.Push(state.motion);
             while (motions.Count > 0) {
@@ -116,9 +122,19 @@ namespace VF.Builder {
         }
         
         public static void ForEachBlendTree(AnimatorStateMachine root, Action<BlendTree> action) {
+            action = NoDupesWrapper(action);
             ForEachState(root, state => {
                 ForEachBlendTree(state, action);
             });
+        }
+
+        private static Action<T> NoDupesWrapper<T>(Action<T> action) {
+            HashSet<T> visited = new HashSet<T>();
+            return entry => {
+                if (visited.Contains(entry)) return;
+                visited.Add(entry);
+                action(entry);
+            };
         }
     }
 }

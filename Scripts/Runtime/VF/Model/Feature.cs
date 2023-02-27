@@ -619,6 +619,10 @@ namespace VF.Model.Feature {
     [Serializable]
     public class Slot4Fix : NewFeatureModel {
     }
+
+    [Serializable]
+    public class DirectTreeOptimizer : NewFeatureModel {
+    }
     
 
 }

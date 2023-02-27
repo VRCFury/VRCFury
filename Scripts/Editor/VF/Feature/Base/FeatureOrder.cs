@@ -46,9 +46,12 @@ namespace VF.Feature.Base {
         // since it'll make copies of the blendshape curves
         BlendShapeLinkFixAnimations = 104,
         
+        // Needs to run after animations are done, but before FixWriteDefaults
+        DirectTreeOptimizer = 8000,
+        
         // Needs to run before FixWriteDefaults (which creates its own layer, and thus appears as a "conflict")
         ControllerConflictCheck = 9000,
-        
+
         // Needs to run after everything is done touching the animation controller
         FixWriteDefaults = 10000,
         
@@ -59,13 +62,13 @@ namespace VF.Feature.Base {
         
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags = 10004,
-        
+
         // Needs to run after FixWriteDefaults collects the defaults for the defaults layer
         ApplyToggleRestingState = 10005,
         
         // Needs to run after all animations are locked in and done
-        BlendshapeOptimizer = 10006,
-        Slot4Fix = 10007,
+        BlendshapeOptimizer = 10011,
+        Slot4Fix = 10012,
         
         RemoveJunkAnimators = 11000,
 

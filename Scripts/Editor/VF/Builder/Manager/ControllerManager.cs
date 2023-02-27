@@ -23,6 +23,7 @@ namespace VF.Builder {
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
         private readonly ClipStorageManager clipStorage;
+        private readonly VFAController _controller;
     
         public ControllerManager(
             AnimatorController ctrl,
@@ -40,6 +41,7 @@ namespace VF.Builder {
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.tmpDir = tmpDir;
             this.clipStorage = clipStorage;
+            this._controller = new VFAController(ctrl, type);
 
             if (ctrl.layers.Length == 0) {
                 // There was no base layer, just make one
@@ -83,10 +85,8 @@ namespace VF.Builder {
         public new VRCAvatarDescriptor.AnimLayerType GetType() {
             return type;
         }
-
-        private VFAController _controller;
+        
         private VFAController GetController() {
-            if (_controller == null) _controller = new VFAController(ctrl, type);
             return _controller;
         }
 
@@ -95,6 +95,17 @@ namespace VF.Builder {
             managedLayers.Add(newLayer.GetRawStateMachine());
             layerOwners[newLayer.GetRawStateMachine()] = currentFeatureNameProvider();
             return newLayer;
+        }
+
+        public void RemoveLayer(AnimatorStateMachine sm) {
+            var layerNum = GetLayers()
+                .Select((s, i) => (s, i))
+                .Where(tuple => tuple.Item1 == sm)
+                .Select(tuple => tuple.Item2)
+                .First();
+            managedLayers.Remove(sm);
+            layerOwners.Remove(sm);
+            GetController().RemoveLayer(layerNum);
         }
 
         public void TakeLayersFrom(AnimatorController other) {
