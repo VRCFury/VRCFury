@@ -89,6 +89,7 @@ namespace VF.Builder {
                 if (obj == original) rootCopy = copy as T;
                 if (saveParent == null) {
                     VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, saveFilename);
+                    saveParent = copy;
                 } else {
                     copy.name = original.name == "" ? "" : $"[{obj.name}] {original.name}";
                     if (IsType(copy, hiddenTypes))
