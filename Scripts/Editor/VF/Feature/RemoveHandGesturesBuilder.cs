@@ -39,6 +39,7 @@ namespace VF.Feature {
                 };
             }
             transition.conditions = conds;
+            EditorUtility.SetDirty(transition);
         }
 
         public override string GetEditorTitle() {

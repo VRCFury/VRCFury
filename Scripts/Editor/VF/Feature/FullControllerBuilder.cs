@@ -65,41 +65,24 @@ namespace VF.Feature {
                 }
             }
 
-            var rewrittenClips = new Dictionary<AnimationClip, AnimationClip>();
-
             foreach (var c in model.controllers) {
                 var type = c.type;
                 var source = c.controller as AnimatorController;
                 if (source == null) continue;
                 
-                AnimationClip RewriteClip(AnimationClip from) {
-                    if (from == null) {
-                        return null;
-                    }
-                    if (rewrittenClips.ContainsKey(from)) return rewrittenClips[from];
-                    AnimationClip rewritten;
-                    if (AssetDatabase.GetAssetPath(from).Contains("/proxy_")) {
-                        rewritten = from;
-                    } else {
-                        rewritten = manager.GetClipStorage().NewClip(from.name);
-                        ClipCopier.Copy(
-                            from,
-                            rewritten,
-                            fromObj: baseObject,
-                            fromRoot: avatarObject,
-                            removePrefixes: model.removePrefixes,
-                            addPrefix: model.addPrefix,
-                            rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
-                            rewriteParam: rewriteParam
-                        );
-                    }
+                void RewriteClip(AnimationClip clip) {
+                    if (clip == null) return;
+                    if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
 
-                    rewrittenClips[from] = rewritten;
-                    return rewritten;
-                }
-                
-                BlendTree NewBlendTree(string name) {
-                    return manager.GetClipStorage().NewBlendTree(name);
+                    ClipCopier.Rewrite(
+                        clip,
+                        fromObj: baseObject,
+                        fromRoot: avatarObject,
+                        removePrefixes: model.removePrefixes,
+                        addPrefix: model.addPrefix,
+                        rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
+                        rewriteParam: rewriteParam
+                    );
                 }
 
                 var targetController = manager.GetController(type);
@@ -107,12 +90,10 @@ namespace VF.Feature {
                     targetController.UnionBaseMask(source.layers[0].avatarMask);
                 }
                 var merger = new ControllerMerger(
-                    layerName => "FC - " + layerName,
                     param => rewriteParam(param),
-                    RewriteClip,
-                    NewBlendTree
+                    RewriteClip
                 );
-                merger.Merge(source, targetController);
+                merger.Merge(source, targetController, mutableManager);
             }
 
             foreach (var m in model.menus) {

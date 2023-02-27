@@ -28,6 +28,17 @@ namespace VF.Builder {
         }
         
         private Object _clipStorageObj;
+
+        public Object GetStorageRoot() {
+            if (_clipStorageObj == null) {
+                _clipStorageObj = new AnimationClip();
+                _clipStorageObj.hideFlags = HideFlags.None;
+                VRCFuryAssetDatabase.SaveAsset(_clipStorageObj, tmpDir, "VRCF_Clips");
+            }
+
+            return _clipStorageObj;
+        }
+        
         private void AddToClipStorage(Object asset) {
             var baseName = asset.name;
             for (int i = 0;; i++) {
@@ -36,13 +47,7 @@ namespace VF.Builder {
             }
             usedNames.Add(asset.name);
             created.Add(asset);
-
-            if (_clipStorageObj == null) {
-                _clipStorageObj = new AnimationClip();
-                _clipStorageObj.hideFlags = HideFlags.None;
-                VRCFuryAssetDatabase.SaveAsset(_clipStorageObj, tmpDir, "VRCF_Clips");
-            }
-            AssetDatabase.AddObjectToAsset(asset, _clipStorageObj);
+            AssetDatabase.AddObjectToAsset(asset, GetStorageRoot());
         }
 
         public AnimationClip NewClip(string name) {

@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -46,10 +46,7 @@ namespace VF {
             var problyUploading = aboutToUploadTime <= now && aboutToUploadTime > Now() - 10;
             if (state == PlayModeStateChange.ExitingEditMode) {
                 if (!problyUploading && PlayModeMenuItem.Get()) {
-                    var rootObjects = Enumerable.Range(0, SceneManager.sceneCount)
-                        .Select(i => SceneManager.GetSceneAt(i))
-                        .SelectMany(scene => scene.GetRootGameObjects())
-                        .ToList();
+                    var rootObjects = GetRootObjects().ToArray();
                     VRCFPrefabFixer.Fix(rootObjects);
                 }
             } else if (state == PlayModeStateChange.EnteredPlayMode) {
@@ -59,9 +56,7 @@ namespace VF {
                 }
                 EditorPrefs.DeleteKey(AboutToUploadKey);
                 activeNow = true;
-                for (var i = 0; i < SceneManager.sceneCount; i++) {
-                    OnSceneLoaded(SceneManager.GetSceneAt(i), LoadSceneMode.Additive);
-                }
+                Rescan();
             }
         }
 
@@ -86,7 +81,7 @@ namespace VF {
 
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
-            ForEachRootObject(root => {
+            foreach (var root in GetRootObjects()) {
                 foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>(true)) {
                     if (!avatar.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(avatar.gameObject)) continue;
@@ -112,7 +107,7 @@ namespace VF {
                     OGBPenetratorEditor.Bake(o, onlySenders: true);
                     Object.DestroyImmediate(o);
                 }
-            });
+            }
 
             if (oneChanged) {
                 RestartAv3Emulator();
@@ -120,12 +115,11 @@ namespace VF {
             }
         }
 
-        private static void ForEachRootObject(Action<GameObject> fn) {
-            foreach (var scene in Enumerable.Range(0, SceneManager.sceneCount).Select(SceneManager.GetSceneAt)) {
-                foreach (var root in scene.GetRootGameObjects()) {
-                    fn(root);
-                }
-            }
+        private static IEnumerable<GameObject> GetRootObjects() {
+            return Enumerable.Range(0, SceneManager.sceneCount)
+                .Select(SceneManager.GetSceneAt)
+                .Where(scene => scene.isLoaded)
+                .SelectMany(scene => scene.GetRootGameObjects());
         }
 
         private static bool IsAv3EmulatorClone(GameObject obj) {
@@ -148,11 +142,11 @@ namespace VF {
                     Object.Destroy(runtime);
                 }
 
-                ForEachRootObject(root => {
+                foreach (var root in GetRootObjects()) {
                     if (IsAv3EmulatorClone(root)) {
                         Object.DestroyImmediate(root);
                     }
-                });
+                }
             } catch (Exception e) {
                 Debug.LogException(e);
             }

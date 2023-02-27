@@ -93,7 +93,9 @@ public class VRCFuryBuilder {
         // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
         // old asset and messes with the new copy.
         var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
-        
+
+        var mutableManager = new MutableManager(tmpDir);
+
         var currentModelNumber = 0;
         var currentModelName = "";
         var currentMenuSortPosition = 0;
@@ -102,7 +104,8 @@ public class VRCFuryBuilder {
             tmpDir,
             () => currentModelNumber,
             () => currentModelName,
-            () => currentMenuSortPosition
+            () => currentMenuSortPosition,
+            mutableManager
         );
         var clipBuilder = new ClipBuilder(avatarObject);
 
@@ -129,6 +132,7 @@ public class VRCFuryBuilder {
             builder.clipBuilder = clipBuilder;
             builder.avatarObject = avatarObject;
             builder.originalObject = originalObject;
+            builder.mutableManager = mutableManager;
 
             collectedBuilders.Add(builder);
             var builderActions = builder.GetActions();

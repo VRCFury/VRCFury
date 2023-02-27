@@ -88,66 +88,25 @@ namespace VF.Builder {
             }
             var maxControlsPerPage = GetMaxControlsPerPage();
             ForEachMenu(root, (menu, path) => {
-                if (menu.controls.Count > maxControlsPerPage) {
-                    var nextPath = GetNextPageFilename(menu);
-                    var nextMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                    AssetDatabase.CreateAsset(nextMenu, nextPath);
-                    while (menu.controls.Count > maxControlsPerPage - 1) {
-                        nextMenu.controls.Insert(0, menu.controls[menu.controls.Count - 1]);
-                        menu.controls.RemoveAt(menu.controls.Count - 1);
+                var page = menu;
+                var pageNum = 2;
+                while (page.controls.Count > maxControlsPerPage) {
+                    var nextPage = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                    nextPage.name = $"{menu.name} (Page {pageNum++})";
+                    AssetDatabase.AddObjectToAsset(nextPage, root);
+                    while (page.controls.Count > maxControlsPerPage - 1) {
+                        nextPage.controls.Insert(0, page.controls[page.controls.Count - 1]);
+                        page.controls.RemoveAt(page.controls.Count - 1);
                     }
-                    menu.controls.Add(new VRCExpressionsMenu.Control() {
+                    page.controls.Add(new VRCExpressionsMenu.Control() {
                         name = nextText,
                         icon = nextIcon,
                         type = VRCExpressionsMenu.Control.ControlType.SubMenu,
-                        subMenu = nextMenu
+                        subMenu = nextPage
                     });
+                    page = nextPage;
                 }
             });
-        }
-
-        private static string GetNextPageFilename(VRCExpressionsMenu menu) {
-            var assetPath = AssetDatabase.GetAssetPath(menu);
-            if (assetPath == null) {
-                throw new Exception(
-                    "Needed to split menu " + menu.name + ", but it doesn't seem to be saved to a file?");
-            }
-
-            var dirName = Path.GetDirectoryName(assetPath);
-            var baseName = Path.GetFileNameWithoutExtension(assetPath);
-            var vfp = baseName.IndexOf("_vfp");
-            if (vfp >= 0) {
-                baseName = baseName.Substring(0, vfp);
-            }
-            for (var i = 2;; i++) {
-                var newPath = dirName + "/" + baseName + "_vfp" + i + ".asset";
-                if (File.Exists(newPath)) {
-                    continue;
-                }
-                return newPath;
-            }
-        }
-
-        public static void JoinMenus(VRCExpressionsMenu root) {
-            ForEachMenu(root, (menu, path) => {
-                for (var i = 0; i < menu.controls.Count; i++) {
-                    var item = menu.controls[i];
-                    if (IsVrcfPageItem(item)) {
-                        menu.controls.RemoveAt(i);
-                        menu.controls.InsertRange(i, item.subMenu.controls);
-                        AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(item.subMenu));
-                        i--;
-                    }
-                }
-            });
-        }
-
-        private static bool IsVrcfPageItem(VRCExpressionsMenu.Control item) {
-            if (item.type != VRCExpressionsMenu.Control.ControlType.SubMenu) return false;
-            if (item.subMenu == null) return false;
-            var assetPath = AssetDatabase.GetAssetPath(item.subMenu);
-            if (assetPath == null) return false;
-            return assetPath.Contains("_vfp");
         }
 
         private static int GetMaxControlsPerPage() {

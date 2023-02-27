@@ -216,7 +216,7 @@ namespace VF.Feature {
                 .SelectMany(controller => {
                     var clipsInController = new List<AnimationClip>();
                     foreach (var layer in controller.layers) {
-                        AnimatorIterator.ForEachClip(layer.stateMachine, (clip, set) => clipsInController.Add(clip));
+                        AnimatorIterator.ForEachClip(layer.stateMachine, clip => clipsInController.Add(clip));
                     }
                     return clipsInController;
                 })

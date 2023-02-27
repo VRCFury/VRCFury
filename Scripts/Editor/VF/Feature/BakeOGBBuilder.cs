@@ -49,8 +49,8 @@ namespace VF.Feature {
 
                     if (!configuredOne) {
                         throw new VRCFBuilderException(
-                            "OGB Penetrator has 'auto-configure TPS' enabled, but there were no meshes found inside " +
-                            "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled.");
+                            "OGB Penetrator has 'auto-configure TPS' enabled, but no renderer was found " +
+                            "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled in the Color & Normals tab.");
                     }
                 }
 

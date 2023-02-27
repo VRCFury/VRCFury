@@ -23,6 +23,7 @@ namespace VF.Builder {
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
         private readonly ClipStorageManager clipStorage;
+        private readonly VFAController _controller;
     
         public ControllerManager(
             AnimatorController ctrl,
@@ -40,6 +41,7 @@ namespace VF.Builder {
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.tmpDir = tmpDir;
             this.clipStorage = clipStorage;
+            this._controller = new VFAController(ctrl, type);
 
             if (ctrl.layers.Length == 0) {
                 // There was no base layer, just make one
@@ -53,6 +55,11 @@ namespace VF.Builder {
             } else {
                 SetName(0, "Base Mask");
             }
+            
+            // We don't actually need to do this because unity always treats layer 0 as full weight,
+            // but Gesture Manager shows 0 on the base mask even though it's not true, so let's just set
+            // it to make it clear.
+            SetWeight(0, 1);
             
             for (var i = 1; i < ctrl.layers.Length; i++) {
                 layerOwners[ctrl.layers[i].stateMachine] = "Base Avatar";
@@ -78,10 +85,8 @@ namespace VF.Builder {
         public new VRCAvatarDescriptor.AnimLayerType GetType() {
             return type;
         }
-
-        private VFAController _controller;
+        
         private VFAController GetController() {
-            if (_controller == null) _controller = new VFAController(ctrl, type);
             return _controller;
         }
 
@@ -92,7 +97,29 @@ namespace VF.Builder {
             return newLayer;
         }
 
-        private string NewLayerName(string name) {
+        public void RemoveLayer(AnimatorStateMachine sm) {
+            var layerNum = GetLayers()
+                .Select((s, i) => (s, i))
+                .Where(tuple => tuple.Item1 == sm)
+                .Select(tuple => tuple.Item2)
+                .First();
+            managedLayers.Remove(sm);
+            layerOwners.Remove(sm);
+            GetController().RemoveLayer(layerNum);
+        }
+
+        public void TakeLayersFrom(AnimatorController other) {
+            other.layers = other.layers.Select((layer, i) => {
+                if (i == 0) layer.defaultWeight = 1;
+                layer.name = NewLayerName(layer.name);
+                managedLayers.Add(layer.stateMachine);
+                layerOwners[layer.stateMachine] = currentFeatureNameProvider();
+                return layer;
+            }).ToArray();
+            ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
+        }
+
+        public string NewLayerName(string name) {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
@@ -309,34 +336,24 @@ namespace VF.Builder {
             layer.defaultWeight = weight;
             ctrl.layers = layers;
         }
-
         public void RemoveLayer(int index) {
             ctrl.RemoveLayer(index);
         }
-        public void ForEachClip(Action<ImmutableClip> action) {
+        public void ForEachClip(Action<MutableClip> action) {
             foreach (var l in GetLayers()) {
-                AnimatorIterator.ForEachClip(l, (clip, setClip) => {
-                    action(new ImmutableClip(clip, clipStorage, setClip));
+                AnimatorIterator.ForEachClip(l, clip => {
+                    action(new MutableClip(clip));
                 });
             }
         }
 
-        public class ImmutableClip {
-            protected AnimationClip clip;
-            private Action<AnimationClip> onUpdated;
-            private ClipStorageManager clipStorage;
-            private MutableClip mutableCopy;
-
-            public ImmutableClip(
-                AnimationClip clip,
-                ClipStorageManager clipStorage,
-                Action<AnimationClip> onUpdated
-            ) {
+        public class MutableClip {
+            private AnimationClip clip;
+            
+            public MutableClip(AnimationClip clip) {
                 this.clip = clip;
-                this.clipStorage = clipStorage;
-                this.onUpdated = onUpdated;
             }
-
+            
             public EditorCurveBinding[] GetFloatBindings() {
                 return AnimationUtility.GetCurveBindings(clip);
             }
@@ -353,36 +370,12 @@ namespace VF.Builder {
                 return AnimationUtility.GetObjectReferenceCurve(clip, binding);
             }
 
-            public virtual MutableClip GetMutable() {
-                if (mutableCopy == null) {
-                    if (VRCFuryAssetDatabase.IsVrcfAsset(clip)) {
-                        mutableCopy = new MutableClip(clip);
-                    } else {
-                        var copy = clipStorage.NewClip(clip.name);
-                        ClipCopier.Copy(clip, copy);
-                        onUpdated(copy);
-                        mutableCopy = new MutableClip(copy);
-                    }
-                }
-
-                return mutableCopy;
-            }
-        }
-        
-        public class MutableClip : ImmutableClip {
-            public MutableClip(AnimationClip clip) : base(clip, null, null) {
-            }
-
             public void SetFloatCurve(EditorCurveBinding binding, AnimationCurve curve) {
                 AnimationUtility.SetEditorCurve(clip, binding, curve);
             }
             
             public void SetObjectCurve(EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
                 AnimationUtility.SetObjectReferenceCurve(clip, binding, curve);
-            }
-
-            public override MutableClip GetMutable() {
-                return this;
             }
         }
 

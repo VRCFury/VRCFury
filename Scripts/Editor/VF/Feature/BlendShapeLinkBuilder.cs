@@ -155,8 +155,7 @@ namespace VF.Feature {
                                 AnimationUtility.CalculateTransformPath(linked.transform, avatarObject.transform);
                             newBinding.propertyName = "blendShape." + linkedName;
 
-                            var mutable = clip.GetMutable();
-                            mutable.SetFloatCurve(newBinding, mutable.GetFloatCurve(binding));
+                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
                         }
                     }
                 });

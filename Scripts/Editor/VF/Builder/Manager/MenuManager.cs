@@ -208,18 +208,18 @@ namespace VF.Builder {
         private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            string filename;
-            if (path.Count > 0) filename = "VRCF_Menu_" + string.Join("_", cleanPath);
-            else filename = tmpDir + "VRCF_Menu";
-            VRCFuryAssetDatabase.SaveAsset(newMenu, tmpDir, filename);
+            newMenu.name = string.Join(" » ", cleanPath);
+            AssetDatabase.AddObjectToAsset(newMenu, rootMenu);
             return newMenu;
         }
         private static string CleanTitleForFilename(string str) {
             // strip html tags
             str = Regex.Replace(str, "<.*?>", string.Empty);
+            // remove after newline
+            str = Regex.Replace(str, "\n.*", string.Empty);
             // clean up extra spaces
-            str = Regex.Replace(str, " +", " ").Trim();
-            return str;
+            str = Regex.Replace(str, " +", " ");
+            return str.Trim();
         }
 
         public void MergeMenu(VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
