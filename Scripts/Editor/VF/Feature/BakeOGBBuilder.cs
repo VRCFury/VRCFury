@@ -207,7 +207,7 @@ namespace VF.Feature {
                     var on = layer.NewState("On");
 
                     var clip = LoadState(prefix, depthAction.state);
-                    if (ClipBuilder.IsStaticAnimation(clip)) {
+                    if (ClipBuilder.IsStaticMotion(clip)) {
                         var tree = manager.GetClipStorage().NewBlendTree(prefix + " tree");
                         tree.blendType = BlendTreeType.Simple1D;
                         tree.useAutomaticThresholds = false;
