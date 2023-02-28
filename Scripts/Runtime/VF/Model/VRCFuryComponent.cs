@@ -11,16 +11,15 @@ namespace VF.Model {
         [SerializeField]
         private int version = -1;
 
-        [NonSerialized]
-        private int failedToLoad = 0;
-
         public bool IsBroken() {
-            return failedToLoad > 0;
+            return GetBrokenMessage() != null;
         }
         public string GetBrokenMessage() {
-            if (failedToLoad == 1) return $"Version too new ({version} > {GetLatestVersion()}";
-            if (failedToLoad == 2) return "Found a null list on a child object";
-            if (failedToLoad > 0) return "Unknown error";
+            if (version > GetLatestVersion()) {
+                return $"Version too new ({version} > {GetLatestVersion()}";
+            } else if (ContainsNullsInList(this)) {
+                return "Found a null list on a child object";
+            }
             return null;
         }
 
@@ -29,30 +28,9 @@ namespace VF.Model {
                 // Object was deserialized, but had no version. Default to version 0.
                 version = 0;
             }
-            if (version > GetLatestVersion()) {
-                failedToLoad = 1;
-            } else if (ContainsNullsInList(this)) {
-                failedToLoad = 2;
-            }
-            
+
 #if UNITY_EDITOR
-            EditorApplication.delayCall += () => {
-                if (!this) return;
-                //Debug.Log("Loaded " + this);
-                if (failedToLoad > 0) {
-                    var path = AssetDatabase.GetAssetPath(this);
-                    if (!string.IsNullOrWhiteSpace(path)) {
-                        //Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
-                        Debug.LogWarning(
-                            $"VRCFury detected VRCFury component in asset at path {path} is corrupted. " +
-                            "Hopefully it will be fixed during the prefab import auto-fix.");
-                        //attemptedReload.Add(path);
-                        //AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
-                    }
-                } else {
-                    Upgrade();
-                }
-            };
+            EditorApplication.delayCall += Upgrade;
 #endif
         }
         
@@ -74,13 +52,19 @@ namespace VF.Model {
                     var list = value as IList;
                     var isRef = field.GetCustomAttribute<SerializeReference>() != null;
                     foreach (var t in list) {
-                        if (t == null && isRef) return true;
-                        if (ContainsNullsInList(t)) return true;
+                        if (t == null && isRef) {
+                            return true;
+                        }
+                        if (ContainsNullsInList(t)) {
+                            return true;
+                        }
                     }
                 } else {
                     var type = field.FieldType;
                     if (type.IsClass) {
-                        if (ContainsNullsInList(value)) return true;
+                        if (ContainsNullsInList(value)) {
+                            return true;
+                        }
                     }
                 }
             }
