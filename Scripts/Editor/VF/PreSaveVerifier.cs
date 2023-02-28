@@ -11,25 +11,25 @@ namespace VF {
         static string[] OnWillSaveAssets(string[] paths) {
             var blocked = new List<string>();
             foreach (var path in paths) {
+                var brokenComponents = new HashSet<VRCFuryComponent>();
+
                 if (typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path)) {
                     for (int n = 0; n < SceneManager.sceneCount; ++n) {
                         var scene = SceneManager.GetSceneAt(n);
                         if (scene.path == path) {
-                            var brokenComponents = scene.GetRootGameObjects()
+                            brokenComponents.UnionWith(scene.GetRootGameObjects()
                                 .SelectMany(obj => obj.GetComponentsInChildren<VRCFuryComponent>(true))
-                                .Where(vrcf => vrcf.IsBroken());
-                            foreach (var brokenComponent in brokenComponents) {
-                                blocked.Add(brokenComponent.gameObject.name + " in " + path);
-                            }
+                                .Where(vrcf => vrcf.IsBroken()));
                         }
                     }
-                } else {
-                    var isBroken = AssetDatabase.LoadAllAssetsAtPath(path)
-                        .OfType<VRCFuryComponent>()
-                        .Any(asset => asset.IsBroken());
-                    if (isBroken) {
-                        blocked.Add(path);
-                    }
+                }
+
+                brokenComponents.UnionWith(AssetDatabase.LoadAllAssetsAtPath(path)
+                    .OfType<VRCFuryComponent>()
+                    .Where(vrcf => vrcf.IsBroken()));
+
+                foreach (var brokenComponent in brokenComponents) {
+                    blocked.Add($"{brokenComponent.gameObject.name} in {path} ({brokenComponent.GetBrokenMessage()})");
                 }
             }
 
