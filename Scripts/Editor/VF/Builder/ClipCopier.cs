@@ -71,6 +71,7 @@ namespace VF.Builder {
                 var curve = clip.GetFloatCurve(originalBinding);
                 
                 var bindingToUse = rewrittenBinding;
+                var forceUpdate = false;
 
                 if (originalBinding.path == "" && originalBinding.type == typeof(Animator)) {
                     bindingToUse = originalBinding;
@@ -88,6 +89,7 @@ namespace VF.Builder {
                     && fromRoot
                     && GetFloatFromAvatar(fromRoot, originalBinding, out var avatarScale)
                 ) {
+                    forceUpdate = true;
                     curve.keys = curve.keys.Select(k => {
                         k.value *= avatarScale;
                         k.inTangent *= avatarScale;
@@ -101,7 +103,7 @@ namespace VF.Builder {
                         bindingToUse = originalBinding;
                 }
 
-                if (originalBinding != bindingToUse) {
+                if (originalBinding != bindingToUse || forceUpdate) {
                     clip.SetFloatCurve(originalBinding, null);
                     clip.SetFloatCurve(bindingToUse, curve);
                 }
