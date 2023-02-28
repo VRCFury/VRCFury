@@ -22,11 +22,11 @@ namespace VF {
                                 .Where(vrcf => vrcf.IsBroken()));
                         }
                     }
+                } else {
+                    brokenComponents.UnionWith(AssetDatabase.LoadAllAssetsAtPath(path)
+                        .OfType<VRCFuryComponent>()
+                        .Where(vrcf => vrcf.IsBroken()));
                 }
-
-                brokenComponents.UnionWith(AssetDatabase.LoadAllAssetsAtPath(path)
-                    .OfType<VRCFuryComponent>()
-                    .Where(vrcf => vrcf.IsBroken()));
 
                 foreach (var brokenComponent in brokenComponents) {
                     blocked.Add($"{brokenComponent.gameObject.name} in {path} ({brokenComponent.GetBrokenMessage()})");

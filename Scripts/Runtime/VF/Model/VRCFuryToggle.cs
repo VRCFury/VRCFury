@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace VF.Model {
+    [AddComponentMenu("")]
     public class VRCFuryToggle : VRCFuryComponent {
         public string name;
         public State state;
