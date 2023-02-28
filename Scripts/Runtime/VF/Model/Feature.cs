@@ -252,6 +252,7 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool useInt = false;
         #if UNITY_EDITOR
         [NonSerialized] public IEnumerable<IEnumerable<AnimatorCondition>> altCondition = null;
+        [NonSerialized] public AnimatorStateMachine emoteBaseStateMachine;
         #endif
         [NonSerialized] public Motion motionOverride;
         [NonSerialized] public float transitionTime = 0;

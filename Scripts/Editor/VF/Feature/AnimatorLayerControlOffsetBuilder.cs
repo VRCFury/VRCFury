@@ -76,5 +76,8 @@ namespace VF.Feature {
                 }
             }
         }
+        public void Register(VRCAnimatorLayerControl from, AnimatorStateMachine to) {
+            mapping[from] = to;
+        }
     }
 }

@@ -17,6 +17,7 @@ using VRC.SDK3.Avatars.Components;
 using static VF.Model.Feature.EmoteManager;
 using VF.Builder.Exceptions;
 using static VRC.SDKBase.VRC_PlayableLayerControl;
+using UnityEditor.Animations;
 
 namespace VF.Builder {
 
@@ -53,14 +54,17 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                 };
                 model.afkState.actions.Add(action);
         }
+        AnimatorStateMachine baseStateMachine = null;
 
-        var standingAnimation = LoadState("standing", model.standingState);
-        var sittingAnimation = LoadState("sitting", model.sittingState);
-        var afkAnimation = LoadState("afk", model.afkState);
+        var standingAnimation = LoadState("standing", model.standingState, true);
+        var sittingAnimation = LoadState("sitting", model.sittingState, true);
+        var afkAnimation = LoadState("afk", model.afkState, true);
 
         if (this == allBuildersInRun.OfType<EmoteManagerBuilder>().First()){
 
             var baseLayer = actionLayer.NewLayer("Emote Base");
+
+            baseStateMachine = baseLayer.GetRawStateMachine();
 
             var standingState = baseLayer.NewState("Standing").WithAnimation(standingAnimation);
             var sittingState = baseLayer.NewState("Sitting").WithAnimation(standingAnimation);
@@ -83,10 +87,18 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                 transitionStateIn = null,
                 transitionStateOut = null,
                 simpleOutTransition = false,
-                transitionTime = .5f
+                transitionTime = .5f,
+                emoteBaseStateMachine = baseStateMachine
             };
 
             addOtherFeature(t);
+        } else {
+            foreach (var layer in actionLayer.GetLayers()) {
+                if (layer.name == "Emote Base") {
+                    baseStateMachine = layer;
+                    break;
+                }
+            }
         }
 
         var submenu = model.sittingEmotes.Count() > 0 ? "Standing/" : "";
@@ -108,7 +120,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                 transitionTime = .25f,
                 exitTime = e.hasExitTime ? e.exitTime : 0,
                 enableIcon = e.icon != null,
-                icon = e.icon
+                icon = e.icon,
+                emoteBaseStateMachine = baseStateMachine
             };
 
             addOtherFeature(t);
@@ -133,7 +146,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
                 transitionTime = .25f,
                 exitTime = e.hasExitTime ? e.exitTime : 0,
                 enableIcon = e.icon != null,
-                icon = e.icon
+                icon = e.icon,
+                emoteBaseStateMachine = baseStateMachine
             };
             addOtherFeature(t);
         }

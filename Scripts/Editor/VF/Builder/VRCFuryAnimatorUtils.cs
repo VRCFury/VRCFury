@@ -286,12 +286,11 @@ public class VFAState {
         return this;
     }
 
-    public VFAState AnimationLayerController(int layer, float goal, float duration) {
+    public VRCAnimatorLayerControl AnimationLayerController(float goal, float duration) {
         var controller = GetAnimationLayerControl();
-        controller.layer = layer;
         controller.goalWeight = goal;
         controller.blendDuration = duration;
-        return this;
+        return controller;
     }
 
     public VFAEntryTransition TransitionsFromEntry() {
