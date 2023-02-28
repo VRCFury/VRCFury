@@ -3,6 +3,7 @@ using System.Linq;
 using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.Collections;
 using UnityEditor;
 using UnityEngine;
+using VF.Inspector;
 using VF.Model;
 
 namespace VF.Builder {
@@ -71,7 +72,7 @@ namespace VF.Builder {
                     if (mods.Count > 0) {
                         Debug.Log($"Reverting overrides on {vrcf}: {string.Join(", ", mods.Select(m => m.propertyPath))}");
                         PrefabUtility.RevertObjectOverride(vrcf, InteractionMode.AutomatedAction);
-                        EditorUtility.SetDirty(vrcf);
+                        VRCFuryEditorUtils.MarkDirty(vrcf);
                     }
                 }
             }

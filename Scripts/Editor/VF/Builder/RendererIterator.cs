@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using VF.Inspector;
 
 namespace VF.Builder {
     public static class RendererIterator {
@@ -18,7 +19,7 @@ namespace VF.Builder {
                         skin.sharedMesh,
                         (Action<Mesh>)(m => {
                             skin.sharedMesh = m;
-                            EditorUtility.SetDirty(skin);
+                            VRCFuryEditorUtils.MarkDirty(skin);
                         })
                     ));
                 } else if (renderer is MeshRenderer) {
@@ -29,7 +30,7 @@ namespace VF.Builder {
                             var filter = renderer.gameObject.GetComponent<MeshFilter>();
                             if (!filter) filter = renderer.gameObject.AddComponent<MeshFilter>();
                             filter.sharedMesh = m;
-                            EditorUtility.SetDirty(filter);
+                            VRCFuryEditorUtils.MarkDirty(filter);
                         })
                     ));
                 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using VF.Inspector;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -47,7 +48,7 @@ namespace VF.Builder {
                         } else if (result == ForEachMenuItemResult.Delete) {
                             menu.controls.RemoveAt(i);
                             i--;
-                            EditorUtility.SetDirty(menu);
+                            VRCFuryEditorUtils.MarkDirty(menu);
                             recurse = false;
                         }
                     }

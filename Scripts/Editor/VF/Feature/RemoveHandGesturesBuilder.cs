@@ -39,7 +39,7 @@ namespace VF.Feature {
                 };
             }
             transition.conditions = conds;
-            EditorUtility.SetDirty(transition);
+            VRCFuryEditorUtils.MarkDirty(transition);
         }
 
         public override string GetEditorTitle() {

@@ -9,6 +9,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
@@ -591,10 +592,17 @@ public static class VRCFuryEditorUtils {
         
         // This shouldn't be needed in unity 2020+
         if (obj is GameObject go) {
-            EditorSceneManager.MarkSceneDirty(go.scene);
+            MarkSceneDirty(go.scene);
         } else if (obj is Component c) {
-            EditorSceneManager.MarkSceneDirty(c.gameObject.scene);
+            MarkSceneDirty(c.gameObject.scene);
         }
+    }
+
+    private static void MarkSceneDirty(Scene scene) {
+        if (scene == null) return;
+        if (!scene.isLoaded) return;
+        if (!scene.IsValid()) return;
+        EditorSceneManager.MarkSceneDirty(scene);
     }
 }
     

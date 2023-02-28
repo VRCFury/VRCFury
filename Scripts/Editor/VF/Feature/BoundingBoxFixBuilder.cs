@@ -80,7 +80,7 @@ namespace VF.Feature {
                     ModifyBounds(sizeZ: stepSize, centerZ: stepSize);
                 }
 
-                EditorUtility.SetDirty(skin);
+                VRCFuryEditorUtils.MarkDirty(skin);
             }
         }
 

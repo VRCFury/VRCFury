@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -231,14 +232,14 @@ namespace VF.Builder {
             var layers = ctrl.layers;
             layers[layerId].avatarMask = mask;
             ctrl.layers = layers;
-            EditorUtility.SetDirty(ctrl);
+            VRCFuryEditorUtils.MarkDirty(ctrl);
         }
         public void SetName(int layerId, string name) {
             if (layerId < 0 || layerId >= ctrl.layers.Length) return;
             var layers = ctrl.layers;
             layers[layerId].name = name;
             ctrl.layers = layers;
-            EditorUtility.SetDirty(ctrl);
+            VRCFuryEditorUtils.MarkDirty(ctrl);
         }
 
         public ISet<string> GetLayerOwners() {

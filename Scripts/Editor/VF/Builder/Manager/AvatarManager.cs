@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Inspector;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -122,7 +123,7 @@ namespace VF.Builder {
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
             // to update it with our newly-added states
             foreach (var c in _controllers.Values) {
-                EditorUtility.SetDirty(c.GetRaw());
+                VRCFuryEditorUtils.MarkDirty(c.GetRaw());
                 RebuildDebugHashes(c);
             }
             
@@ -139,8 +140,8 @@ namespace VF.Builder {
                 }
             }
 
-            if (_menu != null) EditorUtility.SetDirty(_menu.GetRaw());
-            if (_params != null) EditorUtility.SetDirty(_params.GetRaw());
+            if (_menu != null) VRCFuryEditorUtils.MarkDirty(_menu.GetRaw());
+            if (_params != null) VRCFuryEditorUtils.MarkDirty(_params.GetRaw());
             if (_clipStorage != null) _clipStorage.Finish();
 
             if (_params != null) {
@@ -182,7 +183,7 @@ namespace VF.Builder {
                         ProcessStateMachine(subMachine.stateMachine, prefix);
                 }
             }
-            EditorUtility.SetDirty(avatar);
+            VRCFuryEditorUtils.MarkDirty(avatar);
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Inspector;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder.Ogb {
@@ -55,10 +56,10 @@ namespace VF.Builder.Ogb {
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 
                 };
-                EditorUtility.SetDirty(meshCopy);
+                VRCFuryEditorUtils.MarkDirty(meshCopy);
                 skin.bones = new[] { mainBone.transform };
                 skin.sharedMesh = meshCopy;
-                EditorUtility.SetDirty(skin);
+                VRCFuryEditorUtils.MarkDirty(skin);
             }
 
             foreach (var matSlot in Enumerable.Range(0, skin.sharedMaterials.Length)) {
@@ -66,7 +67,7 @@ namespace VF.Builder.Ogb {
             }
 
             skin.rootBone = rootTransform;
-            EditorUtility.SetDirty(skin);
+            VRCFuryEditorUtils.MarkDirty(skin);
 
             return skin;
         }
@@ -87,7 +88,7 @@ namespace VF.Builder.Ogb {
                 var mats = skin.sharedMaterials;
                 mats[matSlot] = mat;
                 skin.sharedMaterials = mats;
-                EditorUtility.SetDirty(skin);
+                VRCFuryEditorUtils.MarkDirty(skin);
             }
 
             var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
@@ -134,7 +135,7 @@ namespace VF.Builder.Ogb {
                 throw new VRCFBuilderException("Failed to bake TPS texture");
             }
             mat.SetTexture(TpsBakedMesh, tex);
-            EditorUtility.SetDirty(mat);
+            VRCFuryEditorUtils.MarkDirty(mat);
         }
         
         private static Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);

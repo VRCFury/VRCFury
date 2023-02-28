@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
+using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
@@ -18,7 +19,7 @@ namespace VF.Builder {
             var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
             syncedParamsList.Add(param);
             syncedParams.parameters = syncedParamsList.ToArray();
-            EditorUtility.SetDirty(syncedParams);
+            VRCFuryEditorUtils.MarkDirty(syncedParams);
         }
 
         public VRCExpressionParameters GetRaw() {

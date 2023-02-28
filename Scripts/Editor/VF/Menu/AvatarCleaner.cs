@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
@@ -34,7 +35,7 @@ namespace VF.Menu {
                         removeItems.Add("Animator Controller at path " + GetPath(animator.gameObject));
                         if (perform) {
                             animator.runtimeAnimatorController = null;
-                            EditorUtility.SetDirty(animator);
+                            VRCFuryEditorUtils.MarkDirty(animator);
                         }
                     }
                 }
@@ -124,7 +125,7 @@ namespace VF.Menu {
                             }
                         }
 
-                        if (perform) EditorUtility.SetDirty(controller);
+                        if (perform) VRCFuryEditorUtils.MarkDirty(controller);
                     }
                 }
 
@@ -147,7 +148,7 @@ namespace VF.Menu {
 
                         if (perform) {
                             syncParams.parameters = prms.ToArray();
-                            EditorUtility.SetDirty(syncParams);
+                            VRCFuryEditorUtils.MarkDirty(syncParams);
                         }
                     }
                 }
