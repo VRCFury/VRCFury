@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDKBase;
+using Object = System.Object;
 
 // Notes for the future:
 // Don't ever remove a class -- it will break the entire list of SerializedReferences that contained it
@@ -29,13 +31,15 @@ namespace VF.Model.Feature {
             return version < 0 ? GetLatestVersion() : version;
         }
 
-        public void Upgrade() {
+        public bool Upgrade() {
             var fromVersion = GetVersion();
             var latestVersion = GetLatestVersion();
-            if (fromVersion != latestVersion) {
+            if (fromVersion < latestVersion) {
                 Upgrade(fromVersion);
                 version = latestVersion;
+                return true;
             }
+            return false;
         }
 
         public virtual void Upgrade(int fromVersion) {

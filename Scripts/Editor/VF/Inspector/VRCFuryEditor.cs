@@ -19,15 +19,12 @@ public class VRCFuryEditor : Editor {
     public override VisualElement CreateInspectorGUI() {
         var self = (VRCFury)target;
 
-        if (self.failedToLoad) {
+        if (self.IsBroken()) {
             return VRCFuryEditorUtils.Error(
                 "This VRCFury component failed to load. It's likely that your VRCFury is out of date." +
                 " Please try Tools -> VRCFury -> Update VRCFury. If this doesn't help, let us know on the " +
                 " discord at https://vrcfury.com/discord");
         }
-
-        self.config.Upgrade();
-        serializedObject.Update();
 
         var container = new VisualElement();
 

@@ -8,42 +8,53 @@ using UnityEngine;
 
 namespace VF.Model {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver {
-        private static readonly int VRCFURY_SER_VERSION = 7;
-        private static readonly HashSet<string> attemptedReload = new HashSet<string>();
+        [SerializeField]
+        private int version = -1;
 
-        public int vrcfSerVersion;
         [NonSerialized]
-        public bool failedToLoad = false;
+        private bool failedToLoad = false;
 
         public bool IsBroken() {
-            return vrcfSerVersion > VRCFURY_SER_VERSION || ContainsNullsInList(this);
+            return failedToLoad;
         }
 
-        public virtual void OnAfterDeserialize() {
-            if (IsBroken()) {
+        public void OnAfterDeserialize() {
+            if (version < 0) {
+                // Object was deserialized, but had no version. Default to version 0.
+                version = 0;
+            }
+            if (version > GetLatestVersion() || ContainsNullsInList(this)) {
                 failedToLoad = true;
+            }
+            
 #if UNITY_EDITOR
-                EditorApplication.delayCall += () => {
+            EditorApplication.delayCall += () => {
+                if (!this) return;
+                //Debug.Log("Loaded " + this);
+                if (failedToLoad) {
                     var path = AssetDatabase.GetAssetPath(this);
-                    if (!string.IsNullOrWhiteSpace(path) && !attemptedReload.Contains(path)) {
+                    if (!string.IsNullOrWhiteSpace(path)) {
                         //Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
                         Debug.LogWarning(
-                            $"VRCFury detected VRCFury component in asset at path ${path} is corrupted. " +
+                            $"VRCFury detected VRCFury component in asset at path {path} is corrupted. " +
                             "Hopefully it will be fixed during the prefab import auto-fix.");
-                        attemptedReload.Add(path);
+                        //attemptedReload.Add(path);
                         //AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                     }
-                };
+                } else {
+                    Upgrade();
+                }
+            };
 #endif
-            } else {
-                vrcfSerVersion = VRCFURY_SER_VERSION;
-                failedToLoad = false;
+        }
+        
+        public void OnBeforeSerialize() {
+            if (version < 0) { 
+                // Object was created fresh (not deserialized), so it's automatically the newest
+                version = GetLatestVersion();
             }
         }
-        
-        public virtual void OnBeforeSerialize() {
-        }
-        
+
         private static bool ContainsNullsInList(object obj) {
             if (obj == null) return false;
             var objType = obj.GetType();
@@ -66,6 +77,49 @@ namespace VF.Model {
                 }
             }
             return false;
+        }
+        
+        private int GetVersion() {
+            return version < 0 ? GetLatestVersion() : version;
+        }
+
+        public void Upgrade() {
+#if UNITY_EDITOR
+            if (PrefabUtility.IsPartOfPrefabInstance(this)) return;
+            if (Application.isPlaying) return;
+            if (failedToLoad) return;
+            UpgradeAlways();
+            var fromVersion = GetVersion();
+            var latestVersion = GetLatestVersion();
+            if (fromVersion < latestVersion) {
+                //Debug.LogWarning("UPGRADING " + this);
+                Upgrade(fromVersion);
+                if (!this) {
+                    // The upgrade deleted this component!
+                    return;
+                }
+                version = latestVersion;
+                EditorUtility.SetDirty(this);
+            }
+#endif
+        }
+
+        /**
+         * This gets called when the component version is lower than what you've set in GetLatestVersion.
+         * Do most upgrades here!
+         */
+        protected virtual void Upgrade(int fromVersion) {
+        }
+
+        /**
+         * This gets called every time an upgrade check is invoked. Use sparingly, and beware that you'll
+         * have to call SetDirty yourself if you change something.
+         */
+        protected virtual void UpgradeAlways() {
+        }
+
+        protected virtual int GetLatestVersion() {
+            return 1;
         }
     }
 }

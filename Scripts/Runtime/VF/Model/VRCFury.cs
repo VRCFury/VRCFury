@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Model.Feature;
 using Action = VF.Model.StateAction.Action;
@@ -13,13 +14,10 @@ namespace VF.Model {
 
         [Header("VRCFury failed to load")]
         public bool somethingIsBroken;
-    }
-    
-    [Serializable]
-    public class VRCFuryConfig {
-        [SerializeReference] public List<FeatureModel> features = new List<FeatureModel>();
-
-        public void Upgrade() {
+        
+        protected override void UpgradeAlways() {
+#if UNITY_EDITOR
+            var features = config.features;
             for (var i = 0; i < features.Count; i++) {
                 if (features[i] is Modes modes) {
                     features.RemoveAt(i--);
@@ -36,17 +34,36 @@ namespace VF.Model {
                         toggle.exclusiveTag = tag;
                         features.Insert(++i, toggle);
                     }
+                    EditorUtility.SetDirty(this);
                 } else if (features[i] is LegacyFeatureModel legacy) {
                     features.RemoveAt(i--);
                     features.Insert(++i, legacy.CreateNewInstance());
-                }
+                    EditorUtility.SetDirty(this);
+                } /*else if (features[i] is LegacyFeatureModel2 legacy2) {
+                    features.RemoveAt(i--);
+                    legacy2.CreateNewInstance(gameObject);
+                    EditorUtility.SetDirty(this);
+                    EditorUtility.SetDirty(gameObject);
+                }*/
             }
             foreach (var f in features) {
                 if (f is NewFeatureModel newf) {
-                    newf.Upgrade();
+                    if (newf.Upgrade()) {
+                        EditorUtility.SetDirty(this);
+                    }
                 }
             }
+#endif
         }
+
+        protected override int GetLatestVersion() {
+            return 2;
+        }
+    }
+    
+    [Serializable]
+    public class VRCFuryConfig {
+        [SerializeReference] public List<FeatureModel> features = new List<FeatureModel>();
     }
 
     [Serializable]
