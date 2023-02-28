@@ -195,6 +195,37 @@ public class ClipBuilder {
         return isStatic;
     }
 
+    public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(Motion motion) {
+        if (!(motion is AnimationClip clip)) return null;
+        var times = new HashSet<float>();
+        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+            times.UnionWith(AnimationUtility.GetEditorCurve(clip, binding).keys.Select(key => key.time));
+        }
+        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+            times.UnionWith(AnimationUtility.GetObjectReferenceCurve(clip, binding).Select(key => key.time));
+        }
+
+        if (times.Count != 2) return null;
+        times.Remove(0);
+        if (times.Count != 1) return null;
+
+        var startClip = new AnimationClip();
+        var endClip = new AnimationClip();
+        
+        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+            foreach (var key in AnimationUtility.GetEditorCurve(clip, binding).keys) {
+                AnimationUtility.SetEditorCurve(key.time == 0 ? startClip : endClip, binding, OneFrame(key.value));
+            }
+        }
+        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+            foreach (var key in AnimationUtility.GetObjectReferenceCurve(clip, binding)) {
+                AnimationUtility.SetObjectReferenceCurve(key.time == 0 ? startClip : endClip, binding, OneFrame(key.value));
+            }
+        }
+
+        return Tuple.Create(startClip, endClip);
+    }
+
 }
 
 }

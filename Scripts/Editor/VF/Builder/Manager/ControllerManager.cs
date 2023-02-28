@@ -81,14 +81,18 @@ namespace VF.Builder {
         }
 
         public void RemoveLayer(AnimatorStateMachine sm) {
-            var layerNum = GetLayers()
+            var id = GetLayerId(sm);
+            managedLayers.Remove(sm);
+            layerOwners.Remove(sm);
+            GetController().RemoveLayer(id);
+        }
+
+        public int GetLayerId(AnimatorStateMachine sm) {
+            return GetLayers()
                 .Select((s, i) => (s, i))
                 .Where(tuple => tuple.Item1 == sm)
                 .Select(tuple => tuple.Item2)
                 .First();
-            managedLayers.Remove(sm);
-            layerOwners.Remove(sm);
-            GetController().RemoveLayer(layerNum);
         }
 
         public void TakeLayersFrom(AnimatorController other) {
@@ -245,6 +249,10 @@ namespace VF.Builder {
                 return null;
             }
             return layerOwner;
+        }
+
+        public float GetWeight(AnimatorStateMachine sm) {
+            return GetWeight(GetLayerId(sm));
         }
         public float GetWeight(int layerId) {
             return ctrl.layers[layerId].defaultWeight;
