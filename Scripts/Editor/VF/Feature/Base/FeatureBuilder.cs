@@ -25,7 +25,6 @@ namespace VF.Feature.Base {
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
         public GameObject editorObject;
-        public static int emoteBaseLayerIndex;
         public MutableManager mutableManager;
 
         public virtual string GetEditorTitle() {

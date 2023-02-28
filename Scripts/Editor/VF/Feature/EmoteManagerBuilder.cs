@@ -60,9 +60,6 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
 
         if (this == allBuildersInRun.OfType<EmoteManagerBuilder>().First()){
 
-            emoteBaseLayerIndex = actionLayer.GetLayers().Count();
-            if (emoteBaseLayerIndex == 0) emoteBaseLayerIndex = 1; //adjustment for base layer if action layer is empty
-
             var baseLayer = actionLayer.NewLayer("Emote Base");
 
             var standingState = baseLayer.NewState("Standing").WithAnimation(standingAnimation);
