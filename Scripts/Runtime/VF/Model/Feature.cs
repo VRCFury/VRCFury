@@ -74,6 +74,11 @@ namespace VF.Model.Feature {
     public abstract class LegacyFeatureModel : FeatureModel {
         public abstract NewFeatureModel CreateNewInstance();
     }
+    
+    [Serializable]
+    public abstract class LegacyFeatureModel2 : NewFeatureModel {
+        public abstract void CreateNewInstance(GameObject obj);
+    }
 
     [Serializable]
     public class AvatarScale : LegacyFeatureModel {
@@ -227,7 +232,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class Toggle : NewFeatureModel {
+    public class Toggle : LegacyFeatureModel2 {
         public string name;
         public State state;
         public bool saved;
@@ -256,6 +261,34 @@ namespace VF.Model.Feature {
         public State localTransitionStateOut;
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
+
+        public override void CreateNewInstance(GameObject obj) {
+            var n = obj.AddComponent<VRCFuryToggle>();
+            n.name = name;
+            n.state = state;
+            n.saved = saved;
+            n.slider = slider;
+            n.securityEnabled = securityEnabled;
+            n.defaultOn = defaultOn;
+            n.includeInRest = includeInRest;
+            n.exclusiveOffState = exclusiveOffState;
+            n.enableExclusiveTag = enableExclusiveTag;
+            n.exclusiveTag = exclusiveTag;
+            n.resetPhysbones = resetPhysbones;
+            n.enableIcon = enableIcon;
+            n.icon = icon;
+            n.enableDriveGlobalParam = enableDriveGlobalParam;
+            n.driveGlobalParam = driveGlobalParam;
+            n.separateLocal = separateLocal;
+            n.localState = localState;
+            n.hasTransition = hasTransition;
+            n.transitionStateIn = transitionStateIn;
+            n.transitionStateOut = transitionStateOut;
+            n.localTransitionStateIn = localTransitionStateIn;
+            n.localTransitionStateOut = localTransitionStateOut;
+            n.simpleOutTransition = simpleOutTransition;
+            n.defaultSliderValue = defaultSliderValue;
+        }
     }
 
     [Serializable]

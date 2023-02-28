@@ -123,7 +123,6 @@ namespace VF.Builder {
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
             // to update it with our newly-added states
             foreach (var c in _controllers.Values) {
-                VRCFuryEditorUtils.MarkDirty(c.GetRaw());
                 RebuildDebugHashes(c);
             }
             
@@ -140,9 +139,13 @@ namespace VF.Builder {
                 }
             }
 
+            // Just for safety. These don't need to be here if we make sure everywhere else appropriately marks
+            foreach (var c in _controllers.Values) {
+                VRCFuryEditorUtils.MarkDirty(c.GetRaw());
+            }
             if (_menu != null) VRCFuryEditorUtils.MarkDirty(_menu.GetRaw());
             if (_params != null) VRCFuryEditorUtils.MarkDirty(_params.GetRaw());
-            if (_clipStorage != null) _clipStorage.Finish();
+            if (_clipStorage != null) _clipStorage.MarkAllDirty();
 
             if (_params != null) {
                 var maxParams = VRCExpressionParameters.MAX_PARAMETER_COST;

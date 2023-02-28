@@ -599,6 +599,7 @@ public static class VRCFuryEditorUtils {
     }
 
     private static void MarkSceneDirty(Scene scene) {
+        if (Application.isPlaying) return;
         if (scene == null) return;
         if (!scene.isLoaded) return;
         if (!scene.IsValid()) return;

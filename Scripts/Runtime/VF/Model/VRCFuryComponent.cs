@@ -12,10 +12,16 @@ namespace VF.Model {
         private int version = -1;
 
         [NonSerialized]
-        private bool failedToLoad = false;
+        private int failedToLoad = 0;
 
         public bool IsBroken() {
-            return failedToLoad;
+            return failedToLoad > 0;
+        }
+        public string GetBrokenMessage() {
+            if (failedToLoad == 1) return $"Version too new ({version} > {GetLatestVersion()}";
+            if (failedToLoad == 2) return "Found a null list on a child object";
+            if (failedToLoad > 0) return "Unknown error";
+            return null;
         }
 
         public void OnAfterDeserialize() {
@@ -23,15 +29,17 @@ namespace VF.Model {
                 // Object was deserialized, but had no version. Default to version 0.
                 version = 0;
             }
-            if (version > GetLatestVersion() || ContainsNullsInList(this)) {
-                failedToLoad = true;
+            if (version > GetLatestVersion()) {
+                failedToLoad = 1;
+            } else if (ContainsNullsInList(this)) {
+                failedToLoad = 2;
             }
             
 #if UNITY_EDITOR
             EditorApplication.delayCall += () => {
                 if (!this) return;
                 //Debug.Log("Loaded " + this);
-                if (failedToLoad) {
+                if (failedToLoad > 0) {
                     var path = AssetDatabase.GetAssetPath(this);
                     if (!string.IsNullOrWhiteSpace(path)) {
                         //Debug.LogError("VRCFury is triggering manual reload of asset " + path + " (previous import corrupted)");
@@ -87,7 +95,7 @@ namespace VF.Model {
 #if UNITY_EDITOR
             if (PrefabUtility.IsPartOfPrefabInstance(this)) return;
             if (Application.isPlaying) return;
-            if (failedToLoad) return;
+            if (IsBroken()) return;
             UpgradeAlways();
             var fromVersion = GetVersion();
             var latestVersion = GetLatestVersion();

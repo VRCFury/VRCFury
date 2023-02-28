@@ -18,6 +18,13 @@ namespace VF.Model {
         protected override void UpgradeAlways() {
 #if UNITY_EDITOR
             var features = config.features;
+            foreach (var f in features) {
+                if (f is NewFeatureModel newf) {
+                    if (newf.Upgrade()) {
+                        EditorUtility.SetDirty(this);
+                    }
+                }
+            }
             for (var i = 0; i < features.Count; i++) {
                 if (features[i] is Modes modes) {
                     features.RemoveAt(i--);
@@ -45,13 +52,6 @@ namespace VF.Model {
                     EditorUtility.SetDirty(this);
                     EditorUtility.SetDirty(gameObject);
                 }*/
-            }
-            foreach (var f in features) {
-                if (f is NewFeatureModel newf) {
-                    if (newf.Upgrade()) {
-                        EditorUtility.SetDirty(this);
-                    }
-                }
             }
 #endif
         }

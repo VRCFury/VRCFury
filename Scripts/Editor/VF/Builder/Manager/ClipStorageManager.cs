@@ -72,7 +72,7 @@ namespace VF.Builder {
             return tree;
         }
 
-        public void Finish() {
+        public void MarkAllDirty() {
             foreach (var c in created) {
                 VRCFuryEditorUtils.MarkDirty(c);
             }

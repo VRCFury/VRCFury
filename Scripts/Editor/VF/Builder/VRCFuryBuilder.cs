@@ -155,8 +155,9 @@ public class VRCFuryBuilder {
                 continue;
             }
 
-            if (vrcFury.IsBroken()) {
-                throw new VRCFBuilderException("VRCFury component is corrupted on " + configObject.name);
+            var loadFailure = vrcFury.GetBrokenMessage();
+            if (loadFailure != null) {
+                throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
             }
             // Probably not needed since it's upgraded right after deserialize, but JUST IN CASE
             vrcFury.Upgrade();
