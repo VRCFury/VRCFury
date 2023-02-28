@@ -154,7 +154,7 @@ namespace VF.Feature {
                     state.mirrorParameter = RewriteParamName(state.mirrorParameter);
                     state.timeParameter = RewriteParamName(state.timeParameter);
                 });
-                AnimatorIterator.ForEachBehaviour(layer.stateMachine, (b, add) => {
+                AnimatorIterator.ForEachBehaviour(layer.stateMachine, b => {
                     switch (b) {
                         case VRCAvatarParameterDriver oldB: {
                             foreach (var p in oldB.parameters) {
@@ -164,7 +164,6 @@ namespace VF.Feature {
                             break;
                         }
                     }
-                    return true;
                 });
                 AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
                     tree.blendParameter = RewriteParamName(tree.blendParameter);

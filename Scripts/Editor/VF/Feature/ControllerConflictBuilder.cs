@@ -45,7 +45,7 @@ namespace VF.Feature {
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(layer);
-                    AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
+                    AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
                         if (b is VRCPlayableLayerControl playableControl) {
                             var drivesTypeName = VRCFEnumUtils.GetName(playableControl.layer);
                             var drivesType = VRCFEnumUtils.Parse<VRCAvatarDescriptor.AnimLayerType>(drivesTypeName);

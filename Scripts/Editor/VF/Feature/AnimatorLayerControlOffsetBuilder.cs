@@ -33,7 +33,7 @@ namespace VF.Feature {
 
             foreach (var c in manager.GetAllUsedControllers()) {
                 foreach (var l in c.GetLayers()) {
-                    AnimatorIterator.ForEachBehaviour(l, (b, add) => {
+                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
                         if (!(b is VRCAnimatorLayerControl control)) return true;
                         if (!mapping.TryGetValue(control, out var targetSm)) {
                             Debug.LogError("Removing invalid AnimatorLayerControl (not found in mapping??) " + b);
@@ -58,7 +58,7 @@ namespace VF.Feature {
         public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)> set) {
             foreach (var (type, controller) in set) {
                 foreach (var layer in controller.layers) {
-                    AnimatorIterator.ForEachBehaviour(layer.stateMachine, (b, add) => {
+                    AnimatorIterator.ForEachBehaviourRW(layer.stateMachine, (b, add) => {
                         if (b is VRCAnimatorLayerControl control) {
                             var targetController = set
                                 .Where(tuple =>

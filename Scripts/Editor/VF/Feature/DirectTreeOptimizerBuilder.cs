@@ -25,9 +25,20 @@ namespace VF.Feature {
             
             var eligibleLayers = new List<EligibleLayer>();
             var debugLog = new List<string>();
-            foreach (var layer in fx.GetLayers()) {
+            foreach (var (layer,i) in fx.GetLayers().Select((layer,i) => (layer,i))) {
                 void AddDebug(string msg) {
                     debugLog.Add($"{layer.name} - {msg}");
+                }
+
+                if (i == 0) {
+                    AddDebug("Not optimizing (base layer)");
+                    continue;
+                }
+
+                var weight = fx.GetWeight(layer);
+                if (!Mathf.Approximately(weight, 1)) {
+                    AddDebug($"Not optimizing (layer weight is {weight}, not 1)");
+                    continue;
                 }
 
                 if (layer.stateMachines.Length > 0) {
@@ -36,9 +47,8 @@ namespace VF.Feature {
                 }
 
                 var hasBehaviour = false;
-                AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
+                AnimatorIterator.ForEachBehaviour(layer, b => {
                     hasBehaviour = true;
-                    return true;
                 });
                 if (hasBehaviour) {
                     AddDebug($"Not optimizing (contains behaviours)");
@@ -49,11 +59,7 @@ namespace VF.Feature {
                 AnimatorIterator.ForEachClip(layer, clip => {
                     hasNonstaticClips |= !ClipBuilder.IsStaticMotion(clip);
                 });
-                if (hasNonstaticClips) {
-                    AddDebug($"Not optimizing (contains non-static clips)");
-                    continue;
-                }
-                
+
                 var usedBindings = bindingsByLayer[layer];
                 var someOtherLayerAnimatesTheSameThing = bindingsByLayer
                     .Any(pair => pair.Key != layer && pair.Value.Any(b => usedBindings.Contains(b)));
@@ -68,10 +74,36 @@ namespace VF.Feature {
 
                 var states = layer.states;
                 if (states.Length == 1) {
-                    offClip = null;
-                    onClip = states[0].state.motion;
-                    param = floatTrue.Name();
+                    var state = states[0].state;
+                    if (hasNonstaticClips) {
+                        var dualState = ClipBuilder.SplitRangeClip(state.motion);
+                        if (dualState == null) {
+                            AddDebug($"Not optimizing (contains single clip that is not static and not a single time range)");
+                            continue;
+                        }
+                        if (!state.timeParameterActive || string.IsNullOrWhiteSpace(state.timeParameter)) {
+                            AddDebug($"Not optimizing (contains a time range clip but doesn't use motion time)");
+                            continue;
+                        }
+
+                        offClip = dualState.Item1;
+                        offClip.name = state.motion.name + " (OFF)";
+                        AssetDatabase.AddObjectToAsset(offClip, state.motion);
+                        onClip = dualState.Item2;
+                        onClip.name = state.motion.name + " (ON)";
+                        AssetDatabase.AddObjectToAsset(onClip, state.motion);
+                        param = state.timeParameter;
+                    } else {
+                        offClip = null;
+                        onClip = states[0].state.motion;
+                        param = floatTrue.Name();
+                    }
                 } else {
+                    if (hasNonstaticClips) {
+                        AddDebug($"Not optimizing (contains non-static clips)");
+                        continue;
+                    }
+                    
                     ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
                         var output = new List<AnimatorTransitionBase>();
                         AnimatorIterator.ForEachTransition(layer, t => {
@@ -166,14 +198,13 @@ namespace VF.Feature {
                     string param;
                     Motion motion;
                     if (!offEmpty) {
-                        var subTree = manager.GetClipStorage().NewBlendTree("Optimized Toggle " + toggle.offState);
+                        var subTree = manager.GetClipStorage().NewBlendTree("Optimized Toggle " + toggle.offState.name);
                         subTree.useAutomaticThresholds = false;
                         subTree.blendType = BlendTreeType.Simple1D;
                         subTree.AddChild(toggle.offState, 0);
                         subTree.AddChild(
-                            toggle.onState != null ? toggle.onState : manager.GetClipStorage().GetNoopClip(), 1);
+                            !onEmpty ? toggle.onState : manager.GetClipStorage().GetNoopClip(), 1);
                         subTree.blendParameter = toggle.param;
-                        tree.AddChild(subTree);
                         param = floatTrue.Name();
                         motion = subTree;
                     } else {
@@ -252,7 +283,8 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
-                "This feature will automatically convert all non-conflicting toggle layers into a single direct blend tree layer."
+                "This feature will automatically convert all non-conflicting toggle layers into a single direct blend tree layer." +
+                "\n\nWarning: Toggles may not work in Av3 emulator when using this feature. This is a bug in Av3 emulator. Use Gesture Manager for testing instead."
             ));
             return content;
         }

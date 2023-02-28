@@ -29,7 +29,13 @@ namespace VF.Builder {
             });
         }
 
-        public static void ForEachBehaviour(
+        public static void ForEachBehaviour(AnimatorStateMachine root, Action<StateMachineBehaviour> action) {
+            ForEachBehaviourRW(root, (b, add) => {
+                action(b);
+                return true;
+            });
+        }
+        public static void ForEachBehaviourRW(
             AnimatorStateMachine root,
             Func<StateMachineBehaviour, Func<Type, StateMachineBehaviour>, bool> action
         ) {
