@@ -204,7 +204,7 @@ namespace VF.Feature {
                         subTree.blendType = BlendTreeType.Simple1D;
                         subTree.AddChild(toggle.offState, 0);
                         subTree.AddChild(
-                            toggle.onState != null ? toggle.onState : manager.GetClipStorage().GetNoopClip(), 1);
+                            !onEmpty ? toggle.onState : manager.GetClipStorage().GetNoopClip(), 1);
                         subTree.blendParameter = toggle.param;
                         param = floatTrue.Name();
                         motion = subTree;
