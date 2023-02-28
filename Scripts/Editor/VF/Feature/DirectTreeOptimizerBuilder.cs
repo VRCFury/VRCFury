@@ -284,7 +284,8 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
-                "This feature will automatically convert all non-conflicting toggle layers into a single direct blend tree layer."
+                "This feature will automatically convert all non-conflicting toggle layers into a single direct blend tree layer." +
+                "\n\nWarning: Toggles may not work in Av3 emulator when using this feature. This is a bug in Av3 emulator. Use Gesture Manager for testing instead."
             ));
             return content;
         }
