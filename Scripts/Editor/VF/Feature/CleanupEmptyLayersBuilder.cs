@@ -15,9 +15,8 @@ namespace VF.Feature {
                     AnimatorIterator.ForEachClip(layer, clip => {
                         if (!ClipBuilder.IsEmptyMotion(clip)) hasNonEmptyClip = true;
                     });
-                    AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
+                    AnimatorIterator.ForEachBehaviour(layer, b => {
                         hasBehaviour = true;
-                        return true;
                     });
 
                     if (!hasNonEmptyClip && !hasBehaviour) {

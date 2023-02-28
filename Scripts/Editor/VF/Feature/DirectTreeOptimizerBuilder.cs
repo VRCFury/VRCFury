@@ -47,9 +47,8 @@ namespace VF.Feature {
                 }
 
                 var hasBehaviour = false;
-                AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
+                AnimatorIterator.ForEachBehaviour(layer, b => {
                     hasBehaviour = true;
-                    return true;
                 });
                 if (hasBehaviour) {
                     AddDebug($"Not optimizing (contains behaviours)");

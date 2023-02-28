@@ -8,7 +8,7 @@ namespace VF.Builder {
         public static StateMachineBehaviour AddStateMachineBehaviour(AnimatorStateMachine machine, Type type) {
             var added = machine.AddStateMachineBehaviour(type);
             if (added == null) {
-                ThrowProbablyCompileErrorException($"Failed to create state behaviour of type ${type.Name}.");
+                ThrowProbablyCompileErrorException($"Failed to create state behaviour of type {type.Name}.");
             }
             return added;
         }
@@ -19,7 +19,7 @@ namespace VF.Builder {
         public static StateMachineBehaviour AddStateMachineBehaviour(AnimatorState state, Type type) {
             var added = state.AddStateMachineBehaviour(type);
             if (added == null) {
-                ThrowProbablyCompileErrorException($"Failed to create state behaviour of type ${type.Name}.");
+                ThrowProbablyCompileErrorException($"Failed to create state behaviour of type {type.Name}.");
             }
             return added;
         }
