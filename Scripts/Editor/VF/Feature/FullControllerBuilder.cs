@@ -186,7 +186,7 @@ namespace VF.Feature {
                         c.parameter = RewriteParamName(c.parameter);
                         return c;
                     }).ToArray();
-                    EditorUtility.SetDirty(transition);
+                    VRCFuryEditorUtils.MarkDirty(transition);
                 });
             }
 

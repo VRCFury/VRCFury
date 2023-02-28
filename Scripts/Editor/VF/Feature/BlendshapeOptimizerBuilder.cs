@@ -95,7 +95,7 @@ namespace VF.Feature {
                         savedBlendshape.BakeTo(meshCopy, firstSkinWeights[id]);
                     }
                 }
-                EditorUtility.SetDirty(meshCopy);
+                VRCFuryEditorUtils.MarkDirty(meshCopy);
 
                 var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>(true);
                 foreach (var (skin, weights) in savedWeights) {
@@ -111,7 +111,7 @@ namespace VF.Feature {
                                     for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
                                         if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
                                             avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
-                                            EditorUtility.SetDirty(avatar);
+                                            VRCFuryEditorUtils.MarkDirty(avatar);
                                         }
                                     }
                                 }
@@ -119,7 +119,7 @@ namespace VF.Feature {
                             newId++;
                         }
                     }
-                    EditorUtility.SetDirty(skin);
+                    VRCFuryEditorUtils.MarkDirty(skin);
                 }
             }
         }

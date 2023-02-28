@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using VF.Builder.Exceptions;
+using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -28,7 +29,7 @@ namespace VF.Builder {
                     layer.isDefault = c == null;
                     layer.animatorController = c;
                     layers[layerNum] = layer;
-                    EditorUtility.SetDirty(avatar);
+                    VRCFuryEditorUtils.MarkDirty(avatar);
                 };
                 output.Add(Tuple.Create(controller, Set, type));
             }
@@ -80,7 +81,7 @@ namespace VF.Builder {
         public static void SetAvatarMenu(VRCAvatarDescriptor avatar, VRCExpressionsMenu menu) {
             avatar.customExpressions = true;
             avatar.expressionsMenu = menu;
-            EditorUtility.SetDirty(avatar);
+            VRCFuryEditorUtils.MarkDirty(avatar);
         }
 
         public static VRCExpressionParameters GetAvatarParams(VRCAvatarDescriptor avatar) {
@@ -90,7 +91,7 @@ namespace VF.Builder {
         public static void SetAvatarParams(VRCAvatarDescriptor avatar, VRCExpressionParameters prms) {
             avatar.customExpressions = true;
             avatar.expressionParameters = prms;
-            EditorUtility.SetDirty(avatar);
+            VRCFuryEditorUtils.MarkDirty(avatar);
         }
     }
 }

@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
@@ -69,7 +70,7 @@ namespace VF.Builder {
             });
             if (changed) {
                 serialized.ApplyModifiedPropertiesWithoutUndo();
-                EditorUtility.SetDirty(obj);
+                VRCFuryEditorUtils.MarkDirty(obj);
             }
         }
 

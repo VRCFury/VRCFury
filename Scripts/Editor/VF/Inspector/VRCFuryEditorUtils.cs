@@ -6,9 +6,12 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
 
@@ -208,8 +211,11 @@ public static class VRCFuryEditorUtils {
         Border(el, all, all);
     }
     public static void BorderRadius(VisualElement el, float all) {
-        el.style.borderTopLeftRadius = el.style.borderTopRightRadius =
-        el.style.borderBottomLeftRadius = el.style.borderBottomRightRadius = all;
+        BorderRadius(el.style, all);
+    }
+    public static void BorderRadius(IStyle style, float all) {
+        style.borderTopLeftRadius = style.borderTopRightRadius =
+            style.borderBottomLeftRadius = style.borderBottomRightRadius = all;
     }
     public static void BorderColor(VisualElement el, Color topbottom, Color leftright) {
         el.style.borderTopColor = el.style.borderBottomColor = topbottom;
@@ -565,6 +571,43 @@ public static class VRCFuryEditorUtils {
             obj = obj.parent;
         }
         return false;
+    }
+    
+    public static void HoverHighlight(VisualElement el) {
+        var oldBg = new StyleColor();
+        
+        el.RegisterCallback<MouseOverEvent>(e => {
+            oldBg = el.style.backgroundColor;
+            float FadeUp(float val) {
+                return (1 - val) * 0.1f + val;
+            }
+            var newBg = oldBg.keyword == StyleKeyword.Undefined
+                ? new Color(FadeUp(oldBg.value.r), FadeUp(oldBg.value.g), FadeUp(oldBg.value.b))
+                : new Color(1, 1, 1, 0.1f);
+            el.style.backgroundColor = newBg;
+        });
+        el.RegisterCallback<MouseOutEvent>(e => {
+            el.style.backgroundColor = oldBg;
+        });
+    }
+
+    public static void MarkDirty(Object obj) {
+        EditorUtility.SetDirty(obj);
+        
+        // This shouldn't be needed in unity 2020+
+        if (obj is GameObject go) {
+            MarkSceneDirty(go.scene);
+        } else if (obj is Component c) {
+            MarkSceneDirty(c.gameObject.scene);
+        }
+    }
+
+    private static void MarkSceneDirty(Scene scene) {
+        if (Application.isPlaying) return;
+        if (scene == null) return;
+        if (!scene.isLoaded) return;
+        if (!scene.IsValid()) return;
+        EditorSceneManager.MarkSceneDirty(scene);
     }
 }
     

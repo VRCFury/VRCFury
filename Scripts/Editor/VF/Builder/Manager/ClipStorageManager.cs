@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Inspector;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -71,9 +72,9 @@ namespace VF.Builder {
             return tree;
         }
 
-        public void Finish() {
+        public void MarkAllDirty() {
             foreach (var c in created) {
-                EditorUtility.SetDirty(c);
+                VRCFuryEditorUtils.MarkDirty(c);
             }
         }
     }

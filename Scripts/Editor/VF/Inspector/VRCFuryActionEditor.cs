@@ -218,7 +218,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             }
         }
 
-        return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: ${type}");
+        return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
     }
 }
 

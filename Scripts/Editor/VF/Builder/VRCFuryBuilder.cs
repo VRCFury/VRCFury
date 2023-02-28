@@ -154,8 +154,14 @@ public class VRCFuryBuilder {
             if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
                 continue;
             }
+
+            var loadFailure = vrcFury.GetBrokenMessage();
+            if (loadFailure != null) {
+                throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
+            }
+            // Probably not needed since it's upgraded right after deserialize, but JUST IN CASE
+            vrcFury.Upgrade();
             var config = vrcFury.config;
-            config.Upgrade();
             if (config.features != null) {
                 Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
                 foreach (var feature in config.features) {

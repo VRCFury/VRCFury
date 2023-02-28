@@ -75,7 +75,7 @@ namespace VF.Feature {
                 newMesh.SetSubMesh(4, new SubMeshDescriptor());
                 newMesh.subMeshCount++;
                 newMesh.SetSubMesh(newMesh.subMeshCount - 1, submesh);
-                EditorUtility.SetDirty(newMesh);
+                VRCFuryEditorUtils.MarkDirty(newMesh);
 
                 foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                     var (renderer, mesh, setMesh) = tuple;
@@ -86,7 +86,7 @@ namespace VF.Feature {
                     mats[newMesh.subMeshCount - 1] = mats[4];
                     mats[4] = null;
                     renderer.sharedMaterials = mats.ToArray();
-                    EditorUtility.SetDirty(renderer);
+                    VRCFuryEditorUtils.MarkDirty(renderer);
                 }
             }
         }

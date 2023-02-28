@@ -91,9 +91,9 @@ namespace VF.Feature {
                                 return rescaledBindPose;
                             }) 
                             .ToArray();
-                        EditorUtility.SetDirty(meshCopy);
+                        VRCFuryEditorUtils.MarkDirty(meshCopy);
                         skin.sharedMesh = meshCopy;
-                        EditorUtility.SetDirty(skin);
+                        VRCFuryEditorUtils.MarkDirty(skin);
                     }
                 }
 

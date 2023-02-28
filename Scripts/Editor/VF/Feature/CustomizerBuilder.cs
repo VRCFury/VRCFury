@@ -52,7 +52,7 @@ namespace VF.Feature {
                     return row;
                 }
             }
-            return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: ${type}");
+            return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
         }
 
         public override bool ShowInMenu() {
