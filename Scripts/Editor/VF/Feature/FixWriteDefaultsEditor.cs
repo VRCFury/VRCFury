@@ -22,5 +22,9 @@ namespace VF.Feature {
                 "Disabled - Don't try to fix anything and don't warn even if it looks broken"));
             return container;
         }
+
+        public override bool AvailableOnProps() {
+            return false;
+        }
     }
 }

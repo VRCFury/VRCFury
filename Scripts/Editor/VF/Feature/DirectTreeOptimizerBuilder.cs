@@ -35,11 +35,6 @@ namespace VF.Feature {
                     continue;
                 }
 
-                if (layer.states.Length <= 0 || layer.states.Length > 2) {
-                    AddDebug($"Not optimizing (contains {layer.states.Length} states)");
-                    continue;
-                }
-
                 var hasBehaviour = false;
                 AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
                     hasBehaviour = true;
@@ -71,24 +66,38 @@ namespace VF.Feature {
                 Motion offClip;
                 string param;
 
-                if (layer.states.Length == 1) {
+                var states = layer.states;
+                if (states.Length == 1) {
                     offClip = null;
-                    onClip = layer.states[0].state.motion;
+                    onClip = states[0].state.motion;
                     param = floatTrue.Name();
                 } else {
-                    var state0 = layer.states[0].state;
-                    var state1 = layer.states[1].state;
+                    ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
+                        var output = new List<AnimatorTransitionBase>();
+                        AnimatorIterator.ForEachTransition(layer, t => {
+                            if (t.destinationState == state || (t.isExit && layer.defaultState == state)) {
+                                output.Add(t);
+                            }
+                        });
+                        return output.ToArray();
+                    }
 
-                    var allTransitions = new List<AnimatorTransitionBase>();
-                    allTransitions.AddRange(layer.entryTransitions);
-                    allTransitions.AddRange(layer.anyStateTransitions);
-                    allTransitions.AddRange(state0.transitions);
-                    allTransitions.AddRange(state1.transitions);
+                    if (states.Length == 3) {
+                        bool IsJunkState(AnimatorState state) {
+                            return layer.defaultState == state && GetTransitionsTo(state).Count == 0;
+                        }
+                        states = states.Where(child => !IsJunkState(child.state)).ToArray();
+                    }
+                    if (states.Length != 2) {
+                        AddDebug($"Not optimizing (contains {states.Length} states)");
+                        continue;
+                    }
+                    
+                    var state0 = states[0].state;
+                    var state1 = states[1].state;
 
-                    var state0Condition =
-                        GetSingleCondition(allTransitions.Where(t => t.destinationState == state0 || (t.isExit && layer.defaultState == state0)));
-                    var state1Condition =
-                        GetSingleCondition(allTransitions.Where(t => t.destinationState == state1 || (t.isExit && layer.defaultState == state1)));
+                    var state0Condition = GetSingleCondition(GetTransitionsTo(state0));
+                    var state1Condition = GetSingleCondition(GetTransitionsTo(state1));
                     if (state0Condition == null || state1Condition == null) {
                         AddDebug($"Not optimizing (state conditions are not basic)");
                         continue;
