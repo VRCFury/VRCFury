@@ -92,9 +92,11 @@ namespace VF.Builder {
                     VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, saveFilename);
                     saveParent = copy;
                 } else {
-                    copy.name = original.name == "" ? "" : $"[{obj.name}] {original.name}";
-                    if (IsType(copy, hiddenTypes))
+                    if (IsType(copy, hiddenTypes)) {
                         copy.hideFlags |= HideFlags.HideInHierarchy;
+                    } else {
+                        copy.name = $"[{obj.name}] {original.name}";
+                    }
                     AssetDatabase.AddObjectToAsset(copy, saveParent);
                 }
 

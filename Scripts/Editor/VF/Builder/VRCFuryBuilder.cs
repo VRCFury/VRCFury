@@ -177,6 +177,7 @@ public class VRCFuryBuilder {
         AddBuilder(new ObjectMoveBuilder(), avatarObject);
         AddBuilder(new AnimatorLayerControlOffsetBuilder(), avatarObject);
         AddBuilder(new CleanupBaseMasksBuilder(), avatarObject);
+        AddBuilder(new CleanupEmptyLayersBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();

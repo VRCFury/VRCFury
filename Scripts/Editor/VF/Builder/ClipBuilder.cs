@@ -143,6 +143,58 @@ public class ClipBuilder {
         return string.Join("/", parts);
     }
 
+    public static bool IsEmptyMotion(Motion motion, GameObject avatarRoot = null) {
+        var isEmpty = true;
+        AnimatorIterator.ForEachClip(motion, clip => {
+            isEmpty &= IsEmptyClip(clip, avatarRoot);
+        });
+        return isEmpty;
+    }
+
+    private static bool IsEmptyClip(AnimationClip clip, GameObject avatarRoot = null) {
+        if (!IsStaticClip(clip)) return false;
+        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+            if (!avatarRoot) return false;
+            var curve = AnimationUtility.GetEditorCurve(clip, binding);
+            if (curve.length == 0) continue;
+            var val = curve.keys[0].value;
+            var exists = AnimationUtility.GetFloatValue(avatarRoot, binding, out var existingValue);
+            if (!exists || val != existingValue) return false;
+        }
+        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+            if (!avatarRoot) return false;
+            var curve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            if (curve.Length == 0) continue;
+            var val = curve[0].value;
+            var exists = AnimationUtility.GetObjectReferenceValue(avatarRoot, binding, out var existingValue);
+            if (!exists || val != existingValue) return false;
+        }
+        return true;
+    }
+
+    public static bool IsStaticMotion(Motion motion) {
+        var isStatic = true;
+        AnimatorIterator.ForEachClip(motion, clip => {
+            isStatic &= IsStaticClip(clip);
+        });
+        return isStatic;
+    }
+
+    private static bool IsStaticClip(AnimationClip clip) {
+        var isStatic = true;
+        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+            var curve = AnimationUtility.GetEditorCurve(clip, binding);
+            if (curve.keys.All(key => key.time != 0)) isStatic = false;
+            if (curve.keys.Select(k => k.value).Distinct().Count() > 1) isStatic = false;
+        }
+        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+            var curve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            if (curve.All(key => key.time != 0)) isStatic = false;
+            if (curve.Select(k => k.value).Distinct().Count() > 1) isStatic = false;
+        }
+        return isStatic;
+    }
+
 }
 
 }
