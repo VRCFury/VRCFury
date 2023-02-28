@@ -22,70 +22,118 @@ namespace VF.Feature {
                 .ToDictionary(layer => layer, layer => GetBindingsAnimatedInLayer(layer));
             
             var eligibleLayers = new List<EligibleLayer>();
+            var debugLog = new List<string>();
             foreach (var layer in fx.GetLayers()) {
-                if (layer.states.Length != 2) continue;
-                if (layer.stateMachines.Length != 0) continue;
-                var state0 = layer.states[0].state;
-                var state1 = layer.states[1].state;
-                if (state0.behaviours.Length > 0 || state1.behaviours.Length > 0) continue;
+                void AddDebug(string msg) {
+                    debugLog.Add($"{layer.name} - {msg}");
+                }
 
-                var allTransitions = new List<AnimatorTransitionBase>();
-                allTransitions.AddRange(layer.entryTransitions);
-                allTransitions.AddRange(layer.anyStateTransitions);
-                allTransitions.AddRange(state0.transitions);
-                allTransitions.AddRange(state1.transitions);
-
-                var state0Condition =
-                    GetSingleCondition(allTransitions.Where(t => t.destinationState == state0 || (t.isExit && layer.defaultState == state0)));
-                var state1Condition =
-                    GetSingleCondition(allTransitions.Where(t => t.destinationState == state1 || (t.isExit && layer.defaultState == state1)));
-                if (state0Condition == null || state1Condition == null) continue;
-                if (state0Condition.Value.parameter != state1Condition.Value.parameter) continue;
-
-                var state0EffectiveCondition = EstimateEffectiveCondition(state0Condition.Value);
-                var state1EffectiveCondition = EstimateEffectiveCondition(state1Condition.Value);
-
-                AnimatorState onState;
-                AnimatorState offState;
-                if (
-                    state0EffectiveCondition == EffectiveCondition.WHEN_0 &&
-                    state1EffectiveCondition == EffectiveCondition.WHEN_1) {
-                    offState = state0;
-                    onState = state1;
-                } else if (
-                    state0EffectiveCondition == EffectiveCondition.WHEN_1 &&
-                    state1EffectiveCondition == EffectiveCondition.WHEN_0) {
-                    offState = state1;
-                    onState = state0;
-                } else {
+                if (layer.stateMachines.Length > 0) {
+                    AddDebug("Not optimizing (contains submachine)");
                     continue;
                 }
 
+                if (layer.states.Length <= 0 || layer.states.Length > 2) {
+                    AddDebug($"Not optimizing (contains {layer.states.Length} states)");
+                    continue;
+                }
+
+                var hasBehaviour = false;
+                AnimatorIterator.ForEachBehaviour(layer, (b, add) => {
+                    hasBehaviour = true;
+                    return true;
+                });
+                if (hasBehaviour) {
+                    AddDebug($"Not optimizing (contains behaviours)");
+                    continue;
+                }
+                
                 var usedBindings = bindingsByLayer[layer];
                 var someOtherLayerAnimatesTheSameThing = bindingsByLayer
                     .Any(pair => pair.Key != layer && pair.Value.Any(b => usedBindings.Contains(b)));
                 if (someOtherLayerAnimatesTheSameThing) {
+                    AddDebug($"Not optimizing (shares animations with some other layer)");
                     continue;
                 }
 
+                Motion onClip;
+                Motion offClip;
+                string param;
+
+                if (layer.states.Length == 1) {
+                    offClip = null;
+                    onClip = layer.states[0].state.motion;
+                    param = fx.True().Name();
+                } else {
+                    var state0 = layer.states[0].state;
+                    var state1 = layer.states[1].state;
+
+                    var allTransitions = new List<AnimatorTransitionBase>();
+                    allTransitions.AddRange(layer.entryTransitions);
+                    allTransitions.AddRange(layer.anyStateTransitions);
+                    allTransitions.AddRange(state0.transitions);
+                    allTransitions.AddRange(state1.transitions);
+
+                    var state0Condition =
+                        GetSingleCondition(allTransitions.Where(t => t.destinationState == state0 || (t.isExit && layer.defaultState == state0)));
+                    var state1Condition =
+                        GetSingleCondition(allTransitions.Where(t => t.destinationState == state1 || (t.isExit && layer.defaultState == state1)));
+                    if (state0Condition == null || state1Condition == null) {
+                        AddDebug($"Not optimizing (state conditions are not basic)");
+                        continue;
+                    }
+                    if (state0Condition.Value.parameter != state1Condition.Value.parameter) {
+                        AddDebug($"Not optimizing (state conditions do not use same parameter)");
+                        continue;
+                    }
+
+                    var state0EffectiveCondition = EstimateEffectiveCondition(state0Condition.Value);
+                    var state1EffectiveCondition = EstimateEffectiveCondition(state1Condition.Value);
+
+                    AnimatorState onState;
+                    AnimatorState offState;
+                    if (
+                        state0EffectiveCondition == EffectiveCondition.WHEN_0 &&
+                        state1EffectiveCondition == EffectiveCondition.WHEN_1) {
+                        offState = state0;
+                        onState = state1;
+                    } else if (
+                        state0EffectiveCondition == EffectiveCondition.WHEN_1 &&
+                        state1EffectiveCondition == EffectiveCondition.WHEN_0) {
+                        offState = state1;
+                        onState = state0;
+                    } else {
+                        AddDebug($"Not optimizing (state conditions are not an inversion of each other)");
+                        continue;
+                    }
+
+                    offClip = offState.motion;
+                    onClip = onState.motion;
+                    param = state0Condition.Value.parameter;
+                }
+
                 eligibleLayers.Add(new EligibleLayer {
-                    offState = GetMotionIfNotEmpty(offState),
-                    onState = GetMotionIfNotEmpty(onState),
-                    param = state0Condition.Value.parameter
+                    offState = offClip,
+                    onState = onClip,
+                    param = param
                 });
 
-                Debug.LogWarning("Removing " + layer);
+                AddDebug("OPTIMIZING");
                 fx.RemoveLayer(layer);
             }
+            
+            Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
                 var tree = manager.GetClipStorage().NewBlendTree("Optimized Toggles");
                 tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
-                    if (!toggle.offState && !toggle.onState) continue;
+                    var offEmpty = ClipBuilder.IsEmptyMotion(toggle.offState);
+                    var onEmpty = ClipBuilder.IsEmptyMotion(toggle.onState);
+                    if (offEmpty && onEmpty) continue;
                     string param;
                     Motion motion;
-                    if (toggle.offState) {
+                    if (!offEmpty) {
                         var subTree = manager.GetClipStorage().NewBlendTree("Optimized Toggle " + toggle.offState);
                         subTree.useAutomaticThresholds = false;
                         subTree.blendType = BlendTreeType.Simple1D;
@@ -120,16 +168,6 @@ namespace VF.Feature {
                 var layer = fx.NewLayer("Optimized Toggles");
                 layer.NewState("Optimized Toggles").WithAnimation(tree);
             }
-        }
-
-        private Motion GetMotionIfNotEmpty(AnimatorState state) {
-            var hasBinding = false;
-            AnimatorIterator.ForEachClip(state, clip => {
-                hasBinding |= AnimationUtility.GetCurveBindings(clip).Length > 0;
-                hasBinding |= AnimationUtility.GetObjectReferenceCurveBindings(clip).Length > 0;
-            });
-            if (!hasBinding) return null;
-            return state.motion;
         }
 
         private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(AnimatorStateMachine sm) {

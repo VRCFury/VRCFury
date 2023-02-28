@@ -151,7 +151,7 @@ public class ClipBuilder {
         return isEmpty;
     }
 
-    public static bool IsEmptyClip(AnimationClip clip) {
+    private static bool IsEmptyClip(AnimationClip clip) {
         return AnimationUtility.GetCurveBindings(clip).Length == 0
                && AnimationUtility.GetObjectReferenceCurveBindings(clip).Length == 0;
     }
