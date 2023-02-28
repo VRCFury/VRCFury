@@ -110,6 +110,12 @@ Automatically creates an animation for your avatar's breathing cycle. Provide ei
 VRChat introduces roll to your eye bones in some circumstances, making it appear that you've gone cross-eyed.
 Adding this fix will solve this problem automatically through a combination of rotation constraints to eliminate roll.
 
+### Direct Tree Optimizer
+
+If you add this feature to your avatar, VRCFury will attempt to convert all "plain" toggle layers on your avatar into a compressed
+direct blend-tree. This reduces the number of animator layers on your avatar, which can have a meaningful improvement on performance
+(frame time).
+
 ### Fix Write Defaults
 
 This feature will automatically align Write Defaults for every state on your avatar. If will automatically prefer whichever your avatar is "closest to," meaning it will select On or Off depending on which requires the fewest changes to your avatar. If you'd like, you can override the selection and Force Off or Force On. Yes, it's magic.
