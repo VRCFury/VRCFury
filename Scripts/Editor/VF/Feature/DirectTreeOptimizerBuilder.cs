@@ -20,6 +20,8 @@ namespace VF.Feature {
 
             var bindingsByLayer = fx.GetLayers()
                 .ToDictionary(layer => layer, layer => GetBindingsAnimatedInLayer(layer));
+
+            var floatTrue = fx.NewFloat("floatTrue", def: 1);
             
             var eligibleLayers = new List<EligibleLayer>();
             var debugLog = new List<string>();
@@ -47,6 +49,15 @@ namespace VF.Feature {
                     AddDebug($"Not optimizing (contains behaviours)");
                     continue;
                 }
+
+                var hasNonstaticClips = false;
+                AnimatorIterator.ForEachClip(layer, clip => {
+                    hasNonstaticClips |= !ClipBuilder.IsStaticMotion(clip);
+                });
+                if (hasNonstaticClips) {
+                    AddDebug($"Not optimizing (contains non-static clips)");
+                    continue;
+                }
                 
                 var usedBindings = bindingsByLayer[layer];
                 var someOtherLayerAnimatesTheSameThing = bindingsByLayer
@@ -63,7 +74,7 @@ namespace VF.Feature {
                 if (layer.states.Length == 1) {
                     offClip = null;
                     onClip = layer.states[0].state.motion;
-                    param = fx.True().Name();
+                    param = floatTrue.Name();
                 } else {
                     var state0 = layer.states[0].state;
                     var state1 = layer.states[1].state;
@@ -112,6 +123,18 @@ namespace VF.Feature {
                     param = state0Condition.Value.parameter;
                 }
 
+                var paramUsedInOtherLayer = false;
+                foreach (var other in fx.GetLayers()) {
+                    AnimatorIterator.ForEachTransition(other, t => {
+                        paramUsedInOtherLayer |= layer != other && t.conditions.Any(c => c.parameter == param);
+                    });
+                }
+
+                if (paramUsedInOtherLayer) {
+                    AddDebug($"Not optimizing (parameter used in some other layer)");
+                    continue;
+                }
+
                 eligibleLayers.Add(new EligibleLayer {
                     offState = offClip,
                     onState = onClip,
@@ -128,8 +151,8 @@ namespace VF.Feature {
                 var tree = manager.GetClipStorage().NewBlendTree("Optimized Toggles");
                 tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
-                    var offEmpty = ClipBuilder.IsEmptyMotion(toggle.offState);
-                    var onEmpty = ClipBuilder.IsEmptyMotion(toggle.onState);
+                    var offEmpty = ClipBuilder.IsEmptyMotion(toggle.offState, avatarObject);
+                    var onEmpty = ClipBuilder.IsEmptyMotion(toggle.onState, avatarObject);
                     if (offEmpty && onEmpty) continue;
                     string param;
                     Motion motion;
@@ -142,7 +165,7 @@ namespace VF.Feature {
                             toggle.onState != null ? toggle.onState : manager.GetClipStorage().GetNoopClip(), 1);
                         subTree.blendParameter = toggle.param;
                         tree.AddChild(subTree);
-                        param = fx.True().Name();
+                        param = floatTrue.Name();
                         motion = subTree;
                     } else {
                         param = toggle.param;
@@ -159,6 +182,8 @@ namespace VF.Feature {
                     var fxRaw = fx.GetRaw();
                     fxRaw.parameters = fxRaw.parameters.Select(p => {
                         if (p.name == toggle.param) {
+                            if (p.type == AnimatorControllerParameterType.Bool) p.defaultFloat = p.defaultBool ? 1 : 0;
+                            if (p.type == AnimatorControllerParameterType.Int) p.defaultFloat = p.defaultInt;
                             p.type = AnimatorControllerParameterType.Float;
                         }
                         return p;

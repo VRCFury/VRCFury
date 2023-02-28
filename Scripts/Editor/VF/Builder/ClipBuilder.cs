@@ -143,17 +143,33 @@ public class ClipBuilder {
         return string.Join("/", parts);
     }
 
-    public static bool IsEmptyMotion(Motion motion) {
+    public static bool IsEmptyMotion(Motion motion, GameObject avatarRoot = null) {
         var isEmpty = true;
         AnimatorIterator.ForEachClip(motion, clip => {
-            isEmpty &= IsEmptyClip(clip);
+            isEmpty &= IsEmptyClip(clip, avatarRoot);
         });
         return isEmpty;
     }
 
-    private static bool IsEmptyClip(AnimationClip clip) {
-        return AnimationUtility.GetCurveBindings(clip).Length == 0
-               && AnimationUtility.GetObjectReferenceCurveBindings(clip).Length == 0;
+    private static bool IsEmptyClip(AnimationClip clip, GameObject avatarRoot = null) {
+        if (!IsStaticClip(clip)) return false;
+        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+            if (!avatarRoot) return false;
+            var curve = AnimationUtility.GetEditorCurve(clip, binding);
+            if (curve.length == 0) continue;
+            var val = curve.keys[0].value;
+            var exists = AnimationUtility.GetFloatValue(avatarRoot, binding, out var existingValue);
+            if (!exists || val != existingValue) return false;
+        }
+        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+            if (!avatarRoot) return false;
+            var curve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            if (curve.Length == 0) continue;
+            var val = curve[0].value;
+            var exists = AnimationUtility.GetObjectReferenceValue(avatarRoot, binding, out var existingValue);
+            if (!exists || val != existingValue) return false;
+        }
+        return true;
     }
 
     public static bool IsStaticMotion(Motion motion) {
