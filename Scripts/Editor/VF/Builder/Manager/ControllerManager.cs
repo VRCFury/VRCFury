@@ -219,12 +219,6 @@ namespace VF.Builder {
             if (mask == null) {
                 return;
             }
-            
-            if (managedMasks.Contains(mask)) {
-                makeChanges(mask);
-                EditorUtility.SetDirty(mask);
-                return;
-            }
 
             var copy = CloneMask(mask);
             makeChanges(copy);
@@ -232,7 +226,6 @@ namespace VF.Builder {
                 return;
             }
             
-            managedMasks.Add(copy);
             SetMask(layerId, copy);
             VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "mask");
         }
