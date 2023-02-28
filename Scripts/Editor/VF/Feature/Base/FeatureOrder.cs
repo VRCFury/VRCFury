@@ -24,6 +24,9 @@ namespace VF.Feature.Base {
         // scans the prop children for contact receivers.
         ArmatureLinkBuilder = 1,
         
+        // Needs to run after all possible toggles have been created and applied
+        CollectToggleExclusiveTags = 1,
+        
         // Needs to run after any builders have added their "disable blinking" models (gesture builders mostly)
         Blinking = 5,
         
@@ -59,9 +62,6 @@ namespace VF.Feature.Base {
         SetMenuIcons1 = 10001,
         MoveMenuItems = 10002,
         SetMenuIcons2 = 10003,
-        
-        // Needs to run after all possible toggles have been created and applied
-        CollectToggleExclusiveTags = 10004,
 
         // Needs to run after FixWriteDefaults collects the defaults for the defaults layer
         ApplyToggleRestingState = 10005,
