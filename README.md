@@ -142,6 +142,12 @@ If checked, a `Reset Animation` can be set, which will play when exiting the emo
 
 If checked, an `Exit Time` can be set, which specifies how long the emote should play at minimum. 
 
+### Direct Tree Optimizer
+
+If you add this feature to your avatar, VRCFury will attempt to convert all "plain" toggle layers on your avatar into a compressed
+direct blend-tree. This reduces the number of animator layers on your avatar, which can have a meaningful improvement on performance
+(frame time).
+
 ### Fix Write Defaults
 
 This feature will automatically align Write Defaults for every state on your avatar. If will automatically prefer whichever your avatar is "closest to," meaning it will select On or Off depending on which requires the fewest changes to your avatar. If you'd like, you can override the selection and Force Off or Force On. Yes, it's magic.
