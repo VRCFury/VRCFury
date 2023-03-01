@@ -733,7 +733,6 @@ namespace VF.Model.Feature {
             public AnimationClip clip;
         }
     }
-
     
     [Serializable]
     public class BlendshapeOptimizer : NewFeatureModel {
