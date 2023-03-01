@@ -131,7 +131,7 @@ namespace VF {
                 var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
                 if (av3EmulatorType == null) return;
                 var restartField = av3EmulatorType.GetField("RestartEmulator");
-                if (restartField == null) return;
+                if (restartField == null) throw new Exception("Failed to find RestartEmulator field");
                 var emulators = Object.FindObjectsOfType(av3EmulatorType);
                 foreach (var emulator in emulators) {
                     restartField.SetValue(emulator, true);
@@ -149,6 +149,13 @@ namespace VF {
                 }
             } catch (Exception e) {
                 Debug.LogException(e);
+                EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    "VRCFury detected Av3Emulator, but was unable to reload it after making changes to the avatar." +
+                    " Because of this, testing with the emulator may not be correct." +
+                    " Report this on https://vrcfury.com/discord\n\n" + e.Message,
+                    "Ok"
+                );
             }
         }
 
@@ -169,6 +176,13 @@ namespace VF {
                 }
             } catch (Exception e) {
                 Debug.LogException(e);
+                EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    "VRCFury detected GestureManager, but was unable to reload it after making changes to the avatar." +
+                    " Because of this, testing with the emulator may not be correct." +
+                    " Report this on https://vrcfury.com/discord\n\n" + e.Message,
+                    "Ok"
+                );
             }
         }
     }
