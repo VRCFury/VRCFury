@@ -1,6 +1,5 @@
 using UnityEditor;
 using UnityEngine.UIElements;
-using static VF.Model.Feature.EmoteManager;
 
 namespace VF.Inspector {
 
@@ -11,7 +10,7 @@ public class VRCFuryEmoteEditor {
         var list = prop;
 
         void OnPlus() {
-            VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new Emote());
+            VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new Model.Feature.EmoteManager.Emote());
         }
 
         container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {

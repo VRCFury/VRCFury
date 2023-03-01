@@ -16,8 +16,6 @@ namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
-
-
         
         [FeatureBuilderAction]
         public void Apply() {

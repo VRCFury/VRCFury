@@ -14,9 +14,7 @@ using VF.Model.StateAction;
 using Object = UnityEngine.Object;
 using EmoteManager = VF.Model.Feature.EmoteManager;
 using VRC.SDK3.Avatars.Components;
-using static VF.Model.Feature.EmoteManager;
 using VF.Builder.Exceptions;
-using static VRC.SDKBase.VRC_PlayableLayerControl;
 using UnityEditor.Animations;
 
 namespace VF.Builder {
@@ -218,12 +216,12 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
 
 
         foreach (var e in defaultStanding) {
-            var emote = new Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8);
+            var emote = new EmoteManager.Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8);
             VRCFuryEditorUtils.AddToList(prop.FindPropertyRelative("standingEmotes"), entry => entry.managedReferenceValue = emote);
         }
 
         foreach (var e in defaultSitting) {
-            var emote = new Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8);
+            var emote = new EmoteManager.Emote(e.Item1, e.Item2, e.Item3, e.Item4, e.Item5, e.Item6, e.Item7, e.Item8);
             VRCFuryEditorUtils.AddToList(prop.FindPropertyRelative("sittingEmotes"), entry => entry.managedReferenceValue = emote);
         }
     }

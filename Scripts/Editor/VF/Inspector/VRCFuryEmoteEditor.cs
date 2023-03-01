@@ -1,6 +1,5 @@
 using UnityEditor;
 using UnityEngine.UIElements;
-using static VF.Model.Feature.EmoteManager;
 
 namespace VF.Inspector {
 
@@ -40,7 +39,7 @@ public class VRCFuryEmoteDrawer : PropertyDrawer {
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
 
         switch (type) {
-            case nameof(Emote): {
+            case nameof(Model.Feature.EmoteManager.Emote): {
                 var container = new VisualElement();
 
                 container.Add(addRow("name", "Name"));
