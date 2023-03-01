@@ -32,7 +32,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         var actionLayer = GetAction();
 
         if (model.standingState.actions.Count() == 0){
-            var clip = (AnimationClip) AssetDatabase.LoadAssetAtPath("Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_still.anim", typeof(AnimationClip));
+            var clipPath = AssetDatabase.GUIDToAssetPath("91e5518865a04934b82b8aba11398609");
+            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
                 var action = new AnimationClipAction {
                     clip = clip
                 };
@@ -40,7 +41,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         }
 
         if (model.sittingState.actions.Count() == 0){
-            var clip = (AnimationClip) AssetDatabase.LoadAssetAtPath("Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_sit.anim", typeof(AnimationClip));
+            var clipPath = AssetDatabase.GUIDToAssetPath("970f39cfa8501c741b71ad9eefeeb83d");
+            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
                 var action = new AnimationClipAction {
                     clip = clip
                 };
@@ -48,7 +50,8 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
         }
 
         if (model.afkState.actions.Count() == 0){
-            var clip = (AnimationClip) AssetDatabase.LoadAssetAtPath("Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_afk.anim", typeof(AnimationClip));
+            var clipPath = AssetDatabase.GUIDToAssetPath("806c242c97b686d4bac4ad50defd1fdb");
+            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
                 var action = new AnimationClipAction {
                     clip = clip
                 };
