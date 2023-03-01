@@ -313,6 +313,9 @@ public static class VRCFuryEditorUtils {
                     f = VRCFuryStateEditor.render(prop, label, labelWidth);
                     labelHandled = true;
                 }
+                if (prop.type.StartsWith("Guid")) {
+                    f = GuidWrapperProp(prop);
+                }
                 break;
             }
             case SerializedPropertyType.ManagedReference: {
@@ -352,6 +355,21 @@ public static class VRCFuryEditorUtils {
         style?.Invoke(wrapper.style);
         
         return wrapper;
+    }
+
+    private static VisualElement GuidWrapperProp(SerializedProperty prop) {
+        var obj = prop.FindPropertyRelative("obj");
+        var output = new VisualElement();
+        output.Add(Prop(obj));
+        var guid = prop.FindPropertyRelative("guid");
+        var fileId = prop.FindPropertyRelative("fileID");
+        output.Add(RefreshOnChange(() => {
+            if (obj.objectReferenceValue == null && !string.IsNullOrEmpty(guid.stringValue))
+                return WrappedLabel($"Missing asset: {guid.stringValue}:{fileId.longValue}");
+            else
+                return new VisualElement();
+        }, obj, guid, fileId));
+        return output;
     }
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {

@@ -169,7 +169,7 @@ namespace VF.Builder {
         }
         public void NewMenuButton(string path, VFAParam param = null, float value = 1, Texture2D icon = null) {
             var control = NewMenuItem(path);
-            control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+            control.type = VRCExpressionsMenu.Control.ControlType.Button;
             control.parameter = new VRCExpressionsMenu.Control.Parameter {
                 name = param != null ? param.Name() : ""
             };

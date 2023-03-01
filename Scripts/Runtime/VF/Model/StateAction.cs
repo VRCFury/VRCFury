@@ -28,12 +28,12 @@ namespace VF.Model.StateAction {
     public class MaterialAction : Action {
         public GameObject obj;
         public int materialIndex = 0;
-        public Material mat = null;
+        public GuidMaterial mat = null;
     }
     
     [Serializable]
     public class AnimationClipAction : Action {
-        public AnimationClip clip;
+        public GuidAnimationClip clip;
     }
 
     [Serializable]

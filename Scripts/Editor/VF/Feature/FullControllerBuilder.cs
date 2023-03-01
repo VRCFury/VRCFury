@@ -24,8 +24,9 @@ namespace VF.Feature {
         public void Apply() {
             var toggleIsInt = false;
             foreach (var p in model.prms) {
-                if (p.parameters == null) continue;
-                foreach (var param in p.parameters.parameters) {
+                VRCExpressionParameters prms = p.parameters;
+                if (!prms) continue;
+                foreach (var param in prms.parameters) {
                     if (param.name == model.toggleParam && param.valueType == VRCExpressionParameters.ValueType.Int)
                         toggleIsInt = true;
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -42,7 +43,8 @@ namespace VF.Feature {
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
             foreach (var c in model.controllers) {
                 var type = c.type;
-                var source = c.controller as AnimatorController;
+                RuntimeAnimatorController runtimeController = c.controller;
+                var source = runtimeController as AnimatorController;
                 if (source == null) continue;
                 var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
                 toMerge.Add((type, copy));
@@ -104,7 +106,10 @@ namespace VF.Feature {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
             if (model.allNonsyncedAreGlobal) {
-                var synced = model.prms.Any(p => p.parameters.parameters.Any(param => param.name == name));
+                var synced = model.prms.Any(p => {
+                    VRCExpressionParameters prms = p.parameters;
+                    return prms && prms.parameters.Any(param => param.name == name);
+                });
                 if (!synced) return name;
             }
             if (model.globalParams.Contains(name)) return name;
