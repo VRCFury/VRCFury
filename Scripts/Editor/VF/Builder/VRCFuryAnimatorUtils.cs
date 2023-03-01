@@ -6,8 +6,6 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
-using static VRC.SDKBase.VRC_AnimatorTrackingControl;
-using static VRC.SDKBase.VRC_PlayableLayerControl;
 
 namespace VF.Builder {
 
@@ -68,9 +66,6 @@ public class VFALayer {
     private readonly AnimatorStateMachine stateMachine;
     private readonly VFAController ctrl;
 
-    private static readonly float X_OFFSET = 250;
-    private static readonly float Y_OFFSET = 80;
-
     public VFALayer(AnimatorStateMachine stateMachine, VFAController ctrl) {
         this.stateMachine = stateMachine;
         this.ctrl = ctrl;
@@ -103,21 +98,6 @@ public class VFALayer {
 
     public AnimatorStateMachine GetRawStateMachine() {
         return stateMachine;
-    }
-        
-    public static Vector3 MovePos(Vector3 orig, float x, float y) {
-        var pos = orig;
-        pos.x += x * X_OFFSET;
-        pos.y += y * Y_OFFSET;
-        return pos;
-    }
-
-    public void MoveExit(Vector3 orig, float x, float y) {
-        stateMachine.exitPosition = MovePos(orig, x, y);
-    }
-
-    public void MoveExit(VFAState other, float x, float y) {
-        MoveExit(other.getPos(), x, y);
     }
 }
 
@@ -250,16 +230,16 @@ public class VFAState {
     public VFAState TrackingController(int trackingHead, int trackingLeftHand, int trackingRightHand, int trackingHip, int trackingLeftFoot, int trackingRightFoot, int trackingLeftFingers, int trackingRightFingers, int trackingEyes, int trackingMouth) {
         
         var controller = GetTrackingControl();
-        controller.trackingHead = (TrackingType)trackingHead;
-        controller.trackingLeftHand = (TrackingType)trackingLeftHand;
-        controller.trackingRightHand = (TrackingType)trackingRightHand;
-        controller.trackingHip = (TrackingType)trackingHip;
-        controller.trackingLeftFoot = (TrackingType)trackingLeftFoot;
-        controller.trackingRightFoot = (TrackingType)trackingRightFoot;
-        controller.trackingLeftFingers = (TrackingType)trackingLeftFingers;
-        controller.trackingRightFingers = (TrackingType)trackingRightFingers;
-        controller.trackingEyes = (TrackingType)trackingEyes;
-        controller.trackingMouth = (TrackingType)trackingMouth;
+        controller.trackingHead = (VRC_AnimatorTrackingControl.TrackingType)trackingHead;
+        controller.trackingLeftHand = (VRC_AnimatorTrackingControl.TrackingType)trackingLeftHand;
+        controller.trackingRightHand = (VRC_AnimatorTrackingControl.TrackingType)trackingRightHand;
+        controller.trackingHip = (VRC_AnimatorTrackingControl.TrackingType)trackingHip;
+        controller.trackingLeftFoot = (VRC_AnimatorTrackingControl.TrackingType)trackingLeftFoot;
+        controller.trackingRightFoot = (VRC_AnimatorTrackingControl.TrackingType)trackingRightFoot;
+        controller.trackingLeftFingers = (VRC_AnimatorTrackingControl.TrackingType)trackingLeftFingers;
+        controller.trackingRightFingers = (VRC_AnimatorTrackingControl.TrackingType)trackingRightFingers;
+        controller.trackingEyes = (VRC_AnimatorTrackingControl.TrackingType)trackingEyes;
+        controller.trackingMouth = (VRC_AnimatorTrackingControl.TrackingType)trackingMouth;
         return this;
 
     }
@@ -278,7 +258,7 @@ public class VFAState {
         return TrackingController(0,0,0,0,0,0,0,0,0,0);
     }
 
-    public VFAState PlayableLayerController(BlendableLayer layer, float goal, float duration) {
+    public VFAState PlayableLayerController(VRC_PlayableLayerControl.BlendableLayer layer, float goal, float duration) {
         var controller = GetPlayableLayerControl();
         controller.layer = layer;
         controller.goalWeight = goal;
@@ -304,10 +284,6 @@ public class VFAState {
     }
     public VFATransition TransitionsToExit() {
         return new VFATransition(() => node.state.AddExitTransition());
-    }
-
-    public Vector3 getPos() {
-        return node.position;
     }
     public AnimatorState GetRaw() {
         return node.state;
