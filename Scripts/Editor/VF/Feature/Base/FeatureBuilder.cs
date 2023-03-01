@@ -222,10 +222,6 @@ namespace VF.Feature.Base {
                    || name.EndsWith(".w");
         }
 
-        protected static SkinnedMeshRenderer[] GetAllSkins(GameObject parent) {
-            return parent.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-        }
-
         public List<FeatureBuilderAction> GetActions() {
             var list = new List<FeatureBuilderAction>();
             foreach (var method in GetType().GetMethods()) {

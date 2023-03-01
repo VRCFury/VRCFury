@@ -11,7 +11,6 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
-using static VRC.SDKBase.VRC_PlayableLayerControl;
 using Object = UnityEngine.Object;
 using Toggle = VF.Model.Feature.Toggle;
 
@@ -188,7 +187,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (isActionLayer) {
             inState.WithAnimation(model.passiveAction);
-            inState.PlayableLayerController(BlendableLayer.Action,1,model.transitionTime);
+            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action,1,model.transitionTime);
             AddEmoteBaseAnimationLayerController(inState, 1);
             inState.TrackingController("emoteAnimation");
             AddEmoteBaseAnimationLayerController(onState, 1);
@@ -203,7 +202,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
             if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
-                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(BlendableLayer.Action,0,model.transitionTime);
+                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action,0,model.transitionTime);
                 AddEmoteBaseAnimationLayerController(blendOut, 1);
                 outState.TransitionsTo(blendOut).When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
                 blendOut.TransitionsToExit().When().WithTransitionExitTime(1);
@@ -212,7 +211,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         } else {
             if (isActionLayer) {
-                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(BlendableLayer.Action,0,model.transitionTime);
+                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action,0,model.transitionTime);
                 AddEmoteBaseAnimationLayerController(blendOut, 1);
                 onState.TransitionsTo(blendOut).When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
                 blendOut.TransitionsToExit().When().WithTransitionExitTime(1);
