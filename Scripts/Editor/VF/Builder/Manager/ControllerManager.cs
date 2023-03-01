@@ -89,8 +89,11 @@ namespace VF.Builder {
             }
             return _noopClip;
         }
+        public string NewClipName(string name) {
+            return $"{currentFeatureClipPrefixProvider.Invoke()}/{name}";
+        }
         public AnimationClip NewClip(string name) {
-            return _NewClip($"{currentFeatureClipPrefixProvider.Invoke()}/{name}");
+            return _NewClip(NewClipName(name));
         }
         private AnimationClip _NewClip(string name) {
             var clip = new AnimationClip { name = name };
@@ -98,7 +101,7 @@ namespace VF.Builder {
             return clip;
         }
         public BlendTree NewBlendTree(string name) {
-            return _NewBlendTree($"{currentFeatureClipPrefixProvider.Invoke()}/{name}");
+            return _NewBlendTree(NewClipName(name));
         }
         private BlendTree _NewBlendTree(string name) {
             var tree = new BlendTree { name = name };
@@ -121,7 +124,12 @@ namespace VF.Builder {
                 .First();
         }
 
-        public void TakeLayersFrom(AnimatorController other) {
+        /**
+         * BEWARE: This consumes the ENTIRE asset file containing "other"
+         * The animator controller (and its sub-assets) should be owned by vrcfury, and should
+         * be the ONLY THING in that file!!!
+         */
+        public void TakeOwnershipOf(AnimatorController other) {
             other.layers = other.layers.Select((layer, i) => {
                 if (i == 0) layer.defaultWeight = 1;
                 layer.name = NewLayerName(layer.name);
@@ -130,6 +138,16 @@ namespace VF.Builder {
                 return layer;
             }).ToArray();
             ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
+
+            var path = AssetDatabase.GetAssetPath(other);
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path)) {
+                if (asset is Motion) asset.name = NewClipName(asset.name);
+                if (asset is AnimatorController) continue;
+                AssetDatabase.RemoveObjectFromAsset(asset);
+                AssetDatabase.AddObjectToAsset(asset, ctrl);
+            }
+            
+            AssetDatabase.DeleteAsset(path);
         }
 
         public string NewLayerName(string name) {
