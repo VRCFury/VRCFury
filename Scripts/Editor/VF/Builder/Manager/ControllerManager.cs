@@ -261,47 +261,6 @@ namespace VF.Builder {
          public VFABool AFK() {
             return NewBool("AFK", usePrefix: false);
         }
-        
-        public void ModifyMask(int layerId, Action<AvatarMask> makeChanges) {
-            var mask = GetMask(layerId);
-            if (mask == null) {
-                return;
-            }
-
-            var copy = CloneMask(mask);
-            makeChanges(copy);
-            if (MasksEqual(mask, copy)) {
-                return;
-            }
-            
-            SetMask(layerId, copy);
-            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "mask");
-        }
-
-        private static AvatarMask CloneMask(AvatarMask mask) {
-            var copy = new AvatarMask();
-            for (AvatarMaskBodyPart index = AvatarMaskBodyPart.Root; index < AvatarMaskBodyPart.LastBodyPart; ++index)
-                copy.SetHumanoidBodyPartActive(index, mask.GetHumanoidBodyPartActive(index));
-            copy.transformCount = mask.transformCount;
-            for (int index = 0; index < mask.transformCount; ++index) {
-                copy.SetTransformPath(index, mask.GetTransformPath(index));
-                copy.SetTransformActive(index, mask.GetTransformActive(index));
-            }
-            return copy;
-        }
-        private static bool MasksEqual(AvatarMask a, AvatarMask b) {
-            for (AvatarMaskBodyPart index = AvatarMaskBodyPart.Root; index < AvatarMaskBodyPart.LastBodyPart; ++index) {
-                if (a.GetHumanoidBodyPartActive(index) != b.GetHumanoidBodyPartActive(index)) {
-                    return false;
-                }
-            }
-            if (a.transformCount != b.transformCount) return false;
-            for (int index = 0; index < a.transformCount; ++index) {
-                if (a.GetTransformPath(index) != b.GetTransformPath(index)) return false;
-                if (a.GetTransformActive(index) != b.GetTransformActive(index)) return false;
-            }
-            return true;
-        }
 
         public void UnionBaseMask(AvatarMask sourceMask) {
             if (sourceMask == null) return;
