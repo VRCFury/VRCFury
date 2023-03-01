@@ -305,7 +305,6 @@ namespace VF.Model.Feature {
             n.simpleOutTransition = simpleOutTransition;
             n.defaultSliderValue = defaultSliderValue;
         }
-		
     }
 
     [Serializable]

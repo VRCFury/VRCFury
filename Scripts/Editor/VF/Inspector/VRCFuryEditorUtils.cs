@@ -197,7 +197,6 @@ public static class VRCFuryEditorUtils {
         return newEntry;
     }
 
-
     public static void Margin(VisualElement el, float topbottom, float leftright) {
         el.style.marginTop = el.style.marginBottom = topbottom;
         el.style.marginLeft = el.style.marginRight = leftright;
