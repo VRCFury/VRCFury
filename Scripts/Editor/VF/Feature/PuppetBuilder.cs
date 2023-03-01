@@ -11,9 +11,9 @@ public class PuppetBuilder : FeatureBuilder<Puppet> {
         var fx = GetFx();
         var layerName = model.name;
         var layer = fx.NewLayer(layerName);
-        var tree = manager.GetClipStorage().NewBlendTree(model.name);
+        var tree = fx.NewBlendTree(model.name);
         tree.blendType = BlendTreeType.FreeformDirectional2D;
-        tree.AddChild(manager.GetClipStorage().GetNoopClip(), new Vector2(0,0));
+        tree.AddChild(fx.GetNoopClip(), new Vector2(0,0));
         var i = 0;
         var usesX = false;
         var usesY = false;

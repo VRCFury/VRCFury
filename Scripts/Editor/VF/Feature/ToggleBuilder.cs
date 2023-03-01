@@ -105,7 +105,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State outAction,
         VFABool physBoneResetter
     ) {
-        var clip = LoadState(model.name + " " + onName, action);
+        var clip = LoadState(onName, action);
 
         if (restingClip == null && model.includeInRest) {
             restingClip = clip;
@@ -129,7 +129,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState inState;
         VFAState onState;
         if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
-            var transitionClipIn = LoadState(model.name + onName + " In", inAction);
+            var transitionClipIn = LoadState(onName + " In", inAction);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
             inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
@@ -141,7 +141,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
-            var transitionClipOut = LoadState(model.name + onName + " Out", outAction);
+            var transitionClipOut = LoadState(onName + " Out", outAction);
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
             outState.TransitionsToExit().When().WithTransitionExitTime(1);
@@ -201,7 +201,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
-    /**
+    public override string GetClipPrefix() {
+        return "Toggle " + model.name.Replace('/', '_');
+    }
+
+     /**
      * This method is needed, because:
      * 1. If you clip.SampleAnimation on the avatar while it has a humanoid Avatar set on its Animator, it'll
      *    bake into motorcycle pose.

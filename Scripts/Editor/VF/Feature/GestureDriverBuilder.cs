@@ -107,11 +107,11 @@ namespace VF.Feature {
             if (gesture.enableWeight && weightHand > 0) {
                 MakeWeightParams();
                 var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
-                var tree = manager.GetClipStorage().NewBlendTree(uid + "_blend");
+                var tree = fx.NewBlendTree(uid + "_blend");
                 tree.blendType = BlendTreeType.Simple1D;
                 tree.useAutomaticThresholds = false;
                 tree.blendParameter = weightParam.Name();
-                tree.AddChild(manager.GetClipStorage().GetNoopClip(), 0);
+                tree.AddChild(fx.GetNoopClip(), 0);
                 tree.AddChild(clip, 1);
                 on.WithAnimation(tree);
             } else {
@@ -149,13 +149,13 @@ namespace VF.Feature {
             var remoteSmoothParam = fx.NewFloat(input.Name() + "_smooth_remote", def: 0.85f); 
 
             //FeedbackClips - they drive the feedback values back to the output param
-            var minClip = manager.GetClipStorage().NewClip(input.Name() + "-1");
+            var minClip = fx.NewClip(input.Name() + "-1");
             minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, -1f));
-            var maxClip = manager.GetClipStorage().NewClip(input.Name() + "1");
+            var maxClip = fx.NewClip(input.Name() + "1");
             maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
 
             //Update tree - moves toward the target value
-            var updateTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_input");
+            var updateTree = fx.NewBlendTree("GestureWeight_" + name + "_input");
             updateTree.blendType = BlendTreeType.Simple1D;
             updateTree.useAutomaticThresholds = false;
             updateTree.blendParameter = input.Name();
@@ -163,7 +163,7 @@ namespace VF.Feature {
             updateTree.AddChild(maxClip, 1);
             
             //Maintain tree - maintains the current value
-            var maintainTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_driver");
+            var maintainTree = fx.NewBlendTree("GestureWeight_" + name + "_driver");
             maintainTree.blendType = BlendTreeType.Simple1D;
             maintainTree.useAutomaticThresholds = false;
             maintainTree.blendParameter = output.Name();
@@ -172,14 +172,14 @@ namespace VF.Feature {
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
-            var localTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_local");
+            var localTree = fx.NewBlendTree("GestureWeight_" + name + "_root_local");
             localTree.blendType = BlendTreeType.Simple1D;
             localTree.useAutomaticThresholds = false;
             localTree.blendParameter = localSmoothParam.Name();
             localTree.AddChild(updateTree, 0);
             localTree.AddChild(maintainTree, 1);
 
-            var remoteTree = manager.GetClipStorage().NewBlendTree("GestureWeight_" + name + "_root_remote");
+            var remoteTree = fx.NewBlendTree("GestureWeight_" + name + "_root_remote");
             remoteTree.blendType = BlendTreeType.Simple1D;
             remoteTree.useAutomaticThresholds = false;
             remoteTree.blendParameter = remoteSmoothParam.Name();

@@ -98,12 +98,14 @@ public class VRCFuryBuilder {
 
         var currentModelNumber = 0;
         var currentModelName = "";
+        var currentModelClipPrefix = "?";
         var currentMenuSortPosition = 0;
         var manager = new AvatarManager(
             avatarObject,
             tmpDir,
             () => currentModelNumber,
             () => currentModelName,
+            () => currentModelClipPrefix,
             () => currentMenuSortPosition,
             mutableManager
         );
@@ -194,10 +196,11 @@ public class VRCFuryBuilder {
             if (configPath == "") configPath = "Avatar Root";
             
             currentModelNumber = builder.uniqueModelNum;
-            currentModelName = action.GetName() + " (Feature " + currentModelNumber + ") from " + configPath;
+            currentModelName = $"{action.GetName()} (Feature {currentModelNumber}) from {configPath}";
+            currentModelClipPrefix = $"VF{currentModelNumber} {builder.GetClipPrefix() ?? builder.GetType().Name}";
             currentMenuSortPosition = menuSortPositionByBuilder[builder];
             
-            var statusMessage = "Applying " + action.GetName() + " on " + builder.avatarObject.name + " " + configPath;
+            var statusMessage = $"Applying {action.GetName()} on {builder.avatarObject.name} {configPath}";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {

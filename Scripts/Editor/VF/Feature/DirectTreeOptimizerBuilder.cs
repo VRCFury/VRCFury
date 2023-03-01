@@ -159,6 +159,7 @@ namespace VF.Feature {
                             if (!(s.motion is AnimationClip clip)) return null;
                             if (s.timeParameterActive) return null;
                             if (clip.isLooping) return null;
+                            if (ClipBuilder.GetLengthInFrames(clip) > 5) return null;
                             var dualState = ClipBuilder.SplitRangeClip(clip);
                             if (dualState == null) return null;
                             AnimationClip single;
@@ -210,7 +211,7 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
-                var tree = manager.GetClipStorage().NewBlendTree("Optimized Toggles");
+                var tree = fx.NewBlendTree("Optimized Toggles");
                 tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
                     var offEmpty = ClipBuilder.IsEmptyMotion(toggle.offState, avatarObject);
@@ -219,12 +220,12 @@ namespace VF.Feature {
                     string param;
                     Motion motion;
                     if (!offEmpty) {
-                        var subTree = manager.GetClipStorage().NewBlendTree("Optimized Toggle " + toggle.offState.name);
+                        var subTree = fx.NewBlendTree("Layer " + toggle.offState.name);
                         subTree.useAutomaticThresholds = false;
                         subTree.blendType = BlendTreeType.Simple1D;
                         subTree.AddChild(toggle.offState, 0);
                         subTree.AddChild(
-                            !onEmpty ? toggle.onState : manager.GetClipStorage().GetNoopClip(), 1);
+                            !onEmpty ? toggle.onState : fx.GetNoopClip(), 1);
                         subTree.blendParameter = toggle.param;
                         param = floatTrue.Name();
                         motion = subTree;

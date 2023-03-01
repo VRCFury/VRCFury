@@ -22,7 +22,7 @@ public class BreathingBuilder : FeatureBuilder<Breathing> {
         var outClip = LoadState("breatheOut", model.outState);
 
         var fx = GetFx();
-        var clip = manager.GetClipStorage().NewClip("Breathing");
+        var clip = fx.NewClip("Breathing");
         var so = new SerializedObject(clip);
         so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
         so.ApplyModifiedProperties();

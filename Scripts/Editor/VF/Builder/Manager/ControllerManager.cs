@@ -17,12 +17,12 @@ namespace VF.Builder {
         private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureNameProvider;
+        private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly string tmpDir;
         // These can't use AnimatorControllerLayer, because AnimatorControllerLayer is generated on request, not consistent
         private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
-        private readonly ClipStorageManager clipStorage;
         private readonly VFAController _controller;
     
         public ControllerManager(
@@ -31,16 +31,16 @@ namespace VF.Builder {
             VRCAvatarDescriptor.AnimLayerType type,
             Func<int> currentFeatureNumProvider,
             Func<string> currentFeatureNameProvider,
-            string tmpDir,
-            ClipStorageManager clipStorage
+            Func<string> currentFeatureClipPrefixProvider,
+            string tmpDir
         ) {
             this.ctrl = ctrl;
             this.paramManager = paramManager;
             this.type = type;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureNameProvider = currentFeatureNameProvider;
+            this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.tmpDir = tmpDir;
-            this.clipStorage = clipStorage;
             this._controller = new VFAController(ctrl, type);
 
             if (ctrl.layers.Length == 0) {
@@ -79,6 +79,31 @@ namespace VF.Builder {
             managedLayers.Add(newLayer.GetRawStateMachine());
             layerOwners[newLayer.GetRawStateMachine()] = currentFeatureNameProvider();
             return newLayer;
+        }
+        
+        private AnimationClip _noopClip;
+        public AnimationClip GetNoopClip() {
+            if (_noopClip == null) {
+                _noopClip = _NewClip("VFnoop");
+                _noopClip.SetCurve("_ignored", typeof(GameObject), "m_IsActive", AnimationCurve.Constant(0,0,0));
+            }
+            return _noopClip;
+        }
+        public AnimationClip NewClip(string name) {
+            return _NewClip($"{currentFeatureClipPrefixProvider.Invoke()}/{name}");
+        }
+        private AnimationClip _NewClip(string name) {
+            var clip = new AnimationClip { name = name };
+            AssetDatabase.AddObjectToAsset(clip, ctrl);
+            return clip;
+        }
+        public BlendTree NewBlendTree(string name) {
+            return _NewBlendTree($"{currentFeatureClipPrefixProvider.Invoke()}/{name}");
+        }
+        private BlendTree _NewBlendTree(string name) {
+            var tree = new BlendTree { name = name };
+            AssetDatabase.AddObjectToAsset(tree, ctrl);
+            return tree;
         }
 
         public void RemoveLayer(AnimatorStateMachine sm) {

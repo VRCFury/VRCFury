@@ -74,11 +74,11 @@ namespace VF.Feature {
         
         private void ApplyToAvatar(bool applyToUnmanagedLayers, bool useWriteDefaults) {
             var missingStates = new List<string>();
-            var noopClip = manager.GetClipStorage().GetNoopClip();
             foreach (var controller in applyToUnmanagedLayers ? manager.GetAllUsedControllers() : manager.GetAllTouchedControllers()) {
+                var noopClip = controller.GetNoopClip();
                 AnimationClip defaultClip = null;
                 if (controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    defaultClip = manager.GetClipStorage().NewClip("Defaults " + controller.GetType());
+                    defaultClip = controller.NewClip("Defaults " + controller.GetType());
                     var defaultLayer = controller.NewLayer("Defaults", 1);
                     defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
                 }

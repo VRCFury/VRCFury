@@ -72,13 +72,14 @@ namespace VF.Feature {
             VFABool autoOn = null;
             AnimationClip autoOnClip = null;
             if (enableAuto) {
-                autoOn = GetFx().NewBool("autoMode", synced: true);
+                var fx = GetFx();
+                autoOn = fx.NewBool("autoMode", synced: true);
                 manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to an OGB penetrator", autoOn);
-                autoOnClip = manager.GetClipStorage().NewClip("EnableAutoReceivers");
-                var autoReceiverLayer = GetFx().NewLayer("Auto - Enable Receivers");
+                autoOnClip = fx.NewClip("EnableAutoReceivers");
+                var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
                 var off = autoReceiverLayer.NewState("Off");
                 var on = autoReceiverLayer.NewState("On").WithAnimation(autoOnClip);
-                var whenOn = autoOn.IsTrue().And(GetFx().IsLocal().IsTrue());
+                var whenOn = autoOn.IsTrue().And(fx.IsLocal().IsTrue());
                 off.TransitionsTo(on).When(whenOn);
                 on.TransitionsTo(off).When(whenOn.Not());
             }
@@ -89,7 +90,8 @@ namespace VF.Feature {
                 .Length >= 1;
             VFABool stealthOn = null;
             if (enableStealth) {
-                stealthOn = GetFx().NewBool("stealth", synced: true);
+                var fx = GetFx();
+                stealthOn = fx.NewBool("stealth", synced: true);
                 manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
@@ -99,7 +101,8 @@ namespace VF.Feature {
                 .Length >= 2;
             VFABool multiOn = null;
             if (enableMulti) {
-                multiOn = GetFx().NewBool("multi", synced: true);
+                var fx = GetFx();
+                multiOn = fx.NewBool("multi", synced: true);
                 var multiFolder = $"{optionsFolder}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active holes";
                 manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use TPS, >NO DPS!<");
@@ -120,6 +123,8 @@ namespace VF.Feature {
                 }
 
                 if (c.addMenuItem) {
+                    var fx = GetFx();
+
                     c.gameObject.SetActive(true);
 
                     ICollection<GameObject> FindChildren(params string[] names) {
@@ -132,23 +137,23 @@ namespace VF.Feature {
                     foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "VersionBeacon")) {
                         obj.SetActive(false);
                     }
-                    var onLocalClip = manager.GetClipStorage().NewClip($"{name}_onLocal");
+                    var onLocalClip = fx.NewClip($"{name} (Local)");
                     foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal")) {
                         clipBuilder.Enable(onLocalClip, obj);
                     }
-                    var onRemoteClip = manager.GetClipStorage().NewClip($"{name}_onRemote");
+                    var onRemoteClip = fx.NewClip($"{name} (Remote)");
                     foreach (var obj in FindChildren("Senders", "Lights", "VersionBeacon")) {
                         clipBuilder.Enable(onRemoteClip, obj);
                     }
-                    var onStealthClip = manager.GetClipStorage().NewClip($"{name}_stealth");
+                    var onStealthClip = fx.NewClip($"{name} (Stealth)");
                     foreach (var obj in FindChildren("Receivers", "VersionLocal")) {
                         clipBuilder.Enable(onStealthClip, obj);
                     }
-
-                    var holeOn = GetFx().NewBool(name, synced: true);
+                    
+                    var holeOn = fx.NewBool(name, synced: true);
                     manager.GetMenu().NewMenuToggle($"Holes/{name}", holeOn);
 
-                    var layer = GetFx().NewLayer(name);
+                    var layer = fx.NewLayer(name);
                     var offState = layer.NewState("Off");
                     var stealthState = layer.NewState("On Local Stealth").WithAnimation(onStealthClip).Move(offState, 1, 0);
                     var onLocalMultiState = layer.NewState("On Local Multi").WithAnimation(onLocalClip);
@@ -156,22 +161,22 @@ namespace VF.Feature {
                     var onRemoteState = layer.NewState("On Remote").WithAnimation(onRemoteClip);
 
                     var whenOn = holeOn.IsTrue();
-                    var whenLocal = GetFx().IsLocal().IsTrue();
-                    var whenStealthEnabled = stealthOn?.IsTrue() ?? GetFx().Never();
-                    var whenMultiEnabled = multiOn?.IsTrue() ?? GetFx().Never();
+                    var whenLocal = fx.IsLocal().IsTrue();
+                    var whenStealthEnabled = stealthOn?.IsTrue() ?? fx.Never();
+                    var whenMultiEnabled = multiOn?.IsTrue() ?? fx.Never();
 
                     VFAState.FakeAnyState(
                         (stealthState, whenOn.And(whenLocal.And(whenStealthEnabled))),
                         (onLocalMultiState, whenOn.And(whenLocal.And(whenMultiEnabled))),
                         (onLocalState, whenOn.And(whenLocal)),
                         (onRemoteState, whenOn.And(whenStealthEnabled.Not())),
-                        (offState, GetFx().Always())
+                        (offState, fx.Always())
                     );
 
                     exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
 
                     if (c.enableAuto && autoOnClip) {
-                        var distParam = GetFx().NewFloat(name + "/AutoDistance");
+                        var distParam = fx.NewFloat(name + "/AutoDistance");
                         var distReceiver = OGBUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
                             new[] { OGBUtils.CONTACT_PEN_MAIN });
                         distReceiver.SetActive(false);
@@ -208,11 +213,11 @@ namespace VF.Feature {
 
                     var clip = LoadState(prefix, depthAction.state);
                     if (ClipBuilder.IsStaticMotion(clip)) {
-                        var tree = manager.GetClipStorage().NewBlendTree(prefix + " tree");
+                        var tree = fx.NewBlendTree(prefix + " tree");
                         tree.blendType = BlendTreeType.Simple1D;
                         tree.useAutomaticThresholds = false;
                         tree.blendParameter = depthParam.Name();
-                        tree.AddChild(manager.GetClipStorage().GetNoopClip(), 0);
+                        tree.AddChild(fx.GetNoopClip(), 0);
                         tree.AddChild(clip, 1);
                         on.WithAnimation(tree);
                     } else {
@@ -251,9 +256,9 @@ namespace VF.Feature {
                 stop.TransitionsTo(stopped).When(fx.Always());
 
                 var vsParam = fx.NewFloat("comparison");
-                var vs1 = manager.GetClipStorage().NewClip("vs1");
+                var vs1 = fx.NewClip("vs1");
                 vs1.SetCurve("", typeof(Animator), vsParam.Name(), AnimationCurve.Constant(0, 0, 1f));
-                var vs0 = manager.GetClipStorage().NewClip("vs0");
+                var vs0 = fx.NewClip("vs0");
                 vs0.SetCurve("", typeof(Animator), vsParam.Name(), AnimationCurve.Constant(0, 0, 0f));
 
                 var states = new Dictionary<Tuple<int, int>, VFAState>();
@@ -270,7 +275,7 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoOrifices[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = manager.GetClipStorage().NewBlendTree($"{aName} vs {bName}");
+                        var tree = fx.NewBlendTree($"{aName} vs {bName}");
                         tree.useAutomaticThresholds = false;
                         tree.blendType = BlendTreeType.FreeformCartesian2D;
                         tree.AddChild(vs0, new Vector2(1f, 0));
@@ -319,7 +324,7 @@ namespace VF.Feature {
                 var on = layer.NewState("On");
                 off.TransitionsTo(on).When().WithTransitionExitTime(1);
                 
-                var clip = manager.GetClipStorage().NewClip("ogbLoad");
+                var clip = fx.NewClip("ogbLoad");
                 foreach (var obj in objectsToDisableTemporarily) {
                     clipBuilder.Enable(clip, obj, false);
                 }
