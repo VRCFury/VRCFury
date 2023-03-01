@@ -75,13 +75,21 @@ public static class VRCFuryEditorUtils {
 
                 var shownButton = false;
 
+                void Move(int pos) {
+                    if (pos < 0 || pos >= size) return;
+                    list.MoveArrayElement(offset, pos);
+                    list.serializedObject.ApplyModifiedProperties();
+                    foreach (var r in refreshAllElements) r();
+                }
+
                 if (offset != 0) {
                     var move = new Label("↑");
                     move.AddManipulator(new Clickable(e => {
-                        list.MoveArrayElement(offset, offset - 1);
-                        list.serializedObject.ApplyModifiedProperties();
-                        foreach (var r in refreshAllElements) r();
+                        Move(offset - 1);
                     }));
+                    move.AddManipulator(new Clickable(e => {
+                        Move(0);
+                    }) { activators = { new ManipulatorActivationFilter() { button = MouseButton.LeftMouse, modifiers = EventModifiers.Shift } } });
                     move.style.flexGrow = 0;
                     move.style.borderLeftColor = move.style.borderBottomColor = Color.black;
                     move.style.borderLeftWidth = move.style.borderBottomWidth = 1;
@@ -96,10 +104,11 @@ public static class VRCFuryEditorUtils {
                 if (offset != size - 1) {
                     var move = new Label("↓");
                     move.AddManipulator(new Clickable(e => {
-                        list.MoveArrayElement(offset, offset + 1);
-                        list.serializedObject.ApplyModifiedProperties();
-                        foreach (var r in refreshAllElements) r();
+                        Move(offset + 1);
                     }));
+                    move.AddManipulator(new Clickable(e => {
+                        Move(size - 1);
+                    }) { activators = { new ManipulatorActivationFilter() { button = MouseButton.LeftMouse, modifiers = EventModifiers.Shift } } });
                     move.style.flexGrow = 0;
                     move.style.borderLeftColor = move.style.borderBottomColor = Color.black;
                     move.style.borderLeftWidth = move.style.borderBottomWidth = 1;
