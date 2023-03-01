@@ -194,34 +194,6 @@ namespace VF.Feature.Base {
             return clip;
         }
 
-        protected bool HasHuman(AnimationClip clip) {
-            return clip.humanMotion;
-        }
-
-        protected bool HasNonhuman(AnimationClip clip) {
-            foreach (var c in AnimationUtility.GetCurveBindings(clip)) {
-                if (!GetIsHuman(c.propertyName)) return true; 
-            }
-            return false;
-        }
-
-        private static HashSet<string> _humanMuscleList;
-        private static HashSet<string> GetHumanList() {
-            if (_humanMuscleList != null) return _humanMuscleList;
-            _humanMuscleList = new HashSet<string>();
-            _humanMuscleList.UnionWith(HumanTrait.MuscleName);
-            return _humanMuscleList;
-        }
-        private static bool GetIsHuman(string name) {
-            return GetHumanList().Contains(name)
-                   || name.EndsWith(" Stretched")
-                   || name.EndsWith(".Spread")
-                   || name.EndsWith(".x")
-                   || name.EndsWith(".y")
-                   || name.EndsWith(".z")
-                   || name.EndsWith(".w");
-        }
-
         public List<FeatureBuilderAction> GetActions() {
             var list = new List<FeatureBuilderAction>();
             foreach (var method in GetType().GetMethods()) {
