@@ -96,7 +96,7 @@ namespace VF.Builder {
                     if (IsType(copy, hiddenTypes)) {
                         copy.hideFlags |= HideFlags.HideInHierarchy;
                     } else {
-                        copy.name = $"[{obj.name}] {original.name}";
+                        copy.name = $"{obj.name}/{original.name}";
                     }
                     AssetDatabase.AddObjectToAsset(copy, saveParent);
                 }

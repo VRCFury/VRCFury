@@ -135,7 +135,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     ) {
         var isActionLayer = controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action;
 
-        var clip = (AnimationClip)model.motionOverride ?? LoadState(model.name + " " + onName, action, isActionLayer);
+        var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isActionLayer);
         var needsAction = clip.isHumanMotion;
 
         if (restingClip == null && model.includeInRest) {
@@ -173,6 +173,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             } else {
                 inState = onState = layer.NewState(onName).WithAnimation(clip);
             }
+        }
+
+        if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
+            var transitionClipIn = LoadState(onName + " In", inAction);
+            inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
+            onState = layer.NewState(onName).WithAnimation(clip);
+            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
         } else {
             inState = layer.NewState(onName + " In");
             onState = layer.NewState(onName).WithAnimation(clip);
@@ -192,7 +199,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
-            var transitionClipOut = LoadState(model.name + onName + " Out", outAction, isActionLayer);
+            var transitionClipOut = LoadState(onName + " Out", outAction, isActionLayer);
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
             if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
@@ -251,6 +258,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
+
     private void AddEmoteBaseAnimationLayerController(VFAState state, float weight) {
         allBuildersInRun.OfType<AnimatorLayerControlOffsetBuilder>().First().Register(state.AnimationLayerController(weight, 0), model.emoteBaseStateMachine);
     }
@@ -289,7 +297,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
-    /**
+    public override string GetClipPrefix() {
+        return "Toggle " + model.name.Replace('/', '_');
+    }
+
+     /**
      * This method is needed, because:
      * 1. If you clip.SampleAnimation on the avatar while it has a humanoid Avatar set on its Animator, it'll
      *    bake into motorcycle pose.

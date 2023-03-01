@@ -16,6 +16,7 @@ namespace VF.Builder {
         private readonly string tmpDir;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureNameProvider;
+        private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly Func<int> currentMenuSortPosition;
         private readonly MutableManager mutableManager;
 
@@ -24,6 +25,7 @@ namespace VF.Builder {
             string tmpDir,
             Func<int> currentFeatureNumProvider,
             Func<string> currentFeatureNameProvider,
+            Func<string> currentFeatureClipPrefixProvider,
             Func<int> currentMenuSortPosition,
             MutableManager mutableManager
         ) {
@@ -32,6 +34,7 @@ namespace VF.Builder {
             this.tmpDir = tmpDir;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureNameProvider = currentFeatureNameProvider;
+            this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.currentMenuSortPosition = currentMenuSortPosition;
             this.mutableManager = mutableManager;
         }
@@ -66,7 +69,15 @@ namespace VF.Builder {
                     ctrl = new AnimatorController();
                     VRCFuryAssetDatabase.SaveAsset(ctrl, tmpDir, filename);
                 }
-                output = new ControllerManager(ctrl, GetParams, type, currentFeatureNumProvider, currentFeatureNameProvider, tmpDir, GetClipStorage());
+                output = new ControllerManager(
+                    ctrl,
+                    GetParams,
+                    type,
+                    currentFeatureNumProvider,
+                    currentFeatureNameProvider,
+                    currentFeatureClipPrefixProvider,
+                    tmpDir
+                );
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
             }
@@ -105,14 +116,6 @@ namespace VF.Builder {
             return _params;
         }
 
-        private ClipStorageManager _clipStorage;
-        public ClipStorageManager GetClipStorage() {
-            if (_clipStorage == null) {
-                _clipStorage = new ClipStorageManager(tmpDir, currentFeatureNumProvider);
-            }
-            return _clipStorage;
-        }
-
         public void Finish(OverrideMenuSettings menuSettings) {
             if (_menu != null) {
                 _menu.SortMenu();
@@ -145,7 +148,6 @@ namespace VF.Builder {
             }
             if (_menu != null) VRCFuryEditorUtils.MarkDirty(_menu.GetRaw());
             if (_params != null) VRCFuryEditorUtils.MarkDirty(_params.GetRaw());
-            if (_clipStorage != null) _clipStorage.MarkAllDirty();
 
             if (_params != null) {
                 var maxParams = VRCExpressionParameters.MAX_PARAMETER_COST;

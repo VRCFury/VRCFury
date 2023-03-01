@@ -99,11 +99,6 @@ namespace VF.Feature {
                         param = floatTrue.Name();
                     }
                 } else {
-                    if (hasNonstaticClips) {
-                        AddDebug($"Not optimizing (contains non-static clips)");
-                        continue;
-                    }
-                    
                     ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
                         var output = new List<AnimatorTransitionBase>();
                         AnimatorIterator.ForEachTransition(layer, t => {
@@ -158,9 +153,36 @@ namespace VF.Feature {
                         AddDebug($"Not optimizing (state conditions are not an inversion of each other)");
                         continue;
                     }
+                    
+                    if (hasNonstaticClips) {
+                        Motion GetEffectiveSingleFrameFromNonStatic(AnimatorState s) {
+                            if (!(s.motion is AnimationClip clip)) return null;
+                            if (s.timeParameterActive) return null;
+                            if (clip.isLooping) return null;
+                            if (ClipBuilder.GetLengthInFrames(clip) > 5) return null;
+                            var dualState = ClipBuilder.SplitRangeClip(clip);
+                            if (dualState == null) return null;
+                            AnimationClip single;
+                            if (s.speed >= 0.9) single = dualState.Item2;
+                            else if (s.speed <= -0.9) single = dualState.Item1;
+                            else if (Mathf.Approximately(s.speed, 0)) single = dualState.Item1;
+                            else return null;
+                            single.name = $"{clip.name} (speed={s.speed} end state)";
+                            AssetDatabase.AddObjectToAsset(single, clip);
+                            return single;
+                        }
 
-                    offClip = offState.motion;
-                    onClip = onState.motion;
+                        offClip = GetEffectiveSingleFrameFromNonStatic(offState);
+                        onClip = GetEffectiveSingleFrameFromNonStatic(onState);
+                        if (!offClip || !onClip) {
+                            AddDebug($"Not optimizing (contains non-static clips)");
+                            continue;
+                        }
+                    } else {
+                        offClip = offState.motion;
+                        onClip = onState.motion;
+                    }
+                    
                     param = state0Condition.Value.parameter;
                 }
 
@@ -189,7 +211,7 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
-                var tree = manager.GetClipStorage().NewBlendTree("Optimized Toggles");
+                var tree = fx.NewBlendTree("Optimized Toggles");
                 tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
                     var offEmpty = ClipBuilder.IsEmptyMotion(toggle.offState, avatarObject);
@@ -198,12 +220,12 @@ namespace VF.Feature {
                     string param;
                     Motion motion;
                     if (!offEmpty) {
-                        var subTree = manager.GetClipStorage().NewBlendTree("Optimized Toggle " + toggle.offState.name);
+                        var subTree = fx.NewBlendTree("Layer " + toggle.offState.name);
                         subTree.useAutomaticThresholds = false;
                         subTree.blendType = BlendTreeType.Simple1D;
                         subTree.AddChild(toggle.offState, 0);
                         subTree.AddChild(
-                            !onEmpty ? toggle.onState : manager.GetClipStorage().GetNoopClip(), 1);
+                            !onEmpty ? toggle.onState : fx.GetNoopClip(), 1);
                         subTree.blendParameter = toggle.param;
                         param = floatTrue.Name();
                         motion = subTree;

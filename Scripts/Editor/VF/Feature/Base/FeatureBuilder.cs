@@ -59,7 +59,7 @@ namespace VF.Feature.Base {
             if (resetPhysbones == null || resetPhysbones.Count == 0) return null;
 
             var fx = GetFx();
-            var layer = fx.NewLayer(name + "_PhysBoneReset");
+            var layer = fx.NewLayer(name + " (PhysBone Reset)");
             var param = fx.NewTrigger(name + "_PhysBoneReset");
             var idle = layer.NewState("Idle");
             var pause = layer.NewState("Pause");
@@ -70,7 +70,7 @@ namespace VF.Feature.Base {
             reset1.TransitionsTo(reset2).When(fx.Always());
             reset2.TransitionsTo(idle).When(fx.Always());
 
-            var resetClip = manager.GetClipStorage().NewClip(name + "_PhysBoneReset");
+            var resetClip = fx.NewClip("Physbone Reset");
             foreach (var physBone in resetPhysbones) {
                 if (physBone == null) {
                     Debug.LogWarning("Physbone object in physboneResetter is missing!: " + name);
@@ -91,10 +91,10 @@ namespace VF.Feature.Base {
 
         protected AnimationClip LoadState(string name, State state, bool checkForProxy = false) {
             if (state == null) {
-                return manager.GetClipStorage().GetNoopClip();
+                return GetFx().GetNoopClip();
             }
             if (state.actions.Count == 0) {
-                return manager.GetClipStorage().GetNoopClip();
+                return GetFx().GetNoopClip();
             }
             if (checkForProxy) {
                 foreach (var action in state.actions) {
@@ -105,21 +105,21 @@ namespace VF.Feature.Base {
                 }
             }
 
-            var firstClip = state.actions
-                .OfType<AnimationClipAction>()
-                .Select(action => action.clip)
-                .FirstOrDefault();
-
             void RewriteClip(AnimationClip c) {
                 ClipCopier.Rewrite(c, fromObj: featureBaseObject, fromRoot: avatarObject);
             }
 
-            AnimationClip clip;
+            var clip = GetFx().NewClip(name);
+            
+            var firstClip = state.actions
+                .OfType<AnimationClipAction>()
+                .Select(action => action.clip)
+                .FirstOrDefault();
             if (firstClip) {
-                clip = mutableManager.CopyRecursive(firstClip, saveParent: manager.GetClipStorage().GetStorageRoot());
+                var nameBak = clip.name;
+                EditorUtility.CopySerialized(firstClip, clip);
+                clip.name = nameBak;
                 RewriteClip(clip);
-            } else {
-                clip = manager.GetClipStorage().NewClip(name);
             }
 
             foreach (var action in state.actions) {
@@ -237,6 +237,10 @@ namespace VF.Feature.Base {
                 throw new Exception("Builder had no actions? This is probably a bug. " + GetType().Name);
             }
             return list;
+        }
+
+        public virtual string GetClipPrefix() {
+            return null;
         }
     }
 
