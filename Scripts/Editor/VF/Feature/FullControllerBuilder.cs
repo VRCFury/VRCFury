@@ -190,8 +190,7 @@ namespace VF.Feature {
                 });
             }
 
-            toMain.TakeLayersFrom(from);
-            AssetDatabase.RemoveObjectFromAsset(from);
+            toMain.TakeOwnershipOf(from);
         }
 
         GameObject GetBaseObject() {

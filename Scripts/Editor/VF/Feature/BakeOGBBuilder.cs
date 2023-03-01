@@ -28,6 +28,9 @@ namespace VF.Feature {
             // When you first load into a world, contact receivers already touching a sender register as 0 proximity
             // until they are removed and then reintroduced to each other.
             var objectsToDisableTemporarily = new HashSet<GameObject>();
+            // This is here so if users have an existing toggle that turns off holes, we forcefully turn it back
+            // on if it's managed by our new menu system.
+            var objectsToForceEnable = new HashSet<GameObject>();
             
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
                 var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames);
@@ -126,6 +129,7 @@ namespace VF.Feature {
                     var fx = GetFx();
 
                     c.gameObject.SetActive(true);
+                    objectsToForceEnable.Add(c.gameObject);
 
                     ICollection<GameObject> FindChildren(params string[] names) {
                         return names.Select(n => bakeRoot.transform.Find(n))
@@ -324,11 +328,17 @@ namespace VF.Feature {
                 var on = layer.NewState("On");
                 off.TransitionsTo(on).When().WithTransitionExitTime(1);
                 
-                var clip = fx.NewClip("ogbLoad");
+                var firstFrameClip = fx.NewClip("Load (First Frame)");
                 foreach (var obj in objectsToDisableTemporarily) {
-                    clipBuilder.Enable(clip, obj, false);
+                    clipBuilder.Enable(firstFrameClip, obj, false);
                 }
-                off.WithAnimation(clip);
+                off.WithAnimation(firstFrameClip);
+                
+                var onClip = fx.NewClip("Load (On)");
+                foreach (var obj in objectsToForceEnable) {
+                    clipBuilder.Enable(onClip, obj);
+                }
+                on.WithAnimation(onClip);
             }
         }
     }
