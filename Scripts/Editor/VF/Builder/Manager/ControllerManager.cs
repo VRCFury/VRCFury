@@ -116,6 +116,10 @@ namespace VF.Builder {
             GetController().RemoveLayer(id);
         }
 
+        public string GetLayerName(AnimatorStateMachine sm) {
+            return ctrl.layers[GetLayerId(sm)].name;
+        }
+
         public int GetLayerId(AnimatorStateMachine sm) {
             return GetLayers()
                 .Select((s, i) => (s, i))

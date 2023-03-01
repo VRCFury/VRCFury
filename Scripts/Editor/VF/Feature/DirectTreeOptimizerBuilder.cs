@@ -61,10 +61,13 @@ namespace VF.Feature {
                 });
 
                 var usedBindings = bindingsByLayer[layer];
-                var someOtherLayerAnimatesTheSameThing = bindingsByLayer
-                    .Any(pair => pair.Key != layer && pair.Value.Any(b => usedBindings.Contains(b)));
-                if (someOtherLayerAnimatesTheSameThing) {
-                    AddDebug($"Not optimizing (shares animations with some other layer)");
+                var otherLayersAnimateTheSameThing = bindingsByLayer
+                    .Where(pair => pair.Key != layer && pair.Value.Any(b => usedBindings.Contains(b)))
+                    .Select(pair => pair.Key)
+                    .ToArray();
+                if (otherLayersAnimateTheSameThing.Length > 0) {
+                    var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => fx.GetLayerName(l)));
+                    AddDebug($"Not optimizing (shares animations with other layer: {names}");
                     continue;
                 }
 
