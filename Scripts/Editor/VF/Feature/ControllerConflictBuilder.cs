@@ -28,7 +28,12 @@ namespace VF.Feature {
             var ownersByController = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ISet<string>>();
             foreach (var controller in manager.GetAllUsedControllers()) {
                 var type = controller.GetType();
-                var uniqueOwners = controller.GetLayerOwners();
+                var uniqueOwners = new HashSet<string>();
+                foreach (var layer in controller.GetLayers()) {
+                    // Ignore empty layers (bask mask, junk layers, etc)
+                    if (layer.defaultState == null) continue;
+                    uniqueOwners.Add(controller.GetLayerOwner(layer));
+                }
                 ownersByController[type] = uniqueOwners;
                 
                 if (uniqueOwners.Count > 1 && singleOwnerTypes.Contains(type)) {

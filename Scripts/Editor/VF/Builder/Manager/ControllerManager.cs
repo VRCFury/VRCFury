@@ -48,8 +48,8 @@ namespace VF.Builder {
                 GetController().NewLayer("Base Mask");
             }
             
-            for (var i = 1; i < ctrl.layers.Length; i++) {
-                layerOwners[ctrl.layers[i].stateMachine] = "Base Avatar";
+            foreach (var layer in ctrl.layers) {
+                layerOwners[layer.stateMachine] = "Base Avatar";
             }
             
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && GetMask(0) == null) {
@@ -289,9 +289,6 @@ namespace VF.Builder {
             VRCFuryEditorUtils.MarkDirty(ctrl);
         }
 
-        public ISet<string> GetLayerOwners() {
-            return layerOwners.Values.Distinct().ToImmutableHashSet();
-        }
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
             if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
                 return null;
