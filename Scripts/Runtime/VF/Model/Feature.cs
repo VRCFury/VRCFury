@@ -333,30 +333,39 @@ namespace VF.Model.Feature {
             public Emote() {}
 
             #if UNITY_EDITOR
-            public Emote(string name, string path, bool isToggle, bool hasReset, string resetPath, bool hasExitTime, double exitTime, string iconPath) {
+            public Emote(string name, string guid, bool isToggle, bool hasReset, string resetGuid, bool hasExitTime, double exitTime, string iconGuid) {
                 
                 this.name = name;
                 this.isToggle = isToggle;
                 this.hasReset = hasReset;
                 this.hasExitTime = hasExitTime;
                 this.exitTime = (float) exitTime;
-                var clip = (AnimationClip) AssetDatabase.LoadAssetAtPath(path, typeof(AnimationClip));
-                var action = new AnimationClipAction();
-                action.clip = clip;
-                this.emoteAnimation = new State();
-                emoteAnimation.actions.Add(action);
+                var clipPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (!string.IsNullOrWhiteSpace(clipPath)) {
+                    var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+                    var action = new AnimationClipAction();
+                    action.clip = clip;
+                    this.emoteAnimation = new State();
+                    emoteAnimation.actions.Add(action);
+                }
                  
 
                 if (hasReset) {
-                    clip = (AnimationClip) AssetDatabase.LoadAssetAtPath(resetPath, typeof(AnimationClip));
-                    action = new AnimationClipAction();
-                    action.clip = clip;
-                    this.resetAnimation = new State();
-                    resetAnimation.actions.Add(action);
+                    clipPath = AssetDatabase.GUIDToAssetPath(resetGuid);
+                    if (!string.IsNullOrWhiteSpace(clipPath)) {
+                        var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+                        var action = new AnimationClipAction();
+                        action.clip = clip;
+                        this.resetAnimation = new State();
+                        resetAnimation.actions.Add(action);
+                    }
                 }
 
-                if (iconPath != "") {
-                    icon = (Texture2D) AssetDatabase.LoadAssetAtPath(iconPath, typeof(Texture2D));
+                if (iconGuid != "") {
+                    var iconPath = AssetDatabase.GUIDToAssetPath(iconGuid);
+                    if (!string.IsNullOrWhiteSpace(iconPath)) {
+                        icon = AssetDatabase.LoadAssetAtPath<Texture2D>(iconPath);
+                    }
                 }
             }
             #endif

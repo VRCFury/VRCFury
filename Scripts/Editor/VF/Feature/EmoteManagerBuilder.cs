@@ -192,25 +192,25 @@ public class EmoteManagerBuilder : FeatureBuilder<EmoteManager> {
     private static void ResetToVRCDefault (SerializedProperty prop)
     {
         (string, string, bool, bool, string, bool, double, string)[] defaultStanding = {
-            ("Wave", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_wave.anim", false, false, "", true, .6, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Expressions Menu/Icons/person_wave.png"),
-            ("Clap", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_clap.anim", true, false, "", false, 0, ""),
-            ("Point", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_point.anim", false, false, "", true, .75, ""),
-            ("Cheer", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_cheer.anim", true, false, "", false, 0, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Expressions Menu/Icons/person_dance.png"),
-            ("Dance", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_dance.anim", true, false, "", false, 0, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Expressions Menu/Icons/person_dance.png"),
-            ("Backflip", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_backflip.anim", false, false, "", true, .8, ""),
-            ("Sad Kick", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_stand_sadkick.anim", false, false, "", true, .75, ""),
-            ("Die", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_die.anim", true, true, "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_supine_getup.anim", true, .75, "")
+            ("Wave", "60873c431a64a744d87a5ad1e20bf886", false, false, "", true, .6, "011229dd2f6f5f64f8965a08d3434654"),
+            ("Clap", "44ce16481749f4c4baf0549d1bf3b3f3", true, false, "", false, 0, ""),
+            ("Point", "498e9dfd6d870064184180c5e4a3fc59", false, false, "", true, .75, ""),
+            ("Cheer", "7359fa5b13647ba4986416b105f0d6dd", true, false, "", false, 0, "9a20b3a6641e1af4e95e058f361790cbg"),
+            ("Dance", "0d2e5f9cc00d88a48b7bbe6e2898a4b4", true, false, "", false, 0, "9a20b3a6641e1af4e95e058f361790cb"),
+            ("Backflip", "2af7e07b1514ac14bafe50d6b79cd07e", false, false, "", true, .8, ""),
+            ("Sad Kick", "762c2cb22a9e6cc45803bd200a00c634", false, false, "", true, .75, ""),
+            ("Die", "4cf06429686164a45adaedb6a6e520a5", true, true, "ef56f98d2522d6b4387a112b015c6478", true, .75, "")
         };
 
         (string, string, bool, bool, string, bool, double, string)[] defaultSitting = {
-            ("Seated Raise Hand", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_raise_hand.anim", true, false, "", false, 0, ""),
-            ("Seated Clap", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_clap.anim", true, false, "", false, 0, ""),
-            ("Seated Point", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_point.anim", false, false, "", true, 1, ""),
-            ("Seated Laugh", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_laugh.anim", false, false, "", true, 1, ""),
-            ("Seated Drum", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_drum.anim", true, false, "", false, 0, ""),
-            ("Seated Shake Fist", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_shake_fist.anim", false, false, "", true, 1, ""),
-            ("Seated Disaprove", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_disapprove.anim", false, false, "", true, 1, ""),
-            ("Seated Disbelief", "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_seated_disbelief.anim", false, false, "", true , 1, "")
+            ("Seated Raise Hand", "1791a673b68e05943baa8b96f0d44bd7", true, false, "", false, 0, ""),
+            ("Seated Clap", "390816a8c9a0e634c8eb94e9907a8a81", true, false, "", false, 0, ""),
+            ("Seated Point", "f7da25fc68cda2748bf78e7ed01e28a4", false, false, "", true, 1, ""),
+            ("Seated Laugh", "b405e069574439846861d02dc0b5ee62", false, false, "", true, 1, ""),
+            ("Seated Drum", "3aa84c817614d9a4e83d0250b9ac214e", true, false, "", false, 0, ""),
+            ("Seated Shake Fist", "fda92038a2576ec43ad296fc2b6528f6", false, false, "", true, 1, ""),
+            ("Seated Disaprove", "593e00f8a0060b14ea6b289eb12f0db1", false, false, "", true, 1, ""),
+            ("Seated Disbelief", "385699e4f9531f8468264ffc7c48d9ed", false, false, "", true , 1, "")
         };
 
 
