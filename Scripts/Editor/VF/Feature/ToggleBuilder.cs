@@ -302,40 +302,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return "Toggle " + model.name.Replace('/', '_');
     }
 
-     /**
-     * This method is needed, because:
-     * 1. If you clip.SampleAnimation on the avatar while it has a humanoid Avatar set on its Animator, it'll
-     *    bake into motorcycle pose.
-     * 2. If you change the avatar or controller on the Animator, the Animator will reset all transforms of all
-     *    children objects back to the way they were at the start of the frame.
-     * Only destroying the animator then recreating it seems to "reset" this "start of frame" state.
-     */
-    public static void WithoutAnimator(GameObject obj, System.Action func) {
-        var animator = obj.GetComponent<Animator>();
-        if (!animator) {
-            func();
-            return;
-        }
-
-        var controller = animator.runtimeAnimatorController;
-        var avatar = animator.avatar;
-        var applyRootMotion = animator.applyRootMotion;
-        var updateMode = animator.updateMode;
-        var cullingMode = animator.cullingMode;
-        Object.DestroyImmediate(animator);
-        animator = obj.AddComponent<Animator>();
-        animator.applyRootMotion = applyRootMotion;
-        animator.updateMode = updateMode;
-        animator.cullingMode = cullingMode;
-        func();
-        animator.runtimeAnimatorController = controller;
-        animator.avatar = avatar;
-    }
-
     [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
     public void ApplyRestingState() {
         if (restingClip != null) {
-            WithoutAnimator(avatarObject, () => { restingClip.SampleAnimation(avatarObject, 0); });
+            ResetAnimatorBuilder.WithoutAnimator(avatarObject, () => { restingClip.SampleAnimation(avatarObject, 0); });
         }
     }
 
