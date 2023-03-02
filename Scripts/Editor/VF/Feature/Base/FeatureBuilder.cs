@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -10,6 +11,7 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
+using AnimationClip = UnityEngine.AnimationClip;
 
 namespace VF.Feature.Base {
     public abstract class FeatureBuilder {
@@ -111,7 +113,7 @@ namespace VF.Feature.Base {
 
             var clip = GetFx().NewClip(name);
             
-            var firstClip = state.actions
+            AnimationClip firstClip = state.actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
                 .FirstOrDefault();
@@ -138,9 +140,10 @@ namespace VF.Feature.Base {
                                 ClipBuilder.OneFrame(frameAnimNum));
                         }
                         break;
-                    case AnimationClipAction actionClip:
-                        if (actionClip.clip != firstClip) {
-                            var copy = mutableManager.CopyRecursive(actionClip.clip, "Copy of " + actionClip.clip.name);
+                    case AnimationClipAction clipAction:
+                        AnimationClip clipActionClip = clipAction.clip;
+                        if (clipActionClip && clipActionClip != firstClip) {
+                            var copy = mutableManager.CopyRecursive(clipActionClip, "Copy of " + clipActionClip.name);
                             RewriteClip(copy);
                             ClipCopier.Copy(copy, clip);
                             AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));

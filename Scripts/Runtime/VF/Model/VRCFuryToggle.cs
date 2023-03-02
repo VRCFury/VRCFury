@@ -5,7 +5,7 @@ using UnityEngine;
 namespace VF.Model {
     [AddComponentMenu("")]
     public class VRCFuryToggle : VRCFuryComponent {
-        public string name;
+        public new string name;
         public State state;
         public bool saved;
         public bool slider;

@@ -154,21 +154,21 @@ namespace VF.Model.Feature {
 
         [Serializable]
         public class ControllerEntry {
-            public RuntimeAnimatorController controller;
+            public GuidController controller;
             public VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.FX;
             public bool ResetMePlease;
         }
 
         [Serializable]
         public class MenuEntry {
-            public VRCExpressionsMenu menu;
+            public GuidMenu menu;
             public string prefix;
             public bool ResetMePlease;
         }
 
         [Serializable]
         public class ParamsEntry {
-            public VRCExpressionParameters parameters;
+            public GuidParams parameters;
             public bool ResetMePlease;
         }
 
@@ -261,7 +261,7 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool sittingEmote = false;
         [NonSerialized] public float exitTime = 0;
         public bool enableIcon;
-        public Texture2D icon;
+        public GuidTexture2d icon;
         public bool enableDriveGlobalParam;
         public string driveGlobalParam;
         public bool keepGlobalParam = false;
@@ -380,7 +380,7 @@ namespace VF.Model.Feature {
         public float defaultX = 0;
         public float defaultY = 0;
         public bool enableIcon;
-        public Texture2D icon;
+        public GuidTexture2d icon;
         
         [Serializable]
         public class Stop {
@@ -703,14 +703,14 @@ namespace VF.Model.Feature {
     [Serializable]
     public class SetIcon : NewFeatureModel {
         public string path;
-        public Texture2D icon;
+        public GuidTexture2d icon;
     }
     
     [Serializable]
     [NoBuilder]
     public class OverrideMenuSettings : NewFeatureModel {
         public string nextText;
-        public Texture2D nextIcon;
+        public GuidTexture2d nextIcon;
     }
 
     [Serializable]
@@ -729,7 +729,7 @@ namespace VF.Model.Feature {
         public class ClipItem : CustomizerItem {
             public string key;
             public string title;
-            public AnimationClip clip;
+            public GuidAnimationClip clip;
         }
     }
     
