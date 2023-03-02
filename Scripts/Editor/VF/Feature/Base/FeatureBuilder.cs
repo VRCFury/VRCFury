@@ -98,11 +98,12 @@ namespace VF.Feature.Base {
             if (state.actions.Count == 0) {
                 return GetFx().GetNoopClip();
             }
+
             if (checkForProxy) {
-                foreach (var action in state.actions) {
-                    if (action is AnimationClipAction) {
-                        AnimationClip c = (action as AnimationClipAction).clip;
-                        if (c.name.Contains("proxy_")) return c;
+                foreach (var action in state.actions.OfType<AnimationClipAction>()) {
+                    if (IsProxy(action)) {
+                        AnimationClip c = action.clip;
+                        return c;
                     }
                 }
             }
@@ -111,8 +112,14 @@ namespace VF.Feature.Base {
                 ClipCopier.Rewrite(c, fromObj: featureBaseObject, fromRoot: avatarObject);
             }
 
-            var clip = GetFx().NewClip(name);
+            bool IsProxy(Model.StateAction.Action action) {
+                if (!(action is AnimationClipAction)) return false;
+                AnimationClip c = (action as AnimationClipAction).clip;
+                return c.name.Contains("proxy_");
+            }
             
+            var clip = GetFx().NewClip(name);
+
             AnimationClip firstClip = state.actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
