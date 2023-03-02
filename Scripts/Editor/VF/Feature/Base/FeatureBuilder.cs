@@ -101,7 +101,7 @@ namespace VF.Feature.Base {
             if (checkForProxy) {
                 foreach (var action in state.actions) {
                     if (action is AnimationClipAction) {
-                        var c = (action as AnimationClipAction).clip;
+                        AnimationClip c = (action as AnimationClipAction).clip;
                         if (c.name.Contains("proxy_")) return c;
                     }
                 }
