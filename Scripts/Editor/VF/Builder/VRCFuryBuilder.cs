@@ -64,15 +64,6 @@ public class VRCFuryBuilder {
         }
 
         var progress = new ProgressBar("VRCFury is building ...");
-        
-        // If GestureManager (or someone else) started animating our avatar already, we need to undo their changes
-        // to get the avatar back into the default position. Tell the animator to put things back the way they were,
-        // then nuke and recreate it so it resets its internal state.
-        var animator = avatarObject.GetComponent<Animator>();
-        if (animator) {
-            animator.WriteDefaultValues();
-            ToggleBuilder.WithoutAnimator(avatarObject, () => { });
-        }
 
         // Apply configs
         ApplyFuryConfigs(
@@ -186,6 +177,7 @@ public class VRCFuryBuilder {
         AddBuilder(new AnimatorLayerControlOffsetBuilder(), avatarObject);
         AddBuilder(new CleanupBaseMasksBuilder(), avatarObject);
         AddBuilder(new CleanupEmptyLayersBuilder(), avatarObject);
+        AddBuilder(new ResetAnimatorBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();
