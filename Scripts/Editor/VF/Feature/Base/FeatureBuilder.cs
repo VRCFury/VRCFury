@@ -92,10 +92,18 @@ namespace VF.Feature.Base {
         }
 
         protected AnimationClip LoadState(string name, State state, bool checkForProxy = false) {
-            if (state == null) {
-                return GetFx().GetNoopClip();
+            
+            void RewriteClip(AnimationClip c) {
+                ClipCopier.Rewrite(c, fromObj: featureBaseObject, fromRoot: avatarObject);
             }
-            if (state.actions.Count == 0) {
+
+            bool IsProxy(Model.StateAction.Action action) {
+                if (!(action is AnimationClipAction)) return false;
+                AnimationClip c = (action as AnimationClipAction).clip;
+                return c.name.Contains("proxy_");
+            }
+        
+            if (state == null) {
                 return GetFx().GetNoopClip();
             }
 
@@ -108,19 +116,15 @@ namespace VF.Feature.Base {
                 }
             }
 
-            void RewriteClip(AnimationClip c) {
-                ClipCopier.Rewrite(c, fromObj: featureBaseObject, fromRoot: avatarObject);
-            }
+            var actionsToAdd = state.actions.Where(action => !IsProxy(action));
 
-            bool IsProxy(Model.StateAction.Action action) {
-                if (!(action is AnimationClipAction)) return false;
-                AnimationClip c = (action as AnimationClipAction).clip;
-                return c.name.Contains("proxy_");
+            if (actionsToAdd.Count() == 0) {
+                return GetFx().GetNoopClip();
             }
             
             var clip = GetFx().NewClip(name);
 
-            AnimationClip firstClip = state.actions
+            AnimationClip firstClip = actionsToAdd
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
                 .FirstOrDefault();
@@ -131,7 +135,7 @@ namespace VF.Feature.Base {
                 RewriteClip(clip);
             }
 
-            foreach (var action in state.actions) {
+            foreach (var action in actionsToAdd) {
                 switch (action) {
                     case FlipbookAction flipbook:
                         if (flipbook.obj != null) {

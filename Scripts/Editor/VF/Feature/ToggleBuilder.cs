@@ -44,6 +44,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return param;
     }
 
+    private bool NeedsAction(State state) {
+        var clips = state.actions.OfType<AnimationClipAction>();
+        foreach (AnimationClipAction clip in clips) {
+            AnimationClip c = clip.clip;
+            if (c.humanMotion) return true;
+        }
+        return false;
+    }
+
     [FeatureBuilderAction]
     public void Apply() {
         // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
@@ -135,7 +144,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var isActionLayer = controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action;
 
         var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isActionLayer);
-        var needsAction = clip.isHumanMotion;
+        var needsAction = NeedsAction(action) || clip.isHumanMotion;
 
         if (restingClip == null && model.includeInRest) {
             restingClip = clip;
