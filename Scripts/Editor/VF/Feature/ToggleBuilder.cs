@@ -144,7 +144,22 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var isActionLayer = controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action;
 
         var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isActionLayer);
-        var needsAction = NeedsAction(action) || clip.isHumanMotion;
+
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && model.isEmote) {
+            var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
+            var actionLayer = GetAction();
+            var layer2 = actionLayer.NewLayer(layerName);
+            var off2 = layer2.NewState("Off");
+            var seatedParam = actionLayer.Seated();
+            var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            var onCase2 = boolParam2.IsTrue();
+            onCase2 = onCase2.And(model.sittingEmote ? seatedParam.IsTrue() : seatedParam.IsFalse());
+            off2.WithAnimation(model.passiveAction);
+            off2.TrackingController("allTracking");
+            AddEmoteBaseAnimationLayerController(off2, 0);
+            Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
+            if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
+        }
 
         if (restingClip == null && model.includeInRest) {
             restingClip = clip;
@@ -172,24 +187,20 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         VFAState inState;
         VFAState onState;
+        VFAState outState;
 
         if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
-            var transitionClipIn = LoadState(onName + " In", inAction);
+            var transitionClipIn = LoadState(onName + " In", inAction, isActionLayer);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
-            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
+            var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(model.transitionTime);
+            if (transitionClipIn.length <= 1f/transitionClipIn.frameRate) {
+                transition.When(controller.Always());
+            } else {
+                transition.When().WithTransitionExitTime(1);
+            }
         } else {
-            inState = layer.NewState(onName + " In");
-            onState = layer.NewState(onName).WithAnimation(clip);
-            inState.TransitionsTo(onState).When(controller.Always()).WithTransitionDurationSeconds(model.transitionTime);
-        }
-
-        if (isActionLayer) {
-            inState.WithAnimation(model.passiveAction);
-            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action,1,model.transitionTime);
-            AddEmoteBaseAnimationLayerController(inState, 1);
-            inState.TrackingController("emoteAnimation");
-            AddEmoteBaseAnimationLayerController(onState, 1);
+            inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
 
         exclusiveTagTriggeringStates.Add(inState);
@@ -198,26 +209,32 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
             var transitionClipOut = LoadState(onName + " Out", outAction, isActionLayer);
-            var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
+            outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
-            if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
-                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action,0,model.transitionTime);
-                AddEmoteBaseAnimationLayerController(blendOut, 1);
-                outState.TransitionsTo(blendOut).When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
-                blendOut.TransitionsToExit().When().WithTransitionExitTime(1);
-            } else {
-                outState.TransitionsToExit().When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
-            }
+            model.exitTime = 1;
         } else {
-            if (isActionLayer) {
-                var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action,0,model.transitionTime);
-                AddEmoteBaseAnimationLayerController(blendOut, 1);
-                onState.TransitionsTo(blendOut).When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
-                blendOut.TransitionsToExit().When().WithTransitionExitTime(1);
-            } else {
-                onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
-            }
+            outState = onState;
         }
+
+        if (isActionLayer) {
+            inState.WithAnimation(model.passiveAction);
+            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, model.transitionTime);
+            AddEmoteBaseAnimationLayerController(inState, 1);
+            inState.TrackingController("emoteAnimation");
+            AddEmoteBaseAnimationLayerController(onState, 1);
+
+            var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, model.transitionTime);
+            AddEmoteBaseAnimationLayerController(blendOut, 1);
+            var transition = outState.TransitionsTo(blendOut).WithTransitionDurationSeconds(model.transitionTime);
+            if (outState == onState) {
+                transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime);
+            } else {
+                transition.When().WithTransitionExitTime(1);
+            }
+            outState = blendOut;
+        }
+
+        outState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
@@ -238,21 +255,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     off.Drives(driveGlobal, false);
                 inState.Drives(driveGlobal, true);
             }
-        }
-
-        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && needsAction) {
-            var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
-            var actionLayer = GetAction();
-            var layer2 = actionLayer.NewLayer(layerName);
-            var off2 = layer2.NewState("Off");
-            var seatedParam = actionLayer.Seated();
-            var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
-            var onCase2 = boolParam2.IsTrue();
-            onCase2 = onCase2.And(model.sittingEmote ? seatedParam.IsTrue() : seatedParam.IsFalse());
-            off2.WithAnimation(model.passiveAction);
-            off2.TrackingController("allTracking");
-            AddEmoteBaseAnimationLayerController(off2, 0);
-            Apply(actionLayer, layer2, off2, onCase2, onName, action, null, outAction, physBoneResetter);
         }
     }
 
