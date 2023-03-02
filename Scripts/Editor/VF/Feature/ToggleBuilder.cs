@@ -44,7 +44,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return param;
     }
 
-    private bool NeedsAction(State state) {
+    // this currently isn't used, but keeping it here for future proofing if hand layer starts getting included in toggles
+    private bool IsHuanoid(State state) {
         var clips = state.actions.OfType<AnimationClipAction>();
         foreach (AnimationClipAction clip in clips) {
             AnimationClip c = clip.clip;
