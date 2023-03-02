@@ -172,16 +172,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         VFAState inState;
         VFAState onState;
-        if (!needsAction) {
-            if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
-                var transitionClipIn = LoadState(model.name + onName + " In", inAction, isActionLayer);
-                inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
-                onState = layer.NewState(onName).WithAnimation(clip);
-                inState.TransitionsTo(onState).When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
-            } else {
-                inState = onState = layer.NewState(onName).WithAnimation(clip);
-            }
-        }
 
         if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
             var transitionClipIn = LoadState(onName + " In", inAction);
