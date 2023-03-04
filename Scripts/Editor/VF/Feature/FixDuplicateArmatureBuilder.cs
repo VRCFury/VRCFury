@@ -36,7 +36,7 @@ namespace VF.Feature {
                 // clips, so just skip these for now.
                 if (AnimationUtility.CalculateTransformPath(child, avatarObject.transform).Contains("Follower")) {
                     continue;
-                }                
+                }
                 mover.Move(child.gameObject, newName: child.gameObject.name + "_vrcfdup" + (++i));
                 movedOne = true;
             }
