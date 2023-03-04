@@ -31,13 +31,18 @@ namespace VF.Builder.Ogb {
             
             // Convert MeshRenderer to SkinnedMeshRenderer
             if (renderer is MeshRenderer) {
-                var newSkin = renderer.gameObject.AddComponent<SkinnedMeshRenderer>();
                 var meshFilter = renderer.gameObject.GetComponent<MeshFilter>();
-                newSkin.sharedMesh = meshFilter.sharedMesh;
-                newSkin.sharedMaterials = renderer.sharedMaterials;
-                newSkin.probeAnchor = renderer.probeAnchor;
+                var mesh = meshFilter.sharedMesh;
+                var mats = renderer.sharedMaterials;
+                var anchor = renderer.probeAnchor;
+                
                 Object.DestroyImmediate(renderer);
                 Object.DestroyImmediate(meshFilter);
+
+                var newSkin = renderer.gameObject.AddComponent<SkinnedMeshRenderer>();
+                newSkin.sharedMesh = mesh;
+                newSkin.sharedMaterials = mats;
+                newSkin.probeAnchor = anchor;
                 renderer = newSkin;
             }
 
