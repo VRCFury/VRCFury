@@ -110,38 +110,6 @@ Automatically creates an animation for your avatar's breathing cycle. Provide ei
 VRChat introduces roll to your eye bones in some circumstances, making it appear that you've gone cross-eyed.
 Adding this fix will solve this problem automatically through a combination of rotation constraints to eliminate roll.
 
-### Emote Manager
-
-Automatically manages the emotes in the Action Layer. Custom standing, sitting, and AFK animations can be set, or else the default proxy animations will be used. Any number of both standing and sitting emotes can be set. Click the "Reset to VRC Defaults" button to populate the Manager with the 16 default VRC emotes
-
-Basic Options for each Emote
-
-`Name`
-
-The name as it will apear in the menu.
-
-`Clip`
-
-The animation for the emote.
-
-Advanced options for each gesture:
-
-`VRCEmote Value`
-
-Specify which value of VRCEmote should correspond to the emote. If left at the default of 0, the Manager will automatically assign it a dynamic value. No two emotes can have the same `VRCEmote Value`.
-
-`Is Toggle`
-
-If checked, the menu item created will be a toggle. If unchecked, the menu item will be a button.
-
-`Has Reset`
-
-If checked, a `Reset Animation` can be set, which will play when exiting the emote (such as the default get up animation playing after the default die animation).
-
-`Has Exit Time`
-
-If checked, an `Exit Time` can be set, which specifies how long the emote should play at minimum. 
-
 ### Direct Tree Optimizer
 
 If you add this feature to your avatar, VRCFury will attempt to convert all "plain" toggle layers on your avatar into a compressed
