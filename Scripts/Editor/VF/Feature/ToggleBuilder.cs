@@ -215,10 +215,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (isActionLayer) {
             off.WithAnimation(transitionClipIn);
-            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, 0);
+            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, model.transitionTime);
             inState.TrackingController("emoteAnimation");
 
-            var blendOut = layer.NewState("Blendout").WithAnimation(transitionClipIn).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
+            var blendOut = layer.NewState("Blendout").WithAnimation(transitionClipIn).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, model.transitionTime);
             var transition = outState.TransitionsTo(blendOut);
             if (outState == onState) {
                 transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime);

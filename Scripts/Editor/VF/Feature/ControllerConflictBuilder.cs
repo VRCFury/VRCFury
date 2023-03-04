@@ -78,10 +78,10 @@ namespace VF.Feature {
                                     VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
                                 layerControl.layer = drivesLayerId;
                                 layerControl.goalWeight = playableControl.goalWeight;
-                                layerControl.blendDuration = playableControl.blendDuration;
+                                layerControl.blendDuration = 0;
                                 layerControl.debugString = playableControl.debugString;
                             }
-                            return false;
+                            return true;
                         }
 
                         return true;
