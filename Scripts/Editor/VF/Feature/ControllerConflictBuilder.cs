@@ -96,7 +96,12 @@ namespace VF.Feature {
                 var i = 0;
                 foreach (var layer in action.GetLayers()) {
                     var layerNum = i++;
-                    if (layerNum != 0) action.SetWeight(layer, 0);
+                    if (layerNum != 0) {
+                        var layerControl = layer.defaultState.AddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                        layerControl.layer = layerNum;
+                        layerControl.goalWeight = 0;
+                        layerControl.blendDuration = 0;
+                    }
                 }
             }
             
