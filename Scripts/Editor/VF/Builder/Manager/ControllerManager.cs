@@ -216,6 +216,12 @@ namespace VF.Builder {
             }
             return GetController().NewFloat(name, def);
         }
+
+        public AnimatorControllerParameterType GetType(string name) {
+            var exists = Array.Find(ctrl.parameters, other => other.name == name);
+            if (exists != null) return exists.type;
+            return 0;
+        }
         
         private string NewParamName(string name) {
             return NewParamName(name, currentFeatureNumProvider.Invoke());

@@ -78,6 +78,10 @@ namespace VF {
             if (!Application.isPlaying) return;
             if (!PlayModeMenuItem.Get()) return;
             if (!activeNow) return;
+            
+            var tmpDirParent = $"Assets/_VRCFury/PlayMode";
+            VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
+            var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
 
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
@@ -104,7 +108,7 @@ namespace VF {
                 }
                 foreach (var o in root.GetComponentsInChildren<OGBPenetrator>(true)) {
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
-                    OGBPenetratorEditor.Bake(o, onlySenders: true);
+                    OGBPenetratorEditor.Bake(o, onlySenders: true, tmpDir: tmpDir);
                     Object.DestroyImmediate(o);
                 }
             }

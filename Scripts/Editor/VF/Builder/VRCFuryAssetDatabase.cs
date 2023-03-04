@@ -119,5 +119,14 @@ namespace VF.Builder {
                 Thread.CurrentThread.CurrentUICulture = oldUICulture;
             }
         }
+
+        public static void DeleteFolder(string path) {
+            if (Directory.Exists(path)) {
+                foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
+                    var assetPath = AssetDatabase.GUIDToAssetPath(asset);
+                    AssetDatabase.DeleteAsset(assetPath);
+                }
+            }
+        }
     }
 }

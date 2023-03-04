@@ -159,7 +159,7 @@ namespace VF.Inspector {
             return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false) {
+        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false, string tmpDir = null) {
             var obj = pen.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
 
@@ -230,6 +230,20 @@ namespace VF.Inspector {
                 OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
                 OGBUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForFrot, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
+            }
+            
+            if (pen.configureTps && tmpDir != null) {
+                var configuredOne = false;
+                foreach (var renderer in renderers) {
+                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, tmpDir, worldLength);
+                    if (newRenderer) configuredOne = true;
+                }
+
+                if (!configuredOne) {
+                    throw new VRCFBuilderException(
+                        "OGB Penetrator has 'auto-configure TPS' enabled, but no renderer was found " +
+                        "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled in the Color & Normals tab.");
+                }
             }
             
             OGBUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);

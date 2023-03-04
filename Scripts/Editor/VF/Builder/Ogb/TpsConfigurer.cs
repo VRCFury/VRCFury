@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Feature;
 using VF.Inspector;
 using Object = UnityEngine.Object;
 
@@ -74,6 +75,8 @@ namespace VF.Builder.Ogb {
 
             skin.rootBone = rootTransform;
             VRCFuryEditorUtils.MarkDirty(skin);
+            
+            BoundingBoxFixBuilder.AdjustBoundingBox(skin);
 
             return skin;
         }

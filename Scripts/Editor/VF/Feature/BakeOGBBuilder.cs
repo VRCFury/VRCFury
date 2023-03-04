@@ -33,29 +33,7 @@ namespace VF.Feature {
             var objectsToForceEnable = new HashSet<GameObject>();
             
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-                var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames);
-
-                if (c.configureTps) {
-                    if (bakeInfo == null) {
-                        throw new VRCFBuilderException("Failed to get size of penetrator to configure TPS");
-                    }
-                    var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
-
-                    var configuredOne = false;
-                    foreach (var renderer in renderers) {
-                        var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, tmpDir, worldLength);
-                        if (newRenderer) {
-                            configuredOne = true;
-                            addOtherFeature(new BoundingBoxFix2() { singleRenderer = newRenderer });
-                        }
-                    }
-
-                    if (!configuredOne) {
-                        throw new VRCFBuilderException(
-                            "OGB Penetrator has 'auto-configure TPS' enabled, but no renderer was found " +
-                            "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled in the Color & Normals tab.");
-                    }
-                }
+                var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames, tmpDir: tmpDir);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderer, worldLength, worldRadius) = bakeInfo;

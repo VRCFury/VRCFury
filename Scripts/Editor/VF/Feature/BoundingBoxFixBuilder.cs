@@ -8,6 +8,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
 
@@ -15,9 +16,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BoundingBoxFix)]
         public void Apply() {
-            var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-            var startBounds = CalculateFullBounds();
-
             float maxLinear = 0;
             Renderer maxRenderer = null;
             foreach (var renderer in avatarObject.GetComponentsInChildren<Renderer>(true)) {
@@ -34,57 +32,64 @@ namespace VF.Feature {
             if (maxRenderer != null) {
                 Debug.Log($"Largest renderer is {clipBuilder.GetPath(maxRenderer.transform)} with linear size of {maxLinear}");
             }
-
+            
+            var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             foreach (var skin in skins) {
-                if (model.singleRenderer && model.singleRenderer != skin) {
-                    continue;
-                }
-                //var debug = skin.gameObject.name == "Body";
-                var root = OGBUtils.GetMeshRoot(skin);
-
-                bool ModifyBounds(float sizeX = 0, float sizeY = 0, float sizeZ = 0, float centerX = 0, float centerY = 0, float centerZ = 0) {
-                    var b = skin.localBounds;
-                    var extents = b.extents;
-                    extents.x += sizeX;
-                    extents.y += sizeY;
-                    extents.z += sizeZ;
-                    b.extents = extents;
-                    var center = b.center;
-                    center.x += centerX;
-                    center.y += centerY;
-                    center.z += centerZ;
-                    b.center = center;
-
-                    var fullBak = startBounds;
-                    var updatedBounds = GetUpdatedBounds(skin, b);
-                    var fullNew = fullBak;
-                    fullNew.Encapsulate(updatedBounds);
-                    //if (debug) Debug.Log("Expanding to " + b + " updated world bounds: " + updatedBounds);
-                    if (fullNew != fullBak) {
-                        //if (debug) Debug.LogError("FAILED");
-                        return false;
-                    }
-                    skin.localBounds = b;
-                    return true;
-                }
-
-                var stepSizeInMeters = 0.05f;
-                var maxSteps = 20;
-                var stepSize = stepSizeInMeters / root.transform.lossyScale.x;
-                for (var i = 0; i < maxSteps; i++) {
-                    ModifyBounds(sizeX: stepSize, centerX: -stepSize);
-                    ModifyBounds(sizeX: stepSize, centerX: stepSize);
-                    ModifyBounds(sizeY: stepSize, centerY: -stepSize);
-                    ModifyBounds(sizeY: stepSize, centerY: stepSize);
-                    ModifyBounds(sizeZ: stepSize, centerZ: -stepSize);
-                    ModifyBounds(sizeZ: stepSize, centerZ: stepSize);
-                }
-
-                VRCFuryEditorUtils.MarkDirty(skin);
+                AdjustBoundingBox(skin);
             }
         }
 
-        Bounds GetUpdatedBounds(SkinnedMeshRenderer skin, Bounds newBounds) {
+        public static void AdjustBoundingBox(SkinnedMeshRenderer skin) {
+            var avatarObject = skin.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+            if (avatarObject == null) return;
+
+            var startBounds = CalculateFullBounds(avatarObject);
+
+            //var debug = skin.gameObject.name == "Body";
+            var root = OGBUtils.GetMeshRoot(skin);
+
+            bool ModifyBounds(float sizeX = 0, float sizeY = 0, float sizeZ = 0, float centerX = 0, float centerY = 0, float centerZ = 0) {
+                var b = skin.localBounds;
+                var extents = b.extents;
+                extents.x += sizeX;
+                extents.y += sizeY;
+                extents.z += sizeZ;
+                b.extents = extents;
+                var center = b.center;
+                center.x += centerX;
+                center.y += centerY;
+                center.z += centerZ;
+                b.center = center;
+
+                var fullBak = startBounds;
+                var updatedBounds = GetUpdatedBounds(skin, b);
+                var fullNew = fullBak;
+                fullNew.Encapsulate(updatedBounds);
+                //if (debug) Debug.Log("Expanding to " + b + " updated world bounds: " + updatedBounds);
+                if (fullNew != fullBak) {
+                    //if (debug) Debug.LogError("FAILED");
+                    return false;
+                }
+                skin.localBounds = b;
+                return true;
+            }
+
+            var stepSizeInMeters = 0.05f;
+            var maxSteps = 20;
+            var stepSize = stepSizeInMeters / root.transform.lossyScale.x;
+            for (var i = 0; i < maxSteps; i++) {
+                ModifyBounds(sizeX: stepSize, centerX: -stepSize);
+                ModifyBounds(sizeX: stepSize, centerX: stepSize);
+                ModifyBounds(sizeY: stepSize, centerY: -stepSize);
+                ModifyBounds(sizeY: stepSize, centerY: stepSize);
+                ModifyBounds(sizeZ: stepSize, centerZ: -stepSize);
+                ModifyBounds(sizeZ: stepSize, centerZ: stepSize);
+            }
+
+            VRCFuryEditorUtils.MarkDirty(skin);
+        }
+
+        private static Bounds GetUpdatedBounds(SkinnedMeshRenderer skin, Bounds newBounds) {
             var root = OGBUtils.GetMeshRoot(skin);
 
             List<Vector3> GetLocalCorners(Bounds obj) {
@@ -108,7 +113,7 @@ namespace VF.Feature {
             return b;
         }
 
-        private Bounds CalculateFullBounds() {
+        private static Bounds CalculateFullBounds(GameObject avatarObject) {
             var bounds = new Bounds(avatarObject.transform.position, Vector3.zero);
             foreach (Renderer renderer in avatarObject.GetComponentsInChildren<Renderer>(true)) {
                 if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) {

@@ -11,13 +11,8 @@ namespace VF.Feature {
         public void Apply() {
             if (originalObject) CleanFromAvatar(originalObject);
             CleanFromAvatar(avatarObject);
-            
-            if (Directory.Exists(tmpDirParent)) {
-                foreach (var asset in AssetDatabase.FindAssets("", new[] { tmpDirParent })) {
-                    var path = AssetDatabase.GUIDToAssetPath(asset);
-                    AssetDatabase.DeleteAsset(path);
-                }
-            }
+
+            VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
             Directory.CreateDirectory(tmpDir);
         }
 
