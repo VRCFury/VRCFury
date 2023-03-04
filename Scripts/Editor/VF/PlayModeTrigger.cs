@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -82,6 +83,7 @@ namespace VF {
             var tmpDirParent = $"Assets/_VRCFury/PlayMode";
             VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
             var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
+            Directory.CreateDirectory(tmpDir);
 
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
