@@ -92,11 +92,6 @@ namespace VF.Feature {
             if (ownersByController.ContainsKey(VRCAvatarDescriptor.AnimLayerType.Action)
                 && ownersByController[VRCAvatarDescriptor.AnimLayerType.Action].Count > 1) {
                 var action = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
-                var enableLayer = action.NewLayer("VRCF Force Enable");
-                var enable = enableLayer.NewState("Enable");
-                var enableControl = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(enable.GetRaw());
-                enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
-                enableControl.goalWeight = 1;
                 var i = 0;
                 foreach (var layer in action.GetLayers()) {
                     var layerNum = i++;
