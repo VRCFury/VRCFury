@@ -322,9 +322,6 @@ public static class VRCFuryEditorUtils {
                 if (prop.managedReferenceFieldTypename == "VRCFury VF.Model.StateAction.Action") {
                     f = VRCFuryActionDrawer.Render(prop);
                 }
-                if (prop.managedReferenceFieldTypename == "VRCFury VF.Model.Feature.EmoteManager/Emote") {
-                    f = VRCFuryEmoteDrawer.Render(prop);
-                }
                 break;
             }
         }

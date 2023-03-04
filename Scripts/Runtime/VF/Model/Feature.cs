@@ -252,13 +252,10 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool useInt = false;
         #if UNITY_EDITOR
         [NonSerialized] public IEnumerable<IEnumerable<AnimatorCondition>> altCondition = null;
-        [NonSerialized] public AnimatorStateMachine emoteBaseStateMachine;
         #endif
         [NonSerialized] public Motion motionOverride;
         [NonSerialized] public float transitionTime = 0;
         [NonSerialized] public AnimationClip passiveAction = null;
-        [NonSerialized] public bool isEmote = false;
-        [NonSerialized] public bool sittingEmote = false;
         [NonSerialized] public float exitTime = 0;
         public bool enableIcon;
         public GuidTexture2d icon;
@@ -304,70 +301,6 @@ namespace VF.Model.Feature {
             n.localTransitionStateOut = localTransitionStateOut;
             n.simpleOutTransition = simpleOutTransition;
             n.defaultSliderValue = defaultSliderValue;
-        }
-    }
-
-    [Serializable]
-    public class EmoteManager : NewFeatureModel {
-        
-        [SerializeReference] public List<Emote> standingEmotes = new List<Emote>();
-        [SerializeReference] public List<Emote> sittingEmotes = new List<Emote>();
-        public State afkState;
-        public State standingState;
-        public State sittingState;
-
-        [Serializable]
-        public class Emote {
-            public string name;
-            public State emoteAnimation;
-            public Texture2D icon;
-            public bool isToggle = false;
-            public bool hasReset = false;
-            public State resetAnimation;
-            public bool hasExitTime = false;
-            public float exitTime = 0;
-            [NonSerialized] public AnimationClip emoteClip;
-            [NonSerialized] public AnimationClip resetClip;
-
-            public Emote() {}
-
-            #if UNITY_EDITOR
-            public Emote(string name, string guid, bool isToggle, bool hasReset, string resetGuid, bool hasExitTime, double exitTime, string iconGuid) {
-                
-                this.name = name;
-                this.isToggle = isToggle;
-                this.hasReset = hasReset;
-                this.hasExitTime = hasExitTime;
-                this.exitTime = (float) exitTime;
-                var clipPath = AssetDatabase.GUIDToAssetPath(guid);
-                if (!string.IsNullOrWhiteSpace(clipPath)) {
-                    var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
-                    var action = new AnimationClipAction();
-                    action.clip = clip;
-                    this.emoteAnimation = new State();
-                    emoteAnimation.actions.Add(action);
-                }
-                 
-
-                if (hasReset) {
-                    clipPath = AssetDatabase.GUIDToAssetPath(resetGuid);
-                    if (!string.IsNullOrWhiteSpace(clipPath)) {
-                        var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
-                        var action = new AnimationClipAction();
-                        action.clip = clip;
-                        this.resetAnimation = new State();
-                        resetAnimation.actions.Add(action);
-                    }
-                }
-
-                if (iconGuid != "") {
-                    var iconPath = AssetDatabase.GUIDToAssetPath(iconGuid);
-                    if (!string.IsNullOrWhiteSpace(iconPath)) {
-                        icon = AssetDatabase.LoadAssetAtPath<Texture2D>(iconPath);
-                    }
-                }
-            }
-            #endif
         }
     }
 

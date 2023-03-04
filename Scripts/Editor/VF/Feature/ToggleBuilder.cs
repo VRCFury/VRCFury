@@ -100,11 +100,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             param = boolParam;
             onCase = param.IsTrue();
         }
-
-        if (model.isEmote) {
-            var seatedParam = fx.Seated();
-            onCase = onCase.And(model.sittingEmote ? seatedParam.IsTrue() : seatedParam.IsFalse());
-        }
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
@@ -146,7 +141,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isActionLayer);
 
-        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && model.isEmote) {
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
+            model.transitionTime = .25f;
             var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
             var actionLayer = GetAction();
             var layer2 = actionLayer.NewLayer(layerName);
@@ -154,10 +150,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var seatedParam = actionLayer.Seated();
             var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             var onCase2 = boolParam2.IsTrue();
-            onCase2 = onCase2.And(model.sittingEmote ? seatedParam.IsTrue() : seatedParam.IsFalse());
             off2.WithAnimation(model.passiveAction);
             off2.TrackingController("allTracking");
-            AddEmoteBaseAnimationLayerController(off2, 0);
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
         }
@@ -190,8 +184,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState onState;
         VFAState outState;
 
+        AnimationClip transitionClipIn = null;
+
         if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
-            var transitionClipIn = LoadState(onName + " In", inAction, isActionLayer);
+            transitionClipIn = LoadState(onName + " In", inAction, isActionLayer);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
             var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(model.transitionTime);
@@ -211,22 +207,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
             var transitionClipOut = LoadState(onName + " Out", outAction, isActionLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            onState.TransitionsTo(outState).When(onCase.Not());
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime);
             model.exitTime = 1;
         } else {
             outState = onState;
         }
 
         if (isActionLayer) {
-            inState.WithAnimation(model.passiveAction);
-            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, model.transitionTime);
-            AddEmoteBaseAnimationLayerController(inState, 1);
+            off.WithAnimation(transitionClipIn);
+            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, 0);
             inState.TrackingController("emoteAnimation");
-            AddEmoteBaseAnimationLayerController(onState, 1);
 
-            var blendOut = layer.NewState("Blendout").WithAnimation(model.passiveAction).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, model.transitionTime);
-            AddEmoteBaseAnimationLayerController(blendOut, 1);
-            var transition = outState.TransitionsTo(blendOut).WithTransitionDurationSeconds(model.transitionTime);
+            var blendOut = layer.NewState("Blendout").WithAnimation(transitionClipIn).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
+            var transition = outState.TransitionsTo(blendOut);
             if (outState == onState) {
                 transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime);
             } else {
@@ -259,10 +252,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
-
-    private void AddEmoteBaseAnimationLayerController(VFAState state, float weight) {
-        allBuildersInRun.OfType<AnimatorLayerControlOffsetBuilder>().First().Register(state.AnimationLayerController(weight, 0), model.emoteBaseStateMachine);
-    }
 
      [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
      public void ApplyExclusiveTags() {
