@@ -270,7 +270,7 @@ If set, this will create 2 additional states for animating a transition between 
 
 `Is Button`
 
-If enabled, the menu item created will be a button instead of a toggle.
+If enabled, the menu item created will be a button instead of a toggle. Am `Exit Time` can also be set if a button based toggle should stay true for some length of time. Set to -1 to have the toggle instantly turn off once the button is released.
 
 `Parameter Driven`
 

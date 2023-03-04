@@ -207,8 +207,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
             var transitionClipOut = LoadState(onName + " Out", outAction, isActionLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime);
-            model.exitTime = 1;
+            model.exitTime = model.exitTime == 0 ? 1 : model.exitTime;
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime).WithTransitionExitTime(model.exitTime);
         } else {
             outState = onState;
         }
@@ -551,6 +551,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             return c;
         }, hasTransitionProp));
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (isButtonProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("exitTime"), "Exit Time"));
+            }
+            return c;
+        }, isButtonProp));
 
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {

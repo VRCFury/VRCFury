@@ -421,7 +421,7 @@ public class VFATransition {
         return this;
     }
     public VFATransition WithTransitionDurationSeconds(float time) {
-        if (time == 0f) return this; // don't even bother
+        if (time <= 0f) return this; // don't even bother
         foreach (var t in createdTransitions) {
             t.duration = time;
         }
@@ -434,7 +434,7 @@ public class VFATransition {
         return this;
     }
     public VFATransition WithTransitionExitTime(float time) {
-        if (time == 0f) return this; // don't even bother
+        if (time <= 0f) return this; // don't even bother
         foreach (var t in createdTransitions) {
             t.hasExitTime = true;
             t.exitTime = time;
