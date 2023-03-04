@@ -116,9 +116,9 @@ namespace VF.Inspector {
 
             Quaternion worldRotation = pen.transform.rotation;
             Vector3 worldPosition = pen.transform.position;
-            if (pen.autoPosition && renderers.Count > 0) {
+            if (!pen.configureTps && pen.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
-                if (!pen.configureTps) worldRotation = PenetratorSizeDetector.GetAutoWorldRotation(firstRenderer);
+                worldRotation = PenetratorSizeDetector.GetAutoWorldRotation(firstRenderer);
                 worldPosition = PenetratorSizeDetector.GetAutoWorldPosition(firstRenderer);
             }
             var testBase = pen.transform.Find("OGBTestBase");
