@@ -61,6 +61,7 @@ namespace VF.Feature {
                             }
                             if (!uniqueOwnersOnType.Contains(layerOwner)) return false;
                             if (uniqueOwnersOnType.Count == 1) return true;
+                            if (playableControl.goalWeight == 0 && playableControl.blendDuration != 0) return true;
 
                             var drivesController = manager.GetController(drivesType);
                             var drivesControllerLayers = drivesController.GetLayers()

@@ -152,6 +152,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var onCase2 = boolParam2.IsTrue();
             off2.WithAnimation(model.passiveAction);
             off2.TrackingController("allTracking");
+            off2.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
         }
@@ -221,7 +222,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var blendOut = layer.NewState("Blendout").WithAnimation(transitionClipIn).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, model.transitionTime);
             var transition = outState.TransitionsTo(blendOut);
             if (outState == onState) {
-                transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime);
+                transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
             } else {
                 transition.When().WithTransitionExitTime(1);
             }
