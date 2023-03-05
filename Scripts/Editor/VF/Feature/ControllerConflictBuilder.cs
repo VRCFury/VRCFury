@@ -89,14 +89,30 @@ namespace VF.Feature {
                     });
                     if (controller.GetType() == VRCAvatarDescriptor.AnimLayerType.Action) {
                         foreach(var state in layer.states) {
-                            var alreadyHasController = false;
-                            foreach (var b in state.state.behaviours) {
-                                if (b is VRCPlayableLayerControl || b is VRCAnimatorLayerControl || b is VRCAnimatorTrackingControl) alreadyHasController = true;
-                            }
-                            if (!alreadyHasController && layerOwner != "Base Avatar") {
-                                var c = state.state.AddStateMachineBehaviour<VRCPlayableLayerControl>();
-                                c.blendDuration = 0;
-                                c.goalWeight = 1;
+                            foreach (var t in state.state.transitions) {
+                                if (t.destinationState == null) continue;
+                                foreach (var b in t.destinationState.behaviours) {
+                                    if (b is VRCPlayableLayerControl playableControl) {
+                                        if (playableControl.goalWeight > 0) {
+                                            var baseLayer = controller.GetLayers().First();
+                                            var start = baseLayer.defaultState ?? baseLayer.AddState("Start");
+                                            var actionOn = baseLayer.AddState("Action On");
+                                            var b2 = actionOn.AddStateMachineBehaviour<VRCPlayableLayerControl>();
+                                            b2.goalWeight = playableControl.goalWeight;
+                                            b2.blendDuration = playableControl.blendDuration;
+
+                                            var trans = start.AddTransition(actionOn);
+                                            trans.conditions = t.conditions;
+                                            trans.duration = 0;
+
+                                            trans = actionOn.AddExitTransition();
+                                            trans.hasExitTime = true;
+                                            trans.exitTime = 1;
+                                            trans.duration = 0;
+                                            
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
