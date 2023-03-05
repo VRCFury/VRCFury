@@ -55,15 +55,20 @@ namespace VF.Builder {
                 act(prop);
             } while (prop.Next(true));
         }
+        
+        private static T RewriteObject<T>(T obj, Dictionary<Object, Object> rewrites) where T : Object {
+            if (obj == null) return null;
+            if (rewrites.TryGetValue(obj, out var newValue)) return newValue as T;
+            return obj;
+        }
 
-        private static void Rewrite(Object obj, Dictionary<Object, Object> rewrites) {
+        private static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
             var serialized = new SerializedObject(obj);
             var changed = false;
             Iterate(serialized, prop => {
                 if (prop.propertyType != SerializedPropertyType.ObjectReference) return;
                 var oldValue = prop.objectReferenceValue;
-                if (oldValue == null) return;
-                if (!rewrites.TryGetValue(oldValue, out var newValue)) return;
+                var newValue = RewriteObject(oldValue, rewrites);
                 if (oldValue == newValue) return;
                 prop.objectReferenceValue = newValue;
                 changed = true;
@@ -76,6 +81,7 @@ namespace VF.Builder {
 
         public T CopyRecursive<T>(T obj, string saveFilename = null, Object saveParent = null) where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
+            var mutableToOriginal = new Dictionary<Object, Object>();
 
             T rootCopy = null;
 
@@ -102,11 +108,29 @@ namespace VF.Builder {
                 }
 
                 originalToMutable[original] = copy;
+                mutableToOriginal[copy] = original;
                 return true;
             });
-            
+
             foreach (var mutable in originalToMutable.Values) {
-                Rewrite(mutable, originalToMutable);
+                RewriteInternals(mutable, originalToMutable);
+            }
+            
+            // If this isn't here, default states and state machine transitions involving child machines can disappear
+            // because unity throws them away if they were invalid (because the child wasn't rewritten yet) when they were rewritten above
+            foreach (var (original,mutable) in originalToMutable.Select(x => (x.Key, x.Value))) {
+                if (original is AnimatorStateMachine originalSm && mutable is AnimatorStateMachine mutableSm) {
+                    mutableSm.defaultState = RewriteObject(originalSm.defaultState, originalToMutable);
+                    foreach (var sm in mutableSm.stateMachines.Select(child => child.stateMachine)) {
+                        var originalTransitions =
+                            originalSm.GetStateMachineTransitions(RewriteObject(sm, mutableToOriginal));
+                        var rewrittenTransitions = originalTransitions
+                            .Select(a => RewriteObject(a, originalToMutable))
+                            .ToArray();
+                        mutableSm.SetStateMachineTransitions(sm, rewrittenTransitions);
+                    }
+                    VRCFuryEditorUtils.MarkDirty(mutable);
+                }
             }
 
             return rootCopy;
