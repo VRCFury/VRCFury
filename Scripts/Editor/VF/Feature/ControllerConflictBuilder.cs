@@ -83,6 +83,7 @@ namespace VF.Feature {
                             }
                             return false;
                         }
+
                         return true;
                     });
                 }
@@ -102,7 +103,6 @@ namespace VF.Feature {
                     if (layerNum != 0) action.SetWeight(layer, 0);
                 }
             }
-
             
             // TODO: Deal with conflicts when multiple owners:
             // * turn on/off locomotion
