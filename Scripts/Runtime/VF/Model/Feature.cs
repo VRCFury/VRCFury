@@ -255,7 +255,6 @@ namespace VF.Model.Feature {
         #endif
         [NonSerialized] public Motion motionOverride;
         [NonSerialized] public float transitionTime = 0;
-        [NonSerialized] public AnimationClip passiveAction = null;
         public float exitTime = 0;
         public bool enableIcon;
         public GuidTexture2d icon;
