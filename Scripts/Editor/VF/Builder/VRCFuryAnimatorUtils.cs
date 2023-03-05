@@ -169,20 +169,12 @@ public class VFAState {
         var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAnimatorTrackingControl>(node.state);
         return driver;
     }
-    public VRCPlayableLayerControl GetPlayableLayerControl() {
+    public VRCPlayableLayerControl GetPlayableLayerControl(VRC_PlayableLayerControl.BlendableLayer layer) {
          foreach (var b in node.state.behaviours) {
             var d = b as VRCPlayableLayerControl;
-            if (d) return d;
+            if (d && d.layer == layer) return d;
         }
         var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(node.state);
-        return driver;
-    }
-    public VRCAnimatorLayerControl GetAnimationLayerControl() {
-         foreach (var b in node.state.behaviours) {
-            var d = b as VRCAnimatorLayerControl;
-            if (d) return d;
-        }
-        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAnimatorLayerControl>(node.state);
         return driver;
     }
     private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
@@ -255,22 +247,15 @@ public class VFAState {
             case "emoteAnimation":
                 return TrackingController(2,2,2,2,2,2,2,2,0,0);
         }
-        return TrackingController(0,0,0,0,0,0,0,0,0,0);
+        throw new VRCFBuilderException("Unrecognized Tracking Controller Quick Choice");
     }
 
     public VFAState PlayableLayerController(VRC_PlayableLayerControl.BlendableLayer layer, float goal, float duration) {
-        var controller = GetPlayableLayerControl();
+        var controller = GetPlayableLayerControl(layer);
         controller.layer = layer;
         controller.goalWeight = goal;
         controller.blendDuration = duration;
         return this;
-    }
-
-    public VRCAnimatorLayerControl AnimationLayerController(float goal, float duration) {
-        var controller = GetAnimationLayerControl();
-        controller.goalWeight = goal;
-        controller.blendDuration = duration;
-        return controller;
     }
 
     public VFAEntryTransition TransitionsFromEntry() {

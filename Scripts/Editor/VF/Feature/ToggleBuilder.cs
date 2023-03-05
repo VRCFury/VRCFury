@@ -147,7 +147,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var actionLayer = GetAction();
             var layer2 = actionLayer.NewLayer(layerName);
             var off2 = layer2.NewState("Off").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
-            var seatedParam = actionLayer.Seated();
             var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             var onCase2 = boolParam2.IsTrue();
             off2.TrackingController("allTracking");

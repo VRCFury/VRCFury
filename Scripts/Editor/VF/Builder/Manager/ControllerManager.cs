@@ -258,9 +258,6 @@ namespace VF.Builder {
         public VFABool IsLocal() {
             return NewBool("IsLocal", usePrefix: false);
         }
-        public VFABool Seated() {
-            return NewBool("Seated", usePrefix: false);
-        }
 
         public void UnionBaseMask(AvatarMask sourceMask) {
             if (sourceMask == null) return;
@@ -366,7 +363,7 @@ namespace VF.Builder {
             }
         }
 
-        private static HashSet<string> VRChatGlobalParams = new HashSet<string> {
+        private static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
             "Voice",
