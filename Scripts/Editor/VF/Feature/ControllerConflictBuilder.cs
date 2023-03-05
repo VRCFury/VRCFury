@@ -87,6 +87,19 @@ namespace VF.Feature {
 
                         return true;
                     });
+                    if (controller.GetType() == VRCAvatarDescriptor.AnimLayerType.Action) {
+                        foreach(var state in layer.states) {
+                            var alreadyHasController = false;
+                            foreach (var b in state.state.behaviours) {
+                                if (b is VRCPlayableLayerControl || b is VRCAnimatorLayerControl || b is VRCAnimatorTrackingControl) alreadyHasController = true;
+                            }
+                            if (!alreadyHasController && layerOwner != "Base Avatar") {
+                                var c = state.state.AddStateMachineBehaviour<VRCPlayableLayerControl>();
+                                c.blendDuration = 0;
+                                c.goalWeight = 1;
+                            }
+                        }
+                    }
                 }
             }
             
