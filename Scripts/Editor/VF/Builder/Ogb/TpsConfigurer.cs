@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Feature;
 using VF.Inspector;
 using Object = UnityEngine.Object;
 
@@ -31,13 +32,19 @@ namespace VF.Builder.Ogb {
             
             // Convert MeshRenderer to SkinnedMeshRenderer
             if (renderer is MeshRenderer) {
-                var newSkin = renderer.gameObject.AddComponent<SkinnedMeshRenderer>();
-                var meshFilter = renderer.gameObject.GetComponent<MeshFilter>();
-                newSkin.sharedMesh = meshFilter.sharedMesh;
-                newSkin.sharedMaterials = renderer.sharedMaterials;
-                newSkin.probeAnchor = renderer.probeAnchor;
+                var obj = renderer.gameObject;
+                var meshFilter = obj.GetComponent<MeshFilter>();
+                var mesh = meshFilter.sharedMesh;
+                var mats = renderer.sharedMaterials;
+                var anchor = renderer.probeAnchor;
+
                 Object.DestroyImmediate(renderer);
                 Object.DestroyImmediate(meshFilter);
+
+                var newSkin = obj.AddComponent<SkinnedMeshRenderer>();
+                newSkin.sharedMesh = mesh;
+                newSkin.sharedMaterials = mats;
+                newSkin.probeAnchor = anchor;
                 renderer = newSkin;
             }
 
@@ -68,6 +75,8 @@ namespace VF.Builder.Ogb {
 
             skin.rootBone = rootTransform;
             VRCFuryEditorUtils.MarkDirty(skin);
+            
+            BoundingBoxFixBuilder.AdjustBoundingBox(skin);
 
             return skin;
         }
@@ -79,6 +88,27 @@ namespace VF.Builder.Ogb {
             string tmpDir,
             float worldLength
         ) {
+            var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+            var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
+            if (shaderOptimizer == null || bakeUtil == null) {
+                throw new VRCFBuilderException(
+                    "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+            }
+            
+            var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
+            var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
+            var bakeMethod = bakeUtil.GetMethod(
+                "BakePositionsToTexture", 
+                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
+                null,
+                new[] { meshInfoType, typeof(Texture2D) },
+                null
+            );
+            if (unlockMethod == null || meshInfoType == null || bakeMethod == null) {
+                throw new VRCFBuilderException(
+                    "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+            }
+            
             var shaderRotation = Quaternion.identity;
             var mat = skin.sharedMaterials[matSlot];
             if (!IsTps(mat)) return;
@@ -90,13 +120,7 @@ namespace VF.Builder.Ogb {
                 skin.sharedMaterials = mats;
                 VRCFuryEditorUtils.MarkDirty(skin);
             }
-
-            var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-            if (shaderOptimizer == null) {
-                throw new VRCFBuilderException(
-                    "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
-            }
-            var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
+            
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                 ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
             });
@@ -109,9 +133,7 @@ namespace VF.Builder.Ogb {
             mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
             mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
-
-            var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
-            var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
+            
             var meshInfo = Activator.CreateInstance(meshInfoType);
             var bakedMesh = MeshBaker.BakeMesh(skin, rootTransform);
             if (bakedMesh == null)
@@ -120,13 +142,6 @@ namespace VF.Builder.Ogb {
             meshInfoType.GetField("bakedNormals").SetValue(meshInfo, bakedMesh.normals);
             meshInfoType.GetField("ownerRenderer").SetValue(meshInfo, skin);
             meshInfoType.GetField("sharedMesh").SetValue(meshInfo, skin.sharedMesh);
-            var bakeMethod = bakeUtil.GetMethod(
-                "BakePositionsToTexture", 
-                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
-                null,
-                new[] { meshInfoType, typeof(Texture2D) },
-                null
-            );
             Texture2D tex = null;
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                 tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, meshInfo, null);
@@ -141,7 +156,7 @@ namespace VF.Builder.Ogb {
         private static Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);
 
         public static bool IsTps(Material mat) {
-            return mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
+            return mat && mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
         }
     }
 }

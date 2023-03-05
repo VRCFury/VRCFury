@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using BestHTTP.SecureProtocol.Org.BouncyCastle.Math.EC.Multiplier;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
@@ -17,6 +20,8 @@ namespace VF {
     public class PlayModeTrigger : IVRCSDKPostprocessAvatarCallback {
         private static double lastRescan = 0;
         private static string AboutToUploadKey = "vrcf_vrcAboutToUpload";
+        private const string tmpDirParent = "Assets/_VRCFury/PlayMode";
+        private static string tmpDir;
         public int callbackOrder => int.MaxValue;
         public void OnPostprocessAvatar() {
             EditorPrefs.SetFloat(AboutToUploadKey, Now());
@@ -49,6 +54,8 @@ namespace VF {
                     var rootObjects = GetRootObjects().ToArray();
                     VRCFPrefabFixer.Fix(rootObjects);
                 }
+
+                tmpDir = null;
             } else if (state == PlayModeStateChange.EnteredPlayMode) {
                 if (problyUploading) {
                     EditorPrefs.DeleteKey(AboutToUploadKey);
@@ -79,6 +86,12 @@ namespace VF {
             if (!PlayModeMenuItem.Get()) return;
             if (!activeNow) return;
 
+            if (tmpDir == null) {
+                VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
+                tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
+                Directory.CreateDirectory(tmpDir);
+            }
+
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
             foreach (var root in GetRootObjects()) {
@@ -98,13 +111,19 @@ namespace VF {
                     oneChanged = true;
                 }
                 foreach (var o in root.GetComponentsInChildren<OGBOrifice>(true)) {
+                    if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
-                    OGBOrificeEditor.Bake(o, onlySenders: true);
+                    VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                        OGBOrificeEditor.Bake(o, onlySenders: true);
+                    });
                     Object.DestroyImmediate(o);
                 }
                 foreach (var o in root.GetComponentsInChildren<OGBPenetrator>(true)) {
+                    if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
-                    OGBPenetratorEditor.Bake(o, onlySenders: true);
+                    VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                        OGBPenetratorEditor.Bake(o, onlySenders: true, tmpDir: tmpDir);
+                    });
                     Object.DestroyImmediate(o);
                 }
             }

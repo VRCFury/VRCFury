@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -14,8 +15,8 @@ namespace VF.Builder {
         }
 
         public void addSyncedParam(VRCExpressionParameters.Parameter param) {
-            var exists = Array.FindIndex(syncedParams.parameters, p => p.name == param.name) >= 0;
-            if (exists) return;
+            var exists = syncedParams.parameters.FirstOrDefault(p => p.name == param.name);
+            if (exists != null) return;
             var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
             syncedParamsList.Add(param);
             syncedParams.parameters = syncedParamsList.ToArray();

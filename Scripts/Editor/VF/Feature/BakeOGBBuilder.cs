@@ -33,29 +33,7 @@ namespace VF.Feature {
             var objectsToForceEnable = new HashSet<GameObject>();
             
             foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-                var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames);
-
-                if (c.configureTps) {
-                    if (bakeInfo == null) {
-                        throw new VRCFBuilderException("Failed to get size of penetrator to configure TPS");
-                    }
-                    var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
-
-                    var configuredOne = false;
-                    foreach (var renderer in renderers) {
-                        var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, tmpDir, worldLength);
-                        if (newRenderer) {
-                            configuredOne = true;
-                            addOtherFeature(new BoundingBoxFix2() { singleRenderer = newRenderer });
-                        }
-                    }
-
-                    if (!configuredOne) {
-                        throw new VRCFBuilderException(
-                            "OGB Penetrator has 'auto-configure TPS' enabled, but no renderer was found " +
-                            "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled in the Color & Normals tab.");
-                    }
-                }
+                var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames, tmpDir: tmpDir);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderer, worldLength, worldRadius) = bakeInfo;
@@ -124,6 +102,9 @@ namespace VF.Feature {
                 foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
                     objectsToDisableTemporarily.Add(r.gameObject);
                 }
+                
+                var animRoot = new GameObject("Animations");
+                animRoot.transform.SetParent(bakeRoot.transform, false);
 
                 if (c.addMenuItem) {
                     var fx = GetFx();
@@ -138,15 +119,15 @@ namespace VF.Feature {
                             .ToArray();
                     }
 
-                    foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "VersionBeacon")) {
+                    foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "VersionBeacon", "Animations")) {
                         obj.SetActive(false);
                     }
                     var onLocalClip = fx.NewClip($"{name} (Local)");
-                    foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal")) {
+                    foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "Animations")) {
                         clipBuilder.Enable(onLocalClip, obj);
                     }
                     var onRemoteClip = fx.NewClip($"{name} (Remote)");
-                    foreach (var obj in FindChildren("Senders", "Lights", "VersionBeacon")) {
+                    foreach (var obj in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
                         clipBuilder.Enable(onRemoteClip, obj);
                     }
                     var onStealthClip = fx.NewClip($"{name} (Stealth)");
@@ -206,10 +187,10 @@ namespace VF.Feature {
                     var fx = GetFx();
 
                     var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
-                    OGBUtils.AddReceiver(bakeRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
+                    OGBUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
                     
                     var depthParam = fx.NewFloat(prefix + "/AnimDepth");
-                    OGBUtils.AddReceiver(bakeRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
+                    OGBUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
 
                     var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
                     var off = layer.NewState("Off");
