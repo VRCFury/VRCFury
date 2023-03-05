@@ -146,11 +146,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
             var actionLayer = GetAction();
             var layer2 = actionLayer.NewLayer(layerName);
-            var off2 = layer2.NewState("Off");
+            var off2 = layer2.NewState("Off").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
             var seatedParam = actionLayer.Seated();
             var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             var onCase2 = boolParam2.IsTrue();
-            off2.WithAnimation(model.passiveAction);
             off2.TrackingController("allTracking");
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
@@ -214,11 +213,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (isActionLayer) {
-            off.WithAnimation(transitionClipIn);
-            inState.PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, model.transitionTime);
-            inState.TrackingController("emoteAnimation");
+            off.WithAnimation(inState.GetRaw().motion);
+            inState.TrackingController("emoteAnimation").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, 0);
 
-            var blendOut = layer.NewState("Blendout").WithAnimation(transitionClipIn).PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, model.transitionTime);
+            var blendOut = layer.NewState("Blendout").WithAnimation(inState.GetRaw().motion);
             var transition = outState.TransitionsTo(blendOut);
             if (outState == onState) {
                 transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);

@@ -61,7 +61,6 @@ namespace VF.Feature {
                             }
                             if (!uniqueOwnersOnType.Contains(layerOwner)) return false;
                             if (uniqueOwnersOnType.Count == 1) return true;
-                            if (playableControl.goalWeight == 0 && playableControl.blendDuration != 0) return true;
 
                             var drivesController = manager.GetController(drivesType);
                             var drivesControllerLayers = drivesController.GetLayers()
@@ -82,57 +81,28 @@ namespace VF.Feature {
                                 layerControl.blendDuration = 0;
                                 layerControl.debugString = playableControl.debugString;
                             }
-                            return true;
+                            return false;
                         }
-
                         return true;
                     });
-                    if (controller.GetType() == VRCAvatarDescriptor.AnimLayerType.Action) {
-                        foreach(var state in layer.states) {
-                            foreach (var t in state.state.transitions) {
-                                if (t.destinationState == null) continue;
-                                foreach (var b in t.destinationState.behaviours) {
-                                    if (b is VRCPlayableLayerControl playableControl) {
-                                        if (playableControl.goalWeight > 0) {
-                                            var baseLayer = controller.GetLayers().First();
-                                            var start = baseLayer.defaultState ?? baseLayer.AddState("Start");
-                                            var actionOn = baseLayer.AddState("Action On");
-                                            var b2 = actionOn.AddStateMachineBehaviour<VRCPlayableLayerControl>();
-                                            b2.goalWeight = playableControl.goalWeight;
-                                            b2.blendDuration = playableControl.blendDuration;
-
-                                            var trans = start.AddTransition(actionOn);
-                                            trans.conditions = t.conditions;
-                                            trans.duration = 0;
-
-                                            trans = actionOn.AddExitTransition();
-                                            trans.hasExitTime = true;
-                                            trans.exitTime = 1;
-                                            trans.duration = 0;
-                                            
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
             
             if (ownersByController.ContainsKey(VRCAvatarDescriptor.AnimLayerType.Action)
                 && ownersByController[VRCAvatarDescriptor.AnimLayerType.Action].Count > 1) {
                 var action = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
+                var enableLayer = action.NewLayer("VRCF Force Enable");
+                var enable = enableLayer.NewState("Enable");
+                var enableControl = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(enable.GetRaw());
+                enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
+                enableControl.goalWeight = 1;
                 var i = 0;
                 foreach (var layer in action.GetLayers()) {
                     var layerNum = i++;
-                    if (layerNum != 0) {
-                        var layerControl = layer.defaultState.AddStateMachineBehaviour<VRCAnimatorLayerControl>();
-                        layerControl.layer = layerNum;
-                        layerControl.goalWeight = 0;
-                        layerControl.blendDuration = 0;
-                    }
+                    if (layerNum != 0) action.SetWeight(layer, 0);
                 }
             }
+
             
             // TODO: Deal with conflicts when multiple owners:
             // * turn on/off locomotion
