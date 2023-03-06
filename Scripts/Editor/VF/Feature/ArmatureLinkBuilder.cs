@@ -68,7 +68,7 @@ namespace VF.Feature {
 
                 var scalingRequired = scalingFactor < 0.999 || scalingFactor > 1.001;
                 
-                if (scalingRequired) {
+                if (scalingRequired || keepBoneOffsets) {
                     var bonesInProp = links.propMain
                         .GetComponentsInChildren<Transform>(true)
                         .ToImmutableHashSet();
@@ -85,10 +85,15 @@ namespace VF.Feature {
                             .Select(boneAndBindPose => {
                                 var bone = boneAndBindPose.a;
                                 var bindPose = boneAndBindPose.b;
-                                var isBoneMerged = links.mergeBones.Any(m => m.Item1 == bone.gameObject);
-                                if (!isBoneMerged) return bindPose;
-                                var rescaledBindPose = Matrix4x4.Scale(new Vector3(scalingFactor, scalingFactor, scalingFactor)) * bindPose;
-                                return rescaledBindPose;
+                                var mergedTo = links.mergeBones.Where(m => m.Item1 == bone.gameObject).Select(m => m.Item2).FirstOrDefault();
+                                if (!mergedTo) return bindPose;
+                                if (scalingRequired) {
+                                    bindPose = Matrix4x4.Scale(new Vector3(scalingFactor, scalingFactor, scalingFactor)) * bindPose;
+                                }
+                                if (keepBoneOffsets) {
+                                    bindPose = mergedTo.transform.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
+                                }
+                                return bindPose;
                             }) 
                             .ToArray();
                         VRCFuryEditorUtils.MarkDirty(meshCopy);
