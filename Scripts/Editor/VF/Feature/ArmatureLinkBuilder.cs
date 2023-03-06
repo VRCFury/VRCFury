@@ -50,24 +50,23 @@ namespace VF.Feature {
                 keepBoneOffsets = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
             }
             
+            var scalingFactor = model.skinRewriteScalingFactor;
+
+            if (scalingFactor <= 0) {
+                var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
+                var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
+                double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
+                var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
+                    .OrderBy(GetError)
+                    .First();
+                scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
+            }
+
+            Debug.Log("Detected scaling factor: " + scalingFactor);
+            var scalingRequired = scalingFactor < 0.999 || scalingFactor > 1.001;
+            
             if (linkMode == ArmatureLink.ArmatureLinkMode.SkinRewrite) {
 
-                var scalingFactor = model.skinRewriteScalingFactor;
-
-                if (scalingFactor <= 0) {
-                    var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
-                    var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
-                    double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
-                    var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
-                        .OrderBy(GetError)
-                        .First();
-                    scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
-                }
-
-                Debug.Log("Detected scaling factor: " + scalingFactor);
-
-                var scalingRequired = scalingFactor < 0.999 || scalingFactor > 1.001;
-                
                 if (scalingRequired || keepBoneOffsets) {
                     var bonesInProp = links.propMain
                         .GetComponentsInChildren<Transform>(true)
@@ -87,11 +86,10 @@ namespace VF.Feature {
                                 var bindPose = boneAndBindPose.b;
                                 var mergedTo = links.mergeBones.Where(m => m.Item1 == bone.gameObject).Select(m => m.Item2).FirstOrDefault();
                                 if (!mergedTo) return bindPose;
-                                if (scalingRequired) {
-                                    bindPose = Matrix4x4.Scale(new Vector3(scalingFactor, scalingFactor, scalingFactor)) * bindPose;
-                                }
                                 if (keepBoneOffsets) {
                                     bindPose = mergedTo.transform.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
+                                } else if (scalingRequired) {
+                                    bindPose = Matrix4x4.Scale(new Vector3(scalingFactor, scalingFactor, scalingFactor)) * bindPose;
                                 }
                                 return bindPose;
                             }) 
@@ -111,8 +109,14 @@ namespace VF.Feature {
                     mover.Move(
                         objectToMove,
                         newParent,
-                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name
+                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name,
+                        worldPositionStays: keepBoneOffsets
                     );
+
+                    if (!keepBoneOffsets) {
+                        objectToMove.transform.localScale *= scalingFactor;
+                        objectToMove.transform.localPosition *= scalingFactor;
+                    }
 
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
                     RemoveFromPhysbones(objectToMove);
@@ -132,6 +136,19 @@ namespace VF.Feature {
                 foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
                     if (skin.rootBone != null) {
                         if (boneMapping.TryGetValue(skin.rootBone, out var newRootBone)) {
+                            var b = skin.localBounds;
+                            b.center = new Vector3(
+                                b.center.x * skin.rootBone.lossyScale.x / newRootBone.lossyScale.x,
+                                b.center.y * skin.rootBone.lossyScale.y / newRootBone.lossyScale.y,
+                                b.center.z * skin.rootBone.lossyScale.z / newRootBone.lossyScale.z
+                            );
+                            b.extents = new Vector3(
+                                b.extents.x * skin.rootBone.lossyScale.x / newRootBone.lossyScale.x,
+                                b.extents.y * skin.rootBone.lossyScale.y / newRootBone.lossyScale.y,
+                                b.extents.z * skin.rootBone.lossyScale.z / newRootBone.lossyScale.z
+                            );
+                            skin.localBounds = b;
+                            
                             skin.rootBone = newRootBone;
                         }
                     }
@@ -175,6 +192,7 @@ namespace VF.Feature {
                     if (!keepBoneOffsets) {
                         propBone.transform.localPosition = Vector3.zero;
                         propBone.transform.localRotation = Quaternion.identity;
+                        propBone.transform.localScale = Vector3.one * scalingFactor;
                     }
 
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.

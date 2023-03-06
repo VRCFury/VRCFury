@@ -13,10 +13,10 @@ namespace VF.Feature {
     public class ObjectMoveBuilder : FeatureBuilder {
         private List<Tuple<string, string>> redirects = new List<Tuple<string, string>>();
         
-        public void Move(GameObject obj, GameObject newParent = null, string newName = null) {
+        public void Move(GameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {
             var oldPath = clipBuilder.GetPath(obj);
             if (newParent != null)
-                obj.transform.SetParent(newParent.transform);
+                obj.transform.SetParent(newParent.transform, worldPositionStays);
             if (newName != null)
                 obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);
