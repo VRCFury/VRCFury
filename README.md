@@ -270,11 +270,19 @@ If set, this will create 2 additional states for animating a transition between 
 
 `Is Button`
 
-If enabled, the menu item created will be a button instead of a toggle. Am `Exit Time` can also be set if a button based toggle should stay true for some length of time. Set to -1 to have the toggle instantly turn off once the button is released.
+If enabled, the menu item created will be a button instead of a toggle.
 
 `Parameter Driven`
 
 If enabled, instead of using a menu item the toggle will be driven by a pre-existing parameter on the avatar. Useful for things like contact based toggles.
+
+`Has Transtion Time`
+
+If enabled, a `Transition Time` in seconds can be set to smoothly transition between the on and off state of the toggle.
+
+`Has Exit Time`
+
+If enabled, an `Exit Time` in can be set to ensure that the toggle remains in the on state for some amount of time.
 
 ### When-Talking State
 
