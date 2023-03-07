@@ -60,6 +60,16 @@ namespace VF.Inspector {
             container.Add(adv);
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
+            
+            container.Add(new VisualElement { style = { paddingTop = 10 } });
+            container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                var (renderers, worldLength, worldRadius, localRotation, localPosition) = GetWorldSize(self);
+                var text = new List<string>();
+                text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => r.gameObject.name)));
+                text.Add($"Detected Length: {worldLength}m");
+                text.Add($"Detected Radius: {worldRadius}m");
+                return string.Join("\n", text);
+            }));
 
             return container;
         }

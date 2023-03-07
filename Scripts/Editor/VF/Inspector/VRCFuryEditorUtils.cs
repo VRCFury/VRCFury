@@ -545,7 +545,7 @@ public static class VRCFuryEditorUtils {
         return el;
     }
     
-    public static (VisualElement,Label) Debug(string message = "") {
+    public static VisualElement Debug(string message = "", Func<string> refreshMessage = null) {
         var el = new VisualElement() {
             style = {
                 backgroundColor = new Color(0,0,0,0.1f),
@@ -569,7 +569,18 @@ public static class VRCFuryEditorUtils {
         rightColumn.Add(title);
         var label = WrappedLabel(message);
         rightColumn.Add(label);
-        return (el,label);
+
+        if (refreshMessage != null) {
+            RefreshOnInterval(el, () => {
+                try {
+                    label.text = refreshMessage();
+                } catch (Exception e) {
+                    label.text = $"Error: {e.Message}";
+                }
+            });
+        }
+        
+        return el;
     }
 
     public static Label Error(string message) {
@@ -658,6 +669,23 @@ public static class VRCFuryEditorUtils {
         if (!scene.isLoaded) return;
         if (!scene.IsValid()) return;
         EditorSceneManager.MarkSceneDirty(scene);
+    }
+
+    public static void RefreshOnInterval(VisualElement el, Action run, float interval = 1) {
+        double lastUpdate = 0;
+        void Update() {
+            var now = EditorApplication.timeSinceStartup;
+            if (lastUpdate < now - interval) {
+                lastUpdate = now;
+                run();
+            }
+        }
+        el.RegisterCallback<AttachToPanelEvent>(e => {
+            EditorApplication.update += Update;
+        });
+        el.RegisterCallback<DetachFromPanelEvent>(e => {
+            EditorApplication.update -= Update;
+        });
     }
 }
     
