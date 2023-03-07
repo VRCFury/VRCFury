@@ -167,7 +167,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     ) {
         var isHumanoidLayer = controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
 
-        var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isHumanoidLayer);
+        var clip = LoadState(onName, action, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
             var actionLayer = GetAction();
@@ -208,11 +208,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (securityLockUnlocked != null) {
                 onCase = onCase.And(securityLockUnlocked);
             }
-        }
-
-        if (model.altCondition != null) {
-            var altCondition = new VFACondition { transitions = model.altCondition };
-            onCase = onCase.Or(altCondition.And(onCase.Not()));
         }
 
         VFAState inState;

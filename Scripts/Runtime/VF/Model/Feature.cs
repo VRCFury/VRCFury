@@ -250,10 +250,6 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public bool useInt = false;
-        #if UNITY_EDITOR
-        [NonSerialized] public IEnumerable<IEnumerable<AnimatorCondition>> altCondition = null;
-        #endif
-        [NonSerialized] public Motion motionOverride;
         public bool hasTransitionTime = false;
         public float transitionTime = 0;
         public bool hasExitTime = false;
@@ -547,10 +543,6 @@ namespace VF.Model.Feature {
     [Serializable]
     public class GestureDriver : NewFeatureModel {
         public List<Gesture> gestures = new List<Gesture>();
-        public bool disableable = false;
-        public bool defaultEnable = false;
-        public bool saveEnable = false;
-        public string enablePath;
         
         [Serializable]
         public class Gesture {
@@ -574,8 +566,7 @@ namespace VF.Model.Feature {
             EITHER,
             LEFT,
             RIGHT,
-            COMBO,
-            NEITHER
+            COMBO
         }
         
         public enum HandSign {
