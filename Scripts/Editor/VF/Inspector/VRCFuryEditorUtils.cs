@@ -233,7 +233,7 @@ public static class VRCFuryEditorUtils {
         BorderColor(el, all, all);
     }
     
-    public static VisualElement WrappedLabel(string text, Action<IStyle> style = null) {
+    public static Label WrappedLabel(string text, Action<IStyle> style = null) {
         var field = new Label(text) {
             style = {
                 whiteSpace = WhiteSpace.Normal
@@ -543,6 +543,33 @@ public static class VRCFuryEditorUtils {
         label.style.flexBasis = 0;
         el.Add(label);
         return el;
+    }
+    
+    public static (VisualElement,Label) Debug(string message = "") {
+        var el = new VisualElement() {
+            style = {
+                backgroundColor = new Color(0,0,0,0.1f),
+                marginTop = 5,
+                marginBottom = 10,
+                flexDirection = FlexDirection.Row,
+                alignItems = Align.FlexStart
+            }
+        };
+        Padding(el, 5);
+        BorderRadius(el, 5);
+        var im = new Image {
+            image = EditorGUIUtility.FindTexture("d_Lighting"),
+            scaleMode = ScaleMode.ScaleToFit
+        };
+        el.Add(im);
+        var rightColumn = new VisualElement();
+        el.Add(rightColumn);
+        var title = WrappedLabel("Debug Info");
+        title.style.unityFontStyleAndWeight = FontStyle.Bold;
+        rightColumn.Add(title);
+        var label = WrappedLabel(message);
+        rightColumn.Add(label);
+        return (el,label);
     }
 
     public static Label Error(string message) {

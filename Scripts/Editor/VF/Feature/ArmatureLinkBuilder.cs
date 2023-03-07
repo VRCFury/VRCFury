@@ -49,20 +49,8 @@ namespace VF.Feature {
             if (model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Auto) {
                 keepBoneOffsets = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
             }
-            
-            var scalingFactor = model.skinRewriteScalingFactor;
 
-            if (scalingFactor <= 0) {
-                var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
-                var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
-                scalingFactor = propMainScale / avatarMainScale;
-                if (model.scalingFactorPowersOf10Only) {
-                    var log = Math.Log10(scalingFactor);
-                    double Mod(double a, double n) => (a % n + n) % n;
-                    log = (Mod(log, 1) > 0.75) ? Math.Ceiling(log) : Math.Floor(log);
-                    scalingFactor = (float)Math.Pow(10, log);
-                }
-            }
+            var (_, _, scalingFactor) = GetScalingFactor(links);
 
             Debug.Log("Detected scaling factor: " + scalingFactor);
             var scalingRequired = scalingFactor < 0.99 || scalingFactor > 1.01;
@@ -222,6 +210,24 @@ namespace VF.Feature {
                     }
                 }
             }
+        }
+
+        private (float, float, float) GetScalingFactor(Links links) {
+            var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
+            var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
+            var scalingFactor = model.skinRewriteScalingFactor;
+
+            if (scalingFactor <= 0) {
+                scalingFactor = propMainScale / avatarMainScale;
+                if (model.scalingFactorPowersOf10Only) {
+                    var log = Math.Log10(scalingFactor);
+                    double Mod(double a, double n) => (a % n + n) % n;
+                    log = (Mod(log, 1) > 0.75) ? Math.Ceiling(log) : Math.Floor(log);
+                    scalingFactor = (float)Math.Pow(10, log);
+                }
+            }
+
+            return (avatarMainScale, propMainScale, scalingFactor);
         }
 
         private void FailIfComponents(GameObject propBone) {
@@ -485,6 +491,45 @@ namespace VF.Feature {
             
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Restrict automatic scaling factor to powers of 10:"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scalingFactorPowersOf10Only")));
+
+            var (debugBox, debug) = VRCFuryEditorUtils.Debug();
+            container.Add(new VisualElement { style = { paddingTop = 10 } });
+            container.Add(debugBox);
+
+            double lastUpdate = 0;
+            void Update() {
+                var now = EditorApplication.timeSinceStartup;
+                if (lastUpdate < now - 1) {
+                    lastUpdate = now;
+
+                    try {
+                        var links = GetLinks();
+                        var text = new List<string>();
+                        var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links);
+                        text.Add("Prop root bone scale: " + propMainScale);
+                        text.Add("Avatar root bone scale: " + avatarMainScale);
+                        text.Add("Scaling factor: " + scalingFactor);
+                        if (links.reparent.Count > 0) {
+                            text.Add(
+                                "These bones do not have a match on the avatar and will be added as new children: \n" +
+                                string.Join("\n",
+                                    links.reparent.Select(b =>
+                                        "* " + AnimationUtility.CalculateTransformPath(b.Item1.transform,
+                                            model.propBone.transform))));
+                        }
+
+                        debug.text = string.Join("\n", text);
+                    } catch (Exception) {
+                        debug.text = "Failed to link armature";
+                    }
+                }
+            }
+            adv.RegisterCallback<AttachToPanelEvent>(e => {
+                EditorApplication.update += Update;
+            });
+            adv.RegisterCallback<DetachFromPanelEvent>(e => {
+                EditorApplication.update -= Update;
+            });
 
             return container;
         }

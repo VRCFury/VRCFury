@@ -82,7 +82,9 @@ public static class FeatureFinder {
                 );
             }
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
-            featureInstance.editorObject = gameObject;
+            featureInstance.avatarObject = gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+            featureInstance.featureBaseObject = gameObject;
+            featureInstance.GetType().GetField("model").SetValue(featureInstance, model);
 
             title = featureInstance.GetEditorTitle() ?? title;
 
