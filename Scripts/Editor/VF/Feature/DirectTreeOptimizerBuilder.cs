@@ -263,7 +263,7 @@ namespace VF.Feature {
         private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(AnimatorStateMachine sm) {
             var usedBindings = new HashSet<EditorCurveBinding>();
             AnimatorIterator.ForEachClip(sm, clip => {
-                usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
+                usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip).Where(c => !c.path.Contains("_ignored")));
                 usedBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
             });
             return usedBindings;
