@@ -415,9 +415,14 @@ namespace VF.Model.Feature {
             if (fromVersion < 3) {
                 keepBoneOffsets2 = keepBoneOffsets ? KeepBoneOffsets.Yes : KeepBoneOffsets.No;
             }
+            if (fromVersion < 4) {
+                if (linkMode != ArmatureLinkMode.SkinRewrite) {
+                    skinRewriteScalingFactor = 0;
+                }
+            }
         }
         public override int GetLatestVersion() {
-            return 3;
+            return 4;
         }
     }
     
