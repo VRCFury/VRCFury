@@ -254,7 +254,9 @@ namespace VF.Model.Feature {
         [NonSerialized] public IEnumerable<IEnumerable<AnimatorCondition>> altCondition = null;
         #endif
         [NonSerialized] public Motion motionOverride;
-        [NonSerialized] public float transitionTime = 0;
+        public bool hasTransitionTime = false;
+        public float transitionTime = 0;
+        public bool hasExitTime = false;
         public float exitTime = 0;
         public bool enableIcon;
         public GuidTexture2d icon;

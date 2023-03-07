@@ -125,6 +125,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             param = boolParam;
             onCase = param.IsTrue();
         }
+
+        if (!model.hasTransitionTime)  model.transitionTime = 0;
+        if (!model.hasExitTime) model.exitTime = 0;
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
@@ -167,7 +170,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
-            model.transitionTime = .25f;
             var actionLayer = GetAction();
             var layer2 = actionLayer.NewLayer(layerName);
             var off2 = layer2.NewState("Off");
@@ -178,7 +180,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
             var maskName = getMaskName(clip);
             if (maskName.ToLower().Contains("hand")) {
-                model.transitionTime = 0f;
                 var gestureLayer = GetGesture();
                 var layer2 = gestureLayer.NewLayer(layerName);
                 var off2 = layer2.NewState("Off");
@@ -241,7 +242,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
             var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            model.exitTime = model.exitTime == 0 ? 1 : model.exitTime;
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime).WithTransitionExitTime(model.exitTime);
         } else {
             outState = onState;
@@ -388,6 +388,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
         var isButtonProp = prop.FindPropertyRelative("isButton");
         var isParamDrivenProp = prop.FindPropertyRelative("isParamDriven");
+        var hasTransitionTimeProp = prop.FindPropertyRelative("hasTransitionTime");
+        var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
 
         var flex = new VisualElement {
             style = {
@@ -495,6 +497,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             advMenu.AddItem(new GUIContent("Parameter Driven"), isParamDrivenProp.boolValue, () => {
                     isParamDrivenProp.boolValue = !isParamDrivenProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+
+            advMenu.AddItem(new GUIContent("Has Transition Time"), hasTransitionTimeProp.boolValue, () => {
+                    hasTransitionTimeProp.boolValue = !hasTransitionTimeProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            advMenu.AddItem(new GUIContent("Has Exit Time"), hasExitTimeProp.boolValue, () => {
+                    hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
@@ -617,12 +628,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var c = new VisualElement();
-            if (isButtonProp.boolValue)
+            if (hasExitTimeProp.boolValue)
             {
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("exitTime"), "Exit Time"));
             }
             return c;
-        }, isButtonProp));
+        }, hasExitTimeProp));
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (hasTransitionTimeProp.boolValue)
+            {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionTime"), "Transition Time"));
+            }
+            return c;
+        }, hasTransitionTimeProp));
 
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
