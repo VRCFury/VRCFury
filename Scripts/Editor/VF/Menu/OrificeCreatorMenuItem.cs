@@ -26,6 +26,9 @@ namespace VF.Menu {
             
             EditorUtility.DisplayDialog("OGB",
                 "Orifice added.\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so the arrow faces correctly!", "Ok");
+            
+            SceneView sv = EditorWindow.GetWindow<SceneView>();
+            if (sv != null) sv.drawGizmos = true;
         }
 
         public static void RunBake() {
