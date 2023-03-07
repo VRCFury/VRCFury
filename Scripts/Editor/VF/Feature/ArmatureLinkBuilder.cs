@@ -55,19 +55,17 @@ namespace VF.Feature {
             if (scalingFactor <= 0) {
                 var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
                 var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
+                scalingFactor = propMainScale / avatarMainScale;
                 if (model.scalingFactorPowersOf10Only) {
-                    double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
-                    var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
-                        .OrderBy(GetError)
-                        .First();
-                    scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
-                } else {
-                    scalingFactor = propMainScale / avatarMainScale;
+                    var log = Math.Log10(scalingFactor);
+                    double Mod(double a, double n) => (a % n + n) % n;
+                    log = (Mod(log, 1) > 0.75) ? Math.Ceiling(log) : Math.Floor(log);
+                    scalingFactor = (float)Math.Pow(10, log);
                 }
             }
 
             Debug.Log("Detected scaling factor: " + scalingFactor);
-            var scalingRequired = scalingFactor < 0.999 || scalingFactor > 1.001;
+            var scalingRequired = scalingFactor < 0.99 || scalingFactor > 1.01;
             
             if (linkMode == ArmatureLink.ArmatureLinkMode.SkinRewrite) {
 
