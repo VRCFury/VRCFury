@@ -20,6 +20,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
     private AnimationClip restingClip;
+    private string layerName;
 
     public ISet<string> GetExclusives(string objects) {
 
@@ -54,6 +55,30 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return false;
     }
 
+    private string getMaskName(AnimationClip clip) {
+        
+        var bones = AnimationUtility.GetCurveBindings(clip);
+        var leftHand = false;
+        var rightHand = false;
+        var other = false;
+
+        foreach (var b in bones) {
+
+            if (!(HumanTrait.MuscleName.Contains(b.propertyName) || b.propertyName.EndsWith(" Stretched") || b.propertyName.EndsWith(".Spread"))) continue;
+            if (b.propertyName.Contains("RightHand") || b.propertyName.Contains("Right Thumb") || b.propertyName.Contains("Right Index") ||
+                b.propertyName.Contains("Right Middle") || b.propertyName.Contains("Right Ring") || b.propertyName.Contains("Right Little")) { rightHand = true; continue; }
+            if (b.propertyName.Contains("LeftHand") || b.propertyName.Contains("Left Thumb") || b.propertyName.Contains("Left Index") || 
+                b.propertyName.Contains("Left Middle") || b.propertyName.Contains("Left Ring") || b.propertyName.Contains("Left Little")) { leftHand = true; continue; }
+            other = true;
+        }
+        if (other) return "emote"; 
+        if (leftHand && rightHand) return "hands";
+        if (leftHand) return "leftHand";
+        if (rightHand) return "rightHand";
+        
+        return "";
+    }
+
     [FeatureBuilderAction]
     public void Apply() {
         // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
@@ -82,7 +107,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
-        var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
+        layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
@@ -137,21 +162,32 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State outAction,
         VFABool physBoneResetter
     ) {
-        var isActionLayer = controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action;
+        var isHumanoidLayer = controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
 
-        var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isActionLayer);
+        var clip = (AnimationClip)model.motionOverride ?? LoadState(onName, action, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
             model.transitionTime = .25f;
-            var layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
             var actionLayer = GetAction();
             var layer2 = actionLayer.NewLayer(layerName);
-            var off2 = layer2.NewState("Off").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
+            var off2 = layer2.NewState("Off");
             var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             var onCase2 = boolParam2.IsTrue();
-            off2.TrackingController("allTracking");
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
+        } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
+            var maskName = getMaskName(clip);
+            if (maskName.ToLower().Contains("hand")) {
+                model.transitionTime = 0f;
+                var gestureLayer = GetGesture();
+                var layer2 = gestureLayer.NewLayer(layerName);
+                var off2 = layer2.NewState("Off");
+                var boolParam2 = gestureLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+                var onCase2 = boolParam2.IsTrue();
+                Apply(gestureLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
+                return;
+            }
+            
         }
 
         if (restingClip == null && model.includeInRest) {
@@ -185,7 +221,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         AnimationClip transitionClipIn = null;
 
         if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
-            transitionClipIn = LoadState(onName + " In", inAction, isActionLayer);
+            transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
             var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(model.transitionTime);
@@ -203,7 +239,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
-            var transitionClipOut = LoadState(onName + " Out", outAction, isActionLayer);
+            var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             model.exitTime = model.exitTime == 0 ? 1 : model.exitTime;
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime).WithTransitionExitTime(model.exitTime);
@@ -211,8 +247,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             outState = onState;
         }
 
-        if (isActionLayer) {
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
             off.WithAnimation(inState.GetRaw().motion);
+            off.TrackingController("emoteTracking").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
             inState.TrackingController("emoteAnimation").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, 0);
 
             var blendOut = layer.NewState("Blendout").WithAnimation(inState.GetRaw().motion);
@@ -223,6 +260,28 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 transition.When().WithTransitionExitTime(1);
             }
             outState = blendOut;
+        } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Gesture) {
+            var maskName = getMaskName(clip);
+            off.TrackingController(maskName + "Tracking");
+            inState.TrackingController(maskName + "Animation");
+            var maskGuid = "";
+            switch (maskName) {
+                case "hands":
+                    maskGuid = "b2b8bad9583e56a46a3e21795e96ad92";
+                    break;
+                case "rightHand":
+                    maskGuid = "903ce375d5f609d44b9f00b425d6eda9";
+                    break;
+                case "leftHand":
+                    maskGuid = "7ff0199655202a04eb175de45a6e078a";
+                    break;
+            }
+
+            if (maskGuid != "") {
+                var maskPath = AssetDatabase.GUIDToAssetPath(maskGuid);
+                var mask = AssetDatabase.LoadAssetAtPath<AvatarMask>(maskPath);
+                controller.SetMask(controller.GetLayers().Count() - 1, mask);
+            }
         }
 
         outState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);

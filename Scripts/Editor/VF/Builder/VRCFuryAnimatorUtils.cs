@@ -246,8 +246,20 @@ public class VFAState {
                 return TrackingController(1,1,1,1,1,1,1,1,0,0);
             case "emoteAnimation":
                 return TrackingController(2,2,2,2,2,2,2,2,0,0);
+            case "handsTracking":
+                return TrackingController(0,0,0,0,0,0,1,1,0,0);
+            case "handsAnimation":
+                return TrackingController(0,0,0,0,0,0,2,2,0,0);
+            case "leftHandTracking":
+                return TrackingController(0,0,0,0,0,0,1,0,0,0);
+            case "leftHandAnimation":
+                return TrackingController(0,0,0,0,0,0,2,0,0,0);
+            case "rightHandTracking":
+                return TrackingController(0,0,0,0,0,0,0,1,0,0);
+            case "rightHandAnimation":
+                return TrackingController(0,0,0,0,0,0,0,2,0,0);
         }
-        throw new VRCFBuilderException("Unrecognized Tracking Controller Quick Choice");
+        throw new VRCFBuilderException("Unrecognized Tracking Controller Quick Choice: " + quickChoise);
     }
 
     public VFAState PlayableLayerController(VRC_PlayableLayerControl.BlendableLayer layer, float goal, float duration) {
