@@ -233,7 +233,7 @@ public static class VRCFuryEditorUtils {
         BorderColor(el, all, all);
     }
     
-    public static VisualElement WrappedLabel(string text, Action<IStyle> style = null) {
+    public static Label WrappedLabel(string text, Action<IStyle> style = null) {
         var field = new Label(text) {
             style = {
                 whiteSpace = WhiteSpace.Normal
@@ -544,6 +544,44 @@ public static class VRCFuryEditorUtils {
         el.Add(label);
         return el;
     }
+    
+    public static VisualElement Debug(string message = "", Func<string> refreshMessage = null) {
+        var el = new VisualElement() {
+            style = {
+                backgroundColor = new Color(0,0,0,0.1f),
+                marginTop = 5,
+                marginBottom = 10,
+                flexDirection = FlexDirection.Row,
+                alignItems = Align.FlexStart
+            }
+        };
+        Padding(el, 5);
+        BorderRadius(el, 5);
+        var im = new Image {
+            image = EditorGUIUtility.FindTexture("d_Lighting"),
+            scaleMode = ScaleMode.ScaleToFit
+        };
+        el.Add(im);
+        var rightColumn = new VisualElement();
+        el.Add(rightColumn);
+        var title = WrappedLabel("Debug Info");
+        title.style.unityFontStyleAndWeight = FontStyle.Bold;
+        rightColumn.Add(title);
+        var label = WrappedLabel(message);
+        rightColumn.Add(label);
+
+        if (refreshMessage != null) {
+            RefreshOnInterval(el, () => {
+                try {
+                    label.text = refreshMessage();
+                } catch (Exception e) {
+                    label.text = $"Error: {e.Message}";
+                }
+            });
+        }
+        
+        return el;
+    }
 
     public static Label Error(string message) {
         var label = new Label(message) {
@@ -631,6 +669,23 @@ public static class VRCFuryEditorUtils {
         if (!scene.isLoaded) return;
         if (!scene.IsValid()) return;
         EditorSceneManager.MarkSceneDirty(scene);
+    }
+
+    public static void RefreshOnInterval(VisualElement el, Action run, float interval = 1) {
+        double lastUpdate = 0;
+        void Update() {
+            var now = EditorApplication.timeSinceStartup;
+            if (lastUpdate < now - interval) {
+                lastUpdate = now;
+                run();
+            }
+        }
+        el.RegisterCallback<AttachToPanelEvent>(e => {
+            EditorApplication.update += Update;
+        });
+        el.RegisterCallback<DetachFromPanelEvent>(e => {
+            EditorApplication.update -= Update;
+        });
     }
 }
     

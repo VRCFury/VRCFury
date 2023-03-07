@@ -405,6 +405,7 @@ namespace VF.Model.Feature {
         public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
+        public bool scalingFactorPowersOf10Only = true;
         
         // legacy
         public bool useOptimizedUpload;
@@ -425,9 +426,19 @@ namespace VF.Model.Feature {
             if (fromVersion < 3) {
                 keepBoneOffsets2 = keepBoneOffsets ? KeepBoneOffsets.Yes : KeepBoneOffsets.No;
             }
+            if (fromVersion < 4) {
+                if (linkMode != ArmatureLinkMode.SkinRewrite) {
+                    skinRewriteScalingFactor = 0;
+                }
+            }
+            if (fromVersion < 5) {
+                if (linkMode == ArmatureLinkMode.MergeAsChildren) {
+                    scalingFactorPowersOf10Only = false;
+                }
+            }
         }
         public override int GetLatestVersion() {
-            return 3;
+            return 5;
         }
     }
     

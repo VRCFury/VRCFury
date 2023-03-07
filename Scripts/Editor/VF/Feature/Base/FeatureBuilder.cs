@@ -26,7 +26,6 @@ namespace VF.Feature.Base {
         public int uniqueModelNum;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
-        public GameObject editorObject;
         public MutableManager mutableManager;
 
         public virtual string GetEditorTitle() {
