@@ -55,11 +55,15 @@ namespace VF.Feature {
             if (scalingFactor <= 0) {
                 var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
                 var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
-                double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
-                var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
-                    .OrderBy(GetError)
-                    .First();
-                scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
+                if (model.scalingFactorPowersOf10Only) {
+                    double GetError(int pow) => Math.Abs(propMainScale / Math.Pow(10, pow) - avatarMainScale);
+                    var scalingPowerWithLeastError = Enumerable.Range(-10, 21)
+                        .OrderBy(GetError)
+                        .First();
+                    scalingFactor = (float)Math.Pow(10, scalingPowerWithLeastError);
+                } else {
+                    scalingFactor = propMainScale / avatarMainScale;
+                }
             }
 
             Debug.Log("Detected scaling factor: " + scalingFactor);
@@ -478,6 +482,11 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Skin rewrite scaling factor:"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("(Will automatically detect scaling factor if 0)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("skinRewriteScalingFactor")));
+            
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Restrict automatic scaling factor to powers of 10:"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scalingFactorPowersOf10Only")));
 
             return container;
         }

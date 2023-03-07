@@ -395,6 +395,7 @@ namespace VF.Model.Feature {
         public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
+        public bool scalingFactorPowersOf10Only = true;
         
         // legacy
         public bool useOptimizedUpload;
@@ -420,9 +421,14 @@ namespace VF.Model.Feature {
                     skinRewriteScalingFactor = 0;
                 }
             }
+            if (fromVersion < 5) {
+                if (linkMode == ArmatureLinkMode.MergeAsChildren) {
+                    scalingFactorPowersOf10Only = false;
+                }
+            }
         }
         public override int GetLatestVersion() {
-            return 4;
+            return 5;
         }
     }
     
