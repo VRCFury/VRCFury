@@ -284,7 +284,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        outState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+        var exitTransition = outState.TransitionsToExit();
+
+        if (outState == onState) {
+            exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+        } else {
+            exitTransition.When().WithTransitionExitTime(1);
+        }
+
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
