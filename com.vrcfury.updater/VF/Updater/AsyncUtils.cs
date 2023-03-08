@@ -1,51 +1,56 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
+using UnityEditor.PackageManager.Requests;
 
 namespace VF.Updater {
     public class AsyncUtils {
-        public static Task<PackageCollection> ListInstalledPacakges() {
-            var promise = new TaskCompletionSource<PackageCollection>();
-            EditorApplication.delayCall += () => {
-                var currentDeps = Client.List(true, false);
-
-                void Check() {
-                    if (!currentDeps.IsCompleted) {
-                        EditorApplication.delayCall += Check;
-                        return;
-                    }
-                    if (currentDeps.Status == StatusCode.Failure) {
-                        promise.SetException(new Exception(currentDeps.Error.message));
-                        return;
-                    }
-                    promise.SetResult(currentDeps.Result);
-                }
-
-                Check();
-            };
-            return promise.Task;
+        public static async Task<PackageCollection> ListInstalledPacakges() {
+            return await PackageRequest(Client.List(true, false));
         }
         
-        public static Task AddPackage(string id) {
-            var promise = new TaskCompletionSource<object>();
-            EditorApplication.delayCall += () => {
-                var request = Client.Add(id);
-
-                void Check() {
-                    if (!request.IsCompleted) {
-                        EditorApplication.delayCall += Check;
-                        return;
+        public static async Task AddAndRemovePackages(IList<string> add = null, IList<string> remove = null) {
+            try {
+                EditorApplication.LockReloadAssemblies();
+                if (remove != null) {
+                    foreach (var p in remove) {
+                        await PackageRequest(Client.Remove(p));
                     }
-                    if (request.Status == StatusCode.Failure) {
-                        promise.SetException(new Exception(request.Error.message));
-                        return;
-                    }
-                    promise.SetResult(request.Result);
                 }
-
-                Check();
-            };
+                if (add != null) {
+                    foreach (var p in add) {
+                        await PackageRequest(Client.Add(p));
+                    }
+                }
+            } finally {
+                EditorApplication.UnlockReloadAssemblies();
+            }
+            
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            CompilationPipeline.RequestScriptCompilation();
+        }
+        
+        private static async Task<T> PackageRequest<T>(Request<T> request) {
+            await PackageRequest((Request)request);
+            return request.Result;
+        }
+        private static Task PackageRequest(Request request) {
+            var promise = new TaskCompletionSource<object>();
+            void Check() {
+                if (!request.IsCompleted) {
+                    EditorApplication.delayCall += Check;
+                    return;
+                }
+                if (request.Status == StatusCode.Failure) {
+                    promise.SetException(new Exception(request.Error.message));
+                    return;
+                }
+                promise.SetResult(null);
+            }
+            EditorApplication.delayCall += Check;
             return promise.Task;
         }
 

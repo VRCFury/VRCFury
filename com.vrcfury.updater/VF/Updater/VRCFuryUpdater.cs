@@ -11,61 +11,9 @@ using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace VF.Updater {
-    [InitializeOnLoad]
-    public class VRCFuryUpdaterStartup { 
-        static VRCFuryUpdaterStartup() {
-            EditorApplication.delayCall += FirstFrame;
-        }
-
-        public static string GetUpdatedMarkerPath() { 
-            return Path.GetDirectoryName(Application.dataPath) + "/~vrcfupdated";
-        }
-        
-        public static string GetUpdateAllMarker() { 
-            return Path.GetDirectoryName(Application.dataPath) + "/~vrcfUpdateAll";
-        }
-
-        private static void FirstFrame() {
-            var updated = false;
-            // legacy location
-            if (Directory.Exists(Application.dataPath + "/~vrcfupdated")) {
-                Directory.Delete(Application.dataPath + "/~vrcfupdated");
-                updated = true;
-            }
-            if (Directory.Exists(GetUpdatedMarkerPath())) {
-                Directory.Delete(GetUpdatedMarkerPath());
-                updated = true;
-            }
-
-            if (!updated) return;
-
-            // We need to reload scenes. If we do not, any serialized data with a changed type will be deserialized as "null"
-            // This is especially common for fields that we change from a non-guid type to a guid type, like
-            // AnimationClip to GuidAnimationClip.
-            var openScenes = Enumerable.Range(0, SceneManager.sceneCount)
-                .Select(i => SceneManager.GetSceneAt(i))
-                .Where(scene => scene.isLoaded);
-            foreach (var scene in openScenes) {
-                var type = typeof(EditorSceneManager);
-                var method = type.GetMethod("ReloadScene", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                method.Invoke(null, new object[] { scene });
-            }
-
-            EditorUtility.ClearProgressBar();
-            Debug.Log("Upgrade complete");
-            EditorUtility.DisplayDialog(
-                "VRCFury Updater",
-                "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads.",
-                "Ok"
-            );
-        }
-    }
-
     public static class VRCFuryUpdater {
         
         private static readonly HttpClient httpClient = new HttpClient();
@@ -99,39 +47,67 @@ namespace VF.Updater {
 
         [MenuItem(menu_name, priority = menu_priority)]
         public static void Upgrade() {
-            Task.Run(() => ErrorDialogBoundary(async () => {
-                string json = await httpClient.GetStringAsync("https://updates.vrcfury.com/updates.json");
+            UpdateAll();
+        }
 
-                var repo = JsonUtility.FromJson<Repository>(json);
-                if (repo.packages == null) {
-                    throw new Exception("Failed to fetch packages from update server");
+
+        private static bool updating = false;
+        public static void UpdateAll(bool automated = false) {
+            Task.Run(async () => {
+                if (updating) return;
+                updating = true;
+                await ErrorDialogBoundary(() => UpdateAllUnsafe(automated));
+                updating = false;
+            });
+        }
+
+        private static async Task UpdateAllUnsafe(bool automated) {
+            string json = await httpClient.GetStringAsync("https://updates.vrcfury.com/updates.json");
+
+            var repo = JsonUtility.FromJson<Repository>(json);
+            if (repo.packages == null) {
+                throw new Exception("Failed to fetch packages from update server");
+            }
+
+            var deps = await AsyncUtils.ListInstalledPacakges();
+
+            var localUpdaterPackage = deps.FirstOrDefault(d => d.name == "com.vrcfury.updater");
+            var remoteUpdaterPackage = repo.packages.FirstOrDefault(p => p.id == "com.vrcfury.updater");
+
+            if (localUpdaterPackage != null
+                && remoteUpdaterPackage != null
+                && localUpdaterPackage.version != remoteUpdaterPackage.latestVersion
+                && remoteUpdaterPackage.latestUpmTargz != null
+            ) {
+                // An update to the package manager is available
+                Debug.Log($"Upgrading updater from {localUpdaterPackage.version} to {remoteUpdaterPackage.latestVersion}");
+                if (automated) {
+                    throw new Exception("Updater failed to update to new version");
                 }
+                var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
+                await AsyncUtils.AddAndRemovePackages(add: new[]{ "file:" + tgzPath });
+                Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdateAllMarker());
+                return;
+            }
 
-                var deps = await AsyncUtils.ListInstalledPacakges();
+            var urlsToAdd = deps
+                .Select(local => (local, repo.packages.FirstOrDefault(remote => local.name == remote.id)))
+                .Where(pair => pair.Item2 != null)
+                .Where(pair => pair.Item1.version != pair.Item2.latestVersion)
+                .Where(pair => pair.Item2.latestUpmTargz != null);
 
-                var localUpdaterPackage = deps.FirstOrDefault(d => d.name == "com.vrcfury.updater");
-                var remoteUpdaterPackage = repo.packages.FirstOrDefault(p => p.id == "com.vrcfury.updater");
+            var packageFilesToAdd = new List<string>();
+            foreach (var (local,remote) in urlsToAdd) {
+                Debug.Log($"Upgrading {local.name} from {local.version} to {remote.latestVersion}");
+                packageFilesToAdd.Add("file:" + await DownloadTgz(remote.latestUpmTargz));
+            }
 
-                if (localUpdaterPackage != null
-                    && remoteUpdaterPackage != null
-                    && localUpdaterPackage.version != remoteUpdaterPackage.latestVersion
-                    && remoteUpdaterPackage.latestUpmTargz != null
-                ) {
-                    // An update to the package manager is available
-                    var tgzPath = DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                    Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
-                    await AsyncUtils.AddPackage("file:" + tgzPath);
-                    
-                }
-                
-                foreach (var dep in deps) {
-                    if (dep.name == "com.vrcfury.updater")
-                    if (dep.name.StartsWith("com.unity")) continue;
-                    await AsyncUtils.InMainThread(() => {
-                        EditorUtility.DisplayDialog("test", dep.name, "ok");
-                    });
-                }
-            }));
+            Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
+            await AsyncUtils.AddAndRemovePackages(add: packageFilesToAdd);
+            
+            EditorUtility.DisplayDialog("VRCFury Updater",
+                "Unity is now recompiling VRCFury.\n\nYou should receive another message when the upgrade is complete.",
+                "Ok");
         }
 
         private static async Task<string> DownloadTgz(string url) {
