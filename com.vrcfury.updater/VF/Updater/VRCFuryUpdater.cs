@@ -1,12 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Compilation;
+using UnityEditor.PackageManager;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,6 +24,10 @@ namespace VF.Updater {
 
         public static string GetUpdatedMarkerPath() { 
             return Path.GetDirectoryName(Application.dataPath) + "/~vrcfupdated";
+        }
+        
+        public static string GetUpdateAllMarker() { 
+            return Path.GetDirectoryName(Application.dataPath) + "/~vrcfUpdateAll";
         }
 
         private static void FirstFrame() {
@@ -46,8 +54,6 @@ namespace VF.Updater {
                 var type = typeof(EditorSceneManager);
                 var method = type.GetMethod("ReloadScene", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
                 method.Invoke(null, new object[] { scene });
-                //AssetDatabase.ImportAsset(scene.path, ImportAssetOptions.ForceSynchronousImport);
-                //EditorSceneManager.ReloadScene(scene);
             }
 
             EditorUtility.ClearProgressBar();
@@ -61,12 +67,14 @@ namespace VF.Updater {
     }
 
     public static class VRCFuryUpdater {
+        
+        private static readonly HttpClient httpClient = new HttpClient();
 
         private const string header_name = "Tools/VRCFury/Update";
         private const int header_priority = 1000;
         private const string menu_name = "Tools/VRCFury/Update VRCFury";
         private const int menu_priority = 1001;
-        
+
         [MenuItem(header_name, priority = header_priority)]
         private static void MarkerUpdate() {
         }
@@ -76,139 +84,80 @@ namespace VF.Updater {
             return false;
         }
 
+        [Serializable]
+        private class Repository {
+            public List<Package> packages;
+        }
+
+        [Serializable]
+        private class Package {
+            public string id;
+            public string displayName;
+            public string latestUpmTargz;
+            public string latestVersion;
+        }
+
         [MenuItem(menu_name, priority = menu_priority)]
         public static void Upgrade() {
-            ErrorDialogBoundary(() => {
-                var client = new WebClient();
-                var downloadUrl = "https://gitlab.com/VRCFury/VRCFury/-/archive/main/VRCFury-main.zip";
-                var uri = new Uri(downloadUrl);
-                client.DownloadFileCompleted += DownloadFileCallback;
+            Task.Run(() => ErrorDialogBoundary(async () => {
+                string json = await httpClient.GetStringAsync("https://updates.vrcfury.com/updates.json");
 
-                Debug.Log("Downloading VRCFury from " + downloadUrl + " ...");
-                client.DownloadFileAsync(uri, "VRCFury.zip");
-            });
-        }
-
-        private static void DownloadFileCallback(object sender, AsyncCompletedEventArgs e) {
-            ErrorDialogBoundary(() => {
-                if (e.Cancelled) {
-                    throw new Exception("File download was cancelled");
-                }
-                if (e.Error != null) {
-                    throw new Exception(e.Error.ToString());
+                var repo = JsonUtility.FromJson<Repository>(json);
+                if (repo.packages == null) {
+                    throw new Exception("Failed to fetch packages from update server");
                 }
 
-                Debug.Log("Downloaded");
+                var deps = await AsyncUtils.ListInstalledPacakges();
 
-                Debug.Log("Looking for VRCFury install dir ...");
-                var rootPathObj = ScriptableObject.CreateInstance<VRCFuryUpdaterMarker>();
-                var rootPathObjPath = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(rootPathObj));
-                var rootDir = Path.GetDirectoryName(rootPathObjPath);
-                if (string.IsNullOrEmpty(rootDir)) {
-                    throw new Exception("Couldn't find VRCFury install dir");
-                }
-                if (AssetDatabase.LoadMainAssetAtPath(rootDir + "/VRCFuryUpdaterMarker.cs") == null) {
-                    throw new Exception("Found wrong VRCFury install dir? " + rootDir);
-                }
+                var localUpdaterPackage = deps.FirstOrDefault(d => d.name == "com.vrcfury.updater");
+                var remoteUpdaterPackage = repo.packages.FirstOrDefault(p => p.id == "com.vrcfury.updater");
 
-                while (AssetDatabase.LoadMainAssetAtPath(rootDir + "/README.md") == null) {
-                    if (rootDir.Length < 3) throw new Exception("Failed to find readme");
-                    rootDir = Path.GetDirectoryName(rootDir);
-                }
-
-                if (AssetDatabase.LoadMainAssetAtPath(rootDir + "/Scripts/Updater/VF/Updater/VRCFuryUpdaterMarker.cs") == null) {
-                    throw new Exception("Found wrong VRCFury install dir? " + rootDir);
-                }
-
-                Debug.Log(rootDir);
-
-                Debug.Log("Extracting download ...");
-                var tmpDir = "VRCFury-Download";
-                if (Directory.Exists(tmpDir)) {
-                    Directory.Delete(tmpDir, true);
-                }
-                using (var stream = File.OpenRead("VRCFury.zip")) {
-                    using (var archive = new ZipArchive(stream)) {
-                        foreach (var entry in archive.Entries) {
-                            if (string.IsNullOrWhiteSpace(entry.Name)) continue;
-                            var outPath = tmpDir+"/"+entry.FullName;
-                            var outDir = Path.GetDirectoryName(outPath);
-                            if (!Directory.Exists(outDir)) Directory.CreateDirectory(outDir);
-                            using (var entryStream = entry.Open()) {
-                                using (var outFile = new FileStream(outPath, FileMode.Create, FileAccess.Write)) {
-                                    entryStream.CopyTo(outFile);
-                                }
-                            }
-                        }
-                    }
-                }
-                Debug.Log("Extracted");
-
-                var innerDir = tmpDir+"/VRCFury-main";
-                if (!Directory.Exists(innerDir)) {
-                    throw new Exception("Missing inner dir from extracted copy?");
-                }
-
-                var oldDir = tmpDir + ".old";
-                if (Directory.Exists(oldDir)) {
-                    Directory.Delete(oldDir, true);
+                if (localUpdaterPackage != null
+                    && remoteUpdaterPackage != null
+                    && localUpdaterPackage.version != remoteUpdaterPackage.latestVersion
+                    && remoteUpdaterPackage.latestUpmTargz != null
+                ) {
+                    // An update to the package manager is available
+                    var tgzPath = DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
+                    Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
+                    await AsyncUtils.AddPackage("file:" + tgzPath);
+                    
                 }
                 
-                Debug.Log("Saving the project ...");
-                EditorSceneManager.MarkAllScenesDirty();
-                EditorSceneManager.SaveOpenScenes();
-                AssetDatabase.SaveAssets();
-
-                Debug.Log("Overwriting VRCFury install ...");
-
-                AssetDatabase.StartAssetEditing();
-                try {
-                    EditorApplication.LockReloadAssemblies();
-                    try {
-                        Directory.Move(rootDir, oldDir);
-                        Directory.Move(innerDir, rootDir);
-                        if (Directory.Exists(oldDir + "/.git")) {
-                            Directory.Move(oldDir + "/.git", rootDir + "/.git");
-                        }
-
-                        Directory.Delete(tmpDir, true);
-                        Directory.Delete(oldDir, true);
-                        Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
-                    } finally {
-                        EditorApplication.UnlockReloadAssemblies();
-                    }
-                } finally {
-                    AssetDatabase.StopAssetEditing();
+                foreach (var dep in deps) {
+                    if (dep.name == "com.vrcfury.updater")
+                    if (dep.name.StartsWith("com.unity")) continue;
+                    await AsyncUtils.InMainThread(() => {
+                        EditorUtility.DisplayDialog("test", dep.name, "ok");
+                    });
                 }
-
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-                CompilationPipeline.RequestScriptCompilation();
-
-                if (!EditorApplication.isCompiling) {
-                    throw new Exception("Unity didn't start recompiling scripts on RequestScriptCompilation");
-                }
-
-                Debug.Log("Waiting for Unity to recompile scripts ...");
-                EditorUtility.DisplayDialog("VRCFury Updater",
-                    "Unity is now recompiling VRCFury.\n\nYou will receive another message when the upgrade is complete.",
-                    "Ok");
-            });
+            }));
         }
-        
-        private static bool ErrorDialogBoundary(Action go) {
-            try {
-                go();
-            } catch(Exception e) {
-                Debug.LogException(e);
-                EditorUtility.DisplayDialog(
-                    "VRCFury Error",
-                    "VRCFury encountered an error.\n\n" + GetGoodCause(e).Message,
-                    "Ok"
-                );
-                return false;
+
+        private static async Task<string> DownloadTgz(string url) {
+            var tempFile = FileUtil.GetUniqueTempPathInProject() + ".tgz";
+            using (var response = await httpClient.GetAsync(url)) {
+                using (var fs = new FileStream(tempFile, FileMode.CreateNew)) {
+                    await response.Content.CopyToAsync(fs);
+                }
             }
 
-            return true;
+            return tempFile;
+        }
+
+        private static async Task ErrorDialogBoundary(Func<Task> go) {
+            try {
+                await go();
+            } catch(Exception e) {
+                Debug.LogException(e);
+                await AsyncUtils.InMainThread(() => {
+                    EditorUtility.DisplayDialog(
+                        "VRCFury Error",
+                        "VRCFury encountered an error.\n\n" + GetGoodCause(e).Message,
+                        "Ok"
+                    );
+                });
+            }
         }
         
         private static Exception GetGoodCause(Exception e) {
