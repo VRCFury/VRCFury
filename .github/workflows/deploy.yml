@@ -34,7 +34,16 @@ jobs:
         id: tag
         run: echo "release_tag=$(date +%Y%m%d.%H%M%S)" >> $GITHUB_OUTPUT
       - name: Release Bundles
+        id: release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           files: 'repo/dist/*'
+      - name: Update deployment URLs
+        working-directory: repo
+        run: node .github/workflows/updateUrls.js
+        env:
+          RELEASE_ASSETS: ${{ steps.release.outputs.assets }}
+      - name: Test
+        working-directory: versions
+        run: git diff
