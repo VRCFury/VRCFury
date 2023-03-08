@@ -278,14 +278,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             off.TrackingController("emoteTracking").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
             inState.TrackingController("emoteAnimation").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, 0);
 
-            var blendOut = layer.NewState(onName + " Blendout").WithAnimation(inState.GetRaw().motion);
-            var transition = outState.TransitionsTo(blendOut);
-            if (outState == onState) {
-                transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
-            } else {
-                transition.When().WithTransitionExitTime(1);
+            if (inState != onState) {
+                var blendOut = layer.NewState(onName + " Blendout").WithAnimation(inState.GetRaw().motion);
+                var transition = outState.TransitionsTo(blendOut);
+                if (outState == onState) {
+                    transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                } else {
+                    transition.When().WithTransitionExitTime(1);
+                }
+                outState = blendOut;
             }
-            outState = blendOut;
         } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Gesture) {
             var maskName = getMaskName(clip);
             off.TrackingController(maskName + "Tracking");
