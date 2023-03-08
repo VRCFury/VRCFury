@@ -44,6 +44,12 @@ jobs:
         run: node .github/workflows/updateUrls.js
         env:
           RELEASE_ASSETS: ${{ steps.release.outputs.assets }}
-      - name: Test
+      - name: Push version manifest
         working-directory: versions
-        run: git diff
+        run: |
+          git diff
+          git config user.name VRCFury Releases
+          git config user.email noreply@vrcfury.com
+          git add .
+          git commit -m "Release from $GITHUB_SHA"
+          git push
