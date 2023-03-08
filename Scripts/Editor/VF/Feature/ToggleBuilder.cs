@@ -350,21 +350,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
 
-        var myTags = GetExclusiveTags();
         foreach (var controller in controllers) {
-            foreach (var exclusiveTag in myTags) {
+            foreach (var exclusiveTag in GetExclusiveTags()) {
                 var paramsToTurnOff = new List<VFABool>();
                 foreach (var other in allBuildersInRun
                             .OfType<ToggleBuilder>()
                             .Where(b => b != this)) {
-                    var otherTags = other.GetExclusiveTags();
-                    if (otherTags.Contains(exclusiveTag)) {
+                    if (other.GetExclusiveTags().Contains(exclusiveTag)) {
                         var otherParam = other.GetParam();
                         if (otherParam != null) {
                             paramsToTurnOff.Add(otherParam);
-                            if (outStates.ContainsKey(controller.GetType()) && other.inStates.ContainsKey(controller.GetType()))
-                                if (outStates[controller.GetType()].GetRawStateMachine() == other.inStates[controller.GetType()].GetRawStateMachine())
-                                    outStates[controller.GetType()].TransitionsTo(other.inStates[controller.GetType()]).When(otherParam.IsTrue()).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                            VFAState outState = outStates.ContainsKey(controller.GetType()) ? outStates[controller.GetType()] : null;
+                            VFAState inState = other.inStates.ContainsKey(controller.GetType()) ? other.inStates[controller.GetType()] : null;
+                            if (inState != null && outState != null && inState.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                outState.TransitionsTo(inState).When(otherParam.IsTrue()).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                            }
                         }
                     }
                 }
