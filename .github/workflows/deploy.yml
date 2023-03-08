@@ -25,7 +25,12 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-      - run: |
+      - name: Bundle
+        run: |
           cd repo
           (cd .github/workflows && npm install)
           node .github/workflows/bundle.js
+      - name: Release Bundles
+        uses: softprops/action-gh-release@v1
+        with:
+          files: 'dist/*'
