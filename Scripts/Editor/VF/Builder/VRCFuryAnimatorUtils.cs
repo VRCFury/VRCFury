@@ -287,6 +287,10 @@ public class VFAState {
         return node.state;
     }
 
+    public AnimatorStateMachine GetRawStateMachine() {
+        return stateMachine;
+    }
+
     public static void FakeAnyState(params (VFAState,VFACondition)[] states) {
         VFACondition above = null;
         foreach (var (state, when) in states) {

@@ -363,7 +363,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                         if (otherParam != null) {
                             paramsToTurnOff.Add(otherParam);
                             if (outStates.ContainsKey(controller.GetType()) && other.inStates.ContainsKey(controller.GetType()))
-                                outStates[controller.GetType()].TransitionsTo(other.inStates[controller.GetType()]).When(otherParam.IsTrue()).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                if (outStates[controller.GetType()].GetRawStateMachine() == other.inStates[controller.GetType()].GetRawStateMachine())
+                                    outStates[controller.GetType()].TransitionsTo(other.inStates[controller.GetType()]).When(otherParam.IsTrue()).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
                         }
                     }
                 }
