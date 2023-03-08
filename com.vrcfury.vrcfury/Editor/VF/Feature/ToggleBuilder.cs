@@ -355,11 +355,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         foreach (var controller in controllers) {
             foreach (var exclusiveTag in GetExclusiveTags()) {
                 var paramsToTurnOff = new List<VFABool>();
+                var allOthersOff = controller.Always();
                 foreach (var other in allBuildersInRun
                             .OfType<ToggleBuilder>()
                             .Where(b => b != this)) {
                     if (other.GetExclusiveTags().Contains(exclusiveTag)) {
                         var otherParam = other.GetParam();
+                        allOthersOff = allOthersOff.And(otherParam.IsFalse());
                         if (otherParam != null) {
                             paramsToTurnOff.Add(otherParam);
                             VFAState outState = outStates.ContainsKey(controller.GetType()) ? outStates[controller.GetType()] : null;
@@ -378,6 +380,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     triggerState.TransitionsFromAny().When(param.IsTrue());
                     foreach (var p in paramsToTurnOff) {
                         triggerState.Drives(p, false);
+                    }
+
+                    if (model.exclusiveOffState) {
+                        triggerState.TransitionsFromAny().When(allOthersOff);
+                        triggerState.Drives(param, true);
                     }
                 }
             }
