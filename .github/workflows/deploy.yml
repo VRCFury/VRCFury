@@ -32,8 +32,7 @@ jobs:
           node .github/workflows/bundle.js
       - name: Generate release tag
         id: tag
-        run: |
-          echo "::set-output name=release_tag::$(date +%Y%m%d.%H%M%S)"
+        run: echo "release_tag=$(date +%Y%m%d.%H%M%S)" >> $GITHUB_OUTPUT
       - name: Release Bundles
         uses: softprops/action-gh-release@v1
         with:
