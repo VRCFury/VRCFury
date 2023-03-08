@@ -80,6 +80,7 @@ namespace VF.Updater {
                 && remoteUpdaterPackage.latestUpmTargz != null
             ) {
                 // An update to the package manager is available
+                Debug.Log($"Upgrading updater from {localUpdaterPackage.version} to {remoteUpdaterPackage.latestVersion}");
                 if (automated) {
                     throw new Exception("Updater failed to update to new version");
                 }
@@ -93,12 +94,12 @@ namespace VF.Updater {
                 .Select(local => (local, repo.packages.FirstOrDefault(remote => local.name == remote.id)))
                 .Where(pair => pair.Item2 != null)
                 .Where(pair => pair.Item1.version != pair.Item2.latestVersion)
-                .Select(pair => pair.Item2.latestUpmTargz)
-                .Where(url => url != null);
+                .Where(pair => pair.Item2.latestUpmTargz != null);
 
             var packageFilesToAdd = new List<string>();
-            foreach (var url in urlsToAdd) {
-                packageFilesToAdd.Add("file:" + await DownloadTgz(url));
+            foreach (var (local,remote) in urlsToAdd) {
+                Debug.Log($"Upgrading {local.name} from {local.version} to {remote.latestVersion}");
+                packageFilesToAdd.Add("file:" + await DownloadTgz(remote.latestUpmTargz));
             }
 
             Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
