@@ -1,0 +1,90 @@
+import fs from 'node:fs/promises';
+import tar from 'tar';
+import md5File from 'md5-file';
+import semver from 'semver';
+import tmp from 'tmp-promise';
+
+const versionJson = await readJson('../versions/updates.json');
+await rmdir('dist');
+await fs.mkdir('dist');
+
+for (const dir of await fs.readdir('.')) {
+    const packageJsonPath = `${dir}/package.json`
+    if (!await checkFileExists(packageJsonPath)) {
+        continue;
+    }
+
+    console.log(`Packaging ${dir}`);
+
+    const json = await readJson(packageJsonPath);
+    const name = json.name;
+
+    let existing = versionJson.packages.find(e => e.id === name);
+    if (existing) {
+        json.version = existing.latestVersion;
+        await writeJson(packageJsonPath, json);
+        if ((await md5Dir(dir)) === existing.hash) {
+            console.log("Hash already matches, skipping ...");
+            continue;
+        }
+    }
+
+    let version = '1.0.0';
+    if (existing) {
+        version = existing.latestVersion;
+        version = semver.inc(version, 'patch');
+    }
+    json.version = version;
+    await writeJson(packageJsonPath, json);
+
+    const outputFilename = `dist/${name}-${version}.tgz`;
+    await tar.create({
+        gzip: true,
+        cwd: dir,
+        file: outputFilename,
+        portable: true,
+        noMtime: true
+    }, ['.']);
+
+    if (!existing) {
+        existing = { id: name };
+        versionJson.packages.push(existing);
+    }
+    existing.latestVersion = version;
+    existing.hash = await md5File(outputFilename);
+    existing.displayName = json.displayName;
+    console.log(`Adding to version repository with version ${version}`);
+}
+
+await writeJson('../versions/updates.json', versionJson);
+
+function checkFileExists(file) {
+    return fs.access(file, fs.constants.F_OK)
+        .then(() => true)
+        .catch(() => false)
+}
+
+async function md5Dir(dir) {
+    const tmpFile = (await tmp.file()).path;
+    await tar.create({
+        gzip: true,
+        cwd: dir,
+        file: tmpFile,
+        portable: true,
+        noMtime: true
+    }, ['.']);
+    const md5 = await md5File(tmpFile);
+    await fs.unlink(tmpFile);
+    return md5;
+}
+async function readJson(file) {
+    return JSON.parse(await fs.readFile(file, {encoding: 'utf-8'}));
+}
+async function writeJson(file, obj) {
+    await fs.writeFile(file, JSON.stringify(obj, null, 2));
+}
+async function rmdir(path) {
+    if (await checkFileExists(path)) {
+        await fs.rm(path, {recursive: true});
+    }
+}
