@@ -62,7 +62,7 @@ namespace VF.Updater {
         }
 
         private static async Task UpdateAllUnsafe(bool automated) {
-            string json = await httpClient.GetStringAsync("https://updates.vrcfury.com/updates.json");
+            string json = await DownloadString("https://updates.vrcfury.com/updates.json");
 
             var repo = JsonUtility.FromJson<Repository>(json);
             if (repo.packages == null) {
@@ -86,7 +86,7 @@ namespace VF.Updater {
                 }
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
                 await AsyncUtils.AddAndRemovePackages(add: new[]{ "file:" + tgzPath });
-                Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdateAllMarker());
+                Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdateAllMarker));
                 return;
             }
 
@@ -102,23 +102,45 @@ namespace VF.Updater {
                 packageFilesToAdd.Add("file:" + await DownloadTgz(remote.latestUpmTargz));
             }
 
-            Directory.CreateDirectory(VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
+            if (packageFilesToAdd.Count == 0) {
+                await AsyncUtils.DisplayDialog("No new updates are available.");
+                return;
+            }
+
+            Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdatedMarkerPath));
             await AsyncUtils.AddAndRemovePackages(add: packageFilesToAdd);
             
-            EditorUtility.DisplayDialog("VRCFury Updater",
-                "Unity is now recompiling VRCFury.\n\nYou should receive another message when the upgrade is complete.",
-                "Ok");
+            await AsyncUtils.DisplayDialog(
+                "Unity is now recompiling VRCFury.\n\n" +
+                "You should receive another message when the upgrade is complete."
+            );
+        }
+        
+        private static async Task<string> DownloadString(string url) {
+            try {
+                using (var response = await httpClient.GetAsync(url)) {
+                    response.EnsureSuccessStatusCode();
+                    return await response.Content.ReadAsStringAsync();
+                }
+            } catch (Exception e) {
+                throw new Exception($"Failed to download {url}\n\n{e.Message}", e);
+            }
         }
 
         private static async Task<string> DownloadTgz(string url) {
-            var tempFile = FileUtil.GetUniqueTempPathInProject() + ".tgz";
-            using (var response = await httpClient.GetAsync(url)) {
-                using (var fs = new FileStream(tempFile, FileMode.CreateNew)) {
-                    await response.Content.CopyToAsync(fs);
+            try {
+                var tempFile = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject) + ".tgz";
+                using (var response = await httpClient.GetAsync(url)) {
+                    response.EnsureSuccessStatusCode();
+                    using (var fs = new FileStream(tempFile, FileMode.CreateNew)) {
+                        await response.Content.CopyToAsync(fs);
+                    }
                 }
-            }
 
-            return tempFile;
+                return tempFile;
+            } catch (Exception e) {
+                throw new Exception($"Failed to download {url}\n\n{e.Message}", e);
+            }
         }
 
         private static async Task ErrorDialogBoundary(Func<Task> go) {
@@ -126,13 +148,7 @@ namespace VF.Updater {
                 await go();
             } catch(Exception e) {
                 Debug.LogException(e);
-                await AsyncUtils.InMainThread(() => {
-                    EditorUtility.DisplayDialog(
-                        "VRCFury Error",
-                        "VRCFury encountered an error.\n\n" + GetGoodCause(e).Message,
-                        "Ok"
-                    );
-                });
+                await AsyncUtils.DisplayDialog("VRCFury encountered an error.\n\n" + GetGoodCause(e).Message);
             }
         }
         
