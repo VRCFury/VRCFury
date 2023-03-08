@@ -14,14 +14,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          path: repo
       - name: Checkout version manifest
         uses: actions/checkout@v3
         with:
-          path: ../versions
+          path: versions
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
       - uses: actions/setup-node@v3
         with:
           node-version: 18
       - run: |
+          cd repo
           (cd .github/workflow && npm install)
           node .github/workflow/bundle.js
