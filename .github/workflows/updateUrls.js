@@ -8,7 +8,7 @@ for (const asset of assetJson) {
     if (!m) throw new Error(`Asset name didn't match pattern: ${asset.name}`);
     const name = m[1];
     const version = [2];
-    const entry = versionJson.find(v => v.id === name && v.latestVersion === version);
+    const entry = versionJson.packages.find(v => v.id === name && v.latestVersion === version);
     if (!entry) throw new Error(`Asset didn't match an entry in the version manifest: ${asset.name}`);
     entry.latestUpmTargz = asset.browser_download_url;
 }
