@@ -1,0 +1,27 @@
+name: 'Deploy'
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Checkout version manifest
+        uses: actions/checkout@v3
+        with:
+          path: ../versions
+          ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - run: |
+          (cd .github/workflow && npm install)
+          node .github/workflow/bundle.js
