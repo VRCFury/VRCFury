@@ -7,35 +7,50 @@ using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 
 namespace VF.Updater {
-    public class AsyncUtils {
+    public static class AsyncUtils {
+        public static async Task DisplayDialog(string msg) {
+            await InMainThread(() => {
+                EditorUtility.DisplayDialog(
+                    "VRCFury Updater",
+                    msg,
+                    "Ok"
+                );
+            });
+        }
+        
         public static async Task<PackageCollection> ListInstalledPacakges() {
-            return await PackageRequest(Client.List(true, false));
+            return await PackageRequest(() => Client.List(true, false));
         }
         
         public static async Task AddAndRemovePackages(IList<string> add = null, IList<string> remove = null) {
             try {
-                EditorApplication.LockReloadAssemblies();
+                await InMainThread(EditorApplication.LockReloadAssemblies);
                 if (remove != null) {
                     foreach (var p in remove) {
-                        await PackageRequest(Client.Remove(p));
+                        await PackageRequest(() => Client.Remove(p));
                     }
                 }
                 if (add != null) {
                     foreach (var p in add) {
-                        await PackageRequest(Client.Add(p));
+                        await PackageRequest(() => Client.Add(p));
                     }
                 }
             } finally {
-                EditorApplication.UnlockReloadAssemblies();
+                await InMainThread(EditorApplication.UnlockReloadAssemblies);
             }
             
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             CompilationPipeline.RequestScriptCompilation();
         }
         
-        private static async Task<T> PackageRequest<T>(Request<T> request) {
-            await PackageRequest((Request)request);
+        private static async Task<T> PackageRequest<T>(Func<Request<T>> requestProvider) {
+            var request = await InMainThread(requestProvider);
+            await PackageRequest(request);
             return request.Result;
+        }
+        private static async Task PackageRequest(Func<Request> requestProvider) {
+            var request = await InMainThread(requestProvider);
+            await PackageRequest(request);
         }
         private static Task PackageRequest(Request request) {
             var promise = new TaskCompletionSource<object>();
@@ -54,11 +69,17 @@ namespace VF.Updater {
             return promise.Task;
         }
 
-        public static Task InMainThread(Action fun) {
-            var promise = new TaskCompletionSource<object>();
+        public static async Task InMainThread(Action fun) {
+            await InMainThread<object>(() => { fun(); return null; });
+        }
+        public static Task<T> InMainThread<T>(Func<T> fun) {
+            var promise = new TaskCompletionSource<T>();
             EditorApplication.delayCall += () => {
-                fun();
-                promise.SetResult(null);
+                try {
+                    promise.SetResult(fun());
+                } catch (Exception e) {
+                    promise.SetException(e);
+                }
             };
             return promise.Task;
         }
