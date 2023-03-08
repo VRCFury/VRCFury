@@ -27,6 +27,8 @@ namespace VF.Feature.Base {
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
         public MutableManager mutableManager;
+        public Dictionary<(string, VRCAvatarDescriptor.AnimLayerType, string), VFALayer> exclusiveAnimationLayers;
+        public Dictionary<string, VFALayer> exclusiveParameterLayers;
 
         public virtual string GetEditorTitle() {
             return null;

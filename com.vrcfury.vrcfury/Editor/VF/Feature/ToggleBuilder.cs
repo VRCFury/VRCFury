@@ -17,10 +17,11 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
-    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
     private AnimationClip restingClip;
     private string layerName;
+    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState>();
+    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState>();
 
     public ISet<string> GetExclusives(string objects) {
 
@@ -79,6 +80,36 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return "";
     }
 
+    private VFALayer getLayer(string layerName, ControllerManager controller, string maskName = "") {
+        if (model.enableExclusiveTag) {
+            var exclusiveTags = GetExclusiveTags();
+            if (exclusiveTags.Count() == 0) return controller.NewLayer(layerName);
+            var firstExclusiveTag = exclusiveTags.First();
+            if (!exclusiveAnimationLayers.ContainsKey((firstExclusiveTag, controller.GetType(), maskName))) {
+                 exclusiveAnimationLayers[(firstExclusiveTag, controller.GetType(), maskName)] = controller.NewLayer((firstExclusiveTag + " Animations " + maskName).Trim());
+            }
+            return exclusiveAnimationLayers[(firstExclusiveTag, controller.GetType(), maskName)];
+        }
+        return controller.NewLayer(layerName);
+    }
+
+    private VFALayer getLayerForParameters(string exclusiveTag) {
+        if (!exclusiveParameterLayers.ContainsKey(exclusiveTag)) {
+            exclusiveParameterLayers[exclusiveTag] = GetFx().NewLayer(exclusiveTag + " Parameters");
+            exclusiveParameterLayers[exclusiveTag].NewState("Default");
+        }
+        return exclusiveParameterLayers[exclusiveTag];
+    }
+
+    private VFAState getStartState(string stateName, VFALayer layer) {
+        if (layer.GetRawStateMachine().defaultState != null) {
+            foreach (var s in layer.GetRawStateMachine().states) {
+                if (s.state == layer.GetRawStateMachine().defaultState) return new VFAState(s, layer.GetRawStateMachine());
+            }
+        }
+        return layer.NewState(stateName);
+    }
+
     [FeatureBuilderAction]
     public void Apply() {
         // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
@@ -109,10 +140,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
         var fx = GetFx();
-        var layer = fx.NewLayer(layerName);
-        var off = layer.NewState("Off");
+        var layer = getLayer(layerName, fx);
+        var off = getStartState("Off", layer);
 
         VFACondition onCase;
+
         var paramName = string.IsNullOrWhiteSpace(model.paramOverride) ? model.name : model.paramOverride;
         if (model.useInt) {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
@@ -131,10 +163,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), layerName + " On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), layerName + " On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
         } else {
-            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase, layerName + " On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
         if (model.addMenuItem && !string.IsNullOrWhiteSpace(model.name)) {
@@ -171,8 +203,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
             var actionLayer = GetAction();
-            var layer2 = actionLayer.NewLayer(layerName);
-            var off2 = layer2.NewState("Off");
+            var layer2 = getLayer(layerName, actionLayer);
+            var off2 = getStartState("Off", layer2);
             var boolParam2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             var onCase2 = boolParam2.IsTrue();
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
@@ -181,8 +213,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var maskName = getMaskName(clip);
             if (maskName.ToLower().Contains("hand")) {
                 var gestureLayer = GetGesture();
-                var layer2 = gestureLayer.NewLayer(layerName);
-                var off2 = layer2.NewState("Off");
+                var layer2 = getLayer(layerName, gestureLayer, maskName);
+                var off2 = getStartState("Off", layer2);
                 var boolParam2 = gestureLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
                 var onCase2 = boolParam2.IsTrue();
                 Apply(gestureLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
@@ -230,7 +262,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
 
-        exclusiveTagTriggeringStates.Add(inState);
         off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(model.transitionTime);
 
         if (model.simpleOutTransition) outAction = inAction;
@@ -247,14 +278,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             off.TrackingController("emoteTracking").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
             inState.TrackingController("emoteAnimation").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, 0);
 
-            var blendOut = layer.NewState("Blendout").WithAnimation(inState.GetRaw().motion);
-            var transition = outState.TransitionsTo(blendOut);
-            if (outState == onState) {
-                transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
-            } else {
-                transition.When().WithTransitionExitTime(1);
+            if (inState != onState) {
+                var blendOut = layer.NewState(onName + " Blendout").WithAnimation(inState.GetRaw().motion);
+                var transition = outState.TransitionsTo(blendOut);
+                if (outState == onState) {
+                    transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                } else {
+                    transition.When().WithTransitionExitTime(1);
+                }
+                outState = blendOut;
             }
-            outState = blendOut;
         } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Gesture) {
             var maskName = getMaskName(clip);
             off.TrackingController(maskName + "Tracking");
@@ -287,6 +320,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             exitTransition.When().WithTransitionExitTime(1);
         }
 
+        inStates[controller.GetType()] = inState;
+        outStates[controller.GetType()] = outState;
+
 
         if (physBoneResetter != null) {
             off.Drives(physBoneResetter, true);
@@ -313,35 +349,38 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
      [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
      public void ApplyExclusiveTags() {
-        if (exclusiveTagTriggeringStates.Count == 0) return;
         
-        var fx = GetFx();
-        var allOthersOffCondition = fx.Always();
+        ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
 
-        var myTags = GetExclusiveTags();
-        foreach (var other in allBuildersInRun
-                     .OfType<ToggleBuilder>()
-                     .Where(b => b != this)) {
-            var otherTags = other.GetExclusiveTags();
-            var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
-            if (conflictsWithOther) {
-                var otherParam = other.GetParam();
-                if (otherParam != null) {
-                    foreach (var state in exclusiveTagTriggeringStates) {
-                        state.Drives(otherParam, false);
+        foreach (var controller in controllers) {
+            foreach (var exclusiveTag in GetExclusiveTags()) {
+                var paramsToTurnOff = new List<VFABool>();
+                foreach (var other in allBuildersInRun
+                            .OfType<ToggleBuilder>()
+                            .Where(b => b != this)) {
+                    if (other.GetExclusiveTags().Contains(exclusiveTag)) {
+                        var otherParam = other.GetParam();
+                        if (otherParam != null) {
+                            paramsToTurnOff.Add(otherParam);
+                            VFAState outState = outStates.ContainsKey(controller.GetType()) ? outStates[controller.GetType()] : null;
+                            VFAState inState = other.inStates.ContainsKey(controller.GetType()) ? other.inStates[controller.GetType()] : null;
+                            if (inState != null && outState != null && inState.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                outState.TransitionsTo(inState).When(otherParam.IsTrue()).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                            }
+                        }
                     }
-                    allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
+                }
+
+                if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
+                    var layer = getLayerForParameters(exclusiveTag);
+                    var triggerState = layer.NewState(layerName);
+
+                    triggerState.TransitionsFromAny().When(param.IsTrue());
+                    foreach (var p in paramsToTurnOff) {
+                        triggerState.Drives(p, false);
+                    }
                 }
             }
-        }
-
-        if (model.exclusiveOffState && param != null) {
-            var layer = fx.NewLayer(model.name + " - Off Trigger");
-            var off = layer.NewState("Idle");
-            var on = layer.NewState("Trigger");
-            off.TransitionsTo(on).When(allOthersOffCondition);
-            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(param.IsFalse()));
-            on.Drives(param, true);
         }
     }
 
