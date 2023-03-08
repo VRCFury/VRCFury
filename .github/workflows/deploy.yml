@@ -26,11 +26,16 @@ jobs:
         with:
           node-version: 18
       - name: Bundle
+        working-directory: repo
         run: |
-          cd repo
           (cd .github/workflows && npm install)
           node .github/workflows/bundle.js
+      - name: Generate release tag
+        id: tag
+        run: |
+          echo "::set-output name=release_tag::$(date +%Y%m%d.%H%M%S)"
       - name: Release Bundles
         uses: softprops/action-gh-release@v1
         with:
-          files: 'dist/*'
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          files: 'repo/dist/*'

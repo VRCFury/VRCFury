@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import tar from 'tar';
-import md5File from 'md5-file';
+import hasha from 'hasha';
 import semver from 'semver';
 import tmp from 'tmp-promise';
 
@@ -51,7 +51,7 @@ for (const dir of await fs.readdir('.')) {
         versionJson.packages.push(existing);
     }
     existing.latestVersion = version;
-    existing.hash = await md5File(outputFilename);
+    existing.hash = await hasha.fromFile(outputFilename, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
     console.log(`Adding to version repository with version ${version}`);
 }
@@ -73,7 +73,7 @@ async function md5Dir(dir) {
         portable: true,
         noMtime: true
     }, ['.']);
-    const md5 = await md5File(tmpFile);
+    const md5 = await hasha.fromFile(tmpFile, {algorithm: 'sha256'});
     await fs.unlink(tmpFile);
     return md5;
 }
