@@ -26,5 +26,5 @@ jobs:
           node-version: 18
       - run: |
           cd repo
-          (cd .github/workflow && npm install)
-          node .github/workflow/bundle.js
+          (cd .github/workflows && npm install)
+          node .github/workflows/bundle.js
