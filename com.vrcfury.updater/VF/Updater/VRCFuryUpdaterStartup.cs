@@ -25,10 +25,6 @@ namespace VF.Updater {
         public static string GetUpdateAllMarker() { 
             return GetAppRootDir() + "/Temp/vrcfUpdateAll";
         }
-        
-        public static string GetInstallLegacyMarker() { 
-            return GetAppRootDir() + "/Library/vrcfInstallLegacy";
-        }
 
         private static async void Check() {
             var packages = await AsyncUtils.ListInstalledPacakges();
@@ -39,6 +35,8 @@ namespace VF.Updater {
                 await VRCFuryUpdater.UpdateAll();
                 return;
             }
+            
+            AssetDatabase.DeleteAsset("Assets/VRCFury-installer");
 
             if (Directory.Exists(GetUpdateAllMarker())) {
                 Debug.Log("VRCFury detected UpdateAll marker");
