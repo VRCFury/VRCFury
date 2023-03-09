@@ -88,7 +88,7 @@ namespace VF.Updater {
                     throw new Exception("Updater failed to update to new version");
                 }
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                await AsyncUtils.AddAndRemovePackages(add: new[]{ tgzPath });
+                await AsyncUtils.AddAndRemovePackages(deps, add: new[]{ tgzPath });
                 Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdateAllMarker));
                 return;
             }
@@ -111,7 +111,7 @@ namespace VF.Updater {
             }
 
             Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdatedMarkerPath));
-            await AsyncUtils.AddAndRemovePackages(add: packageFilesToAdd);
+            await AsyncUtils.AddAndRemovePackages(deps, add: packageFilesToAdd);
             
             await AsyncUtils.DisplayDialog(
                 "Unity is now recompiling VRCFury.\n\n" +
