@@ -7,8 +7,6 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
-using UnityEngine;
-using UnityEngine.WSA;
 
 namespace VF.Updater {
     public static class AsyncUtils {
