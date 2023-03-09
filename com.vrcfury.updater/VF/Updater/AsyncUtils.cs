@@ -39,11 +39,13 @@ namespace VF.Updater {
             } finally {
                 await InMainThread(EditorApplication.UnlockReloadAssemblies);
             }
-            
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            CompilationPipeline.RequestScriptCompilation();
+
+            await InMainThread(() => {
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                CompilationPipeline.RequestScriptCompilation();
+            });
         }
-        
+
         private static async Task<T> PackageRequest<T>(Func<Request<T>> requestProvider) {
             var request = await InMainThread(requestProvider);
             await PackageRequest(request);
