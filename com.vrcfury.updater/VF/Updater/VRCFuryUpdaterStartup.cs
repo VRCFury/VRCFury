@@ -27,7 +27,7 @@ namespace VF.Updater {
         }
 
         private static async void Check() {
-            await AsyncUtils.ErrorDialogBoundary(CheckUnsafe);
+            await AsyncUtils.ErrorDialogBoundary(() => AsyncUtils.PreventReload(CheckUnsafe));
         }
 
         private static async Task CheckUnsafe() {

@@ -27,9 +27,7 @@ namespace VF.Updater {
         }
         
         public static async Task AddAndRemovePackages(IList<(string, string)> add = null, IList<string> remove = null) {
-            try {
-                await InMainThread(EditorApplication.LockReloadAssemblies);
-
+            await PreventReload(async () => {
                 if (remove != null) {
                     foreach (var name in remove) {
                         await PackageRequest(() => Client.Remove(name));
@@ -55,14 +53,8 @@ namespace VF.Updater {
                 }
 
                 await EnsureVrcfuryEmbedded();
-            } finally {
-                await InMainThread(EditorApplication.UnlockReloadAssemblies);
-            }
-
-            await InMainThread(() => {
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-                CompilationPipeline.RequestScriptCompilation();
             });
+            await TriggerReload();
         }
         
         
@@ -137,6 +129,40 @@ namespace VF.Updater {
             }
 
             return e;
+        }
+
+        private static int preventReloadCount = 0;
+        private static bool triggerReloadOnUnlock = false;
+        public async static Task PreventReload(Func<Task> act) {
+            try {
+                await InMainThread(() => {
+                    preventReloadCount++;
+                    if (preventReloadCount == 1) EditorApplication.LockReloadAssemblies();
+                });
+                await act();
+            } finally {
+                await InMainThread(() => {
+                    preventReloadCount--;
+                    if (preventReloadCount == 0) {
+                        EditorApplication.UnlockReloadAssemblies();
+                        if (triggerReloadOnUnlock) {
+                            triggerReloadOnUnlock = false;
+                            TriggerReloadNow();
+                        }
+                    }
+                });
+            }
+        }
+        public static async Task TriggerReload() {
+            if (preventReloadCount == 0) {
+                await InMainThread(TriggerReloadNow);
+            } else {
+                triggerReloadOnUnlock = true;
+            }
+        }
+        private static void TriggerReloadNow() {
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                CompilationPipeline.RequestScriptCompilation();
         }
     }
 }

@@ -33,7 +33,7 @@ namespace VF.Updater {
                 return;
             }
             updating = true;
-            await AsyncUtils.ErrorDialogBoundary(() => UpdateAllUnsafe(failIfUpdaterNeedsUpdate));
+            await AsyncUtils.ErrorDialogBoundary(() => AsyncUtils.PreventReload(() => UpdateAllUnsafe(failIfUpdaterNeedsUpdate)));
             updating = false;
         }
 
