@@ -25,38 +25,33 @@ namespace VF.Updater {
         }
         
         public static async Task AddAndRemovePackages(IList<(string,string)> add = null, IList<string> remove = null) {
-            var existing = await ListInstalledPacakges();
-
-            var actualAdd = new Dictionary<string, string>();
-            var actualRemove = new HashSet<string>();
-            if (remove != null) actualRemove.UnionWith(remove);
-            if (add != null) {
-                foreach (var (name, path) in add) {
-                    var exists = existing.FirstOrDefault(other => other.name == name);
-                    if (exists != null && exists.source == PackageSource.Embedded) {
-                        actualRemove.Add(name);
-                    }
-                    actualAdd[name] = path;
-                }
-            }
-
             try {
                 await InMainThread(EditorApplication.LockReloadAssemblies);
-                foreach (var name in actualRemove) {
-                    await PackageRequest(() => Client.Remove(name));
-                    var savedTgzPath = $"Packages/{name}.tgz";
-                    if (File.Exists(savedTgzPath)) {
-                        File.Delete(savedTgzPath);
+
+                if (remove != null) {
+                    foreach (var name in remove) {
+                        await PackageRequest(() => Client.Remove(name));
+                        var savedTgzPath = $"Packages/{name}.tgz";
+                        if (File.Exists(savedTgzPath)) {
+                            File.Delete(savedTgzPath);
+                        }
                     }
                 }
-                foreach (var (name,path) in actualAdd.Select(x => (x.Key,x.Value))) {
-                    var savedTgzPath = $"Packages/{name}.tgz";
-                    if (File.Exists(savedTgzPath)) {
-                        File.Delete(savedTgzPath);
+
+                if (add != null) {
+                    foreach (var (name,path) in add) {
+                        var savedTgzPath = $"Packages/{name}.tgz";
+                        if (File.Exists(savedTgzPath)) {
+                            File.Delete(savedTgzPath);
+                        }
+                        if (Directory.Exists("Packages/{name}")) {
+                            Directory.Delete("Packages/{name}", true);
+                        }
+                        File.Copy(path, savedTgzPath);
+                        await PackageRequest(() => Client.Add($"file:{name}.tgz"));
                     }
-                    File.Copy(path, savedTgzPath);
-                    await PackageRequest(() => Client.Add($"file:{name}.tgz"));
                 }
+
                 await EnsureVrcfuryEmbedded();
             } finally {
                 await InMainThread(EditorApplication.UnlockReloadAssemblies);
