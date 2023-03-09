@@ -16,7 +16,7 @@ function make_meta_directory() {
       return
     fi
 
-    if [[ "$asset_file" == *.asmdef || "$asset_file" == *.json ]]; then
+    if [[ "$asset_file" == *.asmdef || "$asset_file" == *.json || "$asset_file" == *MenuItem* ]]; then
       return;
     fi
 
