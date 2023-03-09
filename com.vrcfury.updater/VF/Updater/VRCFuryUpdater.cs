@@ -90,8 +90,8 @@ namespace VF.Updater {
 
                 var remoteName = remoteUpdaterPackage.id;
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                await AsyncUtils.AddAndRemovePackages(add: new[]{ (remoteName, tgzPath) });
                 Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdateAllMarker));
+                await AsyncUtils.AddAndRemovePackages(add: new[]{ (remoteName, tgzPath) });
                 return;
             }
 
@@ -121,11 +121,6 @@ namespace VF.Updater {
 
             Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdatedMarkerPath));
             await AsyncUtils.AddAndRemovePackages(add: packageFilesToAdd);
-            
-            await AsyncUtils.DisplayDialog(
-                "Unity is now recompiling VRCFury.\n\n" +
-                "You should receive another message when the upgrade is complete."
-            );
         }
 
         private static async Task<string> DownloadString(string url) {
