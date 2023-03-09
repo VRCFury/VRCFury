@@ -20,7 +20,7 @@ for (const dir of await fs.readdir('.')) {
     const name = json.name;
 
     let existing = versionJson.packages.find(e => e.id === name);
-    if (existing && false) {
+    if (existing) {
         json.version = existing.latestVersion;
         await writeJson(packageJsonPath, json);
         if ((await md5Dir(dir)) === existing.hash) {
