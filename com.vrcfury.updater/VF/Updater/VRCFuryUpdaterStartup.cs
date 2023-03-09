@@ -26,6 +26,13 @@ namespace VF.Updater {
         }
 
         private static void FirstFrame() {
+            
+            // GUID of old Assets/VRCFury folder
+            var legacyDir = AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae");
+            if (!string.IsNullOrWhiteSpace(legacyDir)) {
+                AssetDatabase.DeleteAsset(legacyDir);
+            }
+            AssetDatabase.DeleteAsset("Assets/VRCFury");
 
             if (Directory.Exists(GetUpdateAllMarker())) {
                 Debug.Log("VRCFury detected UpdateAll marker");
