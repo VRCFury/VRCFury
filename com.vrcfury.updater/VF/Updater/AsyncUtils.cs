@@ -45,20 +45,19 @@ namespace VF.Updater {
             try {
                 await InMainThread(EditorApplication.LockReloadAssemblies);
                 foreach (var name in actualRemove) {
-                    var exists = existing.FirstOrDefault(other => other.name == name);
-                    var deleteFile =
-                        exists != null
-                        && exists.source == PackageSource.LocalTarball
-                        && exists.resolvedPath.Contains(VRCFuryUpdaterStartup.GetAppRootDir());
-                    var deletePath = exists.resolvedPath;
                     await PackageRequest(() => Client.Remove(name));
-                    // TODO: Delete the old package path if it's a tgz and it's inside the project directory
-                    // DO IT HERE
-                    Debug.Log("Delete " + deleteFile + " " + deletePath);
+                    var savedTgzPath = $"Packages/{name}.tgz";
+                    if (File.Exists(savedTgzPath)) {
+                        File.Delete(savedTgzPath);
+                    }
                 }
                 foreach (var (name,path) in actualAdd.Select(x => (x.Key,x.Value))) {
-                    // TODO: We need to move the tgz into the project folder somewhere safe
-                    await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(path)));
+                    var savedTgzPath = $"Packages/{name}.tgz";
+                    if (File.Exists(savedTgzPath)) {
+                        File.Delete(savedTgzPath);
+                    }
+                    File.Copy(path, savedTgzPath);
+                    await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(savedTgzPath)));
                 }
                 await EnsureVrcfuryEmbedded();
             } finally {
