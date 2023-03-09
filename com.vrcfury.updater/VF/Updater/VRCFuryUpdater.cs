@@ -38,12 +38,14 @@ namespace VF.Updater {
         }
 
         private static async Task UpdateAllUnsafe(bool failIfUpdaterNeedsUpdate) {
+            Debug.Log("Downloading update manifest...");
             string json = await DownloadString("https://updates.vrcfury.com/updates.json?_=" + DateTime.Now);
 
             var repo = JsonUtility.FromJson<Repository>(json);
             if (repo.packages == null) {
                 throw new Exception("Failed to fetch packages from update server");
             }
+            Debug.Log($"Update manifest includes {repo.packages.Count} packages");
 
             var deps = await AsyncUtils.ListInstalledPacakges();
 
