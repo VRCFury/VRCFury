@@ -41,6 +41,7 @@ namespace VF.Updater {
                     }
                     foreach (var p in add) {
                         await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(p)));
+                        await PackageRequest(() => Client.Embed(p));
                     }
                 }
             } finally {
