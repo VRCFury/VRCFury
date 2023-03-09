@@ -44,8 +44,8 @@ namespace VF.Updater {
                         if (File.Exists(savedTgzPath)) {
                             File.Delete(savedTgzPath);
                         }
-                        if (Directory.Exists("Packages/{name}")) {
-                            Directory.Delete("Packages/{name}", true);
+                        if (Directory.Exists($"Packages/{name}")) {
+                            Directory.Delete($"Packages/{name}", true);
                         }
                         File.Copy(path, savedTgzPath);
                         await PackageRequest(() => Client.Add($"file:{name}.tgz"));
