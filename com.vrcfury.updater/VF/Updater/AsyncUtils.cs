@@ -24,7 +24,7 @@ namespace VF.Updater {
             return await PackageRequest(() => Client.List(true, false));
         }
         
-        public static async Task AddAndRemovePackages(PackageCollection existingLocal, IList<string> add = null, IList<string> remove = null) {
+        public static async Task AddAndRemovePackages(PackageCollection existingLocal, IList<(string,string)> add = null, IList<string> remove = null) {
             try {
                 await InMainThread(EditorApplication.LockReloadAssemblies);
                 if (remove != null) {
@@ -33,15 +33,15 @@ namespace VF.Updater {
                     }
                 }
                 if (add != null) {
-                    foreach (var p in add) {
-                        var exists = existingLocal.FirstOrDefault(other => other.name == p);
+                    foreach (var (name,path) in add) {
+                        var exists = existingLocal.FirstOrDefault(other => other.name == name);
                         if (exists != null && exists.source == PackageSource.Embedded) {
-                            await PackageRequest(() => Client.Remove(p));
+                            await PackageRequest(() => Client.Remove(name));
                         }
                     }
-                    foreach (var p in add) {
-                        await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(p)));
-                        await PackageRequest(() => Client.Embed(p));
+                    foreach (var (name,path) in add) {
+                        await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(path)));
+                        await PackageRequest(() => Client.Embed(name));
                     }
                 }
             } finally {
