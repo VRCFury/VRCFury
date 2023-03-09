@@ -51,8 +51,7 @@ jobs:
           git diff
           git config user.name VRCFury Releases
           git config user.email noreply@vrcfury.com
-          git add .
-          git commit -m "Release from $GITHUB_SHA"
+          git diff --quiet || git commit -am "Release from $GITHUB_SHA"
           git push
       - name: Build installer
         uses: mikefarah/yq@v4.31.2
