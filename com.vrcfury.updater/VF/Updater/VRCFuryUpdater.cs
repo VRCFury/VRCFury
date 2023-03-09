@@ -85,7 +85,7 @@ namespace VF.Updater {
                     throw new Exception("Updater failed to update to new version");
                 }
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                await AsyncUtils.AddAndRemovePackages(add: new[]{ "file:" + tgzPath });
+                await AsyncUtils.AddAndRemovePackages(add: new[]{ tgzPath });
                 Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdateAllMarker));
                 return;
             }
@@ -99,7 +99,7 @@ namespace VF.Updater {
             var packageFilesToAdd = new List<string>();
             foreach (var (local,remote) in urlsToAdd) {
                 Debug.Log($"Upgrading {local.name} from {local.version} to {remote.latestVersion}");
-                packageFilesToAdd.Add("file:" + await DownloadTgz(remote.latestUpmTargz));
+                packageFilesToAdd.Add(await DownloadTgz(remote.latestUpmTargz));
             }
 
             if (packageFilesToAdd.Count == 0) {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Compilation;
@@ -32,7 +33,7 @@ namespace VF.Updater {
                 }
                 if (add != null) {
                     foreach (var p in add) {
-                        await PackageRequest(() => Client.Add(p));
+                        await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(p)));
                     }
                 }
             } finally {
