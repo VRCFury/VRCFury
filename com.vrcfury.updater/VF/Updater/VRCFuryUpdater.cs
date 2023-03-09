@@ -64,7 +64,7 @@ namespace VF.Updater {
 
                 var remoteName = remoteUpdaterPackage.id;
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdateAllMarker));
+                Directory.CreateDirectory(await VRCFuryUpdaterStartup.GetUpdateAllMarker());
                 await AsyncUtils.AddAndRemovePackages(add: new[]{ (remoteName, tgzPath) });
                 return;
             }
@@ -94,7 +94,7 @@ namespace VF.Updater {
                 return;
             }
 
-            Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdatedMarkerPath));
+            Directory.CreateDirectory(await VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
             await AsyncUtils.AddAndRemovePackages(add: packageFilesToAdd);
         }
 

@@ -14,16 +14,16 @@ namespace VF.Updater {
             Task.Run(Check);
         }
 
-        public static string GetAppRootDir() {
-            return Path.GetDirectoryName(Application.dataPath);
+        private static async Task<string> GetAppRootDir() {
+            return Path.GetDirectoryName(await AsyncUtils.InMainThread(() => Application.dataPath));
         }
 
-        public static string GetUpdatedMarkerPath() { 
-            return GetAppRootDir() + "/Temp/vrcfUpdated";
+        public static async Task<string> GetUpdatedMarkerPath() { 
+            return await GetAppRootDir() + "/Temp/vrcfUpdated";
         }
         
-        public static string GetUpdateAllMarker() { 
-            return GetAppRootDir() + "/Temp/vrcfUpdateAll";
+        public static async Task<string> GetUpdateAllMarker() { 
+            return await GetAppRootDir() + "/Temp/vrcfUpdateAll";
         }
 
         private static async void Check() {
@@ -52,16 +52,18 @@ namespace VF.Updater {
                 return;
             }
 
-            if (Directory.Exists(GetUpdateAllMarker())) {
+            var updateAllMarker = await GetUpdateAllMarker();
+            if (Directory.Exists(updateAllMarker)) {
                 Debug.Log("VRCFury Updater: Updater was just reinstalled, forcing update");
-                Directory.Delete(GetUpdateAllMarker());
+                Directory.Delete(updateAllMarker);
                 await VRCFuryUpdater.UpdateAll(true);
                 return;
             }
 
-            if (Directory.Exists(GetUpdatedMarkerPath())) {
+            var updatedMarker = await GetUpdatedMarkerPath();
+            if (Directory.Exists(updatedMarker)) {
                 Debug.Log("VRCFury Updater: Found 'update complete' marker");
-                Directory.Delete(GetUpdatedMarkerPath());
+                Directory.Delete(updatedMarker);
 
                 // We need to reload scenes. If we do not, any serialized data with a changed type will be deserialized as "null"
                 // This is especially common for fields that we change from a non-guid type to a guid type, like
