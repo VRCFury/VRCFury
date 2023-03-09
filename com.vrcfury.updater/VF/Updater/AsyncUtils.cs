@@ -7,6 +7,8 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
+using UnityEngine;
+using UnityEngine.WSA;
 
 namespace VF.Updater {
     public static class AsyncUtils {
@@ -24,23 +26,41 @@ namespace VF.Updater {
             return await PackageRequest(() => Client.List(true, false));
         }
         
-        public static async Task AddAndRemovePackages(PackageCollection existingLocal, IList<(string,string)> add = null, IList<string> remove = null) {
+        public static async Task AddAndRemovePackages(IList<(string,string)> add_ = null, IList<string> remove_ = null) {
+            var existing = await ListInstalledPacakges();
+
+            var add = new Dictionary<string, string>();
+            var remove = new HashSet<string>();
+            if (remove_ != null) remove.UnionWith(remove_);
+            if (add_ != null) {
+                foreach (var (name, path) in add_) {
+                    var exists = existing.FirstOrDefault(other => other.name == name);
+                    if (exists != null && exists.source == PackageSource.Embedded) {
+                        remove.Add(name);
+                    }
+                    add[name] = path;
+                }
+            }
+
             try {
                 await InMainThread(EditorApplication.LockReloadAssemblies);
-                if (remove != null) {
-                    foreach (var p in remove) {
-                        await PackageRequest(() => Client.Remove(p));
-                    }
+                foreach (var name in remove) {
+                    var exists = existing.FirstOrDefault(other => other.name == name);
+                    var deleteFile =
+                        exists != null
+                        && exists.source == PackageSource.LocalTarball
+                        && exists.resolvedPath.Contains(VRCFuryUpdaterStartup.GetAppRootDir());
+                    var deletePath = exists.resolvedPath;
+                    await PackageRequest(() => Client.Remove(name));
+                    // TODO: Delete the old package path if it's a tgz and it's inside the project directory
+                    // DO IT HERE
+                    Debug.Log("Delete " + deleteFile + " " + deletePath);
                 }
-                if (add != null) {
-                    foreach (var (name,path) in add) {
-                        var exists = existingLocal.FirstOrDefault(other => other.name == name);
-                        if (exists != null && exists.source == PackageSource.Embedded) {
-                            await PackageRequest(() => Client.Remove(name));
-                        }
-                    }
-                    foreach (var (name,path) in add) {
-                        await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(path)));
+                foreach (var (name,path) in add.Select(x => (x.Key,x.Value))) {
+                    await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(path)));
+                    if (name == "com.vrcfury.vrcfury") {
+                        // This makes the creator companion happy, since it can only "see" embedded
+                        // packages.
                         await PackageRequest(() => Client.Embed(name));
                     }
                 }

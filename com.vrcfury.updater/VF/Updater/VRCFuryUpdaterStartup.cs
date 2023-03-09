@@ -13,12 +13,16 @@ namespace VF.Updater {
             EditorApplication.delayCall += FirstFrame;
         }
 
+        public static string GetAppRootDir() {
+            return Path.GetDirectoryName(Application.dataPath);
+        }
+
         public static string GetUpdatedMarkerPath() { 
-            return Path.GetDirectoryName(Application.dataPath) + "/Temp/vrcfUpdated";
+            return GetAppRootDir() + "/Temp/vrcfUpdated";
         }
         
         public static string GetUpdateAllMarker() { 
-            return Path.GetDirectoryName(Application.dataPath) + "/Temp/vrcfUpdateAll";
+            return GetAppRootDir() + "/Temp/vrcfUpdateAll";
         }
 
         private static void FirstFrame() {

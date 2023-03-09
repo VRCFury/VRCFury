@@ -90,20 +90,24 @@ namespace VF.Updater {
 
                 var remoteName = remoteUpdaterPackage.id;
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                await AsyncUtils.AddAndRemovePackages(deps, add: new[]{ (remoteName, tgzPath) });
+                await AsyncUtils.AddAndRemovePackages(add: new[]{ (remoteName, tgzPath) });
                 Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdateAllMarker));
                 return;
             }
 
-            var urlsToAdd = deps
-                .Select(local => (local, repo.packages.FirstOrDefault(remote => local.name == remote.id)))
-                .Where(pair => pair.Item2 != null)
-                .Where(pair => pair.Item1.version != pair.Item2.latestVersion)
-                .Where(pair => pair.Item2.latestUpmTargz != null);
+            var urlsToAdd = repo.packages
+                .Where(remote => remote.latestUpmTargz != null)
+                .Select(remote => (deps.FirstOrDefault(d => d.name == remote.id), remote))
+                .Where(pair => {
+                    var (local, remote) = pair;
+                    if (local == null && remote.id == "com.vrcfury.vrcfury") return true;
+                    if (local != null && local.version != remote.latestVersion) return true;
+                    return false;
+                });
 
             var packageFilesToAdd = new List<(string,string)>();
             foreach (var (local,remote) in urlsToAdd) {
-                Debug.Log($"Upgrading {local.name} from {local.version} to {remote.latestVersion}");
+                Debug.Log($"Upgrading {remote.id} from {local?.version} to {remote.latestVersion}");
                 var remoteName = remote.id;
                 var tgzPath = await DownloadTgz(remote.latestUpmTargz);
                 packageFilesToAdd.Add((remoteName, tgzPath));
@@ -115,7 +119,7 @@ namespace VF.Updater {
             }
 
             Directory.CreateDirectory(await AsyncUtils.InMainThread(VRCFuryUpdaterStartup.GetUpdatedMarkerPath));
-            await AsyncUtils.AddAndRemovePackages(deps, add: packageFilesToAdd);
+            await AsyncUtils.AddAndRemovePackages(add: packageFilesToAdd);
             
             await AsyncUtils.DisplayDialog(
                 "Unity is now recompiling VRCFury.\n\n" +
