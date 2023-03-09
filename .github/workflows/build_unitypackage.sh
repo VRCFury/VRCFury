@@ -5,7 +5,6 @@ set -e
 
 output_path=$1
 path_prefix=$2
-root_guid=$3
 tmp_dir=`mktemp -d -t unitypackage-XXXXXXXX`
 
 function make_meta_directory() {
@@ -15,6 +14,10 @@ function make_meta_directory() {
     if [[ ! -e "$asset_file" ]]; then
       echo "Cannot find corresponding asset file $asset_file" >&2
       return
+    fi
+
+    if [[ "$asset_file" == *.asmdef || "$asset_file" == *.json ]]; then
+      return;
     fi
 
     echo "Adding $asset_file to $path_prefix/$asset_file"
@@ -32,19 +35,6 @@ function make_meta_directory() {
 
 find . -name "*.meta" -print0 \
   | while IFS= read -r -d '' file; do make_meta_directory "$file"; done
-
-mkdir "$tmp_dir/$root_guid"
-echo -n "$path_prefix" > "$tmp_dir/$root_guid/pathname"
-cat <<EOT > "$tmp_dir/$root_guid/asset.meta"
-fileFormatVersion: 2
-guid: $root_guid
-folderAsset: yes
-DefaultImporter:
-  externalObjects: {}
-  userData:
-  assetBundleName:
-  assetBundleVariant:
-EOT
 
 cd $tmp_dir
 tar -czvf archtemp.tar.gz * > /dev/null
