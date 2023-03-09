@@ -22,11 +22,8 @@ function make_meta_directory() {
 
     echo "Adding $asset_file to $path_prefix/$asset_file"
     guid=$(yq e '.guid' "$meta_file")
-    # we reverse all the guids so they don't match the ones in the upm upgrade package
-    guid=$(echo "$guid" | rev)
     dir="$tmp_dir/$guid"
     mkdir $dir
-    cp "$meta_file" "$dir/asset.meta"
     echo "$path_prefix/$asset_file" > $dir/pathname
     if [[ -f "$asset_file" ]]; then
       cp "$asset_file" "$dir/asset"
