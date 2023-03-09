@@ -57,7 +57,13 @@ jobs:
       - name: Build installer
         uses: mikefarah/yq@v4.31.2
         with:
-          cmd: cd repo/com.vrcfury.updater && ../.github/workflows/build_unitypackage.sh ../../VRCFury-installer.unitypackage Assets/VRCFury-installer 00b990f230095454f82c345d433841ae
+          cmd: |
+            cd repo/com.vrcfury.updater
+            chmod +x ../.github/workflows/build_unitypackage.sh
+            ../.github/workflows/build_unitypackage.sh \
+                ../../VRCFury-installer.unitypackage \
+                Assets/VRCFury-installer \
+                00b990f230095454f82c345d433841ae
       - name: Release installer
         uses: softprops/action-gh-release@v1
         with:
