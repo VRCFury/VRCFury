@@ -75,6 +75,13 @@ namespace VF.Model {
             d.Refresh();
             return d.obj;
         }
+        
+        public static bool operator ==(GuidWrapper<T> a, GuidWrapper<T> b) {
+            return (T)a == (T)b;
+        }
+        public static bool operator !=(GuidWrapper<T> a, GuidWrapper<T> b) {
+            return (T)a != (T)b;
+        }
 
         public void OnBeforeSerialize() {
             Refresh();
