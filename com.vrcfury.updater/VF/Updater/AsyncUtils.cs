@@ -138,14 +138,14 @@ namespace VF.Updater {
             try {
                 await InMainThread(() => {
                     preventReloadCount++;
-                    Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
+                    //Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
                     if (preventReloadCount == 1) EditorApplication.LockReloadAssemblies();
                 });
                 await act();
             } finally {
                 await InMainThread(() => {
                     preventReloadCount--;
-                    Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
+                    //Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
                     if (preventReloadCount == 0) {
                         EditorApplication.UnlockReloadAssemblies();
                         if (triggerReloadOnUnlock) {
