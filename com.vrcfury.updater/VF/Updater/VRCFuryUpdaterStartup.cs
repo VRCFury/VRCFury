@@ -31,6 +31,8 @@ namespace VF.Updater {
         }
 
         private static async Task CheckUnsafe() {
+            Debug.Log("VRCFury is checking for updates...");
+            
             var packages = await AsyncUtils.ListInstalledPacakges();
             if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
                 // Updater package (... this package) isn't installed, which means this code
