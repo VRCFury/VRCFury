@@ -26,25 +26,25 @@ namespace VF.Updater {
             return await PackageRequest(() => Client.List(true, false));
         }
         
-        public static async Task AddAndRemovePackages(IList<(string,string)> add_ = null, IList<string> remove_ = null) {
+        public static async Task AddAndRemovePackages(IList<(string,string)> add = null, IList<string> remove = null) {
             var existing = await ListInstalledPacakges();
 
-            var add = new Dictionary<string, string>();
-            var remove = new HashSet<string>();
-            if (remove_ != null) remove.UnionWith(remove_);
-            if (add_ != null) {
-                foreach (var (name, path) in add_) {
+            var actualAdd = new Dictionary<string, string>();
+            var actualRemove = new HashSet<string>();
+            if (remove != null) actualRemove.UnionWith(remove);
+            if (add != null) {
+                foreach (var (name, path) in add) {
                     var exists = existing.FirstOrDefault(other => other.name == name);
                     if (exists != null && exists.source == PackageSource.Embedded) {
-                        remove.Add(name);
+                        actualRemove.Add(name);
                     }
-                    add[name] = path;
+                    actualAdd[name] = path;
                 }
             }
 
             try {
                 await InMainThread(EditorApplication.LockReloadAssemblies);
-                foreach (var name in remove) {
+                foreach (var name in actualRemove) {
                     var exists = existing.FirstOrDefault(other => other.name == name);
                     var deleteFile =
                         exists != null
@@ -56,7 +56,7 @@ namespace VF.Updater {
                     // DO IT HERE
                     Debug.Log("Delete " + deleteFile + " " + deletePath);
                 }
-                foreach (var (name,path) in add.Select(x => (x.Key,x.Value))) {
+                foreach (var (name,path) in actualAdd.Select(x => (x.Key,x.Value))) {
                     await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(path)));
                     if (name == "com.vrcfury.vrcfury") {
                         // This makes the creator companion happy, since it can only "see" embedded
