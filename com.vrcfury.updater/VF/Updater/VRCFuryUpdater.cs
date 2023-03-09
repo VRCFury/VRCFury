@@ -114,6 +114,7 @@ namespace VF.Updater {
             }
 
             if (packageFilesToAdd.Count == 0) {
+                await AsyncUtils.EnsureVrcfuryEmbedded();
                 await AsyncUtils.DisplayDialog("No new updates are available.");
                 return;
             }
@@ -126,7 +127,7 @@ namespace VF.Updater {
                 "You should receive another message when the upgrade is complete."
             );
         }
-        
+
         private static async Task<string> DownloadString(string url) {
             try {
                 using (var response = await httpClient.GetAsync(url)) {

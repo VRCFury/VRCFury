@@ -57,13 +57,10 @@ namespace VF.Updater {
                     Debug.Log("Delete " + deleteFile + " " + deletePath);
                 }
                 foreach (var (name,path) in actualAdd.Select(x => (x.Key,x.Value))) {
+                    // TODO: We need to move the tgz into the project folder somewhere safe
                     await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(path)));
-                    if (name == "com.vrcfury.vrcfury") {
-                        // This makes the creator companion happy, since it can only "see" embedded
-                        // packages.
-                        await PackageRequest(() => Client.Embed(name));
-                    }
                 }
+                await EnsureVrcfuryEmbedded();
             } finally {
                 await InMainThread(EditorApplication.UnlockReloadAssemblies);
             }
@@ -72,6 +69,17 @@ namespace VF.Updater {
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 CompilationPipeline.RequestScriptCompilation();
             });
+        }
+        
+        
+        // Vrcfury packages are all "local" (not embedded), because it makes them read-only which is nice.
+        // However, the creator companion can only see embedded packages, so we do this to com.vrcfury.vrcfury only.
+        public static async Task EnsureVrcfuryEmbedded() {
+            foreach (var local in await ListInstalledPacakges()) {
+                if (local.name == "com.vrcfury.vrcfury" && local.source == PackageSource.LocalTarball) {
+                    await PackageRequest(() => Client.Embed(local.name));
+                }
+            }
         }
 
         private static async Task<T> PackageRequest<T>(Func<Request<T>> requestProvider) {
