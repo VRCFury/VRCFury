@@ -10,6 +10,9 @@ using UnityEngine;
 
 namespace VF.Updater {
     public static class VRCFuryUpdater {
+        
+        private static readonly HttpClient httpClient = new HttpClient();
+
         private const string header_name = "Tools/VRCFury/Update";
         private const int header_priority = 1000;
         private const string menu_name = "Tools/VRCFury/Update VRCFury";
@@ -57,7 +60,7 @@ namespace VF.Updater {
         }
 
         private static async Task UpdateAllUnsafe(bool automated) {
-            string json = await DownloadString("https://updates.vrcfury.com/updates.json");
+            string json = await DownloadString("https://updates.vrcfury.com/updates.json?_=" + DateTime.Now);
 
             var repo = JsonUtility.FromJson<Repository>(json);
             if (repo.packages == null) {
@@ -117,11 +120,9 @@ namespace VF.Updater {
 
         private static async Task<string> DownloadString(string url) {
             try {
-                using (var httpClient = new HttpClient()) {
-                    using (var response = await httpClient.GetAsync(url)) {
-                        response.EnsureSuccessStatusCode();
-                        return await response.Content.ReadAsStringAsync();
-                    }
+                using (var response = await httpClient.GetAsync(url)) {
+                    response.EnsureSuccessStatusCode();
+                    return await response.Content.ReadAsStringAsync();
                 }
             } catch (Exception e) {
                 throw new Exception($"Failed to download {url}\n\n{e.Message}", e);
@@ -131,12 +132,10 @@ namespace VF.Updater {
         private static async Task<string> DownloadTgz(string url) {
             try {
                 var tempFile = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject) + ".tgz";
-                using (var httpClient = new HttpClient()) {
-                    using (var response = await httpClient.GetAsync(url)) {
-                        response.EnsureSuccessStatusCode();
-                        using (var fs = new FileStream(tempFile, FileMode.CreateNew)) {
-                            await response.Content.CopyToAsync(fs);
-                        }
+                using (var response = await httpClient.GetAsync(url)) {
+                    response.EnsureSuccessStatusCode();
+                    using (var fs = new FileStream(tempFile, FileMode.CreateNew)) {
+                        await response.Content.CopyToAsync(fs);
                     }
                 }
 
