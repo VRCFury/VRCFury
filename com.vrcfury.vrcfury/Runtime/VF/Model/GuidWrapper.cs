@@ -71,16 +71,19 @@ namespace VF.Model {
         }
 
         public static implicit operator T(GuidWrapper<T> d) {
-            if (d == null) return null;
-            d.Refresh();
-            return d.obj;
+            return d?.GetObject();
+        }
+
+        private T GetObject() {
+            Refresh();
+            return obj;
         }
         
         public static bool operator ==(GuidWrapper<T> a, GuidWrapper<T> b) {
-            return (T)a == (T)b;
+            return a?.GetObject() == b?.GetObject();
         }
         public static bool operator !=(GuidWrapper<T> a, GuidWrapper<T> b) {
-            return (T)a != (T)b;
+            return a?.GetObject() != b?.GetObject();
         }
 
         public void OnBeforeSerialize() {
