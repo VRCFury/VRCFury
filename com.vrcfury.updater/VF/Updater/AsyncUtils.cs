@@ -57,7 +57,7 @@ namespace VF.Updater {
                         File.Delete(savedTgzPath);
                     }
                     File.Copy(path, savedTgzPath);
-                    await PackageRequest(() => Client.Add("file:{name}.tgz"));
+                    await PackageRequest(() => Client.Add($"file:{name}.tgz"));
                 }
                 await EnsureVrcfuryEmbedded();
             } finally {
