@@ -27,6 +27,10 @@ namespace VF.Updater {
         }
 
         private static async void Check() {
+            await AsyncUtils.ErrorDialogBoundary(CheckUnsafe);
+        }
+
+        private static async Task CheckUnsafe() {
             var packages = await AsyncUtils.ListInstalledPacakges();
             if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
                 // Updater package (... this package) isn't installed, which means this code
@@ -43,7 +47,7 @@ namespace VF.Updater {
                     return;
                 }
                 Debug.Log("VRCFury Updater: Installer directory found, removing and forcing update");
-                AssetDatabase.DeleteAsset("Assets/VRCFury-installer");
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
                 await VRCFuryUpdater.UpdateAll();
                 return;
             }

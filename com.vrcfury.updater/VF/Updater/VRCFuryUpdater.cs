@@ -33,7 +33,7 @@ namespace VF.Updater {
                 return;
             }
             updating = true;
-            await ErrorDialogBoundary(() => UpdateAllUnsafe(failIfUpdaterNeedsUpdate));
+            await AsyncUtils.ErrorDialogBoundary(() => UpdateAllUnsafe(failIfUpdaterNeedsUpdate));
             updating = false;
         }
 
@@ -123,29 +123,6 @@ namespace VF.Updater {
             } catch (Exception e) {
                 throw new Exception($"Failed to download {url}\n\n{e.Message}", e);
             }
-        }
-
-        private static async Task ErrorDialogBoundary(Func<Task> go) {
-            try {
-                await go();
-            } catch(Exception e) {
-                Debug.LogException(e);
-                await AsyncUtils.DisplayDialog(
-                    "VRCFury encountered an error while installing/updating." +
-                    " You may need to Tools -> VRCFury -> Update VRCFury again. If the issue repeats," +
-                    " try re-downloading from https://vrcfury.com/download or ask on the" +
-                    " discord: https://vrcfury.com/discord" +
-                    "\n\n" +
-                    GetGoodCause(e).Message);
-            }
-        }
-        
-        private static Exception GetGoodCause(Exception e) {
-            while (e is TargetInvocationException && e.InnerException != null) {
-                e = e.InnerException;
-            }
-
-            return e;
         }
     }
 }

@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
+using UnityEngine;
 
 namespace VF.Updater {
     public static class AsyncUtils {
@@ -24,7 +26,7 @@ namespace VF.Updater {
             return await PackageRequest(() => Client.List(true, false));
         }
         
-        public static async Task AddAndRemovePackages(IList<(string,string)> add = null, IList<string> remove = null) {
+        public static async Task AddAndRemovePackages(IList<(string, string)> add = null, IList<string> remove = null) {
             try {
                 await InMainThread(EditorApplication.LockReloadAssemblies);
 
@@ -113,6 +115,28 @@ namespace VF.Updater {
                 }
             };
             return promise.Task;
+        }
+
+        public static async Task ErrorDialogBoundary(Func<Task> go) {
+            try {
+                await go();
+            } catch(Exception e) {
+                Debug.LogException(e);
+                await AsyncUtils.DisplayDialog(
+                    "VRCFury encountered an error while installing/updating." +
+                    " You may need to Tools -> VRCFury -> Update VRCFury again. If the issue repeats," +
+                    " try re-downloading from https://vrcfury.com/download or ask on the" +
+                    " discord: https://vrcfury.com/discord" +
+                    "\n\n" + GetGoodCause(e).Message);
+            }
+        }
+
+        private static Exception GetGoodCause(Exception e) {
+            while (e is TargetInvocationException && e.InnerException != null) {
+                e = e.InnerException;
+            }
+
+            return e;
         }
     }
 }
