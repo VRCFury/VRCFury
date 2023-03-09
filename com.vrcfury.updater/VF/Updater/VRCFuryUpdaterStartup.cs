@@ -38,6 +38,10 @@ namespace VF.Updater {
             }
 
             if (Directory.Exists("Assets/VRCFury-installer")) {
+                if (Assembly.GetExecutingAssembly().FullName == "VRCFury-Updater2") {
+                    // There are two of us! The Assets copy is in charge for upgrading "us" (the package)
+                    return;
+                }
                 Debug.Log("VRCFury Updater: Installer directory found, removing and forcing update");
                 AssetDatabase.DeleteAsset("Assets/VRCFury-installer");
                 await VRCFuryUpdater.UpdateAll();
