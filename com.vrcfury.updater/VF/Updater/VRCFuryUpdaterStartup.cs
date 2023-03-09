@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -10,7 +11,7 @@ namespace VF.Updater {
     [InitializeOnLoad]
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
-            EditorApplication.delayCall += FirstFrame;
+            Task.Run(Check);
         }
 
         public static string GetAppRootDir() {
@@ -29,12 +30,20 @@ namespace VF.Updater {
             return GetAppRootDir() + "/Library/vrcfInstallLegacy";
         }
 
-        private static void FirstFrame() {
+        private static async void Check() {
+            var packages = await AsyncUtils.ListInstalledPacakges();
+            if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
+                // Updater package (... this package) isn't installed, which means this code
+                // is probably running inside of the standalone installer, and we need to go install
+                // the updater and main vrcfury package.
+                await VRCFuryUpdater.UpdateAll();
+                return;
+            }
 
             if (Directory.Exists(GetUpdateAllMarker())) {
                 Debug.Log("VRCFury detected UpdateAll marker");
                 Directory.Delete(GetUpdateAllMarker());
-                VRCFuryUpdater.UpdateAll();
+                await VRCFuryUpdater.UpdateAll();
                 return;
             }
 
@@ -45,22 +54,24 @@ namespace VF.Updater {
                 // We need to reload scenes. If we do not, any serialized data with a changed type will be deserialized as "null"
                 // This is especially common for fields that we change from a non-guid type to a guid type, like
                 // AnimationClip to GuidAnimationClip.
-                var openScenes = Enumerable.Range(0, SceneManager.sceneCount)
-                    .Select(i => SceneManager.GetSceneAt(i))
-                    .Where(scene => scene.isLoaded);
-                foreach (var scene in openScenes) {
-                    var type = typeof(EditorSceneManager);
-                    var method = type.GetMethod("ReloadScene", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                    method.Invoke(null, new object[] { scene });
-                }
+                await AsyncUtils.InMainThread(() => {
+                    var openScenes = Enumerable.Range(0, SceneManager.sceneCount)
+                        .Select(i => SceneManager.GetSceneAt(i))
+                        .Where(scene => scene.isLoaded);
+                    foreach (var scene in openScenes) {
+                        var type = typeof(EditorSceneManager);
+                        var method = type.GetMethod("ReloadScene", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                        method.Invoke(null, new object[] { scene });
+                    }
 
-                EditorUtility.ClearProgressBar();
-                Debug.Log("Upgrade complete");
-                EditorUtility.DisplayDialog(
-                    "VRCFury Updater",
-                    "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads.",
-                    "Ok"
-                );
+                    EditorUtility.ClearProgressBar();
+                    Debug.Log("Upgrade complete");
+                    EditorUtility.DisplayDialog(
+                        "VRCFury Updater",
+                        "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads.",
+                        "Ok"
+                    );
+                });
             }
         }
     }

@@ -42,21 +42,18 @@ namespace VF.Updater {
 
         [MenuItem(menu_name, priority = menu_priority)]
         public static void Upgrade() {
-            UpdateAll();
+            Task.Run(() => UpdateAll());
         }
 
-
         private static bool updating = false;
-        public static void UpdateAll(bool automated = false) {
-            Task.Run(async () => {
-                if (updating) {
-                    Debug.Log("(VRCFury already has an update in progress)");
-                    return;
-                }
-                updating = true;
-                await ErrorDialogBoundary(() => UpdateAllUnsafe(automated));
-                updating = false;
-            });
+        public static async Task UpdateAll(bool automated = false) {
+            if (updating) {
+                Debug.Log("(VRCFury already has an update in progress)");
+                return;
+            }
+            updating = true;
+            await ErrorDialogBoundary(() => UpdateAllUnsafe(automated));
+            updating = false;
         }
 
         private static async Task UpdateAllUnsafe(bool automated) {
