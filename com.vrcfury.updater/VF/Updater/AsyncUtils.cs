@@ -33,7 +33,7 @@ namespace VF.Updater {
                 }
                 if (add != null) {
                     foreach (var p in add) {
-                        await PackageRequest(() => Client.Add("file:" + Path.GetFullPath(p)));
+                        await PackageRequest(() => Client.Embed("file:" + Path.GetFullPath(p)));
                     }
                 }
             } finally {
