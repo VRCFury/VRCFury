@@ -31,32 +31,44 @@ namespace VF.Updater {
         }
 
         private static async Task CheckUnsafe() {
-            Debug.Log("VRCFury is checking for updates...");
+            var isRunningInsidePackage = Assembly.GetExecutingAssembly().GetName().Name == "VRCFury-Updater2";
+
+            void DebugLog(string msg) {
+                var suffix = isRunningInsidePackage ? "" : " (installer)";
+                Debug.Log($"VRCFury Updater{suffix}: {msg}");
+            }
+
+            DebugLog("Checking for updates...");
             
             var packages = await AsyncUtils.ListInstalledPacakges();
             if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
                 // Updater package (... this package) isn't installed, which means this code
                 // is probably running inside of the standalone installer, and we need to go install
                 // the updater and main vrcfury package.
-                Debug.Log("VRCFury Updater: Installer detected, bootstrapping com.vrcfury.updater package");
+                DebugLog("Package is missing, bootstrapping com.vrcfury.updater package");
                 await VRCFuryUpdater.UpdateAll();
                 return;
             }
 
             if (Directory.Exists("Assets/VRCFury-installer")) {
-                if (Assembly.GetExecutingAssembly().GetName().Name == "VRCFury-Updater2") {
+                if (isRunningInsidePackage) {
                     // There are two of us! The Assets copy is in charge for upgrading "us" (the package)
+                    DebugLog("Aborting (installer exists and this code is in the updater package)");
                     return;
                 }
-                Debug.Log("VRCFury Updater: Installer directory found, removing and forcing update");
+                DebugLog("Installer directory found, removing and forcing update");
                 await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
                 await VRCFuryUpdater.UpdateAll();
                 return;
             }
 
+            if (!isRunningInsidePackage) {
+                return;
+            }
+
             var updateAllMarker = await GetUpdateAllMarker();
             if (Directory.Exists(updateAllMarker)) {
-                Debug.Log("VRCFury Updater: Updater was just reinstalled, forcing update");
+                DebugLog("Updater was just reinstalled, forcing update");
                 Directory.Delete(updateAllMarker);
                 await VRCFuryUpdater.UpdateAll(true);
                 return;
@@ -64,7 +76,7 @@ namespace VF.Updater {
 
             var updatedMarker = await GetUpdatedMarkerPath();
             if (Directory.Exists(updatedMarker)) {
-                Debug.Log("VRCFury Updater: Found 'update complete' marker");
+                DebugLog("Found 'update complete' marker");
                 Directory.Delete(updatedMarker);
 
                 // We need to reload scenes. If we do not, any serialized data with a changed type will be deserialized as "null"
