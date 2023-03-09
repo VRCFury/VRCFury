@@ -82,6 +82,7 @@ async function createTar(dir, outputFilename) {
         cwd: dir,
         file: outputFilename,
         portable: true,
-        noMtime: true
+        noMtime: true,
+        prefix: 'package/'
     }, await fs.readdir(dir));
 }
