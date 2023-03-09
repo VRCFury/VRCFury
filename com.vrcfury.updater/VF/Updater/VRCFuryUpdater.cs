@@ -72,13 +72,12 @@ namespace VF.Updater {
             var localUpdaterPackage = deps.FirstOrDefault(d => d.name == "com.vrcfury.updater");
             var remoteUpdaterPackage = repo.packages.FirstOrDefault(p => p.id == "com.vrcfury.updater");
 
-            if (localUpdaterPackage != null
-                && remoteUpdaterPackage != null
-                && localUpdaterPackage.version != remoteUpdaterPackage.latestVersion
+            if (remoteUpdaterPackage != null
                 && remoteUpdaterPackage.latestUpmTargz != null
+                && (localUpdaterPackage == null || localUpdaterPackage.version != remoteUpdaterPackage.latestVersion)
             ) {
                 // An update to the package manager is available
-                Debug.Log($"Upgrading updater from {localUpdaterPackage.version} to {remoteUpdaterPackage.latestVersion}");
+                Debug.Log($"Upgrading updater from {localUpdaterPackage?.version} to {remoteUpdaterPackage.latestVersion}");
                 if (automated) {
                     throw new Exception("Updater failed to update to new version");
                 }
@@ -96,6 +95,7 @@ namespace VF.Updater {
                 .Where(pair => {
                     var (local, remote) = pair;
                     if (local == null && remote.id == "com.vrcfury.vrcfury") return true;
+                    if (local == null && remote.id == "com.vrcfury.legacyprefabs") return true;
                     if (local != null && local.version != remote.latestVersion) return true;
                     return false;
                 });
@@ -150,7 +150,13 @@ namespace VF.Updater {
                 await go();
             } catch(Exception e) {
                 Debug.LogException(e);
-                await AsyncUtils.DisplayDialog("VRCFury encountered an error.\n\n" + GetGoodCause(e).Message);
+                await AsyncUtils.DisplayDialog(
+                    "VRCFury encountered an error while installing/updating." +
+                    " You may need to Tools -> VRCFury -> Update VRCFury again. If the issue repeats," +
+                    " try re-downloading from https://vrcfury.com/download or ask on the" +
+                    " discord: https://vrcfury.com/discord" +
+                    "\n\n" +
+                    GetGoodCause(e).Message);
             }
         }
         
