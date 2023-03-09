@@ -20,7 +20,7 @@ for (const dir of await fs.readdir('.')) {
     const name = json.name;
 
     let existing = versionJson.packages.find(e => e.id === name);
-    if (existing) {
+    if (existing && false) {
         json.version = existing.latestVersion;
         await writeJson(packageJsonPath, json);
         if ((await md5Dir(dir)) === existing.hash) {
@@ -32,7 +32,7 @@ for (const dir of await fs.readdir('.')) {
     let version = '1.0.0';
     if (existing) {
         version = existing.latestVersion;
-        version = semver.inc(version, 'patch');
+        version = semver.inc(version, 'minor');
     }
     json.version = version;
     await writeJson(packageJsonPath, json);
