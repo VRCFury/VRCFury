@@ -54,7 +54,10 @@ namespace VF.Updater {
         private static bool updating = false;
         public static void UpdateAll(bool automated = false) {
             Task.Run(async () => {
-                if (updating) return;
+                if (updating) {
+                    Debug.Log("(VRCFury already has an update in progress)");
+                    return;
+                }
                 updating = true;
                 await ErrorDialogBoundary(() => UpdateAllUnsafe(automated));
                 updating = false;
