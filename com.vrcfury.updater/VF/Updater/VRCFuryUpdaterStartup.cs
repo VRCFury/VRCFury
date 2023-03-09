@@ -32,21 +32,27 @@ namespace VF.Updater {
                 // Updater package (... this package) isn't installed, which means this code
                 // is probably running inside of the standalone installer, and we need to go install
                 // the updater and main vrcfury package.
+                Debug.Log("VRCFury Updater: Installer detected, bootstrapping com.vrcfury.updater package");
                 await VRCFuryUpdater.UpdateAll();
                 return;
             }
-            
-            AssetDatabase.DeleteAsset("Assets/VRCFury-installer");
+
+            if (Directory.Exists("Assets/VRCFury-installer")) {
+                Debug.Log("VRCFury Updater: Installer directory found, removing and forcing update");
+                AssetDatabase.DeleteAsset("Assets/VRCFury-installer");
+                await VRCFuryUpdater.UpdateAll();
+                return;
+            }
 
             if (Directory.Exists(GetUpdateAllMarker())) {
-                Debug.Log("VRCFury detected UpdateAll marker");
+                Debug.Log("VRCFury Updater: Updater was just reinstalled, forcing update");
                 Directory.Delete(GetUpdateAllMarker());
-                await VRCFuryUpdater.UpdateAll();
+                await VRCFuryUpdater.UpdateAll(true);
                 return;
             }
 
             if (Directory.Exists(GetUpdatedMarkerPath())) {
-                Debug.Log("VRCFury detected Updated marker");
+                Debug.Log("VRCFury Updater: Found 'update complete' marker");
                 Directory.Delete(GetUpdatedMarkerPath());
 
                 // We need to reload scenes. If we do not, any serialized data with a changed type will be deserialized as "null"

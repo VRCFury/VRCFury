@@ -46,17 +46,17 @@ namespace VF.Updater {
         }
 
         private static bool updating = false;
-        public static async Task UpdateAll(bool automated = false) {
+        public static async Task UpdateAll(bool failIfUpdaterNeedsUpdate = false) {
             if (updating) {
                 Debug.Log("(VRCFury already has an update in progress)");
                 return;
             }
             updating = true;
-            await ErrorDialogBoundary(() => UpdateAllUnsafe(automated));
+            await ErrorDialogBoundary(() => UpdateAllUnsafe(failIfUpdaterNeedsUpdate));
             updating = false;
         }
 
-        private static async Task UpdateAllUnsafe(bool automated) {
+        private static async Task UpdateAllUnsafe(bool failIfUpdaterNeedsUpdate) {
             string json = await DownloadString("https://updates.vrcfury.com/updates.json?_=" + DateTime.Now);
 
             var repo = JsonUtility.FromJson<Repository>(json);
@@ -75,7 +75,7 @@ namespace VF.Updater {
             ) {
                 // An update to the package manager is available
                 Debug.Log($"Upgrading updater from {localUpdaterPackage?.version} to {remoteUpdaterPackage.latestVersion}");
-                if (automated) {
+                if (failIfUpdaterNeedsUpdate) {
                     throw new Exception("Updater failed to update to new version");
                 }
 
