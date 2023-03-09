@@ -93,7 +93,7 @@ namespace VF.Updater {
                     }
 
                     EditorUtility.ClearProgressBar();
-                    Debug.Log("Upgrade complete");
+                    DebugLog("Upgrade complete");
                     EditorUtility.DisplayDialog(
                         "VRCFury Updater",
                         "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads.",
