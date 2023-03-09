@@ -9,6 +9,7 @@ using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 using UnityEngine;
+using Assembly = System.Reflection.Assembly;
 
 namespace VF.Updater {
     public static class AsyncUtils {
@@ -137,12 +138,14 @@ namespace VF.Updater {
             try {
                 await InMainThread(() => {
                     preventReloadCount++;
+                    Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
                     if (preventReloadCount == 1) EditorApplication.LockReloadAssemblies();
                 });
                 await act();
             } finally {
                 await InMainThread(() => {
                     preventReloadCount--;
+                    Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
                     if (preventReloadCount == 0) {
                         EditorApplication.UnlockReloadAssemblies();
                         if (triggerReloadOnUnlock) {
@@ -161,8 +164,8 @@ namespace VF.Updater {
             }
         }
         private static void TriggerReloadNow() {
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-                CompilationPipeline.RequestScriptCompilation();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            CompilationPipeline.RequestScriptCompilation();
         }
     }
 }
