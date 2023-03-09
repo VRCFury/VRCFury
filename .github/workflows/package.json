@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "hasha": "^5.2.2",
+    "semver": "^7.3.8",
+    "tar": "^6.1.13",
+    "tmp-promise": "^3.0.3"
+  }
+}

@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
+using UnityEngine;
+using Assembly = System.Reflection.Assembly;
 
 namespace VF.Updater {
     public static class AsyncUtils {
@@ -22,27 +27,48 @@ namespace VF.Updater {
             return await PackageRequest(() => Client.List(true, false));
         }
         
-        public static async Task AddAndRemovePackages(IList<string> add = null, IList<string> remove = null) {
-            try {
-                await InMainThread(EditorApplication.LockReloadAssemblies);
+        public static async Task AddAndRemovePackages(IList<(string, string)> add = null, IList<string> remove = null) {
+            await PreventReload(async () => {
                 if (remove != null) {
-                    foreach (var p in remove) {
-                        await PackageRequest(() => Client.Remove(p));
+                    foreach (var name in remove) {
+                        await PackageRequest(() => Client.Remove(name));
+                        var savedTgzPath = $"Packages/{name}.tgz";
+                        if (File.Exists(savedTgzPath)) {
+                            File.Delete(savedTgzPath);
+                        }
                     }
                 }
+
                 if (add != null) {
-                    foreach (var p in add) {
-                        await PackageRequest(() => Client.Add(p));
+                    foreach (var (name,path) in add) {
+                        var savedTgzPath = $"Packages/{name}.tgz";
+                        if (File.Exists(savedTgzPath)) {
+                            File.Delete(savedTgzPath);
+                        }
+                        if (Directory.Exists($"Packages/{name}")) {
+                            Directory.Delete($"Packages/{name}", true);
+                        }
+                        File.Copy(path, savedTgzPath);
+                        await PackageRequest(() => Client.Add($"file:{name}.tgz"));
                     }
                 }
-            } finally {
-                await InMainThread(EditorApplication.UnlockReloadAssemblies);
-            }
-            
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            CompilationPipeline.RequestScriptCompilation();
+
+                await EnsureVrcfuryEmbedded();
+            });
+            await TriggerReload();
         }
         
+        
+        // Vrcfury packages are all "local" (not embedded), because it makes them read-only which is nice.
+        // However, the creator companion can only see embedded packages, so we do this to com.vrcfury.vrcfury only.
+        public static async Task EnsureVrcfuryEmbedded() {
+            foreach (var local in await ListInstalledPacakges()) {
+                if (local.name == "com.vrcfury.vrcfury" && local.source == PackageSource.LocalTarball) {
+                    await PackageRequest(() => Client.Embed(local.name));
+                }
+            }
+        }
+
         private static async Task<T> PackageRequest<T>(Func<Request<T>> requestProvider) {
             var request = await InMainThread(requestProvider);
             await PackageRequest(request);
@@ -82,6 +108,64 @@ namespace VF.Updater {
                 }
             };
             return promise.Task;
+        }
+
+        public static async Task ErrorDialogBoundary(Func<Task> go) {
+            try {
+                await go();
+            } catch(Exception e) {
+                Debug.LogException(e);
+                await AsyncUtils.DisplayDialog(
+                    "VRCFury encountered an error while installing/updating." +
+                    " You may need to Tools -> VRCFury -> Update VRCFury again. If the issue repeats," +
+                    " try re-downloading from https://vrcfury.com/download or ask on the" +
+                    " discord: https://vrcfury.com/discord" +
+                    "\n\n" + GetGoodCause(e).Message);
+            }
+        }
+
+        private static Exception GetGoodCause(Exception e) {
+            while (e is TargetInvocationException && e.InnerException != null) {
+                e = e.InnerException;
+            }
+
+            return e;
+        }
+
+        private static int preventReloadCount = 0;
+        private static bool triggerReloadOnUnlock = false;
+        public async static Task PreventReload(Func<Task> act) {
+            try {
+                await InMainThread(() => {
+                    preventReloadCount++;
+                    //Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
+                    if (preventReloadCount == 1) EditorApplication.LockReloadAssemblies();
+                });
+                await act();
+            } finally {
+                await InMainThread(() => {
+                    preventReloadCount--;
+                    //Debug.Log($"{Assembly.GetExecutingAssembly().GetName().Name} Reload counter: {preventReloadCount}");
+                    if (preventReloadCount == 0) {
+                        EditorApplication.UnlockReloadAssemblies();
+                        if (triggerReloadOnUnlock) {
+                            triggerReloadOnUnlock = false;
+                            TriggerReloadNow();
+                        }
+                    }
+                });
+            }
+        }
+        public static async Task TriggerReload() {
+            if (preventReloadCount == 0) {
+                await InMainThread(TriggerReloadNow);
+            } else {
+                triggerReloadOnUnlock = true;
+            }
+        }
+        private static void TriggerReloadNow() {
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            CompilationPipeline.RequestScriptCompilation();
         }
     }
 }

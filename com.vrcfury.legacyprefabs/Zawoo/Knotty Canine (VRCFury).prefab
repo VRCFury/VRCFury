@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -57,15 +57,24 @@ MonoBehaviour:
       data:
         version: 2
         controllers:
-        - controller: {fileID: 9100000, guid: d7d4fa511891a7449bf6b1c73b0548c5, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: d7d4fa511891a7449bf6b1c73b0548c5
+            obj: {fileID: 9100000, guid: d7d4fa511891a7449bf6b1c73b0548c5, type: 2}
           type: 5
           ResetMePlease: 0
         menus:
-        - menu: {fileID: 11400000, guid: b8208fdd46918ee4388e3937a6d63c1e, type: 2}
+        - menu:
+            fileID: 11400000
+            guid: b8208fdd46918ee4388e3937a6d63c1e
+            obj: {fileID: 11400000, guid: b8208fdd46918ee4388e3937a6d63c1e, type: 2}
           prefix: Zawoo
           ResetMePlease: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 7aa23cf790624234aa28b78624eb8df9, type: 2}
+        - parameters:
+            fileID: 11400000
+            guid: 7aa23cf790624234aa28b78624eb8df9
+            obj: {fileID: 11400000, guid: 7aa23cf790624234aa28b78624eb8df9, type: 2}
           ResetMePlease: 0
         globalParams: []
         removePrefixes: []
@@ -100,13 +109,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d4cd252f8c146639507ecd55bc2b48a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
+  autoRenderer: 1
+  autoPosition: 1
+  autoLength: 1
   length: 0
+  autoRadius: 1
   radius: 0
   name: 
   unitsInMeters: 0
   configureTps: 0
-  version: 1
+  configureTpsMesh: []
 --- !u!1001 &3344568645372403570
 PrefabInstance:
   m_ObjectHideFlags: 0

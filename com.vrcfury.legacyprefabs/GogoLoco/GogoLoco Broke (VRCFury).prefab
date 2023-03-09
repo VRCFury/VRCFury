@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -58,27 +58,48 @@ MonoBehaviour:
       data:
         version: 2
         controllers:
-        - controller: {fileID: 9100000, guid: 4485bd5c6aea29e48bf1428a18876fcc, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 4485bd5c6aea29e48bf1428a18876fcc
+            obj: {fileID: 9100000, guid: 4485bd5c6aea29e48bf1428a18876fcc, type: 2}
           type: 4
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: bde5983a4f3eaa149ba18853e5bf4c4c, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: bde5983a4f3eaa149ba18853e5bf4c4c
+            obj: {fileID: 9100000, guid: bde5983a4f3eaa149ba18853e5bf4c4c, type: 2}
           type: 0
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: 22aa2a9fb13faf540afa2a5c86efd0c4, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 22aa2a9fb13faf540afa2a5c86efd0c4
+            obj: {fileID: 9100000, guid: 22aa2a9fb13faf540afa2a5c86efd0c4, type: 2}
           type: 6
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: 7a370f2d94a2e2f40b3abad4a36fc8a6, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 7a370f2d94a2e2f40b3abad4a36fc8a6
+            obj: {fileID: 9100000, guid: 7a370f2d94a2e2f40b3abad4a36fc8a6, type: 2}
           type: 5
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: c6e2190827640e144938baadbf01ee8e, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: c6e2190827640e144938baadbf01ee8e
+            obj: {fileID: 9100000, guid: c6e2190827640e144938baadbf01ee8e, type: 2}
           type: 7
           ResetMePlease: 0
         menus:
-        - menu: {fileID: 11400000, guid: 246bd59ebb2aca94fbe31619c0bad91a, type: 2}
+        - menu:
+            fileID: 11400000
+            guid: 246bd59ebb2aca94fbe31619c0bad91a
+            obj: {fileID: 11400000, guid: 246bd59ebb2aca94fbe31619c0bad91a, type: 2}
           prefix: 
           ResetMePlease: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 1320e51753e1e8b4595fd3b810d01836, type: 2}
+        - parameters:
+            fileID: 11400000
+            guid: 1320e51753e1e8b4595fd3b810d01836
+            obj: {fileID: 11400000, guid: 1320e51753e1e8b4595fd3b810d01836, type: 2}
           ResetMePlease: 0
         globalParams:
         - Go/Float
@@ -98,17 +119,20 @@ MonoBehaviour:
     00000001:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 5
         linkMode: 1
         propBone: {fileID: 1537329925289959692}
         boneOnAvatar: 10
         bonePathOnAvatar: 
-        keepBoneOffsets: 0
+        keepBoneOffsets2: 2
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 0
+        scalingFactorPowersOf10Only: 0
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 0
 --- !u!1 &1537329925289959692
 GameObject:
   m_ObjectHideFlags: 0

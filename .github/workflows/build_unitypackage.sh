@@ -5,23 +5,29 @@ set -e
 
 output_path=$1
 path_prefix=$2
-root_guid=$3
 tmp_dir=`mktemp -d -t unitypackage-XXXXXXXX`
 
 function make_meta_directory() {
     meta_file=$(echo "$1" | cut -d/ -f2-)
     asset_file=${meta_file%.*}
-    
+
     if [[ ! -e "$asset_file" ]]; then
       echo "Cannot find corresponding asset file $asset_file" >&2
       return
     fi
 
+    if [[ "$asset_file" == *.asmdef || "$asset_file" == *.json || "$asset_file" == *MenuItem* ]]; then
+      return;
+    fi
+
     echo "Adding $asset_file to $path_prefix/$asset_file"
     guid=$(yq e '.guid' "$meta_file")
+    # we reverse all the guids so they don't match the ones in the upm upgrade package
+    guid=$(echo "$guid" | rev)
     dir="$tmp_dir/$guid"
     mkdir $dir
     cp "$meta_file" "$dir/asset.meta"
+    yq e -i ".guid = \"$guid\"" "$dir/asset.meta"
     echo "$path_prefix/$asset_file" > $dir/pathname
     if [[ -f "$asset_file" ]]; then
       cp "$asset_file" "$dir/asset"
@@ -30,19 +36,6 @@ function make_meta_directory() {
 
 find . -name "*.meta" -print0 \
   | while IFS= read -r -d '' file; do make_meta_directory "$file"; done
-
-mkdir "$tmp_dir/$root_guid"
-echo -n "$path_prefix" > "$tmp_dir/$root_guid/pathname"
-cat <<EOT > "$tmp_dir/$root_guid/asset.meta"
-fileFormatVersion: 2
-guid: $root_guid
-folderAsset: yes
-DefaultImporter:
-  externalObjects: {}
-  userData: 
-  assetBundleName: 
-  assetBundleVariant: 
-EOT
 
 cd $tmp_dir
 tar -czvf archtemp.tar.gz * > /dev/null
