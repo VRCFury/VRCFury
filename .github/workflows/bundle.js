@@ -38,13 +38,7 @@ for (const dir of await fs.readdir('.')) {
     await writeJson(packageJsonPath, json);
 
     const outputFilename = `dist/${name}-${version}.tgz`;
-    await tar.create({
-        gzip: true,
-        cwd: dir,
-        file: outputFilename,
-        portable: true,
-        noMtime: true
-    }, ['.']);
+    await createTar(dir, outputFilename);
 
     if (!existing) {
         existing = { id: name };
@@ -66,13 +60,7 @@ function checkFileExists(file) {
 
 async function md5Dir(dir) {
     const tmpFile = (await tmp.file()).path;
-    await tar.create({
-        gzip: true,
-        cwd: dir,
-        file: tmpFile,
-        portable: true,
-        noMtime: true
-    }, ['.']);
+    await createTar(dir, tmpFile);
     const md5 = await hasha.fromFile(tmpFile, {algorithm: 'sha256'});
     await fs.unlink(tmpFile);
     return md5;
@@ -87,4 +75,13 @@ async function rmdir(path) {
     if (await checkFileExists(path)) {
         await fs.rm(path, {recursive: true});
     }
+}
+async function createTar(dir, outputFilename) {
+    await tar.create({
+        gzip: true,
+        cwd: dir,
+        file: outputFilename,
+        portable: true,
+        noMtime: true
+    }, await fs.readdir(dir));
 }
