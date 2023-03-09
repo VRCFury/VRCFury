@@ -8,7 +8,7 @@ namespace VF {
             // GUID of old Assets/VRCFury folder
             var removed = false;
             var legacyDir = AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae");
-            if (!string.IsNullOrWhiteSpace(legacyDir)) {
+            if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 removed = true;
                 AssetDatabase.DeleteAsset(legacyDir);
             }
