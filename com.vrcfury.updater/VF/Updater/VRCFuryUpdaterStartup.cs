@@ -50,19 +50,40 @@ namespace VF.Updater {
                 return;
             }
 
-            if (Directory.Exists("Assets/VRCFury-installer")) {
-                if (isRunningInsidePackage) {
-                    // There are two of us! The Assets copy is in charge for upgrading "us" (the package)
-                    DebugLog("Aborting (installer exists and this code is in the updater package)");
-                    return;
-                }
-                DebugLog("Installer directory found, removing and forcing update");
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
-                await VRCFuryUpdater.UpdateAll();
+            if (!isRunningInsidePackage) {
                 return;
             }
 
-            if (!isRunningInsidePackage) {
+            var triggerUpgrade = false;
+            var showUpgradeNotice = false;
+            var legacyDir = AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae");
+            if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
+                DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(legacyDir));
+                triggerUpgrade = true;
+                showUpgradeNotice = true;
+            }
+            if (Directory.Exists("Assets/VRCFury")) {
+                DebugLog($"VRCFury found a legacy install at location: Assets/VRCFury");
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury"));
+                triggerUpgrade = true;
+                showUpgradeNotice = true;
+            }
+            if (Directory.Exists("Assets/VRCFury-installer")) {
+                DebugLog("Installer directory found, removing and forcing update");
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
+                triggerUpgrade = true;
+            }
+
+            if (showUpgradeNotice) {
+                EditorUtility.DisplayDialog(
+                    "VRCFury Updater",
+                    "VRCFury is upgrading to a unity package, so it's moving from Assets/VRCFury to Packages/VRCFury. Don't worry, nothing else should change!",
+                    "Ok"
+                );
+            }
+            if (triggerUpgrade) {
+                await VRCFuryUpdater.UpdateAll();
                 return;
             }
 
