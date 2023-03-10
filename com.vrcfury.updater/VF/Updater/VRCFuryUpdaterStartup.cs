@@ -76,10 +76,8 @@ namespace VF.Updater {
             }
 
             if (showUpgradeNotice) {
-                EditorUtility.DisplayDialog(
-                    "VRCFury Updater",
-                    "VRCFury is upgrading to a unity package, so it's moving from Assets/VRCFury to Packages/VRCFury. Don't worry, nothing else should change!",
-                    "Ok"
+                await AsyncUtils.DisplayDialog(
+                    "VRCFury is upgrading to a unity package, so it's moving from Assets/VRCFury to Packages/VRCFury. Don't worry, nothing else should change!"
                 );
             }
             if (triggerUpgrade) {
@@ -115,12 +113,11 @@ namespace VF.Updater {
 
                     EditorUtility.ClearProgressBar();
                     DebugLog("Upgrade complete");
-                    EditorUtility.DisplayDialog(
-                        "VRCFury Updater",
-                        "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads.",
-                        "Ok"
-                    );
                 });
+                
+                await AsyncUtils.DisplayDialog(
+                    "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads."
+                );
             }
         }
     }
