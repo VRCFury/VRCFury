@@ -138,24 +138,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
-        layerName = string.IsNullOrWhiteSpace(model.name) ? model.paramOverride : model.name;
+        layerName = model.name;
         var fx = GetFx();
         var layer = getLayer(layerName, fx);
         var off = getStartState("Off", layer);
 
         VFACondition onCase;
 
-        var paramName = string.IsNullOrWhiteSpace(model.paramOverride) ? model.name : model.paramOverride;
+        var paramName = model.paramOverride ?? model.name;
         if (model.useInt) {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
         } else {
-            if (model.isParamDriven) {
-                model.usePrefixOnParam = false;
-            }
-            var boolParam = fx.NewBool(paramName, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
             param = boolParam;
-            onCase = param.IsTrue();
+            onCase = boolParam.IsTrue();
         }
 
         if (!model.hasTransitionTime)  model.transitionTime = 0;
@@ -339,8 +336,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     def: false,
                     usePrefix: false
                 );
-                if (!model.keepGlobalParam)
-                    off.Drives(driveGlobal, false);
+                off.Drives(driveGlobal, false);
                 inState.Drives(driveGlobal, true);
             }
         }
@@ -428,7 +424,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
         var isButtonProp = prop.FindPropertyRelative("isButton");
-        var isParamDrivenProp = prop.FindPropertyRelative("isParamDriven");
         var hasTransitionTimeProp = prop.FindPropertyRelative("hasTransitionTime");
         var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
 
@@ -536,10 +531,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
-            advMenu.AddItem(new GUIContent("Parameter Driven"), isParamDrivenProp.boolValue, () => {
-                    isParamDrivenProp.boolValue = !isParamDrivenProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
 
             advMenu.AddItem(new GUIContent("Has Transition Time"), hasTransitionTimeProp.boolValue, () => {
                     hasTransitionTimeProp.boolValue = !hasTransitionTimeProp.boolValue;
@@ -596,21 +587,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, enableIconProp));
         }
 
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var c = new VisualElement();
-            if (isParamDrivenProp.boolValue)
-            {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("paramOverride"), "Driving Param"));
-            }
-            return c;
-        }, isParamDrivenProp));
-
         if (enableDriveGlobalParamProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableDriveGlobalParamProp.boolValue) {
                     c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("driveGlobalParam"), "Drive Global Param"));
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepGlobalParam"), "Keep Global Param"));
                     c.Add(VRCFuryEditorUtils.Warn(
                         "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
                         "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +

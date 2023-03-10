@@ -246,6 +246,7 @@ namespace VF.Model.Feature {
         public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
+        [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
         public bool hasTransitionTime = false;
         public float transitionTime = 0;
@@ -255,7 +256,6 @@ namespace VF.Model.Feature {
         public GuidTexture2d icon;
         public bool enableDriveGlobalParam;
         public string driveGlobalParam;
-        public bool keepGlobalParam = false;
         public bool separateLocal;
         public State localState;
         public bool hasTransition;
@@ -266,8 +266,6 @@ namespace VF.Model.Feature {
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
         public bool isButton = false;
-        public bool isParamDriven = false;
-        public string paramOverride = null;
 		
 		public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
