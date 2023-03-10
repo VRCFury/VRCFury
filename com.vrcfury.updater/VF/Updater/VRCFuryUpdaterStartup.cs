@@ -60,19 +60,21 @@ namespace VF.Updater {
             var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(legacyDir));
+                // We use Directory.Delete instead of AssetDatabase.DeleteAsset because the latter
+                // can cause a 'MemoryStream corrupted' error when nuking all the old vrcfury scripts
+                Directory.Delete(legacyDir, true);
                 triggerUpgrade = true;
                 showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury")) {
                 DebugLog($"VRCFury found a legacy install at location: Assets/VRCFury");
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury"));
+                Directory.Delete("Assets/VRCFury", true);
                 triggerUpgrade = true;
                 showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury-installer")) {
                 DebugLog("Installer directory found, removing and forcing update");
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
+                Directory.Delete("Assets/VRCFury-installer", true);
                 triggerUpgrade = true;
             }
 
