@@ -56,7 +56,7 @@ namespace VF.Updater {
 
             var triggerUpgrade = false;
             var showUpgradeNotice = false;
-            var legacyDir = AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae");
+            var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
                 await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(legacyDir));
