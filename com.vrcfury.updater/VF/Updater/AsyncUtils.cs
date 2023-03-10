@@ -31,9 +31,11 @@ namespace VF.Updater {
             await PreventReload(async () => {
                 if (remove != null) {
                     foreach (var name in remove) {
+                        Debug.Log($"Removing package {name}");
                         await PackageRequest(() => Client.Remove(name));
                         var savedTgzPath = $"Packages/{name}.tgz";
                         if (File.Exists(savedTgzPath)) {
+                            Debug.Log($"Deleting {savedTgzPath}");
                             File.Delete(savedTgzPath);
                         }
                     }
@@ -43,12 +45,15 @@ namespace VF.Updater {
                     foreach (var (name,path) in add) {
                         var savedTgzPath = $"Packages/{name}.tgz";
                         if (File.Exists(savedTgzPath)) {
+                            Debug.Log($"Deleting {savedTgzPath}");
                             File.Delete(savedTgzPath);
                         }
                         if (Directory.Exists($"Packages/{name}")) {
+                            Debug.Log($"Deleting Packages/{name}");
                             Directory.Delete($"Packages/{name}", true);
                         }
                         File.Copy(path, savedTgzPath);
+                        Debug.Log($"Adding package file:{name}.tgz");
                         await PackageRequest(() => Client.Add($"file:{name}.tgz"));
                     }
                 }
@@ -64,6 +69,7 @@ namespace VF.Updater {
         public static async Task EnsureVrcfuryEmbedded() {
             foreach (var local in await ListInstalledPacakges()) {
                 if (local.name == "com.vrcfury.vrcfury" && local.source == PackageSource.LocalTarball) {
+                    Debug.Log($"Embedding package {local.name}");
                     await PackageRequest(() => Client.Embed(local.name));
                 }
             }
@@ -164,8 +170,10 @@ namespace VF.Updater {
             }
         }
         private static void TriggerReloadNow() {
+            Debug.Log("Triggering script import/recompilation");
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             CompilationPipeline.RequestScriptCompilation();
+            Debug.Log("Triggered");
         }
     }
 }
