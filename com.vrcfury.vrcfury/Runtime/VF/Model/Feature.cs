@@ -266,8 +266,8 @@ namespace VF.Model.Feature {
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
         public bool isButton = false;
-		
-		public override void CreateNewInstance(GameObject obj) {
+        
+        public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
             n.name = name;
             n.state = state;
