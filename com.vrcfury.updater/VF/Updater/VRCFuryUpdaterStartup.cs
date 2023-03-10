@@ -56,6 +56,7 @@ namespace VF.Updater {
 
             var triggerUpgrade = false;
             var showUpgradeNotice = false;
+            var updateAllMarker = await GetUpdateAllMarker();
             var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
@@ -81,11 +82,11 @@ namespace VF.Updater {
                 );
             }
             if (triggerUpgrade) {
+                if (Directory.Exists(updateAllMarker)) Directory.Delete(updateAllMarker);
                 await VRCFuryUpdater.UpdateAll();
                 return;
             }
-
-            var updateAllMarker = await GetUpdateAllMarker();
+            
             if (Directory.Exists(updateAllMarker)) {
                 DebugLog("Updater was just reinstalled, forcing update");
                 Directory.Delete(updateAllMarker);
