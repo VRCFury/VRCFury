@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
+using UnityEditorInternal;
 using UnityEngine;
 using Assembly = System.Reflection.Assembly;
 
@@ -29,6 +30,16 @@ namespace VF.Updater {
         
         public static async Task AddAndRemovePackages(IList<(string, string)> add = null, IList<string> remove = null) {
             await PreventReload(async () => {
+                // Always remove com.unity.multiplayer-hlapi before doing any package work, because otherwise
+                // unity sometimes throws "Copying assembly from Temp/com.unity.multiplayer-hlapi.Runtime.dll
+                // to Library/ScriptAssemblies/com.unity.multiplayer-hlapi.Runtime.dll failed and fails to
+                // recompile assemblies -_-.
+                // Luckily, nobody uses multiplayer-hlapi in a vrchat project anyways.
+                var list = await ListInstalledPacakges();
+                if (list.Any(p => p.name == "com.unity.multiplayer-hlapi")) {
+                    await PackageRequest(() => Client.Remove("com.unity.multiplayer-hlapi"));
+                }
+
                 if (remove != null) {
                     foreach (var name in remove) {
                         Debug.Log($"Removing package {name}");
