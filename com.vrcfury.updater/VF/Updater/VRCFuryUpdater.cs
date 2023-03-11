@@ -6,7 +6,9 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace VF.Updater {
     public static class VRCFuryUpdater {
@@ -38,6 +40,10 @@ namespace VF.Updater {
         }
 
         private static async Task UpdateAllUnsafe(bool failIfUpdaterNeedsUpdate) {
+            if (await AsyncUtils.InMainThread(() => EditorApplication.isPlaying)) {
+                throw new Exception("VRCFury cannot update in play mode");
+            }
+
             Debug.Log("Downloading update manifest...");
             string json = await DownloadString("https://updates.vrcfury.com/updates.json?_=" + DateTime.Now);
 
@@ -95,6 +101,7 @@ namespace VF.Updater {
             }
 
             Directory.CreateDirectory(await VRCFuryUpdaterStartup.GetUpdatedMarkerPath());
+            await SceneCloser.CloseScenes();
             await AsyncUtils.AddAndRemovePackages(add: packageFilesToAdd);
         }
 

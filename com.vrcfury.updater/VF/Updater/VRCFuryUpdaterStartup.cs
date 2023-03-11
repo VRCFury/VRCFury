@@ -53,6 +53,8 @@ namespace VF.Updater {
             if (!isRunningInsidePackage) {
                 return;
             }
+            
+            await SceneCloser.ReopenScenes();
 
             var triggerUpgrade = false;
             var showUpgradeNotice = false;
@@ -60,21 +62,25 @@ namespace VF.Updater {
             var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
-                // We use Directory.Delete instead of AssetDatabase.DeleteAsset because the latter
-                // can cause a 'MemoryStream corrupted' error when nuking all the old vrcfury scripts
-                Directory.Delete(legacyDir, true);
+                await SceneCloser.CloseScenes();
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(legacyDir));
+                await SceneCloser.ReopenScenes();
                 triggerUpgrade = true;
                 showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury")) {
                 DebugLog($"VRCFury found a legacy install at location: Assets/VRCFury");
-                Directory.Delete("Assets/VRCFury", true);
+                await SceneCloser.CloseScenes();
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury"));
+                await SceneCloser.ReopenScenes();
                 triggerUpgrade = true;
                 showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury-installer")) {
                 DebugLog("Installer directory found, removing and forcing update");
-                Directory.Delete("Assets/VRCFury-installer", true);
+                await SceneCloser.CloseScenes();
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
+                await SceneCloser.ReopenScenes();
                 triggerUpgrade = true;
             }
 
@@ -101,23 +107,11 @@ namespace VF.Updater {
                 DebugLog("Found 'update complete' marker");
                 Directory.Delete(updatedMarker);
 
-                // We need to reload scenes. If we do not, any serialized data with a changed type will be deserialized as "null"
-                // This is especially common for fields that we change from a non-guid type to a guid type, like
-                // AnimationClip to GuidAnimationClip.
                 await AsyncUtils.InMainThread(() => {
-                    var openScenes = Enumerable.Range(0, SceneManager.sceneCount)
-                        .Select(i => SceneManager.GetSceneAt(i))
-                        .Where(scene => scene.isLoaded);
-                    foreach (var scene in openScenes) {
-                        var type = typeof(EditorSceneManager);
-                        var method = type.GetMethod("ReloadScene", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                        method.Invoke(null, new object[] { scene });
-                    }
-
                     EditorUtility.ClearProgressBar();
                     DebugLog("Upgrade complete");
                 });
-                
+
                 await AsyncUtils.DisplayDialog(
                     "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads."
                 );
