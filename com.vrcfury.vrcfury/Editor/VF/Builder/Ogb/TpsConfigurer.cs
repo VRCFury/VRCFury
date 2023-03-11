@@ -88,14 +88,12 @@ namespace VF.Builder.Ogb {
             string tmpDir,
             float worldLength
         ) {
-            var shaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
             var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
-            if (shaderOptimizer == null || bakeUtil == null) {
+            if (bakeUtil == null) {
                 throw new VRCFBuilderException(
                     "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
             }
-            
-            var unlockMethod = shaderOptimizer.GetMethod("Unlock", BindingFlags.NonPublic | BindingFlags.Static);
+
             var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
             var bakeMethod = bakeUtil.GetMethod(
                 "BakePositionsToTexture", 
@@ -104,7 +102,7 @@ namespace VF.Builder.Ogb {
                 new[] { meshInfoType, typeof(Texture2D) },
                 null
             );
-            if (unlockMethod == null || meshInfoType == null || bakeMethod == null) {
+            if (meshInfoType == null || bakeMethod == null) {
                 throw new VRCFBuilderException(
                     "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
             }
@@ -112,6 +110,10 @@ namespace VF.Builder.Ogb {
             var shaderRotation = Quaternion.identity;
             var mat = skin.sharedMaterials[matSlot];
             if (!IsTps(mat)) return;
+            if (mat.shader.name.ToLower().Contains("locked")) {
+                throw new VRCFBuilderException(
+                    "OGB Penetrator has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
+            }
             mat = Object.Instantiate(mat);
             VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);
             {
@@ -120,10 +122,7 @@ namespace VF.Builder.Ogb {
                 skin.sharedMaterials = mats;
                 VRCFuryEditorUtils.MarkDirty(skin);
             }
-            
-            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                ReflectionUtils.CallWithOptionalParams(unlockMethod, null, mat);
-            });
+
             var localScale = rootTransform.lossyScale;
 
             mat.SetFloat(TpsPenetratorLength, worldLength);
