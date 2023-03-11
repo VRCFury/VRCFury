@@ -45,6 +45,8 @@ namespace VF.Updater {
                     }
                 }
                 
+                Debug.Log("VRCFury is closing loaded scenes");
+                
                 EditorSceneManager.SaveOpenScenes();
 
                 var updateScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
@@ -76,6 +78,8 @@ namespace VF.Updater {
             await AsyncUtils.InMainThread(() => {
                 var updateScene = SceneManager.GetSceneByPath(UpdateScenePath);
                 if (!updateScene.IsValid() || !updateScene.isLoaded) return;
+
+                Debug.Log("VRCFury is re-opening loaded scenes");
                 var paths = updateScene.GetRootGameObjects().Select(obj => obj.name).ToList();
                 var first = true;
                 foreach (var path in paths.Where(File.Exists)) {
