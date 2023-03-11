@@ -113,7 +113,7 @@ namespace VF.Updater {
                 });
 
                 await AsyncUtils.DisplayDialog(
-                    "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads."
+                    "VRCFury has successfully installed/updated!"
                 );
             }
         }
