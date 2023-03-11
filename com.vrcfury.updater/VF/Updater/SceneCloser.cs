@@ -58,6 +58,7 @@ namespace VF.Updater {
                 }
 
                 AssetDatabase.DeleteAsset(UpdateScenePath);
+                Directory.CreateDirectory("Assets/_VRCFury");
                 EditorSceneManager.SaveScene(updateScene, UpdateScenePath);
 
                 SceneManager.MoveGameObjectToScene(new GameObject("This is used re-open your scenes after VRCFury has updated."), updateScene);
