@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
+using UnityEditorInternal;
 using UnityEngine;
 using Assembly = System.Reflection.Assembly;
 
@@ -29,11 +30,23 @@ namespace VF.Updater {
         
         public static async Task AddAndRemovePackages(IList<(string, string)> add = null, IList<string> remove = null) {
             await PreventReload(async () => {
+                // Always remove com.unity.multiplayer-hlapi before doing any package work, because otherwise
+                // unity sometimes throws "Copying assembly from Temp/com.unity.multiplayer-hlapi.Runtime.dll
+                // to Library/ScriptAssemblies/com.unity.multiplayer-hlapi.Runtime.dll failed and fails to
+                // recompile assemblies -_-.
+                // Luckily, nobody uses multiplayer-hlapi in a vrchat project anyways.
+                var list = await ListInstalledPacakges();
+                if (list.Any(p => p.name == "com.unity.multiplayer-hlapi")) {
+                    await PackageRequest(() => Client.Remove("com.unity.multiplayer-hlapi"));
+                }
+
                 if (remove != null) {
                     foreach (var name in remove) {
+                        Debug.Log($"Removing package {name}");
                         await PackageRequest(() => Client.Remove(name));
                         var savedTgzPath = $"Packages/{name}.tgz";
                         if (File.Exists(savedTgzPath)) {
+                            Debug.Log($"Deleting {savedTgzPath}");
                             File.Delete(savedTgzPath);
                         }
                     }
@@ -43,12 +56,15 @@ namespace VF.Updater {
                     foreach (var (name,path) in add) {
                         var savedTgzPath = $"Packages/{name}.tgz";
                         if (File.Exists(savedTgzPath)) {
+                            Debug.Log($"Deleting {savedTgzPath}");
                             File.Delete(savedTgzPath);
                         }
                         if (Directory.Exists($"Packages/{name}")) {
+                            Debug.Log($"Deleting Packages/{name}");
                             Directory.Delete($"Packages/{name}", true);
                         }
                         File.Copy(path, savedTgzPath);
+                        Debug.Log($"Adding package file:{name}.tgz");
                         await PackageRequest(() => Client.Add($"file:{name}.tgz"));
                     }
                 }
@@ -64,6 +80,7 @@ namespace VF.Updater {
         public static async Task EnsureVrcfuryEmbedded() {
             foreach (var local in await ListInstalledPacakges()) {
                 if (local.name == "com.vrcfury.vrcfury" && local.source == PackageSource.LocalTarball) {
+                    Debug.Log($"Embedding package {local.name}");
                     await PackageRequest(() => Client.Embed(local.name));
                 }
             }
@@ -164,8 +181,10 @@ namespace VF.Updater {
             }
         }
         private static void TriggerReloadNow() {
+            Debug.Log("Triggering script import/recompilation");
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             CompilationPipeline.RequestScriptCompilation();
+            Debug.Log("Triggered");
         }
     }
 }

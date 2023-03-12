@@ -50,23 +50,51 @@ namespace VF.Updater {
                 return;
             }
 
-            if (Directory.Exists("Assets/VRCFury-installer")) {
-                if (isRunningInsidePackage) {
-                    // There are two of us! The Assets copy is in charge for upgrading "us" (the package)
-                    DebugLog("Aborting (installer exists and this code is in the updater package)");
-                    return;
-                }
-                DebugLog("Installer directory found, removing and forcing update");
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
-                await VRCFuryUpdater.UpdateAll();
-                return;
-            }
-
             if (!isRunningInsidePackage) {
                 return;
             }
+            
+            await SceneCloser.ReopenScenes();
 
+            var triggerUpgrade = false;
+            var showUpgradeNotice = false;
             var updateAllMarker = await GetUpdateAllMarker();
+            var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
+            if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
+                DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
+                await SceneCloser.CloseScenes();
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(legacyDir));
+                await SceneCloser.ReopenScenes();
+                triggerUpgrade = true;
+                showUpgradeNotice = true;
+            }
+            if (Directory.Exists("Assets/VRCFury")) {
+                DebugLog($"VRCFury found a legacy install at location: Assets/VRCFury");
+                await SceneCloser.CloseScenes();
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury"));
+                await SceneCloser.ReopenScenes();
+                triggerUpgrade = true;
+                showUpgradeNotice = true;
+            }
+            if (Directory.Exists("Assets/VRCFury-installer")) {
+                DebugLog("Installer directory found, removing and forcing update");
+                await SceneCloser.CloseScenes();
+                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
+                await SceneCloser.ReopenScenes();
+                triggerUpgrade = true;
+            }
+
+            if (showUpgradeNotice) {
+                await AsyncUtils.DisplayDialog(
+                    "VRCFury is upgrading to a unity package, so it's moving from Assets/VRCFury to Packages/VRCFury. Don't worry, nothing else should change!"
+                );
+            }
+            if (triggerUpgrade) {
+                if (Directory.Exists(updateAllMarker)) Directory.Delete(updateAllMarker);
+                await VRCFuryUpdater.UpdateAll();
+                return;
+            }
+            
             if (Directory.Exists(updateAllMarker)) {
                 DebugLog("Updater was just reinstalled, forcing update");
                 Directory.Delete(updateAllMarker);
@@ -79,27 +107,14 @@ namespace VF.Updater {
                 DebugLog("Found 'update complete' marker");
                 Directory.Delete(updatedMarker);
 
-                // We need to reload scenes. If we do not, any serialized data with a changed type will be deserialized as "null"
-                // This is especially common for fields that we change from a non-guid type to a guid type, like
-                // AnimationClip to GuidAnimationClip.
                 await AsyncUtils.InMainThread(() => {
-                    var openScenes = Enumerable.Range(0, SceneManager.sceneCount)
-                        .Select(i => SceneManager.GetSceneAt(i))
-                        .Where(scene => scene.isLoaded);
-                    foreach (var scene in openScenes) {
-                        var type = typeof(EditorSceneManager);
-                        var method = type.GetMethod("ReloadScene", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                        method.Invoke(null, new object[] { scene });
-                    }
-
                     EditorUtility.ClearProgressBar();
                     DebugLog("Upgrade complete");
-                    EditorUtility.DisplayDialog(
-                        "VRCFury Updater",
-                        "VRCFury has been updated.\n\nUnity may be frozen for a bit as it reloads.",
-                        "Ok"
-                    );
                 });
+
+                await AsyncUtils.DisplayDialog(
+                    "VRCFury has successfully installed/updated!"
+                );
             }
         }
     }

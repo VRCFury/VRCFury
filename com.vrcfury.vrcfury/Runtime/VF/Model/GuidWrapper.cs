@@ -86,6 +86,17 @@ namespace VF.Model {
             return a?.GetObject() != b?.GetObject();
         }
 
+        public override bool Equals(object other) {
+            if (other is GuidWrapper<T> o) {
+                return o.GetObject() == GetObject();
+            }
+            return false;
+        }
+
+        public override int GetHashCode() {
+            return GetObject()?.GetHashCode() ?? 0;
+        }
+
         public void OnBeforeSerialize() {
             Refresh();
         }
