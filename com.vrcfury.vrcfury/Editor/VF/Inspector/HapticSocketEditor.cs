@@ -48,7 +48,7 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("minDepth")));
                 c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of maximum penetration in meters (0 for default):"));
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("maxDepth")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Enable animation for penetrators on this same avatar?"));
+                c.Add(VRCFuryEditorUtils.WrappedLabel("Enable animation with plugs on this same avatar?"));
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableSelf")));
                 return c;
             }));
@@ -153,7 +153,7 @@ namespace VF.Inspector {
                     OGBUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
                     OGBUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
                     OGBUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    // Legacy non-OGB TPS penetrator detection
+                    // Legacy non-OGB TPS detection
                     OGBUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
                     OGBUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
                     

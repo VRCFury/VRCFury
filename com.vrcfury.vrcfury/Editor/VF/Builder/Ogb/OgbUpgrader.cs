@@ -221,7 +221,7 @@ namespace VF.Builder.Ogb {
             // Auto-add plugs from DPS and TPS
             foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 var (renderer, _, _) = tuple;
-                if (PenetratorSizeDetector.HasDpsMaterial(renderer) && PenetratorSizeDetector.GetAutoWorldSize(renderer) != null)
+                if (PlugSizeDetector.HasDpsMaterial(renderer) && PlugSizeDetector.GetAutoWorldSize(renderer) != null)
                     AddPlug(renderer.gameObject);
             }
             

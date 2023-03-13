@@ -15,7 +15,7 @@ namespace VF.Builder.Ogb {
         private static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
         private static readonly int TpsPenetratorRight = Shader.PropertyToID("_TPS_PenetratorRight");
         private static readonly int TpsPenetratorUp = Shader.PropertyToID("_TPS_PenetratorUp");
-        private static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
+        public static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
         private static readonly int TpsIsSkinnedMeshRenderer = Shader.PropertyToID("_TPS_IsSkinnedMeshRenderer");
         private static readonly string TpsIsSkinnedMeshKeyword = "TPS_IsSkinnedMesh";
         private static readonly int TpsBakedMesh = Shader.PropertyToID("_TPS_BakedMesh");
@@ -91,7 +91,7 @@ namespace VF.Builder.Ogb {
             var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
             if (bakeUtil == null) {
                 throw new VRCFBuilderException(
-                    "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
             }
 
             var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
@@ -104,7 +104,7 @@ namespace VF.Builder.Ogb {
             );
             if (meshInfoType == null || bakeMethod == null) {
                 throw new VRCFBuilderException(
-                    "OGB Penetrator has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
             }
             
             var shaderRotation = Quaternion.identity;
@@ -112,7 +112,7 @@ namespace VF.Builder.Ogb {
             if (!IsTps(mat)) return;
             if (mat.shader.name.ToLower().Contains("locked")) {
                 throw new VRCFBuilderException(
-                    "OGB Penetrator has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
+                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
             }
             mat = Object.Instantiate(mat);
             VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);

@@ -55,7 +55,7 @@ namespace VF.Feature {
             if (enableAuto) {
                 var fx = GetFx();
                 autoOn = fx.NewBool("autoMode", synced: true);
-                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to an OGB penetrator", autoOn);
+                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
                 var off = autoReceiverLayer.NewState("Off");
