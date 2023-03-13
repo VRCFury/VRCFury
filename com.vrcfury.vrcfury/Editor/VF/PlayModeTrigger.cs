@@ -110,7 +110,7 @@ namespace VF {
                     VRCFuryBuilder.StripAllVrcfComponents(avatar.gameObject);
                     oneChanged = true;
                 }
-                foreach (var o in root.GetComponentsInChildren<HapticSocket>(true)) {
+                foreach (var o in root.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
                     if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
@@ -118,11 +118,11 @@ namespace VF {
                     });
                     Object.DestroyImmediate(o);
                 }
-                foreach (var o in root.GetComponentsInChildren<OGBPenetrator>(true)) {
+                foreach (var o in root.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
                     if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        OGBPenetratorEditor.Bake(o, onlySenders: true, tmpDir: tmpDir);
+                        VRCFuryHapticPlugEditor.Bake(o, onlySenders: true, tmpDir: tmpDir);
                     });
                     Object.DestroyImmediate(o);
                 }

@@ -12,10 +12,10 @@ using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
-    [CustomEditor(typeof(HapticSocket), true)]
+    [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     public class HapticSocketEditor : Editor {
         public override VisualElement CreateInspectorGUI() {
-            var self = (HapticSocket)target;
+            var self = (VRCFuryHapticSocket)target;
 
             var container = new VisualElement();
             
@@ -57,7 +57,7 @@ namespace VF.Inspector {
         }
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(HapticSocket orf, GizmoType gizmoType) {
+        static void DrawGizmo(VRCFuryHapticSocket orf, GizmoType gizmoType) {
             var autoInfo = GetInfoFromLightsOrComponent(orf);
 
             var (lightType, localPosition, localRotation) = autoInfo;
@@ -65,16 +65,16 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
             
-            var text = "Orifice Missing Light";
-            if (lightType == HapticSocket.AddLight.Hole) text = "Hole";
-            if (lightType == HapticSocket.AddLight.Ring) text = "Ring";
+            var text = "Socket Missing Light";
+            if (lightType == VRCFuryHapticSocket.AddLight.Hole) text = "Haptic Socket (Hole)";
+            if (lightType == VRCFuryHapticSocket.AddLight.Ring) text = "Haptic Socket (Ring)";
 
             var handTouchZoneSize = GetHandTouchZoneSize(orf);
             if (handTouchZoneSize != null) {
                 var worldLength = handTouchZoneSize.Item1;
                 var localLength = worldLength / orf.transform.lossyScale.x;
                 var worldRadius = handTouchZoneSize.Item2;
-                OGBPenetratorEditor.DrawCapsule(
+                VRCFuryHapticPlugEditor.DrawCapsule(
                     orf.gameObject,
                     localPosition + localForward * -(localLength / 2),
                     localCapsuleRotation,
@@ -105,23 +105,23 @@ namespace VF.Inspector {
             );
         }
         
-        public static Tuple<string,GameObject> Bake(HapticSocket orifice, List<string> usedNames = null, bool onlySenders = false) {
-            var obj = orifice.gameObject;
+        public static Tuple<string,GameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
+            var obj = socket.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
             
             OGBUtils.AssertValidScale(obj, "socket");
 
-            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(orifice);
+            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var name = GetName(orifice);
+            var name = GetName(socket);
             if (usedNames != null) name = OGBUtils.GetNextName(usedNames, name);
 
             Debug.Log("Baking OGB " + obj + " as " + name);
 
-            var bakeRoot = new GameObject("BakedOGBOrifice");
-            bakeRoot.transform.SetParent(orifice.transform, false);
+            var bakeRoot = new GameObject("BakedOGBSocket");
+            bakeRoot.transform.SetParent(socket.transform, false);
             bakeRoot.transform.localPosition = localPosition;
             bakeRoot.transform.localRotation = localRotation;
 
@@ -137,13 +137,13 @@ namespace VF.Inspector {
             if (onlySenders) {
                 var info = new GameObject("Info");
                 info.transform.SetParent(bakeRoot.transform, false);
-                if (!string.IsNullOrWhiteSpace(orifice.name)) {
-                    var nameObj = new GameObject("name=" + orifice.name);
+                if (!string.IsNullOrWhiteSpace(socket.name)) {
+                    var nameObj = new GameObject("name=" + socket.name);
                     nameObj.transform.SetParent(info.transform, false);
                 }
             } else {
                 // Receivers
-                var handTouchZoneSize = GetHandTouchZoneSize(orifice);
+                var handTouchZoneSize = GetHandTouchZoneSize(socket);
                 var receivers = new GameObject("Receivers");
                 receivers.transform.SetParent(bakeRoot.transform, false);
                 if (handTouchZoneSize != null) {
@@ -170,7 +170,7 @@ namespace VF.Inspector {
             
             OGBUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, false);
 
-            if (lightType != HapticSocket.AddLight.None) {
+            if (lightType != VRCFuryHapticSocket.AddLight.None) {
                 var lights = new GameObject("Lights");
                 lights.transform.SetParent(bakeRoot.transform, false);
 
@@ -185,7 +185,7 @@ namespace VF.Inspector {
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
-                    mainLight.range = lightType == HapticSocket.AddLight.Ring ? 0.42f : 0.41f;
+                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.42f : 0.41f;
                     mainLight.shadows = LightShadows.None;
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -204,17 +204,17 @@ namespace VF.Inspector {
             return Tuple.Create(name, bakeRoot);
         }
 
-        private static Tuple<float, float> GetHandTouchZoneSize(HapticSocket orifice) {
+        private static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
             bool enableHandTouchZone = false;
-            if (orifice.enableHandTouchZone2 == HapticSocket.EnableTouchZone.On) {
+            if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
-            } else if (orifice.enableHandTouchZone2 == HapticSocket.EnableTouchZone.Auto) {
-                enableHandTouchZone = ShouldProbablyHaveTouchZone(orifice);
+            } else if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto) {
+                enableHandTouchZone = ShouldProbablyHaveTouchZone(socket);
             }
             if (!enableHandTouchZone) {
                 return null;
             }
-            var length = orifice.length;
+            var length = socket.length;
             if (length <= 0) length = 0.25f;
             var radius = length / 2.5f;
             return Tuple.Create(length, radius);
@@ -233,10 +233,10 @@ namespace VF.Inspector {
             return rangeId >= 0.045f && rangeId <= 0.055f;
         }
 
-        public static Tuple<HapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(HapticSocket orf) {
-            if (orf.addLight != HapticSocket.AddLight.None) {
+        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(VRCFuryHapticSocket orf) {
+            if (orf.addLight != VRCFuryHapticSocket.AddLight.None) {
                 var type = orf.addLight;
-                if (type == HapticSocket.AddLight.Auto) type = ShouldProbablyBeHole(orf) ? HapticSocket.AddLight.Hole : HapticSocket.AddLight.Ring;
+                if (type == VRCFuryHapticSocket.AddLight.Auto) type = ShouldProbablyBeHole(orf) ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring;
                 var position = orf.position;
                 var rotation = Quaternion.Euler(orf.rotation);
                 return Tuple.Create(type, position, rotation);
@@ -247,12 +247,12 @@ namespace VF.Inspector {
                 return lightInfo;
             }
 
-            return Tuple.Create(HapticSocket.AddLight.None, Vector3.zero, Quaternion.identity);
+            return Tuple.Create(VRCFuryHapticSocket.AddLight.None, Vector3.zero, Quaternion.identity);
         }
 
         /**
-         * Visit every light that could possibly be used for this orifice. This includes all children,
-         * and single-deptch children of all parents.
+         * Visit every light that could possibly be used for this socket. This includes all children,
+         * and single-depth children of all parents.
          */
         public static void ForEachPossibleLight(Transform obj, bool directOnly, Action<Light> act) {
             var visited = new HashSet<Light>();
@@ -273,7 +273,7 @@ namespace VF.Inspector {
                 }
             }
         }
-        public static Tuple<HapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLights(GameObject obj, bool directOnly = false) {
+        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLights(GameObject obj, bool directOnly = false) {
             var isRing = false;
             Light main = null;
             Light normal = null;
@@ -298,10 +298,10 @@ namespace VF.Inspector {
             var forward = (normalPosition - position).normalized;
             var rotation = Quaternion.LookRotation(forward);
 
-            return Tuple.Create(isRing ? HapticSocket.AddLight.Ring : HapticSocket.AddLight.Hole, position, rotation);
+            return Tuple.Create(isRing ? VRCFuryHapticSocket.AddLight.Ring : VRCFuryHapticSocket.AddLight.Hole, position, rotation);
         }
 
-        private static bool IsDirectChildOfHips(HapticSocket orf) {
+        private static bool IsDirectChildOfHips(VRCFuryHapticSocket orf) {
             return IsChildOfBone(orf, HumanBodyBones.Hips)
                 && !IsChildOfBone(orf, HumanBodyBones.Chest)
                 && !IsChildOfBone(orf, HumanBodyBones.Spine)
@@ -311,7 +311,7 @@ namespace VF.Inspector {
                 && !IsChildOfBone(orf, HumanBodyBones.RightUpperLeg);
         }
 
-        public static bool ShouldProbablyHaveTouchZone(HapticSocket orf) {
+        public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket orf) {
             if (IsDirectChildOfHips(orf)) {
                 var name = GetName(orf).ToLower();
                 if (name.Contains("rubbing") || name.Contains("job")) {
@@ -322,12 +322,12 @@ namespace VF.Inspector {
             return false;
         }
         
-        public static bool ShouldProbablyBeHole(HapticSocket orf) {
+        public static bool ShouldProbablyBeHole(VRCFuryHapticSocket orf) {
             if (IsChildOfBone(orf, HumanBodyBones.Head)) return true;
             return ShouldProbablyHaveTouchZone(orf);
         }
 
-        private static bool IsChildOfBone(HapticSocket orf, HumanBodyBones bone) {
+        private static bool IsChildOfBone(VRCFuryHapticSocket orf, HumanBodyBones bone) {
             try {
                 var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
                 if (!avatarObject) return false;
@@ -338,10 +338,10 @@ namespace VF.Inspector {
             }
         }
 
-        private static string GetName(HapticSocket orifice) {
-            var name = orifice.name;
+        private static string GetName(VRCFuryHapticSocket socket) {
+            var name = socket.name;
             if (string.IsNullOrWhiteSpace(name)) {
-                name = orifice.gameObject.name;
+                name = socket.gameObject.name;
             }
             return name;
         }

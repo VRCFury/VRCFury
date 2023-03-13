@@ -83,26 +83,26 @@ namespace VF.Builder.Ogb {
             string GetPath(Transform obj) {
                 return AnimationUtility.CalculateTransformPath(obj, avatarObject.transform);
             }
-            OGBPenetrator AddPlug(GameObject obj) {
+            VRCFuryHapticPlug AddPlug(GameObject obj) {
                 if (AlreadyExistsAboveOrBelow(obj, hasExistingPlug.Concat(addedPlug))) return null;
                 addedPlug.Add(obj.transform);
                 if (dryRun) return null;
-                return obj.AddComponent<OGBPenetrator>();
+                return obj.AddComponent<VRCFuryHapticPlug>();
             }
-            HapticSocket AddSocket(GameObject obj) {
+            VRCFuryHapticSocket AddSocket(GameObject obj) {
                 if (AlreadyExistsAboveOrBelow(obj, hasExistingSocket.Concat(addedSocket))) return null;
                 addedSocket.Add(obj.transform);
                 if (dryRun) return null;
-                return obj.AddComponent<HapticSocket>();
+                return obj.AddComponent<VRCFuryHapticSocket>();
             }
 
-            foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
                 hasExistingPlug.Add(c.transform);
-                foreach (var renderer in OGBPenetratorEditor.GetRenderers(c)) {
+                foreach (var renderer in VRCFuryHapticPlugEditor.GetRenderers(c)) {
                     hasExistingPlug.Add(renderer.transform);
                 }
             }
-            foreach (var c in avatarObject.GetComponentsInChildren<HapticSocket>(true)) {
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
                 hasExistingSocket.Add(c.transform);
             }
             
@@ -160,12 +160,12 @@ namespace VF.Builder.Ogb {
 
                     addedSocket.Add(obj.transform);
                     if (!dryRun) {
-                        var ogb = obj.GetComponent<HapticSocket>();
-                        if (ogb == null) ogb = obj.AddComponent<HapticSocket>();
+                        var ogb = obj.GetComponent<VRCFuryHapticSocket>();
+                        if (ogb == null) ogb = obj.AddComponent<VRCFuryHapticSocket>();
                         ogb.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
                             * constraint.transform.lossyScale.x / ogb.transform.lossyScale.x;
                         ogb.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
-                        ogb.addLight = HapticSocket.AddLight.Auto;
+                        ogb.addLight = VRCFuryHapticSocket.AddLight.Auto;
                         ogb.name = name;
                         ogb.addMenuItem = true;
                         obj.name = fullName;
@@ -212,18 +212,20 @@ namespace VF.Builder.Ogb {
 
                 UnbakePen(t.Find("OGB_Baked_Pen"));
                 UnbakePen(t.Find("BakedOGBPenetrator"));
+                UnbakePen(t.Find("BakedOGBPlug"));
                 UnbakeOrf(t.Find("OGB_Baked_Orf"));
                 UnbakeOrf(t.Find("BakedOGBOrifice"));
+                UnbakePen(t.Find("BakedOGBSocket"));
             }
             
-            // Auto-add DPS and TPS penetrators
+            // Auto-add plugs from DPS and TPS
             foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 var (renderer, _, _) = tuple;
                 if (PenetratorSizeDetector.HasDpsMaterial(renderer) && PenetratorSizeDetector.GetAutoWorldSize(renderer) != null)
                     AddPlug(renderer.gameObject);
             }
             
-            // Auto-add DPS orifices
+            // Auto-add sockets from DPS
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
                 var parent = light.gameObject.transform.parent;
                 if (parent) {
@@ -245,14 +247,14 @@ namespace VF.Builder.Ogb {
                 var holeMarker = t.Find("OGB_Marker_Hole");
                 if (holeMarker) {
                     var o = AddSocket(t.gameObject);
-                    if (o) o.addLight = HapticSocket.AddLight.Hole;
+                    if (o) o.addLight = VRCFuryHapticSocket.AddLight.Hole;
                     objectsToDelete.Add(holeMarker.gameObject);
                 }
                 
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
                     var o = AddSocket(t.gameObject);
-                    if (o) o.addLight = HapticSocket.AddLight.Ring;
+                    if (o) o.addLight = VRCFuryHapticSocket.AddLight.Ring;
                     objectsToDelete.Add(ringMarker.gameObject);
                 }
             }
@@ -260,8 +262,8 @@ namespace VF.Builder.Ogb {
             // Claim lights on all OGB components
             foreach (var transform in hasExistingSocket.Concat(addedSocket)) {
                 if (!dryRun) {
-                    foreach (var socket in transform.GetComponents<HapticSocket>()) {
-                        if (socket.addLight == HapticSocket.AddLight.None) {
+                    foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
+                        if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
                             var info = HapticSocketEditor.GetInfoFromLights(socket.gameObject);
                             if (info != null) {
                                 var type = info.Item1;
@@ -329,13 +331,13 @@ namespace VF.Builder.Ogb {
                 .Concat(hasExistingPlug)
                 .ToImmutableHashSet();
             if (addedPlug.Count > 0)
-                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPlug.Select(GetPath)));
+                parts.Add("Plug component will be added to:\n" + string.Join("\n", addedPlug.Select(GetPath)));
             if (addedSocket.Count > 0)
-                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedSocket.Select(GetPath)));
+                parts.Add("Socket component will be added to:\n" + string.Join("\n", addedSocket.Select(GetPath)));
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
-                parts.Add("OGB already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
+                parts.Add("Haptics already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
 
             if (parts.Count == 0) return "";
             return string.Join("\n\n", parts);
@@ -350,7 +352,7 @@ namespace VF.Builder.Ogb {
             return "";
         }
 
-        private static Tuple<HapticSocket.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
+        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
             var lightInfo = HapticSocketEditor.GetInfoFromLights(obj, true);
             if (lightInfo != null) {
                 return lightInfo;
@@ -358,7 +360,7 @@ namespace VF.Builder.Ogb {
 
             // For some reason, on some avatars, this one doesn't have child lights even though it's supposed to
             if (obj.name == "__dps_lightobject") {
-                return Tuple.Create(HapticSocket.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0));
+                return Tuple.Create(VRCFuryHapticSocket.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0));
             }
 
             return null;
@@ -366,13 +368,13 @@ namespace VF.Builder.Ogb {
 
         private static void AddBlendshapeIfPresent(
             GameObject avatarObject,
-            HapticSocket orf,
+            VRCFuryHapticSocket orf,
             string name,
             float minDepth,
             float maxDepth
         ) {
             if (HasBlendshape(avatarObject, name)) {
-                orf.depthActions.Add(new HapticSocket.DepthAction() {
+                orf.depthActions.Add(new VRCFuryHapticSocket.DepthAction() {
                     state = new State() {
                         actions = {
                             new BlendShapeAction {

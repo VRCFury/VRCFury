@@ -7,10 +7,10 @@ namespace VF.Menu {
     public class HapticsMenuItem {
 
         public static void Create() {
-            var newObj = new GameObject("Orifice");
+            var newObj = new GameObject("Haptic Socket");
 
-            var o = newObj.AddComponent<HapticSocket>();
-            o.addLight = HapticSocket.AddLight.Auto;
+            var o = newObj.AddComponent<VRCFuryHapticSocket>();
+            o.addLight = VRCFuryHapticSocket.AddLight.Auto;
             o.addMenuItem = true;
 
             if (Selection.activeGameObject) {
@@ -24,8 +24,8 @@ namespace VF.Menu {
             Selection.SetActiveObjectWithContext(newObj, newObj);
             //SceneView.FrameLastActiveSceneView();
             
-            EditorUtility.DisplayDialog("OGB",
-                "Orifice added.\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so the arrow faces correctly!", "Ok");
+            EditorUtility.DisplayDialog("VRCFury Haptics",
+                "Object created!\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so the arrow faces correctly!", "Ok");
             
             SceneView sv = EditorWindow.GetWindow<SceneView>();
             if (sv != null) sv.drawGizmos = true;
@@ -39,7 +39,7 @@ namespace VF.Menu {
             );
             if (!ok) return;
             
-            ok = EditorUtility.DisplayDialog("OGB",
+            ok = EditorUtility.DisplayDialog("VRCFury Haptics",
                 "Beware that baked OscGB components do not provide toy support. Only senders are included, not receivers, so toys will work for partners of this prefab, but not the owner." +
                 " Users can still easily re-add toy support themselves by simply running the VRCFury OscGB upgrader on their avatar (which will convert this bake back to a component).",
                 "I understand the limitations, bake now",
@@ -48,19 +48,19 @@ namespace VF.Menu {
             if (!ok) return;
 
             if (!Selection.activeGameObject) {
-                EditorUtility.DisplayDialog("OGB","No object selected", "Ok");
+                EditorUtility.DisplayDialog("VRCFury Haptics","No object selected", "Ok");
                 return;
             }
 
-            var pen = Selection.activeGameObject.GetComponent<OGBPenetrator>();
-            var orf = Selection.activeGameObject.GetComponent<HapticSocket>();
+            var pen = Selection.activeGameObject.GetComponent<VRCFuryHapticPlug>();
+            var orf = Selection.activeGameObject.GetComponent<VRCFuryHapticSocket>();
             if (!pen && !orf) {
-                EditorUtility.DisplayDialog("OGB","No penetrator or orifice component found on selected object", "Ok");
+                EditorUtility.DisplayDialog("VRCFury Haptics","No haptic components found on selected object", "Ok");
                 return;
             }
 
             if (pen) {
-                OGBPenetratorEditor.Bake(pen, onlySenders:true);
+                VRCFuryHapticPlugEditor.Bake(pen, onlySenders:true);
                 Object.DestroyImmediate(pen);
             }
             if (orf) {

@@ -11,10 +11,10 @@ using VF.Model;
 using VRC.Dynamics;
 
 namespace VF.Inspector {
-    [CustomEditor(typeof(OGBPenetrator), true)]
-    public class OGBPenetratorEditor : Editor {
+    [CustomEditor(typeof(VRCFuryHapticPlug), true)]
+    public class VRCFuryHapticPlugEditor : Editor {
         public override VisualElement CreateInspectorGUI() {
-            var self = (OGBPenetrator)target;
+            var self = (VRCFuryHapticPlug)target;
 
             var container = new VisualElement();
             
@@ -75,7 +75,7 @@ namespace VF.Inspector {
         }
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(OGBPenetrator scr, GizmoType gizmoType) {
+        static void DrawGizmo(VRCFuryHapticPlug scr, GizmoType gizmoType) {
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
                 size = GetWorldSize(scr);
@@ -109,7 +109,7 @@ namespace VF.Inspector {
             VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
 
-        public static ICollection<Renderer> GetRenderers(OGBPenetrator pen) {
+        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug pen) {
             var renderers = new List<Renderer>();
             if (pen.autoRenderer) {
                 var r = PenetratorSizeDetector.GetAutoRenderer(pen.gameObject);
@@ -120,7 +120,7 @@ namespace VF.Inspector {
             return renderers;
         }
 
-        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(OGBPenetrator pen) {
+        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(VRCFuryHapticPlug pen) {
 
             var renderers = GetRenderers(pen);
 
@@ -169,7 +169,7 @@ namespace VF.Inspector {
             return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false, string tmpDir = null) {
+        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug pen, List<string> usedNames = null, bool onlySenders = false, string tmpDir = null) {
             var obj = pen.gameObject;
             OGBUtils.RemoveTPSSenders(obj);
 

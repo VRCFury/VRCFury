@@ -32,8 +32,8 @@ namespace VF.Feature {
             // on if it's managed by our new menu system.
             var objectsToForceEnable = new HashSet<GameObject>();
             
-            foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-                var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames, tmpDir: tmpDir);
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
+                var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, tmpDir: tmpDir);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderer, worldLength, worldRadius) = bakeInfo;
@@ -46,7 +46,7 @@ namespace VF.Feature {
             var holesMenu = "Holes";
             var optionsFolder = $"{holesMenu}/<b>Hole Options";
 
-            var enableAuto = avatarObject.GetComponentsInChildren<HapticSocket>(true)
+            var enableAuto = avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)
                 .Where(o => o.addMenuItem && o.enableAuto)
                 .ToArray()
                 .Length >= 2;
@@ -65,7 +65,7 @@ namespace VF.Feature {
                 on.TransitionsTo(off).When(whenOn.Not());
             }
             
-            var enableStealth = avatarObject.GetComponentsInChildren<HapticSocket>(true)
+            var enableStealth = avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)
                 .Where(o => o.addMenuItem)
                 .ToArray()
                 .Length >= 1;
@@ -76,7 +76,7 @@ namespace VF.Feature {
                 manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
-            var enableMulti = avatarObject.GetComponentsInChildren<HapticSocket>(true)
+            var enableMulti = avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)
                 .Where(o => o.addMenuItem)
                 .ToArray()
                 .Length >= 2;
@@ -95,7 +95,7 @@ namespace VF.Feature {
 
             var autoSockets = new List<Tuple<string, VFABool, VFANumber>>();
             var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
-            foreach (var c in avatarObject.GetComponentsInChildren<HapticSocket>(true)) {
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
                 fakeHead.MarkEligible(c.gameObject);
                 var (name,bakeRoot) = HapticSocketEditor.Bake(c, usedNames);
                 

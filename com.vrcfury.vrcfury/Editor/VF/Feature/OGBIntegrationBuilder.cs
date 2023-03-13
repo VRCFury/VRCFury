@@ -23,7 +23,7 @@ namespace VF.Feature {
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
-            content.Add(VRCFuryEditorUtils.Error("This feature is deprecated. Add OGB Orifice and OGB Penetrator (with TPS autoconfiguration) components instead!"));
+            content.Add(VRCFuryEditorUtils.Error("This feature is deprecated. Add VRCFury Haptic Socket and VRCFury Haptic Plug (with TPS autoconfiguration) components instead!"));
             return content;
         }
     }

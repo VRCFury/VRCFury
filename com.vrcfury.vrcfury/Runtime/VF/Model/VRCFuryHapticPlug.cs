@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace VF.Model {
-    public class OGBPenetrator : VRCFuryComponent {
+    public class VRCFuryHapticPlug : VRCFuryComponent {
         public bool autoRenderer = true;
         public bool autoPosition = true;
         public bool autoLength = true;
