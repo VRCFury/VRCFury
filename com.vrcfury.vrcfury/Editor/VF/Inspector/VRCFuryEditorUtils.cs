@@ -687,6 +687,12 @@ public static class VRCFuryEditorUtils {
             EditorApplication.update -= Update;
         });
     }
+
+    public static string Rev(string s) {
+        var charArray = s.ToCharArray();
+        Array.Reverse(charArray);
+        return new string(charArray);
+    }
 }
     
 }

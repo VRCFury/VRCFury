@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace VF.Model {
-    public class OGBOrifice : VRCFuryComponent {
+    public class HapticSocket : VRCFuryComponent {
         public enum AddLight {
             None,
             Hole,

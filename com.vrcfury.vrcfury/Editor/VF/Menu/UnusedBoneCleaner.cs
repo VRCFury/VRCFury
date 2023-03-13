@@ -6,13 +6,13 @@ using VF.Builder.Exceptions;
 
 namespace VF.Menu {
     public class UnusedBoneCleaner {
-        [MenuItem(MenuItems.unusedBones_name, priority = MenuItems.unusedBones_priority)]
+        [MenuItem(MenuItems.unusedBones, priority = MenuItems.unusedBonesPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
                 Run(MenuUtils.GetSelectedAvatar());
             });
         }
-        [MenuItem(MenuItems.unusedBones_name, true)]
+        [MenuItem(MenuItems.unusedBones, true)]
         private static bool Check() {
             return MenuUtils.GetSelectedAvatar() != null;
         }

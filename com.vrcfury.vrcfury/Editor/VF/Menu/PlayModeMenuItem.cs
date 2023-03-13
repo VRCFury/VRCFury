@@ -13,10 +13,10 @@ namespace VF.Menu {
             return EditorPrefs.GetBool(EditorPref, true);
         }
         private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.playMode_name, Get());
+            UnityEditor.Menu.SetChecked(MenuItems.playMode, Get());
         }
 
-        [MenuItem(MenuItems.playMode_name, priority = MenuItems.playMode_priority)]
+        [MenuItem(MenuItems.playMode, priority = MenuItems.playModePriority)]
         private static void Click() {
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();

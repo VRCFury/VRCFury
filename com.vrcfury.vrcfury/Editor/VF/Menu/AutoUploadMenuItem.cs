@@ -13,10 +13,10 @@ namespace VF.Menu {
             return EditorPrefs.GetBool(EditorPref, false);
         }
         private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.autoUpload_name, Get());
+            UnityEditor.Menu.SetChecked(MenuItems.autoUpload, Get());
         }
 
-        [MenuItem(MenuItems.autoUpload_name, priority = MenuItems.autoUpload_priority)]
+        [MenuItem(MenuItems.autoUpload, priority = MenuItems.autoUploadPriority)]
         private static void Click() {
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();

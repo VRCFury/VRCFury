@@ -110,11 +110,11 @@ namespace VF {
                     VRCFuryBuilder.StripAllVrcfComponents(avatar.gameObject);
                     oneChanged = true;
                 }
-                foreach (var o in root.GetComponentsInChildren<OGBOrifice>(true)) {
+                foreach (var o in root.GetComponentsInChildren<HapticSocket>(true)) {
                     if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        OGBOrificeEditor.Bake(o, onlySenders: true);
+                        HapticSocketEditor.Bake(o, onlySenders: true);
                     });
                     Object.DestroyImmediate(o);
                 }

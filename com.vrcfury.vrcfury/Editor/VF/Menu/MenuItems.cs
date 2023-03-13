@@ -6,87 +6,75 @@ using VF.Builder.Ogb;
 
 namespace VF.Menu {
     public class MenuItems {
+        private const string prefix = "Tools/VRCFury2/";
 
-        //
+        public const string testCopy = prefix + "Build an Editor Test Copy";
+        public const int testCopyPriority = 1221;
+        public const string playMode = prefix + "Build during play mode";
+        public const int playModePriority = 1222;
+        public const string autoUpload = prefix + "Skip VRChat upload screen";
+        public const int autoUploadPriority = 1223;
         
-        [MenuItem("Tools/VRCFury/OGB", priority = 1200)]
-        private static void MarkerOGB() {
-        }
+        public const string upgradeLegacyHaptics = prefix + "Haptics/Upgrade legacy haptics";
+        public const int upgradeLegacyHapticsPriority = 1301;
+        public const string createSocket = prefix + "Haptics/Create Socket";
+        public const int createSocketPriority = 1302;
+        public const string bakeHaptic = prefix + "Haptics/Bake Haptic Component";
+        public const int bakeHapticPriority = 1303;
 
-        [MenuItem("Tools/VRCFury/OGB", true)]
-        private static bool MarkerOGB2() {
-            return false;
-        }
+        public const string nukeZawoo = prefix + "Utilites/Nuke Zawoo";
+        public const int nukeZawooPriority = 1311;
+        public const string unusedBones = prefix + "Utilites/Nuke unused bones";
+        public const int unusedBonesPriority = 1312;
+        public const string listComponents = prefix + "Utilites/List All Components";
+        public const int listComponentsPriority = 1313;
 
-        [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", priority = 1201)]
+        [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
                 OgbUpgrader.Run();
             });
         }
 
-        [MenuItem("Tools/VRCFury/Upgrade avatar for OGB", true)]
+        [MenuItem(upgradeLegacyHaptics, true)]
         private static bool Check() {
             return OgbUpgrader.Check();
         }
         
-        [MenuItem("Tools/VRCFury/Create Orifice", priority = 1202)]
+        [MenuItem(createSocket, priority = createSocketPriority)]
         public static void RunHole() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                OrificeCreatorMenuItem.Create();
+                HapticsMenuItem.Create();
             });
         }
 
-        [MenuItem("Tools/VRCFury/Bake OGB Component", priority = 1205)]
+        [MenuItem(bakeHaptic, priority = bakeHapticPriority)]
         public static void RunBake() {
-            OrificeCreatorMenuItem.RunBake();
-        }
-        
-        //
-
-        [MenuItem("Tools/VRCFury/Debug", priority = 1400)]
-        private static void MarkerDebug() {
+            HapticsMenuItem.RunBake();
         }
 
-        [MenuItem("Tools/VRCFury/Debug", true)]
-        private static bool MarkerDebug2() {
-            return false;
-        }
-        
-        [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", priority = 1401)]
+        [MenuItem(nukeZawoo, priority = nukeZawooPriority)]
         private static void NukeZawooParts() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
                 ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
             });
         }
         
-        [MenuItem("Tools/VRCFury/Nuke Zawoo Parts", true)]
+        [MenuItem(nukeZawoo, true)]
         private static bool CheckNukeZawooParts() {
             return MenuUtils.GetSelectedAvatar() != null;
         }
-        
-        public const string unusedBones_name = "Tools/VRCFury/Nuke unused bones";
-        public const int unusedBones_priority = 1402;
 
-        public const string testCopy_name = "Tools/VRCFury/Build an Editor Test Copy";
-        public const int testCopy_priority = 1403;
-        [MenuItem(testCopy_name, priority = testCopy_priority)]
+        [MenuItem(testCopy, priority = testCopyPriority)]
         private static void RunForceRun() {
             VRCFuryTestCopyMenuItem.RunBuildTestCopy();
         }
-        [MenuItem(testCopy_name, true)]
+        [MenuItem(testCopy, true)]
         private static bool CheckForceRun() {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
 
-        public const string playMode_name = "Tools/VRCFury/Build during play mode";
-        public const int playMode_priority = 1404;
-        
-        public const string autoUpload_name = "Tools/VRCFury/Skip VRChat upload screen";
-        public const int autoUpload_priority = 1405;
-
-        /*
-        [MenuItem("Tools/VRCFury/List All Components", priority = 1403)]
+        [MenuItem(listComponents, priority = listComponentsPriority)]
         private static void ListChildComponents() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
                 var obj = Selection.activeGameObject;
@@ -104,6 +92,5 @@ namespace VF.Menu {
                 );
             });
         }
-        */
     }
 }

@@ -4,13 +4,13 @@ using VF.Inspector;
 using VF.Model;
 
 namespace VF.Menu {
-    public class OrificeCreatorMenuItem {
+    public class HapticsMenuItem {
 
         public static void Create() {
             var newObj = new GameObject("Orifice");
 
-            var o = newObj.AddComponent<OGBOrifice>();
-            o.addLight = OGBOrifice.AddLight.Auto;
+            var o = newObj.AddComponent<HapticSocket>();
+            o.addLight = HapticSocket.AddLight.Auto;
             o.addMenuItem = true;
 
             if (Selection.activeGameObject) {
@@ -53,7 +53,7 @@ namespace VF.Menu {
             }
 
             var pen = Selection.activeGameObject.GetComponent<OGBPenetrator>();
-            var orf = Selection.activeGameObject.GetComponent<OGBOrifice>();
+            var orf = Selection.activeGameObject.GetComponent<HapticSocket>();
             if (!pen && !orf) {
                 EditorUtility.DisplayDialog("OGB","No penetrator or orifice component found on selected object", "Ok");
                 return;
@@ -64,7 +64,7 @@ namespace VF.Menu {
                 Object.DestroyImmediate(pen);
             }
             if (orf) {
-                OGBOrificeEditor.Bake(orf, onlySenders:true);
+                HapticSocketEditor.Bake(orf, onlySenders:true);
                 Object.DestroyImmediate(orf);
             }
         }
