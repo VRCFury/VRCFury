@@ -3,7 +3,7 @@ using UnityEditor;
 
 namespace VF.Updater {
     public class UpdateMenuItem {
-        private const string menu_name = "Tools/VRCFury2/Update VRCFury";
+        private const string menu_name = "Tools/VRCFury/Update VRCFury";
         private const int menu_priority = 1000;
 
         [MenuItem(menu_name, priority = menu_priority)]
