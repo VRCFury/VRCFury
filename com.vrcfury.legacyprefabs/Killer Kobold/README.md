@@ -4,7 +4,7 @@ Killer Kobold System Using VRCFury
 ## How to install
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Purchase and import the Killer Kobold System unity package
-* Find the `Packages/VRCFury Prefabs/VRCFury/Prefabs/Killer Kobold` folder in the unity folder browser
+* Find the `Packages/VRCFury - Prefabs/VRCFury/Prefabs/Killer Kobold` folder in the unity folder browser
 * Drag the `Killer Kobold System (VRCFury)` file from this folder into your scene (not your avatar!)
 * Then drag it onto your avatar's root object
 * DO NOT unpack the prefab or follow any instructions from the system's documentation
