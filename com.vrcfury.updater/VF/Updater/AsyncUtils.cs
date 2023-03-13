@@ -8,9 +8,7 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
-using UnityEditorInternal;
 using UnityEngine;
-using Assembly = System.Reflection.Assembly;
 
 namespace VF.Updater {
     public static class AsyncUtils {
@@ -42,6 +40,7 @@ namespace VF.Updater {
 
                 if (remove != null) {
                     foreach (var name in remove) {
+                        await Progress($"Removing package {name} ...");
                         Debug.Log($"Removing package {name}");
                         await PackageRequest(() => Client.Remove(name));
                         var savedTgzPath = $"Packages/{name}.tgz";
@@ -54,6 +53,7 @@ namespace VF.Updater {
 
                 if (add != null) {
                     foreach (var (name,path) in add) {
+                        await Progress($"Importing package {name} ...");
                         var savedTgzPath = $"Packages/{name}.tgz";
                         if (File.Exists(savedTgzPath)) {
                             Debug.Log($"Deleting {savedTgzPath}");
@@ -72,6 +72,13 @@ namespace VF.Updater {
                 await EnsureVrcfuryEmbedded();
             });
             await TriggerReload();
+            await Progress("Scripts are reloading ...");
+        }
+
+        public static async Task Progress(string msg) {
+            await InMainThread(() => {
+                EditorUtility.DisplayCancelableProgressBar("VRCFury Update", msg, 0);
+            });
         }
         
         
@@ -132,7 +139,7 @@ namespace VF.Updater {
                 await go();
             } catch(Exception e) {
                 Debug.LogException(e);
-                await AsyncUtils.DisplayDialog(
+                await DisplayDialog(
                     "VRCFury encountered an error while installing/updating." +
                     " You may need to Tools -> VRCFury -> Update VRCFury again. If the issue repeats," +
                     " try re-downloading from https://vrcfury.com/download or ask on the" +

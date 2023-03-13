@@ -61,8 +61,15 @@ namespace VF.Updater {
                 Directory.CreateDirectory("Assets/_VRCFury");
                 EditorSceneManager.SaveScene(updateScene, UpdateScenePath);
 
-                SceneManager.MoveGameObjectToScene(new GameObject("This is used re-open your scenes after VRCFury has updated."), updateScene);
-                SceneManager.MoveGameObjectToScene(new GameObject("If the update fails for some reason, you can safely remove this."), updateScene);
+                var info = new string[] {
+                    "This is used to re-open your",
+                    "scenes after VRCFury has updated.",
+                    "If the update fails for some reason,",
+                    "you can safely remove this scene.",
+                };
+                foreach (var line in info) {
+                    SceneManager.MoveGameObjectToScene(new GameObject(line), updateScene);
+                }
                 foreach (var path in openPaths) {
                     SceneManager.MoveGameObjectToScene(new GameObject(path), updateScene);
                 }

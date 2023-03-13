@@ -36,6 +36,7 @@ namespace VF.Updater {
             }
             updating = true;
             await AsyncUtils.ErrorDialogBoundary(() => AsyncUtils.PreventReload(() => UpdateAllUnsafe(failIfUpdaterNeedsUpdate)));
+            await AsyncUtils.InMainThread(EditorUtility.ClearProgressBar);
             updating = false;
         }
 
@@ -45,6 +46,7 @@ namespace VF.Updater {
             }
 
             Debug.Log("Downloading update manifest...");
+            await AsyncUtils.Progress("Checking for updates ...");
             string json = await DownloadString("https://updates.vrcfury.com/updates.json?_=" + DateTime.Now);
 
             var repo = JsonUtility.FromJson<Repository>(json);
@@ -52,6 +54,8 @@ namespace VF.Updater {
                 throw new Exception("Failed to fetch packages from update server");
             }
             Debug.Log($"Update manifest includes {repo.packages.Count} packages");
+            
+            await AsyncUtils.Progress("Downloading updated packages ...");
 
             var deps = await AsyncUtils.ListInstalledPacakges();
 
