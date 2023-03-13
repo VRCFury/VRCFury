@@ -20,7 +20,7 @@ namespace VF.Inspector {
 
             var container = new VisualElement();
             
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name Override"));
+            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addLight"), "Add DPS Light"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?"));
