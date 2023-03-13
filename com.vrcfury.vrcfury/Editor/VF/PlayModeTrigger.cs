@@ -114,7 +114,7 @@ namespace VF {
                     if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        HapticSocketEditor.Bake(o, onlySenders: true);
+                        VRCFuryHapticSocketEditor.Bake(o, onlySenders: true);
                     });
                     Object.DestroyImmediate(o);
                 }

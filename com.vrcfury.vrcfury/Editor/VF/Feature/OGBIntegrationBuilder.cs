@@ -1,6 +1,6 @@
 using UnityEditor;
 using UnityEngine.UIElements;
-using VF.Builder.Ogb;
+using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Menu;
@@ -8,9 +8,9 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
-        [FeatureBuilderAction(FeatureOrder.AddOgbComponents)]
+        [FeatureBuilderAction(FeatureOrder.UpgradeLegacyHaptics)]
         public void Apply() {
-            OgbUpgrader.Apply(featureBaseObject, false);
+            LegacyHapticsUpgrader.Apply(featureBaseObject, false);
         }
         
         public override bool ShowInMenu() {
@@ -18,7 +18,7 @@ namespace VF.Feature {
         }
         
         public override string GetEditorTitle() {
-            return "OGB Component Auto-Adder";
+            return "Haptic Component Auto-Adder";
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {

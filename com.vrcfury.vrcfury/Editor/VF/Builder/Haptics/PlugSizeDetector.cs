@@ -5,7 +5,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Model;
 
-namespace VF.Builder.Ogb {
+namespace VF.Builder.Haptics {
     internal static class PlugSizeDetector {
         private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
 
@@ -46,11 +46,11 @@ namespace VF.Builder.Ogb {
         
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
-            return OGBUtils.GetMeshRoot(renderer).rotation * localRotation;
+            return HapticUtils.GetMeshRoot(renderer).rotation * localRotation;
         }
         
         public static Vector3 GetAutoWorldPosition(Renderer renderer) {
-            return OGBUtils.GetMeshRoot(renderer).transform.position;
+            return HapticUtils.GetMeshRoot(renderer).transform.position;
         }
 
         public static Tuple<float, float> GetAutoWorldSize(Renderer renderer, Vector3? worldPosition_ = null, Quaternion? worldRotation_ = null) {

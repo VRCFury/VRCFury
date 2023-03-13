@@ -6,7 +6,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
-using VF.Builder.Ogb;
+using VF.Builder.Haptics;
 using VF.Model;
 using VRC.Dynamics;
 
@@ -18,7 +18,7 @@ namespace VF.Inspector {
 
             var container = new VisualElement();
             
-            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in OGB"));
+            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
             container.Add(VRCFuryEditorUtils.Prop(autoMesh, "Automatically find mesh"));
@@ -171,9 +171,9 @@ namespace VF.Inspector {
 
         public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug pen, List<string> usedNames = null, bool onlySenders = false, string tmpDir = null) {
             var obj = pen.gameObject;
-            OGBUtils.RemoveTPSSenders(obj);
+            HapticUtils.RemoveTPSSenders(obj);
 
-            OGBUtils.AssertValidScale(obj, "plug");
+            HapticUtils.AssertValidScale(obj, "plug");
 
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
@@ -188,7 +188,7 @@ namespace VF.Inspector {
             if (string.IsNullOrWhiteSpace(name)) {
                 name = obj.name;
             }
-            if (usedNames != null) name = OGBUtils.GetNextName(usedNames, name);
+            if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
             
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
@@ -198,9 +198,9 @@ namespace VF.Inspector {
             // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
             var extraRadiusForRub = 0.08f;
             
-            Debug.Log("Baking OGB " + obj + " as " + name);
+            Debug.Log("Baking haptic component in " + obj + " as " + name);
             
-            var bakeRoot = new GameObject("BakedOGBPlug");
+            var bakeRoot = new GameObject("BakedHapticPlug");
             bakeRoot.transform.SetParent(pen.transform, false);
             bakeRoot.transform.localPosition = localPosition;
             bakeRoot.transform.localRotation = localRotation;
@@ -209,10 +209,10 @@ namespace VF.Inspector {
             var halfWay = Vector3.forward * (worldLength / 2);
             var senders = new GameObject("Senders");
             senders.transform.SetParent(bakeRoot.transform, false);
-            OGBUtils.AddSender(senders, Vector3.zero, "Length", worldLength, OGBUtils.CONTACT_PEN_MAIN);
-            OGBUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), OGBUtils.CONTACT_PEN_WIDTH);
-            OGBUtils.AddSender(senders, halfWay, "Envelope", worldRadius, OGBUtils.CONTACT_PEN_CLOSE, rotation: capsuleRotation, height: worldLength);
-            OGBUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_PEN_ROOT);
+            HapticUtils.AddSender(senders, Vector3.zero, "Length", worldLength, HapticUtils.CONTACT_PEN_MAIN);
+            HapticUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), HapticUtils.CONTACT_PEN_WIDTH);
+            HapticUtils.AddSender(senders, halfWay, "Envelope", worldRadius, HapticUtils.CONTACT_PEN_CLOSE, rotation: capsuleRotation, height: worldLength);
+            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, HapticUtils.CONTACT_PEN_ROOT);
             
             var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
 
@@ -232,14 +232,14 @@ namespace VF.Inspector {
                 // Receivers
                 var receivers = new GameObject("Receivers");
                 receivers.transform.SetParent(bakeRoot.transform, false);
-                OGBUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{OGBUtils.CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
+                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, allowOthers:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, allowOthers:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
             }
             
             if (pen.configureTps && tmpDir != null) {
@@ -256,7 +256,7 @@ namespace VF.Inspector {
                 }
             }
             
-            OGBUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
+            HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
 
             return Tuple.Create(name, bakeRoot, renderers, worldLength, worldRadius);
         }

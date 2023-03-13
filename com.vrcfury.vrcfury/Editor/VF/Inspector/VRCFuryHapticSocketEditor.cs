@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Builder.Haptics;
 using VF.Menu;
 using VF.Model;
 using VRC.Dynamics;
@@ -13,7 +14,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
-    public class HapticSocketEditor : Editor {
+    public class VRCFuryHapticSocketEditor : Editor {
         public override VisualElement CreateInspectorGUI() {
             var self = (VRCFuryHapticSocket)target;
 
@@ -107,20 +108,20 @@ namespace VF.Inspector {
         
         public static Tuple<string,GameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
             var obj = socket.gameObject;
-            OGBUtils.RemoveTPSSenders(obj);
+            HapticUtils.RemoveTPSSenders(obj);
             
-            OGBUtils.AssertValidScale(obj, "socket");
+            HapticUtils.AssertValidScale(obj, "socket");
 
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
             var name = GetName(socket);
-            if (usedNames != null) name = OGBUtils.GetNextName(usedNames, name);
+            if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
 
-            Debug.Log("Baking OGB " + obj + " as " + name);
+            Debug.Log("Baking haptic component in " + obj + " as " + name);
 
-            var bakeRoot = new GameObject("BakedOGBSocket");
+            var bakeRoot = new GameObject("BakedHapticSocket");
             bakeRoot.transform.SetParent(socket.transform, false);
             bakeRoot.transform.localPosition = localPosition;
             bakeRoot.transform.localRotation = localRotation;
@@ -129,8 +130,8 @@ namespace VF.Inspector {
             senders.transform.SetParent(bakeRoot.transform, false);
 
             // Senders
-            OGBUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_ORF_MAIN);
-            OGBUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.01f, OGBUtils.CONTACT_ORF_NORM);
+            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, HapticUtils.CONTACT_ORF_MAIN);
+            HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.01f, HapticUtils.CONTACT_ORF_NORM);
             
             var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
 
@@ -149,26 +150,26 @@ namespace VF.Inspector {
                 if (handTouchZoneSize != null) {
                     var oscDepth = handTouchZoneSize.Item1;
                     var closeRadius = handTouchZoneSize.Item2;
-                    OGBUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
-                    OGBUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    OGBUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
-                    OGBUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    // Legacy non-OGB TPS detection
-                    OGBUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                    OGBUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, HapticUtils.SelfContacts, allowOthers:false, localOnly:true);
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, HapticUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, HapticUtils.BodyContacts, allowSelf:false, localOnly:true);
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, HapticUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
+                    // Legacy non-upgraded TPS detection
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
                     
                     var frotRadius = 0.1f;
                     var frotPos = 0.05f;
-                    OGBUtils.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 }
                 
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{OGBUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
             }
             
-            OGBUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, false);
+            HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, false);
 
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
                 var lights = new GameObject("Lights");

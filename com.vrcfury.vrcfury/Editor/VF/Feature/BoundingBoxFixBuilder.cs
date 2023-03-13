@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -46,7 +47,7 @@ namespace VF.Feature {
             var startBounds = CalculateFullBounds(avatarObject);
 
             //var debug = skin.gameObject.name == "Body";
-            var root = OGBUtils.GetMeshRoot(skin);
+            var root = HapticUtils.GetMeshRoot(skin);
 
             bool ModifyBounds(float sizeX = 0, float sizeY = 0, float sizeZ = 0, float centerX = 0, float centerY = 0, float centerZ = 0) {
                 var b = skin.localBounds;
@@ -90,7 +91,7 @@ namespace VF.Feature {
         }
 
         private static Bounds GetUpdatedBounds(SkinnedMeshRenderer skin, Bounds newBounds) {
-            var root = OGBUtils.GetMeshRoot(skin);
+            var root = HapticUtils.GetMeshRoot(skin);
 
             List<Vector3> GetLocalCorners(Bounds obj) {
                 var result = new List<Vector3>();

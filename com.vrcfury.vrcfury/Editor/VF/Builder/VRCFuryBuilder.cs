@@ -168,7 +168,7 @@ public class VRCFuryBuilder {
         AddBuilder(new FixDoubleFxBuilder(), avatarObject);
         AddBuilder(new FixDuplicateArmatureBuilder(), avatarObject);
         AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
-        AddBuilder(new BakeOGBBuilder(), avatarObject);
+        AddBuilder(new BakeHapticsBuilder(), avatarObject);
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
         AddBuilder(new ControllerConflictBuilder(), avatarObject);
         AddBuilder(new D4rkOptimizerBuilder(), avatarObject);

@@ -7,7 +7,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Builder.Ogb;
+using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -18,9 +18,9 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
-    public class BakeOGBBuilder : FeatureBuilder {
+    public class BakeHapticsBuilder : FeatureBuilder {
 
-        [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
+        [FeatureBuilderAction(FeatureOrder.BakeHaptics)]
         public void Apply() {
             var usedNames = new List<string>();
             var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
@@ -97,7 +97,7 @@ namespace VF.Feature {
             var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
             foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
                 fakeHead.MarkEligible(c.gameObject);
-                var (name,bakeRoot) = HapticSocketEditor.Bake(c, usedNames);
+                var (name,bakeRoot) = VRCFuryHapticSocketEditor.Bake(c, usedNames);
                 
                 foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
                     objectsToDisableTemporarily.Add(r.gameObject);
@@ -162,8 +162,8 @@ namespace VF.Feature {
 
                     if (c.enableAuto && autoOnClip) {
                         var distParam = fx.NewFloat(name + "/AutoDistance");
-                        var distReceiver = OGBUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
-                            new[] { OGBUtils.CONTACT_PEN_MAIN });
+                        var distReceiver = HapticUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
+                            new[] { HapticUtils.CONTACT_PEN_MAIN });
                         distReceiver.SetActive(false);
                         clipBuilder.Enable(autoOnClip, distReceiver);
                         autoSockets.Add(Tuple.Create(name, holeOn, distParam));
@@ -187,10 +187,10 @@ namespace VF.Feature {
                     var fx = GetFx();
 
                     var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
-                    OGBUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
+                    HapticUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
                     
                     var depthParam = fx.NewFloat(prefix + "/AnimDepth");
-                    OGBUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
+                    HapticUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
 
                     var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
                     var off = layer.NewState("Off");
@@ -226,7 +226,7 @@ namespace VF.Feature {
 
             if (autoOn != null) {
                 var fx = GetFx();
-                var layer = fx.NewLayer("Auto OGB Mode");
+                var layer = fx.NewLayer("Auto Socket Mode");
                 var remoteTrap = layer.NewState("Remote trap");
                 var stopped = layer.NewState("Stopped");
                 remoteTrap.TransitionsTo(stopped).When(fx.IsLocal().IsTrue());
@@ -304,7 +304,7 @@ namespace VF.Feature {
 
             if (objectsToDisableTemporarily.Count > 0) {
                 var fx = GetFx();
-                var layer = fx.NewLayer("OGB Off Temporarily Upon Load");
+                var layer = fx.NewLayer("Haptics Off Temporarily Upon Load");
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");
                 off.TransitionsTo(on).When().WithTransitionExitTime(1);

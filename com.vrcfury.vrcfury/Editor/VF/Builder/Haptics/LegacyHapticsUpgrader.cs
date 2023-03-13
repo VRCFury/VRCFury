@@ -14,9 +14,9 @@ using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Component = UnityEngine.Component;
 
-namespace VF.Builder.Ogb {
-    public class OgbUpgrader {
-        private static string dialogTitle = "OGB Upgrader";
+namespace VF.Builder.Haptics {
+    public static class LegacyHapticsUpgrader {
+        private static string dialogTitle = "VRCFury Legacy Haptics Upgrader";
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
@@ -173,7 +173,7 @@ namespace VF.Builder.Ogb {
                         if (name.ToLower().Contains("vag")) {
                             AddBlendshapeIfPresent(avatarObject, ogb, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
                         }
-                        if (HapticSocketEditor.ShouldProbablyHaveTouchZone(ogb)) {
+                        if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(ogb)) {
                             AddBlendshapeIfPresent(avatarObject, ogb, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
                         }
                     }
@@ -212,10 +212,10 @@ namespace VF.Builder.Ogb {
 
                 UnbakePen(t.Find("OGB_Baked_Pen"));
                 UnbakePen(t.Find("BakedOGBPenetrator"));
-                UnbakePen(t.Find("BakedOGBPlug"));
+                UnbakePen(t.Find("BakedHapticPlug"));
                 UnbakeOrf(t.Find("OGB_Baked_Orf"));
                 UnbakeOrf(t.Find("BakedOGBOrifice"));
-                UnbakePen(t.Find("BakedOGBSocket"));
+                UnbakePen(t.Find("BakedHapticSocket"));
             }
             
             // Auto-add plugs from DPS and TPS
@@ -230,7 +230,7 @@ namespace VF.Builder.Ogb {
                 var parent = light.gameObject.transform.parent;
                 if (parent) {
                     var parentObj = parent.gameObject;
-                    if (!objectsToDelete.Contains(parentObj) && HapticSocketEditor.GetInfoFromLights(parentObj, true) != null)
+                    if (!objectsToDelete.Contains(parentObj) && VRCFuryHapticSocketEditor.GetInfoFromLights(parentObj, true) != null)
                         AddSocket(parentObj);
                 }
             }
@@ -264,7 +264,7 @@ namespace VF.Builder.Ogb {
                 if (!dryRun) {
                     foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
                         if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                            var info = HapticSocketEditor.GetInfoFromLights(socket.gameObject);
+                            var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.gameObject);
                             if (info != null) {
                                 var type = info.Item1;
                                 var position = info.Item2;
@@ -277,7 +277,7 @@ namespace VF.Builder.Ogb {
                     }
                 }
 
-                HapticSocketEditor.ForEachPossibleLight(transform, false, light => {
+                VRCFuryHapticSocketEditor.ForEachPossibleLight(transform, false, light => {
                     componentsToDelete.Add(light);
                 });
             }
@@ -353,7 +353,7 @@ namespace VF.Builder.Ogb {
         }
 
         private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
-            var lightInfo = HapticSocketEditor.GetInfoFromLights(obj, true);
+            var lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(obj, true);
             if (lightInfo != null) {
                 return lightInfo;
             }

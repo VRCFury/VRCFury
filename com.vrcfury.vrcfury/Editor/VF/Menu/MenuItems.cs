@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Builder.Ogb;
+using VF.Builder.Haptics;
 
 namespace VF.Menu {
     public class MenuItems {
@@ -32,13 +32,13 @@ namespace VF.Menu {
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                OgbUpgrader.Run();
+                LegacyHapticsUpgrader.Run();
             });
         }
 
         [MenuItem(upgradeLegacyHaptics, true)]
         private static bool Check() {
-            return OgbUpgrader.Check();
+            return LegacyHapticsUpgrader.Check();
         }
         
         [MenuItem(createSocket, priority = createSocketPriority)]

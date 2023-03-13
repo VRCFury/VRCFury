@@ -8,7 +8,7 @@ using VF.Feature;
 using VF.Inspector;
 using Object = UnityEngine.Object;
 
-namespace VF.Builder.Ogb {
+namespace VF.Builder.Haptics {
     public static class TpsConfigurer {
         private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
         private static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
@@ -115,7 +115,7 @@ namespace VF.Builder.Ogb {
                     "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
             }
             mat = Object.Instantiate(mat);
-            VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "ogb_" + mat.name);
+            VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "vrcftps_" + mat.name);
             {
                 var mats = skin.sharedMaterials;
                 mats[matSlot] = mat;
