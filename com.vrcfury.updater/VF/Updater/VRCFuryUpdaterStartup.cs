@@ -11,6 +11,7 @@ namespace VF.Updater {
     [InitializeOnLoad]
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
+            
             Task.Run(Check);
         }
 
@@ -31,6 +32,8 @@ namespace VF.Updater {
         }
 
         private static async Task CheckUnsafe() {
+            await AsyncUtils.InMainThread(EditorUtility.ClearProgressBar);
+            
             var isRunningInsidePackage = Assembly.GetExecutingAssembly().GetName().Name == "VRCFury-Updater2";
 
             void DebugLog(string msg) {
@@ -108,7 +111,6 @@ namespace VF.Updater {
                 Directory.Delete(updatedMarker);
 
                 await AsyncUtils.InMainThread(() => {
-                    EditorUtility.ClearProgressBar();
                     DebugLog("Upgrade complete");
                 });
 

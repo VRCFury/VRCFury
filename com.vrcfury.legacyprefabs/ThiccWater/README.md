@@ -4,7 +4,7 @@ ThiccWater Using VRCFury
 ## How to install
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Thicc Water by Pleasure Arcade](https://pleasurearcade.gumroad.com/l/thiccwater)
-* Find the `Assets/VRCFury/Prefabs/ThiccWater/ThiccWater (VRCFury)` file in the unity folder browser
+* Find the `Packages/VRCFury - Prefabs/VRCFury/Prefabs/ThiccWater/ThiccWater (VRCFury)` file in the unity folder browser
 * Drag the file onto whatever bone object you'd like the fluids to emit from
 * Rotate the prefab so the arrow points in the correct direction
 * You're done!

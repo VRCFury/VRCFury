@@ -4,7 +4,7 @@ Gogo Loco Using VRCFury
 ## How to install
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Gogo Loco by franada](https://franadavrc.gumroad.com/l/gogoloco)
-* Find the `Assets/VRCFury/Prefabs/GogoLoco` folder in the unity folder browser
+* Find the `Packages/VRCFury - Prefabs/VRCFury/Prefabs/GogoLoco` folder in the unity folder browser
 * Choose a version: All, Beyond, Broke, or Scale Only
   * `All` is the basic Gogo install
   * `Beyond` is All + Flying
