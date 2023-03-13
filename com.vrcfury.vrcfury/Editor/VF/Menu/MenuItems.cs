@@ -6,7 +6,7 @@ using VF.Builder.Ogb;
 
 namespace VF.Menu {
     public class MenuItems {
-        private const string prefix = "Tools/VRCFury2/";
+        private const string prefix = "Tools/VRCFury/";
 
         public const string testCopy = prefix + "Build an Editor Test Copy";
         public const int testCopyPriority = 1221;
