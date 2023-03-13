@@ -59,7 +59,7 @@ namespace VF.Builder.Haptics {
             return true;
         }
 
-        private static bool IsOGBContact(Component c, List<string> collisionTags) {
+        private static bool IsHapticContact(Component c, List<string> collisionTags) {
             if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) return true;
             else if (c.gameObject.name.StartsWith("OGB_")) return true;
             return false;
@@ -160,21 +160,21 @@ namespace VF.Builder.Haptics {
 
                     addedSocket.Add(obj.transform);
                     if (!dryRun) {
-                        var ogb = obj.GetComponent<VRCFuryHapticSocket>();
-                        if (ogb == null) ogb = obj.AddComponent<VRCFuryHapticSocket>();
-                        ogb.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
-                            * constraint.transform.lossyScale.x / ogb.transform.lossyScale.x;
-                        ogb.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
-                        ogb.addLight = VRCFuryHapticSocket.AddLight.Auto;
-                        ogb.name = name;
-                        ogb.addMenuItem = true;
+                        var socket = obj.GetComponent<VRCFuryHapticSocket>();
+                        if (socket == null) socket = obj.AddComponent<VRCFuryHapticSocket>();
+                        socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
+                            * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
+                        socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
+                        socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
+                        socket.name = name;
+                        socket.addMenuItem = true;
                         obj.name = fullName;
                         
                         if (name.ToLower().Contains("vag")) {
-                            AddBlendshapeIfPresent(avatarObject, ogb, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
+                            AddBlendshapeIfPresent(avatarObject, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
                         }
-                        if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(ogb)) {
-                            AddBlendshapeIfPresent(avatarObject, ogb, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
+                        if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
+                            AddBlendshapeIfPresent(avatarObject, socket, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
                         }
                     }
                 }
@@ -319,8 +319,8 @@ namespace VF.Builder.Haptics {
                            || param.StartsWith("Nsfw/Ori/");
                 },
                 ShouldRemoveComponent: component => {
-                    if (component is VRCContactSender sender && IsOGBContact(sender, sender.collisionTags)) return true;
-                    if (component is VRCContactReceiver rcv && IsOGBContact(rcv, rcv.collisionTags)) return true;
+                    if (component is VRCContactSender sender && IsHapticContact(sender, sender.collisionTags)) return true;
+                    if (component is VRCContactReceiver rcv && IsHapticContact(rcv, rcv.collisionTags)) return true;
                     if (componentsToDelete.Contains(component)) return true;
                     return false;
                 }

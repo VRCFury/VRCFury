@@ -38,7 +38,7 @@ namespace VF.Feature.Base {
         // Needs to run after TPS integration (since it may add new TPS material meshes)
         UpgradeLegacyHaptics = 100,
         
-        // Needs to run after all OGB components are in place
+        // Needs to run after all haptic components are in place
         BakeHaptics = 101,
         
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
