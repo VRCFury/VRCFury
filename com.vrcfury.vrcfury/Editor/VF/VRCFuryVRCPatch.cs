@@ -41,6 +41,18 @@ public class Startup {
                 Debug.LogError(new Exception("VRCFury preprocess patch failed", preprocessPatchEx));
             }
         }
+        
+        // This is purely here because some other addons initialize the vrcsdk whitelist cache for some reason
+        try {
+            var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.ValidationUtils");
+            var cachedWhitelists = validation.GetField("_whitelistCache",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var whitelists = cachedWhitelists.GetValue(null);
+            var clearMethod = whitelists.GetType().GetMethod("Clear");
+            clearMethod.Invoke(whitelists, new object[] {});
+        } catch (Exception e) {
+            Debug.LogError(new Exception("VRCFury failed to clear whitelist cache", e));
+        }
 
         try {
             var sdkBuilder = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.VRC_SdkBuilder");
