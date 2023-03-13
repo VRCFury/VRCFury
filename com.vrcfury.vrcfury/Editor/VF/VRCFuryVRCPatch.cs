@@ -75,6 +75,9 @@ public class Startup {
         foreach (var type in GetVRCFuryComponentTypes()) {
             updated.Add(type.FullName);
         }
+        // This is here purely as a courtesy to MA as they modify the whitelist /cache/ rather than the
+        // main whitelist for some reason, and thus our patch may wipe out their modification.
+        updated.Add("nadena.dev.modular_avatar.core.AvatarTagComponent");
         return updated.ToArray();
     }
 
