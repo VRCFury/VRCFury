@@ -111,7 +111,6 @@ namespace VF.Updater {
                 Directory.Delete(updatedMarker);
 
                 await AsyncUtils.InMainThread(() => {
-                    EditorUtility.ClearProgressBar();
                     DebugLog("Upgrade complete");
                 });
 
