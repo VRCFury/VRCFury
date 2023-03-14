@@ -72,8 +72,12 @@ namespace VF.Updater {
             
             await AsyncUtils.Progress("Scripts are reloading ...");
             await AsyncUtils.InMainThread(() => {
-                Debug.Log("Triggering script import/recompilation");
+                Debug.Log("Triggering asset import ...");
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                Debug.Log("Triggered");
+            });
+            await AsyncUtils.InMainThread(() => {
+                Debug.Log("Triggering script recompilation ...");
                 CompilationPipeline.RequestScriptCompilation();
                 Debug.Log("Triggered");
             });
