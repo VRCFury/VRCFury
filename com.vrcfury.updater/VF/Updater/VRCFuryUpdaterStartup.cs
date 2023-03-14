@@ -10,8 +10,8 @@ namespace VF.Updater {
     [InitializeOnLoad]
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
-            EditorApplication.delayCall += () => Task.Run(Check);
-            EditorApplication.delayCall += () => Task.Run(async () => {
+            Task.Run(Check);
+            Task.Run(async () => {
                 await Task.Delay(5000);
                 await AsyncUtils.InMainThread(AssetDatabase.Refresh);
             });

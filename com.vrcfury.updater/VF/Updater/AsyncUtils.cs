@@ -1,11 +1,28 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
 namespace VF.Updater {
+    [InitializeOnLoad]
     public static class AsyncUtils {
+        private static readonly List<Action> MainThreadCallbacks = new List<Action>();
+        static AsyncUtils() {
+            EditorApplication.update += () => {
+                Action[] callbacks;
+                lock (MainThreadCallbacks) {
+                    if (MainThreadCallbacks.Count == 0) return;
+                    callbacks = MainThreadCallbacks.ToArray();
+                    MainThreadCallbacks.Clear();
+                }
+                foreach (var cb in callbacks) {
+                    cb();
+                }
+            };
+        }
+        
         public static async Task DisplayDialog(string msg) {
             await InMainThread(() => {
                 EditorUtility.DisplayDialog(
@@ -27,14 +44,21 @@ namespace VF.Updater {
         }
         public static Task<T> InMainThread<T>(Func<T> fun) {
             var promise = new TaskCompletionSource<T>();
-            EditorApplication.delayCall += () => {
+            void Callback() {
                 try {
                     promise.SetResult(fun());
                 } catch (Exception e) {
                     promise.SetException(e);
                 }
             };
+            ScheduleNextTick(Callback);
+
             return promise.Task;
+        }
+        public static void ScheduleNextTick(Action fun) {
+            lock (MainThreadCallbacks) {
+                MainThreadCallbacks.Add(fun);
+            }
         }
 
         public static async Task ErrorDialogBoundary(Func<Task> go) {

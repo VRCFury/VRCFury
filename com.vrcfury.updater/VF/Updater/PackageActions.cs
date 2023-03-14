@@ -179,7 +179,7 @@ namespace VF.Updater {
             var promise = new TaskCompletionSource<object>();
             void Check() {
                 if (!request.IsCompleted) {
-                    EditorApplication.delayCall += Check;
+                    AsyncUtils.ScheduleNextTick(Check);
                     return;
                 }
                 if (request.Status == StatusCode.Failure) {
@@ -188,7 +188,7 @@ namespace VF.Updater {
                 }
                 promise.SetResult(null);
             }
-            EditorApplication.delayCall += Check;
+            AsyncUtils.ScheduleNextTick(Check);
             return promise.Task;
         }
     }
