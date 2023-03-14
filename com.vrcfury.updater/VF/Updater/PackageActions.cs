@@ -121,7 +121,7 @@ namespace VF.Updater {
                 await PackageRequest(() => Client.Add($"file:{name}.tgz"));
             }
 
-            await EnsureVrcfuryEmbedded();
+            //await EnsureVrcfuryEmbedded();
 
             foreach (var dir in createDirectories) {
                 Directory.CreateDirectory(dir);
