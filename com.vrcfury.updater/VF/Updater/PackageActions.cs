@@ -65,12 +65,7 @@ namespace VF.Updater {
             
             await AsyncUtils.InMainThread(EditorApplication.LockReloadAssemblies);
             try {
-                await AsyncUtils.InMainThread(AssetDatabase.StartAssetEditing);
-                try {
-                    await RunInner();
-                } finally {
-                    await AsyncUtils.InMainThread(AssetDatabase.StopAssetEditing);
-                }
+                await RunInner();
             } finally {
                 await AsyncUtils.InMainThread(EditorApplication.UnlockReloadAssemblies);
             }
