@@ -104,7 +104,7 @@ namespace VF.Updater {
             }
 
             foreach (var dir in deleteDirectories) {
-                if (Directory.Exists(dir) && dir.StartsWith("Assets/")) AssetDatabase.DeleteAsset(dir);
+                if (Directory.Exists(dir) && dir.StartsWith("Assets/")) await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(dir));
                 if (Directory.Exists(dir)) Directory.Delete(dir, true);
             }
 
