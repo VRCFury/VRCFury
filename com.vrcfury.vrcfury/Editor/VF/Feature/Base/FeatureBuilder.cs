@@ -27,6 +27,8 @@ namespace VF.Feature.Base {
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
         public MutableManager mutableManager;
+        public Dictionary<(string, VRCAvatarDescriptor.AnimLayerType, string), VFALayer> exclusiveAnimationLayers;
+        public Dictionary<string, VFALayer> exclusiveParameterLayers;
 
         public virtual string GetEditorTitle() {
             return null;
@@ -50,6 +52,14 @@ namespace VF.Feature.Base {
 
         public ControllerManager GetFx() {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
+        }
+
+        public ControllerManager GetAction() {
+            return manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
+        }
+
+        public ControllerManager GetGesture() {
+            return manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
         }
 
         protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {
@@ -86,18 +96,40 @@ namespace VF.Feature.Base {
             return state != null;
         }
 
-        protected AnimationClip LoadState(string name, State state) {
-            if (state.actions.Count == 0) {
-                return GetFx().GetNoopClip();
-            }
-
+        protected AnimationClip LoadState(string name, State state, bool checkForProxy = false) {
+            
             void RewriteClip(AnimationClip c) {
                 ClipCopier.Rewrite(c, fromObj: featureBaseObject, fromRoot: avatarObject);
             }
 
-            var clip = GetFx().NewClip(name);
+            bool IsProxy(Model.StateAction.Action action) {
+                if (!(action is AnimationClipAction)) return false;
+                AnimationClip c = (action as AnimationClipAction).clip;
+                return c.name.Contains("proxy_");
+            }
+        
+            if (state == null) {
+                return GetFx().GetNoopClip();
+            }
+
+            if (checkForProxy) {
+                foreach (var action in state.actions.OfType<AnimationClipAction>()) {
+                    if (IsProxy(action)) {
+                        AnimationClip c = action.clip;
+                        return c;
+                    }
+                }
+            }
+
+            var actionsToAdd = state.actions.Where(action => !IsProxy(action));
+
+            if (actionsToAdd.Count() == 0) {
+                return GetFx().GetNoopClip();
+            }
             
-            AnimationClip firstClip = state.actions
+            var clip = GetFx().NewClip(name);
+
+            AnimationClip firstClip = actionsToAdd
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
                 .FirstOrDefault();
@@ -108,7 +140,7 @@ namespace VF.Feature.Base {
                 RewriteClip(clip);
             }
 
-            foreach (var action in state.actions) {
+            foreach (var action in actionsToAdd) {
                 switch (action) {
                     case FlipbookAction flipbook:
                         if (flipbook.obj != null) {

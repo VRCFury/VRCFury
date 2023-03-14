@@ -108,6 +108,8 @@ public class VRCFuryBuilder {
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
         var menuSortPositionByBuilder = new Dictionary<FeatureBuilder, int>();
+        var exclusiveAnimationLayers = new Dictionary<(string, VRCAvatarDescriptor.AnimLayerType, string), VFALayer>();
+        var exclusiveParameterLayers = new Dictionary<string, VFALayer>();
 
         void AddBuilder(FeatureBuilder builder, GameObject configObject, int menuSortPosition = -1) {
             builder.featureBaseObject = configObject;
@@ -121,6 +123,8 @@ public class VRCFuryBuilder {
             };
             builder.allFeaturesInRun = collectedModels;
             builder.allBuildersInRun = collectedBuilders;
+            builder.exclusiveAnimationLayers = exclusiveAnimationLayers;
+            builder.exclusiveParameterLayers = exclusiveParameterLayers;
             builder.manager = manager;
             builder.clipBuilder = clipBuilder;
             builder.avatarObject = avatarObject;

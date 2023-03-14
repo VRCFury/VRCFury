@@ -55,6 +55,7 @@ namespace VF.Builder {
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && GetMask(0) == null) {
                 var mask = new AvatarMask();
                 for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                    if (bodyPart == AvatarMaskBodyPart.LeftFingers || bodyPart == AvatarMaskBodyPart.RightFingers) continue;
                     mask.SetHumanoidBodyPartActive(bodyPart, false);
                 }
                 VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
@@ -182,6 +183,7 @@ namespace VF.Builder {
         }
         public VFABool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
             if (usePrefix) name = NewParamName(name);
+            if (VRChatGlobalParams.Contains(name)) synced = false;
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
                 param.name = name;
@@ -361,5 +363,29 @@ namespace VF.Builder {
                 AnimationUtility.SetObjectReferenceCurve(clip, binding, curve);
             }
         }
+
+        private static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
+            "IsLocal",
+            "Viseme",
+            "Voice",
+            "GestureLeft",
+            "GestureRight",
+            "GestureLeftWeight",
+            "GestureRightWeight",
+            "AngularY",
+            "VelocityX",
+            "VelocityY",
+            "VelocityZ",
+            "Upright",
+            "Grounded",
+            "Seated",
+            "AFK",
+            "TrackingType",
+            "VRMode",
+            "MuteSelf",
+            "InStation",
+            "AvatarVersion",
+            "GroundProximity"
+        };
     }
 }

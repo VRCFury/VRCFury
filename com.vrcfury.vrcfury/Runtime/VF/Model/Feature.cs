@@ -248,6 +248,10 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
+        public bool hasTransitionTime = false;
+        public float transitionTime = 0;
+        public bool hasExitTime = false;
+        public float exitTime = 0;
         public bool enableIcon;
         public GuidTexture2d icon;
         public bool enableDriveGlobalParam;
@@ -261,7 +265,8 @@ namespace VF.Model.Feature {
         public State localTransitionStateOut;
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
-
+        public bool isButton = false;
+        
         public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
             n.name = name;

@@ -268,6 +268,22 @@ If set, this creates a separate animation for local and remote machines. The loc
 
 If set, this will create 2 additional states for animating a transition between the off and on state. The transition animation will be played forwards when transitioning from off to on and backwards when transitioning from on to off when `Transition Out is reverse of Transition In` is on, otherwise an separate out transition can be set. If `Separate Local State` is also on, separate local transitions can also be set.
 
+`Is Button`
+
+If enabled, the menu item created will be a button instead of a toggle.
+
+`Parameter Driven`
+
+If enabled, instead of using a menu item the toggle will be driven by a pre-existing parameter on the avatar. Useful for things like contact based toggles.
+
+`Has Transtion Time`
+
+If enabled, a `Transition Time` in seconds can be set to smoothly transition between the on and off state of the toggle.
+
+`Has Exit Time`
+
+If enabled, an `Exit Time` in can be set to ensure that the toggle remains in the on state for some amount of time.
+
 ### When-Talking State
 
 This is a very simple feature which activates the given animation only while the user is "talking" (with any viseme).
