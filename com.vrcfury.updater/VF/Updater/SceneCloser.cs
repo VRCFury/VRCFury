@@ -39,14 +39,14 @@ namespace VF.Updater {
                     return;
                 }
                 
-                foreach (var scene in GetScenes()) {
-                    if (string.IsNullOrEmpty(scene.path)) {
-                        throw new Exception($"VRCFury cannot update while you have unsaved scenes open: {scene.name}");
-                    }
-                }
-                
                 Debug.Log("VRCFury is closing loaded scenes");
                 
+                foreach (var scene in GetScenes()) {
+                    if (string.IsNullOrEmpty(scene.path)) {
+                        EditorSceneManager.SaveScene(scene, AssetDatabase.GenerateUniqueAssetPath("Assets/Scene.unity"));
+                    }
+                }
+
                 EditorSceneManager.SaveOpenScenes();
 
                 var updateScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
