@@ -67,7 +67,7 @@ namespace VF.Updater {
 
                 var remoteName = remoteUpdaterPackage.id;
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                actions.CreateDirectory(await VRCFuryUpdaterStartup.GetUpdaterJustUpdatedMarker());
+                actions.CreateDirectory(await Markers.UpdaterJustUpdatedMarker());
                 actions.AddPackage(remoteName, tgzPath);
                 await actions.Run();
                 return;
@@ -86,7 +86,6 @@ namespace VF.Updater {
 
             if (urlsToAdd.Count > 0) {
                 actions.SceneCloseNeeded();
-                actions.CreateDirectory(await VRCFuryUpdaterStartup.GetJustUpdatedMarker());
                 foreach (var (local,remote) in urlsToAdd) {
                     Debug.Log($"Upgrading {remote.id} from {local?.version} to {remote.latestVersion}");
                     var remoteName = remote.id;

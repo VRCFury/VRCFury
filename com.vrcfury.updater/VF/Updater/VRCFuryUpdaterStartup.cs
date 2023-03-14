@@ -13,24 +13,8 @@ namespace VF.Updater {
             EditorApplication.delayCall += () => Task.Run(Check);
         }
 
-        private static async Task<string> GetAppRootDir() {
-            return Path.GetDirectoryName(await AsyncUtils.InMainThread(() => Application.dataPath));
-        }
-
-        public static async Task<string> GetJustUpdatedMarker() { 
-            return await GetAppRootDir() + "/Temp/vrcfUpdated";
-        }
-        
-        public static async Task<string> GetUpdaterJustUpdatedMarker() { 
-            return await GetAppRootDir() + "/Temp/vrcfUpdateAll";
-        }
-        
         private static readonly bool IsRunningInsidePackage =
             Assembly.GetExecutingAssembly().GetName().Name == "VRCFury-Updater2";
-
-        private static readonly bool UpdatePackageExists =
-            AppDomain.CurrentDomain.GetAssemblies()
-                .Any(assembly => assembly.GetName().Name == "VRCFury-Updater2");
         private static void DebugLog(string msg) {
             var suffix = IsRunningInsidePackage ? "" : " (installer)";
             Debug.Log($"VRCFury Updater{suffix}: {msg}");
@@ -51,6 +35,11 @@ namespace VF.Updater {
                 // Updater package (... this package) isn't installed, which means this code
                 // is probably running inside of the standalone installer, and we need to go install
                 // the updater and main vrcfury package.
+                await AsyncUtils.DisplayDialog(
+                    "The VRCFury Unity Package is importing, so unity may freeze or go unresponsive for a bit." +
+                    " If all goes well, you'll receive a popup when it's complete!"
+                );
+                actions.CreateDirectory(await Markers.InstallInProgressMarker());
                 DebugLog("Package is missing, bootstrapping com.vrcfury.updater package");
                 await VRCFuryUpdater.AddUpdateActions(false, actions);
                 await actions.Run();
@@ -67,7 +56,7 @@ namespace VF.Updater {
             DebugLog("Checking for migration folders ...");
             var triggerUpgrade = false;
             var showUpgradeNotice = false;
-            var updaterJustRanMarker = await GetUpdaterJustUpdatedMarker();
+            var updaterJustUpdatedMarker = await Markers.UpdaterJustUpdatedMarker();
             var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
@@ -91,28 +80,30 @@ namespace VF.Updater {
 
             if (showUpgradeNotice) {
                 await AsyncUtils.DisplayDialog(
-                    "VRCFury is upgrading to a unity package, so it's moving from Assets/VRCFury to Packages/VRCFury. Don't worry, nothing else should change!"
+                    "Please note that Assets/VRCFury/Prefabs is moving to Packages/VRCFury Prefabs"
                 );
             }
             if (triggerUpgrade) {
-                actions.RemoveDirectory(updaterJustRanMarker);
+                actions.RemoveDirectory(updaterJustUpdatedMarker);
                 await VRCFuryUpdater.AddUpdateActions(false, actions);
                 await actions.Run();
                 return;
             }
             
-            if (Directory.Exists(updaterJustRanMarker)) {
+            if (Directory.Exists(updaterJustUpdatedMarker)) {
                 DebugLog("Updater was just reinstalled, forcing update");
-                actions.RemoveDirectory(updaterJustRanMarker);
+                actions.RemoveDirectory(updaterJustUpdatedMarker);
                 await VRCFuryUpdater.AddUpdateActions(true, actions);
                 await actions.Run();
                 return;
             }
 
-            var justUpdatedMarker = await GetJustUpdatedMarker();
-            if (Directory.Exists(justUpdatedMarker)) {
+            var manualUpdateInProgressMarker = await Markers.ManualUpdateInProgressMarker();
+            var installInProgressMarker = await Markers.ManualUpdateInProgressMarker();
+            if (Directory.Exists(manualUpdateInProgressMarker) || Directory.Exists(installInProgressMarker)) {
                 DebugLog("Found 'update complete' marker");
-                Directory.Delete(justUpdatedMarker);
+                if (Directory.Exists(manualUpdateInProgressMarker)) Directory.Delete(manualUpdateInProgressMarker);
+                if (Directory.Exists(installInProgressMarker)) Directory.Delete(installInProgressMarker);
 
                 await AsyncUtils.InMainThread(() => {
                     DebugLog("Upgrade complete");

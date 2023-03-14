@@ -21,6 +21,8 @@ namespace VF.Updater {
                 await AsyncUtils.DisplayDialog("No new updates are available.");
                 return;
             }
+            
+            actions.CreateDirectory(await Markers.ManualUpdateInProgressMarker());
 
             await actions.Run();
         }
