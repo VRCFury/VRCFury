@@ -46,10 +46,8 @@ namespace VF.Updater {
 
             var actions = new PackageActions();
 
-            // Don't call ListInstalledPackages here, since if we do it at the same time as another assembly,
-            // it will fail to complete one of the calls
-
-            if (!UpdatePackageExists) {
+            var packages = await PackageActions.ListInstalledPacakges();
+            if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
                 // Updater package (... this package) isn't installed, which means this code
                 // is probably running inside of the standalone installer, and we need to go install
                 // the updater and main vrcfury package.

@@ -83,15 +83,12 @@ namespace VF.Updater {
         }
 
         private async Task TriggerRecompile() {
+            Debug.Log("Triggering asset import and script recompilation ...");
             await AsyncUtils.InMainThread(() => {
-                Debug.Log("Triggering asset import ...");
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-                Debug.Log("Triggered");
             });
             await AsyncUtils.InMainThread(() => {
-                Debug.Log("Triggering script recompilation ...");
                 CompilationPipeline.RequestScriptCompilation();
-                Debug.Log("Triggered");
             });
         }
 
