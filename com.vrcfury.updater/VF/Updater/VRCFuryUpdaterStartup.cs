@@ -44,9 +44,9 @@ namespace VF.Updater {
 
         private static async Task CheckUnsafe() {
 
-            var actions = new PackageActions();
+            var actions = new PackageActions(DebugLog);
 
-            var packages = await PackageActions.ListInstalledPacakges();
+            var packages = await actions.ListInstalledPacakges();
             if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
                 // Updater package (... this package) isn't installed, which means this code
                 // is probably running inside of the standalone installer, and we need to go install

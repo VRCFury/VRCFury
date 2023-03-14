@@ -17,6 +17,11 @@ namespace VF.Updater {
         private List<string> deleteDirectories = new List<string>();
         private List<string> createDirectories = new List<string>();
         private bool sceneCloseNeeded = false;
+        private Action<string> DebugLog;
+
+        public PackageActions(Action<string> debugLog) {
+            DebugLog = debugLog;
+        }
 
         public void AddPackage(string name, string path) {
             addPackages.Add((name,path));
@@ -83,7 +88,7 @@ namespace VF.Updater {
         }
 
         private async Task TriggerRecompile() {
-            Debug.Log("Triggering asset import and script recompilation ...");
+            DebugLog("Triggering asset import and script recompilation ...");
             await AsyncUtils.InMainThread(() => {
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             });
@@ -111,11 +116,11 @@ namespace VF.Updater {
 
             foreach (var name in removePackages) {
                 await AsyncUtils.Progress($"Removing package {name} ...");
-                Debug.Log($"Removing package {name}");
+                DebugLog($"Removing package {name}");
                 await PackageRequest(() => Client.Remove(name));
                 var savedTgzPath = $"Packages/{name}.tgz";
                 if (File.Exists(savedTgzPath)) {
-                    Debug.Log($"Deleting {savedTgzPath}");
+                    DebugLog($"Deleting {savedTgzPath}");
                     File.Delete(savedTgzPath);
                 }
             }
@@ -124,15 +129,15 @@ namespace VF.Updater {
                 await AsyncUtils.Progress($"Importing package {name} ...");
                 var savedTgzPath = $"Packages/{name}.tgz";
                 if (File.Exists(savedTgzPath)) {
-                    Debug.Log($"Deleting {savedTgzPath}");
+                    DebugLog($"Deleting {savedTgzPath}");
                     File.Delete(savedTgzPath);
                 }
                 if (Directory.Exists($"Packages/{name}")) {
-                    Debug.Log($"Deleting Packages/{name}");
+                    DebugLog($"Deleting Packages/{name}");
                     Directory.Delete($"Packages/{name}", true);
                 }
                 File.Copy(path, savedTgzPath);
-                Debug.Log($"Adding package file:{name}.tgz");
+                DebugLog($"Adding package file:{name}.tgz");
                 await PackageRequest(() => Client.Add($"file:{name}.tgz"));
             }
 
@@ -145,20 +150,24 @@ namespace VF.Updater {
         
         // Vrcfury packages are all "local" (not embedded), because it makes them read-only which is nice.
         // However, the creator companion can only see embedded packages, so we do this to com.vrcfury.vrcfury only.
-        public static async Task EnsureVrcfuryEmbedded() {
+        public async Task EnsureVrcfuryEmbedded() {
             foreach (var local in await ListInstalledPacakges()) {
                 if (local.name == "com.vrcfury.vrcfury" && local.source == PackageSource.LocalTarball) {
-                    Debug.Log($"Embedding package {local.name}");
+                    DebugLog($"Embedding package {local.name}");
                     await PackageRequest(() => Client.Embed(local.name));
                 }
             }
         }
-        
-        public static async Task<PackageCollection> ListInstalledPacakges() {
-            Debug.Log("(list packages start)");
-            var ret = await PackageRequest(() => Client.List(true, false));
-            Debug.Log("(list packages end)");
-            return ret;
+
+        private PackageCollection _cachedList = null;
+        public async Task<PackageCollection> ListInstalledPacakges() {
+            if (_cachedList != null) {
+                return _cachedList;
+            }
+            DebugLog("(list packages start)");
+            _cachedList = await PackageRequest(() => Client.List(true, false));
+            DebugLog("(list packages end)");
+            return _cachedList;
         }
         
         private static async Task<T> PackageRequest<T>(Func<Request<T>> requestProvider) {

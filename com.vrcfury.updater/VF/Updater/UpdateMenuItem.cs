@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEngine;
 
 namespace VF.Updater {
     public class UpdateMenuItem {
@@ -12,7 +13,7 @@ namespace VF.Updater {
         }
 
         private static async Task UpgradeUnsafe() {
-            var actions = new PackageActions();
+            var actions = new PackageActions(msg => Debug.Log($"VRCFury Menu Updater: {msg}"));
             await VRCFuryUpdater.AddUpdateActions(false, actions);
 
             if (!actions.NeedsRun()) {

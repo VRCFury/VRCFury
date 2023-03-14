@@ -50,7 +50,7 @@ namespace VF.Updater {
             
             await AsyncUtils.Progress("Downloading updated packages ...");
 
-            var deps = await PackageActions.ListInstalledPacakges();
+            var deps = await actions.ListInstalledPacakges();
 
             var localUpdaterPackage = deps.FirstOrDefault(d => d.name == "com.vrcfury.updater");
             var remoteUpdaterPackage = repo.packages.FirstOrDefault(p => p.id == "com.vrcfury.updater");
