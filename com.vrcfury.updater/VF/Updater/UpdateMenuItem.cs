@@ -8,7 +8,20 @@ namespace VF.Updater {
 
         [MenuItem(menu_name, priority = menu_priority)]
         public static void Upgrade() {
-            Task.Run(() => VRCFuryUpdater.UpdateAll());
+            Task.Run(() => AsyncUtils.ErrorDialogBoundary(UpgradeUnsafe));
+        }
+
+        private static async Task UpgradeUnsafe() {
+            var actions = new PackageActions();
+            await VRCFuryUpdater.AddUpdateActions(false, actions);
+
+            if (!actions.NeedsRun()) {
+                await AsyncUtils.InMainThread(EditorUtility.ClearProgressBar);
+                await AsyncUtils.DisplayDialog("No new updates are available.");
+                return;
+            }
+
+            await actions.Run();
         }
     }
 }

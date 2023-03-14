@@ -3,18 +3,12 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace VF.Updater {
     [InitializeOnLoad]
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
-            // just in case
-            EditorUtility.ClearProgressBar();
-            EditorApplication.UnlockReloadAssemblies();
-
             EditorApplication.delayCall += () => Task.Run(Check);
         }
 
@@ -22,11 +16,11 @@ namespace VF.Updater {
             return Path.GetDirectoryName(await AsyncUtils.InMainThread(() => Application.dataPath));
         }
 
-        public static async Task<string> GetUpdatedMarkerPath() { 
+        public static async Task<string> GetJustUpdatedMarker() { 
             return await GetAppRootDir() + "/Temp/vrcfUpdated";
         }
         
-        public static async Task<string> GetUpdateAllMarker() { 
+        public static async Task<string> GetUpdaterJustUpdatedMarker() { 
             return await GetAppRootDir() + "/Temp/vrcfUpdateAll";
         }
         
@@ -39,53 +33,52 @@ namespace VF.Updater {
 
         private static async void Check() {
             DebugLog("Init check started");
-            await AsyncUtils.ErrorDialogBoundary(() => AsyncUtils.PreventReload(CheckUnsafe));
+            await AsyncUtils.ErrorDialogBoundary(CheckUnsafe);
             DebugLog("Init check ended");
         }
 
         private static async Task CheckUnsafe() {
 
-            var packages = await AsyncUtils.ListInstalledPacakges();
+            var actions = new PackageActions();
+
+            var packages = await PackageActions.ListInstalledPacakges();
             if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
                 // Updater package (... this package) isn't installed, which means this code
                 // is probably running inside of the standalone installer, and we need to go install
                 // the updater and main vrcfury package.
                 DebugLog("Package is missing, bootstrapping com.vrcfury.updater package");
-                await VRCFuryUpdater.UpdateAll();
+                await VRCFuryUpdater.AddUpdateActions(false, actions);
+                await actions.Run();
                 return;
             }
 
             if (!IsRunningInsidePackage) {
-                return;
+                return; 
             }
             
             await SceneCloser.ReopenScenes();
 
             var triggerUpgrade = false;
             var showUpgradeNotice = false;
-            var updateAllMarker = await GetUpdateAllMarker();
+            var updaterJustRanMarker = await GetUpdaterJustUpdatedMarker();
             var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
-                await SceneCloser.CloseScenes();
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(legacyDir));
-                await SceneCloser.ReopenScenes();
+                actions.SceneCloseNeeded();
+                actions.RemoveDirectory(legacyDir);
                 triggerUpgrade = true;
                 showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury")) {
                 DebugLog($"VRCFury found a legacy install at location: Assets/VRCFury");
-                await SceneCloser.CloseScenes();
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury"));
-                await SceneCloser.ReopenScenes();
+                actions.SceneCloseNeeded();
+                actions.RemoveDirectory("Assets/VRCFury");
                 triggerUpgrade = true;
                 showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury-installer")) {
                 DebugLog("Installer directory found, removing and forcing update");
-                await SceneCloser.CloseScenes();
-                await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset("Assets/VRCFury-installer"));
-                await SceneCloser.ReopenScenes();
+                actions.RemoveDirectory("Assets/VRCFury-installer");
                 triggerUpgrade = true;
             }
 
@@ -95,22 +88,24 @@ namespace VF.Updater {
                 );
             }
             if (triggerUpgrade) {
-                if (Directory.Exists(updateAllMarker)) Directory.Delete(updateAllMarker);
-                await VRCFuryUpdater.UpdateAll();
+                actions.RemoveDirectory(updaterJustRanMarker);
+                await VRCFuryUpdater.AddUpdateActions(false, actions);
+                await actions.Run();
                 return;
             }
             
-            if (Directory.Exists(updateAllMarker)) {
+            if (Directory.Exists(updaterJustRanMarker)) {
                 DebugLog("Updater was just reinstalled, forcing update");
-                Directory.Delete(updateAllMarker);
-                await VRCFuryUpdater.UpdateAll(true);
+                actions.RemoveDirectory(updaterJustRanMarker);
+                await VRCFuryUpdater.AddUpdateActions(true, actions);
+                await actions.Run();
                 return;
             }
 
-            var updatedMarker = await GetUpdatedMarkerPath();
-            if (Directory.Exists(updatedMarker)) {
+            var justUpdatedMarker = await GetJustUpdatedMarker();
+            if (Directory.Exists(justUpdatedMarker)) {
                 DebugLog("Found 'update complete' marker");
-                Directory.Delete(updatedMarker);
+                Directory.Delete(justUpdatedMarker);
 
                 await AsyncUtils.InMainThread(() => {
                     DebugLog("Upgrade complete");
