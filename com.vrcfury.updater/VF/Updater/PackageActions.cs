@@ -99,10 +99,12 @@ namespace VF.Updater {
             // Luckily, nobody uses multiplayer-hlapi in a vrchat project anyways.
             var list = await ListInstalledPacakges();
             if (list.Any(p => p.name == "com.unity.multiplayer-hlapi")) {
+                await AsyncUtils.Progress($"Removing com.unity.multiplayer-hlapi ...");
                 await PackageRequest(() => Client.Remove("com.unity.multiplayer-hlapi"));
             }
 
             foreach (var dir in deleteDirectories) {
+                if (Directory.Exists(dir) && dir.StartsWith("Assets/")) AssetDatabase.DeleteAsset(dir);
                 if (Directory.Exists(dir)) Directory.Delete(dir, true);
             }
 
