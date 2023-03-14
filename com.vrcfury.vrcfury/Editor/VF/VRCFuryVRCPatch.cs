@@ -85,8 +85,8 @@ public class Startup {
         var list = new List<Type> {
             typeof(VRCFury),
             typeof(VRCFuryTest),
-            typeof(OGBOrifice),
-            typeof(OGBPenetrator),
+            typeof(VRCFuryHapticSocket),
+            typeof(VRCFuryHapticPlug),
             typeof(VRCFGlobalCollider),
         };
         

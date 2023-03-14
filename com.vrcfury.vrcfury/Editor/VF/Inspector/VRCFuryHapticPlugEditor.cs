@@ -6,19 +6,19 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
-using VF.Builder.Ogb;
+using VF.Builder.Haptics;
 using VF.Model;
 using VRC.Dynamics;
 
 namespace VF.Inspector {
-    [CustomEditor(typeof(OGBPenetrator), true)]
-    public class OGBPenetratorEditor : Editor {
+    [CustomEditor(typeof(VRCFuryHapticPlug), true)]
+    public class VRCFuryHapticPlugEditor : Editor {
         public override VisualElement CreateInspectorGUI() {
-            var self = (OGBPenetrator)target;
+            var self = (VRCFuryHapticPlug)target;
 
             var container = new VisualElement();
             
-            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in OGB"));
+            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
             container.Add(VRCFuryEditorUtils.Prop(autoMesh, "Automatically find mesh"));
@@ -75,7 +75,7 @@ namespace VF.Inspector {
         }
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(OGBPenetrator scr, GizmoType gizmoType) {
+        static void DrawGizmo(VRCFuryHapticPlug scr, GizmoType gizmoType) {
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
                 size = GetWorldSize(scr);
@@ -109,10 +109,10 @@ namespace VF.Inspector {
             VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
 
-        public static ICollection<Renderer> GetRenderers(OGBPenetrator pen) {
+        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug pen) {
             var renderers = new List<Renderer>();
             if (pen.autoRenderer) {
-                var r = PenetratorSizeDetector.GetAutoRenderer(pen.gameObject);
+                var r = PlugSizeDetector.GetAutoRenderer(pen.gameObject);
                 if (r != null) renderers.Add(r);
             } else {
                 renderers.AddRange(pen.configureTpsMesh.Where(r => r != null));
@@ -120,7 +120,7 @@ namespace VF.Inspector {
             return renderers;
         }
 
-        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(OGBPenetrator pen) {
+        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(VRCFuryHapticPlug pen) {
 
             var renderers = GetRenderers(pen);
 
@@ -128,8 +128,8 @@ namespace VF.Inspector {
             Vector3 worldPosition = pen.transform.position;
             if (!pen.configureTps && pen.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
-                worldRotation = PenetratorSizeDetector.GetAutoWorldRotation(firstRenderer);
-                worldPosition = PenetratorSizeDetector.GetAutoWorldPosition(firstRenderer);
+                worldRotation = PlugSizeDetector.GetAutoWorldRotation(firstRenderer);
+                worldPosition = PlugSizeDetector.GetAutoWorldPosition(firstRenderer);
             }
             var testBase = pen.transform.Find("OGBTestBase");
             if (testBase != null) {
@@ -141,10 +141,10 @@ namespace VF.Inspector {
             float worldRadius = 0;
             if (pen.autoRadius || pen.autoLength) {
                 if (renderers.Count == 0) {
-                    throw new VRCFBuilderException("Penetrator failed to find renderer");
+                    throw new VRCFBuilderException("Failed to find plug renderer");
                 }
                 foreach (var renderer in renderers) {
-                    var autoSize = PenetratorSizeDetector.GetAutoWorldSize(renderer, worldPosition, worldRotation);
+                    var autoSize = PlugSizeDetector.GetAutoWorldSize(renderer, worldPosition, worldRotation);
                     if (autoSize == null) continue;
                     if (pen.autoLength) worldLength = autoSize.Item1;
                     if (pen.autoRadius) worldRadius = autoSize.Item2;
@@ -161,19 +161,19 @@ namespace VF.Inspector {
                 if (!pen.unitsInMeters) worldRadius *= pen.transform.lossyScale.x;
             }
 
-            if (worldLength <= 0) throw new VRCFBuilderException("Penetrator failed to detect length");
-            if (worldRadius <= 0) throw new VRCFBuilderException("Penetrator failed to detect radius");
+            if (worldLength <= 0) throw new VRCFBuilderException("Failed to detect plug length");
+            if (worldRadius <= 0) throw new VRCFBuilderException("Failed to detect plug radius");
             if (worldRadius > worldLength / 2) worldRadius = worldLength / 2;
             var localRotation = Quaternion.Inverse(pen.transform.rotation) * worldRotation;
             var localPosition = pen.transform.InverseTransformPoint(worldPosition);
             return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(OGBPenetrator pen, List<string> usedNames = null, bool onlySenders = false, string tmpDir = null) {
+        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug pen, List<string> usedNames = null, bool onlySenders = false, string tmpDir = null) {
             var obj = pen.gameObject;
-            OGBUtils.RemoveTPSSenders(obj);
+            HapticUtils.RemoveTPSSenders(obj);
 
-            OGBUtils.AssertValidScale(obj, "penetrator");
+            HapticUtils.AssertValidScale(obj, "plug");
 
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
@@ -188,19 +188,19 @@ namespace VF.Inspector {
             if (string.IsNullOrWhiteSpace(name)) {
                 name = obj.name;
             }
-            if (usedNames != null) name = OGBUtils.GetNextName(usedNames, name);
+            if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
             
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
             var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
             
-            // Extra frot radius should always match for everyone, so when two penetrators collide, both parties experience at the same time
-            var extraRadiusForFrot = 0.08f;
+            // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
+            var extraRadiusForRub = 0.08f;
             
-            Debug.Log("Baking OGB " + obj + " as " + name);
+            Debug.Log("Baking haptic component in " + obj + " as " + name);
             
-            var bakeRoot = new GameObject("BakedOGBPenetrator");
+            var bakeRoot = new GameObject("BakedHapticPlug");
             bakeRoot.transform.SetParent(pen.transform, false);
             bakeRoot.transform.localPosition = localPosition;
             bakeRoot.transform.localRotation = localRotation;
@@ -209,10 +209,10 @@ namespace VF.Inspector {
             var halfWay = Vector3.forward * (worldLength / 2);
             var senders = new GameObject("Senders");
             senders.transform.SetParent(bakeRoot.transform, false);
-            OGBUtils.AddSender(senders, Vector3.zero, "Length", worldLength, OGBUtils.CONTACT_PEN_MAIN);
-            OGBUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), OGBUtils.CONTACT_PEN_WIDTH);
-            OGBUtils.AddSender(senders, halfWay, "Envelope", worldRadius, OGBUtils.CONTACT_PEN_CLOSE, rotation: capsuleRotation, height: worldLength);
-            OGBUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, OGBUtils.CONTACT_PEN_ROOT);
+            HapticUtils.AddSender(senders, Vector3.zero, "Length", worldLength, HapticUtils.CONTACT_PEN_MAIN);
+            HapticUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), HapticUtils.CONTACT_PEN_WIDTH);
+            HapticUtils.AddSender(senders, halfWay, "Envelope", worldRadius, HapticUtils.CONTACT_PEN_CLOSE, rotation: capsuleRotation, height: worldLength);
+            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, HapticUtils.CONTACT_PEN_ROOT);
             
             var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
 
@@ -232,14 +232,14 @@ namespace VF.Inspector {
                 // Receivers
                 var receivers = new GameObject("Receivers");
                 receivers.transform.SetParent(bakeRoot.transform, false);
-                OGBUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, OGBUtils.SelfContacts, allowOthers:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, OGBUtils.SelfContacts, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, OGBUtils.BodyContacts, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, OGBUtils.BodyContacts, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{OGBUtils.CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{OGBUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
-                OGBUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForFrot, new []{OGBUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
+                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, allowOthers:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, allowOthers:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.CONTACT_ORF_MAIN}, allowOthers:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true);
+                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
             }
             
             if (pen.configureTps && tmpDir != null) {
@@ -251,12 +251,12 @@ namespace VF.Inspector {
 
                 if (!configuredOne) {
                     throw new VRCFBuilderException(
-                        "OGB Penetrator has 'auto-configure TPS' enabled, but no renderer was found " +
+                        "VRCFury Haptic Plug has 'auto-configure TPS' enabled, but no renderer was found " +
                         "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled in the Color & Normals tab.");
                 }
             }
             
-            OGBUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
+            HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
 
             return Tuple.Create(name, bakeRoot, renderers, worldLength, worldRadius);
         }

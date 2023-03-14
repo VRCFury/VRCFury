@@ -14,9 +14,9 @@ using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Component = UnityEngine.Component;
 
-namespace VF.Builder.Ogb {
-    public class OgbUpgrader {
-        private static string dialogTitle = "OGB Upgrader";
+namespace VF.Builder.Haptics {
+    public static class LegacyHapticsUpgrader {
+        private static string dialogTitle = "VRCFury Legacy Haptics Upgrader";
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
@@ -59,7 +59,7 @@ namespace VF.Builder.Ogb {
             return true;
         }
 
-        private static bool IsOGBContact(Component c, List<string> collisionTags) {
+        private static bool IsHapticContact(Component c, List<string> collisionTags) {
             if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) return true;
             else if (c.gameObject.name.StartsWith("OGB_")) return true;
             return false;
@@ -68,10 +68,10 @@ namespace VF.Builder.Ogb {
         public static string Apply(GameObject avatarObject, bool dryRun) {
             var objectsToDelete = new List<GameObject>();
             var componentsToDelete = new List<Component>();
-            var hasExistingOrifice = new HashSet<Transform>();
-            var hasExistingPenetrator = new HashSet<Transform>();
-            var addedOrifice = new HashSet<Transform>();
-            var addedPenetrator = new HashSet<Transform>();
+            var hasExistingSocket = new HashSet<Transform>();
+            var hasExistingPlug = new HashSet<Transform>();
+            var addedSocket = new HashSet<Transform>();
+            var addedPlug = new HashSet<Transform>();
             var foundParentConstraint = false;
 
             bool AlreadyExistsAboveOrBelow(GameObject obj, IEnumerable<Transform> list) {
@@ -83,27 +83,27 @@ namespace VF.Builder.Ogb {
             string GetPath(Transform obj) {
                 return AnimationUtility.CalculateTransformPath(obj, avatarObject.transform);
             }
-            OGBPenetrator AddPen(GameObject obj) {
-                if (AlreadyExistsAboveOrBelow(obj, hasExistingPenetrator.Concat(addedPenetrator))) return null;
-                addedPenetrator.Add(obj.transform);
+            VRCFuryHapticPlug AddPlug(GameObject obj) {
+                if (AlreadyExistsAboveOrBelow(obj, hasExistingPlug.Concat(addedPlug))) return null;
+                addedPlug.Add(obj.transform);
                 if (dryRun) return null;
-                return obj.AddComponent<OGBPenetrator>();
+                return obj.AddComponent<VRCFuryHapticPlug>();
             }
-            OGBOrifice AddOrifice(GameObject obj) {
-                if (AlreadyExistsAboveOrBelow(obj, hasExistingOrifice.Concat(addedOrifice))) return null;
-                addedOrifice.Add(obj.transform);
+            VRCFuryHapticSocket AddSocket(GameObject obj) {
+                if (AlreadyExistsAboveOrBelow(obj, hasExistingSocket.Concat(addedSocket))) return null;
+                addedSocket.Add(obj.transform);
                 if (dryRun) return null;
-                return obj.AddComponent<OGBOrifice>();
+                return obj.AddComponent<VRCFuryHapticSocket>();
             }
 
-            foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-                hasExistingPenetrator.Add(c.transform);
-                foreach (var renderer in OGBPenetratorEditor.GetRenderers(c)) {
-                    hasExistingPenetrator.Add(renderer.transform);
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
+                hasExistingPlug.Add(c.transform);
+                foreach (var renderer in VRCFuryHapticPlugEditor.GetRenderers(c)) {
+                    hasExistingPlug.Add(renderer.transform);
                 }
             }
-            foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
-                hasExistingOrifice.Add(c.transform);
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
+                hasExistingSocket.Add(c.transform);
             }
             
             // Upgrade "parent-constraint" DPS setups
@@ -116,8 +116,8 @@ namespace VF.Builder.Ogb {
                     if (constraint.GetSource(i).weight > 0) sourcesWithWeight++;
                 }
                 if (sourcesWithWeight > 1) {
-                    // This is probably not a parent constraint orifice, but rather an actual position splitter.
-                    // (used to position an orifice between two bones)
+                    // This is probably not a parent constraint socket, but rather an actual position splitter.
+                    // (used to position a socket between two bones)
                     continue;
                 }
                 
@@ -146,8 +146,8 @@ namespace VF.Builder.Ogb {
                     // Convert camel case to spaces
                     name = Regex.Replace(name, "(\\B[A-Z])", " $1");
                     name = name.ToLower();
-                    name = name.Replace("dps", "");
-                    name = name.Replace("orifice", "");
+                    name = name.Replace(VRCFuryEditorUtils.Rev("spd"), "");
+                    name = name.Replace(VRCFuryEditorUtils.Rev("ecifiro"), "");
                     name = name.Replace('_', ' ');
                     name = name.Replace('-', ' ');
                     while (name.Contains("  ")) {
@@ -156,25 +156,25 @@ namespace VF.Builder.Ogb {
                     name = name.Trim();
                     name = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(name);
 
-                    var fullName = "Orifice (" + name + ")";
+                    var fullName = "Socket (" + name + ")";
 
-                    addedOrifice.Add(obj.transform);
+                    addedSocket.Add(obj.transform);
                     if (!dryRun) {
-                        var ogb = obj.GetComponent<OGBOrifice>();
-                        if (ogb == null) ogb = obj.AddComponent<OGBOrifice>();
-                        ogb.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
-                            * constraint.transform.lossyScale.x / ogb.transform.lossyScale.x;
-                        ogb.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
-                        ogb.addLight = OGBOrifice.AddLight.Auto;
-                        ogb.name = name;
-                        ogb.addMenuItem = true;
+                        var socket = obj.GetComponent<VRCFuryHapticSocket>();
+                        if (socket == null) socket = obj.AddComponent<VRCFuryHapticSocket>();
+                        socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
+                            * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
+                        socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
+                        socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
+                        socket.name = name;
+                        socket.addMenuItem = true;
                         obj.name = fullName;
                         
                         if (name.ToLower().Contains("vag")) {
-                            AddBlendshapeIfPresent(avatarObject, ogb, "ORIFICE2", -0.03f, 0);
+                            AddBlendshapeIfPresent(avatarObject, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
                         }
-                        if (OGBOrificeEditor.ShouldProbablyHaveTouchZone(ogb)) {
-                            AddBlendshapeIfPresent(avatarObject, ogb, "TummyBulge", 0, 0.15f);
+                        if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
+                            AddBlendshapeIfPresent(avatarObject, socket, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
                         }
                     }
                 }
@@ -188,7 +188,7 @@ namespace VF.Builder.Ogb {
                     if (!baked) return;
                     var info = baked.Find("Info");
                     if (!info) info = baked;
-                    var p = AddPen(baked.parent.gameObject);
+                    var p = AddPlug(baked.parent.gameObject);
                     if (p) {
                         var size = info.Find("size");
                         if (size) {
@@ -203,7 +203,7 @@ namespace VF.Builder.Ogb {
                     if (!baked) return;
                     var info = baked.Find("Info");
                     if (!info) info = baked;
-                    var o = AddOrifice(baked.parent.gameObject);
+                    var o = AddSocket(baked.parent.gameObject);
                     if (o) {
                         o.name = GetNameFromBakeInfo(info.gameObject);
                     }
@@ -212,24 +212,26 @@ namespace VF.Builder.Ogb {
 
                 UnbakePen(t.Find("OGB_Baked_Pen"));
                 UnbakePen(t.Find("BakedOGBPenetrator"));
+                UnbakePen(t.Find("BakedHapticPlug"));
                 UnbakeOrf(t.Find("OGB_Baked_Orf"));
                 UnbakeOrf(t.Find("BakedOGBOrifice"));
+                UnbakePen(t.Find("BakedHapticSocket"));
             }
             
-            // Auto-add DPS and TPS penetrators
+            // Auto-add plugs from DPS and TPS
             foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 var (renderer, _, _) = tuple;
-                if (PenetratorSizeDetector.HasDpsMaterial(renderer) && PenetratorSizeDetector.GetAutoWorldSize(renderer) != null)
-                    AddPen(renderer.gameObject);
+                if (PlugSizeDetector.HasDpsMaterial(renderer) && PlugSizeDetector.GetAutoWorldSize(renderer) != null)
+                    AddPlug(renderer.gameObject);
             }
             
-            // Auto-add DPS orifices
+            // Auto-add sockets from DPS
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
                 var parent = light.gameObject.transform.parent;
                 if (parent) {
                     var parentObj = parent.gameObject;
-                    if (!objectsToDelete.Contains(parentObj) && OGBOrificeEditor.GetInfoFromLights(parentObj, true) != null)
-                        AddOrifice(parentObj);
+                    if (!objectsToDelete.Contains(parentObj) && VRCFuryHapticSocketEditor.GetInfoFromLights(parentObj, true) != null)
+                        AddSocket(parentObj);
                 }
             }
             
@@ -238,44 +240,44 @@ namespace VF.Builder.Ogb {
                 if (!t) continue; // this can happen if we're visiting one of the things we deleted below
                 var penMarker = t.Find("OGB_Marker_Pen");
                 if (penMarker) {
-                    AddPen(t.gameObject);
+                    AddPlug(t.gameObject);
                     objectsToDelete.Add(penMarker.gameObject);
                 }
 
                 var holeMarker = t.Find("OGB_Marker_Hole");
                 if (holeMarker) {
-                    var o = AddOrifice(t.gameObject);
-                    if (o) o.addLight = OGBOrifice.AddLight.Hole;
+                    var o = AddSocket(t.gameObject);
+                    if (o) o.addLight = VRCFuryHapticSocket.AddLight.Hole;
                     objectsToDelete.Add(holeMarker.gameObject);
                 }
                 
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
-                    var o = AddOrifice(t.gameObject);
-                    if (o) o.addLight = OGBOrifice.AddLight.Ring;
+                    var o = AddSocket(t.gameObject);
+                    if (o) o.addLight = VRCFuryHapticSocket.AddLight.Ring;
                     objectsToDelete.Add(ringMarker.gameObject);
                 }
             }
             
             // Claim lights on all OGB components
-            foreach (var transform in hasExistingOrifice.Concat(addedOrifice)) {
+            foreach (var transform in hasExistingSocket.Concat(addedSocket)) {
                 if (!dryRun) {
-                    foreach (var orifice in transform.GetComponents<OGBOrifice>()) {
-                        if (orifice.addLight == OGBOrifice.AddLight.None) {
-                            var info = OGBOrificeEditor.GetInfoFromLights(orifice.gameObject);
+                    foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
+                        if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
+                            var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.gameObject);
                             if (info != null) {
                                 var type = info.Item1;
                                 var position = info.Item2;
                                 var rotation = info.Item3;
-                                orifice.addLight = type;
-                                orifice.position = position;
-                                orifice.rotation = rotation.eulerAngles;
+                                socket.addLight = type;
+                                socket.position = position;
+                                socket.rotation = rotation.eulerAngles;
                             }
                         }
                     }
                 }
 
-                OGBOrificeEditor.ForEachPossibleLight(transform, false, light => {
+                VRCFuryHapticSocketEditor.ForEachPossibleLight(transform, false, light => {
                     componentsToDelete.Add(light);
                 });
             }
@@ -317,25 +319,25 @@ namespace VF.Builder.Ogb {
                            || param.StartsWith("Nsfw/Ori/");
                 },
                 ShouldRemoveComponent: component => {
-                    if (component is VRCContactSender sender && IsOGBContact(sender, sender.collisionTags)) return true;
-                    if (component is VRCContactReceiver rcv && IsOGBContact(rcv, rcv.collisionTags)) return true;
+                    if (component is VRCContactSender sender && IsHapticContact(sender, sender.collisionTags)) return true;
+                    if (component is VRCContactReceiver rcv && IsHapticContact(rcv, rcv.collisionTags)) return true;
                     if (componentsToDelete.Contains(component)) return true;
                     return false;
                 }
             );
 
             var parts = new List<string>();
-            var alreadyExists = hasExistingOrifice
-                .Concat(hasExistingPenetrator)
+            var alreadyExists = hasExistingSocket
+                .Concat(hasExistingPlug)
                 .ToImmutableHashSet();
-            if (addedPenetrator.Count > 0)
-                parts.Add("OGB Penetrator component will be added to:\n" + string.Join("\n", addedPenetrator.Select(GetPath)));
-            if (addedOrifice.Count > 0)
-                parts.Add("OGB Orifice component will be added to:\n" + string.Join("\n", addedOrifice.Select(GetPath)));
+            if (addedPlug.Count > 0)
+                parts.Add("Plug component will be added to:\n" + string.Join("\n", addedPlug.Select(GetPath)));
+            if (addedSocket.Count > 0)
+                parts.Add("Socket component will be added to:\n" + string.Join("\n", addedSocket.Select(GetPath)));
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
-                parts.Add("OGB already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
+                parts.Add("Haptics already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
 
             if (parts.Count == 0) return "";
             return string.Join("\n\n", parts);
@@ -350,15 +352,15 @@ namespace VF.Builder.Ogb {
             return "";
         }
 
-        private static Tuple<OGBOrifice.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
-            var lightInfo = OGBOrificeEditor.GetInfoFromLights(obj, true);
+        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
+            var lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(obj, true);
             if (lightInfo != null) {
                 return lightInfo;
             }
 
             // For some reason, on some avatars, this one doesn't have child lights even though it's supposed to
             if (obj.name == "__dps_lightobject") {
-                return Tuple.Create(OGBOrifice.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0));
+                return Tuple.Create(VRCFuryHapticSocket.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0));
             }
 
             return null;
@@ -366,13 +368,13 @@ namespace VF.Builder.Ogb {
 
         private static void AddBlendshapeIfPresent(
             GameObject avatarObject,
-            OGBOrifice orf,
+            VRCFuryHapticSocket orf,
             string name,
             float minDepth,
             float maxDepth
         ) {
             if (HasBlendshape(avatarObject, name)) {
-                orf.depthActions.Add(new OGBOrifice.DepthAction() {
+                orf.depthActions.Add(new VRCFuryHapticSocket.DepthAction() {
                     state = new State() {
                         actions = {
                             new BlendShapeAction {

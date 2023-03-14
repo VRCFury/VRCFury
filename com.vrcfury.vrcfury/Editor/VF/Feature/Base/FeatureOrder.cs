@@ -36,10 +36,10 @@ namespace VF.Feature.Base {
         AnchorOverrideFix = 11,
 
         // Needs to run after TPS integration (since it may add new TPS material meshes)
-        AddOgbComponents = 100,
+        UpgradeLegacyHaptics = 100,
         
-        // Needs to run after all OGB components are in place
-        BakeOgbComponents = 101,
+        // Needs to run after all haptic components are in place
+        BakeHaptics = 101,
         
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
         // an object moved onto the fake head bone

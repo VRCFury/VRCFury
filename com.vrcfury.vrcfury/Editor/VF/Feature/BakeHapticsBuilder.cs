@@ -7,7 +7,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Builder.Ogb;
+using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -18,9 +18,9 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
-    public class BakeOGBBuilder : FeatureBuilder {
+    public class BakeHapticsBuilder : FeatureBuilder {
 
-        [FeatureBuilderAction(FeatureOrder.BakeOgbComponents)]
+        [FeatureBuilderAction(FeatureOrder.BakeHaptics)]
         public void Apply() {
             var usedNames = new List<string>();
             var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
@@ -32,8 +32,8 @@ namespace VF.Feature {
             // on if it's managed by our new menu system.
             var objectsToForceEnable = new HashSet<GameObject>();
             
-            foreach (var c in avatarObject.GetComponentsInChildren<OGBPenetrator>(true)) {
-                var bakeInfo = OGBPenetratorEditor.Bake(c, usedNames, tmpDir: tmpDir);
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
+                var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, tmpDir: tmpDir);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderer, worldLength, worldRadius) = bakeInfo;
@@ -46,7 +46,7 @@ namespace VF.Feature {
             var holesMenu = "Holes";
             var optionsFolder = $"{holesMenu}/<b>Hole Options";
 
-            var enableAuto = avatarObject.GetComponentsInChildren<OGBOrifice>(true)
+            var enableAuto = avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)
                 .Where(o => o.addMenuItem && o.enableAuto)
                 .ToArray()
                 .Length >= 2;
@@ -55,7 +55,7 @@ namespace VF.Feature {
             if (enableAuto) {
                 var fx = GetFx();
                 autoOn = fx.NewBool("autoMode", synced: true);
-                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to an OGB penetrator", autoOn);
+                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
                 var off = autoReceiverLayer.NewState("Off");
@@ -65,7 +65,7 @@ namespace VF.Feature {
                 on.TransitionsTo(off).When(whenOn.Not());
             }
             
-            var enableStealth = avatarObject.GetComponentsInChildren<OGBOrifice>(true)
+            var enableStealth = avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)
                 .Where(o => o.addMenuItem)
                 .ToArray()
                 .Length >= 1;
@@ -76,7 +76,7 @@ namespace VF.Feature {
                 manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
-            var enableMulti = avatarObject.GetComponentsInChildren<OGBOrifice>(true)
+            var enableMulti = avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)
                 .Where(o => o.addMenuItem)
                 .ToArray()
                 .Length >= 2;
@@ -93,11 +93,11 @@ namespace VF.Feature {
 
             manager.GetMenu().SetIconGuid(optionsFolder, "16e0846165acaa1429417e757c53ef9b");
 
-            var autoOrifices = new List<Tuple<string, VFABool, VFANumber>>();
+            var autoSockets = new List<Tuple<string, VFABool, VFANumber>>();
             var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
-            foreach (var c in avatarObject.GetComponentsInChildren<OGBOrifice>(true)) {
+            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
                 fakeHead.MarkEligible(c.gameObject);
-                var (name,bakeRoot) = OGBOrificeEditor.Bake(c, usedNames);
+                var (name,bakeRoot) = VRCFuryHapticSocketEditor.Bake(c, usedNames);
                 
                 foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
                     objectsToDisableTemporarily.Add(r.gameObject);
@@ -162,11 +162,11 @@ namespace VF.Feature {
 
                     if (c.enableAuto && autoOnClip) {
                         var distParam = fx.NewFloat(name + "/AutoDistance");
-                        var distReceiver = OGBUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
-                            new[] { OGBUtils.CONTACT_PEN_MAIN });
+                        var distReceiver = HapticUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
+                            new[] { HapticUtils.CONTACT_PEN_MAIN });
                         distReceiver.SetActive(false);
                         clipBuilder.Enable(autoOnClip, distReceiver);
-                        autoOrifices.Add(Tuple.Create(name, holeOn, distParam));
+                        autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                     }
                 }
 
@@ -187,10 +187,10 @@ namespace VF.Feature {
                     var fx = GetFx();
 
                     var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
-                    OGBUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
+                    HapticUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
                     
                     var depthParam = fx.NewFloat(prefix + "/AnimDepth");
-                    OGBUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{OGBUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
+                    HapticUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
 
                     var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
                     var off = layer.NewState("Off");
@@ -226,7 +226,7 @@ namespace VF.Feature {
 
             if (autoOn != null) {
                 var fx = GetFx();
-                var layer = fx.NewLayer("Auto OGB Mode");
+                var layer = fx.NewLayer("Auto Socket Mode");
                 var remoteTrap = layer.NewState("Remote trap");
                 var stopped = layer.NewState("Stopped");
                 remoteTrap.TransitionsTo(stopped).When(fx.IsLocal().IsTrue());
@@ -234,7 +234,7 @@ namespace VF.Feature {
                 stopped.TransitionsTo(start).When(autoOn.IsTrue());
                 var stop = layer.NewState("Stop").Move(start, 1, 0);
                 start.TransitionsTo(stop).When(autoOn.IsFalse());
-                foreach (var auto in autoOrifices) {
+                foreach (var auto in autoSockets) {
                     var (name, enabled, dist) = auto;
                     stop.Drives(enabled, false);
                 }
@@ -247,8 +247,8 @@ namespace VF.Feature {
                 vs0.SetCurve("", typeof(Animator), vsParam.Name(), AnimationCurve.Constant(0, 0, 0f));
 
                 var states = new Dictionary<Tuple<int, int>, VFAState>();
-                for (var i = 0; i < autoOrifices.Count; i++) {
-                    var (aName, aEnabled, aDist) = autoOrifices[i];
+                for (var i = 0; i < autoSockets.Count; i++) {
+                    var (aName, aEnabled, aDist) = autoSockets[i];
                     var triggerOn = layer.NewState($"Start {aName}").Move(start, i, 2);
                     triggerOn.Drives(aEnabled, true);
                     states[Tuple.Create(i,-1)] = triggerOn;
@@ -256,9 +256,9 @@ namespace VF.Feature {
                     triggerOff.Drives(aEnabled, false);
                     triggerOff.TransitionsTo(start).When(fx.Always());
                     states[Tuple.Create(i,-2)] = triggerOff;
-                    for (var j = 0; j < autoOrifices.Count; j++) {
+                    for (var j = 0; j < autoSockets.Count; j++) {
                         if (i == j) continue;
-                        var (bName, bEnabled, bDist) = autoOrifices[j];
+                        var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
                         var tree = fx.NewBlendTree($"{aName} vs {bName}");
                         tree.useAutomaticThresholds = false;
@@ -272,15 +272,15 @@ namespace VF.Feature {
                     }
                 }
                 
-                for (var i = 0; i < autoOrifices.Count; i++) {
-                    var (name, enabled, dist) = autoOrifices[i];
+                for (var i = 0; i < autoSockets.Count; i++) {
+                    var (name, enabled, dist) = autoSockets[i];
                     var triggerOn = states[Tuple.Create(i, -1)];
                     var triggerOff = states[Tuple.Create(i, -2)];
                     var firstComparison = states[Tuple.Create(i, i == 0 ? 1 : 0)];
                     start.TransitionsTo(firstComparison).When(enabled.IsTrue());
                     triggerOn.TransitionsTo(firstComparison).When(fx.Always());
                     
-                    for (var j = 0; j < autoOrifices.Count; j++) {
+                    for (var j = 0; j < autoSockets.Count; j++) {
                         if (i == j) continue;
                         var current = states[Tuple.Create(i, j)];
                         var otherActivate = states[Tuple.Create(j, -1)];
@@ -289,7 +289,7 @@ namespace VF.Feature {
                         
                         var nextI = j + 1;
                         if (nextI == i) nextI++;
-                        if (nextI == autoOrifices.Count) {
+                        if (nextI == autoSockets.Count) {
                             current.TransitionsTo(triggerOff).When(dist.IsGreaterThan(0).Not());
                             current.TransitionsTo(start).When(fx.Always());
                         } else {
@@ -304,7 +304,7 @@ namespace VF.Feature {
 
             if (objectsToDisableTemporarily.Count > 0) {
                 var fx = GetFx();
-                var layer = fx.NewLayer("OGB Off Temporarily Upon Load");
+                var layer = fx.NewLayer("Haptics Off Temporarily Upon Load");
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");
                 off.TransitionsTo(on).When().WithTransitionExitTime(1);

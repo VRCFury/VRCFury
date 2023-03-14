@@ -11,8 +11,11 @@ namespace VF.Updater {
     [InitializeOnLoad]
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
-            
-            Task.Run(Check);
+            // just in case
+            EditorUtility.ClearProgressBar();
+            EditorApplication.UnlockReloadAssemblies();
+
+            EditorApplication.delayCall += () => Task.Run(Check);
         }
 
         private static async Task<string> GetAppRootDir() {
@@ -26,23 +29,22 @@ namespace VF.Updater {
         public static async Task<string> GetUpdateAllMarker() { 
             return await GetAppRootDir() + "/Temp/vrcfUpdateAll";
         }
+        
+        private static readonly bool IsRunningInsidePackage =
+            Assembly.GetExecutingAssembly().GetName().Name == "VRCFury-Updater2";
+        private static void DebugLog(string msg) {
+            var suffix = IsRunningInsidePackage ? "" : " (installer)";
+            Debug.Log($"VRCFury Updater{suffix}: {msg}");
+        }
 
         private static async void Check() {
+            DebugLog("Init check started");
             await AsyncUtils.ErrorDialogBoundary(() => AsyncUtils.PreventReload(CheckUnsafe));
+            DebugLog("Init check ended");
         }
 
         private static async Task CheckUnsafe() {
-            await AsyncUtils.InMainThread(EditorUtility.ClearProgressBar);
-            
-            var isRunningInsidePackage = Assembly.GetExecutingAssembly().GetName().Name == "VRCFury-Updater2";
 
-            void DebugLog(string msg) {
-                var suffix = isRunningInsidePackage ? "" : " (installer)";
-                Debug.Log($"VRCFury Updater{suffix}: {msg}");
-            }
-
-            DebugLog("Checking for updates...");
-            
             var packages = await AsyncUtils.ListInstalledPacakges();
             if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
                 // Updater package (... this package) isn't installed, which means this code
@@ -53,7 +55,7 @@ namespace VF.Updater {
                 return;
             }
 
-            if (!isRunningInsidePackage) {
+            if (!IsRunningInsidePackage) {
                 return;
             }
             

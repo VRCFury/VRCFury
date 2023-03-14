@@ -5,10 +5,9 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Model;
 
-namespace VF.Builder.Ogb {
-    internal static class PenetratorSizeDetector {
+namespace VF.Builder.Haptics {
+    internal static class PlugSizeDetector {
         private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
-        private static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
 
         public static Renderer GetAutoRenderer(GameObject obj) {
             return GetAutoRenderer(obj, true) ?? GetAutoRenderer(obj, false);
@@ -20,7 +19,7 @@ namespace VF.Builder.Ogb {
                 var arr = enumerable.ToArray();
                 if (arr.Length > 1) {
                     throw new VRCFBuilderException(
-                        "Penetrator found multiple possible meshes. Please specify mesh in component manually.");
+                        "Plug found multiple possible meshes. Please specify mesh in component manually.");
                 }
                 return arr.Length == 1 ? arr[0] : null;
             }
@@ -47,11 +46,11 @@ namespace VF.Builder.Ogb {
         
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
-            return OGBUtils.GetMeshRoot(renderer).rotation * localRotation;
+            return HapticUtils.GetMeshRoot(renderer).rotation * localRotation;
         }
         
         public static Vector3 GetAutoWorldPosition(Renderer renderer) {
-            return OGBUtils.GetMeshRoot(renderer).transform.position;
+            return HapticUtils.GetMeshRoot(renderer).transform.position;
         }
 
         public static Tuple<float, float> GetAutoWorldSize(Renderer renderer, Vector3? worldPosition_ = null, Quaternion? worldRotation_ = null) {
@@ -105,8 +104,8 @@ namespace VF.Builder.Ogb {
             if (mat.shader.name.Contains("DPS") && mat.HasProperty("_ReCurvature")) return Quaternion.identity; // UnityChanToonShader w/ Raliv
             if (TpsConfigurer.IsTps(mat)) {
                 // Poiyomi 8 w/ TPS
-                if (mat.HasProperty(TpsPenetratorForward)) {
-                    var c = mat.GetVector(TpsPenetratorForward);
+                if (mat.HasProperty(TpsConfigurer.TpsPenetratorForward)) {
+                    var c = mat.GetVector(TpsConfigurer.TpsPenetratorForward);
                     return Quaternion.LookRotation(new Vector3(c.x, c.y, c.z));
                 }
                 return Quaternion.identity;

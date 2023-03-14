@@ -32,7 +32,7 @@ namespace VF.Feature {
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
-            content.Add(VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. Use OGB Orifices and OGB Penetrators (with TPS autoconfiguration) instead!"));
+            content.Add(VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. Use VRCFury Haptic Socket and VRCFury Haptic Plug (with TPS autoconfiguration) instead!"));
             return content;
         }
 

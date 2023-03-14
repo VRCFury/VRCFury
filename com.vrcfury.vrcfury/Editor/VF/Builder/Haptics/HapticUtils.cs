@@ -8,8 +8,8 @@ using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 
-namespace VF.Model {
-    public class OGBUtils {
+namespace VF.Builder.Haptics {
+    public class HapticUtils {
         
         // Bump when pen senders or receivers are changed
         public static int penVersion = 8;
@@ -192,14 +192,14 @@ namespace VF.Model {
             while (true) {
                 if (IsZeroScale(current)) {
                     throw new Exception(
-                        "An OGB " + type + " exists on an object with zero scale." +
+                        "A haptic component exists on an object with zero scale." +
                         " This object must not be zero scale or size calculation will fail.\n\n" +
                         "Component path: " + path + "\n" +
                         "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
                 }
                 if (IsNegativeScale(current)) {
                     throw new Exception(
-                        "An OGB " + type + " exists on an object with negative scale." +
+                        "A haptic component exists on an object with negative scale." +
                         " This object must have a positive scale or size calculation will fail.\n\n" +
                         "Component path: " + path + "\n" +
                         "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
@@ -208,7 +208,7 @@ namespace VF.Model {
                     var bypass = obj.transform.Find("ItsOkayThatOgbMightBeBroken") != null;
                     if (!bypass) {
                         throw new Exception(
-                            "An OGB " + type + " exists on an object with a non-uniform scale." +
+                            "A haptic component exists on an object with a non-uniform scale." +
                             " This object (and all parents) must have an X, Y, and Z scale value that match" +
                             " each other, or size calculation will fail.\n\n" +
                             "Component path: " + path + "\n" +

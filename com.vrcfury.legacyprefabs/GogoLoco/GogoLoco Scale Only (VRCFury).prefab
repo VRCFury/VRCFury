@@ -43,7 +43,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -55,18 +55,30 @@ MonoBehaviour:
       data:
         version: 2
         controllers:
-        - controller: {fileID: 9100000, guid: 7a370f2d94a2e2f40b3abad4a36fc8a6, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 7a370f2d94a2e2f40b3abad4a36fc8a6
+            obj: {fileID: 9100000, guid: 7a370f2d94a2e2f40b3abad4a36fc8a6, type: 2}
           type: 5
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: c6e2190827640e144938baadbf01ee8e, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: c6e2190827640e144938baadbf01ee8e
+            obj: {fileID: 9100000, guid: c6e2190827640e144938baadbf01ee8e, type: 2}
           type: 7
           ResetMePlease: 0
         menus:
-        - menu: {fileID: 11400000, guid: e107fc3fb3f529043a8e4f0344385f70, type: 2}
+        - menu:
+            fileID: 11400000
+            guid: e107fc3fb3f529043a8e4f0344385f70
+            obj: {fileID: 11400000, guid: e107fc3fb3f529043a8e4f0344385f70, type: 2}
           prefix: GoGo Scale
           ResetMePlease: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 1744b0aab7d666b4094d25ba05e18fac, type: 2}
+        - parameters:
+            fileID: 11400000
+            guid: 1744b0aab7d666b4094d25ba05e18fac
+            obj: {fileID: 11400000, guid: 1744b0aab7d666b4094d25ba05e18fac, type: 2}
           ResetMePlease: 0
         globalParams: []
         removePrefixes: []
