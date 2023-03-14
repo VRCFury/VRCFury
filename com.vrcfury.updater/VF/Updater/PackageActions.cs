@@ -140,7 +140,10 @@ namespace VF.Updater {
         }
         
         public static async Task<PackageCollection> ListInstalledPacakges() {
-            return await PackageRequest(() => Client.List(true, false));
+            Debug.Log("(list packages start)");
+            var ret = await PackageRequest(() => Client.List(true, false));
+            Debug.Log("(list packages end)");
+            return ret;
         }
         
         private static async Task<T> PackageRequest<T>(Func<Request<T>> requestProvider) {

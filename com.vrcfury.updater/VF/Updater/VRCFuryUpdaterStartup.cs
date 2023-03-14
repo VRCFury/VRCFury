@@ -32,9 +32,9 @@ namespace VF.Updater {
         }
 
         private static async void Check() {
-            DebugLog("Init check started");
+            DebugLog("Startup check started");
             await AsyncUtils.ErrorDialogBoundary(CheckUnsafe);
-            DebugLog("Init check ended");
+            DebugLog("Startup check ended");
         }
 
         private static async Task CheckUnsafe() {
@@ -53,11 +53,13 @@ namespace VF.Updater {
             }
 
             if (!IsRunningInsidePackage) {
+                DebugLog("(not running inside package)");
                 return; 
             }
             
             await SceneCloser.ReopenScenes();
 
+            DebugLog("Checking for migration folders ...");
             var triggerUpgrade = false;
             var showUpgradeNotice = false;
             var updaterJustRanMarker = await GetUpdaterJustUpdatedMarker();

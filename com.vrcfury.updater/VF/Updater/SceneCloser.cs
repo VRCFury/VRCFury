@@ -102,6 +102,7 @@ namespace VF.Updater {
                     EditorSceneManager.CloseScene(updateScene, true);
                     AssetDatabase.DeleteAsset(UpdateScenePath);
                 }
+                Debug.Log("Reopened");
             });
         }
     }
