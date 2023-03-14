@@ -42,6 +42,11 @@
 * Add features using the `+` button on the component. See the `Feature Modules` section below for information about each type of feature.
 * You're done! There's no "building" to do. VRCFury will non-destructively update your controllers, VRC menus and params automatically before each upload.
 
+## How to uninstall
+
+* `Tools > VRCFury > Uninstall VRCFury`
+* If that doesn't work, or the menu is missing entirely, go into Unity's `Package Manager` tab and remove all the VRCFury packages. **Remove the VRCFury Updater FIRST** so it doesn't try to reinstall the rest.
+
 ## Feature Modules
 
 Once you add a VRCFury component to your avatar (or prop), you can add any combination of these feature modules. These are in alphabetical order, but one of the most popular is the `Toggle`.
