@@ -11,6 +11,10 @@ namespace VF.Updater {
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
             EditorApplication.delayCall += () => Task.Run(Check);
+            EditorApplication.delayCall += () => Task.Run(async () => {
+                await Task.Delay(5000);
+                await AsyncUtils.InMainThread(AssetDatabase.Refresh);
+            });
         }
 
         private static readonly bool IsRunningInsidePackage =
@@ -99,7 +103,7 @@ namespace VF.Updater {
             }
 
             var manualUpdateInProgressMarker = await Markers.ManualUpdateInProgressMarker();
-            var installInProgressMarker = await Markers.ManualUpdateInProgressMarker();
+            var installInProgressMarker = await Markers.InstallInProgressMarker();
             if (Directory.Exists(manualUpdateInProgressMarker) || Directory.Exists(installInProgressMarker)) {
                 DebugLog("Found 'update complete' marker");
                 if (Directory.Exists(manualUpdateInProgressMarker)) Directory.Delete(manualUpdateInProgressMarker);
