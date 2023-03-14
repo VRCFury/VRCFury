@@ -76,6 +76,10 @@ namespace VF.Updater {
             await TriggerRecompile();
             await Task.Delay(5000);
             await TriggerRecompile();
+            for (var i = 0; i < 6; i++) {
+                await Task.Delay(10000);
+                await TriggerRecompile();
+            }
         }
 
         private async Task TriggerRecompile() {
