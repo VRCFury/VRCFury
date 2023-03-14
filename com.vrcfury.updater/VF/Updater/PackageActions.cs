@@ -90,6 +90,14 @@ namespace VF.Updater {
         private async Task TriggerRecompile() {
             DebugLog("Triggering asset import and script recompilation ...");
             await AsyncUtils.InMainThread(() => AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport));
+            await AsyncUtils.InMainThread(() => {
+                try {
+                    AssetDatabase.ImportAsset("Packages",
+                        ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive);
+                } catch (Exception e) {
+                    Debug.LogError(e);
+                }
+            });
             await AsyncUtils.InMainThread(CompilationPipeline.RequestScriptCompilation);
         }
 

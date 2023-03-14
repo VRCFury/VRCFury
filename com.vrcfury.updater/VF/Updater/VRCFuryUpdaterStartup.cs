@@ -11,10 +11,6 @@ namespace VF.Updater {
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
             Task.Run(Check);
-            Task.Run(async () => {
-                await Task.Delay(5000);
-                await AsyncUtils.InMainThread(() => AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport));
-            });
         }
 
         private static readonly bool IsRunningInsidePackage =
@@ -56,9 +52,6 @@ namespace VF.Updater {
 
             if (!IsRunningInsidePackage) {
                 DebugLog("(not running inside package)");
-                if (!UpdaterAssemblyExists) {
-                    await AsyncUtils.InMainThread(() => AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport));
-                }
                 return;
             }
             
@@ -116,7 +109,6 @@ namespace VF.Updater {
                 if (Directory.Exists(manualUpdateInProgressMarker)) Directory.Delete(manualUpdateInProgressMarker);
                 if (Directory.Exists(installInProgressMarker)) Directory.Delete(installInProgressMarker);
 
-                await AsyncUtils.InMainThread(() => AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport));
                 await AsyncUtils.InMainThread(() => {
                     DebugLog("Upgrade complete");
                 });
