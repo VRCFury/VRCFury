@@ -1,5 +1,6 @@
 # VRC Fury - Non-Destructive Tools for VRChat Avatars
-**Clothing Attacher // Toggle Builder // Gesture Manager // Controller Merger // Avatar Optimizer and more // All Easily Reversible!**
+
+**Clothing Attacher // Toggle Builder // Gesture Manager // Controller Merger // Avatar Optimizer // Modular Setup // All Reversible!**
 
 ## Download
 
