@@ -71,6 +71,14 @@ namespace VF.Updater {
             }
             
             await AsyncUtils.Progress("Scripts are reloading ...");
+            await TriggerRecompile();
+            await Task.Delay(1000);
+            await TriggerRecompile();
+            await Task.Delay(5000);
+            await TriggerRecompile();
+        }
+
+        private async Task TriggerRecompile() {
             await AsyncUtils.InMainThread(() => {
                 Debug.Log("Triggering asset import ...");
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
