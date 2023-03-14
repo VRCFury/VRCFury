@@ -13,12 +13,16 @@ namespace VF.Updater {
             Task.Run(Check);
             Task.Run(async () => {
                 await Task.Delay(5000);
-                await AsyncUtils.InMainThread(AssetDatabase.Refresh);
+                await AsyncUtils.InMainThread(() => AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport));
             });
         }
 
         private static readonly bool IsRunningInsidePackage =
             Assembly.GetExecutingAssembly().GetName().Name == "VRCFury-Updater2";
+
+        private static readonly bool UpdaterAssemblyExists =
+            AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "VRCFury-Updater2");
+
         private static void DebugLog(string msg) {
             var suffix = IsRunningInsidePackage ? "" : " (installer)";
             Debug.Log($"VRCFury Updater{suffix}: {msg}");
@@ -52,7 +56,10 @@ namespace VF.Updater {
 
             if (!IsRunningInsidePackage) {
                 DebugLog("(not running inside package)");
-                return; 
+                if (!UpdaterAssemblyExists) {
+                    await AsyncUtils.InMainThread(() => AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport));
+                }
+                return;
             }
             
             await SceneCloser.ReopenScenes();
@@ -109,6 +116,7 @@ namespace VF.Updater {
                 if (Directory.Exists(manualUpdateInProgressMarker)) Directory.Delete(manualUpdateInProgressMarker);
                 if (Directory.Exists(installInProgressMarker)) Directory.Delete(installInProgressMarker);
 
+                await AsyncUtils.InMainThread(() => AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport));
                 await AsyncUtils.InMainThread(() => {
                     DebugLog("Upgrade complete");
                 });
