@@ -42,11 +42,6 @@
 * Add features using the `+` button on the component. See the `Feature Modules` section below for information about each type of feature.
 * You're done! There's no "building" to do. VRCFury will non-destructively update your controllers, VRC menus and params automatically before each upload.
 
-## How to uninstall
-
-* `Tools > VRCFury > Uninstall VRCFury`
-* If that doesn't work, or the menu is missing entirely, go into Unity's `Package Manager` tab and remove all the VRCFury packages. **Remove the VRCFury Updater FIRST** so it doesn't try to reinstall the rest.
-
 ## Feature Modules
 
 Once you add a VRCFury component to your avatar (or prop), you can add any combination of these feature modules. These are in alphabetical order, but one of the most popular is the `Toggle`.
@@ -290,3 +285,8 @@ VRCFury will detect if your avatar has a mixture of Write Defaults, and will off
 ### Action Controller Conflict Resolution
 
 If you install multiple independent packages of avatar "dances" using vrcfury, they will be rewritten to work together. For instance, you can install GogoLoco AND CuteDancer using VRCFury, and will be able to use the dances from each. Typically this is impossible as the animations from one will override the other, however VRCFury rewrites the playable layer weight drivers to affect only the layers owned by each individual package. Hooray!
+
+## How to remove / uninstall
+
+* `Tools > VRCFury > Uninstall VRCFury`
+* If that doesn't work, or the menu is missing entirely, go into Unity's `Package Manager` tab and remove all the VRCFury packages. **Remove the VRCFury Updater FIRST** so it doesn't try to reinstall the rest.
