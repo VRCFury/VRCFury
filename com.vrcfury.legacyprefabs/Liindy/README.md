@@ -6,7 +6,7 @@ Liindy Sniper Using VRCFury
 ## How to install
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Interactable Sniper Rifle (VRCHAT/SDK3)](https://liindy.gumroad.com/l/Tac300Sniper)
-* Find the `Packages/VRCFury - Prefabs/VRCFury/Prefabs/Liindy` folder in the unity folder browser
+* Find the `Packages/VRCFury Prefabs/Liindy` folder in the unity folder browser
 * Drag the 'Sniper' prefab file from the folder onto the root of your avatar
 * DO NOT UNPACK or follow the instructions that came with the original prefab
 * Expand the 'Sniper' object that's now in your hierarchy and move all of the 'Target' objects
@@ -29,7 +29,7 @@ Liindy Butterfly Knife Using VRCFury
 ## How to install
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Butterfly Knife / Balisong (VRCHAT/SDK3)](https://liindy.gumroad.com/l/ButterflyKnife)
-* Find the `Packages/VRCFury - Prefabs/VRCFury/Prefabs/Liindy` folder in the unity folder browser
+* Find the `Packages/VRCFury Prefabs/Liindy` folder in the unity folder browser
 * Drag the 'Butterfly Knife' prefab file from the folder onto the root of your avatar
 * DO NOT UNPACK or follow the instructions that came with the original prefab
 * Expand the 'Butterfly Knife' object that's now in your hierarchy and move all of the 'Target' objects
@@ -53,7 +53,7 @@ Liindy Death Sickles
 ## How to install
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Death Sickles (VRCHAT/SDK3)](https://liindy.gumroad.com/l/DeathSickles)
-* Find the `Packages/VRCFury - Prefabs/VRCFury/Prefabs/Liindy` folder in the unity folder browser
+* Find the `Packages/VRCFury Prefabs/Liindy` folder in the unity folder browser
 * Drag the 'DeathSickles' prefab file from the folder onto the root of your avatar
 * DO NOT UNPACK or follow the instructions that came with the original prefab
 * Expand the 'DeathSickles' object that's now in your hierarchy, then expand the 'DeathSickles_Stuff' 

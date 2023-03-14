@@ -2,9 +2,9 @@
 
 Set up your avatar's toggles, gestures, sliders, clothing, and more without ever touching a layer or menu! Drag props or clothing onto and off of your avatar without having to "install" them!
 
-## Need Help?
+## Download
 
-[Join the VRCFury discord!](https://vrcfury.com/discord)
+### \>> [Download VRCFury](https://vrcfury.com/download) || [Support Discord](https://vrcfury.com/discord) <<
 
 ## Benefits
 * **Easy to use**
@@ -35,22 +35,12 @@ Set up your avatar's toggles, gestures, sliders, clothing, and more without ever
 * **And more!**
   * We're constantly adding more and more non-destructive avatar features to VRCFury. Keep an eye out for updates!
 
-## How to install and use
+## How to use
 
-* Delete the VRCFury directory from your project (if upgrading).
-* [Download the latest VRCFury Unity Package](https://vrcfury.com/download)
-* Drag the package into your project's Project tab (where the folders are) and click OK to import
-* If you are using just VRCFury because an artist said you needed if for their prefab:
-  * You can stop here! You're done! Just follow their directions to add their prefab to your avatar, and VRC Fury will handle the rest.
-  * Otherwise, read on to add your own behaviors and props.
-* On your main avatar object, click `Add Component` -> `VRC Fury`.
-* Add props and other features using the `+` button on the component. See the `Feature Modules` section below for information about each type of feature.
-* You're done! There's no "building" to do. VRC Fury will update your FX layer, VRC menus and params automatically before each upload.
-
-## Upgrading
-
-* In unity, choose `Tools` -> `Update VRCFury`.
-* If there is an error, delete the VRCFury folder from your project, then follow the instructions above to reinstall.
+* Download and import the package above (it may take a bit to finish importing)
+* On your main avatar object, or the prop you are trying to setup, click `Add Component` -> `VRC Fury`.
+* Add features using the `+` button on the component. See the `Feature Modules` section below for information about each type of feature.
+* You're done! There's no "building" to do. VRCFury will non-destructively update your controllers, VRC menus and params automatically before each upload.
 
 ## Feature Modules
 
