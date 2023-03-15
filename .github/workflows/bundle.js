@@ -100,10 +100,16 @@ async function getTags() {
         .filter(line => line !== "");
 }
 async function getNextVersion(allTags, prefix) {
+    console.log("All tags");
+    console.log(allTags);
     const versions = allTags
         .filter(tag => tag.startsWith(prefix))
         .map(tag => tag.substring(prefix.length));
+    console.log("Versions");
+    console.log(versions);
     const maxVersion = semver.maxSatisfying(versions, '*');
+    console.log("Max version", maxVersion);
+    throw new Error('test');
     if (!maxVersion) return '1.0.0';
     return semver.inc(maxVersion, 'minor');
 }
