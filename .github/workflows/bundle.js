@@ -26,7 +26,7 @@ for (const dir of await fs.readdir('.')) {
         await writeJson(packageJsonPath, json);
         if ((await md5Dir(dir)) === existing.hash) {
             console.log("Hash already matches, skipping ...");
-            continue;
+            //continue;
         }
     }
 
