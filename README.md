@@ -1,5 +1,6 @@
 # VRC Fury - Non-Destructive Tools for VRChat Avatars
-**Clothing Attacher // Toggle Builder // Gesture Manager // Controller Merger // Avatar Optimizer and more // All Easily Reversible!**
+
+**Clothing Attacher // Toggle Builder // Gesture Manager // Controller Merger // Avatar Optimizer // Modular Setup // All Reversible!**
 
 ## Download
 
@@ -300,3 +301,8 @@ VRCFury will detect if your avatar has a mixture of Write Defaults, and will off
 ### Action Controller Conflict Resolution
 
 If you install multiple independent packages of avatar "dances" using vrcfury, they will be rewritten to work together. For instance, you can install GogoLoco AND CuteDancer using VRCFury, and will be able to use the dances from each. Typically this is impossible as the animations from one will override the other, however VRCFury rewrites the playable layer weight drivers to affect only the layers owned by each individual package. Hooray!
+
+## How to remove / uninstall
+
+* `Tools > VRCFury > Uninstall VRCFury`
+* If that doesn't work, or the menu is missing entirely, go into Unity's `Package Manager` tab and remove all the VRCFury packages. **Remove the VRCFury Updater FIRST** so it doesn't try to reinstall the rest.
