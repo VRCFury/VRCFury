@@ -97,20 +97,14 @@ async function getTags() {
     return (stdout+'')
         .split('\n')
         .filter(line => line.includes("refs/tags/"))
-        .map(line => line.substring(line.indexOf('refs/tags/') + 8).trim())
+        .map(line => line.substring(line.indexOf('refs/tags/') + 10).trim())
         .filter(line => line !== "");
 }
 async function getNextVersion(allTags, prefix) {
-    console.log("All tags");
-    console.log(allTags);
     const versions = allTags
         .filter(tag => tag.startsWith(prefix))
         .map(tag => tag.substring(prefix.length));
-    console.log("Versions");
-    console.log(versions);
     const maxVersion = semver.maxSatisfying(versions, '*');
-    console.log("Max version", maxVersion);
-    throw new Error('test');
     if (!maxVersion) return '1.0.0';
     return semver.inc(maxVersion, 'minor');
 }
