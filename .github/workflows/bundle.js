@@ -93,10 +93,11 @@ async function createTar(dir, outputFilename) {
 }
 
 async function getTags() {
-    const { stdout, stderr } = await spawn('git', ['tag'], {encoding: 'utf8'});
+    const { stdout, stderr } = await spawn('git', ['ls-remote', '--tags', 'origin'], {encoding: 'utf8'});
     return (stdout+'')
         .split('\n')
-        .map(line => line.trim())
+        .filter(line => line.includes("refs/tags/"))
+        .map(line => line.substring(line.indexOf('refs/tags/') + 8).trim())
         .filter(line => line !== "");
 }
 async function getNextVersion(allTags, prefix) {
