@@ -93,7 +93,7 @@ async function createTar(dir, outputFilename) {
 }
 
 async function getTags() {
-    const { stdout, stderr } = await spawn('git', ['tag']);
+    const { stdout, stderr } = await spawn('git', ['tag'], {encoding: 'utf8'});
     return (stdout+'')
         .split('\n')
         .map(line => line.trim())
