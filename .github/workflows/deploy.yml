@@ -28,6 +28,8 @@ jobs:
           node-version: 18
       - name: Bundle
         working-directory: repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           (cd .github/workflows && npm install)
           node .github/workflows/bundle.js
