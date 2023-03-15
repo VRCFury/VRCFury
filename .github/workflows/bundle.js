@@ -47,7 +47,7 @@ for (const dir of await fs.readdir('.')) {
         versionJson.packages.push(existing);
     }
     existing.latestVersion = version;
-    existing.hash = await hasha.fromFile(outputFilename, {algorithm: 'sha256'});
+    existing.hash = await hasha.fromFile(outputPath, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
     existing.latestUpmTargz = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
     console.log(`Adding to version repository with version ${version}`);
