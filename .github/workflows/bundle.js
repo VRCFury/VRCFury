@@ -3,6 +3,7 @@ import tar from 'tar';
 import hasha from 'hasha';
 import semver from 'semver';
 import tmp from 'tmp-promise';
+import { spawn } from 'promisify-child-process';
 
 const versionJson = await readJson('../versions/updates.json');
 await rmdir('dist');
@@ -47,7 +48,10 @@ for (const dir of await fs.readdir('.')) {
     existing.latestVersion = version;
     existing.hash = await hasha.fromFile(outputFilename, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
+    //existing.latestUpmTargz = asset.browser_download_url;
     console.log(`Adding to version repository with version ${version}`);
+
+    await spawn('gh', ['release', 'create', name+'/'+version, outputFilename], { stdio: "inherit" });
 }
 
 await writeJson('../versions/updates.json', versionJson);
