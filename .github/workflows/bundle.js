@@ -9,6 +9,8 @@ const versionJson = await readJson('../versions/updates.json');
 await rmdir('dist');
 await fs.mkdir('dist');
 
+const allTags = await getTags();
+
 for (const dir of await fs.readdir('.')) {
     const packageJsonPath = `${dir}/package.json`
     if (!await checkFileExists(packageJsonPath)) {
@@ -30,16 +32,15 @@ for (const dir of await fs.readdir('.')) {
         }
     }
 
-    let version = '1.0.0';
-    if (existing) {
-        version = existing.latestVersion;
-        version = semver.inc(version, 'minor');
-    }
+    const tagPrefix = `${name}/`;
+    let version = getNextVersion(allTags, tagPrefix);
+    const tagName = `${tagPrefix}${version}`
     json.version = version;
     await writeJson(packageJsonPath, json);
 
-    const outputFilename = `dist/${name}-${version}.tgz`;
-    await createTar(dir, outputFilename);
+    const outputFilename = `${name}-${version}.tgz`;
+    const outputPath = `dist/${outputFilename}`;
+    await createTar(dir, outputPath);
 
     if (!existing) {
         existing = { id: name };
@@ -48,10 +49,10 @@ for (const dir of await fs.readdir('.')) {
     existing.latestVersion = version;
     existing.hash = await hasha.fromFile(outputFilename, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
-    //existing.latestUpmTargz = asset.browser_download_url;
+    existing.latestUpmTargz = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
     console.log(`Adding to version repository with version ${version}`);
 
-    await spawn('gh', ['release', 'create', name+'/'+version, outputFilename], { stdio: "inherit" });
+    await spawn('gh', ['release', 'create', tagName, outputPath], { stdio: "inherit" });
 }
 
 await writeJson('../versions/updates.json', versionJson);
@@ -89,4 +90,20 @@ async function createTar(dir, outputFilename) {
         noMtime: true,
         prefix: 'package/'
     }, await fs.readdir(dir));
+}
+
+async function getTags() {
+    const { stdout, stderr } = await spawn('git', ['tag']);
+    return (stdout+'')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== "");
+}
+async function getNextVersion(allTags, prefix) {
+    const versions = allTags
+        .filter(tag => tag.startsWith(prefix))
+        .map(tag => tag.substring(prefix.length));
+    const maxVersion = semver.maxSatisfying(versions, '*');
+    if (!maxVersion) return '1.0.0';
+    return semver.inc(maxVersion, 'minor');
 }
