@@ -27,7 +27,7 @@ for (const dir of await fs.readdir('.')) {
         json.version = existing.latestVersion;
         await writeJson(packageJsonPath, json);
         if ((await md5Dir(dir)) === existing.hash) {
-            console.log("Hash already matches, skipping ...");
+            //console.log("Hash already matches, skipping ...");
             continue;
         }
     }
@@ -52,7 +52,14 @@ for (const dir of await fs.readdir('.')) {
     existing.latestUpmTargz = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
     console.log(`Adding to version repository with version ${version}`);
 
-    await spawn('gh', ['release', 'create', tagName, outputPath], { stdio: "inherit" });
+    await spawn('gh', [
+        'release',
+        'create',
+        tagName,
+        outputPath,
+        '--target', process.env.GITHUB_SHA,
+        '--title', `${json.displayName} v${version} (${name})`
+    ], { stdio: "inherit" });
 }
 
 await writeJson('../versions/updates.json', versionJson);
