@@ -3,10 +3,13 @@ import tar from 'tar';
 import hasha from 'hasha';
 import semver from 'semver';
 import tmp from 'tmp-promise';
+import { spawn } from 'promisify-child-process';
 
 const versionJson = await readJson('../versions/updates.json');
 await rmdir('dist');
 await fs.mkdir('dist');
+
+const allTags = await getTags();
 
 for (const dir of await fs.readdir('.')) {
     const packageJsonPath = `${dir}/package.json`
@@ -29,25 +32,34 @@ for (const dir of await fs.readdir('.')) {
         }
     }
 
-    let version = '1.0.0';
-    if (existing) {
-        version = existing.latestVersion;
-        version = semver.inc(version, 'minor');
-    }
+    const tagPrefix = `${name}/`;
+    let version = await getNextVersion(allTags, tagPrefix);
+    const tagName = `${tagPrefix}${version}`
     json.version = version;
     await writeJson(packageJsonPath, json);
 
-    const outputFilename = `dist/${name}-${version}.tgz`;
-    await createTar(dir, outputFilename);
+    const outputFilename = `${name}-${version}.tgz`;
+    const outputPath = `dist/${outputFilename}`;
+    await createTar(dir, outputPath);
 
     if (!existing) {
         existing = { id: name };
         versionJson.packages.push(existing);
     }
     existing.latestVersion = version;
-    existing.hash = await hasha.fromFile(outputFilename, {algorithm: 'sha256'});
+    existing.hash = await hasha.fromFile(outputPath, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
+    existing.latestUpmTargz = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
     console.log(`Adding to version repository with version ${version}`);
+
+    await spawn('gh', [
+        'release',
+        'create',
+        tagName,
+        outputPath,
+        '--target', process.env.GITHUB_SHA,
+        '--title', `${json.displayName} v${version}`
+    ], { stdio: "inherit" });
 }
 
 await writeJson('../versions/updates.json', versionJson);
@@ -85,4 +97,21 @@ async function createTar(dir, outputFilename) {
         noMtime: true,
         prefix: 'package/'
     }, await fs.readdir(dir));
+}
+
+async function getTags() {
+    const { stdout, stderr } = await spawn('git', ['ls-remote', '--tags', 'origin'], {encoding: 'utf8'});
+    return (stdout+'')
+        .split('\n')
+        .filter(line => line.includes("refs/tags/"))
+        .map(line => line.substring(line.indexOf('refs/tags/') + 10).trim())
+        .filter(line => line !== "");
+}
+async function getNextVersion(allTags, prefix) {
+    const versions = allTags
+        .filter(tag => tag.startsWith(prefix))
+        .map(tag => tag.substring(prefix.length));
+    const maxVersion = semver.maxSatisfying(versions, '*');
+    if (!maxVersion) return '1.0.0';
+    return semver.inc(maxVersion, 'minor');
 }

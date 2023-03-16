@@ -41,7 +41,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
                 var c = new VisualElement();
                 c.Add(VRCFuryEditorUtils.Info(
-                    "If you provide an animation clip with more than 2 frames, the clip will run from start " +
+                    "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
                 c.Add(VRCFuryEditorUtils.WrappedLabel("Penetrated state:"));
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
@@ -49,7 +49,7 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("minDepth")));
                 c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of maximum penetration in meters (0 for default):"));
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("maxDepth")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Enable animation with plugs on this same avatar?"));
+                c.Add(VRCFuryEditorUtils.WrappedLabel("Allow avatar to trigger its own animation?"));
                 c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableSelf")));
                 return c;
             }));
@@ -66,7 +66,7 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
             
-            var text = "Socket Missing Light";
+            var text = "Haptic Socket (DPS Disabled)";
             if (lightType == VRCFuryHapticSocket.AddLight.Hole) text = "Haptic Socket (Hole)";
             if (lightType == VRCFuryHapticSocket.AddLight.Ring) text = "Haptic Socket (Ring)";
 

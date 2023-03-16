@@ -28,23 +28,11 @@ jobs:
           node-version: 18
       - name: Bundle
         working-directory: repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           (cd .github/workflows && npm install)
           node .github/workflows/bundle.js
-      - name: Generate release tag
-        id: tag
-        run: echo "release_tag=$(date +%Y%m%d.%H%M%S)" >> $GITHUB_OUTPUT
-      - name: Release Bundles
-        id: release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.tag.outputs.release_tag }}
-          files: 'repo/dist/*'
-      - name: Update deployment URLs
-        working-directory: repo
-        run: node .github/workflows/updateUrls.js
-        env:
-          RELEASE_ASSETS: ${{ steps.release.outputs.assets }}
       - name: Push version manifest
         working-directory: versions
         run: |

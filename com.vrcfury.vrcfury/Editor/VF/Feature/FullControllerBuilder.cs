@@ -141,16 +141,13 @@ namespace VF.Feature {
                 toMain.UnionBaseMask(from.layers[0].avatarMask);
             }
 
-            var newParams = from.parameters
-                .Concat(from.parameters.Select(p => {
-                    p.name = RewriteParamName(p.name);
-                    return p;
-                }))
-                .Where(p => {
-                    var exists = to.parameters.Any(existing => existing.name == p.name);
-                    return !exists;
-                });
-            to.parameters = to.parameters.Concat(newParams).ToArray();
+            foreach (var p in from.parameters) {
+                p.name = RewriteParamName(p.name);
+                var exists = to.parameters.Any(existing => existing.name == p.name);
+                if (!exists) {
+                    to.parameters = to.parameters.Concat(new [] { p }).ToArray();
+                }
+            }
 
             foreach (var layer in from.layers) {
                 AnimatorIterator.ForEachState(layer.stateMachine, state => {
