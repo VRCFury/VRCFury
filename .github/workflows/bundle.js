@@ -58,7 +58,7 @@ for (const dir of await fs.readdir('.')) {
         tagName,
         outputPath,
         '--target', process.env.GITHUB_SHA,
-        '--title', `${json.displayName} v${version} (${name})`
+        '--title', `${json.displayName} v${version}`
     ], { stdio: "inherit" });
 }
 
