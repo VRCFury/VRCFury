@@ -748,15 +748,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400024, guid: 46ad84eb1e149554cba6f9d9b8dac925, type: 3}
       propertyPath: m_LocalScale.x
-      value: 15
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 400024, guid: 46ad84eb1e149554cba6f9d9b8dac925, type: 3}
       propertyPath: m_LocalScale.y
-      value: 15
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 400024, guid: 46ad84eb1e149554cba6f9d9b8dac925, type: 3}
       propertyPath: m_LocalScale.z
-      value: 15
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 400024, guid: 46ad84eb1e149554cba6f9d9b8dac925, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
