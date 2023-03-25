@@ -285,7 +285,7 @@ MonoBehaviour:
           - id: 3
         saved: 0
         slider: 0
-        securityEnabled: 0
+        securityEnabled: 1
         defaultOn: 0
         includeInRest: 0
         exclusiveOffState: 0

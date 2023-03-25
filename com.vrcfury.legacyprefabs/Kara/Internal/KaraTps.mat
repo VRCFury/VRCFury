@@ -10,7 +10,7 @@ Material:
   m_Name: KaraTps
   m_Shader: {fileID: 4800000, guid: 76a3501b6f96f874abe72562d44fcceb, type: 3}
   m_ShaderKeywords: LOD_FADE_CROSSFADE MOCHIE_PBR TPS_Penetrator VIGNETTE_MASKED
-    _ALPHATEST_ON _LIGHTINGMODE_WRAPPED _NORMALMAP _PARALLAXMAP _RIM2STYLE_POIYOMI
+    _ALPHATEST_ON _LIGHTINGMODE_REALISTIC _NORMALMAP _PARALLAXMAP _RIM2STYLE_POIYOMI
     _RIMSTYLE_POIYOMI _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A _STOCHASTICMODE_DELIOT_HEITZ
     _TPS_ANIMATEDTOGGLE_ON
   m_LightmapFlags: 1
@@ -1831,7 +1831,7 @@ Material:
     - _LightingIndirectUsesNormals: 0
     - _LightingMapMode: 0
     - _LightingMinLightBrightness: 0
-    - _LightingMode: 2
+    - _LightingMode: 6
     - _LightingMonochromatic: 0
     - _LightingMulitlayerNonLinear: 1
     - _LightingNumRamps: 1
@@ -2044,7 +2044,7 @@ Material:
     - _MochieReflectionStrengthGlobalMaskBlendType: 2
     - _MochieReflectionTintThemeIndex: 0
     - _MochieRoughnessMapInvert: 0
-    - _MochieRoughnessMultiplier: 0.319
+    - _MochieRoughnessMultiplier: 0.3
     - _MochieRoughnessMultiplier2: 1
     - _MochieSmoothnessGlobalMask: 0
     - _MochieSmoothnessGlobalMaskBlendType: 2
@@ -2874,7 +2874,7 @@ Material:
     - m_end_videoEffects: 0
     - m_end_voronoi: 0
     - m_end_voronoiRandom: 0
-    - m_lightingCategory: 0
+    - m_lightingCategory: 1
     - m_lightingOptions: 1
     - m_mainCategory: 1
     - m_mainOptions: 1
@@ -2958,7 +2958,7 @@ Material:
     - m_start_OutlineStencil: 0
     - m_start_PathAudioLink: 0
     - m_start_PoiLightData: 0
-    - m_start_PoiShading: 0
+    - m_start_PoiShading: 1
     - m_start_RGBAColors: 0
     - m_start_RGBMask: 1
     - m_start_Rim2AudioLink: 0
