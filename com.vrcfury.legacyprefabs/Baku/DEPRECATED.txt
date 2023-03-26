@@ -1,0 +1,1 @@
+Heftybits now comes with its own VRCFury prefab. Use the one that comes in their package instead!
