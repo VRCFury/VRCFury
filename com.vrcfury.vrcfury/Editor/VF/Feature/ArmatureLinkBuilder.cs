@@ -494,6 +494,9 @@ namespace VF.Feature {
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                if (avatarObject == null) {
+                    return "Avatar descriptor is missing";
+                }
                 var links = GetLinks();
                 var text = new List<string>();
                 var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links);

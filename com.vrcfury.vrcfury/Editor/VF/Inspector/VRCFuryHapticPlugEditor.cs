@@ -60,6 +60,7 @@ namespace VF.Inspector {
             container.Add(adv);
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTps"), "Auto-configure TPS (extremely experimental)"));
+            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTpsMask"), "Optional mask for Auto-configure TPS"));
             
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
@@ -245,7 +246,7 @@ namespace VF.Inspector {
             if (pen.configureTps && tmpDir != null) {
                 var configuredOne = false;
                 foreach (var renderer in renderers) {
-                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, tmpDir, worldLength);
+                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, tmpDir, worldLength, pen.configureTpsMask);
                     if (newRenderer) configuredOne = true;
                 }
 

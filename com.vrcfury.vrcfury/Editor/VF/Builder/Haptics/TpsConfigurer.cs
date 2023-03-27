@@ -24,7 +24,8 @@ namespace VF.Builder.Haptics {
             Renderer renderer,
             Transform rootTransform,
             string tmpDir,
-            float worldLength
+            float worldLength,
+            Texture2D mask
         ) {
             if (!renderer.sharedMaterials.Any(m => IsTps(m))) {
                 return null;
@@ -70,7 +71,7 @@ namespace VF.Builder.Haptics {
             }
 
             foreach (var matSlot in Enumerable.Range(0, skin.sharedMaterials.Length)) {
-                ConfigureMaterial(skin, matSlot, rootTransform, tmpDir, worldLength);
+                ConfigureMaterial(skin, matSlot, rootTransform, tmpDir, worldLength, mask);
             }
 
             skin.rootBone = rootTransform;
@@ -86,7 +87,8 @@ namespace VF.Builder.Haptics {
             int matSlot,
             Transform rootTransform,
             string tmpDir,
-            float worldLength
+            float worldLength,
+            Texture2D mask
         ) {
             var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
             if (bakeUtil == null) {
@@ -143,7 +145,7 @@ namespace VF.Builder.Haptics {
             meshInfoType.GetField("sharedMesh").SetValue(meshInfo, skin.sharedMesh);
             Texture2D tex = null;
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, meshInfo, null);
+                tex = (Texture2D)ReflectionUtils.CallWithOptionalParams(bakeMethod, null, meshInfo, mask);
             });
             if (string.IsNullOrWhiteSpace(AssetDatabase.GetAssetPath(tex))) {
                 throw new VRCFBuilderException("Failed to bake TPS texture");
