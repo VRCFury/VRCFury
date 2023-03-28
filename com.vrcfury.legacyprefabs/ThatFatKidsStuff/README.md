@@ -2,6 +2,7 @@ ThatFatKidsStuff Avatar Scale Using VRCFury
 ==
 
 ## How to install
+* **IMPORTANT**: Please consider using [VRCFury "GogoLoco Scale Only"](https://vrcfury.com/gogoloco) instead for a more updated scaling experience (although this one still works)
 * Download and import [VRCFury](https://vrcfury.com/download)
 * Import [Avatar Scale by ThatFatKidsStuff](https://thatfatkidsmom.gumroad.com/l/dbezuo)
 * Find the `Packages/VRCFury Prefabs/ThatFatKidsStuff/TFKS Avatar Scaling (VRCFury)` file in the unity folder browser
