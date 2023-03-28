@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -58,15 +58,24 @@ MonoBehaviour:
       data:
         version: 2
         controllers:
-        - controller: {fileID: 9100000, guid: 9bdf7c75e9f5df84dad098ec3dcecd25, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 9bdf7c75e9f5df84dad098ec3dcecd25
+            obj: {fileID: 9100000, guid: 9bdf7c75e9f5df84dad098ec3dcecd25, type: 2}
           type: 5
           ResetMePlease: 0
         menus:
-        - menu: {fileID: 11400000, guid: 3adc461c5f156bc4d814abcc1279622c, type: 2}
+        - menu:
+            fileID: 11400000
+            guid: 3adc461c5f156bc4d814abcc1279622c
+            obj: {fileID: 11400000, guid: 3adc461c5f156bc4d814abcc1279622c, type: 2}
           prefix: JMctrl
           ResetMePlease: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 5b7c5edf9e76ebc44b31dd307b7e78b5, type: 2}
+        - parameters:
+            fileID: 11400000
+            guid: 5b7c5edf9e76ebc44b31dd307b7e78b5
+            obj: {fileID: 11400000, guid: 5b7c5edf9e76ebc44b31dd307b7e78b5, type: 2}
           ResetMePlease: 0
         globalParams: []
         removePrefixes:
