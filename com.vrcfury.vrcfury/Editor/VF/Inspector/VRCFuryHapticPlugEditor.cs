@@ -17,6 +17,7 @@ namespace VF.Inspector {
             var self = (VRCFuryHapticPlug)target;
 
             var container = new VisualElement();
+            var configureTps = serializedObject.FindProperty("configureTps");
             
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
@@ -30,7 +31,14 @@ namespace VF.Inspector {
                 return c;
             }, autoMesh));
 
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("autoPosition"), "Detect position/rotation from mesh"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!configureTps.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("autoPosition"),
+                        "Detect position/rotation from mesh"));
+                }
+                return c;
+            }, configureTps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
             container.Add(VRCFuryEditorUtils.Prop(autoLength, "Detect length from mesh"));
@@ -52,7 +60,6 @@ namespace VF.Inspector {
                 return c;
             }, autoRadius));
             
-            var configureTps = serializedObject.FindProperty("configureTps");
             container.Add(VRCFuryEditorUtils.Prop(configureTps, "Auto-configure Poiyomi TPS"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
@@ -68,7 +75,6 @@ namespace VF.Inspector {
                         "6. Do not run the TPS setup wizard, this checkbox will do everything needed."));
                     c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTpsMask"), "Optional mask for TPS"));
                 }
-
                 return c;
             }, configureTps));
 
