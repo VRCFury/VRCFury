@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2482835903994384091}
   - component: {fileID: 2482835903994384088}
   m_Layer: 0
-  m_Name: MultiSpecies Asset - Canine (VRCFury)
+  m_Name: MultiSpecies Asset - Cat1 (VRCFury)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -28,7 +28,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
-  - {fileID: 7148492440362658698}
+  - {fileID: 5169267020255806754}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -56,108 +56,116 @@ MonoBehaviour:
     00000000:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 2
+        version: 3
         controllers:
-        - controller: {fileID: 9100000, guid: 79c987e9aaa46d4428c2071632fd7dbe, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: e6383f6ef964e934382bba78862120a3
+            obj: {fileID: 9100000, guid: e6383f6ef964e934382bba78862120a3, type: 2}
           type: 5
           ResetMePlease: 0
         menus:
-        - menu: {fileID: 11400000, guid: b850a388f526de74aabf73337e2cd60b, type: 2}
+        - menu:
+            fileID: 11400000
+            guid: b850a388f526de74aabf73337e2cd60b
+            obj: {fileID: 11400000, guid: b850a388f526de74aabf73337e2cd60b, type: 2}
           prefix: WP Asset
           ResetMePlease: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 3b5df6628b7231048af3989af94cc083, type: 2}
+        - parameters:
+            fileID: 11400000
+            guid: 3b5df6628b7231048af3989af94cc083
+            obj: {fileID: 11400000, guid: 3b5df6628b7231048af3989af94cc083, type: 2}
           ResetMePlease: 0
         globalParams: []
-        removePrefixes:
-        - 
-        addPrefix: Penis.Canine
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: penis.toggle
         useSecurityForToggle: 1
         rootObjOverride: {fileID: 0}
         rootBindingsApplyToAvatar: 0
+        rewriteBindings:
+        - from: 
+          to: Penis.Cat1
+          ResetMePlease: 0
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
         submenu: 
+        removePrefixes:
+        - 
+        addPrefix: Penis.Cat1
     00000001:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
         version: 0
         states:
-        - obj: {fileID: 7148492441950979772}
+        - obj: {fileID: 5169267021842573332}
           action: 2
           ResetMePlease: 0
-        - obj: {fileID: 7148492440362658696}
+        - obj: {fileID: 5169267020255806752}
           action: 1
           ResetMePlease: 0
     00000002:
       type: {class: OGBIntegration2, ns: VF.Model.Feature, asm: VRCFury}
       data:
         version: 0
---- !u!1001 &2482835905535294628
+--- !u!1001 &2511165678655192805
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     m_TransformParent: {fileID: 2482835903994384091}
     m_Modifications:
-    - target: {fileID: 4701830690183157548, guid: 6545e85d6491be746925710000ff38a1,
+    - target: {fileID: 7306420890589756357, guid: ea6089e36d2033a44b2423bf00e25865,
         type: 3}
       propertyPath: m_Name
-      value: Penis.Canine
+      value: Penis.Cat1
       objectReference: {fileID: 0}
-    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+    - target: {fileID: 7306420890589756359, guid: ea6089e36d2033a44b2423bf00e25865,
         type: 3}
       propertyPath: m_RootOrder
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+    - target: {fileID: 7306420890589756359, guid: ea6089e36d2033a44b2423bf00e25865,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+    - target: {fileID: 7306420890589756359, guid: ea6089e36d2033a44b2423bf00e25865,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+    - target: {fileID: 7306420890589756359, guid: ea6089e36d2033a44b2423bf00e25865,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4701830690295039404, guid: 6545e85d6491be746925710000ff38a1,
+    - target: {fileID: 7306420890679191877, guid: ea6089e36d2033a44b2423bf00e25865,
         type: 3}
       propertyPath: m_RotationOffsets.Array.data[0].x
       value: -89.96574
       objectReference: {fileID: 0}
-    - target: {fileID: 4701830690295039404, guid: 6545e85d6491be746925710000ff38a1,
-        type: 3}
-      propertyPath: m_TranslationOffsets.Array.data[0].z
-      value: -0.18573968
-      objectReference: {fileID: 0}
     m_RemovedComponents:
-    - {fileID: 4701830690295039404, guid: 6545e85d6491be746925710000ff38a1, type: 3}
-    - {fileID: 4701830688903304958, guid: 6545e85d6491be746925710000ff38a1, type: 3}
-  m_SourcePrefab: {fileID: 100100000, guid: 6545e85d6491be746925710000ff38a1, type: 3}
---- !u!1 &7148492440362658696 stripped
+    - {fileID: 7306420890679191877, guid: ea6089e36d2033a44b2423bf00e25865, type: 3}
+    - {fileID: 7306420889856342551, guid: ea6089e36d2033a44b2423bf00e25865, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: ea6089e36d2033a44b2423bf00e25865, type: 3}
+--- !u!1 &5169267020255806752 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: 4701830690183157548, guid: 6545e85d6491be746925710000ff38a1,
+  m_CorrespondingSourceObject: {fileID: 7306420890589756357, guid: ea6089e36d2033a44b2423bf00e25865,
     type: 3}
-  m_PrefabInstance: {fileID: 2482835905535294628}
+  m_PrefabInstance: {fileID: 2511165678655192805}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &7148492440362658698 stripped
+--- !u!4 &5169267020255806754 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 4701830690183157550, guid: 6545e85d6491be746925710000ff38a1,
+  m_CorrespondingSourceObject: {fileID: 7306420890589756359, guid: ea6089e36d2033a44b2423bf00e25865,
     type: 3}
-  m_PrefabInstance: {fileID: 2482835905535294628}
+  m_PrefabInstance: {fileID: 2511165678655192805}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &7148492441950979772 stripped
+--- !u!1 &5169267021842573332 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: 4701830688583301656, guid: 6545e85d6491be746925710000ff38a1,
+  m_CorrespondingSourceObject: {fileID: 7306420890042128113, guid: ea6089e36d2033a44b2423bf00e25865,
     type: 3}
-  m_PrefabInstance: {fileID: 2482835905535294628}
+  m_PrefabInstance: {fileID: 2511165678655192805}
   m_PrefabAsset: {fileID: 0}
