@@ -19,6 +19,7 @@ namespace VF.Builder.Haptics {
         private static readonly int TpsIsSkinnedMeshRenderer = Shader.PropertyToID("_TPS_IsSkinnedMeshRenderer");
         private static readonly string TpsIsSkinnedMeshKeyword = "TPS_IsSkinnedMesh";
         private static readonly int TpsBakedMesh = Shader.PropertyToID("_TPS_BakedMesh");
+        private static readonly int RalivPenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
 
         public static SkinnedMeshRenderer ConfigureRenderer(
             Renderer renderer,
@@ -115,6 +116,10 @@ namespace VF.Builder.Haptics {
             if (mat.shader.name.ToLower().Contains("locked")) {
                 throw new VRCFBuilderException(
                     "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
+            }
+            if (mat.HasProperty(RalivPenetratorEnabled) && mat.GetFloat(RalivPenetratorEnabled) > 0) {
+                throw new VRCFBuilderException(
+                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material has both TPS and Raliv DPS enabled in the Poiyomi settings. Disable DPS to continue.");
             }
             mat = Object.Instantiate(mat);
             VRCFuryAssetDatabase.SaveAsset(mat, tmpDir, "vrcftps_" + mat.name);
