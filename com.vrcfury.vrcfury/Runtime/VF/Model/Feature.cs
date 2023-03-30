@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -134,20 +135,21 @@ namespace VF.Model.Feature {
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
         public List<string> globalParams = new List<string>();
-        public List<string> removePrefixes = new List<string>();
-        public string addPrefix = "";
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
         public string toggleParam;
         public bool useSecurityForToggle = false;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
+        [FormerlySerializedAs("bindingRewrites")] public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
 
         // obsolete
         public RuntimeAnimatorController controller;
         public VRCExpressionsMenu menu;
         public VRCExpressionParameters parameters;
         public string submenu;
+        public List<string> removePrefixes = new List<string>();
+        public string addPrefix = "";
 
         [Serializable]
         public class ControllerEntry {
@@ -166,6 +168,13 @@ namespace VF.Model.Feature {
         [Serializable]
         public class ParamsEntry {
             public GuidParams parameters;
+            public bool ResetMePlease;
+        }
+        
+        [Serializable]
+        public class BindingRewrite {
+            public string from;
+            public string to;
             public bool ResetMePlease;
         }
 
@@ -187,10 +196,23 @@ namespace VF.Model.Feature {
                     parameters = null;
                 }
             }
+
+            if (fromVersion < 3) {
+                if (removePrefixes != null) {
+                    foreach (var s in removePrefixes) {
+                        if (!string.IsNullOrWhiteSpace(s)) {
+                            rewriteBindings.Add(new BindingRewrite { from = s, to = "" });
+                        }
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(addPrefix)) {
+                    rewriteBindings.Add(new BindingRewrite { from = "", to = addPrefix });
+                }
+            }
         }
 
         public override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
     

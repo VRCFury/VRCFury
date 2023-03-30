@@ -25,8 +25,7 @@ namespace VF.Builder {
             AnimationClip clip_,
             GameObject fromObj = null,
             GameObject fromRoot = null,
-            List<string> removePrefixes = null,
-            string addPrefix = null,
+            List<Tuple<string,string>> rewriteBindings = null,
             bool rootBindingsApplyToAvatar = false,
             Func<string,string> rewriteParam = null
         ) {
@@ -46,20 +45,25 @@ namespace VF.Builder {
             }
 
             string RewritePath(string path) {
-                if (removePrefixes != null) {
-                    foreach (var removePrefix in removePrefixes) {
-                        if (path.StartsWith(removePrefix + "/")) {
-                            path = path.Substring(removePrefix.Length + 1);
-                        } else if (path.StartsWith(removePrefix)) {
-                            path = path.Substring(removePrefix.Length);
+                if (rewriteBindings != null) {
+                    foreach (var rewrite in rewriteBindings) {
+                        var from = rewrite.Item1;
+                        while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
+                        var to = rewrite.Item2;
+                        while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
+
+                        if (from == "") {
+                            path = Join(to, path);
+                        } else if (path.StartsWith(from + "/")) {
+                            path = path.Substring(from.Length + 1);
+                            path = Join(to, path);
+                        } else if (path == from) {
+                            path = to;
                         }
                     }
                 }
                 if (path == "" && rootBindingsApplyToAvatar) {
                     return "";
-                }
-                if (!string.IsNullOrWhiteSpace(addPrefix)) {
-                    path = Join(addPrefix, path);
                 }
                 path = Join(prefix, path);
                 return path;
