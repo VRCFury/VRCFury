@@ -147,8 +147,10 @@ namespace VF {
 
         private static void RestartAv3Emulator() {
             try {
-                var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
+                var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator");
+                if (av3EmulatorType == null) av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
                 if (av3EmulatorType == null) return;
+                Debug.Log("Restarting av3emulator ...");
                 var restartField = av3EmulatorType.GetField("RestartEmulator");
                 if (restartField == null) throw new Exception("Failed to find RestartEmulator field");
                 var emulators = Object.FindObjectsOfType(av3EmulatorType);
@@ -156,7 +158,8 @@ namespace VF {
                     restartField.SetValue(emulator, true);
                 }
 
-                var av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
+                var av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime");
+                if (av3RuntimeType == null) av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
                 foreach (var runtime in Object.FindObjectsOfType(av3RuntimeType)) {
                     Object.Destroy(runtime);
                 }
@@ -182,6 +185,7 @@ namespace VF {
             try {
                 var gmType = ReflectionUtils.GetTypeFromAnyAssembly("BlackStartX.GestureManager.GestureManager");
                 if (gmType == null) return;
+                Debug.Log("Restarting gesture manager ...");
                 foreach (var gm in Object.FindObjectsOfType(gmType).OfType<Component>()) {
                     if (gm.gameObject.activeSelf) {
                         gm.gameObject.SetActive(false);
