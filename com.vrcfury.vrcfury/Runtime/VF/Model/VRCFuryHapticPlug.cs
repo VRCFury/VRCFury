@@ -13,7 +13,7 @@ namespace VF.Model {
         public new string name;
         public bool unitsInMeters = false;
         public bool configureTps = false;
-        public Texture2D configureTpsMask = null;
+        public GuidTexture2d configureTpsMask = null;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
 
         protected override void Upgrade(int fromVersion) {

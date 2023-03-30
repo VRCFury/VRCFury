@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -117,7 +118,7 @@ namespace VF.Feature {
             rewrittenParams.Add(name);
             return ControllerManager.NewParamName(name, uniqueModelNum);
         }
-            
+
         void RewriteClip(AnimationClip clip) {
             if (clip == null) return;
             if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
@@ -126,8 +127,7 @@ namespace VF.Feature {
                 clip,
                 fromObj: GetBaseObject(),
                 fromRoot: avatarObject,
-                removePrefixes: model.removePrefixes,
-                addPrefix: model.addPrefix,
+                rewriteBindings: model.rewriteBindings.Select(r => Tuple.Create(r.from, r.to)).ToList(),
                 rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
                 rewriteParam: RewriteParamName
             );
@@ -255,12 +255,31 @@ namespace VF.Feature {
                 "parameters (such as gestures) are included by default."));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Remove prefixes from clips:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clip bindings:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
-                "Strings in this list will be removed from the start of every animated key, useful if the animations" +
-                " in the controller were originally written to be based from the avatar root, " +
-                "but you are now trying to use as a VRCFury prop."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("removePrefixes")));
+                "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
+                " in the controller were originally written to be based from a specific avatar root," +
+                " but you are now trying to use as a re-usable VRCFury prop."));
+            var r = new VisualElement {
+                style = { flexDirection = FlexDirection.Row }
+            };
+            r.Add(new Label("From Prefix") { style = { flexBasis = 0, flexGrow = 1 }});
+            r.Add(new Label("To Prefix") { style = { flexBasis = 0, flexGrow = 1 }});
+            content.Add(r);
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings"), (i, rewrite) => {
+                var row = new VisualElement {
+                    style = { flexDirection = FlexDirection.Row }
+                };
+                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => {
+                    s.flexBasis = 0;
+                    s.flexGrow = 1;
+                }));
+                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to"), style: s => {
+                    s.flexBasis = 0;
+                    s.flexGrow = 1;
+                }));
+                return row;
+            }));
 
             var adv = new Foldout {
                 text = "Advanced Options",
@@ -276,8 +295,6 @@ namespace VF.Feature {
                 " this boolean parameter within the Full Controller is false."));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam")));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useSecurityForToggle"), "Use security for toggle"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("addPrefix"),
-                "Add prefix to clips"));
 
             content.Add(adv);
 

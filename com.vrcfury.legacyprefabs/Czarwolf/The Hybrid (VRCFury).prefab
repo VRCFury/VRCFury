@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -59,15 +59,24 @@ MonoBehaviour:
       data:
         version: 2
         controllers:
-        - controller: {fileID: 9100000, guid: 3bbf1d098ecdd084487b259b75a64251, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 3bbf1d098ecdd084487b259b75a64251
+            obj: {fileID: 9100000, guid: 3bbf1d098ecdd084487b259b75a64251, type: 2}
           type: 5
           ResetMePlease: 0
         menus:
-        - menu: {fileID: 11400000, guid: 85166085ec067f4489df9f49b3e5fd7a, type: 2}
+        - menu:
+            fileID: 11400000
+            guid: 85166085ec067f4489df9f49b3e5fd7a
+            obj: {fileID: 11400000, guid: 85166085ec067f4489df9f49b3e5fd7a, type: 2}
           prefix: The Hybrid
           ResetMePlease: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 8282fbd4483a1984da5d0030ac57a67d, type: 2}
+        - parameters:
+            fileID: 11400000
+            guid: 8282fbd4483a1984da5d0030ac57a67d
+            obj: {fileID: 11400000, guid: 8282fbd4483a1984da5d0030ac57a67d, type: 2}
           ResetMePlease: 0
         globalParams: []
         removePrefixes:

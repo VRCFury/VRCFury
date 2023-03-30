@@ -55,7 +55,7 @@ MonoBehaviour:
     00000000:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 2
+        version: 3
         controllers:
         - controller:
             fileID: 9100000
@@ -77,18 +77,19 @@ MonoBehaviour:
             obj: {fileID: 11400000, guid: 7aa23cf790624234aa28b78624eb8df9, type: 2}
           ResetMePlease: 0
         globalParams: []
-        removePrefixes: []
-        addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 1
         toggleParam: caninePeenToggle
         useSecurityForToggle: 1
         rootObjOverride: {fileID: 7889783702869647999}
         rootBindingsApplyToAvatar: 0
+        rewriteBindings: []
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
         submenu: 
+        removePrefixes: []
+        addPrefix: 
     00000001:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -119,6 +120,10 @@ MonoBehaviour:
   name: 
   unitsInMeters: 0
   configureTps: 0
+  configureTpsMask:
+    fileID: 0
+    guid: 
+    obj: {fileID: 0}
   configureTpsMesh: []
 --- !u!1001 &3344568645372403570
 PrefabInstance:

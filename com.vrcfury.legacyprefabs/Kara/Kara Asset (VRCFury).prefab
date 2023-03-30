@@ -427,6 +427,10 @@ MonoBehaviour:
   name: 
   unitsInMeters: 0
   configureTps: 0
+  configureTpsMask:
+    fileID: 0
+    guid: 
+    obj: {fileID: 0}
   configureTpsMesh: []
 --- !u!1 &7266031095763374463
 GameObject:
@@ -774,7 +778,8 @@ PrefabInstance:
       propertyPath: m_Materials.Array.data[0]
       value: 
       objectReference: {fileID: 2100000, guid: 736c07a6ec68f624ca91b86b8c3e591c, type: 2}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 9500000, guid: 46ad84eb1e149554cba6f9d9b8dac925, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 46ad84eb1e149554cba6f9d9b8dac925, type: 3}
 --- !u!1 &7266031094848463028 stripped
 GameObject:
