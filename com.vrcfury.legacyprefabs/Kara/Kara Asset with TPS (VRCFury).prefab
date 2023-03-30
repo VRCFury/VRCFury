@@ -22,26 +22,11 @@ MonoBehaviour:
   name: 
   unitsInMeters: 0
   configureTps: 1
+  configureTpsMask:
+    fileID: 0
+    guid: 
+    obj: {fileID: 0}
   configureTpsMesh: []
---- !u!95 &109878124
-Animator:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 304941799307084206}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 19ff9c6ad439d4b42bd3617b9677fb29, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
 --- !u!1001 &6984377393027076161
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -117,12 +102,6 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 7266031095317316477, guid: 249db48512adaa3409ba424509a2dea8, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 249db48512adaa3409ba424509a2dea8, type: 3}
---- !u!1 &304941799307084206 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7266031094732673519, guid: 249db48512adaa3409ba424509a2dea8,
-    type: 3}
-  m_PrefabInstance: {fileID: 6984377393027076161}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &304941798821794610 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7266031095317316467, guid: 249db48512adaa3409ba424509a2dea8,

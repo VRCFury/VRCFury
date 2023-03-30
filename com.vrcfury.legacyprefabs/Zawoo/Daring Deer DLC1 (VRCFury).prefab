@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -58,16 +58,20 @@ MonoBehaviour:
     00000000:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 5
         linkMode: 0
         propBone: {fileID: 235661255353861591}
         boneOnAvatar: 0
         bonePathOnAvatar: 
-        keepBoneOffsets: 0
+        keepBoneOffsets2: 2
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 
+        skinRewriteScalingFactor: 1
+        scalingFactorPowersOf10Only: 1
         useOptimizedUpload: 0
         useBoneMerging: 1
+        keepBoneOffsets: 0
     00000001:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -85,6 +89,27 @@ MonoBehaviour:
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          fileID: 0
+          guid: 
+          obj: {fileID: 0}
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
     00000002:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -102,6 +127,27 @@ MonoBehaviour:
         enableExclusiveTag: 1
         exclusiveTag: zawooTop
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          fileID: 0
+          guid: 
+          obj: {fileID: 0}
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
     00000003:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -119,6 +165,27 @@ MonoBehaviour:
         enableExclusiveTag: 1
         exclusiveTag: zawooTop
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          fileID: 0
+          guid: 
+          obj: {fileID: 0}
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
     00000004:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:

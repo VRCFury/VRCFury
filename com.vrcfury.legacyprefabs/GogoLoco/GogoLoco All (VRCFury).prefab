@@ -53,7 +53,7 @@ MonoBehaviour:
     00000000:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 2
+        version: 3
         controllers:
         - controller:
             fileID: 9100000
@@ -89,15 +89,16 @@ MonoBehaviour:
         globalParams:
         - Go/Float
         - Go/Stationary
-        removePrefixes: []
-        addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: 
         useSecurityForToggle: 0
         rootObjOverride: {fileID: 0}
         rootBindingsApplyToAvatar: 1
+        rewriteBindings: []
         controller: {fileID: 0}
         menu: {fileID: 0}
         parameters: {fileID: 0}
         submenu: 
+        removePrefixes: []
+        addPrefix: 
