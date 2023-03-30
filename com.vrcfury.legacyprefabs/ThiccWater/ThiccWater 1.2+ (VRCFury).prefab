@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6780827374072423190}
   - component: {fileID: 7807743119708023581}
   m_Layer: 0
-  m_Name: ThiccWater 1.2 (VRCFury)
+  m_Name: ThiccWater 1.2+ (VRCFury)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -253,6 +253,16 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4312859189159311207, guid: 852769a967a5c6844a1283051437310e,
+        type: 3}
+      propertyPath: InitialModule.maxNumParticles
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 4312859189159311207, guid: 852769a967a5c6844a1283051437310e,
+        type: 3}
+      propertyPath: EmissionModule.rateOverTime.scalar
+      value: 32
+      objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 5314864016823754506, guid: 852769a967a5c6844a1283051437310e, type: 3}
     - {fileID: 6219554009085754859, guid: 852769a967a5c6844a1283051437310e, type: 3}
@@ -406,6 +416,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4312859189159311207, guid: f011f66bf16520046a42dcf8722876fe,
+        type: 3}
+      propertyPath: InitialModule.maxNumParticles
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 4312859189159311207, guid: f011f66bf16520046a42dcf8722876fe,
+        type: 3}
+      propertyPath: EmissionModule.rateOverTime.scalar
+      value: 32
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 3557735678700000114, guid: f011f66bf16520046a42dcf8722876fe, type: 3}
@@ -676,6 +696,26 @@ PrefabInstance:
         type: 3}
       propertyPath: SizeModule.curve.maxCurve.m_Curve.Array.data[2].value
       value: 0.945261
+      objectReference: {fileID: 0}
+    - target: {fileID: 6579422598497002153, guid: 5dfc76558943f1442a6f017c3803b0c8,
+        type: 3}
+      propertyPath: SizeModule.curve.maxCurve.m_Curve.Array.data[0].value
+      value: 0.09101868
+      objectReference: {fileID: 0}
+    - target: {fileID: 6579422598497002153, guid: 5dfc76558943f1442a6f017c3803b0c8,
+        type: 3}
+      propertyPath: SizeModule.curve.maxCurve.m_Curve.Array.data[0].inSlope
+      value: 0.14951076
+      objectReference: {fileID: 0}
+    - target: {fileID: 6579422598497002153, guid: 5dfc76558943f1442a6f017c3803b0c8,
+        type: 3}
+      propertyPath: SizeModule.curve.maxCurve.m_Curve.Array.data[0].outSlope
+      value: 0.14951076
+      objectReference: {fileID: 0}
+    - target: {fileID: 6579422598497002153, guid: 5dfc76558943f1442a6f017c3803b0c8,
+        type: 3}
+      propertyPath: SizeModule.curve.maxCurve.m_Curve.Array.data[0].outWeight
+      value: 0.491773
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 2236122440945683444, guid: 5dfc76558943f1442a6f017c3803b0c8, type: 3}
