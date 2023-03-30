@@ -28,6 +28,8 @@ namespace VF.Menu {
         public const int unusedBonesPriority = 1312;
         public const string listComponents = prefix + "Utilites/List All Components";
         public const int listComponentsPriority = 1313;
+        public const string detectDuplicatePhysbones = prefix + "Utilites/Detect Duplicate Physbones";
+        public const int detectDuplicatePhysbonesPriority = 1314;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {

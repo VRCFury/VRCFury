@@ -43,7 +43,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -55,21 +55,36 @@ MonoBehaviour:
       data:
         version: 2
         controllers:
-        - controller: {fileID: 9100000, guid: 4485bd5c6aea29e48bf1428a18876fcc, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 4485bd5c6aea29e48bf1428a18876fcc
+            obj: {fileID: 9100000, guid: 4485bd5c6aea29e48bf1428a18876fcc, type: 2}
           type: 4
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: bde5983a4f3eaa149ba18853e5bf4c4c, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: bde5983a4f3eaa149ba18853e5bf4c4c
+            obj: {fileID: 9100000, guid: bde5983a4f3eaa149ba18853e5bf4c4c, type: 2}
           type: 0
           ResetMePlease: 0
-        - controller: {fileID: 9100000, guid: 22aa2a9fb13faf540afa2a5c86efd0c4, type: 2}
+        - controller:
+            fileID: 9100000
+            guid: 22aa2a9fb13faf540afa2a5c86efd0c4
+            obj: {fileID: 9100000, guid: 22aa2a9fb13faf540afa2a5c86efd0c4, type: 2}
           type: 6
           ResetMePlease: 0
         menus:
-        - menu: {fileID: 11400000, guid: f8b5ce0378996b342b99e5a40691d855, type: 2}
+        - menu:
+            fileID: 11400000
+            guid: f8b5ce0378996b342b99e5a40691d855
+            obj: {fileID: 11400000, guid: f8b5ce0378996b342b99e5a40691d855, type: 2}
           prefix: 
           ResetMePlease: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 839214bfcc622254eba684fa5faa1d12, type: 2}
+        - parameters:
+            fileID: 11400000
+            guid: 839214bfcc622254eba684fa5faa1d12
+            obj: {fileID: 11400000, guid: 839214bfcc622254eba684fa5faa1d12, type: 2}
           ResetMePlease: 0
         globalParams:
         - Go/Float
