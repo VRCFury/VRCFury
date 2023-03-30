@@ -31,24 +31,8 @@ namespace VF.Feature {
                 return;
             }
 
-            var linkMode = model.linkMode;
-            if (linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
-                var usesBonesFromProp = false;
-                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                    if (skin.transform.IsChildOf(links.propMain.transform)) continue;
-                    usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(links.propMain.transform);
-                    usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(links.propMain.transform));
-                }
-
-                linkMode = usesBonesFromProp
-                    ? ArmatureLink.ArmatureLinkMode.SkinRewrite
-                    : ArmatureLink.ArmatureLinkMode.ReparentRoot;
-            }
-
-            var keepBoneOffsets = model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
-            if (model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Auto) {
-                keepBoneOffsets = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
-            }
+            var linkMode = GetLinkMode(links);
+            var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
 
             var (_, _, scalingFactor) = GetScalingFactor(links);
 
@@ -294,6 +278,30 @@ namespace VF.Feature {
                 }
             }
         }
+        
+        private ArmatureLink.ArmatureLinkMode GetLinkMode(Links links) {
+            if (model.linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
+                var usesBonesFromProp = false;
+                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                    if (skin.transform.IsChildOf(links.propMain.transform)) continue;
+                    usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(links.propMain.transform);
+                    usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(links.propMain.transform));
+                }
+
+                return usesBonesFromProp
+                    ? ArmatureLink.ArmatureLinkMode.SkinRewrite
+                    : ArmatureLink.ArmatureLinkMode.ReparentRoot;
+            }
+
+            return model.linkMode;
+        }
+
+        private bool GetKeepBoneOffsets(ArmatureLink.ArmatureLinkMode linkMode) {
+            if (model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Auto) {
+                return linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
+            }
+            return model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
+        }
 
         private class Links {
             // These are stacks, because it's convenient, and we want to iterate over them in reverse order anyways
@@ -498,11 +506,15 @@ namespace VF.Feature {
                     return "Avatar descriptor is missing";
                 }
                 var links = GetLinks();
+                var linkMode = GetLinkMode(links);
+                var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
                 var text = new List<string>();
                 var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links);
                 text.Add("Prop root bone scale: " + propMainScale);
                 text.Add("Avatar root bone scale: " + avatarMainScale);
                 text.Add("Scaling factor: " + scalingFactor);
+                text.Add("Link Mode: " + linkMode);
+                text.Add("Keep Bone Offsets: " + keepBoneOffsets);
                 if (links.reparent.Count > 0) {
                     text.Add(
                         "These bones do not have a match on the avatar and will be added as new children: \n" +
