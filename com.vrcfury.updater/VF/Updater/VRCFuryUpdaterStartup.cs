@@ -10,6 +10,7 @@ namespace VF.Updater {
     [InitializeOnLoad]
     public class VRCFuryUpdaterStartup { 
         static VRCFuryUpdaterStartup() {
+            if (Application.isPlaying) return;
             Task.Run(Check);
         }
 
