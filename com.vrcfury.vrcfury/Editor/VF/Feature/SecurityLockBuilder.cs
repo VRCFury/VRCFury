@@ -50,7 +50,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         var fx = GetFx();
         var paramSecuritySync = GetUnlockedParam();
         // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-        var paramInput = fx.NewInt("SecurityInput", synced: true);
+        var paramInput = fx.NewInt("SecurityInput", synced: true, networkSynced: false);
         for (var i = 1; i < 8; i++) {
             manager.GetMenu().NewMenuToggle("Security/" + i, paramInput, i);
         }

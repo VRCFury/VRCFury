@@ -72,7 +72,11 @@ namespace VF.Feature {
                 }
             }
             foreach (var physbone in GetBaseObject().GetComponentsInChildren<VRCPhysBone>(true)) {
-                if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed") || rewrittenParams.Contains(physbone.parameter + "_Angle") || rewrittenParams.Contains(physbone.parameter + "_Stretch")) {
+                if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed")
+                    || rewrittenParams.Contains(physbone.parameter + "_Angle")
+                    || rewrittenParams.Contains(physbone.parameter + "_Stretch")
+                    || rewrittenParams.Contains(physbone.parameter + "_IsPosed")
+                ) {
                     physbone.parameter = RewriteParamName(physbone.parameter);
                 }
             }
