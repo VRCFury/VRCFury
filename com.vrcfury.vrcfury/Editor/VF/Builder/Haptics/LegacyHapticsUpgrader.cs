@@ -71,10 +71,14 @@ namespace VF.Builder.Haptics {
             var hasExistingSocket = new HashSet<Transform>();
             var hasExistingPlug = new HashSet<Transform>();
             var addedSocket = new HashSet<Transform>();
+            var addedSocketNames = new Dictionary<Transform,string>();
             var addedPlug = new HashSet<Transform>();
             var foundParentConstraint = false;
 
             bool AlreadyExistsAboveOrBelow(GameObject obj, IEnumerable<Transform> list) {
+                var parentIsDeleted = obj.GetComponentsInParent<Transform>(true)
+                    .Any(t => objectsToDelete.Contains(t.gameObject));
+                if (parentIsDeleted) return true;
                 return obj.GetComponentsInChildren<Transform>(true)
                     .Concat(obj.GetComponentsInParent<Transform>(true))
                     .Any(list.Contains);
@@ -144,6 +148,12 @@ namespace VF.Builder.Haptics {
                     id = name.IndexOf(")");
                     if (id >= 0) name = name.Substring(0, id);
                     // Convert camel case to spaces
+                    name = name.Replace("EZDPS_CB_", "");
+                    name = name.Replace("EZDPS_OB", "");
+                    name = name.Replace("EZDPS_OA", "");
+                    name = name.Replace("EZDPS_T_", "");
+                    name = name.Replace("EZDPS_", "");
+                    name = name.Replace("Adv_", "");
                     name = Regex.Replace(name, "(\\B[A-Z])", " $1");
                     name = name.ToLower();
                     name = name.Replace(VRCFuryEditorUtils.Rev("spd"), "");
@@ -158,10 +168,9 @@ namespace VF.Builder.Haptics {
 
                     var fullName = "Socket (" + name + ")";
 
-                    addedSocket.Add(obj.transform);
-                    if (!dryRun) {
-                        var socket = obj.GetComponent<VRCFuryHapticSocket>();
-                        if (socket == null) socket = obj.AddComponent<VRCFuryHapticSocket>();
+                    var socket = AddSocket(obj);
+                    addedSocketNames[obj.transform] = name;
+                    if (socket != null) {
                         socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
                             * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
                         socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
@@ -230,7 +239,7 @@ namespace VF.Builder.Haptics {
                 var parent = light.gameObject.transform.parent;
                 if (parent) {
                     var parentObj = parent.gameObject;
-                    if (!objectsToDelete.Contains(parentObj) && VRCFuryHapticSocketEditor.GetInfoFromLights(parentObj, true) != null)
+                    if (VRCFuryHapticSocketEditor.GetInfoFromLights(parentObj, true) != null)
                         AddSocket(parentObj);
                 }
             }
@@ -303,6 +312,9 @@ namespace VF.Builder.Haptics {
                     if (foundParentConstraint && lower.Contains("tps") && lower.Contains("orifice")) {
                         return true;
                     }
+                    if (foundParentConstraint && layer == "EZDPS Orifices") {
+                        return true;
+                    }
                     return layer == "DPS_Holes"
                            || layer == "DPS_Rings"
                            || layer == "HotDog"
@@ -314,6 +326,7 @@ namespace VF.Builder.Haptics {
                            || param == "DPS_Ring"
                            || param == "HotDog"
                            || param == "fluff/dps/orifice"
+                           || param == "EZDPS/Orifice"
                            || (param.StartsWith("TPS") && param.Contains("/VF"))
                            || param.StartsWith("OGB/")
                            || param.StartsWith("Nsfw/Ori/");
@@ -332,8 +345,15 @@ namespace VF.Builder.Haptics {
                 .ToImmutableHashSet();
             if (addedPlug.Count > 0)
                 parts.Add("Plug component will be added to:\n" + string.Join("\n", addedPlug.Select(GetPath)));
+
+            string GetSocketLine(Transform t) {
+                if (addedSocketNames.ContainsKey(t)) {
+                    return GetPath(t) + " (" + addedSocketNames[t] + ")";
+                }
+                return GetPath(t);
+            }
             if (addedSocket.Count > 0)
-                parts.Add("Socket component will be added to:\n" + string.Join("\n", addedSocket.Select(GetPath)));
+                parts.Add("Socket component will be added to:\n" + string.Join("\n", addedSocket.Select(GetSocketLine)));
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
@@ -354,6 +374,12 @@ namespace VF.Builder.Haptics {
 
         private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
             var lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(obj, true);
+            if (lightInfo == null) {
+                var child = obj.transform.Find("Orifice");
+                if (child != null && obj.transform.childCount == 1) {
+                    lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(child.gameObject, true);
+                }
+            }
             if (lightInfo != null) {
                 return lightInfo;
             }

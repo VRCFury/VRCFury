@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -82,26 +83,60 @@ namespace VF.Feature {
                 
                 return o;
             }, includeAll));
+            
+            content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                if (avatarObject == null) {
+                    return "Avatar descriptor is missing";
+                }
+                var baseSkin = GetBaseSkin();
+                if (!baseSkin) {
+                    return "Base skin could not be found";
+                }
+
+                var linkSkins = GetLinkSkins();
+                var mappings = GetMappings(baseSkin, linkSkins);
+
+                var text = new List<string>();
+                text.Add("Base Skin: " + baseSkin.name);
+                if (linkSkins.Count > 0) {
+                    text.Add("Linked Skins: " + string.Join(", ", linkSkins.Select(l => l.name)));
+                } else {
+                    text.Add("No valid linked skins found");
+                }
+
+                if (mappings.Count > 0) {
+                    string FormatMapping(KeyValuePair<string, string> mapping) {
+                        if (mapping.Key == mapping.Value) return mapping.Key;
+                        return mapping.Key + " > " + mapping.Value;
+                    }
+                    text.Add("Linked Blendshapes:\n" + string.Join("\n", mappings.Select(FormatMapping)));
+                } else {
+                    text.Add("No valid mappings found");
+                }
+                return string.Join("\n", text);
+            }));
 
             return content;
         }
 
-        [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations)]
-        public void Apply() {
-            var baseSkin = avatarObject.GetComponentsInChildren<Transform>(true)
+        private IList<SkinnedMeshRenderer> GetLinkSkins() {
+            return model.objs
+                .Where(obj => obj != null)
+                .SelectMany(obj => obj.GetComponents<SkinnedMeshRenderer>())
+                .Where(skin => skin.sharedMesh)
+                .ToArray();
+        }
+
+        private SkinnedMeshRenderer GetBaseSkin() {
+            return avatarObject.GetComponentsInChildren<Transform>(true)
                 .Where(t => t.name == model.baseObj)
                 .Select(t => t.GetComponent<SkinnedMeshRenderer>())
                 .Where(skin => skin && skin.sharedMesh)
                 .OrderBy(skin => AnimationUtility.CalculateTransformPath(skin.transform, avatarObject.transform).Length)
                 .FirstOrDefault();
+        }
 
-            if (!baseSkin) {
-                Debug.LogWarning("Failed to find base skin on avatar");
-                return;
-            }
-
-            var baseSkinPath = AnimationUtility.CalculateTransformPath(baseSkin.transform, avatarObject.transform);
-
+        private Dictionary<string, string> GetMappings(SkinnedMeshRenderer baseSkin, IList<SkinnedMeshRenderer> linkSkins) {
             var baseToLinkedMapping = new Dictionary<string, string>();
             if (model.includeAll) {
                 for (var i = 0; i < baseSkin.sharedMesh.blendShapeCount; i++) {
@@ -123,11 +158,28 @@ namespace VF.Feature {
                 }
             }
 
-            var linkSkins = model.objs
-                .Where(obj => obj != null)
-                .SelectMany(obj => obj.GetComponents<SkinnedMeshRenderer>())
-                .Where(skin => skin.sharedMesh)
-                .ToArray();
+            var inLinked = linkSkins
+                .SelectMany(skin =>
+                    Enumerable.Range(0, skin.sharedMesh.blendShapeCount)
+                        .Select(i => skin.sharedMesh.GetBlendShapeName(i)))
+                .ToImmutableHashSet();
+            baseToLinkedMapping = baseToLinkedMapping
+                .Where(pair => inLinked.Contains(pair.Value))
+                .ToDictionary(x => x.Key, x => x.Value);
+
+            return baseToLinkedMapping;
+        }
+
+        [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations)]
+        public void Apply() {
+            var baseSkin = GetBaseSkin();
+            if (!baseSkin) {
+                Debug.LogWarning("Failed to find base skin on avatar");
+                return;
+            }
+            var baseSkinPath = AnimationUtility.CalculateTransformPath(baseSkin.transform, avatarObject.transform);
+            var linkSkins = GetLinkSkins();
+            var baseToLinkedMapping = GetMappings(baseSkin, linkSkins);
 
             foreach (var linked in linkSkins) {
                 foreach (var (baseName,linkedName) in baseToLinkedMapping.Select(x => (x.Key, x.Value))) {

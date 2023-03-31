@@ -159,18 +159,26 @@ namespace VF.Menu {
                         removeItems.Add("All Avatar Menus");
                         if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
                     } else {
-                        MenuSplitter.ForEachMenu(m, ForEachItem: (item, path) => {
+                        bool ShouldRemoveMenuItem(VRCExpressionsMenu.Control item) {
                             var shouldRemove =
                                 item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
                                 && item.subMenu
                                 && ShouldRemoveAsset != null
                                 && ShouldRemoveAsset(item.subMenu);
                             shouldRemove |=
+                                item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
+                                && item.subMenu
+                                && item.subMenu.controls.Count > 0
+                                && item.subMenu.controls.All(ShouldRemoveMenuItem);
+                            shouldRemove |=
                                 item.type == VRCExpressionsMenu.Control.ControlType.Toggle
                                 && item.parameter != null
                                 && ShouldRemoveParam != null
                                 && ShouldRemoveParam(item.parameter.name);
-                            if (shouldRemove) {
+                            return shouldRemove;
+                        }
+                        MenuSplitter.ForEachMenu(m, ForEachItem: (item, path) => {
+                            if (ShouldRemoveMenuItem(item)) {
                                 removeItems.Add("Menu Item: " + string.Join("/", path));
                                 return perform
                                     ? MenuSplitter.ForEachMenuItemResult.Delete
