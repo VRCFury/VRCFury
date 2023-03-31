@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: -1506855854, guid: 67cc4cb7839cd3741b63733d5adf0442, type: 3}
-  m_Name: ThiccWater Params
+  m_Name: ThiccWater 1.1 Params
   m_EditorClassIdentifier: 
   parameters:
   - name: Drip
