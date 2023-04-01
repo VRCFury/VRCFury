@@ -54,7 +54,7 @@ namespace VF.Feature {
             AnimationClip autoOnClip = null;
             if (enableAuto) {
                 var fx = GetFx();
-                autoOn = fx.NewBool("autoMode", synced: true);
+                autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false);
                 manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
@@ -83,7 +83,7 @@ namespace VF.Feature {
             VFABool multiOn = null;
             if (enableMulti) {
                 var fx = GetFx();
-                multiOn = fx.NewBool("multi", synced: true);
+                multiOn = fx.NewBool("multi", synced: true, networkSynced: false);
                 var multiFolder = $"{optionsFolder}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active holes";
                 manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use TPS, >NO DPS!<");

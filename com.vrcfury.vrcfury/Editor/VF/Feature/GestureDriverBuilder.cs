@@ -50,8 +50,7 @@ namespace VF.Feature {
             VFABool lockMenuParam = null;
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
                 if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
-                    // This doesn't actually need synced, but vrc gets annoyed if the menu is using an unsynced param
-                    lockMenuParam = fx.NewBool(uid + "_lock", synced: true);
+                    lockMenuParam = fx.NewBool(uid + "_lock", synced: true, networkSynced: false);
                     manager.GetMenu().NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
                     lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
                 }

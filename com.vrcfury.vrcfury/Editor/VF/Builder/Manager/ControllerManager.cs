@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -181,7 +182,10 @@ namespace VF.Builder {
         private ParamManager GetParamManager() {
             return paramManager.Invoke();
         }
-        public VFABool NewBool(string name, bool synced = false, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
+
+        private static FieldInfo networkSyncedField =
+            typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
+        public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
             if (usePrefix) name = NewParamName(name);
             if (VRChatGlobalParams.Contains(name)) synced = false;
             if (synced) {
@@ -190,11 +194,12 @@ namespace VF.Builder {
                 param.valueType = VRCExpressionParameters.ValueType.Bool;
                 param.saved = saved;
                 param.defaultValue = def ? 1 : 0;
+                if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
                 GetParamManager().addSyncedParam(param);
             }
             return GetController().NewBool(name, def || defTrueInEditor);
         }
-        public VFANumber NewInt(string name, bool synced = false, int def = 0, bool saved = false, bool usePrefix = true) {
+        public VFANumber NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
@@ -202,6 +207,7 @@ namespace VF.Builder {
                 param.valueType = VRCExpressionParameters.ValueType.Int;
                 param.saved = saved;
                 param.defaultValue = def;
+                if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
                 GetParamManager().addSyncedParam(param);
             }
             return GetController().NewInt(name, def);
