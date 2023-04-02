@@ -67,12 +67,13 @@ namespace VF.Inspector {
                     c.Add(VRCFuryEditorUtils.Info(
                         "Auto-configure TPS will cause this VRCFury Haptic Plug to automatically configure Poiyomi TPS on the associated renderer." +
                         " When using this option:\n" +
-                        "1. The material must be using Poiyomi Pro 8.1+ with the 'penetrator' checkbox enabled\n" +
-                        "2. This component should be placed on an EMPTY OBJECT (not on the renderer)\n" +
-                        "3. Move the object to where you want deformation to start\n" +
-                        "4. Rotate the object so the tip is aligned properly, and the red gizmo capsule fits the proper shape\n" +
-                        "5. If this mesh is rigged (with bones), the object should be a child of the nearest bone on the rig\n" +
-                        "6. Do not run the TPS setup wizard, this checkbox will do everything needed."));
+                        "1. The mesh should be posed in the editor in the 'erect' state. It can still use physbones or be animated to different poses, but will return to this resting editor pose when penetrating.\n" +
+                        "2. This component should be placed on an EMPTY OBJECT (not on the renderer).\n" +
+                        "3. Move the empty object to where you want deformation to start.\n" +
+                        "4. Enable gizmos and rotate the empty object so the tip is aligned properly, and the red gizmo capsule fits the proper shape.\n" +
+                        "5. If this mesh is rigged (with bones), the empty object should be a child of the nearest bone on the rig (don't forget to exclude it from physbones if needed).\n" +
+                        "6. The material must be using Poiyomi Pro 8.1+ with the 'penetrator' checkbox enabled.\n" +
+                        "7. DO NOT run the TPS setup wizard, this checkbox will do everything needed."));
                     c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTpsMask"), "Optional mask for TPS"));
                 }
                 return c;

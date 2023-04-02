@@ -53,7 +53,8 @@ namespace VF.Feature {
 
             var i = 0;
             foreach (var globalContact in globalContacts) {
-                fakeHead.MarkEligible(globalContact.gameObject);
+                var target = globalContact.GetTransform();
+                fakeHead.MarkEligible(target.gameObject);
                 var finger = fingers[i].Item2;
                 var setFinger = fingers[i].Item3;
                 finger.isMirrored = false;
@@ -67,7 +68,7 @@ namespace VF.Feature {
                 // Because vrchat recalculates the capsule length based on distance between child and parent,
                 // we place the collider on an identical child object, essentially ensuring the capsule height is 0 (sphere)
                 var childObj = new GameObject("GlobalContact");
-                childObj.transform.SetParent(globalContact.transform, false);
+                childObj.transform.SetParent(target, false);
                 finger.transform = childObj.transform;
                 setFinger(finger);
                 i++;
