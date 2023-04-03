@@ -79,7 +79,7 @@ namespace VF.Builder {
             // Remove impossible
             conds = conds.Where(c => !IsImpossible(c));
 
-            return conds;
+            return conds.ToList();
         }
 
         private static string Stringify(AnimatorConditions conds) {
@@ -98,7 +98,7 @@ namespace VF.Builder {
             // Sort
             conds = conds.OrderBy(c => c.parameter);
 
-            return conds;
+            return conds.ToList();
         }
 
         private static bool IsImpossible(AnimatorConditions conds) {
