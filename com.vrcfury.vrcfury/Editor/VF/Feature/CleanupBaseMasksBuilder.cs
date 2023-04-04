@@ -1,3 +1,4 @@
+using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VRC.SDK3.Avatars.Components;
@@ -8,23 +9,45 @@ namespace VF.Feature {
         public void Apply() {
             foreach (var c in manager.GetAllUsedControllers()) {
                 var ctrl = c.GetRaw();
-                if (ctrl.layers[0].stateMachine.defaultState != null) {
-                    // The base layer has stuff in it?
-                    new VFAController(c.GetRaw(), c.GetType()).NewLayer("Base Mask", 0);
-                    c.SetMask(0, c.GetMask(1));
-                    c.SetMask(1, null);
-                    c.SetWeight(1, 1);
+
+                AvatarMask expectedMask = null;
+                if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                    var mask = new AvatarMask();
+
+                    for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                        mask.SetHumanoidBodyPartActive(bodyPart, false);
+                    }
+                    mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+                    mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+
+                    foreach (var union in c.GetUnionBaseMasks()) {
+                        for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                            if (union.GetHumanoidBodyPartActive(bodyPart))
+                                mask.SetHumanoidBodyPartActive(bodyPart, true);
+                        }
+                        for (var i = 0; i < union.transformCount; i++) {
+                            if (union.GetTransformActive(i)) {
+                                mask.transformCount++;
+                                mask.SetTransformPath(mask.transformCount-1, union.GetTransformPath(i));
+                                mask.SetTransformActive(mask.transformCount-1, true);
+                            }
+                        }
+                    }
+                    VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
+                    expectedMask = mask;
                 } else {
-                    c.SetName(0, "Base Mask");
+                    expectedMask = null;
                 }
 
-                // We don't actually need to do this because unity always treats layer 0 as full weight,
-                // but Gesture Manager shows 0 on the base mask even though it's not true, so let's just set
-                // it to make it clear.
-                c.SetWeight(0, 1);
-                
-                if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    c.SetMask(0, null);
+                if (ctrl.layers.Length == 0) {
+                    // don't need to worry about masks when there are no layers
+                } else if (c.GetMask(0) == expectedMask) {
+                    // base mask is already good
+                } else if (ctrl.layers[0].stateMachine.defaultState == null || c.GetMask(0) == null) {
+                    c.SetMask(0, expectedMask);
+                } else {
+                    new VFAController(c.GetRaw(), c.GetType()).NewLayer("Base Mask", 0);
+                    c.SetMask(0, expectedMask);
                 }
             }
         }

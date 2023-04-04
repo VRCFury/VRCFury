@@ -25,6 +25,7 @@ namespace VF.Builder {
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
         private readonly VFAController _controller;
+        private readonly List<AvatarMask> unionedBaseMasks = new List<AvatarMask>();
     
         public ControllerManager(
             AnimatorController ctrl,
@@ -44,22 +45,13 @@ namespace VF.Builder {
             this.tmpDir = tmpDir;
             this._controller = new VFAController(ctrl, type);
 
-            if (ctrl.layers.Length == 0) {
-                // There was no base layer, just make one
-                GetController().NewLayer("Base Mask");
+            if (ctrl.layers.Length > 0) {
+                unionedBaseMasks.Add(ctrl.layers[0].avatarMask);
+                ctrl.layers[0].defaultWeight = 1;
             }
-            
+
             foreach (var layer in ctrl.layers) {
                 layerOwners[layer.stateMachine] = "Base Avatar";
-            }
-            
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && GetMask(0) == null) {
-                var mask = new AvatarMask();
-                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                    mask.SetHumanoidBodyPartActive(bodyPart, false);
-                }
-                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
-                SetMask(0, mask);
             }
         }
 
@@ -265,21 +257,10 @@ namespace VF.Builder {
         }
 
         public void UnionBaseMask(AvatarMask sourceMask) {
-            if (sourceMask == null) return;
-            var mask = GetMask(0);
-            if (mask == null) return;
-
-            for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                if (sourceMask.GetHumanoidBodyPartActive(bodyPart))
-                    mask.SetHumanoidBodyPartActive(bodyPart, true);
-            }
-            for (var i = 0; i < sourceMask.transformCount; i++) {
-                if (sourceMask.GetTransformActive(i)) {
-                    mask.transformCount++;
-                    mask.SetTransformPath(mask.transformCount-1, sourceMask.GetTransformPath(i));
-                    mask.SetTransformActive(mask.transformCount-1, true);
-                }
-            }
+            unionedBaseMasks.Add(sourceMask);
+        }
+        public List<AvatarMask> GetUnionBaseMasks() {
+            return unionedBaseMasks;
         }
         
         public AvatarMask GetMask(int layerId) {

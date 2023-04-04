@@ -153,6 +153,10 @@ namespace VF.Feature {
                 }
             }
 
+            if (from.layers.Length > 0) {
+                from.layers[0].defaultWeight = 1;
+            }
+
             foreach (var layer in from.layers) {
                 AnimatorIterator.ForEachState(layer.stateMachine, state => {
                     state.speedParameter = RewriteParamName(state.speedParameter);
