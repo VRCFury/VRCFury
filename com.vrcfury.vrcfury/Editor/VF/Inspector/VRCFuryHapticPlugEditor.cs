@@ -7,13 +7,14 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Model;
 using VRC.Dynamics;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
-    public class VRCFuryHapticPlugEditor : Editor {
-        public override VisualElement CreateInspectorGUI() {
+    public class VRCFuryHapticPlugEditor : VRCFuryComponentEditor {
+        public override VisualElement CreateEditor() {
             var self = (VRCFuryHapticPlug)target;
 
             var container = new VisualElement();

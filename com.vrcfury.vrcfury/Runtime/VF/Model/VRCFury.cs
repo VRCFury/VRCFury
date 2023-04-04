@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Component;
 using VF.Model.Feature;
 using Action = VF.Model.StateAction.Action;
 

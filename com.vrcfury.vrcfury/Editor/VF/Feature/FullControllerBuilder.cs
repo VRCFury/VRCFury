@@ -146,11 +146,21 @@ namespace VF.Feature {
             }
 
             foreach (var p in from.parameters) {
+                if (p.name == "Go/Locomotion") {
+                    var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+                    if (avatar) {
+                        avatar.autoLocomotion = false;
+                    }
+                }
                 p.name = RewriteParamName(p.name);
                 var exists = to.parameters.Any(existing => existing.name == p.name);
                 if (!exists) {
                     to.parameters = to.parameters.Concat(new [] { p }).ToArray();
                 }
+            }
+
+            if (from.layers.Length > 0) {
+                from.layers[0].defaultWeight = 1;
             }
 
             foreach (var layer in from.layers) {

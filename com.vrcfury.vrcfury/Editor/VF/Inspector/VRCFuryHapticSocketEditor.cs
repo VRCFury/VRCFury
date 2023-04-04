@@ -7,6 +7,7 @@ using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Menu;
 using VF.Model;
 using VRC.Dynamics;
@@ -14,8 +15,8 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
-    public class VRCFuryHapticSocketEditor : Editor {
-        public override VisualElement CreateInspectorGUI() {
+    public class VRCFuryHapticSocketEditor : VRCFuryComponentEditor {
+        public override VisualElement CreateEditor() {
             var self = (VRCFuryHapticSocket)target;
 
             var container = new VisualElement();

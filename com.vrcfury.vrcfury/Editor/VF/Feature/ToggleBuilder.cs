@@ -22,6 +22,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private string layerName;
     private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState>();
     private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState>();
+	
+	private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
+        + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
+        + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
+        + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
 
     public ISet<string> GetExclusives(string objects) {
 
@@ -30,7 +35,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
             .ToImmutableHashSet();
     }
-
+	
     public ISet<string> GetExclusiveTags() {
         if(model.enableExclusiveTag)
             return GetExclusives(model.exclusiveTag);
@@ -435,7 +440,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         };
         content.Add(flex);
 
-        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path");
+        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip);
         name.style.flexGrow = 1;
         flex.Add(name);
 

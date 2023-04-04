@@ -8,6 +8,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;

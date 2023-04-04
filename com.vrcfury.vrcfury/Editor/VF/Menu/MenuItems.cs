@@ -82,7 +82,7 @@ namespace VF.Menu {
                 var obj = Selection.activeGameObject;
                 if (obj == null) return;
                 var list = new List<string>();
-                foreach (var c in obj.GetComponentsInChildren<Component>(true)) {
+                foreach (var c in obj.GetComponentsInChildren<UnityEngine.Component>(true)) {
                     if (c is Transform) continue;
                     list.Add(c.GetType().Name + " in " + AnimationUtility.CalculateTransformPath(c.transform, obj.transform));
                 }

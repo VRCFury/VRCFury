@@ -49,7 +49,7 @@ namespace VF.Menu {
             FixDupes<VRCPhysBone>(c => c.GetRootTransform());
         }
         
-        private static Dictionary<(Transform,Transform), List<T>> FindAll<T>(Func<T, Transform> GetTarget) where T : Component {
+        private static Dictionary<(Transform,Transform), List<T>> FindAll<T>(Func<T, Transform> GetTarget) where T : UnityEngine.Component {
             var map = new Dictionary<(Transform,Transform), List<T>>();
 
             void AddOne(T c) {
@@ -86,11 +86,11 @@ namespace VF.Menu {
             return t.root.name + "/" + AnimationUtility.CalculateTransformPath(t, t.root) + " (" +
                    AssetDatabase.GetAssetPath(t) + ")";
         }
-        private static string GetName(Component c) {
+        private static string GetName(UnityEngine.Component c) {
             return GetName(c.transform) + (IsMutable(c) ? "" : " (Immutable)");
         }
 
-        private static void FindDupes<T>(Func<T, Transform> GetTarget, List<string> badList) where T : Component {
+        private static void FindDupes<T>(Func<T, Transform> GetTarget, List<string> badList) where T : UnityEngine.Component {
             var map = FindAll(GetTarget);
             foreach (var ((transform,target),components) in map.Select(x => (x.Key, x.Value))) {
                 if (components.Count == 1) continue;
@@ -102,11 +102,11 @@ namespace VF.Menu {
             }
         }
 
-        private static bool IsMutable(Component c) {
+        private static bool IsMutable(UnityEngine.Component c) {
             return !PrefabUtility.IsPartOfImmutablePrefab(c) && !PrefabUtility.IsPartOfPrefabInstance(c);
         }
         
-        private static void FixDupes<T>(Func<T, Transform> GetTarget) where T : Component {
+        private static void FixDupes<T>(Func<T, Transform> GetTarget) where T : UnityEngine.Component {
             var map = FindAll(GetTarget);
             foreach (var ((transform,target),components) in map.Select(x => (x.Key, x.Value))) {
                 if (components.Count == 1) continue;

@@ -74,8 +74,8 @@ namespace VF.Feature.Base {
         // Needs to happen after everything is done adding / removing controller layers
         CleanupBaseMasks = 10020,
         CleanupEmptyLayers = 10021,
-        AnimatorLayerControlFix = 10022,
-        ControllerConflictCheck = 10023,
+        ControllerConflictCheck = 10022,
+        AnimatorLayerControlFix = 10023,
         
         RemoveJunkAnimators = 11000,
         

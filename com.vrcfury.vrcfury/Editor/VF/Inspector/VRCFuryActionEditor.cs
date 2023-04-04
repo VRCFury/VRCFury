@@ -13,10 +13,13 @@ namespace VF.Inspector {
 [CustomPropertyDrawer(typeof(VF.Model.StateAction.Action))]
 public class VRCFuryActionDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-        return Render(prop);
+        var el = new VisualElement();
+        el.AddToClassList("vfAction");
+        el.Add(Render(prop));
+        return el;
     }
 
-    public static VisualElement Render(SerializedProperty prop) {
+    private static VisualElement Render(SerializedProperty prop) {
 
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
 
@@ -158,7 +161,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 System.Action selectButtonPress = () => {
                     var editorObject = prop.serializedObject.targetObject;
                     var shapes = new Dictionary<string,string>();
-                    if (editorObject is Component c) {
+                    if (editorObject is UnityEngine.Component c) {
                         var avatarObject = c.GetComponentInParent<VRCAvatarDescriptor>();
                         if (avatarObject) {
                             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {

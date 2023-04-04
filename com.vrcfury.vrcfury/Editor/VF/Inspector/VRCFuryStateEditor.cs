@@ -10,6 +10,7 @@ namespace VF.Inspector {
 public class VRCFuryStateEditor {
     public static VisualElement render(SerializedProperty prop, string myLabel = null, int labelWidth = 100) {
         var container = new VisualElement();
+        container.AddToClassList("vfState");
 
         var list = prop.FindPropertyRelative("actions");
 
@@ -38,7 +39,7 @@ public class VRCFuryStateEditor {
             var showLabel = myLabel != null;
             VisualElement singleLineEditor = null;
             if (list.arraySize == 1) {
-                singleLineEditor = VRCFuryActionDrawer.Render(list.GetArrayElementAtIndex(0));
+                singleLineEditor = VRCFuryEditorUtils.Prop(list.GetArrayElementAtIndex(0));
             }
 
             var showPlus = singleLineEditor != null || list.arraySize == 0;

@@ -1,13 +1,14 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Component;
 using VF.Model;
 
 namespace VF.Inspector {
-    [CustomEditor(typeof(VRCFGlobalCollider), true)]
-    public class VRCFGlobalColliderEditor : Editor {
+    [CustomEditor(typeof(VRCFuryGlobalCollider), true)]
+    public class VRCFGlobalColliderEditor : VRCFuryComponentEditor {
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(VRCFGlobalCollider collider, GizmoType gizmoType) {
+        static void DrawGizmo(VRCFuryGlobalCollider collider, GizmoType gizmoType) {
             var transform = collider.GetTransform();
             var worldRadius = collider.radius * transform.lossyScale.x;
 
@@ -20,8 +21,8 @@ namespace VF.Inspector {
             );
         }
         
-        public override VisualElement CreateInspectorGUI() {
-            var self = (VRCFGlobalCollider)target;
+        public override VisualElement CreateEditor() {
+            var self = (VRCFuryGlobalCollider)target;
 
             var container = new VisualElement();
             

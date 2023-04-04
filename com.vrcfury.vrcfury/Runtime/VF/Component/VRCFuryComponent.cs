@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 using UnityEditor;
 using UnityEngine;
 
-namespace VF.Model {
+namespace VF.Component {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver {
         [SerializeField]
         private int version = -1;

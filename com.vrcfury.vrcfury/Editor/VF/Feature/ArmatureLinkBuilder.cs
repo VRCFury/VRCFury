@@ -215,7 +215,7 @@ namespace VF.Feature {
         }
 
         private void FailIfComponents(GameObject propBone) {
-            foreach (var c in propBone.GetComponents<Component>()) {
+            foreach (var c in propBone.GetComponents<UnityEngine.Component>()) {
                 if (c is Transform) {
                 } else if (c is ParentConstraint) {
                     Object.DestroyImmediate(c);

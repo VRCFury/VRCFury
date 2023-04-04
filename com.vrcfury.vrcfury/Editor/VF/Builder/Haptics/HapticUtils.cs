@@ -135,7 +135,7 @@ namespace VF.Builder.Haptics {
         }
 
         public static void RemoveTPSSenders(GameObject obj) {
-            var remove = new List<Component>();
+            var remove = new List<UnityEngine.Component>();
             foreach (Transform child in obj.transform) {
                 foreach (var sender in child.gameObject.GetComponents<VRCContactSender>()) {
                     if (IsTPSSender(sender)) {

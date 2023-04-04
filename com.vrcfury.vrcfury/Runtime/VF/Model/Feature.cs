@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Serialization;
+using VF.Component;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -291,30 +292,7 @@ namespace VF.Model.Feature {
         
         public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
-            n.name = name;
-            n.state = state;
-            n.saved = saved;
-            n.slider = slider;
-            n.securityEnabled = securityEnabled;
-            n.defaultOn = defaultOn;
-            n.includeInRest = includeInRest;
-            n.exclusiveOffState = exclusiveOffState;
-            n.enableExclusiveTag = enableExclusiveTag;
-            n.exclusiveTag = exclusiveTag;
-            n.resetPhysbones = resetPhysbones;
-            n.enableIcon = enableIcon;
-            n.icon = icon;
-            n.enableDriveGlobalParam = enableDriveGlobalParam;
-            n.driveGlobalParam = driveGlobalParam;
-            n.separateLocal = separateLocal;
-            n.localState = localState;
-            n.hasTransition = hasTransition;
-            n.transitionStateIn = transitionStateIn;
-            n.transitionStateOut = transitionStateOut;
-            n.localTransitionStateIn = localTransitionStateIn;
-            n.localTransitionStateOut = localTransitionStateOut;
-            n.simpleOutTransition = simpleOutTransition;
-            n.defaultSliderValue = defaultSliderValue;
+            // TODO
         }
     }
 

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using VF.Component;
+using VF.Model;
 
-namespace VF.Model {
+namespace VF.Component {
     public class VRCFuryHapticPlug : VRCFuryComponent {
         public bool autoRenderer = true;
         public bool autoPosition = true;
