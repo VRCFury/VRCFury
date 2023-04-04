@@ -79,7 +79,7 @@ namespace VF.Feature {
                 AnimationClip defaultClip = null;
                 if (controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
                     defaultClip = controller.NewClip("Defaults " + controller.GetType());
-                    var defaultLayer = controller.NewLayer("Defaults", 1);
+                    var defaultLayer = controller.NewLayer("Defaults", 0);
                     defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
                 }
 
