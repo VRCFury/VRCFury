@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Model;
 using VRC.Dynamics;
 

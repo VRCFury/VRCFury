@@ -8,6 +8,7 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using VF.Builder;
+using VF.Component;
 using VF.Inspector;
 using VF.Model;
 using VRC.Core;

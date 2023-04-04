@@ -161,7 +161,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 System.Action selectButtonPress = () => {
                     var editorObject = prop.serializedObject.targetObject;
                     var shapes = new Dictionary<string,string>();
-                    if (editorObject is Component c) {
+                    if (editorObject is UnityEngine.Component c) {
                         var avatarObject = c.GetComponentInParent<VRCAvatarDescriptor>();
                         if (avatarObject) {
                             foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {

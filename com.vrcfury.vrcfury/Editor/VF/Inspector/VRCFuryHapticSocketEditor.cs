@@ -7,6 +7,7 @@ using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Menu;
 using VF.Model;
 using VRC.Dynamics;

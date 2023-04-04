@@ -16,7 +16,7 @@ namespace VF.Menu {
             GameObject avatarObj,
             bool perform = false,
             Func<GameObject, bool> ShouldRemoveObj = null,
-            Func<Component, bool> ShouldRemoveComponent = null,
+            Func<UnityEngine.Component, bool> ShouldRemoveComponent = null,
             Func<Object, bool> ShouldRemoveAsset = null,
             Func<string, bool> ShouldRemoveLayer = null,
             Func<string, bool> ShouldRemoveParam = null
@@ -53,7 +53,7 @@ namespace VF.Menu {
                     
                     var removeObject = ShouldRemoveObj != null && ShouldRemoveObj(obj);
                     if (ShouldRemoveComponent != null && obj.gameObject.transform.childCount == 0) {
-                        var allComponents = obj.GetComponents<Component>()
+                        var allComponents = obj.GetComponents<UnityEngine.Component>()
                             .Where(c => !(c is Transform))
                             .ToArray();
                         if (allComponents.Length > 0) {
@@ -67,7 +67,7 @@ namespace VF.Menu {
                         if (perform) RemoveObject(obj);
                     } else {
                         if (ShouldRemoveComponent != null) {
-                            foreach (var component in obj.GetComponents<Component>()) {
+                            foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
                                 if (!(component is Transform) && ShouldRemoveComponent(component)) {
                                     removeItems.Add(component.GetType().Name + " on " + GetPath(obj));
                                     if (perform) RemoveComponent(component);
@@ -193,8 +193,8 @@ namespace VF.Menu {
             return removeItems;
         }
         
-        public static void RemoveComponent(Component c) {
-            if (c.gameObject.GetComponents<Component>().Length == 2 && c.gameObject.transform.childCount == 0)
+        public static void RemoveComponent(UnityEngine.Component c) {
+            if (c.gameObject.GetComponents<UnityEngine.Component>().Length == 2 && c.gameObject.transform.childCount == 0)
                 RemoveObject(c.gameObject);
             else
                 Object.DestroyImmediate(c);
@@ -203,7 +203,7 @@ namespace VF.Menu {
             if (!PrefabUtility.IsPartOfPrefabInstance(obj) || PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
                 Object.DestroyImmediate(obj);
             } else {
-                foreach (var component in obj.GetComponentsInChildren<Component>(true)) {
+                foreach (var component in obj.GetComponentsInChildren<UnityEngine.Component>(true)) {
                     if (!(component is Transform)) {
                         Object.DestroyImmediate(component);
                     }

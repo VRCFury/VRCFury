@@ -623,7 +623,7 @@ public static class VRCFuryEditorUtils {
         // This shouldn't be needed in unity 2020+
         if (obj is GameObject go) {
             MarkSceneDirty(go.scene);
-        } else if (obj is Component c) {
+        } else if (obj is UnityEngine.Component c) {
             MarkSceneDirty(c.gameObject.scene);
         }
     }

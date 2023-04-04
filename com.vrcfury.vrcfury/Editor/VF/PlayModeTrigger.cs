@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Component;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
@@ -186,7 +187,7 @@ namespace VF {
                 var gmType = ReflectionUtils.GetTypeFromAnyAssembly("BlackStartX.GestureManager.GestureManager");
                 if (gmType == null) return;
                 Debug.Log("Restarting gesture manager ...");
-                foreach (var gm in Object.FindObjectsOfType(gmType).OfType<Component>()) {
+                foreach (var gm in Object.FindObjectsOfType(gmType).OfType<UnityEngine.Component>()) {
                     if (gm.gameObject.activeSelf) {
                         gm.gameObject.SetActive(false);
                         gm.gameObject.SetActive(true);

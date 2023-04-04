@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
+using VF.Component;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
@@ -59,7 +60,7 @@ namespace VF.Builder.Haptics {
             return true;
         }
 
-        private static bool IsHapticContact(Component c, List<string> collisionTags) {
+        private static bool IsHapticContact(UnityEngine.Component c, List<string> collisionTags) {
             if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) return true;
             else if (c.gameObject.name.StartsWith("OGB_")) return true;
             return false;
@@ -67,7 +68,7 @@ namespace VF.Builder.Haptics {
 
         public static string Apply(GameObject avatarObject, bool dryRun) {
             var objectsToDelete = new List<GameObject>();
-            var componentsToDelete = new List<Component>();
+            var componentsToDelete = new List<UnityEngine.Component>();
             var hasExistingSocket = new HashSet<Transform>();
             var hasExistingPlug = new HashSet<Transform>();
             var addedSocket = new HashSet<Transform>();

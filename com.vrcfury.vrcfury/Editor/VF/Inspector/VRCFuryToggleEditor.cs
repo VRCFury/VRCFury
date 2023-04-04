@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Component;
 using VF.Model;
 
 namespace VF.Inspector {
