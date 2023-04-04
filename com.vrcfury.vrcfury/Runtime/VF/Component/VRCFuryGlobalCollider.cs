@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using VF.Component;
 
-namespace VF.Model {
-    public class VRCFGlobalCollider : VRCFuryComponent {
+namespace VF.Component {
+    public class VRCFuryGlobalCollider : VRCFuryComponent {
         public float radius = 0.1f;
         public Transform rootTransform;
 

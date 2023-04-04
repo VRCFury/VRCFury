@@ -88,7 +88,7 @@ public class Startup {
             typeof(VRCFuryTest),
             typeof(VRCFuryHapticSocket),
             typeof(VRCFuryHapticPlug),
-            typeof(VRCFGlobalCollider),
+            typeof(VRCFuryGlobalCollider),
         };
         
         var d4k3 = ReflectionUtils.GetTypeFromAnyAssembly("d4rkAvatarOptimizer");
