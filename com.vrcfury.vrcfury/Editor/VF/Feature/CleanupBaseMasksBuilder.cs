@@ -43,10 +43,8 @@ namespace VF.Feature {
                     // don't need to worry about masks when there are no layers
                 } else if (c.GetMask(0) == expectedMask) {
                     // base mask is already good
-                } else if (ctrl.layers[0].stateMachine.defaultState == null || c.GetMask(0) == null) {
-                    c.SetMask(0, expectedMask);
                 } else {
-                    new VFAController(c.GetRaw(), c.GetType()).NewLayer("Base Mask", 0);
+                    c.EnsureEmptyBaseLayer();
                     c.SetMask(0, expectedMask);
                 }
             }

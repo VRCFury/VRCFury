@@ -67,10 +67,20 @@ namespace VF.Builder {
             return _controller;
         }
 
-        public VFALayer NewLayer(string name, int insertAt = -1) {
+        public void EnsureEmptyBaseLayer() {
+            if (ctrl.layers.Length > 0 && ctrl.layers[0].stateMachine.defaultState == null) return;
+            NewLayer("Base Mask", insertAt: 0, hasOwner: false);
+            if (ctrl.layers.Length >= 2) {
+                SetMask(0, GetMask(1));
+            }
+        }
+
+        public VFALayer NewLayer(string name, int insertAt = -1, bool hasOwner = true) {
             var newLayer = GetController().NewLayer(NewLayerName(name), insertAt);
             managedLayers.Add(newLayer.GetRawStateMachine());
-            layerOwners[newLayer.GetRawStateMachine()] = currentFeatureNameProvider();
+            if (hasOwner) {
+                layerOwners[newLayer.GetRawStateMachine()] = currentFeatureNameProvider();
+            }
             return newLayer;
         }
         

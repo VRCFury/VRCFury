@@ -29,8 +29,7 @@ namespace VF.Feature {
                 if (layers.Count > 0 && mapping.ContainsValue(layers[0])) {
                     // Something is trying to drive the base layer!
                     // Since this is impossible, we have to insert another layer above it to take its place
-                    c.NewLayer("Base Mask", 0);
-                    c.SetMask(0, c.GetMask(1));
+                    c.EnsureEmptyBaseLayer();
                 }
             }
 
