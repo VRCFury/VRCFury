@@ -28,6 +28,7 @@ public static class VRCFuryEditorUtils {
         }
         
         var container = new VisualElement();
+        container.AddToClassList("vfList");
 
         var entriesContainer = new VisualElement();
         container.Add(entriesContainer);
@@ -49,6 +50,7 @@ public static class VRCFuryEditorUtils {
                         flexDirection = FlexDirection.Row
                     }
                 };
+                row.AddToClassList("vfListRow");
                 if (offset != size - 1) {
                     row.style.borderBottomWidth = 1;
                     row.style.borderBottomColor = Color.black;
@@ -61,6 +63,7 @@ public static class VRCFuryEditorUtils {
                     el.serializedObject,
                     out var triggerRefresh
                 );
+                data.AddToClassList("vfListRowData");
                 refreshAllElements.Add(triggerRefresh);
                 Padding(data, 5);
                 data.style.flexGrow = 1;
@@ -72,6 +75,7 @@ public static class VRCFuryEditorUtils {
                 elButtons.style.flexShrink = 0;
                 elButtons.style.flexBasis = 20;
                 row.Add(elButtons);
+                data.AddToClassList("vfListRowButtons");
 
                 var shownButton = false;
 
@@ -256,33 +260,13 @@ public static class VRCFuryEditorUtils {
         string label = null,
         int labelWidth = 100,
         Func<string,string> formatEnum = null,
-        Action<IStyle> style = null
+        Action<IStyle> style = null,
+        string tooltip = null
     ) {
         if (prop == null) return WrappedLabel("Prop is null");
         VisualElement f = null;
-        var setMargin = true;
         var labelHandled = false;
         switch (prop.propertyType) {
-            case SerializedPropertyType.Vector3: {
-                f = new Vector3Field { bindingPath = prop.propertyPath };
-                break;
-            }
-            case SerializedPropertyType.Boolean: {
-                f = new Toggle { bindingPath = prop.propertyPath };
-                break;
-            }
-            case SerializedPropertyType.String: {
-                f = new TextField { bindingPath = prop.propertyPath };
-                break;
-            }
-            case SerializedPropertyType.Integer: {
-                f = new IntegerField { bindingPath = prop.propertyPath };
-                break;
-            }
-            case SerializedPropertyType.Float: {
-                f = new FloatField { bindingPath = prop.propertyPath };
-                break;
-            }
             case SerializedPropertyType.Enum: {
                 f = new PopupField<string>(
                     prop.enumDisplayNames.ToList(),
@@ -292,84 +276,65 @@ public static class VRCFuryEditorUtils {
                 ) { bindingPath = prop.propertyPath };
                 break;
             }
-            case SerializedPropertyType.ObjectReference: {
-                Type type = null;
-                if ((bool)ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.NativeClassExtensionUtilities")
-                    .GetMethod("ExtendsANativeType", new[]{typeof(UnityEngine.Object)})
-                    .Invoke(null, new object[] { prop.serializedObject.targetObject })) {
-                    var args = new object[] { prop, null };
-                    ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility")
-                        .GetMethod("GetFieldInfoFromProperty", BindingFlags.Static|BindingFlags.NonPublic)
-                        .Invoke(null, args);
-                    type = (Type)args[1];
-                }
-                if (type == null)
-                    type = typeof (UnityEngine.Object);
-                f = new ObjectField() { objectType = type, bindingPath = prop.propertyPath };
-                break;
-            }
             case SerializedPropertyType.Generic: {
                 if (prop.type == "State") {
                     f = VRCFuryStateEditor.render(prop, label, labelWidth);
                     labelHandled = true;
-                }
-                if (prop.type.StartsWith("Guid")) {
-                    f = GuidWrapperProp(prop);
-                }
-                break;
-            }
-            case SerializedPropertyType.ManagedReference: {
-                if (prop.managedReferenceFieldTypename == "VRCFury VF.Model.StateAction.Action") {
-                    f = VRCFuryActionDrawer.Render(prop);
                 }
                 break;
             }
         }
 
         if (f == null) {
-            var str = "Unknown type " + prop.propertyType + " " + prop.type;
-            if (prop.propertyType == SerializedPropertyType.ManagedReference) {
-                str += "\n" + prop.managedReferenceFieldTypename + "\n" + prop.managedReferenceFullTypename;
+            f = new PropertyField(prop);
+        }
+
+        VisualElement labelBox = null;
+        if (!labelHandled) {
+            f.AddToClassList("VrcFuryEditorProp");
+            
+            if (label != null) {
+                var flex = new VisualElement();
+                flex.style.flexDirection = FlexDirection.Row;
+
+                labelBox = new VisualElement();
+                labelBox.style.minWidth = labelWidth;
+                labelBox.style.flexGrow = 0;
+                labelBox.style.flexDirection = FlexDirection.Row;
+                labelBox.Add(new Label(label));
+                if (tooltip != null) {
+                    var im = new Image {
+                        image = EditorGUIUtility.FindTexture("_Help"),
+                        scaleMode = ScaleMode.ScaleToFit
+                    };
+                    labelBox.Add(im);
+                }
+                flex.Add(labelBox);
+                var field = Prop(prop);
+                field.style.flexGrow = 1;
+                flex.Add(field);
+                f = flex;
             }
-            f = WrappedLabel(str);
-            f.style.backgroundColor = Color.red;
         }
         
-        var wrapper = new VisualElement();
-        if (setMargin) Margin(f, 0);
-        wrapper.Add(f);
-
-        if (label != null && !labelHandled) {
-            var flex = new VisualElement();
-            flex.style.flexDirection = FlexDirection.Row;
-            var l = new Label(label);
-            l.style.minWidth = labelWidth;
-            l.style.flexGrow = 0;
-            flex.Add(l);
-            var field = Prop(prop);
-            field.style.flexGrow = 1;
-            flex.Add(field);
-            return flex;
+        if (tooltip != null && labelBox != null) {
+            var tooltipBox = Info(tooltip);
+            tooltipBox.AddToClassList("vfTooltip");
+            tooltipBox.AddToClassList("vfTooltipHidden");
+  
+            labelBox.AddManipulator(new Clickable(e => {
+                tooltipBox.ToggleInClassList("vfTooltipHidden");
+            }));
+            
+            var wrapper = new VisualElement();
+            wrapper.Add(f);
+            wrapper.Add(tooltipBox);
+            f = wrapper;
         }
-        
-        style?.Invoke(wrapper.style);
-        
-        return wrapper;
-    }
 
-    private static VisualElement GuidWrapperProp(SerializedProperty prop) {
-        var obj = prop.FindPropertyRelative("obj");
-        var output = new VisualElement();
-        output.Add(Prop(obj));
-        var guid = prop.FindPropertyRelative("guid");
-        var fileId = prop.FindPropertyRelative("fileID");
-        output.Add(RefreshOnChange(() => {
-            if (obj.objectReferenceValue == null && !string.IsNullOrEmpty(guid.stringValue))
-                return WrappedLabel($"Missing asset: {guid.stringValue}:{fileId.longValue}");
-            else
-                return new VisualElement();
-        }, obj, guid, fileId));
-        return output;
+        style?.Invoke(f.style);
+        
+        return f;
     }
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {

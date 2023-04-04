@@ -14,8 +14,8 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
-    public class VRCFuryHapticSocketEditor : Editor {
-        public override VisualElement CreateInspectorGUI() {
+    public class VRCFuryHapticSocketEditor : VRCFuryComponentEditor {
+        public override VisualElement CreateEditor() {
             var self = (VRCFuryHapticSocket)target;
 
             var container = new VisualElement();

@@ -15,8 +15,8 @@ namespace VF.Inspector {
     
 
 [CustomEditor(typeof(VRCFury), true)]
-public class VRCFuryEditor : Editor {
-    public override VisualElement CreateInspectorGUI() {
+public class VRCFuryEditor : VRCFuryComponentEditor {
+    public override VisualElement CreateEditor() {
         var self = (VRCFury)target;
 
         var loadError = self.GetBrokenMessage();

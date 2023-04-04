@@ -20,6 +20,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
     private AnimationClip restingClip;
+    
+    private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
+        + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
+        + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
+        + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
 
     public ISet<string> GetExclusiveTags() {
         if (model.enableExclusiveTag) {
@@ -246,7 +251,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         };
         content.Add(flex);
 
-        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path");
+        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip);
         name.style.flexGrow = 1;
         flex.Add(name);
 

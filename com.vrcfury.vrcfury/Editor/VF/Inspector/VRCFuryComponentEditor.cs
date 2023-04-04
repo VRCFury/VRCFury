@@ -14,6 +14,7 @@ using Image = UnityEngine.UIElements.Image;
 namespace VF.Inspector {
     public class VRCFuryComponentEditor : Editor {
 
+        /*
         public override bool UseDefaultMargins() {
             return false;
         }
@@ -152,9 +153,12 @@ namespace VF.Inspector {
 
             inspectorRoot.Insert(0, row);
         }
+        */
 
         public sealed override VisualElement CreateInspectorGUI() {
             var el = CreateEditor();
+            el.styleSheets.Add(Resources.Load<StyleSheet>("VRCFuryStyle"));
+            /*
             el.RegisterCallback<AttachToPanelEvent>(e => {
                 CreateHeaderOverlay(el);
             });
@@ -162,6 +166,7 @@ namespace VF.Inspector {
                 Detach();
             });
             el.style.marginBottom = 4;
+            */
             return el;
         }
         
