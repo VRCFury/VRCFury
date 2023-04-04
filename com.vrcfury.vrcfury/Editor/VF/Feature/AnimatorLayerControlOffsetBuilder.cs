@@ -24,6 +24,16 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlFix)]
         public void Fix() {
+            foreach (var c in manager.GetAllUsedControllers()) {
+                var layers = c.GetLayers().ToList();
+                if (layers.Count > 0 && mapping.ContainsValue(layers[0])) {
+                    // Something is trying to drive the base layer!
+                    // Since this is impossible, we have to insert another layer above it to take its place
+                    c.NewLayer("Base Mask", 0);
+                    c.SetMask(0, c.GetMask(1));
+                }
+            }
+
             var smToTypeAndNumber = new Dictionary<AnimatorStateMachine, (VRCAvatarDescriptor.AnimLayerType, int)>();
             foreach (var c in manager.GetAllUsedControllers()) {
                 foreach (var (i,l) in c.GetLayers().Select((l,i) => (i,l))) {
@@ -68,13 +78,17 @@ namespace VF.Feature {
                             if (targetController == null) return false;
                             if (control.layer < 0 || control.layer >= targetController.layers.Length) return false;
                             var targetSm = targetController.layers[control.layer].stateMachine;
-                            mapping[control] = targetSm;
+                            Register(control, targetSm);
                         }
 
                         return true;
                     });
                 }
             }
+        }
+        
+        public void Register(VRCAnimatorLayerControl control, AnimatorStateMachine targetSm) {
+            mapping[control] = targetSm;
         }
     }
 }

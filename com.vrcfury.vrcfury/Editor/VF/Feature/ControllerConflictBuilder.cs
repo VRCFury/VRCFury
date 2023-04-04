@@ -63,23 +63,19 @@ namespace VF.Feature {
                             if (uniqueOwnersOnType.Count == 1) return true;
 
                             var drivesController = manager.GetController(drivesType);
-                            var drivesControllerLayers = drivesController.GetLayers()
-                                .ToList();
-                            var drivesLayers = drivesControllerLayers
+                            var drivesLayers = drivesController.GetLayers()
                                 .Where(l => drivesController.GetLayerOwner(l) == layerOwner)
                                 .ToList();
-                            var drivesLayerIds = drivesLayers
-                                .Select(l => drivesControllerLayers.FindIndex(ll => ll == l))
-                                .ToList();
-                            foreach (var drivesLayerId in drivesLayerIds) {
-                                var existingLayerWeight = drivesController.GetWeight(drivesLayerId);
+                            foreach (var drivesLayer in drivesLayers) {
+                                var existingLayerWeight = drivesController.GetWeight(drivesLayer);
                                 var layerControl = (VRCAnimatorLayerControl)add(typeof(VRCAnimatorLayerControl));
                                 layerControl.playable =
                                     VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
-                                layerControl.layer = drivesLayerId;
                                 layerControl.goalWeight = playableControl.goalWeight;
                                 layerControl.blendDuration = playableControl.blendDuration;
                                 layerControl.debugString = playableControl.debugString;
+                                var offsetBuilder = allBuildersInRun.OfType<AnimatorLayerControlOffsetBuilder>().First();
+                                offsetBuilder.Register(layerControl, drivesLayer);
                             }
                             return false;
                         }
