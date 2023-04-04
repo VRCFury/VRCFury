@@ -146,6 +146,12 @@ namespace VF.Feature {
             }
 
             foreach (var p in from.parameters) {
+                if (p.name == "Go/Locomotion") {
+                    var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+                    if (avatar) {
+                        avatar.autoLocomotion = false;
+                    }
+                }
                 p.name = RewriteParamName(p.name);
                 var exists = to.parameters.Any(existing => existing.name == p.name);
                 if (!exists) {
