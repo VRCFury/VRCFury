@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Model;
 using VRC.SDK3.Avatars.Components;
@@ -14,7 +15,7 @@ namespace VF.Feature {
         public void Apply() {
 
             var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
-            var globalContacts = avatarObject.GetComponentsInChildren<VRCFGlobalCollider>(true);
+            var globalContacts = avatarObject.GetComponentsInChildren<VRCFuryGlobalCollider>(true);
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             var fingers = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)> {
