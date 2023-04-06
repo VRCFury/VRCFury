@@ -31,7 +31,7 @@ namespace VF.Feature {
                 return;
             }
 
-            var linkMode = GetLinkMode(links);
+            var linkMode = GetLinkMode();
             var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
 
             var (_, _, scalingFactor) = GetScalingFactor(links);
@@ -279,13 +279,16 @@ namespace VF.Feature {
             }
         }
         
-        private ArmatureLink.ArmatureLinkMode GetLinkMode(Links links) {
+        private ArmatureLink.ArmatureLinkMode GetLinkMode() {
             if (model.linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
                 var usesBonesFromProp = false;
-                foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
-                    if (skin.transform.IsChildOf(links.propMain.transform)) continue;
-                    usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(links.propMain.transform);
-                    usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(links.propMain.transform));
+                var propRoot = model.propBone;
+                if (propRoot != null) {
+                    foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                        if (skin.transform.IsChildOf(propRoot.transform)) continue;
+                        usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(propRoot.transform);
+                        usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(propRoot.transform));
+                    }
                 }
 
                 return usesBonesFromProp
@@ -344,6 +347,12 @@ namespace VF.Feature {
                     Debug.LogError("Failed to find " + model.bonePathOnAvatar + " bone on avatar. Skipping armature link.");
                     return null;
                 }
+            }
+
+            if (avatarBone == propBone) {
+                throw new VRCFBuilderException(
+                    "The object dragged into Armature Link should not be a bone from the avatar's armature." +
+                    " If you are linking clothes, be sure to drag in the main bone from the clothes' armature instead!");
             }
 
             var removeBoneSuffix = model.removeBoneSuffix;
@@ -417,11 +426,15 @@ namespace VF.Feature {
                 "This feature will link an armature in a prop to the armature on the avatar base." +
                 " It can also be used to link a single object in the prop to a certain bone on the avatar's armature."));
             
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Root bone/object in the prop:"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Root bone/object to attach from the prop:"));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Corresponding root bone on avatar:"));
+            var rootBoneLabelWhenSkin = VRCFuryEditorUtils.WrappedLabel("Corresponding root bone on avatar:");
+            var rootBoneLabelWhenReparent = VRCFuryEditorUtils.WrappedLabel("Avatar bone to attach to:");
+            rootBoneLabelWhenReparent.style.display = DisplayStyle.None;
+            container.Add(rootBoneLabelWhenSkin);
+            container.Add(rootBoneLabelWhenReparent);
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
@@ -505,8 +518,12 @@ namespace VF.Feature {
                 if (avatarObject == null) {
                     return "Avatar descriptor is missing";
                 }
+
+                var linkMode = GetLinkMode();
+                rootBoneLabelWhenReparent.style.display = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
+                rootBoneLabelWhenSkin.style.display = linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
+                
                 var links = GetLinks();
-                var linkMode = GetLinkMode(links);
                 var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
                 var text = new List<string>();
                 var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links);
