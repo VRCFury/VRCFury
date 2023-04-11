@@ -1,5 +1,7 @@
+using System;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VRC.SDK3.Avatars.Components;
 
@@ -21,6 +23,9 @@ namespace VF.Feature {
                     mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
 
                     foreach (var union in c.GetUnionBaseMasks()) {
+                        if (union == null) {
+                            continue;
+                        }
                         for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                             if (union.GetHumanoidBodyPartActive(bodyPart))
                                 mask.SetHumanoidBodyPartActive(bodyPart, true);
