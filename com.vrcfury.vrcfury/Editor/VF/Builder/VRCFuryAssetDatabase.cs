@@ -68,13 +68,6 @@ namespace VF.Builder {
             AssetDatabase.CreateAsset(obj, fullPath);
         }
 
-        public static bool IsVrcfAsset(Object obj) {
-            if (obj == null) return false;
-            var path = AssetDatabase.GetAssetPath(obj);
-            if (path == null) return false;
-            return path.Contains("_VRCFury/");
-        }
-
         private static bool assetEditing = false;
         public static void WithAssetEditing(Action go) {
             if (!assetEditing) {
