@@ -98,7 +98,10 @@ namespace VF.Builder.Haptics {
                 if (AlreadyExistsAboveOrBelow(obj, hasExistingSocket.Concat(addedSocket))) return null;
                 addedSocket.Add(obj.transform);
                 if (dryRun) return null;
-                return obj.AddComponent<VRCFuryHapticSocket>();
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.addLight = VRCFuryHapticSocket.AddLight.None;
+                socket.addMenuItem = false;
+                return socket;
             }
 
             foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {

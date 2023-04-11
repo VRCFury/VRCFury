@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -142,7 +143,15 @@ namespace VF.Feature {
             var type = toMain.GetType();
 
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
-                toMain.UnionBaseMask(from.layers[0].avatarMask);
+                var mask = from.layers[0].avatarMask;
+                if (mask == null) {
+                    throw new VRCFBuilderException(
+                        "A VRCFury full controller is configured to merge in a Gesture controller," +
+                        " but the controller does not have a Base Mask set. Beware that Gesture controllers" +
+                        " should typically be used for animating FINGERS ONLY. If your controller animates" +
+                        " non-humanoid transforms, they should typically be merged into FX instead!");
+                }
+                toMain.UnionBaseMask(mask);
             }
 
             foreach (var p in from.parameters) {
