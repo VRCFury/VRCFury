@@ -81,8 +81,5 @@ namespace VF.Feature.Base {
         
         // Needs to happen after everything is done using the animator
         ResetAnimatorAfter = 12000,
-
-        // This messes with the raw controller on the avatar, so it has to run after we've done basically everything
-        D4rkOptimizer = 99999,
     }
 }

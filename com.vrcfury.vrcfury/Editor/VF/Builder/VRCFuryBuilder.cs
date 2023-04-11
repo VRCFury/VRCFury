@@ -1,16 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using VF.Builder.Exceptions;
+using VF.Component;
 using VF.Feature;
-using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Menu;
@@ -37,17 +32,12 @@ public class VRCFuryBuilder {
     }
 
     public static bool ShouldRun(GameObject avatarObject) {
-        return Startup.GetVRCFuryComponentTypes()
-            .Any(type => avatarObject.GetComponentsInChildren(type, true).Length > 0);
+        return avatarObject.GetComponentsInChildren<VRCFuryComponent>(true).Length > 0;
     }
 
     public static void StripAllVrcfComponents(GameObject obj) {
-        // Make absolutely positively certain that we've removed every non-standard component from the avatar
-        // before it gets uploaded
-        foreach (var type in Startup.GetVRCFuryComponentTypes()) {
-            foreach (var c in obj.GetComponentsInChildren(type, true)) {
-                Object.DestroyImmediate(c);
-            }
+        foreach (var c in obj.GetComponentsInChildren<VRCFuryComponent>(true)) {
+            Object.DestroyImmediate(c);
         }
     }
 
@@ -175,7 +165,6 @@ public class VRCFuryBuilder {
         AddBuilder(new BakeHapticsBuilder(), avatarObject);
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
         AddBuilder(new ControllerConflictBuilder(), avatarObject);
-        AddBuilder(new D4rkOptimizerBuilder(), avatarObject);
         AddBuilder(new FakeHeadBuilder(), avatarObject);
         AddBuilder(new ObjectMoveBuilder(), avatarObject);
         AddBuilder(new AnimatorLayerControlOffsetBuilder(), avatarObject);
