@@ -83,7 +83,7 @@ namespace VF.Updater {
             if (Directory.Exists("Assets/VRCFury-installer")) {
                 DebugLog("Installer directory found, removing and forcing update");
                 actions.RemoveDirectory("Assets/VRCFury-installer");
-                actions.CreateMarker(upgradeFromLegacyInProgress);
+                actions.CreateMarker(freshInstallInProgress);
                 triggerUpgrade = true;
             }
 
