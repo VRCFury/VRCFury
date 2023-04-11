@@ -19,11 +19,11 @@ namespace VF.Component {
             Off
         }
 
-        public AddLight addLight = AddLight.None;
+        public AddLight addLight = AddLight.Auto;
         public new string name;
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
         public float length;
-        public bool addMenuItem = false;
+        public bool addMenuItem = true;
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;

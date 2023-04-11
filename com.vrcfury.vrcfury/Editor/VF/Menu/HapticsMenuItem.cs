@@ -13,8 +13,6 @@ namespace VF.Menu {
             var newObj = new GameObject("Haptic Socket");
 
             var o = newObj.AddComponent<VRCFuryHapticSocket>();
-            o.addLight = VRCFuryHapticSocket.AddLight.Auto;
-            o.addMenuItem = true;
 
             if (Selection.activeGameObject) {
                 newObj.transform.SetParent(Selection.activeGameObject.transform);
