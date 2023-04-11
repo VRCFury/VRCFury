@@ -274,10 +274,6 @@ VRCFury can be used to add globally-synced colliders to any bone on your avatar.
 
 Beware that this feature steals colliders from your fingers, so the more you add, the fewer contacts there will be on your fingers. It will try to steal from the least important fingers first. You've been warned!
 
-### D4rk Avatar Optimizer Integration
-
-If your avatar uses the D4rk Optimizer, VRCFury will automatically run the optimizer during your avatar upload. No need to run it manually anymore!
-
 ### Write Defaults Auto-Fix
 
 VRCFury will detect if your avatar has a mixture of Write Defaults, and will offer to fix it for you on your first upload. Don't worry, this change isn't destructive -- it simply adds a `Fix Write Defaults` VRCFury component to your avatar root, which you can always remove to undo if you choose.
