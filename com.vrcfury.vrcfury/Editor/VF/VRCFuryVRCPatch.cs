@@ -56,18 +56,30 @@ public class Startup {
         }
 
         try {
-            var sdkBuilder = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.VRC_SdkBuilder");
-            var runField = sdkBuilder.GetField("RunExportAndUploadAvatarBlueprint",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            void Fix(GameObject obj) => VRCFPrefabFixer.Fix(new[] { obj });
-            var run = (Action<GameObject>)runField.GetValue(null);
-            runField.SetValue(null, Fix + run);
-            runField = sdkBuilder.GetField("RunExportAndTestAvatarBlueprint",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            run = (Action<GameObject>)runField.GetValue(null);
-            runField.SetValue(null, Fix + run);
+            PatchPreuploadMethod("RunExportAndTestAvatarBlueprint");
+            PatchPreuploadMethod("RunExportAndUploadAvatarBlueprint");
         } catch (Exception e) {
             Debug.LogError(new Exception("VRCFury prefab fix patch failed", e));
+        }
+    }
+
+    private static void PatchPreuploadMethod(string fieldName) {
+        var sdkBuilder = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.VRC_SdkBuilder");
+        if (sdkBuilder == null) throw new Exception("Failed to find SdkBuilder");
+        var runField = sdkBuilder.GetField(fieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        if (runField == null) throw new Exception($"Failed to find {fieldName}");
+        void Fix(GameObject obj) => VRCFPrefabFixer.Fix(new[] { obj });
+        var runObj = runField.GetValue(null);
+        if (runObj is Action<GameObject> run1) {
+            runField.SetValue(null, Fix + run1);
+        } else if (runObj is Func<GameObject, bool> run2) {
+            runField.SetValue(null, (Func<GameObject, bool>)(obj => {
+                Fix(obj);
+                return run2(obj);
+            }));
+        } else {
+            throw new Exception($"Invalid {fieldName}");
         }
     }
 
