@@ -32,6 +32,11 @@ namespace VF.Updater {
         }
 
         private static async Task CheckUnsafe() {
+            
+            var updaterJustUpdated = await Markers.UpdaterJustUpdated();
+            var upgradeFromLegacyInProgress = await Markers.UpgradeFromLegacyInProgress();
+            var freshInstallInProgress = await Markers.FreshInstallInProgress();
+            var manualUpdateInProgress = await Markers.ManualUpdateInProgress();
 
             var actions = new PackageActions(DebugLog);
 
@@ -44,7 +49,7 @@ namespace VF.Updater {
                     "The VRCFury Unity Package is importing, so unity may freeze or go unresponsive for a bit." +
                     " If all goes well, you'll receive a popup when it's complete!"
                 );
-                actions.CreateDirectory(await Markers.InstallInProgressMarker());
+                actions.CreateMarker(freshInstallInProgress);
                 DebugLog("Package is missing, bootstrapping com.vrcfury.updater package");
                 await VRCFuryUpdater.AddUpdateActions(false, actions);
                 await actions.Run();
@@ -60,63 +65,63 @@ namespace VF.Updater {
 
             DebugLog("Checking for migration folders ...");
             var triggerUpgrade = false;
-            var showUpgradeNotice = false;
-            var updaterJustUpdatedMarker = await Markers.UpdaterJustUpdatedMarker();
             var legacyDir = await AsyncUtils.InMainThread(() => AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             if (!string.IsNullOrWhiteSpace(legacyDir) && Directory.Exists(legacyDir)) {
                 DebugLog($"VRCFury found a legacy install at location: {legacyDir}");
                 actions.SceneCloseNeeded();
                 actions.RemoveDirectory(legacyDir);
+                actions.CreateMarker(upgradeFromLegacyInProgress);
                 triggerUpgrade = true;
-                showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury")) {
                 DebugLog($"VRCFury found a legacy install at location: Assets/VRCFury");
                 actions.SceneCloseNeeded();
                 actions.RemoveDirectory("Assets/VRCFury");
+                actions.CreateMarker(upgradeFromLegacyInProgress);
                 triggerUpgrade = true;
-                showUpgradeNotice = true;
             }
             if (Directory.Exists("Assets/VRCFury-installer")) {
                 DebugLog("Installer directory found, removing and forcing update");
                 actions.RemoveDirectory("Assets/VRCFury-installer");
+                actions.CreateMarker(upgradeFromLegacyInProgress);
                 triggerUpgrade = true;
             }
 
-            if (showUpgradeNotice) {
-                await AsyncUtils.DisplayDialog(
-                    "Please note that Assets/VRCFury/Prefabs is moving to Packages/VRCFury Prefabs"
-                );
-            }
             if (triggerUpgrade) {
-                actions.RemoveDirectory(updaterJustUpdatedMarker);
+                actions.RemoveMarker(updaterJustUpdated);
                 await VRCFuryUpdater.AddUpdateActions(false, actions);
                 await actions.Run();
                 return;
             }
             
-            if (Directory.Exists(updaterJustUpdatedMarker)) {
+            if (updaterJustUpdated.Exists()) {
                 DebugLog("Updater was just reinstalled, forcing update");
-                actions.RemoveDirectory(updaterJustUpdatedMarker);
+                actions.RemoveMarker(updaterJustUpdated);
                 await VRCFuryUpdater.AddUpdateActions(true, actions);
                 await actions.Run();
                 return;
             }
 
-            var manualUpdateInProgressMarker = await Markers.ManualUpdateInProgressMarker();
-            var installInProgressMarker = await Markers.InstallInProgressMarker();
-            if (Directory.Exists(manualUpdateInProgressMarker) || Directory.Exists(installInProgressMarker)) {
+            if (manualUpdateInProgress.Exists() || freshInstallInProgress.Exists() || upgradeFromLegacyInProgress.Exists()) {
                 DebugLog("Found 'update complete' marker");
-                if (Directory.Exists(manualUpdateInProgressMarker)) Directory.Delete(manualUpdateInProgressMarker);
-                if (Directory.Exists(installInProgressMarker)) Directory.Delete(installInProgressMarker);
 
-                await AsyncUtils.InMainThread(() => {
-                    DebugLog("Upgrade complete");
-                });
+                if (upgradeFromLegacyInProgress.Exists()) {
+                    await AsyncUtils.DisplayDialog(
+                        "VRCFury has updated. Please note that Assets/VRCFury/Prefabs has moved to Packages/VRCFury Prefabs."
+                    );
+                } else if (freshInstallInProgress.Exists()) {
+                    await AsyncUtils.DisplayDialog(
+                        "VRCFury has successfully been installed!"
+                    );
+                } else {
+                    await AsyncUtils.DisplayDialog(
+                        "VRCFury has successfully updated!"
+                    );
+                }
 
-                await AsyncUtils.DisplayDialog(
-                    "VRCFury has successfully installed/updated!"
-                );
+                manualUpdateInProgress.Clear();
+                freshInstallInProgress.Clear();
+                upgradeFromLegacyInProgress.Clear();
             }
         }
     }

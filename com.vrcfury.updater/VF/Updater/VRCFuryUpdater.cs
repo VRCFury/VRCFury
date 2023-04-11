@@ -67,7 +67,7 @@ namespace VF.Updater {
 
                 var remoteName = remoteUpdaterPackage.id;
                 var tgzPath = await DownloadTgz(remoteUpdaterPackage.latestUpmTargz);
-                actions.CreateDirectory(await Markers.UpdaterJustUpdatedMarker());
+                actions.CreateMarker(await Markers.UpdaterJustUpdated());
                 actions.AddPackage(remoteName, tgzPath);
                 await actions.Run();
                 return;

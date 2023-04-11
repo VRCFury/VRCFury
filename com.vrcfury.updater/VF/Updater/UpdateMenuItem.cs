@@ -24,7 +24,7 @@ namespace VF.Updater {
                     return;
                 }
             
-                actions.CreateDirectory(await Markers.ManualUpdateInProgressMarker());
+                actions.CreateMarker(await Markers.ManualUpdateInProgress());
 
                 await actions.Run();
             }));

@@ -15,7 +15,8 @@ namespace VF.Updater {
         private List<(string, string)> addPackages = new List<(string, string)>();
         private List<string> removePackages = new List<string>();
         private List<string> deleteDirectories = new List<string>();
-        private List<string> createDirectories = new List<string>();
+        private List<Marker> createMarkers = new List<Marker>();
+        private List<Marker> removeMarkers = new List<Marker>();
         private bool sceneCloseNeeded = false;
         private Action<string> DebugLog;
 
@@ -35,8 +36,12 @@ namespace VF.Updater {
             deleteDirectories.Add(path);
         }
         
-        public void CreateDirectory(string path) {
-            createDirectories.Add(path);
+        public void CreateMarker(Marker marker) {
+            createMarkers.Add(marker);
+        }
+        
+        public void RemoveMarker(Marker marker) {
+            removeMarkers.Add(marker);
         }
 
         public void SceneCloseNeeded() {
@@ -47,7 +52,8 @@ namespace VF.Updater {
             return addPackages.Count > 0
                    || removePackages.Count > 0
                    || deleteDirectories.Count > 0
-                   || createDirectories.Count > 0;
+                   || createMarkers.Count > 0
+                   || removeMarkers.Count > 0;
         }
 
         public async Task Run() {
@@ -104,6 +110,9 @@ namespace VF.Updater {
                 if (Directory.Exists(dir) && dir.StartsWith("Assets/")) await AsyncUtils.InMainThread(() => AssetDatabase.DeleteAsset(dir));
                 if (Directory.Exists(dir)) Directory.Delete(dir, true);
             }
+            foreach (var marker in removeMarkers) {
+                marker.Clear();
+            }
 
             foreach (var name in removePackages) {
                 await AsyncUtils.Progress($"Removing package {name} ...");
@@ -134,8 +143,8 @@ namespace VF.Updater {
 
             //await EnsureVrcfuryEmbedded();
 
-            foreach (var dir in createDirectories) {
-                Directory.CreateDirectory(dir);
+            foreach (var marker in createMarkers) {
+                marker.Create();
             }
         }
         
