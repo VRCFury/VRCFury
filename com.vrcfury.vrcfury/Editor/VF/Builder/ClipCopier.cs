@@ -13,8 +13,8 @@ namespace VF.Builder {
             AnimationClip from,
             AnimationClip to
         ) {
-            var fromC = new ControllerManager.MutableClip(from);
-            var toC = new ControllerManager.MutableClip(to);
+            var fromC = new EasyAnimationClip(from);
+            var toC = new EasyAnimationClip(to);
             foreach (var binding in fromC.GetFloatBindings())
                 toC.SetFloatCurve(binding, fromC.GetFloatCurve(binding));
             foreach (var binding in fromC.GetObjectBindings())
@@ -29,7 +29,7 @@ namespace VF.Builder {
             bool rootBindingsApplyToAvatar = false,
             Func<string,string> rewriteParam = null
         ) {
-            var clip = new ControllerManager.MutableClip(clip_);
+            var clip = new EasyAnimationClip(clip_);
             
             string prefix;
             if (fromObj == null) {

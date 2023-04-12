@@ -133,8 +133,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var defaultsManager = allBuildersInRun
                 .OfType<FixWriteDefaultsBuilder>()
                 .First();
-            defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
-            defaultsManager.forceRecordBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
+            foreach (var b in AnimationUtility.GetCurveBindings(clip))
+                defaultsManager.RecordDefaultNow(b, true);
+            foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip))
+                defaultsManager.RecordDefaultNow(b, false);
         }
 
         if (model.securityEnabled) {

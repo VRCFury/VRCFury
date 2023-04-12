@@ -19,11 +19,7 @@ public class ClipBuilder {
             time = 0,
             value = obj
         };
-        var f2 = new ObjectReferenceKeyframe {
-            time = 1/60f,
-            value = obj
-        };
-        return new[]{ f1, f2 };
+        return new[]{ f1 };
     }
     public static AnimationCurve OneFrame(float value) {
         return AnimationCurve.Constant(0, 0, value);
