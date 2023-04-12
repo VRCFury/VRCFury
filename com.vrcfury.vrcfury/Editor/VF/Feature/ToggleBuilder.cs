@@ -71,6 +71,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
 
+        if (model.useGlobalParam && model.globalParam != null && model.paramOverride == null) {
+            model.paramOverride = model.globalParam;
+            model.usePrefixOnParam = false;
+        }
+
         VFACondition onCase;
         var paramName = model.paramOverride ?? model.name;
         if (model.useInt) {
@@ -242,6 +247,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
+        var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
+        var globalParamProp = prop.FindPropertyRelative("globalParam");
 
         var flex = new VisualElement {
             style = {
@@ -342,6 +349,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (useGlobalParamProp != null) {
+                advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
+                    useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
             advMenu.ShowAsContext();
         });
         button.style.flexGrow = 0;
@@ -368,6 +381,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
                 return c;
             }, enableExclusiveTagProp));
+        }
+
+        if (useGlobalParamProp != null) {
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (useGlobalParamProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("globalParam"), "Global Parameter"));
+                }
+
+                return c;
+            }, useGlobalParamProp));
         }
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
