@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -210,22 +211,34 @@ namespace VF.Feature {
                 .ToImmutableHashSet();
         }
 
+        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, AnimatorController controller) {
+            var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
+
+            var clipsInController = new List<AnimationClip>();
+            if (controller != null) {
+                foreach (var layer in controller.layers) {
+                    AnimatorIterator.ForEachClip(layer.stateMachine, clip => clipsInController.Add(clip));
+                }
+            }
+
+            return clipsInController.SelectMany(clip => {
+                var clipBindings = AnimationUtility.GetCurveBindings(clip);
+                return clipBindings.Select(b => {
+                    var curve = AnimationUtility.GetEditorCurve(clip, b);
+                    b.path = ClipCopier.Join(prefix, b.path, allowAdvancedOperators: false);
+                    return (b, curve);
+                });
+            }).ToList();
+        }
+
         private ICollection<string> CollectAnimatedBlendshapesForMesh(Mesh mesh) {
             var animatedBindings = manager.GetAllUsedControllersRaw()
                 .Select(tuple => tuple.Item2)
-                .SelectMany(controller => {
-                    var clipsInController = new List<AnimationClip>();
-                    foreach (var layer in controller.layers) {
-                        AnimatorIterator.ForEachClip(layer.stateMachine, clip => clipsInController.Add(clip));
-                    }
-                    return clipsInController;
-                })
-                .SelectMany(clip => {
-                    var bindings = AnimationUtility.GetCurveBindings(clip);
-                    return bindings.Select(b => (b, AnimationUtility.GetEditorCurve(clip, b)));
-                })
+                .SelectMany(controller => GetBindings(avatarObject, controller))
+                .Concat(avatarObject.GetComponentsInChildren<Animator>()
+                    .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
                 .ToList();
-            
+
             var skins = CollectSkinsUsingMesh(mesh);
 
             var skinPaths = skins

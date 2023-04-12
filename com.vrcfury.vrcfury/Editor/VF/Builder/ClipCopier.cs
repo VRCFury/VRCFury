@@ -139,16 +139,20 @@ namespace VF.Builder {
             return AnimationUtility.GetObjectReferenceValue(avatar, binding, out output);
         }
         
-        private static string Join(params string[] paths) {
+        public static string Join(string a, string b, bool allowAdvancedOperators = true) {
+            var paths = new [] { a, b };
+            
             var ret = new List<string>();
             foreach (var path in paths) {
-                if (path.StartsWith("/")) {
+                if (path.StartsWith("/") && allowAdvancedOperators) {
                     ret.Clear();
                 }
                 foreach (var part in path.Split('/')) {
-                    if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1])) {
+                    if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1]) && allowAdvancedOperators) {
                         ret.RemoveAt(ret.Count - 1);
-                    } else if (part == "." || part == "") {
+                    } else if (part == "." && allowAdvancedOperators) {
+                        // omit this chunk
+                    } else if (part == "") {
                         // omit this chunk
                     } else {
                         ret.Add(part);
