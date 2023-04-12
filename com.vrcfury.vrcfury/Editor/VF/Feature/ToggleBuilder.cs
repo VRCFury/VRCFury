@@ -77,12 +77,23 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         VFACondition onCase;
-        var paramName = model.paramOverride ?? model.name;
+        string paramName;
+        bool usePrefixOnParam;
+        if (model.paramOverride != null) {
+            paramName = model.paramOverride;
+            usePrefixOnParam = model.usePrefixOnParam;
+        } else if (model.useGlobalParam && model.globalParam != null) {
+            paramName = model.globalParam;
+            usePrefixOnParam = false;
+        } else {
+            paramName = model.name;
+            usePrefixOnParam = model.usePrefixOnParam;
+        }
         if (model.useInt) {
-            var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: model.usePrefixOnParam);
+            var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
         } else {
-            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
