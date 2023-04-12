@@ -289,7 +289,9 @@ namespace VF.Model.Feature {
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
         public bool isButton = false;
-        
+        public bool useGlobalParam;
+        public string globalParam;
+
         public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
             // TODO

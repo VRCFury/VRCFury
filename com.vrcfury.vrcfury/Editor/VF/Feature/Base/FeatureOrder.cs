@@ -44,11 +44,7 @@ namespace VF.Feature.Base {
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
         // an object moved onto the fake head bone
         FakeHeadBuilder = 102,
-        
-        // Needs to run after most things are done messing with the animation controller,
-        // since any changes after this won't have their animations rewritten
-        ObjectMoveBuilderFixAnimations = 103,
-        
+
         // Needs to run after most things are done messing with animations,
         // since it'll make copies of the blendshape curves
         BlendShapeLinkFixAnimations = 104,

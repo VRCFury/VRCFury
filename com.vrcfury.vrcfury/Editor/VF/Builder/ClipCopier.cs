@@ -13,8 +13,8 @@ namespace VF.Builder {
             AnimationClip from,
             AnimationClip to
         ) {
-            var fromC = new ControllerManager.MutableClip(from);
-            var toC = new ControllerManager.MutableClip(to);
+            var fromC = new EasyAnimationClip(from);
+            var toC = new EasyAnimationClip(to);
             foreach (var binding in fromC.GetFloatBindings())
                 toC.SetFloatCurve(binding, fromC.GetFloatCurve(binding));
             foreach (var binding in fromC.GetObjectBindings())
@@ -29,7 +29,7 @@ namespace VF.Builder {
             bool rootBindingsApplyToAvatar = false,
             Func<string,string> rewriteParam = null
         ) {
-            var clip = new ControllerManager.MutableClip(clip_);
+            var clip = new EasyAnimationClip(clip_);
             
             string prefix;
             if (fromObj == null) {
@@ -139,16 +139,20 @@ namespace VF.Builder {
             return AnimationUtility.GetObjectReferenceValue(avatar, binding, out output);
         }
         
-        private static string Join(params string[] paths) {
+        public static string Join(string a, string b, bool allowAdvancedOperators = true) {
+            var paths = new [] { a, b };
+            
             var ret = new List<string>();
             foreach (var path in paths) {
-                if (path.StartsWith("/")) {
+                if (path.StartsWith("/") && allowAdvancedOperators) {
                     ret.Clear();
                 }
                 foreach (var part in path.Split('/')) {
-                    if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1])) {
+                    if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1]) && allowAdvancedOperators) {
                         ret.RemoveAt(ret.Count - 1);
-                    } else if (part == "." || part == "") {
+                    } else if (part == "." && allowAdvancedOperators) {
+                        // omit this chunk
+                    } else if (part == "") {
                         // omit this chunk
                     } else {
                         ret.Add(part);

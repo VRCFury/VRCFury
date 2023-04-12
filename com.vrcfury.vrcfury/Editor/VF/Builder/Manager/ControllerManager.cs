@@ -330,10 +330,10 @@ namespace VF.Builder {
             ctrl.layers = layers;
         }
 
-        public void ForEachClip(Action<MutableClip> action) {
+        public void ForEachClip(Action<EasyAnimationClip> action) {
             foreach (var l in GetLayers()) {
                 AnimatorIterator.ForEachClip(l, clip => {
-                    action(new MutableClip(clip));
+                    action(new EasyAnimationClip(clip));
                 });
             }
         }

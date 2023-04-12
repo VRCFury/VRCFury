@@ -13,7 +13,34 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
-        public HashSet<EditorCurveBinding> forceRecordBindings = new HashSet<EditorCurveBinding>();
+
+        private HashSet<EditorCurveBinding> alreadySet = new HashSet<EditorCurveBinding>();
+        public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat = true) {
+            if (binding.type == typeof(Animator)) return;
+            if (alreadySet.Contains(binding)) return;
+            alreadySet.Add(binding);
+
+            if (isFloat) {
+                var exists = AnimationUtility.GetFloatValue(avatarObject, binding, out var value);
+                if (exists) {
+                    GetDefaultClip().SetFloatCurve(binding, ClipBuilder.OneFrame(value));
+                }
+            } else {
+                var exists = AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out var value);
+                if (exists) {
+                    GetDefaultClip().SetObjectCurve(binding, ClipBuilder.OneFrame(value));
+                }
+            }
+        }
+        
+        private EasyAnimationClip _defaultClip = null;
+        private EasyAnimationClip GetDefaultClip() {
+            if (_defaultClip == null) {
+                _defaultClip = new EasyAnimationClip(GetFx().NewClip("Defaults"));
+                allBuildersInRun.OfType<ObjectMoveBuilder>().First().AddAdditionalManagedClip(_defaultClip);
+            }
+            return _defaultClip;
+        }
 
         [FeatureBuilderAction(FeatureOrder.FixWriteDefaults)]
         public void Apply() {
@@ -73,70 +100,40 @@ namespace VF.Feature {
         }
         
         private void ApplyToAvatar(bool applyToUnmanagedLayers, bool useWriteDefaults) {
-            var missingStates = new List<string>();
             foreach (var controller in applyToUnmanagedLayers ? manager.GetAllUsedControllers() : manager.GetAllTouchedControllers()) {
                 var noopClip = controller.GetNoopClip();
-                AnimationClip defaultClip = null;
-                if (controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    defaultClip = controller.NewClip("Defaults " + controller.GetType());
-                    var defaultLayer = controller.NewLayer("Defaults", 0);
-                    defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
-                }
-
+                var recordDefaults = !useWriteDefaults && controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX;
                 foreach (var layer in controller.GetManagedLayers()) {
-                    ApplyToLayer(layer, defaultClip, noopClip, avatarObject, missingStates, useWriteDefaults);
+                    ApplyToLayer(layer, noopClip, useWriteDefaults, recordDefaults);
                 }
                 if (applyToUnmanagedLayers) {
                     foreach (var layer in controller.GetUnmanagedLayers()) {
-                        ApplyToLayer(layer, defaultClip, noopClip, avatarObject, missingStates, useWriteDefaults);
+                        ApplyToLayer(layer, noopClip, useWriteDefaults, recordDefaults);
                     }
                 }
             }
-            if (missingStates.Count > 0) {
-                Debug.LogWarning(missingStates.Count + " properties are animated, but do not exist on the avatar:\n\n" + string.Join("\n", missingStates));
+
+            var defaultClip = GetDefaultClip();
+            if (defaultClip.GetFloatBindings().Length > 0 || defaultClip.GetObjectBindings().Length > 0) {
+                var defaultLayer = GetFx().NewLayer("Defaults", 0);
+                defaultLayer.NewState("Defaults").WithAnimation(defaultClip.GetRaw());
             }
         }
 
         private void ApplyToLayer(
             AnimatorStateMachine layer,
-            AnimationClip defaultClip,
             AnimationClip noopClip,
-            GameObject baseObject,
-            List<string> missingStates,
-            bool useWriteDefaults
+            bool useWriteDefaults,
+            bool recordDefaults
         ) {
             // Record default values for things
-            if (defaultClip) {
-                var alreadySet = new HashSet<EditorCurveBinding>();
-                foreach (var b in AnimationUtility.GetCurveBindings(defaultClip)) alreadySet.Add(b);
-                foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(defaultClip)) alreadySet.Add(b);
+            if (recordDefaults) {
                 AnimatorIterator.ForEachClip(layer, clip => {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                        if (binding.type == typeof(Animator)) continue;
-                        if (alreadySet.Contains(binding)) continue;
-                        if (useWriteDefaults && !forceRecordBindings.Contains(binding)) continue;
-                        alreadySet.Add(binding);
-                        var exists = AnimationUtility.GetFloatValue(baseObject, binding, out var value);
-                        if (exists) {
-                            AnimationUtility.SetEditorCurve(defaultClip, binding, ClipBuilder.OneFrame(value));
-                        } else if (!binding.path.Contains("_ignored")) {
-                            missingStates.Add(
-                                $"{binding.path}:{binding.type.Name}:{binding.propertyName} in {clip.name} on layer {layer.name}");
-                        }
+                        RecordDefaultNow(binding, true);
                     }
-
                     foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                        if (alreadySet.Contains(binding)) continue;
-                        if (useWriteDefaults && !forceRecordBindings.Contains(binding)) continue;
-                        alreadySet.Add(binding);
-                        var exists = AnimationUtility.GetObjectReferenceValue(baseObject, binding, out var value);
-                        if (exists) {
-                            AnimationUtility.SetObjectReferenceCurve(defaultClip, binding,
-                                ClipBuilder.OneFrame(value));
-                        } else if (!binding.path.Contains("_ignored")) {
-                            missingStates.Add(
-                                $"{binding.path}:{binding.type.Name}:{binding.propertyName} in {clip.name} on layer {layer.name}");
-                        }
+                        RecordDefaultNow(binding, false);
                     }
                 });
             }

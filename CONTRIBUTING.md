@@ -36,3 +36,4 @@ For more information, please refer to <https://unlicense.org>
 
 * Morghus (Numerous setup prefabs)
 * GameGeek720 (Toggle enhancements for transitions and the local player)
+* Raphiiko (Global parameters for toggles)

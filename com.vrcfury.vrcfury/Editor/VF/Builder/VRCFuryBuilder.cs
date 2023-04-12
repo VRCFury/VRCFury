@@ -11,6 +11,7 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
+using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
