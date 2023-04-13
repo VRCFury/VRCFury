@@ -14,18 +14,17 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
 
-        private HashSet<EditorCurveBinding> alreadySet = new HashSet<EditorCurveBinding>();
         public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat = true) {
             if (binding.type == typeof(Animator)) return;
-            if (alreadySet.Contains(binding)) return;
-            alreadySet.Add(binding);
 
             if (isFloat) {
+                if (GetDefaultClip().GetFloatCurve(binding) != null) return;
                 var exists = AnimationUtility.GetFloatValue(avatarObject, binding, out var value);
                 if (exists) {
                     GetDefaultClip().SetFloatCurve(binding, ClipBuilder.OneFrame(value));
                 }
             } else {
+                if (GetDefaultClip().GetObjectCurve(binding) != null) return;
                 var exists = AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out var value);
                 if (exists) {
                     GetDefaultClip().SetObjectCurve(binding, ClipBuilder.OneFrame(value));
