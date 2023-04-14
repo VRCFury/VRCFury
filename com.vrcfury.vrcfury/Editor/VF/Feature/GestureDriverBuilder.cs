@@ -236,12 +236,15 @@ namespace VF.Feature {
                 if ((GestureDriver.Hand)handProp.enumValueIndex == GestureDriver.Hand.COMBO) {
                     w.Add(new Label("L") { style = { flexBasis = 10 }});
                     leftBox.style.flexGrow = 1;
+                    leftBox.style.flexShrink = 1;
                     w.Add(leftBox);
                     w.Add(new Label("R") { style = { flexBasis = 10 }});
                     rightBox.style.flexGrow = 1;
+                    rightBox.style.flexShrink = 1;
                     w.Add(rightBox);
                 } else {
                     leftBox.style.flexGrow = 1;
+                    leftBox.style.flexShrink = 1;
                     w.Add(leftBox);
                 }
 

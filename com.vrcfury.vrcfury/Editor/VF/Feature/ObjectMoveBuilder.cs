@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -9,6 +11,7 @@ namespace VF.Feature {
      * then fixing any animations that referenced those objects.
      */
     public class ObjectMoveBuilder : FeatureBuilder {
+        private List<Tuple<string, string>> redirects = new List<Tuple<string, string>>();
         private readonly List<EasyAnimationClip> additionalClips = new List<EasyAnimationClip>();
 
         public void Move(GameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {
@@ -18,30 +21,22 @@ namespace VF.Feature {
             if (newName != null)
                 obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);
-            RewriteAnimations(oldPath, newPath);
+            redirects.Add(Tuple.Create(oldPath, newPath));
         }
 
         public void AddDirectRewrite(GameObject oldObj, GameObject newObj) {
             var oldPath = clipBuilder.GetPath(oldObj);
             var newPath = clipBuilder.GetPath(newObj);
-            RewriteAnimations(oldPath, newPath);
+            redirects.Add(Tuple.Create(oldPath, newPath));
         }
 
         public void AddAdditionalManagedClip(EasyAnimationClip clip) {
             additionalClips.Add(clip);
         }
-
-        [FeatureBuilderAction]
-        public void Apply() {
-        }
-
-        private void RewriteAnimations(string from, string to) {
-            string RewritePath(string path) {
-                if (path.StartsWith(from + "/") || path == from) {
-                    path = to + path.Substring(from.Length);
-                }
-                return path;
-            }
+        
+        [FeatureBuilderAction(FeatureOrder.ObjectMoveBuilderFixAnimations)]
+        public void FixAnimations() {
+            if (redirects.Count == 0) return;
             
             var clips = new HashSet<EasyAnimationClip>();
             var masks = new HashSet<AvatarMask>();
@@ -82,17 +77,27 @@ namespace VF.Feature {
                         clip.SetObjectCurve(binding, null);
                     }
                 }
+            }
 
-                foreach (var mask in masks) {
-                    for (var i = 0; i < mask.transformCount; i++) {
-                        var oldPath = mask.GetTransformPath(i);
-                        var newPath = RewritePath(oldPath);
-                        if (oldPath != newPath) {
-                            mask.SetTransformPath(i, newPath);
-                        }
+            foreach (var mask in masks) {
+                for (var i = 0; i < mask.transformCount; i++) {
+                    var oldPath = mask.GetTransformPath(i);
+                    var newPath = RewritePath(oldPath);
+                    if (oldPath != newPath) {
+                        mask.SetTransformPath(i, newPath);
                     }
                 }
             }
+        }
+
+        private string RewritePath(string path) {
+            foreach (var redirect in redirects) {
+                var (from, to) = redirect;
+                if (path.StartsWith(from + "/") || path == from) {
+                    path = to + path.Substring(from.Length);
+                }
+            }
+            return path;
         }
     }
 }

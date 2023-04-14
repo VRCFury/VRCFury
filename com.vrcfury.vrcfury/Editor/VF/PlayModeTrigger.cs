@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -146,23 +147,45 @@ namespace VF {
             return obj.name.Contains("(ShadowClone)") || obj.name.Contains("(MirrorReflection)");
         }
 
+        private static void DestroyAllOfType(string typeStr, bool immediate = false) {
+            var type = ReflectionUtils.GetTypeFromAnyAssembly(typeStr);
+            if (type == null) return;
+            foreach (var runtime in Object.FindObjectsOfType(type)) {
+                Object.DestroyImmediate(runtime);
+            }
+        }
+
+        private static void ClearField(object obj, string fieldStr) {
+            var field = obj.GetType().GetField(fieldStr);
+            if (field == null) return;
+            var value = field.GetValue(obj);
+            if (value == null) return;
+            var clear = value.GetType().GetMethod("Clear");
+            if (clear == null) return;
+            clear.Invoke(value, new object[]{});
+        }
+
         private static void RestartAv3Emulator() {
             try {
                 var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator");
                 if (av3EmulatorType == null) av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
                 if (av3EmulatorType == null) return;
+                
                 Debug.Log("Restarting av3emulator ...");
+                
+                DestroyAllOfType("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime");
+                DestroyAllOfType("LyumaAv3Runtime");
+                DestroyAllOfType("Lyuma.Av3Emulator.Runtime.LyumaAv3Menu");
+                DestroyAllOfType("Lyuma.Av3Emulator.Runtime.GestureManagerAv3Menu");
+
                 var restartField = av3EmulatorType.GetField("RestartEmulator");
                 if (restartField == null) throw new Exception("Failed to find RestartEmulator field");
                 var emulators = Object.FindObjectsOfType(av3EmulatorType);
                 foreach (var emulator in emulators) {
+                    ClearField(emulator, "runtimes");
+                    ClearField(emulator, "forceActiveRuntimes");
+                    ClearField(emulator, "scannedAvatars");
                     restartField.SetValue(emulator, true);
-                }
-
-                var av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime");
-                if (av3RuntimeType == null) av3RuntimeType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
-                foreach (var runtime in Object.FindObjectsOfType(av3RuntimeType)) {
-                    Object.Destroy(runtime);
                 }
 
                 foreach (var root in GetRootObjects()) {
