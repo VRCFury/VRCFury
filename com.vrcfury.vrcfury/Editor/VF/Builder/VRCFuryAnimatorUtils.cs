@@ -44,11 +44,11 @@ public class VFAController {
     public VFABool NewBool(string name, bool def = false) {
         return new VFABool(NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def));
     }
-    public VFANumber NewFloat(string name, float def = 0) {
-        return new VFANumber(NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def));
+    public VFAFloat NewFloat(string name, float def = 0) {
+        return new VFAFloat(NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def));
     }
-    public VFANumber NewInt(string name, int def = 0) {
-        return new VFANumber(NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def));
+    public VFAInteger NewInt(string name, int def = 0) {
+        return new VFAInteger(NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def));
     }
     private AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
         var exists = Array.Find(ctrl.parameters, other => other.name == name);
@@ -142,7 +142,7 @@ public class VFAState {
         node.state.motion = motion;
         return this;
     }
-    public VFAState MotionTime(VFANumber param) {
+    public VFAState MotionTime(VFAFloat param) {
         node.state.timeParameterActive = true;
         node.state.timeParameter = param.Name();
         return this;
@@ -173,24 +173,24 @@ public class VFAState {
         Drives(param.Name(), local).value = value ? 1 : 0;
         return this;
     }
-    public VFAState Drives(VFANumber param, float value, bool local = false) {
+    public VFAState Drives(VFAInteger param, float value, bool local = false) {
         Drives(param.Name(), local).value = value;
         return this;
     }
-    public VFAState DrivesRandom(VFANumber param, float min, float max) {
+    public VFAState DrivesRandom(VFAInteger param, float min, float max) {
         var p = Drives(param.Name(), true);
         p.type = VRC_AvatarParameterDriver.ChangeType.Random;
         p.valueMin = min;
         p.valueMax = max;
         return this;
     }
-    public VFAState DrivesDelta(VFANumber param, float delta) {
+    public VFAState DrivesDelta(VFAInteger param, float delta) {
         var p = Drives(param.Name(), true);
         p.type = VRC_AvatarParameterDriver.ChangeType.Add;
         p.value = delta;
         return this;
     }
-    public VFAState DrivesCopy(VFANumber param, VFANumber source) {
+    public VFAState DrivesCopy(VFAInteger param, VFAInteger source) {
         var driver = GetDriver(true);
         var p = new VRC_AvatarParameterDriver.Parameter();
         p.name = param.Name();
@@ -260,8 +260,8 @@ public class VFABool : VFAParam {
         return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.IfNot, parameter = Name(), threshold = 0 });
     }
 }
-public class VFANumber : VFAParam {
-    public VFANumber(AnimatorControllerParameter param) : base(param) {}
+public class VFAFloat : VFAParam {
+    public VFAFloat(AnimatorControllerParameter param) : base(param) {}
 
     public VFACondition IsGreaterThan(float num) {
         return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Greater, parameter = Name(), threshold = num });
@@ -269,11 +269,22 @@ public class VFANumber : VFAParam {
     public VFACondition IsLessThan(float num) {
         return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Less, parameter = Name(), threshold = num });
     }
+}
+
+public class VFAInteger : VFAParam {
+    public VFAInteger(AnimatorControllerParameter param) : base(param) {}
+
     public VFACondition IsEqualTo(float num) {
         return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Equals, parameter = Name(), threshold = num });
     }
     public VFACondition IsNotEqualTo(float num) {
         return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.NotEqual, parameter = Name(), threshold = num });
+    }
+    public VFACondition IsGreaterThan(float num) {
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Greater, parameter = Name(), threshold = num });
+    }
+    public VFACondition IsLessThan(float num) {
+        return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Less, parameter = Name(), threshold = num });
     }
 }
 

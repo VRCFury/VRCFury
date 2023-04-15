@@ -185,7 +185,7 @@ namespace VF.Builder {
             control.value = value;
             control.icon = icon;
         }
-        public void NewMenuSlider(string path, VFANumber param, Texture2D icon = null) {
+        public void NewMenuSlider(string path, VFAFloat param, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
             var menuParam = new VRCExpressionsMenu.Control.Parameter {
@@ -194,7 +194,7 @@ namespace VF.Builder {
             control.subParameters = new[]{menuParam};
             control.icon = icon;
         }
-        public void NewMenuPuppet(string path, VFANumber x, VFANumber y, Texture2D icon = null) {
+        public void NewMenuPuppet(string path, VFAFloat x, VFAFloat y, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
             var menuParamX = new VRCExpressionsMenu.Control.Parameter();

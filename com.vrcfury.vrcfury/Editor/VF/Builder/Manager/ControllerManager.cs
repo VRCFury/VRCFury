@@ -199,7 +199,7 @@ namespace VF.Builder {
             }
             return GetController().NewBool(name, def || defTrueInEditor);
         }
-        public VFANumber NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
+        public VFAInteger NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
@@ -212,7 +212,7 @@ namespace VF.Builder {
             }
             return GetController().NewInt(name, def);
         }
-        public VFANumber NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
+        public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
@@ -247,19 +247,19 @@ namespace VF.Builder {
         public VFACondition Never() {
             return True().IsFalse();
         }
-        public VFANumber GestureLeft() {
+        public VFAInteger GestureLeft() {
             return NewInt("GestureLeft", usePrefix: false);
         }
-        public VFANumber GestureRight() {
+        public VFAInteger GestureRight() {
             return NewInt("GestureRight", usePrefix: false);
         }
-        public VFANumber GestureLeftWeight() {
+        public VFAFloat GestureLeftWeight() {
             return NewFloat("GestureLeftWeight", usePrefix: false);
         }
-        public VFANumber GestureRightWeight() {
+        public VFAFloat GestureRightWeight() {
             return NewFloat("GestureRightWeight", usePrefix: false);
         }
-        public VFANumber Viseme() {
+        public VFAInteger Viseme() {
             return NewInt("Viseme", usePrefix: false);
         }
         public VFABool IsLocal() {

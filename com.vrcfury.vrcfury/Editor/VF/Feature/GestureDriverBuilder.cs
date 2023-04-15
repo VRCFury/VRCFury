@@ -122,8 +122,8 @@ namespace VF.Feature {
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
         }
 
-        private VFANumber leftWeightParam;
-        private VFANumber rightWeightParam;
+        private VFAFloat leftWeightParam;
+        private VFAFloat rightWeightParam;
         private void MakeWeightParams() {
             if (leftWeightParam != null) return;
             var fx = GetFx();
@@ -134,7 +134,7 @@ namespace VF.Feature {
             leftWeightParam = MakeWeightLayer("left", GestureLeftWeight, GestureLeftCondition);
             rightWeightParam = MakeWeightLayer("right", GestureRightWeight, GestureRightCondition);
         }
-        private VFANumber MakeWeightLayer(string name, VFANumber input, VFACondition whenEnabled) {
+        private VFAFloat MakeWeightLayer(string name, VFAFloat input, VFACondition whenEnabled) {
             var fx = GetFx();
             var layer = fx.NewLayer("GestureWeight_" + name);
             var output = fx.NewFloat(input.Name() + "_cached");

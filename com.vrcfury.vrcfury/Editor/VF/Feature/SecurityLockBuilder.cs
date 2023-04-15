@@ -64,7 +64,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         
         remote.TransitionsTo(entry).When(fx.IsLocal().IsTrue());
         
-        var digitParams = new List<VFANumber>();
+        var digitParams = new List<VFAInteger>();
         for (var i = 0; i < numDigitSlots; i++) {
             digitParams.Add(fx.NewInt("SecurityDigit" + i));
         }
