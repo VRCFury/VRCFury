@@ -116,6 +116,9 @@ namespace VF.Feature {
             if (defaultClip.GetFloatBindings().Length > 0 || defaultClip.GetObjectBindings().Length > 0) {
                 var defaultLayer = GetFx().NewLayer("Defaults", 0);
                 defaultLayer.NewState("Defaults").WithAnimation(defaultClip.GetRaw());
+                AnimatorIterator.ForEachState(defaultLayer.GetRawStateMachine(), state => {
+                    state.writeDefaultValues = useWriteDefaults;
+                });
             }
         }
 
