@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -113,6 +114,42 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
         return layer.NewState(stateName);
+		
+    private void CreateSlider() {
+        var fx = GetFx();
+        var layerName = model.name;
+        var layer = fx.NewLayer(layerName);
+
+        var off = layer.NewState("Off");
+        var on = layer.NewState("On");
+        var x = fx.NewFloat(
+            model.name,
+            synced: true,
+            saved: model.saved,
+            def: model.defaultOn ? model.defaultSliderValue : 0
+        );
+        manager.GetMenu().NewMenuSlider(
+            model.name,
+            x,
+            icon: model.enableIcon ? model.icon : null
+        );
+
+        var clip = LoadState("On", model.state);
+        if (ClipBuilder.IsStaticMotion(clip)) {
+            var tree = fx.NewBlendTree("On Tree");
+            tree.blendType = BlendTreeType.Simple1D;
+            tree.useAutomaticThresholds = false;
+            tree.blendParameter = x.Name();
+            tree.AddChild(fx.GetNoopClip(), 0);
+            tree.AddChild(clip, 1);
+            on.WithAnimation(tree);
+        } else {
+            on.WithAnimation(clip).MotionTime(x);
+        }
+
+        var isOn = x.IsGreaterThan(0);
+        off.TransitionsTo(on).When(isOn);
+        on.TransitionsTo(off).When(isOn.Not());
     }
 
     [FeatureBuilderAction]
@@ -125,19 +162,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (model.slider) {
-            var stops = new List<Puppet.Stop> {
-                new Puppet.Stop(1, 0, model.state)
-            };
-            var puppet = new Puppet {
-                name = model.name,
-                saved = model.saved,
-                slider = true,
-                stops = stops,
-                defaultX = model.slider && model.defaultOn ? model.defaultSliderValue : 0,
-                enableIcon = model.enableIcon,
-                icon = model.icon,
-            };
-            addOtherFeature(puppet);
+            CreateSlider();
             return;
         }
 

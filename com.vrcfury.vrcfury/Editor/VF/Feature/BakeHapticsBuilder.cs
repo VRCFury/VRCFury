@@ -94,7 +94,7 @@ namespace VF.Feature {
 
             manager.GetMenu().SetIconGuid(optionsFolder, "16e0846165acaa1429417e757c53ef9b");
 
-            var autoSockets = new List<Tuple<string, VFABool, VFANumber>>();
+            var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
             var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
             foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
                 fakeHead.MarkEligible(c.gameObject);

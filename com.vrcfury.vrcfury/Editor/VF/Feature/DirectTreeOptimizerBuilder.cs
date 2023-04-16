@@ -30,11 +30,6 @@ namespace VF.Feature {
                     debugLog.Add($"{layer.name} - {msg}");
                 }
 
-                if (i == 0) {
-                    AddDebug("Not optimizing (base layer)");
-                    continue;
-                }
-
                 var weight = fx.GetWeight(layer);
                 if (!Mathf.Approximately(weight, 1)) {
                     AddDebug($"Not optimizing (layer weight is {weight}, not 1)");
@@ -266,6 +261,7 @@ namespace VF.Feature {
                 usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip).Where(c => !c.path.Contains("_ignored")));
                 usedBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
             });
+            usedBindings.RemoveWhere(binding => binding.path == "_ignored");
             return usedBindings;
         }
 
@@ -283,6 +279,7 @@ namespace VF.Feature {
             if (cond.mode == AnimatorConditionMode.NotEqual && Mathf.Approximately(cond.threshold, 0)) return EffectiveCondition.WHEN_1;
             if (cond.mode == AnimatorConditionMode.Greater && Mathf.Approximately(cond.threshold, 0)) return EffectiveCondition.WHEN_1;
             if (cond.mode == AnimatorConditionMode.Less && Mathf.Approximately(cond.threshold, 1)) return EffectiveCondition.WHEN_0;
+            if (cond.mode == AnimatorConditionMode.Less && Mathf.Approximately(cond.threshold, 0)) return EffectiveCondition.WHEN_0;
             return EffectiveCondition.INVALID;
         }
 

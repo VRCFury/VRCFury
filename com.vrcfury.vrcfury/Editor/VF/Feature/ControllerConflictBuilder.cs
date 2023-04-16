@@ -54,6 +54,14 @@ namespace VF.Feature {
                         if (b is VRCPlayableLayerControl playableControl) {
                             var drivesTypeName = VRCFEnumUtils.GetName(playableControl.layer);
                             var drivesType = VRCFEnumUtils.Parse<VRCAvatarDescriptor.AnimLayerType>(drivesTypeName);
+                            
+                            // In theory, this should probably work for all types of controllers, but for some reason it doesn't.
+                            // (see Hailey avatar, Gesture Controller, SB_FX Weight layer)
+                            // For now, only worry about things driving action
+                            if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action) {
+                                return true;
+                            }
+
                             if (!ownersByController.TryGetValue(drivesType, out var uniqueOwnersOnType)) {
                                 // They're driving a controller that doesn't exist?
                                 // uhh... keep it I guess

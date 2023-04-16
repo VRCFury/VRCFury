@@ -67,7 +67,7 @@ namespace VF.Builder {
             var changed = false;
             Iterate(serialized, prop => {
                 if (prop.propertyType != SerializedPropertyType.ObjectReference) return;
-                var oldValue = prop.objectReferenceValue;
+                var oldValue = GetObjectReferenceValueSafe(prop);
                 var newValue = RewriteObject(oldValue, rewrites);
                 if (oldValue == newValue) return;
                 prop.objectReferenceValue = newValue;
@@ -77,6 +77,11 @@ namespace VF.Builder {
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 VRCFuryEditorUtils.MarkDirty(obj);
             }
+        }
+
+        /** For some reason, unity occasionally breaks and return non-Objects from objectReferenceValue somehow. */
+        private static Object GetObjectReferenceValueSafe(SerializedProperty prop) {
+            return prop.objectReferenceValue as object as Object;
         }
 
         public T CopyRecursive<T>(T obj, string saveFilename = null, Object saveParent = null) where T : Object {
@@ -166,8 +171,9 @@ namespace VF.Builder {
                 if (!enter) continue;
                 Iterate(new SerializedObject(o), prop => {
                     if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                        if (prop.objectReferenceValue != null) {
-                            stack.Push(prop.objectReferenceValue);
+                        var objectReferenceValue = GetObjectReferenceValueSafe(prop);
+                        if (objectReferenceValue != null) {
+                            stack.Push(objectReferenceValue);
                         }
                     }
                 });
