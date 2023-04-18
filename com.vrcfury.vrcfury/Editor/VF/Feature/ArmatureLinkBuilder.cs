@@ -58,6 +58,7 @@ namespace VF.Feature {
                             .Select(boneAndBindPose => {
                                 var bone = boneAndBindPose.a;
                                 var bindPose = boneAndBindPose.b;
+                                if (bone == null) return bindPose;
                                 var mergedTo = links.mergeBones.Where(m => m.Item1 == bone.gameObject).Select(m => m.Item2).FirstOrDefault();
                                 if (!mergedTo) return bindPose;
                                 if (keepBoneOffsets) {
