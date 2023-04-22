@@ -28,6 +28,14 @@ namespace VF.Updater {
 
         public static async Task CloseScenes() {
             await AsyncUtils.InMainThread(() => {
+                foreach (var scene in GetScenes()) {
+                    if (string.IsNullOrEmpty(scene.path)) {
+                        EditorSceneManager.SaveScene(scene, AssetDatabase.GenerateUniqueAssetPath("Assets/Scene.unity"));
+                    }
+                }
+
+                EditorSceneManager.SaveOpenScenes();
+                
                 var openPaths = new List<string>();
                 var activeScene = SceneManager.GetActiveScene();
                 if (activeScene.path != UpdateScenePath) openPaths.Add(activeScene.path);
@@ -40,14 +48,6 @@ namespace VF.Updater {
                 }
                 
                 Debug.Log("VRCFury is closing loaded scenes");
-                
-                foreach (var scene in GetScenes()) {
-                    if (string.IsNullOrEmpty(scene.path)) {
-                        EditorSceneManager.SaveScene(scene, AssetDatabase.GenerateUniqueAssetPath("Assets/Scene.unity"));
-                    }
-                }
-
-                EditorSceneManager.SaveOpenScenes();
 
                 var updateScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
 

@@ -133,6 +133,7 @@ namespace VF {
             if (oneChanged) {
                 RestartAv3Emulator();
                 RestartGestureManager();
+                RestartAudiolink();
             }
         }
 
@@ -147,7 +148,7 @@ namespace VF {
             return obj.name.Contains("(ShadowClone)") || obj.name.Contains("(MirrorReflection)");
         }
 
-        private static void DestroyAllOfType(string typeStr, bool immediate = false) {
+        private static void DestroyAllOfType(string typeStr) {
             var type = ReflectionUtils.GetTypeFromAnyAssembly(typeStr);
             if (type == null) return;
             foreach (var runtime in Object.FindObjectsOfType(type)) {
@@ -230,6 +231,18 @@ namespace VF {
                     " Report this on https://vrcfury.com/discord\n\n" + e.Message,
                     "Ok"
                 );
+            }
+        }
+        
+        private static void RestartAudiolink() {
+            var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
+            if (alComponentType == null) return;
+            foreach (var gm in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
+                Debug.Log("Restarting AudioLink ...");
+                if (gm.gameObject.activeSelf) {
+                    gm.gameObject.SetActive(false);
+                    gm.gameObject.SetActive(true);
+                }
             }
         }
     }
