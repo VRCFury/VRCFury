@@ -114,6 +114,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
         return layer.NewState(stateName);
+    }
 		
     private void CreateSlider() {
         var fx = GetFx();
@@ -151,6 +152,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         off.TransitionsTo(on).When(isOn);
         on.TransitionsTo(off).When(isOn.Not());
     }
+
 
     [FeatureBuilderAction]
     public void Apply() {
