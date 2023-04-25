@@ -146,6 +146,10 @@ namespace VF.Builder {
         // and other things that unity usually logs errors from when using
         // Object.Instantiate
         public static T SafeInstantiate<T>(T original) where T : Object {
+            if (original is Material || original is Mesh) {
+                return Object.Instantiate(original);
+            }
+
             T copy;
             if (original is ScriptableObject) {
                 copy = ScriptableObject.CreateInstance(original.GetType()) as T;
@@ -274,5 +278,16 @@ namespace VF.Builder {
 
         private bool IsType(Object obj, Type[] types) =>
             types.Any(type => type.IsInstanceOfType(obj));
+        
+        
+        private readonly HashSet<Object> mutableObjects = new HashSet<Object>();
+        public T MakeMutable<T>(T original) where T : Object {
+            if (mutableObjects.Contains(original)) return original;
+            var copy = SafeInstantiate(original);
+            copy.name = original.name;
+            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "vrcf_" + copy.name);
+            mutableObjects.Add(copy);
+            return copy;
+        }
     }
 }

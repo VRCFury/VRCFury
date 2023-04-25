@@ -124,7 +124,8 @@ namespace VF {
                     if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        VRCFuryHapticPlugEditor.Bake(o, onlySenders: true, tmpDir: tmpDir);
+                        var mutableManager = new MutableManager(tmpDir);
+                        VRCFuryHapticPlugEditor.Bake(o, onlySenders: true, mutableManager: mutableManager);
                     });
                     Object.DestroyImmediate(o);
                 }

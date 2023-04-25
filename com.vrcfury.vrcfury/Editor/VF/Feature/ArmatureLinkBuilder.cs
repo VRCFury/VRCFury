@@ -51,10 +51,11 @@ namespace VF.Feature {
                         .Where(skin =>
                             bonesInProp.Contains(skin.rootBone) || skin.bones.Any(b => bonesInProp.Contains(b)));
                     foreach (var skin in skinsUsingBonesInProp) {
-                        var meshCopy = Object.Instantiate(skin.sharedMesh);
-                        VRCFuryAssetDatabase.SaveAsset(meshCopy, tmpDir, meshCopy.name);
+                        skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh);
+                        VRCFuryEditorUtils.MarkDirty(skin);
 
-                        meshCopy.bindposes = Enumerable.Zip(skin.bones, meshCopy.bindposes, (a,b) => (a,b))
+                        var mesh = skin.sharedMesh;
+                        mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
                             .Select(boneAndBindPose => {
                                 var bone = boneAndBindPose.a;
                                 var bindPose = boneAndBindPose.b;
@@ -69,9 +70,7 @@ namespace VF.Feature {
                                 return bindPose;
                             }) 
                             .ToArray();
-                        VRCFuryEditorUtils.MarkDirty(meshCopy);
-                        skin.sharedMesh = meshCopy;
-                        VRCFuryEditorUtils.MarkDirty(skin);
+                        VRCFuryEditorUtils.MarkDirty(mesh);
                     }
                 }
 
