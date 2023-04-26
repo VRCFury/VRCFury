@@ -76,6 +76,7 @@ namespace VF.Feature {
                 if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed")
                     || rewrittenParams.Contains(physbone.parameter + "_Angle")
                     || rewrittenParams.Contains(physbone.parameter + "_Stretch")
+                    || rewrittenParams.Contains(physbone.parameter + "_Squish")
                     || rewrittenParams.Contains(physbone.parameter + "_IsPosed")
                 ) {
                     physbone.parameter = RewriteParamName(physbone.parameter);
