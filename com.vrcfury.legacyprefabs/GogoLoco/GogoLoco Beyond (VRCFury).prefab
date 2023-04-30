@@ -98,7 +98,6 @@ MonoBehaviour:
         globalParams:
         - Go/Float
         - Go/Stationary
-        - Go/Pose
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: 
