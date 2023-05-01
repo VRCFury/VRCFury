@@ -185,7 +185,10 @@ namespace VF.Feature {
                         case VRCAvatarParameterDriver oldB: {
                             foreach (var p in oldB.parameters) {
                                 p.name = RewriteParamName(p.name);
-                                p.source = RewriteParamName(p.source);
+                                var sourceField = p.GetType().GetField("source");
+                                if (sourceField != null) {
+                                    sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
+                                }
                             }
                             break;
                         }
