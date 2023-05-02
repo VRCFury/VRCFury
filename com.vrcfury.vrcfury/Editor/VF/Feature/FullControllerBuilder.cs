@@ -76,6 +76,7 @@ namespace VF.Feature {
                 if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed")
                     || rewrittenParams.Contains(physbone.parameter + "_Angle")
                     || rewrittenParams.Contains(physbone.parameter + "_Stretch")
+                    || rewrittenParams.Contains(physbone.parameter + "_Squish")
                     || rewrittenParams.Contains(physbone.parameter + "_IsPosed")
                 ) {
                     physbone.parameter = RewriteParamName(physbone.parameter);
@@ -184,7 +185,10 @@ namespace VF.Feature {
                         case VRCAvatarParameterDriver oldB: {
                             foreach (var p in oldB.parameters) {
                                 p.name = RewriteParamName(p.name);
-                                p.source = RewriteParamName(p.source);
+                                var sourceField = p.GetType().GetField("source");
+                                if (sourceField != null) {
+                                    sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
+                                }
                             }
                             break;
                         }

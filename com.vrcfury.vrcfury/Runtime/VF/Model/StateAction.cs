@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace VF.Model.StateAction {
     [Serializable]
@@ -36,6 +37,12 @@ namespace VF.Model.StateAction {
         public GuidAnimationClip clip;
     }
 
+    [Serializable]
+    public class ShaderInventoryAction : Action {
+        public Renderer renderer;
+        public int slot = 1;
+    }
+    
     [Serializable]
     public class FlipbookAction : Action {
         public GameObject obj;

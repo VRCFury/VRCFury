@@ -7,6 +7,8 @@ using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
+using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
@@ -156,6 +158,25 @@ namespace VF.Feature.Base {
                                 ClipBuilder.OneFrame(frameAnimNum));
                         }
                         break;
+                    case ShaderInventoryAction shaderInventoryAction: {
+                        var renderer = shaderInventoryAction.renderer;
+                        if (renderer != null) {
+                            var propName = $"_InventoryItem{shaderInventoryAction.slot:D2}Animated";
+                            renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
+                                if (!mat.HasProperty(propName)) return mat;
+                                mat = mutableManager.MakeMutable(mat);
+                                mat.SetFloat(propName, 0);
+                                return mat;
+                            }).ToArray();
+                            VRCFuryEditorUtils.MarkDirty(renderer);
+                            clip.SetCurve(
+                                clipBuilder.GetPath(renderer.gameObject),
+                                renderer.GetType(),
+                                $"material.{propName}",
+                                ClipBuilder.OneFrame(1));
+                        }
+                        break;
+                    }
                     case AnimationClipAction clipAction:
                         AnimationClip clipActionClip = clipAction.clip;
                         if (clipActionClip && clipActionClip != firstClip) {
@@ -233,5 +254,9 @@ namespace VF.Feature.Base {
 
     public abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
         public ModelType model;
+    }
+    
+    public abstract class ComponentBuilder<ComponentType> : FeatureBuilder where ComponentType : VRCFuryComponent {
+        public ComponentType component;
     }
 }

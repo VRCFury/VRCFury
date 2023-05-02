@@ -81,8 +81,7 @@ namespace VF.Feature {
                     .Select(id => new SavedBlendshape(mesh, id))
                     .ToArray();
 
-                var meshCopy = Object.Instantiate(mesh);
-                VRCFuryAssetDatabase.SaveAsset(meshCopy, tmpDir, "bsopt_" + meshCopy.name);
+                var meshCopy = mutableManager.MakeMutable(mesh);
                 meshCopy.ClearBlendShapes();
                 
                 for (var id = 0; id < blendshapeCount; id++) {

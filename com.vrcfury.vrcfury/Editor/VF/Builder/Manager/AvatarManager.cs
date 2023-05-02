@@ -129,11 +129,11 @@ namespace VF.Builder {
                 RebuildDebugHashes(c);
             }
             
-            // The VRCSDK usually does this before the avatar is built
+            // The VRCSDK usually does this before the avatar is built in VRCAvatarDescriptorEditor3AnimLayerInit
             var layers = avatar.baseAnimationLayers;
             for (var i = 0; i < layers.Length; i++) {
                 var layer = layers[i];
-                if (layer.type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                if (layer.type == VRCAvatarDescriptor.AnimLayerType.Gesture || layer.type == VRCAvatarDescriptor.AnimLayerType.FX) {
                     var c = layer.animatorController as AnimatorController;
                     if (c && c.layers.Length > 0) {
                         layer.mask = c.layers[0].avatarMask;

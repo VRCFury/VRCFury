@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
@@ -195,7 +196,7 @@ namespace VF.Inspector {
             return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug pen, List<string> usedNames = null, bool onlySenders = false, string tmpDir = null) {
+        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug pen, List<string> usedNames = null, bool onlySenders = false, MutableManager mutableManager = null) {
             var obj = pen.gameObject;
             HapticUtils.RemoveTPSSenders(obj);
 
@@ -268,10 +269,10 @@ namespace VF.Inspector {
                 HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
             }
             
-            if (pen.configureTps && tmpDir != null) {
+            if (pen.configureTps && mutableManager != null) {
                 var configuredOne = false;
                 foreach (var renderer in renderers) {
-                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, tmpDir, worldLength, pen.configureTpsMask);
+                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager);
                     if (newRenderer) configuredOne = true;
                 }
 

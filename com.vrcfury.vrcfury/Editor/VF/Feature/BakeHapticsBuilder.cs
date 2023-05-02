@@ -34,7 +34,7 @@ namespace VF.Feature {
             var objectsToForceEnable = new HashSet<GameObject>();
             
             foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
-                var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, tmpDir: tmpDir);
+                var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, mutableManager: mutableManager);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderer, worldLength, worldRadius) = bakeInfo;
