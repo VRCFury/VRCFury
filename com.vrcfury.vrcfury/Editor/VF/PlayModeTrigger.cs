@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using BestHTTP.SecureProtocol.Org.BouncyCastle.Math.EC.Multiplier;
 using UnityEditor;
 using UnityEngine;
@@ -13,6 +14,7 @@ using VF.Component;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
+using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
@@ -132,6 +134,7 @@ namespace VF {
             }
 
             if (oneChanged) {
+                RestartVrcsdk();
                 RestartAv3Emulator();
                 RestartGestureManager();
                 RestartAudiolink();
@@ -165,6 +168,41 @@ namespace VF {
             var clear = value.GetType().GetMethod("Clear");
             if (clear == null) return;
             clear.Invoke(value, new object[]{});
+        }
+
+        private static void RestartVrcsdk() {
+            try {
+                var initClass = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Avatars.AvatarDynamicsSetup");
+                if (initClass == null) return;
+                var initTrigger = initClass.GetMethod("Trigger_OnInitialize",
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                if (initTrigger == null) return;
+                var initPhysBone = initClass.GetMethod("PhysBone_OnInitialize",
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                if (initPhysBone == null) return;
+                
+                Debug.Log($"Restarting VRCSDK components ...");
+
+                foreach (var receiver in Object.FindObjectsOfType<ContactReceiver>()) {
+                    receiver.paramAccess = null;
+                    initTrigger.Invoke(null, new object[] { receiver });
+                }
+                foreach (var physbone in Object.FindObjectsOfType<VRCPhysBoneBase>()) {
+                    physbone.param_Angle = null;
+                    physbone.param_Stretch = null;
+                    physbone.param_IsGrabbed = null;
+                    initPhysBone.Invoke(null, new object[] { physbone });
+                }
+            } catch (Exception e) {
+                Debug.LogException(e);
+                EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    "VRCFury was unable to reload the VRCSDK after making changes to the avatar." +
+                    " Because of this, testing in play mode may not be 100% correct." +
+                    " Report this on https://vrcfury.com/discord\n\n" + e.Message,
+                    "Ok"
+                );
+            }
         }
 
         private static void RestartAv3Emulator() {
