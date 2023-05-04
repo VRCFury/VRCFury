@@ -6,6 +6,7 @@ import tmp from 'tmp-promise';
 import { spawn } from 'promisify-child-process';
 
 const versionJson = await readJson('../versions/updates.json');
+const vccJson = await readJson('../versions/vcc.json');
 await rmdir('dist');
 await fs.mkdir('dist');
 
@@ -28,7 +29,7 @@ for (const dir of await fs.readdir('.')) {
         await writeJson(packageJsonPath, json);
         if ((await md5Dir(dir)) === existing.hash) {
             console.log("Hash already matches, skipping ...");
-            continue;
+            if (name !== 'com.vrcfury.vrcfury') continue;
         }
     }
 
@@ -52,6 +53,18 @@ for (const dir of await fs.readdir('.')) {
     existing.latestUpmTargz = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
     console.log(`Adding to version repository with version ${version}`);
 
+    if (name === 'com.vrcfury.vrcfury') {
+        let existingVcc = vccJson.packages[name];
+        if (!existingVcc) {
+            existingVcc = vccJson.packages[name] = {
+                versions: {}
+            };
+        }
+        existingVcc.versions = {};
+        existingVcc.versions[version] = json;
+        existingVcc.url = existing.latestUpmTargz;
+    }
+
     await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit" });
     await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit" });
     await spawn('git', [ 'commit', '-m', `${json.displayName} v${version}`, packageJsonPath ], { stdio: "inherit" });
@@ -70,6 +83,7 @@ for (const dir of await fs.readdir('.')) {
 }
 
 await writeJson('../versions/updates.json', versionJson);
+await writeJson('../versions/vcc.json', vccJson);
 
 function checkFileExists(file) {
     return fs.access(file, fs.constants.F_OK)
