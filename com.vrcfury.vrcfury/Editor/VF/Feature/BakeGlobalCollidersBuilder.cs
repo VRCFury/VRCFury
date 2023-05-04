@@ -76,7 +76,7 @@ namespace VF.Feature {
                     // It's a sphere
                     finger.transform = childObj.transform;
                     finger.height = 0;
-                } else {
+                } else { 
                     // It's a capsule
                     childObj.transform.localPosition = new Vector3(0, 0, -globalContact.height / 2);
                     var directionObj = new GameObject("Direction");
