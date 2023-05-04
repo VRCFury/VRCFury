@@ -52,6 +52,8 @@ for (const dir of await fs.readdir('.')) {
     existing.latestUpmTargz = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
     console.log(`Adding to version repository with version ${version}`);
 
+    await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit" });
+    await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit" });
     await spawn('git', [ 'commit', '-m', `${json.displayName} v${version}`, packageJsonPath ], { stdio: "inherit" });
     await spawn('git', [ 'tag', tagName ], { stdio: "inherit" });
     await spawn('git', [ 'push', tagName ], { stdio: "inherit" });
