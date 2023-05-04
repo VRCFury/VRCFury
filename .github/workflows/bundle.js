@@ -31,7 +31,7 @@ for (const dir of await fs.readdir('.')) {
         await writeJson(packageJsonPath, json);
         if ((await md5Dir(dir)) === existing.hash) {
             console.log("Hash already matches, skipping ...");
-            if (name !== "com.vrcfury.vrcfury") continue;
+            continue;
         }
     }
 
@@ -72,7 +72,7 @@ for (const dir of await fs.readdir('.')) {
         const vccPackage = JSON.parse(JSON.stringify(json));
         vccPackage.url = outputZipUrl;
         existingVcc.versions[version] = vccPackage;
-    } 
+    }
 
     await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit" });
     await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit" });
