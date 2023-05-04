@@ -60,17 +60,31 @@ namespace VF.Feature {
                 var setFinger = fingers[i].Item3;
                 finger.isMirrored = false;
                 finger.state = VRCAvatarDescriptor.ColliderConfig.State.Custom;
-                // We can't make this height customizable because vrchat does its own weird calculations at runtime,
-                // replacing this value with something to do with the distance between the current object and the parent.
-                finger.height = 0;
                 finger.position = Vector3.zero;
                 finger.radius = globalContact.radius;
                 finger.rotation = Quaternion.identity;
-                // Because vrchat recalculates the capsule length based on distance between child and parent,
-                // we place the collider on an identical child object, essentially ensuring the capsule height is 0 (sphere)
+
+                // Vrchat places the capsule for fingers in a very strange place, but essentially it will:
+                // If collider length is 0, it will be a sphere centered on the set transform
+                // If colllider length < radius*2, it will be a sphere in a weird in-between location
+                // If collider length >= radius*2, it will be a capsule with one end attached to the set transform's parent,
+                //   facing the direction of the set transform.
+                
                 var childObj = new GameObject("GlobalContact");
                 childObj.transform.SetParent(target, false);
-                finger.transform = childObj.transform;
+                if (globalContact.height <= globalContact.radius * 2) {
+                    // It's a sphere
+                    finger.transform = childObj.transform;
+                    finger.height = 0;
+                } else {
+                    // It's a capsule
+                    childObj.transform.localPosition = new Vector3(0, 0, -globalContact.height / 2);
+                    var directionObj = new GameObject("Direction");
+                    directionObj.transform.SetParent(childObj.transform, false);
+                    directionObj.transform.localPosition = new Vector3(0, 0, 0.0001f);
+                    finger.transform = directionObj.transform;
+                    finger.height = globalContact.height;
+                }
                 setFinger(finger);
                 i++;
             }
