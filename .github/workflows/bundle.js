@@ -29,7 +29,7 @@ for (const dir of await fs.readdir('.')) {
         await writeJson(packageJsonPath, json);
         if ((await md5Dir(dir)) === existing.hash) {
             console.log("Hash already matches, skipping ...");
-            if (name !== 'com.vrcfury.vrcfury') continue;
+            continue;
         }
     }
 
