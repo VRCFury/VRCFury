@@ -69,9 +69,9 @@ for (const dir of await fs.readdir('.')) {
             };
         }
         existingVcc.versions = {};
-        const vccJson = JSON.parse(JSON.stringify(json));;
-        vccJson.url = outputZipUrl;
-        existingVcc.versions[version] = vccJson;
+        const vccPackage = JSON.parse(JSON.stringify(json));
+        vccPackage.url = outputZipUrl;
+        existingVcc.versions[version] = vccPackage;
     }
 
     await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit" });
