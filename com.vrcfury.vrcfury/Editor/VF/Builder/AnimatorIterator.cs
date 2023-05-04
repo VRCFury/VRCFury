@@ -103,6 +103,32 @@ namespace VF.Builder {
                 }
             }
         }
+        
+        public static void ReplaceClips(AnimatorController controller, Func<AnimationClip, AnimationClip> replace) {
+            foreach (var layer in controller.layers) {
+                ForEachState(layer.stateMachine, state => {
+                    var motions = new Stack<(Motion, Func<Motion,Motion>)>();
+                    motions.Push((state.motion, m => state.motion = m));
+                    while (motions.Count > 0) {
+                        var (motion, setMotion) = motions.Pop();
+                        if (motion == null) continue;
+                        switch (motion) {
+                            case AnimationClip clip:
+                                setMotion(replace(clip));
+                                break;
+                            case BlendTree tree:
+                                var children = tree.children;
+                                for (var i = 0; i < children.Length; i++) {
+                                    var childNum = i;
+                                    var child = children[childNum];
+                                    motions.Push((child.motion, m => child.motion = m));
+                                }
+                                break;
+                        }
+                    }
+                });
+            }
+        }
 
         public static void ForEachClip(AnimatorStateMachine root, Action<AnimationClip> action) {
             action = NoDupesWrapper(action);

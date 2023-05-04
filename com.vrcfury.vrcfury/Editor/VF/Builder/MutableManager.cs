@@ -15,7 +15,7 @@ namespace VF.Builder {
         private string tmpDir;
 
         private static readonly Type[] typesToMakeMutable = {
-            typeof(AnimatorController),
+            typeof(RuntimeAnimatorController),
 
             // Animator Controller internals
             typeof(AnimatorStateMachine),
@@ -84,7 +84,7 @@ namespace VF.Builder {
             return prop.objectReferenceValue as object as Object;
         }
 
-        public T CopyRecursive<T>(T obj, string saveFilename = null, Object saveParent = null) where T : Object {
+        public T CopyRecursive<T>(T obj, string saveFilename = null, Object saveParent = null, bool addPrefix = true) where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
@@ -106,7 +106,7 @@ namespace VF.Builder {
                 } else {
                     if (IsType(copy, hiddenTypes)) {
                         copy.hideFlags |= HideFlags.HideInHierarchy;
-                    } else {
+                    } else if (addPrefix) {
                         copy.name = $"{obj.name}/{original.name}";
                     }
                     AssetDatabase.AddObjectToAsset(copy, saveParent);
