@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import fsPlain from 'node:fs';
 import tar from 'tar';
 import hasha from 'hasha';
 import semver from 'semver';
@@ -128,7 +129,7 @@ async function createTar(dir, outputFilename) {
     }, await fs.readdir(dir));
 }
 async function createZip(dir, outputFilename) {
-    const output = fs.createWriteStream(outputFilename);
+    const output = fsPlain.createWriteStream(outputFilename);
     const archive = archiver('zip', {
         zlib: { level: 9 } // Sets the compression level.
     });
