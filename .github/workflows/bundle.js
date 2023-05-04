@@ -56,7 +56,7 @@ for (const dir of await fs.readdir('.')) {
     await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit" });
     await spawn('git', [ 'commit', '-m', `${json.displayName} v${version}`, packageJsonPath ], { stdio: "inherit" });
     await spawn('git', [ 'tag', tagName ], { stdio: "inherit" });
-    await spawn('git', [ 'push', tagName ], { stdio: "inherit" });
+    await spawn('git', [ 'push', 'origin', tagName ], { stdio: "inherit" });
     await spawn('git', [ 'checkout', process.env.GITHUB_SHA ], { stdio: "inherit" });
 
     await spawn('gh', [
