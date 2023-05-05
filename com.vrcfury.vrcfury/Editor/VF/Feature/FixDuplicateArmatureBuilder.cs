@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -28,7 +30,7 @@ namespace VF.Feature {
             var movedOne = false;
             if (!hips) return;
             var i = 0;
-            var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
+            var undoers = new List<Action>();
             foreach (var child in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 if (child.gameObject == hips) continue;
                 if (child.gameObject.name != hips.name) continue;
@@ -37,12 +39,18 @@ namespace VF.Feature {
                 if (AnimationUtility.CalculateTransformPath(child, avatarObject.transform).Contains("Follower")) {
                     continue;
                 }
-                mover.Move(child.gameObject, newName: child.gameObject.name + "_vrcfdup" + (++i));
+
+                var oldName = child.gameObject.name;
+                child.gameObject.name = child.gameObject.name + "_vrcfdup" + (++i));
+                undoers.Add(() => child.gameObject.name = oldName);
                 movedOne = true;
             }
 
             if (movedOne) {
                 animator.Rebind();
+                foreach (var undo in undoers) undo();
+                // Since we're undoing the names immediately after unbinding, beware that this fix will only work
+                // for ONE FRAME!!
             }
         }
     }
