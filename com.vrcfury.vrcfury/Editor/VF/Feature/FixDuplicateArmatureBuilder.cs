@@ -41,7 +41,7 @@ namespace VF.Feature {
                 }
 
                 var oldName = child.gameObject.name;
-                child.gameObject.name = child.gameObject.name + "_vrcfdup" + (++i));
+                child.gameObject.name = child.gameObject.name + "_vrcfdup" + (++i);
                 undoers.Add(() => child.gameObject.name = oldName);
                 movedOne = true;
             }
