@@ -298,6 +298,21 @@ VRCFury will detect if your avatar has a mixture of Write Defaults, and will off
 
 If you install multiple independent packages of avatar "dances" using vrcfury, they will be rewritten to work together. For instance, you can install GogoLoco AND CuteDancer using VRCFury, and will be able to use the dances from each. Typically this is impossible as the animations from one will override the other, however VRCFury rewrites the playable layer weight drivers to affect only the layers owned by each individual package. Hooray!
 
+## How to install
+
+### Method 1. VRCFury Installer (Recommended)
+
+Download and import the [VRCFury Installer](https://vrcfury.com/download). You can then update from Tools > VRCFury > Update VRCFury.
+
+### Method 2. VRChat Creator Companion (Advanced Users Only)
+
+In the VRChat Creator Companion, go to Settings > Packages > Add Repository. Type `https://vcc.vrcfury.com`, click add.
+Then, add VRCFury from the Manage Projects section of your project. Note that this does not come with any prefabs or the VRCFury updater.
+
+### Method 3. OpenUPM (Advanced Users Only)
+
+VRCFury is available on the OpenUPM at https://openupm.com/packages/com.vrcfury.vrcfury/
+
 ## How to remove / uninstall
 
 * `Tools > VRCFury > Uninstall VRCFury`

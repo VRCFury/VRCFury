@@ -45,11 +45,23 @@ namespace VF.Feature {
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
             foreach (var c in model.controllers) {
                 var type = c.type;
-                RuntimeAnimatorController runtimeController = c.controller;
-                var source = runtimeController as AnimatorController;
+                RuntimeAnimatorController source = c.controller;
                 if (source == null) continue;
                 var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
-                toMerge.Add((type, copy));
+                while (copy is AnimatorOverrideController ov) {
+                    if (ov.runtimeAnimatorController is AnimatorController ac2) {
+                        AnimatorIterator.ReplaceClips(ac2, clip => ov[clip]);
+                    }
+                    RuntimeAnimatorController newCopy = null;
+                    if (ov.runtimeAnimatorController != null) {
+                        newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, saveFilename: "tmp", addPrefix: false);
+                    }
+                    AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
+                    copy = newCopy;
+                }
+                if (copy is AnimatorController ac) {
+                    toMerge.Add((type, ac));
+                }
             }
 
             // Record the offsets so we can fix them later
