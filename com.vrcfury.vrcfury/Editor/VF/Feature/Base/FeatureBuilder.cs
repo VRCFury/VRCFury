@@ -94,7 +94,8 @@ namespace VF.Feature.Base {
             }
 
             void RewriteClip(AnimationClip c) {
-                ClipCopier.Rewrite(c, fromObj: featureBaseObject, fromRoot: avatarObject);
+                var rewriter = new ClipRewriter(fromObj: featureBaseObject, fromRoot: avatarObject);
+                rewriter.Rewrite(c);
             }
 
             var clip = GetFx().NewClip(name);
@@ -150,7 +151,7 @@ namespace VF.Feature.Base {
                         if (clipActionClip && clipActionClip != firstClip) {
                             var copy = mutableManager.CopyRecursive(clipActionClip, "Copy of " + clipActionClip.name);
                             RewriteClip(copy);
-                            ClipCopier.Copy(copy, clip);
+                            ClipRewriter.Copy(copy, clip);
                             AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                         }
                         break;

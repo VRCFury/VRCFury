@@ -224,7 +224,7 @@ namespace VF.Feature {
                 var clipBindings = AnimationUtility.GetCurveBindings(clip);
                 return clipBindings.Select(b => {
                     var curve = AnimationUtility.GetEditorCurve(clip, b);
-                    b.path = ClipCopier.Join(prefix, b.path, allowAdvancedOperators: false);
+                    b.path = ClipRewriter.Join(prefix, b.path, allowAdvancedOperators: false);
                     return (b, curve);
                 });
             }).ToList();

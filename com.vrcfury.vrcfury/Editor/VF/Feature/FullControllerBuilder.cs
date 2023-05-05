@@ -141,14 +141,14 @@ namespace VF.Feature {
             if (clip == null) return;
             if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
 
-            ClipCopier.Rewrite(
-                clip,
+            var rewriter = new ClipRewriter(
                 fromObj: GetBaseObject(),
                 fromRoot: avatarObject,
                 rewriteBindings: model.rewriteBindings.Select(r => Tuple.Create(r.from, r.to)).ToList(),
                 rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
                 rewriteParam: RewriteParamName
             );
+            rewriter.Rewrite(clip);
         }
         
         private void Merge(AnimatorController from, ControllerManager toMain) {
