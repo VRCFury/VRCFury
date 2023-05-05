@@ -22,7 +22,7 @@ namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
 
-        [FeatureBuilderAction]
+        [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
             var toggleIsInt = false;
             foreach (var p in model.prms) {
