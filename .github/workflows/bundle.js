@@ -1,11 +1,14 @@
 import fs from 'node:fs/promises';
+import fsPlain from 'node:fs';
 import tar from 'tar';
 import hasha from 'hasha';
 import semver from 'semver';
 import tmp from 'tmp-promise';
 import { spawn } from 'promisify-child-process';
+import archiver from 'archiver';
 
 const versionJson = await readJson('../versions/updates.json');
+const vccJson = await readJson('../versions/vcc.json');
 await rmdir('dist');
 await fs.mkdir('dist');
 
@@ -40,6 +43,7 @@ for (const dir of await fs.readdir('.')) {
 
     const outputFilename = `${name}-${version}.tgz`;
     const outputPath = `dist/${outputFilename}`;
+    const outputUrl = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
     await createTar(dir, outputPath);
 
     if (!existing) {
@@ -49,20 +53,47 @@ for (const dir of await fs.readdir('.')) {
     existing.latestVersion = version;
     existing.hash = await hasha.fromFile(outputPath, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
-    existing.latestUpmTargz = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputFilename)}`;
+    existing.latestUpmTargz = outputUrl;
     console.log(`Adding to version repository with version ${version}`);
+
+    const outputZipFilename = `${name}-${version}-vcc.zip`;
+    const outputZipPath = `dist/${outputZipFilename}`;
+    const outputZipUrl = `https://github.com/VRCFury/VRCFury/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(outputZipFilename)}`;
+    await createZip(dir, outputZipPath);
+
+    if (name === 'com.vrcfury.vrcfury') {
+        let existingVcc = vccJson.packages[name];
+        if (!existingVcc) {
+            existingVcc = vccJson.packages[name] = {
+                versions: {}
+            };
+        }
+        existingVcc.versions = {};
+        const vccPackage = JSON.parse(JSON.stringify(json));
+        vccPackage.url = outputZipUrl;
+        existingVcc.versions[version] = vccPackage;
+    }
+
+    await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit" });
+    await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit" });
+    await spawn('git', [ 'commit', '-m', `${json.displayName} v${version}`, packageJsonPath ], { stdio: "inherit" });
+    await spawn('git', [ 'tag', tagName ], { stdio: "inherit" });
+    await spawn('git', [ 'push', 'origin', tagName ], { stdio: "inherit" });
+    await spawn('git', [ 'checkout', process.env.GITHUB_SHA ], { stdio: "inherit" });
 
     await spawn('gh', [
         'release',
         'create',
         tagName,
         outputPath,
-        '--target', process.env.GITHUB_SHA,
-        '--title', `${json.displayName} v${version}`
+        outputZipPath,
+        '--title', `${json.displayName} v${version}`,
+        '--verify-tag'
     ], { stdio: "inherit" });
 }
 
 await writeJson('../versions/updates.json', versionJson);
+await writeJson('../versions/vcc.json', vccJson);
 
 function checkFileExists(file) {
     return fs.access(file, fs.constants.F_OK)
@@ -97,6 +128,15 @@ async function createTar(dir, outputFilename) {
         noMtime: true,
         prefix: 'package/'
     }, await fs.readdir(dir));
+}
+async function createZip(dir, outputFilename) {
+    const output = fsPlain.createWriteStream(outputFilename);
+    const archive = archiver('zip', {
+        zlib: { level: 9 } // Sets the compression level.
+    });
+    archive.pipe(output);
+    archive.directory(dir, false);
+    await archive.finalize();
 }
 
 async function getTags() {

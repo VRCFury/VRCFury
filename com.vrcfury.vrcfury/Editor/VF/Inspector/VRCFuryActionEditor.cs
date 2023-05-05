@@ -82,6 +82,33 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 return row;
             }
+            case nameof(ShaderInventoryAction): {
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+
+                var label = new Label("Shader Inventory") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+            
+                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot"));
+                propField3.style.flexGrow = 0;
+                propField3.style.flexBasis = 30;
+                row.Add(propField3);
+
+                return row;
+            }
             case nameof(ScaleAction): {
                 var row = new VisualElement {
                     style = {

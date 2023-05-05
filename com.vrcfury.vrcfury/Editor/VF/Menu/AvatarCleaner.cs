@@ -159,6 +159,9 @@ namespace VF.Menu {
                         removeItems.Add("All Avatar Menus");
                         if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
                     } else {
+                        // Note: This is laid out strangely to avoid issues with menus that have recursive loops
+
+                        var removeControls = new HashSet<VRCExpressionsMenu.Control>();
                         bool ShouldRemoveMenuItem(VRCExpressionsMenu.Control item) {
                             var shouldRemove =
                                 item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
@@ -169,7 +172,7 @@ namespace VF.Menu {
                                 item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
                                 && item.subMenu
                                 && item.subMenu.controls.Count > 0
-                                && item.subMenu.controls.All(ShouldRemoveMenuItem);
+                                && item.subMenu.controls.All(control => removeControls.Contains(control));
                             shouldRemove |=
                                 item.type == VRCExpressionsMenu.Control.ControlType.Toggle
                                 && item.parameter != null
@@ -177,8 +180,26 @@ namespace VF.Menu {
                                 && ShouldRemoveParam(item.parameter.name);
                             return shouldRemove;
                         }
+                        while (true) {
+                            var startRemoveCount = removeControls.Count;
+                            MenuSplitter.ForEachMenu(m, ForEachItem: (item, path) => {
+                                if (removeControls.Contains(item)) {
+                                    return MenuSplitter.ForEachMenuItemResult.Skip;
+                                }
+
+                                if (ShouldRemoveMenuItem(item)) {
+                                    removeControls.Add(item);
+                                    return MenuSplitter.ForEachMenuItemResult.Skip;
+                                }
+
+                                return MenuSplitter.ForEachMenuItemResult.Continue;
+                            });
+                            var endRemoveCount = removeControls.Count;
+                            if (startRemoveCount == endRemoveCount) break;
+                        }
+
                         MenuSplitter.ForEachMenu(m, ForEachItem: (item, path) => {
-                            if (ShouldRemoveMenuItem(item)) {
+                            if (removeControls.Contains(item)) {
                                 removeItems.Add("Menu Item: " + string.Join("/", path));
                                 return perform
                                     ? MenuSplitter.ForEachMenuItemResult.Delete

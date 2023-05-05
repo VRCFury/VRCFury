@@ -1,6 +1,7 @@
 {
   "type": "module",
   "dependencies": {
+    "archiver": "^5.3.1",
     "hasha": "^5.2.2",
     "promisify-child-process": "^4.1.1",
     "semver": "^7.3.8",
