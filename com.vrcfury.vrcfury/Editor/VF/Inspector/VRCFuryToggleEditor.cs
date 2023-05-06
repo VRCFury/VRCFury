@@ -31,6 +31,7 @@ namespace VF.Inspector {
             var hasTransitionProp = serializedObject.FindProperty("hasTransition");
             var simpleOutTransitionProp = serializedObject.FindProperty("simpleOutTransition");
             var defaultSliderProp = serializedObject.FindProperty("defaultSliderValue");
+            var holdButtonProp = serializedObject.FindProperty("holdButton");
 
             var flex = new VisualElement {
                 style = {
@@ -127,6 +128,14 @@ namespace VF.Inspector {
                 {
                     advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
                         hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
+                        serializedObject.ApplyModifiedProperties();
+                    });
+                }
+
+                if (holdButtonProp != null)
+                {
+                    advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
+                        holdButtonProp.boolValue = !holdButtonProp.boolValue;
                         serializedObject.ApplyModifiedProperties();
                     });
                 }
@@ -253,6 +262,8 @@ namespace VF.Inspector {
                         tags.Add("Shown in Rest Pose");
                     if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
                         tags.Add("This is the Exclusive Off State");
+                    if (holdButtonProp != null && holdButtonProp.boolValue)
+                        tags.Add("Hold Button");
 
                     var row = new VisualElement();
                     row.style.flexWrap = Wrap.Wrap;
