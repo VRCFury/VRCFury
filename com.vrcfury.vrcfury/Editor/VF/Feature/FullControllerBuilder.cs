@@ -137,10 +137,10 @@ namespace VF.Feature {
             return ControllerManager.NewParamName(name, uniqueModelNum);
         }
 
-        void RewriteClip(AnimationClip clip) {
-            if (clip == null) return;
-            if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
-
+        private void Merge(AnimatorController from, ControllerManager toMain) {
+            var to = toMain.GetRaw();
+            var type = toMain.GetType();
+            
             var rewriter = new ClipRewriter(
                 fromObj: GetBaseObject(),
                 fromRoot: avatarObject,
@@ -148,13 +148,26 @@ namespace VF.Feature {
                 rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
                 rewriteParam: RewriteParamName
             );
-            rewriter.Rewrite(clip);
-        }
-        
-        private void Merge(AnimatorController from, ControllerManager toMain) {
-            var to = toMain.GetRaw();
-            var type = toMain.GetType();
+            
+            void RewriteClip(AnimationClip clip) {
+                if (clip == null) return;
+                if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
+                rewriter.Rewrite(clip);
+            }
 
+            // Rewrite masks
+            foreach (var layer in from.layers) {
+                if (layer.avatarMask == null) continue;
+                for (var i = 0; i < layer.avatarMask.transformCount; i++) {
+                    var path = layer.avatarMask.GetTransformPath(i);
+                    var rewritten = rewriter.RewritePath(path);
+                    if (avatarObject.transform.Find(path) == null || avatarObject.transform.Find(rewritten) != null) {
+                        layer.avatarMask.SetTransformPath(i, rewritten);
+                    }
+                }
+            }
+
+            // Merge base mask
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
                 var mask = from.layers[0].avatarMask;
                 if (mask == null) {
@@ -167,6 +180,7 @@ namespace VF.Feature {
                 toMain.UnionBaseMask(mask);
             }
 
+            // Rewrite and merge parameters
             foreach (var p in from.parameters) {
                 if (p.name == "Go/Locomotion") {
                     var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
