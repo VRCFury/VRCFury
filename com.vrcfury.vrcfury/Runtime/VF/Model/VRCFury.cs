@@ -8,7 +8,7 @@ using VF.Model.Feature;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
-
+    [HelpURL("https://github.com/VRCFury/VRCFury#readme")]
     public class VRCFury : VRCFuryComponent {
         [HideInInspector]
         public VRCFuryConfig config = new VRCFuryConfig();
