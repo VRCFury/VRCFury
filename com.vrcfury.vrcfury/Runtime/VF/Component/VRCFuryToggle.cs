@@ -1,27 +1,31 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using VF.Model;
 using VF.Model.Feature;
-using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Component {
     [AddComponentMenu("")]
     public class VRCFuryToggle : VRCFuryComponent {
-        public bool includeInRest;
-        public bool exclusiveOffState;
-        public bool enableExclusiveTag;
-        public string exclusiveTag;
+        public WhenMenuItem whenMenu = new WhenMenuItem() { enabled = true };
+        public WhenParameter whenParam = new WhenParameter();
+        public WhenGesture whenGesture = new WhenGesture();
+        public WhenAfk whenAfk = new WhenAfk();
+        public WhenSecurity whenSecurity = new WhenSecurity();
+        public WhenExclusiveOff whenExclusiveOff = new WhenExclusiveOff();
 
-        public List<ToggleCondition> conditions = new List<ToggleCondition>();
-        public List<ToggleAction> actions = new List<ToggleAction>();
+        public ThenAction thenAction = new ThenAction() { enabled = true };
+        public ThenParameter thenParam = new ThenParameter();
+        public ThenDisableBlink thenDisableBlink = new ThenDisableBlink();
+        public ThenResetPhysbone thenResetPhysbone = new ThenResetPhysbone();
+        public ThenExclusive thenExclusive = new ThenExclusive();
 
         [Serializable]
-        public abstract class ToggleCondition {
+        public abstract class When {
+            public bool enabled;
         }
 
         [Serializable]
-        public class ToggleConditionMenuItem {
+        public class WhenMenuItem : When {
             public string path;
             public bool momentary;
             public bool latching;
@@ -34,12 +38,12 @@ namespace VF.Component {
         }
 
         [Serializable]
-        public class ToggleConditionParameter {
+        public class WhenParameter : When {
             public string parameter;
         }
 
         [Serializable]
-        public class ToggleConditionGesture {
+        public class WhenGesture : When {
             public GestureDriver.Hand hand;
             public GestureDriver.HandSign sign;
             public GestureDriver.HandSign comboSign;
@@ -48,19 +52,24 @@ namespace VF.Component {
         }
         
         [Serializable]
-        public class ToggleConditionAfk {
+        public class WhenAfk : When {
         }
         
         [Serializable]
-        public class ToggleConditionSecurity {
+        public class WhenSecurity : When {
         }
 
         [Serializable]
-        public class ToggleAction {
+        public class WhenExclusiveOff : When {
         }
 
         [Serializable]
-        public class ToggleActionState {
+        public class Then {
+            public bool enabled;
+        }
+
+        [Serializable]
+        public class ThenAction : Then {
             public bool enableLocal = true;
             public bool enableRemote = true;
             public State state;
@@ -71,19 +80,26 @@ namespace VF.Component {
             public bool simpleOutTransition = true;
             public bool customTransitionTime;
             public float transitionTime = 0;
+            public bool includeInRest;
         }
 
         [Serializable]
-        public class ToggleActionParameter {
+        public class ThenParameter : Then {
             public string parameter;
         }
         
         [Serializable]
-        public class ToggleActionDisableBlink {
+        public class ThenDisableBlink : Then {
         }
 
-        public class ToggleActionResetPhysbone {
+        [Serializable]
+        public class ThenResetPhysbone : Then {
             public GameObject physbone;
+        }
+
+        [Serializable]
+        public class ThenExclusive : Then {
+            public string exclusiveTag;
         }
     }
 }
