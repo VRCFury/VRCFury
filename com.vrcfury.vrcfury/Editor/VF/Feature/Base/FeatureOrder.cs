@@ -12,6 +12,10 @@ namespace VF.Feature.Base {
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase = -10,
         
+        // Needs to happen before any objects are moved, so otherwise the imported
+        // animations would not be adjusted to point to the new moved object paths
+        FullController = -5,
+
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1,
         

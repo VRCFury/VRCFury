@@ -403,13 +403,15 @@ namespace VF.Feature {
         // Marshmallow PB unity package inserts fake bones in the armature, breaking our link.
         // Detect if this happens, and return the proper child bone instead.
         private static GameObject GetMarshmallowChild(GameObject orig) {
-            if (orig.GetComponent<ScaleConstraint>() == null) return null;
-            var pConstraint = orig.GetComponent<ParentConstraint>();
-            if (pConstraint == null) return null;
-            if (pConstraint.sourceCount != 1) return null;
-            var source = pConstraint.GetSource(0);
+            var scaleConstraint = orig.GetComponent<ScaleConstraint>();
+            if (scaleConstraint == null) return null;
+            if (scaleConstraint.sourceCount != 1) return null;
+            var source = scaleConstraint.GetSource(0);
             if (source.sourceTransform == null) return null;
-            if (!source.sourceTransform.name.Contains("Constraint")) return null;
+            var scaleTargetInMarshmallow = source.sourceTransform
+                .GetComponentsInParent<Transform>(true)
+                .Any(t => t.gameObject.name.ToLower().Contains("marshmallow"));
+            if (!scaleTargetInMarshmallow) return null;
             var child = orig.transform.Find(orig.name);
             if (!child) return null;
             return child.gameObject;

@@ -214,8 +214,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(fx, layer, off, onCase, layerName + " On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
-        if (model.addMenuItem && !string.IsNullOrWhiteSpace(model.name)) {
-            if (model.isButton) {
+        if (model.addMenuItem) {
+            if (model.holdButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
                     param,
@@ -478,6 +478,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
+        var holdButtonProp = prop.FindPropertyRelative("holdButton");
 
         var flex = new VisualElement {
             style = {
@@ -599,6 +600,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
+
+            if (holdButtonProp != null) {
+                advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
+                    holdButtonProp.boolValue = !holdButtonProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             advMenu.ShowAsContext();
         });
         button.style.flexGrow = 0;
@@ -750,8 +759,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     tags.Add("Shown in Rest Pose");
                 if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
                     tags.Add("This is the Exclusive Off State");
-                if (isButtonProp != null && isButtonProp.boolValue)
-                    tags.Add("Button");
+                if (holdButtonProp != null && holdButtonProp.boolValue)
+                    tags.Add("Hold Button");
 
                 var row = new VisualElement();
                 row.style.flexWrap = Wrap.Wrap;
@@ -774,7 +783,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultOnProp,
             includeInRestProp,
             exclusiveOffStateProp,
-            isButtonProp
+            holdButtonProp
         ));
 
         return content;

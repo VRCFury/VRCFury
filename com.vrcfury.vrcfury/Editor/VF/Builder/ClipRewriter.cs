@@ -7,31 +7,26 @@ using VF.Builder.Exceptions;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public class ClipCopier {
+    public class ClipRewriter {
 
-        public static void Copy(
-            AnimationClip from,
-            AnimationClip to
-        ) {
-            var fromC = new EasyAnimationClip(from);
-            var toC = new EasyAnimationClip(to);
-            foreach (var binding in fromC.GetFloatBindings())
-                toC.SetFloatCurve(binding, fromC.GetFloatCurve(binding));
-            foreach (var binding in fromC.GetObjectBindings())
-                toC.SetObjectCurve(binding, fromC.GetObjectCurve(binding));
-        }
+        private readonly List<Tuple<string, string>> rewriteBindings;
+        private readonly GameObject fromRoot;
+        private readonly string prefix;
+        private readonly bool rootBindingsApplyToAvatar;
+        private readonly Func<string, string> rewriteParam;
 
-        public static void Rewrite(
-            AnimationClip clip_,
+        public ClipRewriter(
             GameObject fromObj = null,
             GameObject fromRoot = null,
             List<Tuple<string,string>> rewriteBindings = null,
             bool rootBindingsApplyToAvatar = false,
             Func<string,string> rewriteParam = null
         ) {
-            var clip = new EasyAnimationClip(clip_);
-            
-            string prefix;
+            this.rewriteBindings = rewriteBindings;
+            this.rootBindingsApplyToAvatar = rootBindingsApplyToAvatar;
+            this.rewriteParam = rewriteParam;
+            this.fromRoot = fromRoot;
+
             if (fromObj == null) {
                 prefix = "";
             } else if (fromRoot == null) {
@@ -43,31 +38,37 @@ namespace VF.Builder {
             } else {
                 prefix = AnimationUtility.CalculateTransformPath(fromObj.transform, fromRoot.transform);
             }
+        }
 
-            string RewritePath(string path) {
-                if (rewriteBindings != null) {
-                    foreach (var rewrite in rewriteBindings) {
-                        var from = rewrite.Item1;
-                        while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
-                        var to = rewrite.Item2;
-                        while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
+        public string RewritePath(string path) {
+            if (rewriteBindings != null) {
+                foreach (var rewrite in rewriteBindings) {
+                    var from = rewrite.Item1;
+                    while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
+                    var to = rewrite.Item2;
+                    while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
 
-                        if (from == "") {
-                            path = Join(to, path);
-                        } else if (path.StartsWith(from + "/")) {
-                            path = path.Substring(from.Length + 1);
-                            path = Join(to, path);
-                        } else if (path == from) {
-                            path = to;
-                        }
+                    if (from == "") {
+                        path = Join(to, path);
+                    } else if (path.StartsWith(from + "/")) {
+                        path = path.Substring(from.Length + 1);
+                        path = Join(to, path);
+                    } else if (path == from) {
+                        path = to;
                     }
                 }
-                if (path == "" && rootBindingsApplyToAvatar) {
-                    return "";
-                }
-                path = Join(prefix, path);
-                return path;
             }
+            if (path == "" && rootBindingsApplyToAvatar) {
+                return "";
+            }
+            path = Join(prefix, path);
+            return path;
+        }
+
+        public void Rewrite(
+            AnimationClip clip_
+        ) {
+            var clip = new EasyAnimationClip(clip_);
 
             foreach (var originalBinding in clip.GetFloatBindings()) {
                 var rewrittenBinding = originalBinding;
@@ -177,6 +178,18 @@ namespace VF.Builder {
                    || name.EndsWith(".y")
                    || name.EndsWith(".z")
                    || name.EndsWith(".w");
+        }
+
+        public static void Copy(
+            AnimationClip from,
+            AnimationClip to
+        ) {
+            var fromC = new EasyAnimationClip(from);
+            var toC = new EasyAnimationClip(to);
+            foreach (var binding in fromC.GetFloatBindings())
+                toC.SetFloatCurve(binding, fromC.GetFloatCurve(binding));
+            foreach (var binding in fromC.GetObjectBindings())
+                toC.SetObjectCurve(binding, fromC.GetObjectCurve(binding));
         }
     }
 }

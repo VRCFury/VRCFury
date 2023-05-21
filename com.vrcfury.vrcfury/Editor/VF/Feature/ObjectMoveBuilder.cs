@@ -9,6 +9,10 @@ using VF.Feature.Base;
 namespace VF.Feature {
     /** This builder is responsible for moving objects for other builders,
      * then fixing any animations that referenced those objects.
+     *
+     * The reason we can't just move objects and rewrite the animations immediately when needed,
+     * is because some animations may not be present on the avatar yet. Specifically, FullController
+     * may add more animations to the avatar later on, and those may use the pre-moved paths.
      */
     public class ObjectMoveBuilder : FeatureBuilder {
         private List<Tuple<string, string>> redirects = new List<Tuple<string, string>>();

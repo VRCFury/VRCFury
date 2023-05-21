@@ -50,7 +50,7 @@ namespace VF.Feature {
             VFABool lockMenuParam = null;
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
                 if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
-                    lockMenuParam = fx.NewBool(uid + "_lock", synced: true, networkSynced: false);
+                    lockMenuParam = fx.NewBool(uid + "_lock", synced: true);
                     manager.GetMenu().NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
                     lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
                 }

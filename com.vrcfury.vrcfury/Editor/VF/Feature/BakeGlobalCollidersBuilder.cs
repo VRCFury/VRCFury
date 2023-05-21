@@ -66,7 +66,7 @@ namespace VF.Feature {
 
                 // Vrchat places the capsule for fingers in a very strange place, but essentially it will:
                 // If collider length is 0, it will be a sphere centered on the set transform
-                // If colllider length < radius*2, it will be a sphere in a weird in-between location
+                // If collider length < radius*2, it will be a sphere in a weird in-between location
                 // If collider length >= radius*2, it will be a capsule with one end attached to the set transform's parent,
                 //   facing the direction of the set transform.
                 
@@ -76,7 +76,7 @@ namespace VF.Feature {
                     // It's a sphere
                     finger.transform = childObj.transform;
                     finger.height = 0;
-                } else { 
+                } else {
                     // It's a capsule
                     childObj.transform.localPosition = new Vector3(0, 0, -globalContact.height / 2);
                     var directionObj = new GameObject("Direction");
@@ -84,6 +84,15 @@ namespace VF.Feature {
                     directionObj.transform.localPosition = new Vector3(0, 0, 0.0001f);
                     finger.transform = directionObj.transform;
                     finger.height = globalContact.height;
+                    
+                    // Turns out capsules work in game differently than they do in the vrcsdk in the editor
+                    // They're even more weird. The capsules in game DO NOT include the endcaps in the height,
+                    // and attach the end of the cylinder to the parent (not the endcap).
+                    // This fixes them so they work properly in game:
+                    var p = childObj.transform.localPosition;
+                    p.z += finger.radius;
+                    childObj.transform.localPosition = p;
+                    finger.height -= finger.radius * 2;
                 }
                 setFinger(finger);
                 i++;
