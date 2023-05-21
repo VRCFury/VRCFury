@@ -333,7 +333,7 @@ namespace VF.Inspector {
             try {
                 var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
                 if (!avatarObject) return false;
-                var boneObj = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, bone);
+                var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj.transform, orf.transform);
             } catch (Exception) {
                 return false;

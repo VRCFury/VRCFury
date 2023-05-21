@@ -330,22 +330,22 @@ namespace VF.Feature {
             GameObject avatarBone = null;
 
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
-                avatarBone = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, model.boneOnAvatar);
-                if (!avatarBone) {
+                try {
+                    avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, model.boneOnAvatar);
+                } catch (Exception e) {
                     foreach (var fallback in model.fallbackBones) {
-                        avatarBone = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, fallback);
+                        avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, fallback);
                         if (avatarBone) break;
                     }
-                }
-                if (!avatarBone) {
-                    throw new VRCFBuilderException(
-                        "ArmatureLink failed to find " + model.boneOnAvatar + " bone on avatar.");
+                    if (!avatarBone) {
+                        throw;
+                    }
                 }
             } else {
                 avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
                 if (avatarBone == null) {
-                    Debug.LogError("Failed to find " + model.bonePathOnAvatar + " bone on avatar. Skipping armature link.");
-                    return null;
+                    throw new VRCFBuilderException(
+                        "ArmatureLink failed to find " + model.bonePathOnAvatar + " bone on avatar.");
                 }
             }
 
