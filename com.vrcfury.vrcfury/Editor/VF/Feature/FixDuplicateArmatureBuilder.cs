@@ -26,7 +26,7 @@ namespace VF.Feature {
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator) return;
 
-            var hips = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, HumanBodyBones.Hips);
+            var hips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
             var movedOne = false;
             if (!hips) return;
             var i = 0;

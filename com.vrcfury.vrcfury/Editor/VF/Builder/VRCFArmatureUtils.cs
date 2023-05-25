@@ -11,15 +11,27 @@ namespace VF.Builder {
     public class VRCFArmatureUtils {
         private static FieldInfo parentNameField = 
             typeof(SkeletonBone).GetField("parentName", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        
+
+        public static GameObject FindBoneOnArmatureOrNull(GameObject avatarObject, HumanBodyBones findBone) {
+            try {
+                return FindBoneOnArmatureOrException(avatarObject, findBone);
+            } catch (Exception e) {
+                Debug.LogWarning("Failed to find bone " + findBone + ": " + e.Message);
+                return null;
+            }
+        }
+
         /**
          * This basically does what Animator.GetBoneTransform SHOULD do, except GetBoneTransform randomly sometimes
          * returns bones on clothing armatures instead of the avatar, and also sometimes returns null for no reason.
          */
-        public static GameObject FindBoneOnArmature(GameObject avatarObject, HumanBodyBones findBone) {
+        public static GameObject FindBoneOnArmatureOrException(GameObject avatarObject, HumanBodyBones findBone) {
             var animator = avatarObject.GetComponent<Animator>();
-            if (!animator || !animator.avatar) {
-                return null;
+            if (!animator) {
+                throw new VRCFBuilderException("Avatar object does not contain an Animator");
+            }
+            if (!animator.avatar) {
+                throw new VRCFBuilderException("Avatar object's Animator does not have an avatar rig set");
             }
 
             var humanDescription = animator.avatar.humanDescription;
@@ -52,20 +64,20 @@ namespace VF.Builder {
                 .Select(path => string.Join("/", path))
                 .ToImmutableHashSet()
                 .ToArray();
+            if (paths.Length == 0) {
+                throw new VRCFBuilderException("Avatar rig does not contain " + findBone + " bone. Are you sure the model rig is set to Humanoid?");
+            }
 
             var matching = paths
                 .Select(path => avatarObject.transform.Find(path))
                 .Where(found => found != null)
                 .ToArray();
-            
+
             if (matching.Length == 0) {
-                if (paths.Length > 0) {
-                    throw new VRCFBuilderException(
-                        "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
-                        "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n\n" +
-                        string.Join("\n\nor ", paths));
-                }
-                return null;
+                throw new VRCFBuilderException(
+                    "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
+                    "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n\n" +
+                    string.Join("\n\nor ", paths));
             }
             if (matching.Length > 1) {
                 var matchingPaths = matching

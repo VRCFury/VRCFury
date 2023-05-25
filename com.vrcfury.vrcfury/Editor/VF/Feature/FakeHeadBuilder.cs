@@ -24,7 +24,7 @@ namespace VF.Feature {
                 return;
             }
 
-            var head = VRCFArmatureUtils.FindBoneOnArmature(avatarObject, HumanBodyBones.Head);
+            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
             if (!head) return;
             
             var objectsForFakeHead = objectsEligibleForFakeHead
