@@ -34,58 +34,88 @@ namespace VF.Builder {
                 throw new VRCFBuilderException("Avatar object's Animator does not have an avatar rig set");
             }
 
-            var humanDescription = animator.avatar.humanDescription;
-            var skeleton = humanDescription.skeleton;
+            var so = new SerializedObject(animator.avatar);
+            var skeletonIndex = GetSkeletonIndex(so, findBone);
+            var boneHash = GetBoneHashFromSkeletonIndex(so, skeletonIndex);
+            var bonePath = GetBonePathFromBoneHash(so, boneHash);
 
-            string[][] GetPathsToRoot(SkeletonBone b, HashSet<SkeletonBone> seen = null) {
-                if (seen == null) seen = new HashSet<SkeletonBone>();
-                var boneParentName = (string)parentNameField.GetValue(b);
-                if (boneParentName == null || string.IsNullOrWhiteSpace(boneParentName))
-                    return new[] { new string[] { } };
-
-                seen.Add(b);
-                var pathsToRoot = skeleton
-                    .Where(other => other.name == boneParentName)
-                    .Where(other => !seen.Contains(other))
-                    .SelectMany(other => GetPathsToRoot(other, seen))
-                    .Select(path => path.Append(b.name).ToArray())
-                    .ToArray();
-                seen.Remove(b);
-                return pathsToRoot;
-            }
-
-            var humanBoneName = HumanTrait.BoneName[(int)findBone];
-            var avatarBoneName = humanDescription.human
-                .FirstOrDefault(humanBone => humanBone.humanName == humanBoneName)
-                .boneName;
-            var paths = skeleton
-                .Where(other => other.name == avatarBoneName)
-                .SelectMany(other => GetPathsToRoot(other))
-                .Select(path => string.Join("/", path))
-                .ToImmutableHashSet()
-                .ToArray();
-            if (paths.Length == 0) {
-                throw new VRCFBuilderException("Avatar rig does not contain " + findBone + " bone. Are you sure the model rig is set to Humanoid?");
-            }
-
-            var matching = paths
-                .Select(path => avatarObject.transform.Find(path))
-                .Where(found => found != null)
-                .ToArray();
-
-            if (matching.Length == 0) {
+            var found = avatarObject.transform.Find(bonePath);
+            if (!found) {
                 throw new VRCFBuilderException(
                     "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
-                    "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n\n" +
-                    string.Join("\n\nor ", paths));
+                    "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
+                    bonePath);
             }
-            if (matching.Length > 1) {
-                var matchingPaths = matching
-                    .Select(o => AnimationUtility.CalculateTransformPath(o.transform, avatarObject.transform));
+            return found.gameObject;
+        }
+
+        private static int GetSkeletonIndex(SerializedObject so, HumanBodyBones humanoidIndex) {
+            int indexInBoneIndex;
+            string boneIndexProp;
+
+            if (humanoidIndex <= HumanBodyBones.Chest) {
+                indexInBoneIndex = (int)humanoidIndex;
+                boneIndexProp = "m_Avatar.m_Human.data.m_HumanBoneIndex";
+            } else if (humanoidIndex <= HumanBodyBones.Jaw) {
+                indexInBoneIndex = (int)humanoidIndex + 1;
+                boneIndexProp = "m_Avatar.m_Human.data.m_HumanBoneIndex";
+            } else if (humanoidIndex == HumanBodyBones.UpperChest) {
+                indexInBoneIndex = 9;
+                boneIndexProp = "m_Avatar.m_Human.data.m_HumanBoneIndex";
+            } else if (humanoidIndex <= HumanBodyBones.LeftLittleDistal) {
+                indexInBoneIndex = (int)humanoidIndex - (int)HumanBodyBones.LeftThumbProximal;
+                boneIndexProp = "m_Avatar.m_Human.data.m_LeftHand.data.m_HandBoneIndex";
+            } else if (humanoidIndex <= HumanBodyBones.RightLittleDistal) {
+                indexInBoneIndex = (int)humanoidIndex - (int)HumanBodyBones.RightThumbProximal;
+                boneIndexProp = "m_Avatar.m_Human.data.m_RightHand.data.m_HandBoneIndex";
+            } else {
+                throw new VRCFBuilderException("Unknown bone index " + humanoidIndex);
+            }
+
+            var array = so.FindProperty(boneIndexProp);
+            if (array == null || !array.isArray) {
+                throw new VRCFBuilderException("Missing humanoid bone index array: " + boneIndexProp);
+            }
+
+            if (indexInBoneIndex < 0 || indexInBoneIndex >= array.arraySize) {
+                throw new VRCFBuilderException("Missing humanoid bone index array element: " + boneIndexProp + " " + indexInBoneIndex);
+            }
+
+            var skeletonIndex = array.GetArrayElementAtIndex(indexInBoneIndex).intValue;
+            if (skeletonIndex < 0) {
                 throw new VRCFBuilderException(
-                    "Found multiple possible matching " + matching + " bones on avatar.\n\n" + string.Join("\n\n", matchingPaths));
+                    "Bone isn't present in rig. Are you sure the rig for the avatar is humanoid and contains this bone?");
             }
-            return matching[0].gameObject;
+            return skeletonIndex;
+        }
+
+        private static long GetBoneHashFromSkeletonIndex(SerializedObject so, int skeletonIndex) {
+            var boneHashArray = so.FindProperty("m_Avatar.m_Human.data.m_Skeleton.data.m_ID");
+            if (boneHashArray == null || !boneHashArray.isArray) {
+                throw new VRCFBuilderException("Bone hash array is missing");
+            }
+
+            if (skeletonIndex < 0 || skeletonIndex >= boneHashArray.arraySize) {
+                throw new VRCFBuilderException("Bone hash array is missing element: " + skeletonIndex);
+            }
+
+            return boneHashArray.GetArrayElementAtIndex(skeletonIndex).longValue;
+        }
+        
+        private static string GetBonePathFromBoneHash(SerializedObject so, long boneHash) {
+            var tosArray = so.FindProperty("m_TOS");
+            for (int i = 0; i < tosArray.arraySize; i++) {
+                var element = tosArray.GetArrayElementAtIndex(i);
+                if (element == null) continue;
+                var hashProp = element.FindPropertyRelative("first");
+                if (hashProp == null) continue;
+                if (boneHash != hashProp.longValue) continue;
+                var pathProp = element.FindPropertyRelative("second");
+                if (pathProp == null) continue;
+                return pathProp.stringValue;
+            }
+
+            throw new VRCFBuilderException("Missing bone hash from TOS array: " + boneHash);
         }
     }
 }

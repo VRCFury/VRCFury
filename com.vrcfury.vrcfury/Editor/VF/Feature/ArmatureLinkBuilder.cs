@@ -529,11 +529,15 @@ namespace VF.Feature {
                 var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
                 var text = new List<string>();
                 var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links);
-                text.Add("Prop root bone scale: " + propMainScale);
-                text.Add("Avatar root bone scale: " + avatarMainScale);
-                text.Add("Scaling factor: " + scalingFactor);
+                text.Add("Merging to bone: " + 
+                                   AnimationUtility.CalculateTransformPath(links.avatarMain.transform, avatarObject.transform));
                 text.Add("Link Mode: " + linkMode);
                 text.Add("Keep Bone Offsets: " + keepBoneOffsets);
+                if (!keepBoneOffsets) {
+                    text.Add("Prop root bone scale: " + propMainScale);
+                    text.Add("Avatar root bone scale: " + avatarMainScale);
+                    text.Add("Scaling factor: " + scalingFactor);
+                }
                 if (links.reparent.Count > 0) {
                     text.Add(
                         "These bones do not have a match on the avatar and will be added as new children: \n" +
