@@ -40,23 +40,23 @@ namespace VF.Updater {
 
             var actions = new PackageActions(DebugLog);
 
-            var packages = await actions.ListInstalledPacakges();
-            if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
-                // Updater package (... this package) isn't installed, which means this code
-                // is probably running inside of the standalone installer, and we need to go install
-                // the updater and main vrcfury package.
-                await AsyncUtils.DisplayDialog(
-                    "The VRCFury Unity Package is importing, so unity may freeze or go unresponsive for a bit." +
-                    " If all goes well, you'll receive a popup when it's complete!"
-                );
-                actions.CreateMarker(freshInstallInProgress);
-                DebugLog("Package is missing, bootstrapping com.vrcfury.updater package");
-                await VRCFuryUpdater.AddUpdateActions(false, actions);
-                await actions.Run();
-                return;
-            }
-
             if (!IsRunningInsidePackage) {
+                var packages = await actions.ListInstalledPacakges();
+                if (!packages.Any(p => p.name == "com.vrcfury.updater")) {
+                    // Updater package (... this package) isn't installed, which means this code
+                    // is probably running inside of the standalone installer, and we need to go install
+                    // the updater and main vrcfury package.
+                    await AsyncUtils.DisplayDialog(
+                        "The VRCFury Unity Package is importing, so unity may freeze or go unresponsive for a bit." +
+                        " If all goes well, you'll receive a popup when it's complete!"
+                    );
+                    actions.CreateMarker(freshInstallInProgress);
+                    DebugLog("Package is missing, bootstrapping com.vrcfury.updater package");
+                    await VRCFuryUpdater.AddUpdateActions(false, actions);
+                    await actions.Run();
+                    return;
+                }
+                
                 DebugLog("(not running inside package)");
                 return;
             }
