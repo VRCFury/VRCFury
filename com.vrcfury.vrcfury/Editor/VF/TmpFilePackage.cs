@@ -16,13 +16,17 @@ namespace VF {
                 File.WriteAllBytes(TmpPackagePath, Encoding.UTF8.GetBytes(PackageJson));
             }
 
+            EditorApplication.delayCall += () => {
+                if (Directory.Exists("Assets/_VRCFury")) {
+                    AssetDatabase.MoveAsset("Assets/_VRCFury", GetPath() + "/LegacyBackup");
+                }
+            };
+
             return TmpDirPath;
         }
 
         static TmpFilePackage() {
-            if (Directory.Exists("Assets/_VRCFury")) {
-                AssetDatabase.MoveAsset("Assets/_VRCFury", GetPath() + "/LegacyBackup");
-            }
+            GetPath();
         }
          
         private const string TmpDirPath = "Packages/com.vrcfury.temp";
