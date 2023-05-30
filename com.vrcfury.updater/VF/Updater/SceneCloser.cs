@@ -24,7 +24,7 @@ namespace VF.Updater {
                 .ToList();
         }
 
-        private const string UpdateScenePath = "Assets/_VRCFury/VRCFury is Updating.unity";
+        private const string UpdateScenePath = "Assets/VRCFury is Updating.unity";
 
         public static async Task CloseScenes() {
             await AsyncUtils.InMainThread(() => {
@@ -58,7 +58,6 @@ namespace VF.Updater {
                 }
 
                 AssetDatabase.DeleteAsset(UpdateScenePath);
-                Directory.CreateDirectory("Assets/_VRCFury");
                 EditorSceneManager.SaveScene(updateScene, UpdateScenePath);
 
                 var info = new string[] {

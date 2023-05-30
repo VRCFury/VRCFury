@@ -24,7 +24,6 @@ namespace VF {
     public class PlayModeTrigger : IVRCSDKPostprocessAvatarCallback {
         private static double lastRescan = 0;
         private static string AboutToUploadKey = "vrcf_vrcAboutToUpload";
-        private const string tmpDirParent = "Assets/_VRCFury/PlayMode";
         private static string tmpDir;
         public int callbackOrder => int.MaxValue;
         public void OnPostprocessAvatar() {
@@ -91,6 +90,7 @@ namespace VF {
             if (!activeNow) return;
 
             if (tmpDir == null) {
+                var tmpDirParent = TmpFilePackage.GetPath() + "/PlayMode";
                 VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
                 tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
                 Directory.CreateDirectory(tmpDir);
