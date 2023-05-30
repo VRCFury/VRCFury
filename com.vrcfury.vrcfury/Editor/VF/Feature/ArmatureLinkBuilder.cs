@@ -332,7 +332,7 @@ namespace VF.Feature {
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
                 try {
                     avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, model.boneOnAvatar);
-                } catch (Exception e) {
+                } catch (Exception) {
                     foreach (var fallback in model.fallbackBones) {
                         avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, fallback);
                         if (avatarBone) break;

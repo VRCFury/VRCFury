@@ -18,6 +18,11 @@
             "name": "com.vrchat.base",
             "expression": "3.1.12",
             "define": "VRC_NEW_HOOK_API"
+        },
+        {
+            "name": "com.unity.nuget.newtonsoft-json",
+            "expression": "0",
+            "define": "JSON_AVAILABLE"
         }
     ],
     "noEngineReferences": false

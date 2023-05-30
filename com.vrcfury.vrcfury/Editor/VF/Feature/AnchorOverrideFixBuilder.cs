@@ -15,7 +15,7 @@ namespace VF.Feature {
             GameObject root;
             try {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Chest);
-            } catch (Exception e) {
+            } catch (Exception) {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Hips);
             }
             foreach (var skin in avatarObject.GetComponentsInChildren<Renderer>(true)) {

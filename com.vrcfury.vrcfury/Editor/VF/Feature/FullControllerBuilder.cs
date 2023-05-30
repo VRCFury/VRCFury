@@ -28,18 +28,18 @@ namespace VF.Feature {
             foreach (var p in model.prms) {
                 VRCExpressionParameters prms = p.parameters;
                 if (!prms) continue;
-                foreach (var param in prms.parameters) {
+                var copy = mutableManager.CopyRecursive(prms, saveFilename: "tmp");
+                foreach (var param in copy.parameters) {
+                    if (string.IsNullOrWhiteSpace(param.name)) continue;
                     if (param.name == model.toggleParam && param.valueType == VRCExpressionParameters.ValueType.Int)
                         toggleIsInt = true;
-                    if (string.IsNullOrWhiteSpace(param.name)) continue;
-                    var newParam = new VRCExpressionParameters.Parameter {
-                        name = RewriteParamName(param.name),
-                        valueType = param.valueType,
-                        saved = param.saved && !model.ignoreSaved,
-                        defaultValue = param.defaultValue
-                    };
-                    manager.GetParams().addSyncedParam(newParam);
+                    param.name = RewriteParamName(param.name);
+                    if (model.ignoreSaved) {
+                        param.saved = false;
+                    }
+                    manager.GetParams().addSyncedParam(param);
                 }
+                AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
             }
 
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
