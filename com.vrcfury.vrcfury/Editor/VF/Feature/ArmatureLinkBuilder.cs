@@ -538,7 +538,7 @@ namespace VF.Feature {
                     text.Add("Avatar root bone scale: " + avatarMainScale);
                     text.Add("Scaling factor: " + scalingFactor);
                 }
-                if (links.reparent.Count > 0) {
+                if (linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot && links.reparent.Count > 0) {
                     text.Add(
                         "These bones do not have a match on the avatar and will be added as new children: \n" +
                         string.Join("\n",
