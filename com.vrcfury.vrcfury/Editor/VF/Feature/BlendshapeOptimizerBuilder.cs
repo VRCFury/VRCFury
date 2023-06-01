@@ -211,12 +211,7 @@ namespace VF.Feature {
         private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, AnimatorController controller) {
             var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
-            var clipsInController = new List<AnimationClip>();
-            if (controller != null) {
-                foreach (var layer in controller.layers) {
-                    AnimatorIterator.ForEachClip(layer.stateMachine, clip => clipsInController.Add(clip));
-                }
-            }
+            var clipsInController = new AnimatorIterator.Clips().From(controller);
 
             return clipsInController.SelectMany(clip => {
                 var clipBindings = AnimationUtility.GetCurveBindings(clip);

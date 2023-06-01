@@ -235,21 +235,16 @@ namespace VF.Menu {
 
         private static bool IsParamUsed(AnimatorControllerLayer layer, string param) {
             var isUsed = false;
-            AnimatorIterator.ForEachTransition(layer.stateMachine, t => {
-                foreach (var c in t.conditions) {
-                    isUsed |= c.parameter == param;
-                }
-            });
-            AnimatorIterator.ForEachState(layer.stateMachine, state => {
-                isUsed |= state.speedParameter == param;
-                isUsed |= state.cycleOffsetParameter == param;
-                isUsed |= state.mirrorParameter == param;
-                isUsed |= state.timeParameter == param;
-            });
-            AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
-                isUsed |= tree.blendParameter == param;
-                isUsed |= tree.blendParameterY == param;
-            });
+            isUsed |= new AnimatorIterator.Conditions().From(layer)
+                .Any(c => c.parameter == param);
+            isUsed |= new AnimatorIterator.States().From(layer).Any(state =>
+                state.speedParameter == param ||
+                state.cycleOffsetParameter == param ||
+                state.mirrorParameter == param ||
+                state.timeParameter == param
+            );
+            isUsed |= new AnimatorIterator.Trees().From(layer)
+                .Any(tree => tree.blendParameter == param || tree.blendParameterY == param);
             return isUsed;
         }
     }

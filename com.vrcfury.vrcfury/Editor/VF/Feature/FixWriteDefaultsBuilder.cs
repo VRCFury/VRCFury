@@ -116,9 +116,9 @@ namespace VF.Feature {
             if (defaultClip.GetFloatBindings().Length > 0 || defaultClip.GetObjectBindings().Length > 0) {
                 var defaultLayer = GetFx().NewLayer("Defaults", 0);
                 defaultLayer.NewState("Defaults").WithAnimation(defaultClip.GetRaw());
-                AnimatorIterator.ForEachState(defaultLayer.GetRawStateMachine(), state => {
+                foreach (var state in new AnimatorIterator.States().From(defaultLayer.GetRawStateMachine())) {
                     state.writeDefaultValues = useWriteDefaults;
-                });
+                }
             }
         }
 
@@ -130,25 +130,22 @@ namespace VF.Feature {
         ) {
             // Record default values for things
             if (recordDefaults) {
-                AnimatorIterator.ForEachClip(layer, clip => {
+                foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
                     foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
                         RecordDefaultNow(binding, true);
                     }
                     foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
                         RecordDefaultNow(binding, false);
                     }
-                });
+                }
             }
 
             // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
             // absolutely must use wd on.
-            AnimatorIterator.ForEachBlendTree(layer, tree => {
-                if (tree.blendType == BlendTreeType.Direct) {
-                    useWriteDefaults = true;
-                }
-            });
+            useWriteDefaults |= new AnimatorIterator.Trees().From(layer)
+                .Any(tree => tree.blendType == BlendTreeType.Direct);
 
-            AnimatorIterator.ForEachState(layer, state => {
+            foreach (var state in new AnimatorIterator.States().From(layer)) {
                 if (useWriteDefaults) { 
                     state.writeDefaultValues = true;
                 } else {
@@ -156,7 +153,7 @@ namespace VF.Feature {
                     if (!state.writeDefaultValues) return;
                     state.writeDefaultValues = false;
                 }
-            });
+            }
         }
         
         private class ControllerInfo {
@@ -182,19 +179,15 @@ namespace VF.Feature {
                 foreach (var layer in controller.layers) {
                     var isManaged = allManagedStateMachines.Contains(layer.stateMachine);
                     if (!isManaged) {
-                        AnimatorIterator.ForEachState(layer.stateMachine, state => {
-                            var hasDirect = false;
-                            AnimatorIterator.ForEachBlendTree(state, tree => {
-                                if (tree.blendType == BlendTreeType.Direct) {
-                                    hasDirect = true;
-                                }
-                            });
+                        foreach (var state in new AnimatorIterator.States().From(layer)) {
+                            var hasDirect = new AnimatorIterator.Trees().From(state)
+                                .Any(tree => tree.blendType == BlendTreeType.Direct);
 
                             var list = hasDirect
                                 ? (state.writeDefaultValues ? info.directOnStates : info.directOffStates)
                                 : (state.writeDefaultValues ? info.onStates : info.offStates);
                             list.Add(layer.name + "." + state.name);
-                        });
+                        }
                     }
                     
                     if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {

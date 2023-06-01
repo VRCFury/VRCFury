@@ -320,10 +320,8 @@ namespace VF.Builder {
         }
 
         public void ForEachClip(Action<EasyAnimationClip> action) {
-            foreach (var l in GetLayers()) {
-                AnimatorIterator.ForEachClip(l, clip => {
-                    action(new EasyAnimationClip(clip));
-                });
+            foreach (var clip in new AnimatorIterator.Clips().From(GetRaw())) {
+                action(new EasyAnimationClip(clip));
             }
         }
     }

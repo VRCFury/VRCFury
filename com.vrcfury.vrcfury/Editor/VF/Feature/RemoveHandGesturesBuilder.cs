@@ -12,9 +12,9 @@ namespace VF.Feature {
         public void Apply() {
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetUnmanagedLayers()) {
-                    AnimatorIterator.ForEachTransition(layer, t => {
+                    foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
                         AdjustTransition(controller, t);
-                    });
+                    }
                 }
             }
         }
