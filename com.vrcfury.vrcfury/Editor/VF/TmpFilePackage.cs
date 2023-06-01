@@ -1,7 +1,6 @@
+using System.IO;
 using System.Text;
 using UnityEditor;
-using Directory = UnityEngine.Windows.Directory;
-using File = UnityEngine.Windows.File;
 
 namespace VF {
     [InitializeOnLoad]
