@@ -1,6 +1,8 @@
 using System.IO;
+using System.Reflection;
 using System.Text;
 using UnityEditor;
+using UnityEditor.PackageManager;
 
 namespace VF {
     [InitializeOnLoad]
@@ -13,6 +15,12 @@ namespace VF {
             if (!File.Exists(TmpPackagePath) ||
                 Encoding.UTF8.GetString(File.ReadAllBytes(TmpPackagePath)) != PackageJson) {
                 File.WriteAllBytes(TmpPackagePath, Encoding.UTF8.GetBytes(PackageJson));
+
+                EditorApplication.delayCall += () => {
+                    MethodInfo method = typeof(Client).GetMethod("Resolve",
+                        BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                    method.Invoke(null, null);
+                };
             }
 
             EditorApplication.delayCall += () => {
