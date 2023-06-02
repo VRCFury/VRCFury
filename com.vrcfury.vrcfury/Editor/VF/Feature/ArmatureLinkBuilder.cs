@@ -427,13 +427,21 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.Info(
                 "This feature will link an armature in a prop to the armature on the avatar base." +
                 " It can also be used to link a single object in the prop to a certain bone on the avatar's armature."));
-            
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Root bone/object to attach from the prop:"));
+
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Link From:",
+                style => style.unityFontStyleAndWeight = FontStyle.Bold));
+            container.Add(VRCFuryEditorUtils.WrappedLabel(
+                "For clothing, this should be the Hips bone in the clothing's Armature (or the 'main' bone if it doesn't have Hips).\n" +
+                "For non-clothing objects (things that you just want to re-parent), this should be the object you want moved."));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            var rootBoneLabelWhenSkin = VRCFuryEditorUtils.WrappedLabel("Corresponding root bone on avatar:");
-            var rootBoneLabelWhenReparent = VRCFuryEditorUtils.WrappedLabel("Avatar bone to attach to:");
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Link To:",
+                style => style.unityFontStyleAndWeight = FontStyle.Bold));
+            var rootBoneLabelWhenSkin = VRCFuryEditorUtils.WrappedLabel(
+                "Select the bone that matches the one you selected in the clothing above.");
+            var rootBoneLabelWhenReparent = VRCFuryEditorUtils.WrappedLabel(
+                "Select the bone you want to attach this object to.");
             rootBoneLabelWhenReparent.style.display = DisplayStyle.None;
             container.Add(rootBoneLabelWhenSkin);
             container.Add(rootBoneLabelWhenReparent);
