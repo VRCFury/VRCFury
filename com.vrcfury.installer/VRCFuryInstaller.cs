@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.PackageManager;
@@ -47,7 +48,13 @@ public class VRCFuryInstaller {
             RefreshPackages();
             return changed;
         });
-        if (restarting) return;
+        if (restarting) {
+            // Unity will probably unload us during this pause, but that's fine, we'll just start over.
+            // We need to make sure unity has totally forgotten about com.vrcfury.vrcfury before we install
+            // the new one, otherwise it will delete our new com.vrcfury.vrcfury folder when it cleans up
+            // the upm package.
+            await Task.Delay(10000);
+        }
 
         var url = "https://vrcfury.com/downloadRawZip";
         var tempFile = await InMainThread(FileUtil.GetUniqueTempPathInProject) + ".zip";
