@@ -105,6 +105,13 @@ for (const dir of await fs.readdir('.')) {
 }
 
 await writeJson('../versions/updates.json', versionJson);
+
+for (const p of Object.values(vccJson.packages)) {
+    p.versions = Object.fromEntries(
+        Object.entries(p.versions)
+            .sort(([v1], [v2]) => semver.compare(v2, v1)),
+    );
+}
 await writeJson('../versions/vcc.json', vccJson);
 
 function checkFileExists(file) {
