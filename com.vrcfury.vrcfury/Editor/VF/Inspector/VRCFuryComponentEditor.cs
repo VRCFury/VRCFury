@@ -162,6 +162,15 @@ namespace VF.Inspector {
         private GameObject dummyObject;
 
         public sealed override VisualElement CreateInspectorGUI() {
+            try {
+                return CreateInspectorGUIUnsafe();
+            } catch (Exception e) {
+                Debug.LogException(new Exception("Failed to render editor", e));
+                return VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
+            }
+        }
+
+        private VisualElement CreateInspectorGUIUnsafe() {
             if (!(target is UnityEngine.Component c)) {
                 return VRCFuryEditorUtils.Error("This isn't a component?");
             }

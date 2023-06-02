@@ -50,7 +50,10 @@ namespace VF {
         
         public static bool IsImmutableVrcf(string path) {
             // We verify if File.Exists, so that prefabs can still be edited in dev mode (when package is a file system folder)
-            if (!Path.GetFullPath(path).StartsWith(Path.GetFullPath("Packages"))) {
+            if (string.IsNullOrWhiteSpace(path)
+                || !File.Exists(path)
+                || !Path.GetFullPath(path).StartsWith(Path.GetFullPath("Packages"))
+            ) {
                 return false;
             }
 
