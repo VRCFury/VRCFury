@@ -33,14 +33,14 @@ jobs:
         run: |
           (cd .github/workflows && npm install)
           node .github/workflows/bundle.js
-#      - name: Push version manifest
-#        working-directory: versions
-#        run: |
-#          git diff
-#          git config user.name VRCFury Releases
-#          git config user.email noreply@vrcfury.com
-#          git diff --quiet || git commit -am "Release from $GITHUB_SHA"
-#          git push
+      - name: Push version manifest
+        working-directory: versions
+        run: |
+          git diff
+          git config user.name VRCFury Releases
+          git config user.email noreply@vrcfury.com
+          git diff --quiet || git commit -am "Release from $GITHUB_SHA"
+          git push
       - name: Build installer
         uses: mikefarah/yq@v4.31.2
         with:

@@ -68,7 +68,9 @@ for (const dir of await fs.readdir('.')) {
                 versions: {}
             };
         }
-        existingVcc.versions = {};
+        if (existingVcc.versions[version]) {
+            throw new Error("Version already exists in vcc.json");
+        }
         const vccPackage = JSON.parse(JSON.stringify(json));
         vccPackage.url = outputZipUrl;
         existingVcc.versions[version] = vccPackage;
@@ -92,7 +94,7 @@ for (const dir of await fs.readdir('.')) {
     ], { stdio: "inherit" });
 }
 
-await writeJson('../versions/updates.json', versionJson);
+//await writeJson('../versions/updates.json', versionJson);
 await writeJson('../versions/vcc.json', vccJson);
 
 function checkFileExists(file) {
