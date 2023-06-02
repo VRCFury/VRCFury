@@ -33,6 +33,21 @@ public class VRCFuryInstaller {
         if (Directory.Exists("Temp/vrcfDoNotInstall")) {
             return;
         }
+        
+        var restarting = await InMainThread(() => {
+            var changed = false;
+            changed |= Delete(AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
+            changed |= Delete("Assets/VRCFury");
+            changed |= Delete("Assets/VRCFury-installer");
+            changed |= Delete("Packages/com.vrcfury.legacyprefabs.tgz");
+            changed |= Delete("Packages/com.vrcfury.vrcfury.tgz");
+            changed |= Delete("Packages/com.vrcfury.legacyprefabs");
+            changed |= Delete("Packages/com.vrcfury.vrcfury");
+            changed |= CleanManifest(false);
+            RefreshPackages();
+            return changed;
+        });
+        if (restarting) return;
 
         var url = "https://vrcfury.com/downloadRawZip";
         var tempFile = await InMainThread(FileUtil.GetUniqueTempPathInProject) + ".zip";
@@ -65,41 +80,57 @@ public class VRCFuryInstaller {
         }
 
         await InMainThread(() => {
-            var manifestPath = "Packages/manifest.json";
-            if (File.Exists(manifestPath)) {
-                var linesToKeep = File.ReadLines(manifestPath).Where(l => !l.Contains("com.vrcfury.")).ToList();
-                var tempManifestPath = FileUtil.GetUniqueTempPathInProject();
-                File.WriteAllLines(tempManifestPath, linesToKeep);
-                File.Delete(manifestPath);
-                File.Move(tempManifestPath, manifestPath);
-            }
-
-            Delete(AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
-            Delete("Assets/VRCFury");
-            Delete("Assets/VRCFury-installer");
-            Delete("Packages/com.vrcfury.legacyprefabs.tgz");
-            Delete("Packages/com.vrcfury.updater.tgz");
-            Delete("Packages/com.vrcfury.vrcfury.tgz");
-            Delete("Packages/com.vrcfury.legacyprefabs");
-            Delete("Packages/com.vrcfury.updater");
-            Delete("Packages/com.vrcfury.vrcfury");
-            Delete("Packages/com.vrcfury.installer");
-
             var appRootDir = Path.GetDirectoryName(Application.dataPath);
             Directory.CreateDirectory(appRootDir + "/Temp/vrcfInstalling");
 
+            Debug.Log($"Moving {tmpDir} to Packages/com.vrcfury.vrcfury");
             Directory.Move(tmpDir, "Packages/com.vrcfury.vrcfury");
 
-            MethodInfo method = typeof(Client).GetMethod("Resolve",
-                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-            method.Invoke(null, null);
+            CleanManifest(true);
+            Delete("Packages/com.vrcfury.updater.tgz");
+            Delete("Packages/com.vrcfury.updater");
+            Delete("Packages/com.vrcfury.installer");
+
+            RefreshPackages();
         });
     }
 
-    private static void Delete(string path) {
-        if (string.IsNullOrWhiteSpace(path)) return;
-        if (Directory.Exists(path)) Directory.Delete(path, true);
-        if (File.Exists(path)) File.Delete(path);
+    private static void RefreshPackages() {
+        MethodInfo method = typeof(Client).GetMethod("Resolve",
+            BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+        method.Invoke(null, null);
+    }
+
+    private static bool CleanManifest(bool removeUpdater) {
+        var manifestPath = "Packages/manifest.json";
+        if (!File.Exists(manifestPath)) return false;
+        var lines = File.ReadLines(manifestPath).ToArray();
+        bool ShouldRemoveLine(string line) {
+            return line.Contains("com.vrcfury.") && (removeUpdater || !line.Contains("com.vrcfury.updater"));
+        }
+        var linesToKeep = lines.Where(l => !ShouldRemoveLine(l)).ToArray();
+        if (lines.Length == linesToKeep.Length) return false;
+        var tempManifestPath = FileUtil.GetUniqueTempPathInProject();
+        File.WriteAllLines(tempManifestPath, linesToKeep);
+        File.Delete(manifestPath);
+        File.Move(tempManifestPath, manifestPath);
+        return true;
+    }
+
+    private static bool Delete(string path) {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        if (Directory.Exists(path)) {
+            Debug.Log("Deleting directory: " + path);
+            Directory.Delete(path, true);
+            return true;
+        }
+        if (File.Exists(path)) {
+            Debug.Log("Deleting file: " + path);
+            File.Delete(path);
+            return true;
+        }
+
+        return false;
     }
 
     private static async Task DisplayDialog(string msg) {
