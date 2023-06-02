@@ -37,14 +37,9 @@ public class VRCFuryInstaller {
         
         var restarting = await InMainThread(() => {
             var changed = false;
-            changed |= Delete(AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
-            changed |= Delete("Assets/VRCFury");
-            changed |= Delete("Assets/VRCFury-installer");
-            changed |= Delete("Packages/com.vrcfury.legacyprefabs.tgz");
             changed |= Delete("Packages/com.vrcfury.vrcfury.tgz");
-            changed |= Delete("Packages/com.vrcfury.legacyprefabs");
             changed |= Delete("Packages/com.vrcfury.vrcfury");
-            changed |= CleanManifest(false);
+            changed |= CleanManifest(true);
             RefreshPackages();
             return changed;
         });
@@ -93,7 +88,12 @@ public class VRCFuryInstaller {
             Debug.Log($"Moving {tmpDir} to Packages/com.vrcfury.vrcfury");
             Directory.Move(tmpDir, "Packages/com.vrcfury.vrcfury");
 
-            CleanManifest(true);
+            CleanManifest(false);
+            Delete(AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
+            Delete("Assets/VRCFury");
+            Delete("Assets/VRCFury-installer");
+            Delete("Packages/com.vrcfury.legacyprefabs.tgz");
+            Delete("Packages/com.vrcfury.legacyprefabs");
             Delete("Packages/com.vrcfury.updater.tgz");
             Delete("Packages/com.vrcfury.updater");
             Delete("Packages/com.vrcfury.installer");
@@ -108,12 +108,12 @@ public class VRCFuryInstaller {
         method.Invoke(null, null);
     }
 
-    private static bool CleanManifest(bool removeUpdater) {
+    private static bool CleanManifest(bool mainOnly) {
         var manifestPath = "Packages/manifest.json";
         if (!File.Exists(manifestPath)) return false;
         var lines = File.ReadLines(manifestPath).ToArray();
         bool ShouldRemoveLine(string line) {
-            return line.Contains("com.vrcfury.") && (removeUpdater || !line.Contains("com.vrcfury.updater"));
+            return line.Contains("com.vrcfury.") && (!mainOnly || line.Contains("com.vrcfury.vrcfury"));
         }
         var linesToKeep = lines.Where(l => !ShouldRemoveLine(l)).ToArray();
         if (lines.Length == linesToKeep.Length) return false;
