@@ -54,7 +54,7 @@ namespace VF {
                 || !File.Exists(path)
                 || !Path.GetFullPath(path).StartsWith(Path.GetFullPath("Packages"))
             ) {
-                return false;
+                return false; 
             }
 
             return path.StartsWith("Packages/com.vrcfury.vrcfury/")
