@@ -35,9 +35,9 @@ for (const dir of await fs.readdir('.')) {
         }
     }
 
-    const tagPrefix = `${name}/`;
+    const tagPrefix = `test/${name}/`;
     let version = await getNextVersion(allTags, tagPrefix);
-    const tagName = `test/${tagPrefix}${version}`
+    const tagName = `${tagPrefix}${version}`
     json.version = version;
     await writeJson(packageJsonPath, json);
 

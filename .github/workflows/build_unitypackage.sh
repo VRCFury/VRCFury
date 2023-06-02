@@ -16,10 +16,6 @@ function make_meta_directory() {
       return
     fi
 
-    if [[ "$asset_file" == *.asmdef || "$asset_file" == *.json || "$asset_file" == *MenuItem* ]]; then
-      return;
-    fi
-
     echo "Adding $asset_file to $path_prefix/$asset_file"
     guid=$(yq e '.guid' "$meta_file")
     # we reverse all the guids so they don't match the ones in the upm upgrade package
