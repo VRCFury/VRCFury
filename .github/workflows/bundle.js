@@ -37,7 +37,7 @@ for (const dir of await fs.readdir('.')) {
 
     const tagPrefix = `${name}/`;
     let version = await getNextVersion(allTags, tagPrefix);
-    const tagName = `${tagPrefix}${version}`
+    const tagName = `test/${tagPrefix}${version}`
     json.version = version;
     await writeJson(packageJsonPath, json);
 
@@ -74,22 +74,22 @@ for (const dir of await fs.readdir('.')) {
         existingVcc.versions[version] = vccPackage;
     }
 
-    // await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit" });
-    // await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit" });
-    // await spawn('git', [ 'commit', '-m', `${json.displayName} v${version}`, packageJsonPath ], { stdio: "inherit" });
-    // await spawn('git', [ 'tag', tagName ], { stdio: "inherit" });
-    // await spawn('git', [ 'push', 'origin', tagName ], { stdio: "inherit" });
-    // await spawn('git', [ 'checkout', process.env.GITHUB_SHA ], { stdio: "inherit" });
-    //
-    // await spawn('gh', [
-    //     'release',
-    //     'create',
-    //     tagName,
-    //     outputPath,
-    //     outputZipPath,
-    //     '--title', `${json.displayName} v${version}`,
-    //     '--verify-tag'
-    // ], { stdio: "inherit" });
+    await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit" });
+    await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit" });
+    await spawn('git', [ 'commit', '-m', `${json.displayName} v${version}`, packageJsonPath ], { stdio: "inherit" });
+    await spawn('git', [ 'tag', tagName ], { stdio: "inherit" });
+    await spawn('git', [ 'push', 'origin', tagName ], { stdio: "inherit" });
+    await spawn('git', [ 'checkout', process.env.GITHUB_SHA ], { stdio: "inherit" });
+
+    await spawn('gh', [
+        'release',
+        'create',
+        tagName,
+        outputPath,
+        outputZipPath,
+        '--title', `${json.displayName} v${version}`,
+        '--verify-tag'
+    ], { stdio: "inherit" });
 }
 
 await writeJson('../versions/updates.json', versionJson);

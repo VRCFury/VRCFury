@@ -23,6 +23,11 @@ namespace VF.Updater {
 
         [MenuItem(updateName, priority = updatePriority)]
         public static void Upgrade() {
+            if (!Directory.Exists("Packages/com.vrcfury.vrcfury")) {
+                throw new Exception(
+                    "VRCFury is not installed as a local package, and thus cannot update itself.");
+            }
+            
             Task.Run(() => VRCFExceptionUtils.ErrorDialogBoundaryAsync(async () => {
                 var url = "https://vrcfury.com/downloadRawZip";
                 var tempFile = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject) + ".zip";

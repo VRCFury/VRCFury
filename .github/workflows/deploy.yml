@@ -50,8 +50,8 @@ jobs:
             ../.github/workflows/build_unitypackage.sh \
                 ../../VRCFury-installer.unitypackage \
                 Packages/com.vrcfury.installer
-#      - name: Release installer
-#        uses: softprops/action-gh-release@v1
-#        with:
-#          tag_name: installer
-#          files: 'VRCFury-installer.unitypackage'
+      - name: Release installer
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: installer-test
+          files: 'VRCFury-installer.unitypackage'
