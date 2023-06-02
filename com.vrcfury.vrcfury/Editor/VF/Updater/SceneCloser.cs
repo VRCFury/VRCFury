@@ -17,7 +17,12 @@ namespace VF.Updater {
      *    class, unity will show it as "null" until the scene is reloaded. This is especially common for fields that we
      *    change from a non-guid type to a guid type, like AnimationClip to GuidAnimationClip.
      */
+    [InitializeOnLoad]
     public static class SceneCloser {
+        static SceneCloser() {
+            Task.Run(ReopenScenes);
+        }
+
         private static IEnumerable<Scene> GetScenes() {
             return Enumerable.Range(0, SceneManager.sceneCount)
                 .Select(SceneManager.GetSceneAt)
@@ -26,6 +31,7 @@ namespace VF.Updater {
 
         private const string UpdateScenePath = "Assets/VRCFury is Updating.unity";
 
+        // TODO: Use this when prefabs update
         public static async Task CloseScenes() {
             await AsyncUtils.InMainThread(() => {
                 foreach (var scene in GetScenes()) {

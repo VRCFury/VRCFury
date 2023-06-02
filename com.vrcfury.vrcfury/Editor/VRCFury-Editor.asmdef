@@ -23,6 +23,11 @@
             "name": "com.unity.nuget.newtonsoft-json",
             "expression": "0",
             "define": "JSON_AVAILABLE"
+        },
+        {
+            "name": "com.vrchat.core.vpm-resolver",
+            "expression": "0",
+            "define": "VPM_AVAILABLE"
         }
     ],
     "noEngineReferences": false
