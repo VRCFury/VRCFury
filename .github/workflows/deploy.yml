@@ -45,11 +45,11 @@ jobs:
         uses: mikefarah/yq@v4.31.2
         with:
           cmd: |
-            cd repo/com.vrcfury.updater
+            cd repo/com.vrcfury.installer
             chmod +x ../.github/workflows/build_unitypackage.sh
             ../.github/workflows/build_unitypackage.sh \
                 ../../VRCFury-installer.unitypackage \
-                Assets/VRCFury-installer/Editor
+                Packages/com.vrcfury.installer
 #      - name: Release installer
 #        uses: softprops/action-gh-release@v1
 #        with:
