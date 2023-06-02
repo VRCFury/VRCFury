@@ -30,10 +30,6 @@ namespace VF.Component {
                 // Object was deserialized, but had no version. Default to version 0.
                 version = 0;
             }
-
-#if UNITY_EDITOR
-            EditorApplication.delayCall += Upgrade;
-#endif
         }
         
         public void OnBeforeSerialize() {

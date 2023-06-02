@@ -17,13 +17,6 @@ namespace VF {
             foreach (var path in paths) {
                 var brokenComponents = new HashSet<VRCFuryComponent>();
 
-                if (path.StartsWith("Packages/com.vrcfury") && File.Exists(path)) {
-                    blocked.Add(
-                        $"{path} is an immutable VRCFury file and cannot be changed.\n\n" +
-                        "If you want to change where menu items go, add a VRCFury Move Menu Item component to your avatar root instead.\n\n" +
-                        "If you want to change other things, create your own copy of the file somewhere else in your project.");
-                    blockedPaths.Add(path);
-                }
                 if (typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path)) {
                     for (int n = 0; n < SceneManager.sceneCount; ++n) {
                         var scene = SceneManager.GetSceneAt(n);
@@ -46,16 +39,23 @@ namespace VF {
             }
 
             if (blocked.Count > 0) {
-                EditorUtility.DisplayDialog("VRCFury Error",
-                    "These assets have been blocked from saving, because doing so would corrupt the contained" +
-                    " VRCFury components. You may need to update VRCFury using Tools -> VRCFury -> Update VRCFury," +
-                    " or report the issue to https://vrcfury.com/discord\n\n" +
+                EditorUtility.DisplayDialog("VRCFury Blocked Saving",
                     string.Join("\n", blocked),
-                    "Ok");
+                    "Ok"); 
                 paths = paths.ToList().Where(e => !blockedPaths.Contains(e)).ToArray();
             }
             
             return paths;
+        }
+        
+        public static bool IsImmutableVrcf(string path) {
+            // We verify if File.Exists, so that prefabs can still be edited in dev mode (when package is a file system folder)
+            if (!Path.GetFullPath(path).StartsWith(Path.GetFullPath("."))) {
+                return false;
+            }
+
+            return path.StartsWith("Packages/com.vrcfury.vrcfury/")
+                   || path.StartsWith("Packages/com.vrcfury.prefabs/");
         }
     }
 }

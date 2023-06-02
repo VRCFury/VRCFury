@@ -22,7 +22,7 @@ namespace VF.Inspector {
             );
         }
         
-        public override VisualElement CreateEditor() {
+        public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
             var self = (VRCFuryGlobalCollider)target;
 
             var container = new VisualElement();
