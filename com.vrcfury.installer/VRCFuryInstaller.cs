@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -29,6 +30,10 @@ public class VRCFuryInstaller {
     }
 
     private static async Task InstallUnsafe() {
+        if (Directory.Exists("Temp/vrcfDoNotInstall")) {
+            return;
+        }
+
         var url = "https://vrcfury.com/downloadRawZip";
         var tempFile = await InMainThread(FileUtil.GetUniqueTempPathInProject) + ".zip";
         try {
@@ -60,6 +65,15 @@ public class VRCFuryInstaller {
         }
 
         await InMainThread(() => {
+            var manifestPath = "Packages/manifest.json";
+            if (File.Exists(manifestPath)) {
+                var linesToKeep = File.ReadLines(manifestPath).Where(l => !l.Contains("com.vrcfury.")).ToList();
+                var tempManifestPath = FileUtil.GetUniqueTempPathInProject();
+                File.WriteAllLines(tempManifestPath, linesToKeep);
+                File.Delete(manifestPath);
+                File.Move(tempManifestPath, manifestPath);
+            }
+
             Delete(AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
             Delete("Assets/VRCFury");
             Delete("Assets/VRCFury-installer");
