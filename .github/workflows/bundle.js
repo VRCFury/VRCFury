@@ -35,7 +35,7 @@ for (const dir of await fs.readdir('.')) {
         }
     }
 
-    const tagPrefix = `test/${name}/`;
+    const tagPrefix = `${name}/`;
     let version = await getNextVersion(allTags, tagPrefix);
     const tagName = `${tagPrefix}${version}`
     json.version = version;
@@ -54,6 +54,16 @@ for (const dir of await fs.readdir('.')) {
     existing.hash = await hasha.fromFile(outputPath, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
     existing.latestUpmTargz = outputUrl;
+
+    if (name === "com.vrcfury.installer") {
+        const updater = versionJson.packages.find(e => e.id === "com.vrcfury.updater");
+        if (updater) {
+            updater.latestVersion = existing.latestVersion;
+            updater.hash = existing.hash;
+            updater.displayName = existing.displayName;
+            updater.latestUpmTargz = existing.latestUpmTargz;
+        }
+    }
     console.log(`Adding to version repository with version ${version}`);
 
     const outputZipFilename = `${name}-${version}-vcc.zip`;
@@ -94,7 +104,7 @@ for (const dir of await fs.readdir('.')) {
     ], { stdio: "inherit" });
 }
 
-//await writeJson('../versions/updates.json', versionJson);
+await writeJson('../versions/updates.json', versionJson);
 await writeJson('../versions/vcc.json', vccJson);
 
 function checkFileExists(file) {

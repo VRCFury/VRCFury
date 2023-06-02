@@ -53,5 +53,5 @@ jobs:
       - name: Release installer
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: installer-test
+          tag_name: installer
           files: 'VRCFury-installer.unitypackage'
