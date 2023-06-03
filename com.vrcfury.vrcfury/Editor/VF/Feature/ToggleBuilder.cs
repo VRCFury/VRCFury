@@ -266,6 +266,24 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     public void ApplyRestingState() {
         if (restingClip != null) {
             ResetAnimatorBuilder.WithoutAnimator(avatarObject, () => { restingClip.SampleAnimation(avatarObject, 0); });
+            foreach (var binding in AnimationUtility.GetCurveBindings(restingClip)) {
+                if (!binding.propertyName.StartsWith("material.")) continue;
+                var propName = binding.propertyName.Substring("material.".Length);
+                var transform = avatarObject.transform.Find(binding.path);
+                if (!transform) continue;
+                var obj = transform.gameObject;
+                var renderer = obj.GetComponent(binding.GetType()) as Renderer;
+                if (!renderer) continue;
+                var curve = AnimationUtility.GetEditorCurve(restingClip, binding);
+                if (curve.length == 0) continue;
+                var val = curve.keys[0].value;
+                renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
+                    if (!mat.HasProperty(propName)) return mat;
+                    mat = mutableManager.MakeMutable(mat);
+                    mat.SetFloat(propName, val);
+                    return mat;
+                }).ToArray();
+            }
         }
     }
 
