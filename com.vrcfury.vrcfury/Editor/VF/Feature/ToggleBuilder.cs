@@ -272,7 +272,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var transform = avatarObject.transform.Find(binding.path);
                 if (!transform) continue;
                 var obj = transform.gameObject;
-                var renderer = obj.GetComponent(binding.GetType()) as Renderer;
+                if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) continue;
+                var renderer = obj.GetComponent(binding.type) as Renderer;
                 if (!renderer) continue;
                 var curve = AnimationUtility.GetEditorCurve(restingClip, binding);
                 if (curve.length == 0) continue;
