@@ -21,11 +21,15 @@ namespace VF.Updater {
         
         private static readonly HttpClient HttpClient = new HttpClient();
 
+        public static bool IsVrcfuryALocalPackage() {
+            return Directory.Exists("Packages/com.vrcfury.vrcfury") &&
+                   Path.GetFullPath("Packages/com.vrcfury.vrcfury").StartsWith(Path.GetFullPath("Packages"));
+        }
+
         [MenuItem(updateName, priority = updatePriority)]
         public static void Upgrade() {
             Task.Run(() => VRCFExceptionUtils.ErrorDialogBoundaryAsync(async () => {
-                if (!Directory.Exists("Packages/com.vrcfury.vrcfury") ||
-                    !Path.GetFullPath("Packages/com.vrcfury.vrcfury").StartsWith(Path.GetFullPath("Packages"))) {
+                if (!IsVrcfuryALocalPackage()) {
                     throw new Exception(
                         "VRCFury is not installed as a local package, and thus cannot update itself.");
                 }
