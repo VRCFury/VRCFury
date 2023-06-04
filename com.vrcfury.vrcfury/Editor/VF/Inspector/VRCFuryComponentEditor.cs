@@ -208,16 +208,7 @@ namespace VF.Inspector {
 
             VisualElement body;
             if (isImmutable || isInstance) {
-                OnDestroy();
-                var id = v.gameObject
-                    .GetComponents(v.GetType())
-                    .Select((el, i) => (el, i))
-                    .First(x => x.el == v)
-                    .i;
-                dummyObject = Instantiate(v.gameObject);
-                dummyObject.hideFlags |= HideFlags.HideAndDontSave;
-                var copy = (VRCFuryComponent)dummyObject.GetComponents(v.GetType())
-                    .ElementAt(id);
+                var copy = CopyComponent(v);
                 copy.Upgrade();
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy, v.gameObject);
@@ -240,6 +231,29 @@ namespace VF.Inspector {
             el.style.marginBottom = 4;
             */
             return container;
+        }
+
+        private T CopyComponent<T>(T original) where T : UnityEngine.Component {
+            OnDestroy();
+            var originalObject = original.gameObject;
+            var id = originalObject
+                .GetComponents(original.GetType())
+                .Select((el, i) => (el, i))
+                .First(x => x.el == original)
+                .i;
+            dummyObject = Instantiate(originalObject);
+            dummyObject.SetActive(false);
+            dummyObject.hideFlags |= HideFlags.HideAndDontSave;
+            foreach (Transform child in dummyObject.transform) {
+                DestroyImmediate(child.gameObject);
+            }
+            var copy = (T)dummyObject.GetComponents(original.GetType())
+                .ElementAt(id);
+            foreach (var other in dummyObject.GetComponents(typeof(UnityEngine.Component))) {
+                if (other is Transform || other == copy) continue;
+                DestroyImmediate(other);
+            }
+            return copy;
         }
 
         public void OnDestroy() {
