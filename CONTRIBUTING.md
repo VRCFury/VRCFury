@@ -1,6 +1,6 @@
 # Contributing
 
-For source code contributions to be accepted, you must have full, 100% ownership of the contribution, and the code author / rights owner must release the contribution into the public domain. Pasting `The Unlicense` into a submitted merge request is sufficient for this purpose. This is a temporary requirement, as this repository may be re-licensed in the near future to ensure VRCFury is never used for commercial purposes.
+For source code contributions to be accepted, you must have full, 100% ownership of the contribution, and the code author / rights owner must release the contribution into the public domain. Pasting `The Unlicense` into a submitted merge request is sufficient for this purpose.
 
 Please also add your name to the list at the bottom!
 
