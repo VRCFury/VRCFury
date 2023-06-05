@@ -46,7 +46,11 @@ For more information, please refer to <https://unlicense.org>
 
 ## Special Thanks to the contributors!
 
-* Morghus (Numerous setup prefabs)
-* GameGeek720 (Toggle enhancements for transitions and the local player)
-* Raphiiko (Global parameters for toggles)
-* nullstalgia (Allow usage of buttons instead of toggles)
+* Morghus
+  * Created numerous setup prefabs
+* GameGeek720
+  * Added Toggle enhancements for transitions and the local player
+* Raphiiko
+  * Added global parameters for Toggles
+* nullstalgia
+  * Added option for Toggles to use momentary push buttons
