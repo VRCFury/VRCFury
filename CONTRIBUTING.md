@@ -3,7 +3,7 @@
 ## How to make code changes
 
 * Review the important `License Requirements` section below.
-* Check out this repository into a new directory (outside your unity project).
+* Fork this repository, and checkout into a new directory (outside your unity project).
 * If you installed using the VCC, remove the package using the VCC.
 * If you installed using the installer, remove the package from unity's Package Manager "In Project" section.
 * In unity's Package Manager tab, click +, `Add Package From Disk`, then select the com.vrcfury.vrcfury/package.json file from this repo.
@@ -11,10 +11,11 @@
 * Commit, and submit a Pull request with your changes.
   * Don't forget to include the snippet described in the `License Requirements`.
   * Don't forget to add your name to the bottom of this page if you feel your change was substantial!
+* When you're finished, you can return to the main version by removing your package from the Package Manager tab, then reinstalling normally using your preferred method.
 
 ## License Requirements
 
-For source code contributions to be accepted, you must have full, 100% ownership of the contribution, and you must release your contribution into the public domain. This is to ensure that the VRCFury license may be adjusted in the future if needed, to prevent unintended commercial, illegal, or immoral use. Pasting `The Unlicense` into your merge request is sufficient for this purpose.
+For source code contributions to be accepted, you must have full, 100% ownership of the contribution, and you must release your contribution into the public domain. This is to ensure that the license may be adjusted in the future if needed, to prevent unintended commercial, illegal, or immoral use. Pasting `The Unlicense` into your merge request is sufficient for this purpose.
 
 ```
 The changes made in this contribution are free and unencumbered software
