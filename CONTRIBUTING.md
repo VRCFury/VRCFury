@@ -2,7 +2,7 @@
 
 ## How to make code changes
 
-* Review the import `License Requirements` section below.
+* Review the important `License Requirements` section below.
 * Check out this repository into a new directory (outside your unity project).
 * If you installed using the VCC, remove the package using the VCC.
 * If you installed using the installer, remove the package from unity's Package Manager "In Project" section.
