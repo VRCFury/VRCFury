@@ -1,8 +1,20 @@
-# Contributing
+# Contributing to VRCFury
 
-For source code contributions to be accepted, you must have full, 100% ownership of the contribution, and the code author / rights owner must release the contribution into the public domain. Pasting `The Unlicense` into a submitted merge request is sufficient for this purpose.
+## How to make code changes
 
-Please also add your name to the list at the bottom!
+* Review the import `License Requirements` section below.
+* Check out this repository into a new directory (outside your unity project).
+* If you installed using the VCC, remove the package using the VCC.
+* If you installed using the installer, remove the package from unity's Package Manager "In Project" section.
+* In unity's Package Manager tab, click +, `Add Package From Disk`, then select the com.vrcfury.vrcfury/package.json file from this repo.
+* Make changes using either Jetbrains Rider, VSCode, or a text editor (if you're brave).
+* Commit, and submit a Pull request with your changes.
+  * Don't forget to include the snippet described in the `License Requirements`.
+  * Don't forget to add your name to the bottom of this page if you feel your change was substantial!
+
+## License Requirements
+
+For source code contributions to be accepted, you must have full, 100% ownership of the contribution, and you must release your contribution into the public domain. This is to ensure that the VRCFury license may be adjusted in the future if needed, to prevent unintended commercial, illegal, or immoral use. Pasting `The Unlicense` into your merge request is sufficient for this purpose.
 
 ```
 The changes made in this contribution are free and unencumbered software
@@ -32,7 +44,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 For more information, please refer to <https://unlicense.org>
 ```
 
-# Special Thanks to the contributors
+## Special Thanks to the contributors!
 
 * Morghus (Numerous setup prefabs)
 * GameGeek720 (Toggle enhancements for transitions and the local player)
