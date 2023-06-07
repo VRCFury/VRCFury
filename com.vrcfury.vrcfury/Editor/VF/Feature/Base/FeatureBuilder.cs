@@ -89,7 +89,7 @@ namespace VF.Feature.Base {
         }
 
         protected AnimationClip LoadState(string name, State state) {
-            if (state.actions.Count == 0) {
+            if (state == null || state.actions.Count == 0) {
                 return GetFx().GetNoopClip();
             }
 

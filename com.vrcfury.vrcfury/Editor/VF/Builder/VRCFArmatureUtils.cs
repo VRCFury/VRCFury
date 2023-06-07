@@ -28,10 +28,10 @@ namespace VF.Builder {
         public static GameObject FindBoneOnArmatureOrException(GameObject avatarObject, HumanBodyBones findBone) {
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator) {
-                throw new VRCFBuilderException("Avatar object does not contain an Animator");
+                throw new VRCFBuilderException("Avatar does not contain an Animator. Are you sure the avatar's rig is set to Humanoid?");
             }
             if (!animator.avatar) {
-                throw new VRCFBuilderException("Avatar object's Animator does not have an avatar rig set");
+                throw new VRCFBuilderException("Avatar's Animator does not have a rig present. Are you sure the avatar's rig is set to Humanoid?");
             }
 
             var so = new SerializedObject(animator.avatar);

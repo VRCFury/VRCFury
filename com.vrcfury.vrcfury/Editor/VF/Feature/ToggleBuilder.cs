@@ -79,12 +79,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
-        // Then don't even bother adding it. The user probably removed the object, so the toggle shouldn't be present.
-        if (model.state.IsEmpty() && model.state.actions.Count > 0) {
-            return;
-        }
-
         if (model.slider) {
             CreateSlider();
             return;
@@ -185,7 +179,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         VFAState inState;
         VFAState onState;
-        if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
+        if (model.hasTransition) {
             var transitionClipIn = LoadState(onName + " In", inAction);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
@@ -197,7 +191,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         off.TransitionsTo(inState).When(onCase);
 
         if (model.simpleOutTransition) outAction = inAction;
-        if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
+        if (model.hasTransition) {
             var transitionClipOut = LoadState(onName + " Out", outAction);
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
