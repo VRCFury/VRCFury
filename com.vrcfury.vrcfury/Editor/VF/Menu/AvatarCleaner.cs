@@ -54,7 +54,7 @@ namespace VF.Menu {
                     var removeObject = ShouldRemoveObj != null && ShouldRemoveObj(obj);
                     if (ShouldRemoveComponent != null && obj.gameObject.transform.childCount == 0) {
                         var allComponents = obj.GetComponents<UnityEngine.Component>()
-                            .Where(c => !(c is Transform))
+                            .Where(c => c != null && !(c is Transform))
                             .ToArray();
                         if (allComponents.Length > 0) {
                             var allComponentsAreRemoved = allComponents.All(ShouldRemoveComponent);
@@ -68,7 +68,7 @@ namespace VF.Menu {
                     } else {
                         if (ShouldRemoveComponent != null) {
                             foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
-                                if (!(component is Transform) && ShouldRemoveComponent(component)) {
+                                if (component != null && !(component is Transform) && ShouldRemoveComponent(component)) {
                                     removeItems.Add(component.GetType().Name + " on " + GetPath(obj));
                                     if (perform) RemoveComponent(component);
                                 }
