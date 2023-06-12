@@ -83,8 +83,7 @@ namespace VF.Feature {
                 applyToUnmanagedLayers = true;
                 useWriteDefaults = true;
             } else {
-                applyToUnmanagedLayers = false;
-                useWriteDefaults = shouldBeOnIfWeAreNotInControl;
+                return;
             }
             
             Debug.Log("VRCFury is fixing write defaults "
