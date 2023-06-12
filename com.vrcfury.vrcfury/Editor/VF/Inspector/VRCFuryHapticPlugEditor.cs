@@ -15,7 +15,7 @@ using VRC.Dynamics;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
     public class VRCFuryHapticPlugEditor : VRCFuryComponentEditor {
-        public override VisualElement CreateEditor() {
+        public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
             var self = (VRCFuryHapticPlug)target;
 
             var container = new VisualElement();

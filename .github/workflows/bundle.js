@@ -54,6 +54,16 @@ for (const dir of await fs.readdir('.')) {
     existing.hash = await hasha.fromFile(outputPath, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
     existing.latestUpmTargz = outputUrl;
+
+    if (name === "com.vrcfury.installer") {
+        const updater = versionJson.packages.find(e => e.id === "com.vrcfury.updater");
+        if (updater) {
+            updater.latestVersion = existing.latestVersion;
+            updater.hash = existing.hash;
+            updater.displayName = existing.displayName;
+            updater.latestUpmTargz = existing.latestUpmTargz;
+        }
+    }
     console.log(`Adding to version repository with version ${version}`);
 
     const outputZipFilename = `${name}-${version}-vcc.zip`;
@@ -68,7 +78,9 @@ for (const dir of await fs.readdir('.')) {
                 versions: {}
             };
         }
-        existingVcc.versions = {};
+        if (existingVcc.versions[version]) {
+            throw new Error("Version already exists in vcc.json");
+        }
         const vccPackage = JSON.parse(JSON.stringify(json));
         vccPackage.url = outputZipUrl;
         existingVcc.versions[version] = vccPackage;
@@ -93,6 +105,13 @@ for (const dir of await fs.readdir('.')) {
 }
 
 await writeJson('../versions/updates.json', versionJson);
+
+for (const p of Object.values(vccJson.packages)) {
+    p.versions = Object.fromEntries(
+        Object.entries(p.versions)
+            .sort(([v1], [v2]) => semver.compare(v2, v1)),
+    );
+}
 await writeJson('../versions/vcc.json', vccJson);
 
 function checkFileExists(file) {

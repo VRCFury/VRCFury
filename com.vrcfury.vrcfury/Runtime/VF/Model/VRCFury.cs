@@ -8,7 +8,7 @@ using VF.Model.Feature;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
-
+    [HelpURL("https://vrcfury.com")]
     public class VRCFury : VRCFuryComponent {
         [HideInInspector]
         public VRCFuryConfig config = new VRCFuryConfig();
@@ -70,8 +70,5 @@ namespace VF.Model {
     [Serializable]
     public class State {
         [SerializeReference] public List<Action> actions = new List<Action>();
-        public bool IsEmpty() {
-            return actions.Count == 0 || actions.All(a => a.IsEmpty());
-        }
     }
 }

@@ -11,7 +11,7 @@ namespace VF.Inspector {
     public class VRCFuryToggleEditor : VRCFuryComponentEditor {
 
 
-        public override VisualElement CreateEditor() {
+        public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
             var content = new VisualElement();
 
             VRCFuryEditorUtils.Padding(content, 5);

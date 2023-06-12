@@ -41,19 +41,14 @@ namespace VF.Feature {
                     continue;
                 }
 
-                var hasBehaviour = false;
-                AnimatorIterator.ForEachBehaviour(layer, b => {
-                    hasBehaviour = true;
-                });
+                var hasBehaviour = new AnimatorIterator.Behaviours().From(layer).Any();
                 if (hasBehaviour) {
                     AddDebug($"Not optimizing (contains behaviours)");
                     continue;
                 }
 
-                var hasNonstaticClips = false;
-                AnimatorIterator.ForEachClip(layer, clip => {
-                    hasNonstaticClips |= !ClipBuilder.IsStaticMotion(clip);
-                });
+                var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
+                    .Any(clip => !ClipBuilder.IsStaticMotion(clip));
 
                 var usedBindings = bindingsByLayer[layer];
                 var otherLayersAnimateTheSameThing = bindingsByLayer
@@ -99,11 +94,11 @@ namespace VF.Feature {
                 } else {
                     ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
                         var output = new List<AnimatorTransitionBase>();
-                        AnimatorIterator.ForEachTransition(layer, t => {
+                        foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
                             if (t.destinationState == state || (t.isExit && layer.defaultState == state)) {
                                 output.Add(t);
                             }
-                        });
+                        }
                         return output.ToArray();
                     }
 
@@ -184,12 +179,10 @@ namespace VF.Feature {
                     param = state0Condition.Value.parameter;
                 }
 
-                var paramUsedInOtherLayer = false;
-                foreach (var other in fx.GetLayers()) {
-                    AnimatorIterator.ForEachTransition(other, t => {
-                        paramUsedInOtherLayer |= layer != other && t.conditions.Any(c => c.parameter == param);
-                    });
-                }
+                var paramUsedInOtherLayer = fx.GetLayers()
+                    .Where(other => layer != other)
+                    .SelectMany(other => new AnimatorIterator.Conditions().From(other))
+                    .Any(c => c.parameter == param);
 
                 if (paramUsedInOtherLayer) {
                     AddDebug($"Not optimizing (parameter used in some other layer)");
@@ -257,10 +250,11 @@ namespace VF.Feature {
 
         private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(AnimatorStateMachine sm) {
             var usedBindings = new HashSet<EditorCurveBinding>();
-            AnimatorIterator.ForEachClip(sm, clip => {
-                usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip).Where(c => !c.path.Contains("_ignored")));
+
+            foreach (var clip in new AnimatorIterator.Clips().From(sm)) {
+                usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
                 usedBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
-            });
+            }
             usedBindings.RemoveWhere(binding => binding.path == "_ignored");
             return usedBindings;
         }

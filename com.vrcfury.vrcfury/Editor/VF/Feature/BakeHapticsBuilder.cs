@@ -175,7 +175,6 @@ namespace VF.Feature {
                 foreach (var depthAction in c.depthActions) {
                     actionNum++;
                     var prefix = name + actionNum;
-                    if (depthAction.state == null || depthAction.state.IsEmpty()) continue;
 
                     var minDepth = depthAction.minDepth;
 

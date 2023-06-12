@@ -405,6 +405,7 @@ public class VFATransition {
              var trans = transitionProvider();
              trans.duration = 0;
              trans.canTransitionToSelf = false;
+             trans.hasExitTime = false;
              createdTransitions.Add(trans);
              return trans;
         };

@@ -16,16 +16,8 @@ namespace VF.Inspector {
 
 [CustomEditor(typeof(VRCFury), true)]
 public class VRCFuryEditor : VRCFuryComponentEditor {
-    public override VisualElement CreateEditor() {
+    public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
         var self = (VRCFury)target;
-
-        var loadError = self.GetBrokenMessage();
-        if (loadError != null) {
-            return VRCFuryEditorUtils.Error(
-                $"This VRCFury component failed to load ({loadError}). It's likely that your VRCFury is out of date." +
-                " Please try Tools -> VRCFury -> Update VRCFury. If this doesn't help, let us know on the " +
-                " discord at https://vrcfury.com/discord");
-        }
 
         var container = new VisualElement();
 
@@ -33,18 +25,10 @@ public class VRCFuryEditor : VRCFuryComponentEditor {
         if (features == null) {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Feature list is missing? This is a bug."));
         } else {
-            var disabled = PrefabUtility.IsPartOfPrefabInstance(self);
-            container.Add(CreateOverrideLabel());
-            if (disabled) {
-                // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
-                // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
-                // will just be thrown out randomly, and unity will dump a bunch of errors.
-                var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(self);
-                container.Add(CreatePrefabInstanceLabel(baseFury));
-            }
+
             var featureList = VRCFuryEditorUtils.List(features, 
-                renderElement: (i, prop) => renderFeature(self.config.features[i], prop, self.gameObject),
-                onPlus: () => OnPlus(features, self.gameObject),
+                renderElement: (i, prop) => renderFeature(self.config.features[i], prop, gameObject),
+                onPlus: () => OnPlus(features, gameObject),
                 onEmpty: () => {
                     var c = new VisualElement();
                     VRCFuryEditorUtils.Padding(c, 10);
@@ -57,10 +41,9 @@ public class VRCFuryEditor : VRCFuryComponentEditor {
                 }
             );
             container.Add(featureList);
-            if (disabled) featureList.SetEnabled(false);
         }
 
-        var pointingToAvatar = self.gameObject.GetComponent<VRCAvatarDescriptor>() != null;
+        var pointingToAvatar = gameObject.GetComponent<VRCAvatarDescriptor>() != null;
         if (pointingToAvatar) {
             var box = new Box();
             box.style.marginTop = box.style.marginBottom = 10;
@@ -75,60 +58,6 @@ public class VRCFuryEditor : VRCFuryComponentEditor {
         }
 
         return container;
-    }
-
-    private VisualElement CreateOverrideLabel() {
-        var baseText = "The VRCFury features in this prefab are overridden on this instance. Please revert them!" +
-                       " If you apply, it may corrupt data in the changed features.";
-        var overrideLabel = VRCFuryEditorUtils.Error(baseText);
-        overrideLabel.style.display = DisplayStyle.None;
-
-        double lastCheck = 0;
-        void CheckOverride() {
-            if (this == null) return; // The editor was deleted
-            var vrcf = (VRCFury)target;
-            var now = EditorApplication.timeSinceStartup;
-            if (lastCheck < now - 1) {
-                lastCheck = now;
-                var mods = VRCFPrefabFixer.GetModifications(vrcf);
-                var isModified = mods.Count > 0;
-                overrideLabel.style.display = isModified ? DisplayStyle.Flex : DisplayStyle.None;
-                if (isModified) {
-                    overrideLabel.text = baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath));
-                }
-            }
-            EditorApplication.delayCall += CheckOverride;
-        }
-        CheckOverride();
-
-        return overrideLabel;
-    }
-    
-    private VisualElement CreatePrefabInstanceLabel(VRCFury parent) {
-        var label = new Button(() => AssetDatabase.OpenAsset(parent)) {
-            text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
-            style = {
-                paddingTop = 5,
-                paddingBottom = 5,
-                unityTextAlign = TextAnchor.MiddleCenter,
-                whiteSpace = WhiteSpace.Normal,
-                borderTopLeftRadius = 5,
-                borderTopRightRadius = 5,
-                borderBottomLeftRadius = 0,
-                borderBottomRightRadius = 0,
-                marginTop = 5,
-                marginLeft = 20,
-                marginRight = 20,
-                marginBottom = 0,
-                borderTopWidth = 1,
-                borderLeftWidth = 1,
-                borderRightWidth = 1,
-                borderBottomWidth = 0
-            }
-        };
-        VRCFuryEditorUtils.Padding(label, 5);
-        VRCFuryEditorUtils.BorderColor(label, Color.black);
-        return label;
     }
 
     private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, GameObject gameObject) {

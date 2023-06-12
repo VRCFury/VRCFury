@@ -99,7 +99,6 @@ namespace VF.Feature.Base {
         }
 
         protected AnimationClip LoadState(string name, State state, bool checkForProxy = false) {
-            
             void RewriteClip(AnimationClip c) {
                 var rewriter = new ClipRewriter(fromObj: featureBaseObject, fromRoot: avatarObject);
                 rewriter.Rewrite(c);

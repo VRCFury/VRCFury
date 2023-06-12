@@ -6,10 +6,14 @@ using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
+using VF.Component;
+using VF.Model;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Color = UnityEngine.Color;
 using FontStyle = UnityEngine.FontStyle;
 using Image = UnityEngine.UIElements.Image;
+using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
     public class VRCFuryComponentEditor : Editor {
@@ -155,9 +159,68 @@ namespace VF.Inspector {
         }
         */
 
+        private GameObject dummyObject;
+
         public sealed override VisualElement CreateInspectorGUI() {
-            var el = CreateEditor();
-            el.styleSheets.Add(Resources.Load<StyleSheet>("VRCFuryStyle"));
+            try {
+                return CreateInspectorGUIUnsafe();
+            } catch (Exception e) {
+                Debug.LogException(new Exception("Failed to render editor", e));
+                return VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
+            }
+        }
+
+        private VisualElement CreateInspectorGUIUnsafe() {
+            if (!(target is UnityEngine.Component c)) {
+                return VRCFuryEditorUtils.Error("This isn't a component?");
+            }
+            if (!(c is VRCFuryComponent v)) {
+                return CreateEditor(serializedObject, c, c.gameObject);
+            }
+
+            var loadError = v.GetBrokenMessage();
+            if (loadError != null) {
+                return VRCFuryEditorUtils.Error(
+                    $"This VRCFury component failed to load ({loadError}). It's likely that your VRCFury is out of date." +
+                    " Please try Tools -> VRCFury -> Update VRCFury. If this doesn't help, let us know on the " +
+                    " discord at https://vrcfury.com/discord");
+            }
+            
+            var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);
+            var assetPath = AssetDatabase.GetAssetPath(v);
+            if (assetPath == null) assetPath = ImmutablePrefabFixer.GetEditingPrefabPath();
+            var isImmutable = assetPath != null && PreSaveVerifier.IsImmutableVrcf(assetPath);
+
+            var container = new VisualElement();
+            container.styleSheets.Add(Resources.Load<StyleSheet>("VRCFuryStyle"));
+
+            container.Add(CreateOverrideLabel());
+
+            if (isInstance) {
+                // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
+                // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
+                // will just be thrown out randomly, and unity will dump a bunch of errors.
+                var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(v);
+                container.Add(CreatePrefabInstanceLabel(baseFury));
+            } else if (isImmutable) {
+                container.Add(CreateImmutableLabel());
+            }
+
+            VisualElement body;
+            if (isImmutable || isInstance) {
+                var copy = CopyComponent(v);
+                copy.Upgrade();
+                var copySo = new SerializedObject(copy);
+                body = CreateEditor(copySo, copy, v.gameObject);
+                body.SetEnabled(false);
+            } else {
+                v.Upgrade();
+                serializedObject.Update();
+                body = CreateEditor(serializedObject, v, v.gameObject);
+            }
+            
+            container.Add(body);
+
             /*
             el.RegisterCallback<AttachToPanelEvent>(e => {
                 CreateHeaderOverlay(el);
@@ -167,11 +230,124 @@ namespace VF.Inspector {
             });
             el.style.marginBottom = 4;
             */
-            return el;
+            return container;
+        }
+
+        private T CopyComponent<T>(T original) where T : UnityEngine.Component {
+            OnDestroy();
+            var originalObject = original.gameObject;
+            var id = originalObject
+                .GetComponents(original.GetType())
+                .Select((el, i) => (el, i))
+                .First(x => x.el == original)
+                .i;
+            dummyObject = Instantiate(originalObject);
+            dummyObject.SetActive(false);
+            dummyObject.hideFlags |= HideFlags.HideAndDontSave;
+            foreach (Transform child in dummyObject.transform) {
+                DestroyImmediate(child.gameObject);
+            }
+            var copy = (T)dummyObject.GetComponents(original.GetType())
+                .ElementAt(id);
+            foreach (var other in dummyObject.GetComponents(typeof(UnityEngine.Component))) {
+                if (other is Transform || other == copy) continue;
+                DestroyImmediate(other);
+            }
+            return copy;
+        }
+
+        public void OnDestroy() {
+            if (dummyObject) {
+                DestroyImmediate(dummyObject);
+            }
+        }
+
+        public virtual VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
+            return new VisualElement();
         }
         
-        public virtual VisualElement CreateEditor() {
-            return new VisualElement();
+        private VisualElement CreateOverrideLabel() {
+            var baseText = "The VRCFury features in this prefab are overridden on this instance. Please revert them!" +
+                           " If you apply, it may corrupt data in the changed features.";
+            var overrideLabel = VRCFuryEditorUtils.Error(baseText);
+            overrideLabel.style.display = DisplayStyle.None;
+
+            double lastCheck = 0;
+            void CheckOverride() {
+                if (this == null) return; // The editor was deleted
+                var vrcf = (VRCFuryComponent)target;
+                var now = EditorApplication.timeSinceStartup;
+                if (lastCheck < now - 1) {
+                    lastCheck = now;
+                    var mods = VRCFPrefabFixer.GetModifications(vrcf);
+                    var isModified = mods.Count > 0;
+                    overrideLabel.style.display = isModified ? DisplayStyle.Flex : DisplayStyle.None;
+                    if (isModified) {
+                        overrideLabel.text = baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath));
+                    }
+                }
+                EditorApplication.delayCall += CheckOverride;
+            }
+            CheckOverride();
+
+            return overrideLabel;
+        }
+        
+        private VisualElement CreateImmutableLabel() {
+            var text = "Changes are not allowed to this file, because they would be lost when you upgrade VRCFury.\n\n" +
+                "If you want to change where menu items go, add a VRCFury Move Menu Item component to your avatar root instead.\n\n" +
+                "If you want to change other things, create your own copy of the file somewhere else in your project.";
+            var label = new Label {
+                text = text,
+                style = {
+                    paddingTop = 5,
+                    paddingBottom = 5,
+                    unityTextAlign = TextAnchor.MiddleCenter,
+                    whiteSpace = WhiteSpace.Normal,
+                    borderTopLeftRadius = 5,
+                    borderTopRightRadius = 5,
+                    borderBottomLeftRadius = 0,
+                    borderBottomRightRadius = 0,
+                    marginTop = 5,
+                    marginLeft = 20,
+                    marginRight = 20,
+                    marginBottom = 0,
+                    borderTopWidth = 1,
+                    borderLeftWidth = 1,
+                    borderRightWidth = 1,
+                    borderBottomWidth = 0
+                }
+            };
+            VRCFuryEditorUtils.Padding(label, 5);
+            VRCFuryEditorUtils.BorderColor(label, Color.black);
+            return label;
+        }
+        
+        private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component parent) {
+            var label = new Button(() => AssetDatabase.OpenAsset(parent)) {
+                text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
+                style = {
+                    paddingTop = 5,
+                    paddingBottom = 5,
+                    unityTextAlign = TextAnchor.MiddleCenter,
+                    whiteSpace = WhiteSpace.Normal,
+                    borderTopLeftRadius = 5,
+                    borderTopRightRadius = 5,
+                    borderBottomLeftRadius = 0,
+                    borderBottomRightRadius = 0,
+                    marginTop = 5,
+                    marginLeft = 20,
+                    marginRight = 20,
+                    marginBottom = 0,
+                    borderTopWidth = 1,
+                    borderLeftWidth = 1,
+                    borderRightWidth = 1,
+                    borderBottomWidth = 0
+                }
+            };
+            VRCFuryEditorUtils.Padding(label, 5);
+            VRCFuryEditorUtils.BorderColor(label, Color.black);
+            return label;
         }
     }
 }

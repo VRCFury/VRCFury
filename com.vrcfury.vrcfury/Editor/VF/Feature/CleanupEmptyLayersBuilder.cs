@@ -1,4 +1,5 @@
 using System.Linq;
+using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 
@@ -10,14 +11,10 @@ namespace VF.Feature {
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     if (i == 0) continue;
 
-                    var hasNonEmptyClip = false;
-                    var hasBehaviour = false;
-                    AnimatorIterator.ForEachClip(layer, clip => {
-                        if (!ClipBuilder.IsEmptyMotion(clip)) hasNonEmptyClip = true;
-                    });
-                    AnimatorIterator.ForEachBehaviour(layer, b => {
-                        hasBehaviour = true;
-                    });
+                    var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
+                        .Any(clip => !ClipBuilder.IsEmptyMotion(clip));
+                    var hasBehaviour = new AnimatorIterator.Behaviours().From(layer)
+                        .Any();
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
                         c.RemoveLayer(layer);

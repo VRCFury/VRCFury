@@ -156,13 +156,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        // If the toggle is setup to /actually/ toggle something (and it's not an off state for just an exclusive tag or something)
-        // Then don't even bother adding it. The user probably removed the object, so the toggle shouldn't be present.
-        // Toggle should still be added if it drives a global variable
-        if (model.state.IsEmpty() && model.state.actions.Count > 0  && !model.enableDriveGlobalParam) {
-            return;
-        }
-
         if (model.slider) {
             CreateSlider();
             return;
@@ -445,6 +438,25 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     public void ApplyRestingState() {
         if (restingClip != null) {
             ResetAnimatorBuilder.WithoutAnimator(avatarObject, () => { restingClip.SampleAnimation(avatarObject, 0); });
+            foreach (var binding in AnimationUtility.GetCurveBindings(restingClip)) {
+                if (!binding.propertyName.StartsWith("material.")) continue;
+                var propName = binding.propertyName.Substring("material.".Length);
+                var transform = avatarObject.transform.Find(binding.path);
+                if (!transform) continue;
+                var obj = transform.gameObject;
+                if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) continue;
+                var renderer = obj.GetComponent(binding.type) as Renderer;
+                if (!renderer) continue;
+                var curve = AnimationUtility.GetEditorCurve(restingClip, binding);
+                if (curve.length == 0) continue;
+                var val = curve.keys[0].value;
+                renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
+                    if (!mat.HasProperty(propName)) return mat;
+                    mat = mutableManager.MakeMutable(mat);
+                    mat.SetFloat(propName, val);
+                    return mat;
+                }).ToArray();
+            }
         }
     }
 

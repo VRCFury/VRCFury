@@ -6,7 +6,7 @@ using VRC.SDKBase;
 
 namespace VF.Component {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver
-#if VRC_NEW_HOOK_API    
+#if VRC_NEW_HOOK_API
         , IEditorOnly
 #endif
     {
@@ -18,7 +18,7 @@ namespace VF.Component {
         }
         public string GetBrokenMessage() {
             if (version > GetLatestVersion()) {
-                return $"Version too new ({version} > {GetLatestVersion()}";
+                return $"This component was created with a newer version of VRCFury ({version} > {GetLatestVersion()}";
             } else if (ContainsNullsInList(this)) {
                 return "Found a null list on a child object";
             }
@@ -30,10 +30,6 @@ namespace VF.Component {
                 // Object was deserialized, but had no version. Default to version 0.
                 version = 0;
             }
-
-#if UNITY_EDITOR
-            EditorApplication.delayCall += Upgrade;
-#endif
         }
         
         public void OnBeforeSerialize() {

@@ -157,7 +157,7 @@ namespace VF.Builder {
                 copy = Activator.CreateInstance(original.GetType()) as T;
             }
             if (copy == null) {
-                throw new VRCFBuilderException("Failed to create copy of " + copy);
+                throw new VRCFBuilderException("Failed to create copy of " + original);
             }
             EditorUtility.CopySerialized(original, copy);
             return copy;

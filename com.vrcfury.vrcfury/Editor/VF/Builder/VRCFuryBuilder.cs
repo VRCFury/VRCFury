@@ -71,7 +71,7 @@ public class VRCFuryBuilder {
         GameObject originalObject,
         ProgressBar progress
     ) {
-        var tmpDirParent = $"Assets/_VRCFury/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
+        var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
         // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
         // old asset and messes with the new copy.
         var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";

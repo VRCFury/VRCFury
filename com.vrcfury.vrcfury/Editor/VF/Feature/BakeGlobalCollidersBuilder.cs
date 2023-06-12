@@ -16,6 +16,7 @@ namespace VF.Feature {
 
             var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
             var globalContacts = avatarObject.GetComponentsInChildren<VRCFuryGlobalCollider>(true);
+            if (globalContacts.Length == 0) return;
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             var fingers = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)> {
@@ -108,9 +109,8 @@ namespace VF.Feature {
         }
 
         private bool IsFingerUsed(HumanBodyBones bone, VRCAvatarDescriptor.ColliderConfig config) {
-            var animator = avatarObject.GetComponent<Animator>();
             if (config.state == VRCAvatarDescriptor.ColliderConfig.State.Disabled) return false;
-            if (animator.GetBoneTransform(bone) == null) return false;
+            if (VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone) == null) return false;
             return true;
         }
     }

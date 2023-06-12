@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -28,18 +29,18 @@ namespace VF.Feature {
             foreach (var p in model.prms) {
                 VRCExpressionParameters prms = p.parameters;
                 if (!prms) continue;
-                foreach (var param in prms.parameters) {
+                var copy = mutableManager.CopyRecursive(prms, saveFilename: "tmp");
+                foreach (var param in copy.parameters) {
+                    if (string.IsNullOrWhiteSpace(param.name)) continue;
                     if (param.name == model.toggleParam && param.valueType == VRCExpressionParameters.ValueType.Int)
                         toggleIsInt = true;
-                    if (string.IsNullOrWhiteSpace(param.name)) continue;
-                    var newParam = new VRCExpressionParameters.Parameter {
-                        name = RewriteParamName(param.name),
-                        valueType = param.valueType,
-                        saved = param.saved && !model.ignoreSaved,
-                        defaultValue = param.defaultValue
-                    };
-                    manager.GetParams().addSyncedParam(newParam);
+                    param.name = RewriteParamName(param.name);
+                    if (model.ignoreSaved) {
+                        param.saved = false;
+                    }
+                    manager.GetParams().addSyncedParam(param);
                 }
+                AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
             }
 
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
@@ -199,50 +200,45 @@ namespace VF.Feature {
                 from.layers[0].defaultWeight = 1;
             }
 
-            foreach (var layer in from.layers) {
-                AnimatorIterator.ForEachState(layer.stateMachine, state => {
-                    state.speedParameter = RewriteParamName(state.speedParameter);
-                    state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
-                    state.mirrorParameter = RewriteParamName(state.mirrorParameter);
-                    state.timeParameter = RewriteParamName(state.timeParameter);
-                });
-                AnimatorIterator.ForEachBehaviour(layer.stateMachine, b => {
-                    switch (b) {
-                        case VRCAvatarParameterDriver oldB: {
-                            foreach (var p in oldB.parameters) {
-                                p.name = RewriteParamName(p.name);
-                                var sourceField = p.GetType().GetField("source");
-                                if (sourceField != null) {
-                                    sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
-                                }
-                            }
-                            break;
+            foreach (var state in new AnimatorIterator.States().From(from)) {
+                state.speedParameter = RewriteParamName(state.speedParameter);
+                state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
+                state.mirrorParameter = RewriteParamName(state.mirrorParameter);
+                state.timeParameter = RewriteParamName(state.timeParameter);
+                VRCFuryEditorUtils.MarkDirty(state);
+            }
+
+            foreach (var b in new AnimatorIterator.Behaviours().From(from)) {
+                if (b is VRCAvatarParameterDriver oldB) {
+                    foreach (var p in oldB.parameters) {
+                        p.name = RewriteParamName(p.name);
+                        var sourceField = p.GetType().GetField("source");
+                        if (sourceField != null) {
+                            sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
                         }
                     }
-                });
-                AnimatorIterator.ForEachBlendTree(layer.stateMachine, tree => {
+                }
+            }
+
+            foreach (var motion in new AnimatorIterator.Motions().From(from)) {
+                if (motion is BlendTree tree) {
                     tree.blendParameter = RewriteParamName(tree.blendParameter);
                     tree.blendParameterY = RewriteParamName(tree.blendParameterY);
                     tree.children = tree.children.Select(child => {
                         child.directBlendParameter = RewriteParamName(child.directBlendParameter);
                         return child;
                     }).ToArray();
-                });
-                var allClips = new HashSet<AnimationClip>();
-                AnimatorIterator.ForEachClip(layer.stateMachine, clip => {
-                    allClips.Add(clip);
-                });
-                foreach (var clip in allClips) {
+                } else if (motion is AnimationClip clip) {
                     RewriteClip(clip);
                 }
-
-                AnimatorIterator.ForEachTransition(layer.stateMachine, transition => {
-                    transition.conditions = transition.conditions.Select(c => {
-                        c.parameter = RewriteParamName(c.parameter);
-                        return c;
-                    }).ToArray();
-                    VRCFuryEditorUtils.MarkDirty(transition);
-                });
+            }
+            
+            foreach (var transition in new AnimatorIterator.Transitions().From(from)) {
+                transition.conditions = transition.conditions.Select(c => {
+                    c.parameter = RewriteParamName(c.parameter);
+                    return c;
+                }).ToArray();
+                VRCFuryEditorUtils.MarkDirty(transition);
             }
 
             toMain.TakeOwnershipOf(from);

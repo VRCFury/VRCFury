@@ -140,11 +140,8 @@ public class ClipBuilder {
     }
 
     public static bool IsEmptyMotion(Motion motion, GameObject avatarRoot = null) {
-        var isEmpty = true;
-        AnimatorIterator.ForEachClip(motion, clip => {
-            isEmpty &= IsEmptyClip(clip, avatarRoot);
-        });
-        return isEmpty;
+        return new AnimatorIterator.Clips().From(motion)
+            .All(clip => IsEmptyClip(clip, avatarRoot));
     }
 
     private static bool IsEmptyClip(AnimationClip clip, GameObject avatarRoot = null) {
@@ -169,11 +166,8 @@ public class ClipBuilder {
     }
 
     public static bool IsStaticMotion(Motion motion) {
-        var isStatic = true;
-        AnimatorIterator.ForEachClip(motion, clip => {
-            isStatic &= IsStaticClip(clip);
-        });
-        return isStatic;
+        return new AnimatorIterator.Clips().From(motion)
+            .All(IsStaticClip);
     }
 
     private static bool IsStaticClip(AnimationClip clip) {

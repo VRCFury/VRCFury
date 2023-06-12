@@ -49,15 +49,23 @@ namespace VF {
 
         private static void Update() {
             try {
-                var stage = PrefabStageUtility.GetCurrentPrefabStage();
-                if (stage == null) return;
-                var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(stage.prefabAssetPath);
-                if (packageInfo == null) return;
-                if (!packageInfo.packageId.Contains("vrcfury")) return;
-                DisableAutosave();
+                if (IsEditingVrcfuryPrefab()) {
+                    DisableAutosave();
+                }
             } catch (Exception e) {
                 Debug.LogError(e);
             }
+        }
+
+        private static bool IsEditingVrcfuryPrefab() {
+            var path = GetEditingPrefabPath();
+            return path != null && path.Contains("vrcfury");
+        }
+
+        public static string GetEditingPrefabPath() {
+            var stage = PrefabStageUtility.GetCurrentPrefabStage();
+            if (stage == null) return null;
+            return stage.prefabAssetPath;
         }
     }
 }
