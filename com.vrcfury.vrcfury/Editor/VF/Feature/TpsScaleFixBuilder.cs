@@ -166,13 +166,14 @@ namespace VF.Feature {
         }
 
         public override string GetEditorTitle() {
-            return "TPS Scale Fix";
+            return "TPS Scale Fix (BETA)";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             return VRCFuryEditorUtils.Info(
                 "This feature will allow Poiyomi TPS to work properly with scaling. While active, avatar scaling, " +
-                "object scaling, or any combination of the two may be used in conjunction with TPS.");
+                "object scaling, or any combination of the two may be used in conjunction with TPS.\n\n" +
+                "Beware: this feature is BETA and may not work properly.");
         }
 
         public override bool AvailableOnProps() {
