@@ -11,8 +11,8 @@ using Object = UnityEngine.Object;
 namespace VF.Builder.Haptics {
     public static class TpsConfigurer {
         private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
-        private static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
-        private static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
+        public static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
+        public static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
         private static readonly int TpsPenetratorRight = Shader.PropertyToID("_TPS_PenetratorRight");
         private static readonly int TpsPenetratorUp = Shader.PropertyToID("_TPS_PenetratorUp");
         public static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
@@ -93,7 +93,7 @@ namespace VF.Builder.Haptics {
             var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
             if (bakeUtil == null) {
                 throw new VRCFBuilderException(
-                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project. (missing class)");
             }
 
             var meshInfoType = bakeUtil.GetNestedType("MeshInfo");
@@ -106,14 +106,14 @@ namespace VF.Builder.Haptics {
             );
             if (meshInfoType == null || bakeMethod == null) {
                 throw new VRCFBuilderException(
-                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project.");
+                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but Poiyomi Pro TPS does not seem to be imported in project. (missing method)");
             }
             
             if (!IsTps(original)) return original;
             var mat = mutableManager.MakeMutable(original);
             
             var shaderRotation = Quaternion.identity;
-            if (mat.shader.name.ToLower().Contains("locked")) {
+            if (IsLocked(mat)) {
                 throw new VRCFBuilderException(
                     "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
             }
@@ -157,6 +157,10 @@ namespace VF.Builder.Haptics {
 
         public static bool IsTps(Material mat) {
             return mat && mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
+        }
+
+        public static bool IsLocked(Material mat) {
+            return mat.shader.name.ToLower().Contains("locked");
         }
     }
 }

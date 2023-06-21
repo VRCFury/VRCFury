@@ -324,5 +324,11 @@ namespace VF.Builder {
                 action(new EasyAnimationClip(clip));
             }
         }
+
+        public IImmutableSet<EasyAnimationClip> GetClips() {
+            return new AnimatorIterator.Clips().From(GetRaw())
+                .Select(c => new EasyAnimationClip(c))
+                .ToImmutableHashSet();
+        }
     }
 }
