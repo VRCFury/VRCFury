@@ -138,6 +138,28 @@ namespace VF.Feature {
             return ControllerManager.NewParamName(name, uniqueModelNum);
         }
 
+        private string RewriteBinding(string path) {
+            foreach (var rewrite in model.rewriteBindings) {
+                var from = rewrite.from;
+                if (from == null) from = "";
+                while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
+                var to = rewrite.to;
+                if (to == null) to = "";
+                while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
+
+                if (from == "") {
+                    path = ClipRewriter.Join(to, path);
+                } else if (path.StartsWith(from + "/")) {
+                    path = path.Substring(from.Length + 1);
+                    path = ClipRewriter.Join(to, path);
+                } else if (path == from) {
+                    path = to;
+                }
+            }
+
+            return path;
+        }
+
         private void Merge(AnimatorController from, ControllerManager toMain) {
             var to = toMain.GetRaw();
             var type = toMain.GetType();
@@ -145,7 +167,7 @@ namespace VF.Feature {
             var rewriter = new ClipRewriter(
                 fromObj: GetBaseObject(),
                 fromRoot: avatarObject,
-                rewriteBindings: model.rewriteBindings.Select(r => Tuple.Create(r.from, r.to)).ToList(),
+                rewriteBinding: RewriteBinding,
                 rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
                 rewriteParam: RewriteParamName
             );
@@ -346,6 +368,47 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useSecurityForToggle"), "Use security for toggle"));
 
             content.Add(adv);
+            
+            content.Add(new VisualElement { style = { paddingTop = 10 } });
+            content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                if (avatarObject == null) {
+                    return "Avatar descriptor is missing";
+                }
+                
+                var text = new List<string>();
+
+                var baseObject = GetBaseObject();
+                if (avatarObject != baseObject) {
+                    foreach (var c in model.controllers) {
+                        RuntimeAnimatorController rc = c.controller;
+                        var controller = rc as AnimatorController;
+                        if (controller == null) continue;
+                        var paths = new AnimatorIterator.Clips().From(controller)
+                            .SelectMany(clip =>
+                                AnimationUtility.GetCurveBindings(clip)
+                                    .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip)))
+                            .Select(binding => RewriteBinding(binding.path))
+                            .ToImmutableHashSet();
+                        var missingPaths = paths
+                            .Where(path => baseObject.transform.Find(path) == null)
+                            .OrderBy(path => path)
+                            .ToImmutableList();
+
+                        if (missingPaths.Count > 0) {
+                            text.Add(
+                                "These paths are animated in the controller, but not found as children of this object. " +
+                                "If you want this prop to be reusable, you should use 'Rewrite bindings' above to rewrite " +
+                                "these paths so they work with how the objects are located within this object.");
+                            text.Add("");
+                            text.AddRange(missingPaths);
+                        } else {
+                            text.Add("No info to display");
+                        }
+                    }
+                }
+
+                return string.Join("\n", text);
+            }));
 
             return content;
         }

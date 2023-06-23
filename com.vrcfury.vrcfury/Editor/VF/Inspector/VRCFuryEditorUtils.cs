@@ -510,7 +510,7 @@ public static class VRCFuryEditorUtils {
         return el;
     }
     
-    public static VisualElement Debug(string message = "", Func<string> refreshMessage = null) {
+    public static VisualElement Debug(string message = "", Func<string> refreshMessage = null, float interval = 1) {
         var el = new VisualElement() {
             style = {
                 backgroundColor = new Color(0,0,0,0.1f),
@@ -542,7 +542,7 @@ public static class VRCFuryEditorUtils {
                 } catch (Exception e) {
                     label.text = $"Error: {e.Message}";
                 }
-            });
+            }, interval);
         }
         
         return el;
