@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.Collections;
 using UnityEditor.Animations;
 using VF.Inspector;
 using AnimatorConditions = System.Collections.Generic.IEnumerable<UnityEditor.Animations.AnimatorCondition>;
