@@ -43,20 +43,23 @@ namespace VF.Feature.Base {
         UpgradeLegacyHaptics = 100,
         
         // Needs to run after all haptic components are in place
-        BakeHaptics = 101,
+        BakeHaptics = 110,
+        
+        // Needs to run after all TPS materials are done
+        TpsScaleFix = 120,
         
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
         // an object moved onto the fake head bone
-        FakeHeadBuilder = 102,
+        FakeHeadBuilder = 130,
         
         // Needs to run after most things are done messing with the animation controller,
         // since any changes after this won't have their animations rewritten
         // Needs to run after things are done moving objects
-        ObjectMoveBuilderFixAnimations = 103,
+        ObjectMoveBuilderFixAnimations = 140,
         
         // Needs to run after most things are done messing with animations,
         // since it'll make copies of the blendshape curves
-        BlendShapeLinkFixAnimations = 104,
+        BlendShapeLinkFixAnimations = 150,
         
         // Needs to run after animations are done, but before FixWriteDefaults
         DirectTreeOptimizer = 8000,

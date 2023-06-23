@@ -680,5 +680,8 @@ namespace VF.Model.Feature {
     public class DirectTreeOptimizer : NewFeatureModel {
     }
     
+    [Serializable]
+    public class TpsScaleFix : NewFeatureModel {
+    }
 
 }
