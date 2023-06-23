@@ -142,7 +142,7 @@ namespace VF.Model.Feature {
         public bool useSecurityForToggle = false;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
-        [FormerlySerializedAs("bindingRewrites")] public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
+        public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
 
         // obsolete
         public RuntimeAnimatorController controller;

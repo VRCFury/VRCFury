@@ -9,7 +9,7 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
     public class ClipRewriter {
 
-        private readonly List<Tuple<string, string>> rewriteBindings;
+        private readonly Func<string,string> rewriteBinding;
         private readonly GameObject fromRoot;
         private readonly string prefix;
         private readonly bool rootBindingsApplyToAvatar;
@@ -18,11 +18,11 @@ namespace VF.Builder {
         public ClipRewriter(
             GameObject fromObj = null,
             GameObject fromRoot = null,
-            List<Tuple<string,string>> rewriteBindings = null,
+            Func<string,string> rewriteBinding = null,
             bool rootBindingsApplyToAvatar = false,
             Func<string,string> rewriteParam = null
         ) {
-            this.rewriteBindings = rewriteBindings;
+            this.rewriteBinding = rewriteBinding;
             this.rootBindingsApplyToAvatar = rootBindingsApplyToAvatar;
             this.rewriteParam = rewriteParam;
             this.fromRoot = fromRoot;
@@ -41,22 +41,8 @@ namespace VF.Builder {
         }
 
         public string RewritePath(string path) {
-            if (rewriteBindings != null) {
-                foreach (var rewrite in rewriteBindings) {
-                    var from = rewrite.Item1;
-                    while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
-                    var to = rewrite.Item2;
-                    while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
-
-                    if (from == "") {
-                        path = Join(to, path);
-                    } else if (path.StartsWith(from + "/")) {
-                        path = path.Substring(from.Length + 1);
-                        path = Join(to, path);
-                    } else if (path == from) {
-                        path = to;
-                    }
-                }
+            if (rewriteBinding != null) {
+                path = rewriteBinding(path);
             }
             if (path == "" && rootBindingsApplyToAvatar) {
                 return "";
