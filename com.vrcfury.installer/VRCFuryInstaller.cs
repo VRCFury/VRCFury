@@ -4,7 +4,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.PackageManager;
@@ -31,7 +30,8 @@ public class VRCFuryInstaller {
     }
 
     private static async Task InstallUnsafe() {
-        if (Directory.Exists("Temp/vrcfDoNotInstall")) {
+        if (HasLocalDirectoryVrcfPackage()) {
+            Debug.LogWarning("VRCF Installer is not running, because you have a vrcfury package installed in development mode (local directory)");
             return;
         }
         
@@ -105,7 +105,14 @@ public class VRCFuryInstaller {
     private static void RefreshPackages() {
         MethodInfo method = typeof(Client).GetMethod("Resolve",
             BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-        method.Invoke(null, null);
+        method.Invoke(null, null); 
+    }
+
+    private static bool HasLocalDirectoryVrcfPackage() {
+        var manifestPath = "Packages/manifest.json";
+        if (!File.Exists(manifestPath)) return false;
+        var lines = File.ReadLines(manifestPath).ToArray();
+        return lines.Any(line => line.Contains("com.vrcfury.") && line.Contains("file:") && !line.Contains("tgz"));
     }
 
     private static bool CleanManifest(bool mainOnly) {
