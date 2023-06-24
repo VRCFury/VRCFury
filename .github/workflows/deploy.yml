@@ -41,17 +41,3 @@ jobs:
           git config user.email noreply@vrcfury.com
           git diff --quiet || git commit -am "Release from $GITHUB_SHA"
           git push
-      - name: Build installer
-        uses: mikefarah/yq@v4.31.2
-        with:
-          cmd: |
-            cd repo/com.vrcfury.installer
-            chmod +x ../.github/workflows/build_unitypackage.sh
-            ../.github/workflows/build_unitypackage.sh \
-                ../../VRCFury-installer.unitypackage \
-                Packages/com.vrcfury.installer
-      - name: Release installer
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: installer
-          files: 'VRCFury-installer.unitypackage'
