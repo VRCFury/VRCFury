@@ -81,7 +81,10 @@ namespace VF.Builder {
 
         /** For some reason, unity occasionally breaks and return non-Objects from objectReferenceValue somehow. */
         private static Object GetObjectReferenceValueSafe(SerializedProperty prop) {
-            return prop.objectReferenceValue as object as Object;
+            if (prop.objectReferenceValue == null) return null;
+            if (!(prop.objectReferenceValue is object systemObj)) return null;
+            if (!(systemObj is Object unityObj)) return null;
+            return unityObj;
         }
 
         public T CopyRecursive<T>(T obj, string saveFilename = null, Object saveParent = null, bool addPrefix = true) where T : Object {
