@@ -20,5 +20,4 @@ https://creativecommons.org/licenses/by-nc/4.0/legalcode
 
 * Beware that attribution (giving credit) is required for both licenses.
 * If using CC BY-ND 4.0, additional attribution is not required as this file will be included.
-* The Prefabs directory is excluded from this license and contains its own license file.
 * Copyright (c) VRCFury Developers. All unlicensed rights reserved.
