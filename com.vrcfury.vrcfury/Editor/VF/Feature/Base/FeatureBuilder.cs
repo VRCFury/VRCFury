@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Component;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
@@ -17,25 +17,26 @@ using AnimationClip = UnityEngine.AnimationClip;
 
 namespace VF.Feature.Base {
     public abstract class FeatureBuilder {
-        public AvatarManager manager;
-        public ClipBuilder clipBuilder;
-        public string tmpDirParent;
-        public string tmpDir;
-        public GameObject avatarObject;
-        public GameObject originalObject;
-        public GameObject featureBaseObject;
-        public Action<FeatureModel> addOtherFeature;
-        public int uniqueModelNum;
-        public List<FeatureModel> allFeaturesInRun;
-        public List<FeatureBuilder> allBuildersInRun;
-        public MutableManager mutableManager;
+        [JsonProperty(Order = -2)] public string type;
+        [NonSerialized] [JsonIgnore] public AvatarManager manager;
+        [NonSerialized] [JsonIgnore] public ClipBuilder clipBuilder;
+        [NonSerialized] [JsonIgnore] public string tmpDirParent;
+        [NonSerialized] [JsonIgnore] public string tmpDir;
+        [NonSerialized] [JsonIgnore] public GameObject avatarObject;
+        [NonSerialized] [JsonIgnore] public GameObject originalObject;
+        [NonSerialized] [JsonIgnore] public GameObject featureBaseObject;
+        [NonSerialized] [JsonIgnore] public Action<FeatureModel> addOtherFeature;
+        [NonSerialized] [JsonIgnore] public int uniqueModelNum;
+        [NonSerialized] [JsonIgnore] public List<FeatureModel> allFeaturesInRun;
+        [NonSerialized] [JsonIgnore] public List<FeatureBuilder> allBuildersInRun;
+        [NonSerialized] [JsonIgnore] public MutableManager mutableManager; 
 
         public virtual string GetEditorTitle() {
             return null;
         }
 
         public virtual VisualElement CreateEditor(SerializedProperty prop) {
-            return null;
+            return VRCFuryEditorUtils.WrappedLabel("No body");
         }
     
         public virtual bool AvailableOnAvatar() {
@@ -222,10 +223,6 @@ namespace VF.Feature.Base {
     }
 
     public abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
-        public ModelType model;
-    }
-    
-    public abstract class ComponentBuilder<ComponentType> : FeatureBuilder where ComponentType : VRCFuryComponent {
-        public ComponentType component;
+        [NonSerialized] [JsonIgnore] public ModelType model;
     }
 }
