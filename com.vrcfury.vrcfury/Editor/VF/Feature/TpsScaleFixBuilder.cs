@@ -20,6 +20,22 @@ namespace VF.Feature {
             BlendTree directTree = null;
             AnimationClip zeroClip = null;
             
+            // Remove old fix attempts
+            foreach (var clip in GetFx().GetClips()) {
+                foreach (var binding in clip.GetFloatBindings()) {
+                    if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
+                        binding.propertyName.Contains("_TPS_PenetratorScale")) {
+                        clip.SetFloatCurve(binding, null);
+                    }
+                }
+            }
+            
+            var animatedPaths = GetFx().GetClips()
+                .SelectMany(clip => clip.GetFloatBindings())
+                .Where(IsScaleBinding)
+                .Select(b => b.path)
+                .ToImmutableHashSet();
+            
             foreach (var renderer in avatarObject.GetComponentsInChildren<Renderer>(true)) {
                 var pathToRenderer =
                     AnimationUtility.CalculateTransformPath(renderer.transform, avatarObject.transform);
@@ -43,12 +59,6 @@ namespace VF.Feature {
                             pathToRenderer);
                     }
 
-                    var animatedPaths = GetFx().GetClips()
-                        .SelectMany(clip => clip.GetFloatBindings())
-                        .Where(IsScaleBinding)
-                        .Select(b => b.path)
-                        .ToImmutableHashSet();
-
                     var parentPaths =
                         rootBone.GetComponentsInParent<Transform>()
                             .Select(t => AnimationUtility.CalculateTransformPath(t, avatarObject.transform))
@@ -61,6 +71,10 @@ namespace VF.Feature {
                     if (animatedParentPaths.Count == 0) return mat;
 
                     objectNumber++;
+                    Debug.Log("Processing " + pathToRenderer + " " + mat);
+                    mat = mutableManager.MakeMutable(mat);
+                    mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
+                    mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
 
                     var pathToParam = new Dictionary<string, VFAFloat>();
                     var pathNumber = 0;
@@ -70,12 +84,6 @@ namespace VF.Feature {
                         pathToParam[path] = param;
                         Debug.Log(path + " " + param.Name());
                     }
-                    
-                    Debug.Log("Processing " + pathToRenderer + " " + mat);
-                    mat = mutableManager.MakeMutable(mat);
-
-                    mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
-                    mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
 
                     float handledScale = 1;
                     foreach (var path in animatedParentPaths) {
@@ -84,21 +92,11 @@ namespace VF.Feature {
 
                     var scaleOffset = mat.GetVector(TpsConfigurer.TpsPenetratorScale).z / handledScale;
                     var lengthOffset = mat.GetFloat(TpsConfigurer.TpsPenetratorLength) / handledScale;
-                    
-                    // Remove old fix attempts
-                    foreach (var clip in GetFx().GetClips()) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
-                                binding.propertyName.Contains("_TPS_PenetratorScale")) {
-                                clip.SetFloatCurve(binding, null);
-                            }
-                        }
-                    }
 
                     var scaleClip = GetFx().NewClip("tpsScale_" + objectNumber);
-                    scaleClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.r", ClipBuilder.OneFrame(scaleOffset));
-                    scaleClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.g", ClipBuilder.OneFrame(scaleOffset));
-                    scaleClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.b", ClipBuilder.OneFrame(scaleOffset));
+                    scaleClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.x", ClipBuilder.OneFrame(scaleOffset));
+                    scaleClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.y", ClipBuilder.OneFrame(scaleOffset));
+                    scaleClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.z", ClipBuilder.OneFrame(scaleOffset));
                     scaleClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorLength", ClipBuilder.OneFrame(lengthOffset));
 
                     if (directTree == null) {
@@ -115,9 +113,9 @@ namespace VF.Feature {
                         SetLastParam(directTree, one);
                     }
                     
-                    zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.r", ClipBuilder.OneFrame(0));
-                    zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.g", ClipBuilder.OneFrame(0));
-                    zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.b", ClipBuilder.OneFrame(0));
+                    zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.x", ClipBuilder.OneFrame(0));
+                    zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.y", ClipBuilder.OneFrame(0));
+                    zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.z", ClipBuilder.OneFrame(0));
                     zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorLength", ClipBuilder.OneFrame(0));
 
                     var tree = directTree;
