@@ -5,6 +5,9 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Model {
+    // These are here because you can't use Serializable with generics until unity 2020
+    // https://forum.unity.com/threads/generics-serialization.746300/
+
     [Serializable]
     public class GuidAnimationClip : GuidWrapper<AnimationClip> {
         public static implicit operator GuidAnimationClip(AnimationClip d) => new GuidAnimationClip {

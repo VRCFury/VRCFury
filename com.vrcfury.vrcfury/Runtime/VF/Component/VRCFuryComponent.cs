@@ -2,14 +2,9 @@ using System.Collections;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using VRC.SDKBase;
 
 namespace VF.Component {
-    public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver
-#if VRC_NEW_HOOK_API
-        , IEditorOnly
-#endif
-    {
+    public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver, IVrcfEditorOnly {
         [SerializeField]
         private int version = -1;
 
