@@ -485,7 +485,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
-        var isButtonProp = prop.FindPropertyRelative("isButton");
         var hasTransitionTimeProp = prop.FindPropertyRelative("hasTransitionTime");
         var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
@@ -590,12 +589,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
-
-            advMenu.AddItem(new GUIContent("Is Button"), isButtonProp.boolValue, () => {
-                    isButtonProp.boolValue = !isButtonProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
 
             advMenu.AddItem(new GUIContent("Has Transition Time"), hasTransitionTimeProp.boolValue, () => {
                     hasTransitionTimeProp.boolValue = !hasTransitionTimeProp.boolValue;
