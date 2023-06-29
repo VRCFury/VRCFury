@@ -69,6 +69,8 @@ namespace VF.Feature {
                 if (states.Length == 1) {
                     var state = states[0].state;
                     if (hasNonstaticClips) {
+                        // TODO: This could also break if the animation tangents are not linear
+
                         var dualState = ClipBuilder.SplitRangeClip(state.motion);
                         if (dualState == null) {
                             AddDebug($"Not optimizing (contains single clip that is not static and not a single time range)");

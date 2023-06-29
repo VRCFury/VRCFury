@@ -10,6 +10,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
     public static class TpsConfigurer {
+        private static readonly string TpsPenetratorKeyword = "TPS_Penetrator";
         private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
         public static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
         public static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
@@ -124,6 +125,8 @@ namespace VF.Builder.Haptics {
 
             var localScale = rootTransform.lossyScale;
 
+            mat.EnableKeyword(TpsPenetratorKeyword);
+            mat.SetFloat(TpsPenetratorEnabled, 1);
             mat.SetFloat(TpsPenetratorLength, worldLength);
             mat.SetVector(TpsPenetratorScale, ThreeToFour(localScale));
             mat.SetVector(TpsPenetratorRight, ThreeToFour(shaderRotation * Vector3.right));

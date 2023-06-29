@@ -1,0 +1,26 @@
+{
+  "name": "VrcfEditorOnly-Editor",
+  "references": [
+    "VrcfEditorOnly",
+    "VRC.SDKBase.Editor.BuildPipeline"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "System.Collections.Immutable.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.1.12",
+      "define": "VRC_NEW_HOOK_API"
+    }
+  ],
+  "noEngineReferences": false
+}

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -20,7 +22,8 @@ namespace VF.VrcHooks {
             Debug.Log("VRCFury is patching VRC component whitelist ...");
             Exception preprocessPatchEx = null;
             try {
-                var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.AvatarValidation");
+                Debug.Log("Checking new whitelist ...");
+                var validation = GetTypeFromAnyAssembly("VRC.SDKBase.Validation.AvatarValidation");
                 var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
                 var whitelist = whitelistField.GetValue(null);
@@ -30,7 +33,8 @@ namespace VF.VrcHooks {
             }
 
             try {
-                var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Validation.AvatarValidation");
+                Debug.Log("Checking old whitelist ...");
+                var validation = GetTypeFromAnyAssembly("VRC.SDK3.Validation.AvatarValidation");
                 var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
                 var whitelist = whitelistField.GetValue(null);
@@ -43,7 +47,8 @@ namespace VF.VrcHooks {
             
             // This is purely here because some other addons initialize the vrcsdk whitelist cache for some reason
             try {
-                var validation = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.ValidationUtils");
+                Debug.Log("Clearing whitelist cache ...");
+                var validation = GetTypeFromAnyAssembly("VRC.SDKBase.Validation.ValidationUtils");
                 var cachedWhitelists = validation.GetField("_whitelistCache",
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
                 var whitelists = cachedWhitelists.GetValue(null);
@@ -55,12 +60,25 @@ namespace VF.VrcHooks {
         }
         
         private static string[] UpdateComponentList(string[] list) {
-            var updated = new List<string>(list);
-            updated.Add(typeof(VRCFuryComponent).FullName);
+            var addTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => typeof(IVrcfEditorOnly).IsAssignableFrom(type))
+                .Select(type => type.FullName)
+                .ToImmutableHashSet();
+
             // This is here purely as a courtesy to MA as they modify the whitelist /cache/ rather than the
             // main whitelist for some reason, and thus our patch may wipe out their modification.
-            updated.Add("nadena.dev.modular_avatar.core.AvatarTagComponent");
+            addTypes.Add("nadena.dev.modular_avatar.core.AvatarTagComponent");
+
+            var updated = new List<string>(list);
+            updated.AddRange(addTypes);
             return updated.ToArray();
+        }
+        
+        public static Type GetTypeFromAnyAssembly(string type) {
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType(type))
+                .FirstOrDefault(t => t != null);
         }
     }
 }

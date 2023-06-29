@@ -120,5 +120,44 @@ namespace VF.Builder {
                 }
             }
         }
+
+        public static Tuple<string, long> ParseId(string id) {
+            if (!string.IsNullOrWhiteSpace(id)) {
+                var split = id.Split(':');
+                if (split.Length == 2) {
+                    var guid = split[0];
+                    var fileID = long.Parse(split[1]);
+                    return Tuple.Create(guid, fileID);
+                }
+            }
+            return null;
+        }
+
+        public static T FindAsset<T>(string id) where T : Object {
+            var parsed = ParseId(id);
+            if (parsed == null) return null;
+            return FindAsset<T>(parsed.Item1, parsed.Item2);
+        }
+        
+        public static T FindAsset<T>(string guid, long fileID) where T : Object {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path == null) return null;
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path)) {
+                if (!(asset is T t)) continue;
+                if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out var guid_, out long fileID_)) continue;
+                if (guid_ != guid) continue;
+                if (fileID_ != fileID) continue;
+                return t;
+            }
+            
+            // Sometimes the fileId of the main animator controller in a file changes randomly, so if the main asset
+            // in the file is the right type, just assume it's the one we're looking for.
+            var main = AssetDatabase.LoadMainAssetAtPath(path);
+            if (main is T mainT) {
+                return mainT;
+            }
+
+            return null;
+        }
     }
 }

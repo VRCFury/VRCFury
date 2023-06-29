@@ -1,0 +1,22 @@
+{
+  "name": "VrcfEditorOnly",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "VRCSDKBase.dll",
+    "VRCSDK3A.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.1.12",
+      "define": "VRC_NEW_HOOK_API"
+    }
+  ],
+  "noEngineReferences": false
+}
