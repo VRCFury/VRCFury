@@ -167,6 +167,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.name == "" && model.useGlobalParam) {
             layerName = model.globalParam;
+            model.addMenuItem = false;
         }
 
         var fx = GetFx();
