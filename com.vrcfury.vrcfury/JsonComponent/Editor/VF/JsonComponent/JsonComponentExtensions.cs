@@ -41,7 +41,7 @@ namespace VF.Component {
         static JsonComponentExtensions() {
             JsonComponent.onValidate = test => {
                 test.Debug("Json changed " + test.json);
-                var holder = GetHolder(test);
+                var holder = test.GetHolder();
                 if (!holder) {
                     test.Debug("Not deserializing (parsed holder not yet present)");
                     return;
@@ -57,6 +57,14 @@ namespace VF.Component {
 
                 test.Deserialize(holder);
                 new SerializedObject(holder).Update();
+            };
+
+            JsonComponent.onDestroy = test => {
+                test.Debug("Json destroyed");
+                var holder = test.GetHolder();
+                if (holder) {
+                    Object.DestroyImmediate(holder);
+                }
             };
             
             // Scripts just reloaded, so delete all holders so they get recreated fresh,

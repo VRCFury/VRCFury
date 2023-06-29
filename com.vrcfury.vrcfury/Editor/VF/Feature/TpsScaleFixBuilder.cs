@@ -84,6 +84,17 @@ namespace VF.Feature {
                         pathToParam[path] = param;
                         Debug.Log(path + " " + param.Name());
                     }
+                    foreach (var clip in GetFx().GetClips()) {
+                        foreach (var binding in clip.GetFloatBindings()) {
+                            if (!IsScaleBinding(binding)) continue;
+                            if (!pathToParam.TryGetValue(binding.path, out var param)) continue;
+                            var newBinding = new EditorCurveBinding();
+                            newBinding.type = typeof(Animator);
+                            newBinding.path = "";
+                            newBinding.propertyName = param.Name();
+                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                        }
+                    }
 
                     float handledScale = 1;
                     foreach (var path in animatedParentPaths) {
@@ -118,6 +129,8 @@ namespace VF.Feature {
                     zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorScale.z", ClipBuilder.OneFrame(0));
                     zeroClip.SetCurve(pathToRenderer, renderer.GetType(), "material._TPS_PenetratorLength", ClipBuilder.OneFrame(0));
 
+                    pathToParam["nativeScale"] = GetFx().NewFloat("ScaleFactor", def: 1);
+                    
                     var tree = directTree;
                     foreach (var (param,index) in pathToParam.Values.Select((p,index) => (p,index))) {
                         var isLast = index == pathToParam.Count - 1;
@@ -130,18 +143,6 @@ namespace VF.Feature {
                             tree.AddChild(subTree);
                             SetLastParam(tree, param);
                             tree = subTree;
-                        }
-                    }
-
-                    foreach (var clip in GetFx().GetClips()) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            if (!IsScaleBinding(binding)) continue;
-                            if (!pathToParam.TryGetValue(binding.path, out var param)) continue;
-                            var newBinding = new EditorCurveBinding();
-                            newBinding.type = typeof(Animator);
-                            newBinding.path = "";
-                            newBinding.propertyName = param.Name();
-                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
                         }
                     }
 
