@@ -164,6 +164,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         layerName = model.name;
+
+        if (model.name == "" && model.useGlobalParam) {
+            layerName = model.globalParam;
+        }
+
         var fx = GetFx();
         var layer = getLayer(layerName, fx);
         var off = getStartState("Off", layer);
