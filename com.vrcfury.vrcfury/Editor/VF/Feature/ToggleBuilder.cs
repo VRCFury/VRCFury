@@ -470,8 +470,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
 
-     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
-     public void ApplyExclusiveTags() {
+    [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
+    public void ApplyExclusiveTags() {
         ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
         var paramsToTurnOff = new HashSet<VFABool>();
         var paramsToTurnToZero = new HashSet<(VFAInteger, String, int)>();
