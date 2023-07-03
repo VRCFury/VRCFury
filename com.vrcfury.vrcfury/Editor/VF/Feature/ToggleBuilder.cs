@@ -474,7 +474,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     public void ApplyExclusiveTags() {
         ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
         var paramsToTurnOff = new HashSet<VFABool>();
-        var paramsToTurnToZero = new HashSet<(VFAInteger, String, int)>();
+        var paramsToTurnToZero = new Dictionary<String, HashSet<(VFAInteger, int)>>();
         var allOthersOff = controllers[0].Always();
 
         foreach (var controller in controllers) {
@@ -489,7 +489,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                         if (otherParam != null) {
                             var otherOnCondition = other.model.useInt ? (otherParam as VFAInteger).IsEqualTo(other.model.intTarget) : (otherParam as VFABool).IsTrue();
                             if (other.model.useInt) {
-                                if (param.Name() != otherParam.Name()) paramsToTurnToZero.Add((otherParam as VFAInteger, other.model.name, other.model.intTarget));
+                                if (param.Name() != otherParam.Name()) {
+                                    if (!paramsToTurnToZero.ContainsKey(otherParam.Name())) {
+                                        paramsToTurnToZero[otherParam.Name()] = new HashSet<(VFAInteger, int)>();
+                                    }
+                                    paramsToTurnToZero[otherParam.Name()].Add((otherParam as VFAInteger, other.model.intTarget));
+                                }
                             } else {
                                 paramsToTurnOff.Add(otherParam as VFABool);
                                 if (controller == controllers[0]) {
@@ -518,37 +523,47 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (paramsToTurnOff.Count + paramsToTurnToZero.Count > 0) {
 
             var exclusiveLayer = getLayerForParameters(GetExclusiveTags().First());
+            var startState = getStartState("Default", exclusiveLayer);
             var triggerState = exclusiveLayer.NewState(layerName);
+            var onParam = model.useInt ? (param as VFAInteger).IsEqualTo(model.intTarget) : (param as VFABool).IsTrue();
 
-            if (model.useInt) {
-                triggerState.TransitionsFromAny().When((param as VFAInteger).IsEqualTo(model.intTarget));
-                foreach (var p in paramsToTurnOff) {
-                    triggerState.Drives(p, false);
-                }
+            var intStates = new HashSet<(VFACondition, VFAState)>();
 
-                foreach (var (p, n, i) in paramsToTurnToZero) {
-                    var intTriggerState = exclusiveLayer.NewState(layerName + " + " + n);
-                    intTriggerState.TransitionsFromAny().When((param as VFAInteger).IsEqualTo(model.intTarget).And(p.IsEqualTo(i)));
-                    intTriggerState.Drives(p, 0);
-                }
+            triggerState.TransitionsToExit().When(onParam.Not());
 
-            } else {
-                triggerState.TransitionsFromAny().When((param as VFABool).IsTrue());
-                foreach (var p in paramsToTurnOff) {
-                    triggerState.Drives(p, false);
+            foreach (var tag in paramsToTurnToZero.Keys) {
+                var orParam = controllers[0].Never();
+                VFAInteger tagParam = paramsToTurnToZero[tag].First().Item1;
+                foreach (var (p, i) in paramsToTurnToZero[tag]) {
+                    orParam = orParam.Or(p.IsEqualTo(i));
                 }
+                var intTriggerState = exclusiveLayer.NewState(layerName + " + " + tagParam.Name());
+                startState.TransitionsTo(intTriggerState).When(onParam.And(orParam));
+                intTriggerState.Drives(tagParam, 0);
 
-                foreach (var (p, n, i) in paramsToTurnToZero) {
-                    var intTriggerState = exclusiveLayer.NewState(layerName + " + " + n);
-                    intTriggerState.TransitionsFromAny().When((param as VFABool).IsTrue().And(p.IsEqualTo(i)));
-                    intTriggerState.Drives(p, 0);
-                }
-
-                if (model.exclusiveOffState) {
-                    triggerState.TransitionsFromAny().When(allOthersOff);
-                    triggerState.Drives((param as VFABool), true);
-                }
+                intStates.Add((onParam.And(orParam), intTriggerState));
             }
+
+            foreach (var (condition, s1) in intStates) {
+                foreach (var (dud, s2) in intStates) {
+                    if (s1 != s2) {
+                        s1.TransitionsTo(s2).When(condition);
+                    }
+                }
+                s1.TransitionsTo(triggerState).When().WithTransitionExitTime(1);
+            }
+
+            foreach (var p in paramsToTurnOff) {
+                triggerState.TransitionsFromAny().When(onParam);
+                triggerState.Drives(p, false);
+            }
+
+            if (!model.useInt && model.exclusiveOffState) {
+                startState.TransitionsTo(triggerState).When(allOthersOff);
+                triggerState.Drives((param as VFABool), true);
+            }
+
+            startState.TransitionsTo(triggerState).When(onParam);
         }
     }
 
