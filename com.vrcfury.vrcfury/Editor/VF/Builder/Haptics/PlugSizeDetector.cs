@@ -35,7 +35,7 @@ namespace VF.Builder.Haptics {
                 parent = parent.parent;
             }
 
-            return new ImmutableArray<Renderer>();
+            return ImmutableList.Create<Renderer>();
         }
 
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
