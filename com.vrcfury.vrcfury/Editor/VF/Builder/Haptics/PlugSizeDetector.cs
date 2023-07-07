@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
 using VF.Builder.Exceptions;
@@ -9,41 +10,34 @@ namespace VF.Builder.Haptics {
     internal static class PlugSizeDetector {
         private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
 
-        public static Renderer GetAutoRenderer(GameObject obj) {
-            return GetAutoRenderer(obj, true) ?? GetAutoRenderer(obj, false);
+        public static IImmutableList<Renderer> GetAutoRenderer(GameObject obj) {
+            var foundWithDps = GetAutoRenderer(obj, true);
+            if (foundWithDps.Count > 0) return foundWithDps;
+            return GetAutoRenderer(obj, false);
         }
         
-        private static Renderer GetAutoRenderer(GameObject obj, bool dpsOnly) {
+        private static IImmutableList<Renderer> GetAutoRenderer(GameObject obj, bool dpsOnly) {
             bool IsDps(Renderer r) => !dpsOnly || HasDpsMaterial(r);
-            Renderer Try(IEnumerable<Renderer> enumerable) {
-                var arr = enumerable.ToArray();
-                if (arr.Length > 1) {
-                    throw new VRCFBuilderException(
-                        "Plug found multiple possible meshes. Please specify mesh in component manually.");
-                }
-                return arr.Length == 1 ? arr[0] : null;
-            }
-            
-            Renderer found;
-                
-            found = Try(obj.GetComponents<Renderer>().Where(IsDps));
-            if (found) return found;
 
-            found = Try(obj.GetComponentsInChildren<Renderer>(true).Where(IsDps));
-            if (found) return found;
+            var foundOnObject = obj.GetComponents<Renderer>().Where(IsDps).ToImmutableList();
+            if (foundOnObject.Count > 0) return foundOnObject;
+
+            var foundInChildren = obj.GetComponentsInChildren<Renderer>(true).Where(IsDps).ToImmutableList();
+            if (foundInChildren.Count > 0) return foundInChildren;
             
             var parent = obj.transform.parent;
             while (parent != null) {
-                found = Try(Enumerable.Range(0, parent.childCount)
+                var foundOnParent = Enumerable.Range(0, parent.childCount)
                     .Select(childNum => parent.GetChild(childNum))
-                    .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps)));
-                if (found) return found;
+                    .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps))
+                    .ToImmutableList();
+                if (foundOnParent.Count > 0) return foundOnParent;
                 parent = parent.parent;
             }
 
-            return null;
+            return new ImmutableArray<Renderer>();
         }
-        
+
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
             return HapticUtils.GetMeshRoot(renderer).rotation * localRotation;

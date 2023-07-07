@@ -139,8 +139,7 @@ namespace VF.Inspector {
         public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug pen) {
             var renderers = new List<Renderer>();
             if (pen.autoRenderer) {
-                var r = PlugSizeDetector.GetAutoRenderer(pen.gameObject);
-                if (r != null) renderers.Add(r);
+                renderers.AddRange(PlugSizeDetector.GetAutoRenderer(pen.gameObject));
             } else {
                 renderers.AddRange(pen.configureTpsMesh.Where(r => r != null));
             }
