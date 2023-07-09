@@ -13,6 +13,7 @@ namespace VF.Builder.Haptics {
         private static readonly string TpsPenetratorKeyword = "TPS_Penetrator";
         private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
         public static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
+        public static readonly int SpsPenetratorLength = Shader.PropertyToID("_SPS_PenetratorLength");
         public static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
         private static readonly int TpsPenetratorRight = Shader.PropertyToID("_TPS_PenetratorRight");
         private static readonly int TpsPenetratorUp = Shader.PropertyToID("_TPS_PenetratorUp");
@@ -27,12 +28,13 @@ namespace VF.Builder.Haptics {
             Transform rootTransform,
             float worldLength,
             Texture2D mask,
-            MutableManager mutableManager
+            MutableManager mutableManager,
+            bool useSps
         ) {
-            if (!renderer.sharedMaterials.Any(m => IsTps(m))) {
+            if (!useSps && !renderer.sharedMaterials.Any(m => IsTps(m))) {
                 return null;
             }
-            
+
             // Convert MeshRenderer to SkinnedMeshRenderer
             if (renderer is MeshRenderer) {
                 var obj = renderer.gameObject;
@@ -72,7 +74,7 @@ namespace VF.Builder.Haptics {
             }
 
             skin.sharedMaterials = skin.sharedMaterials
-                .Select(mat => ConfigureMaterial(skin, mat, rootTransform, worldLength, mask, mutableManager))
+                .Select(mat => ConfigureMaterial(skin, mat, rootTransform, worldLength, mask, mutableManager, useSps))
                 .ToArray();
 
             skin.rootBone = rootTransform;
@@ -89,8 +91,16 @@ namespace VF.Builder.Haptics {
             Transform rootTransform,
             float worldLength,
             Texture2D mask,
-            MutableManager mutableManager
+            MutableManager mutableManager,
+            bool useSps
         ) {
+            if (useSps) {
+                var m = mutableManager.MakeMutable(original);
+                SpsPatcher.patch(m, mutableManager);
+                m.SetFloat(SpsPenetratorLength, worldLength);
+                return m;
+            }
+            
             var bakeUtil = ReflectionUtils.GetTypeFromAnyAssembly("Thry.TPS.BakeToVertexColors");
             if (bakeUtil == null) {
                 throw new VRCFBuilderException(

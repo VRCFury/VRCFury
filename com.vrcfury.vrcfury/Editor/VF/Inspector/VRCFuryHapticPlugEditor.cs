@@ -20,6 +20,7 @@ namespace VF.Inspector {
 
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");
+            var configureSps = serializedObject.FindProperty("configureSps");
             
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
@@ -35,12 +36,12 @@ namespace VF.Inspector {
 
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
-                if (!configureTps.boolValue) {
+                if (!configureTps.boolValue && !configureSps.boolValue) {
                     c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("autoPosition"),
                         "Detect position/rotation from mesh"));
                 }
                 return c;
-            }, configureTps));
+            }, configureTps, configureSps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
             container.Add(VRCFuryEditorUtils.Prop(autoLength, "Detect length from mesh"));
@@ -80,6 +81,8 @@ namespace VF.Inspector {
                 }
                 return c;
             }, configureTps));
+            
+            container.Add(VRCFuryEditorUtils.Prop(configureSps, "Auto-configure SPS Penetration System (PRE-ALPHA, DO NOT USE)"));
 
             var adv = new Foldout {
                 text = "Advanced",
@@ -152,7 +155,7 @@ namespace VF.Inspector {
 
             Quaternion worldRotation = pen.transform.rotation;
             Vector3 worldPosition = pen.transform.position;
-            if (!pen.configureTps && pen.autoPosition && renderers.Count > 0) {
+            if (!pen.configureTps && !pen.configureSps && pen.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
                 worldRotation = PlugSizeDetector.GetAutoWorldRotation(firstRenderer);
                 worldPosition = PlugSizeDetector.GetAutoWorldPosition(firstRenderer);
@@ -268,10 +271,10 @@ namespace VF.Inspector {
                 HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
             }
             
-            if (pen.configureTps && mutableManager != null) {
+            if ((pen.configureTps || pen.configureSps) && mutableManager != null) {
                 var configuredOne = false;
                 foreach (var renderer in renderers) {
-                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager);
+                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.configureSps);
                     if (newRenderer) configuredOne = true;
                 }
 
