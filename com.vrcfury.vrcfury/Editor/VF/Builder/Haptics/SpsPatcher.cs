@@ -21,8 +21,9 @@ namespace VF.Builder.Haptics {
             var pathToOldShaderDir = Path.GetDirectoryName(oldShaderPath).Replace("\\", "/");
             
             // TODO: Flatten includes to make poiyomi lockdown happy
-            // TODO: Make physbones work
             // TODO: Add support for DPS channel 1 and TPS channels
+            // TODO: Add animatable toggle
+            // TODO: Make scale fix work
 
             var state = State.Idle;
             var seenProps = false;

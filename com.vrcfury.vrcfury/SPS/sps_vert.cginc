@@ -1,1 +1,1 @@
-sps_apply(v.vertex.xyz, v.normal.xyz, v.color);
+sps_apply(v.vertex.xyz, v.normal.xyz, v.color, v.vertexId);

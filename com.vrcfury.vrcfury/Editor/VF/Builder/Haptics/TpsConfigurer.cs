@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Feature;
 using VF.Inspector;
+using VF.Model;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
@@ -13,7 +14,8 @@ namespace VF.Builder.Haptics {
         private static readonly string TpsPenetratorKeyword = "TPS_Penetrator";
         private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
         public static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
-        public static readonly int SpsPenetratorLength = Shader.PropertyToID("_SPS_PenetratorLength");
+        public static readonly int SpsLength = Shader.PropertyToID("_SPS_Length");
+        public static readonly int SpsBake = Shader.PropertyToID("_SPS_Bake");
         public static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
         private static readonly int TpsPenetratorRight = Shader.PropertyToID("_TPS_PenetratorRight");
         private static readonly int TpsPenetratorUp = Shader.PropertyToID("_TPS_PenetratorUp");
@@ -97,7 +99,13 @@ namespace VF.Builder.Haptics {
             if (useSps) {
                 var m = mutableManager.MakeMutable(original);
                 SpsPatcher.patch(m, mutableManager);
-                m.SetFloat(SpsPenetratorLength, worldLength);
+                m.SetFloat(SpsLength, worldLength);
+
+                var bakedMesh2 = MeshBaker.BakeMesh(skin, rootTransform, true);
+                if (bakedMesh2 == null)
+                    throw new VRCFBuilderException("Failed to bake mesh for SPS configuration"); 
+                var bake = SpsBaker.Bake(bakedMesh2, mutableManager.GetTmpDir());
+                m.SetTexture(SpsBake, bake);
                 return m;
             }
             

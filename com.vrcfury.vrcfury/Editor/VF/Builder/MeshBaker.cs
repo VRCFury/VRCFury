@@ -7,7 +7,7 @@ namespace VF.Builder {
          * Returns a baked mesh, where the vertices are in local space in relation to the renderer's transform.
          * This is true even for skinned meshes (where in other places, the offsets are commonly in relation to the root bone)
          */
-        public static BakedMesh BakeMesh(Renderer renderer, Transform origin = null) {
+        public static BakedMesh BakeMesh(Renderer renderer, Transform origin = null, bool applyScale = false) {
             Mesh mesh;
             if (renderer is SkinnedMeshRenderer skin) {
                 // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
@@ -16,13 +16,9 @@ namespace VF.Builder {
                 if (actuallySkinned) {
                     var temporaryMesh = new Mesh();
                     skin.BakeMesh(temporaryMesh);
-                    var verts = temporaryMesh.vertices;
                     var scale = skin.transform.lossyScale;
                     var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
-                    for (var i = 0; i < verts.Length; i++) {
-                        verts[i].Scale(inverseScale);
-                    }
-                    temporaryMesh.vertices = verts;
+                    ApplyScale(temporaryMesh, inverseScale);
                     mesh = temporaryMesh;
                 } else {
                     mesh = skin.sharedMesh;
@@ -42,10 +38,25 @@ namespace VF.Builder {
                 vertices = mesh.vertices;
             }
 
+            if (applyScale && origin != null) {
+                ApplyScale(vertices, origin.lossyScale);
+            }
+
             return new BakedMesh() {
                 vertices = vertices,
                 normals = mesh.normals
             };
+        }
+
+        private static void ApplyScale(Mesh mesh, Vector3 scale) {
+            var verts = mesh.vertices;
+            ApplyScale(verts, scale);
+            mesh.vertices = verts;
+        }
+        private static void ApplyScale(Vector3[] verts, Vector3 scale) {
+            for (var i = 0; i < verts.Length; i++) {
+                verts[i].Scale(scale);
+            }
         }
 
         public class BakedMesh {

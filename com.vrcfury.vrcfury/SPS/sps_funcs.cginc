@@ -1,17 +1,21 @@
 #include "sps_bezier.cginc"
 #include "sps_search.cginc"
+#include "sps_bake.cginc"
 
-float _SPS_PenetratorLength;
+float _SPS_Length;
 
 // SPS Penetration Shader
-void sps_apply(inout float3 vertex, inout float3 normal, inout float4 color)
+void sps_apply(inout float3 vertex, inout float3 normal, inout float4 color, uint vertexId)
 {
-	float worldLength = _SPS_PenetratorLength;
-	float averageLength = 0.28;
-	float scaleAdjustment = worldLength / averageLength;
-	
-	float3 origVertex = vertex;
-	float3 origNormal = normal;
+	const float worldLength = _SPS_Length;
+	const float averageLength = 0.28;
+	const float scaleAdjustment = worldLength / averageLength;
+
+	const float3 origVertex = vertex;
+	const float3 origNormal = normal;
+	const float3 bakeIndex = 1 + vertexId * 6;
+	const float3 restingVertex = SpsBakedVertex(bakeIndex);
+	const float3 restingNormal = SpsBakedVertex(bakeIndex+3);
 
 	if (vertex.z < 0) return;
 
@@ -25,11 +29,11 @@ void sps_apply(inout float3 vertex, inout float3 normal, inout float4 color)
 
 	float orfDistance = length(rootPos);
 
-	float3 p0 = float3(0,0,0);
-	float3 p1 = float3(0,0,orfDistance/4);
-	float3 p2 = rootPos + frontNormal * (orfDistance/2);
-	float3 p3 = rootPos;
-	float t = saturate(origVertex.z / orfDistance);
+	const float3 p0 = float3(0,0,0);
+	const float3 p1 = float3(0,0,orfDistance/4);
+	const float3 p2 = rootPos + frontNormal * (orfDistance/2);
+	const float3 p3 = rootPos;
+	float t = saturate(restingVertex.z / orfDistance);
 	t = sps_bezierAdjustT(p0, p1, p2, p3, t);
 
 	float3 bezierPos = sps_bezier(p0,p1,p2,p3,t);
@@ -41,40 +45,48 @@ void sps_apply(inout float3 vertex, inout float3 normal, inout float4 color)
 	// Handle holes and rings
 	float holeShrink = 1;
 	if (isRing) {
-		if (origVertex.z >= orfDistance) {
+		if (restingVertex.z >= orfDistance) {
 			// Straighten if past socket
-			bezierPos += (origVertex.z - orfDistance) * bezierForward;
+			bezierPos += (restingVertex.z - orfDistance) * bezierForward;
 		}
 	} else {
 		float holeRecessDistance = 0.02 * scaleAdjustment; // 2cm
 		float holeRecessDistance2 = 0.04 * scaleAdjustment; // 4cm
 		holeShrink = saturate(sps_map(
-			origVertex.z,
+			restingVertex.z,
 			orfDistance + holeRecessDistance, orfDistance + holeRecessDistance2,
 			1, 0));
-		if (origVertex.z >= orfDistance + holeRecessDistance2) {
+		if (restingVertex.z >= orfDistance + holeRecessDistance2) {
 			// If way past socket, condense to point
 			bezierPos += holeRecessDistance2 * bezierForward;
-		} else if (origVertex.z >= orfDistance) {
+		} else if (restingVertex.z >= orfDistance) {
 			// Straighten if past socket
-			bezierPos += (origVertex.z - orfDistance) * bezierForward;
+			bezierPos += (restingVertex.z - orfDistance) * bezierForward;
 		}
 	}
 
-	vertex = bezierPos + bezierRight * origVertex.x * holeShrink + bezierUp * origVertex.y * holeShrink;
-	normal = bezierRight * normal.x + bezierUp * normal.y + bezierForward * normal.z;
+	float3 deformedVertex = bezierPos + bezierRight * restingVertex.x * holeShrink + bezierUp * restingVertex.y * holeShrink;
+	float3 deformedNormal = bezierRight * restingNormal.x + bezierUp * restingNormal.y + bezierForward * restingNormal.z;
 
-	float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 1, 0));
-	float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 1, 0));
-	float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.3, SPS_PI*0.4, 1, 0));
-	float cancelLerp = entranceAngleTooSharp;
-	cancelLerp = min(cancelLerp, targetAngleTooSharp);
+	// Cancel if the entrance angle is too sharp
+	float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 0, 1));
+	float applyLerp = 1-entranceAngleTooSharp;
+
+	// Cancel if base angle is too sharp
+	float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.3, SPS_PI*0.4, 0, 1));
+	applyLerp = min(applyLerp, 1-targetAngleTooSharp);
+
+	// Uncancel if hilted in a hole
 	if (!isRing)
 	{
 		float hilted = saturate(sps_map(orfDistance, worldLength*0.5, worldLength*0.4, 0, 1));
-		cancelLerp = max(cancelLerp, hilted);
+		applyLerp = max(applyLerp, hilted);
 	}
-	cancelLerp = min(cancelLerp, tooFar);
-	vertex = lerp(origVertex, vertex, cancelLerp);
-	normal = lerp(origNormal, normal, cancelLerp);
+
+	// Cancel if too far away
+	float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
+	applyLerp = min(applyLerp, 1-tooFar);
+
+	vertex = lerp(origVertex, deformedVertex, applyLerp);
+	normal = lerp(origNormal, deformedNormal, applyLerp);
 }
