@@ -2,9 +2,9 @@
 
 #define SPS_PI float(3.14159265359)
 bool sps_isType(float range, float target) { return abs(fmod(range, 0.1) - target) < 0.005; }
-bool sps_isHole(float range) { return sps_isType(range, 0.01); }
-bool sps_isRing(float range) { return sps_isType(range, 0.02); }
-bool sps_isFront(float range) { return sps_isType(range, 0.05); }
+bool sps_isHole(float range, float channel) { return sps_isType(range, channel ? 0.03 : 0.01); }
+bool sps_isRing(float range, float channel) { return sps_isType(range, channel ? 0.04 : 0.02); }
+bool sps_isFront(float range, float channel) { return sps_isType(range, channel ? 0.06 : 0.05); }
 float3 sps_toLocal(float3 v) { return mul(unity_WorldToObject, float4(v, 1)); }
 float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)); }
 // https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-3250460
@@ -16,7 +16,8 @@ bool sps_search(
 	out bool isRing,
 	out float3 rootNormal,
 	out float entranceAngle,
-	out float targetAngle
+	out float targetAngle,
+	float channel
 ) {
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
@@ -40,8 +41,8 @@ bool sps_search(
 	 	for(int i = 0; i < 4; i++)
 	 	{
 	 		const float distance = length(lightLocalPos[i]);
-	 		const bool isRing = sps_isRing(lightRange[i]);
-	 		const bool isHole = sps_isHole(lightRange[i]);
+	 		const bool isRing = sps_isRing(lightRange[i], channel);
+	 		const bool isHole = sps_isHole(lightRange[i], channel);
 	 		if ((isRing || isHole) && (distance < minDistance || minDistance < 0)) {
 	 			rootFound = true;
 	 			rootIndex = i;
@@ -57,7 +58,7 @@ bool sps_search(
 	 	float minDistance = 0.1;
 	 	for(int i = 0; i < 4; i++) {
 	 		const float distFromRoot = abs(lightWorldPos[i] - lightWorldPos[rootIndex]);
-	 		if (sps_isFront(lightRange[i]) && distFromRoot < minDistance) {
+	 		if (sps_isFront(lightRange[i], channel) && distFromRoot < minDistance) {
 	 			frontFound = true;
 	 			frontIndex = i;
 	 			minDistance = distFromRoot;
@@ -68,7 +69,7 @@ bool sps_search(
 	 	float minDistance = -1;
 	 	for(int i = 0; i < 4; i++) {
 	 		const float distance = length(lightLocalPos[i]);
-	 		if (sps_isFront(lightRange[i]) && (distance < minDistance || minDistance < 0)) {
+	 		if (sps_isFront(lightRange[i], channel) && (distance < minDistance || minDistance < 0)) {
 	 			rootFound = true;
 	 			rootIndex = i;
 	 			minDistance = distance;
@@ -78,7 +79,7 @@ bool sps_search(
 	
 	if (rootFound) {
 		rootLocal = rootFound ? lightLocalPos[rootIndex] : float3(0,0,0);
-		isRing = rootFound ? !sps_isHole(lightRange[rootIndex]) : false;
+		isRing = rootFound ? !sps_isHole(lightRange[rootIndex], channel) : false;
 		rootNormal = frontFound
 			? normalize(lightLocalPos[frontIndex] - lightLocalPos[rootIndex])
 			: -1 * normalize(lightLocalPos[rootIndex]);

@@ -4,6 +4,7 @@
 
 float _SPS_Length;
 float _SPS_BakedLength;
+float _SPS_Channel;
 
 // SPS Penetration Shader
 void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
@@ -25,7 +26,7 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 	float3 frontNormal;
 	float entranceAngle;
 	float targetAngle;
-	bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle);
+	bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle, _SPS_Channel);
 	if (!found) return;
 
 	float orfDistance = length(rootPos);
