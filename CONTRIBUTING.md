@@ -55,3 +55,5 @@ For more information, please refer to <https://unlicense.org>
   * Added global parameters for Toggles
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
+* Tayou
+  * SPS: Added support for wider light ranges (ranges other than 0.4X)
