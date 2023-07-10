@@ -1,10 +1,10 @@
 #include "UnityShaderVariables.cginc"
 
 #define SPS_PI float(3.14159265359)
-bool sps_isType(float range, float target) { return abs(range - target) < 0.005; }
-bool sps_isHole(float range) { return sps_isType(range, 0.41); }
-bool sps_isRing(float range) { return sps_isType(range, 0.42); }
-bool sps_isFront(float range) { return sps_isType(range, 0.45); }
+bool sps_isType(float range, float target) { return abs(fmod(range, 0.1) - target) < 0.005; }
+bool sps_isHole(float range) { return sps_isType(range, 0.01); }
+bool sps_isRing(float range) { return sps_isType(range, 0.02); }
+bool sps_isFront(float range) { return sps_isType(range, 0.05); }
 float3 sps_toLocal(float3 v) { return mul(unity_WorldToObject, float4(v, 1)); }
 float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)); }
 // https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-3250460
