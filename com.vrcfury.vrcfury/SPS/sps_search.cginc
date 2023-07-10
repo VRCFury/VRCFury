@@ -91,7 +91,7 @@ bool sps_search(
 				rootNormal *= -1;
 				entranceAngle = SPS_PI - entranceAngle;
 			} else {
-				return false;
+				rootFound = false;
 			}
 		}
 	} else {
@@ -100,7 +100,7 @@ bool sps_search(
 	 	rootNormal = float3(0,0,0);
 	 	entranceAngle = 0;
 	 	targetAngle = 0;
-	 }
+	}
 	
 	return rootFound;
 }

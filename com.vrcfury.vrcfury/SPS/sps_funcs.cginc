@@ -6,7 +6,7 @@ float _SPS_Length;
 float _SPS_BakedLength;
 
 // SPS Penetration Shader
-void sps_apply(inout float3 vertex, inout float3 normal, inout float4 color, uint vertexId)
+void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 {
 	const float worldLength = _SPS_Length;
 	const float averageLength = 0.28;
