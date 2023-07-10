@@ -64,7 +64,8 @@ namespace VF.Builder.Haptics {
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
             if (skin.sharedMesh.boneWeights.Length == 0) {
                 var mainBone = new GameObject("MainBone");
-                mainBone.transform.SetParent(rootTransform, false);
+                mainBone.transform.SetParent(skin.transform, false);
+                mainBone.transform.SetParent(rootTransform, true);
                 var meshCopy = mutableManager.MakeMutable(skin.sharedMesh);
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
@@ -82,7 +83,17 @@ namespace VF.Builder.Haptics {
 
             skin.rootBone = rootTransform;
             VRCFuryEditorUtils.MarkDirty(skin);
-            
+
+            var bake = MeshBaker.BakeMesh(skin, rootTransform);
+            var bounds = new Bounds();
+            foreach (var vertex in bake.vertices) {
+                bounds.Encapsulate(vertex);
+            }
+            // This needs to be at least the distance of tooFar in the SPS shader, so that the lights are in range
+            // before deformation may happen
+            var multiplyLength = 2.5f;
+            bounds.extents *= 2*multiplyLength;
+            skin.localBounds = bounds;
             BoundingBoxFixBuilder.AdjustBoundingBox(skin);
 
             return skin;
