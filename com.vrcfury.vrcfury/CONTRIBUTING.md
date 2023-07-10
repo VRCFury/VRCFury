@@ -65,3 +65,4 @@ For more information, please refer to <https://unlicense.org>
   * Ensured that gogoloco params are always global
 * TayouVR
   * added Logging to Blendshape Optimizer
+  * Added Channel Support for Haptic Socket and Plugs
