@@ -3,6 +3,7 @@
 #include "sps_bake.cginc"
 
 float _SPS_Length;
+float _SPS_BakedLength;
 
 // SPS Penetration Shader
 void sps_apply(inout float3 vertex, inout float3 normal, inout float4 color, uint vertexId)
@@ -14,7 +15,7 @@ void sps_apply(inout float3 vertex, inout float3 normal, inout float4 color, uin
 	const float3 origVertex = vertex;
 	const float3 origNormal = normal;
 	const float3 bakeIndex = 1 + vertexId * 6;
-	const float3 restingVertex = SpsBakedVertex(bakeIndex);
+	const float3 restingVertex = SpsBakedVertex(bakeIndex) * (_SPS_Length / _SPS_BakedLength);
 	const float3 restingNormal = SpsBakedVertex(bakeIndex+3);
 
 	if (vertex.z < 0) return;

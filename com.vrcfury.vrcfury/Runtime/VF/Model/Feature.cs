@@ -677,6 +677,7 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class TpsScaleFix : NewFeatureModel {
+        [NonSerialized] public Renderer singleRenderer;
     }
 
 }

@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Policy;
 using System.Text.RegularExpressions;
+using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
@@ -18,17 +20,14 @@ namespace VF.Builder.Haptics {
             var contents = ReadFile(oldShaderPath);
             var pathToSps = AssetDatabase.GUIDToAssetPath("6cf9adf85849489b97305dfeecc74768");
             var newPath = VRCFuryAssetDatabase.GetUniquePath(mutableManager.GetTmpDir(), "SPS Patched " + shader.name, "shader");
-            var pathToOldShaderDir = Path.GetDirectoryName(oldShaderPath).Replace("\\", "/");
-            
-            // TODO: Flatten includes to make poiyomi lockdown happy
+
             // TODO: Add support for DPS channel 1 and TPS channels
             // TODO: Add animatable toggle
-            // TODO: Make scale fix work
 
             var state = State.Idle;
             var seenProps = false;
             var lines = new List<string>();
-            foreach (var l in contents.Split('\n')) {
+            foreach (var l in contents) {
                 var line = l;
 
                 if (line.Contains("Properties") && !seenProps && state == State.Idle) {
@@ -42,29 +41,23 @@ namespace VF.Builder.Haptics {
                 
                 if (line.Contains(" vert(")) {
                     state = State.LookingForVertStart;
-                    lines.Add($"#include \"{pathToSps}/sps_funcs.cginc\"");
+                    lines.AddRange(ReadAndFlatten($"{pathToSps}/sps_funcs.cginc"));
                 }
 
-                if (line.Contains("#include")) {
-                    var pattern = @"#include ""(.*)""";
-                    var m = Regex.Match(line, pattern);
-                    if (m.Success) {
-                        var includePath = $"{pathToOldShaderDir}/{m.Groups[1]}";
-                        if (File.Exists(includePath)) {
-                            line = $"#include \"{includePath}\"";
-                        }
-                    }
+                var includePath = ParseInclude(line, oldShaderPath);
+                if (includePath != null) {
+                    line = $"#include \"{includePath}\"";
                 }
 
-                lines.Add(line.TrimEnd());
+                lines.Add(line);
 
                 if (line.Contains("{") && state == State.LookingForVertStart) {
                     state = State.Idle;
-                    lines.Add($"#include \"{pathToSps}/sps_vert.cginc\"");
+                    lines.Add("sps_apply(v.vertex.xyz, v.normal.xyz, v.color, v.vertexId);");
                 }
                 if (line.Contains("{") && state == State.LookingForPropsStart) {
                     state = State.Idle;
-                    lines.AddRange(ReadFile($"{pathToSps}/sps_props.cginc").Split('\n'));
+                    lines.AddRange(ReadAndFlatten($"{pathToSps}/sps_props.cginc"));
                 }
             }
             
@@ -84,10 +77,53 @@ namespace VF.Builder.Haptics {
             VRCFuryEditorUtils.MarkDirty(mat);
         }
 
-        private static string ReadFile(string path) {
+        private static string ParseInclude(string line, string filePath) {
+            line = line.Trim();
+            if (!line.StartsWith("#include")) return null;
+
+            var pattern = @"""(.*)""";
+            var m = Regex.Match(line, pattern);
+            if (!m.Success) return null;
+
+            var target = ClipRewriter.Join(Path.GetDirectoryName(filePath).Replace('\\', '/'), m.Groups[1].ToString());
+            if (!File.Exists(target)) return null;
+            return target;
+        }
+
+        private static string[] ReadAndFlatten(string path, HashSet<string> included = null) {
+            bool isOuter = false;
+            if (included == null) {
+                included = new HashSet<string>();
+                isOuter = true;
+            }
+            if (included.Contains(path)) return new string[]{};
+            included.Add(path);
+
+            var output = new List<string>();
+            if (isOuter) {
+                output.Add("//////////////////");
+                output.Add("// BEGIN SPS PATCH");
+                output.Add("//////////////////");
+            }
+            foreach (var line in ReadFile(path)) {
+                var include = ParseInclude(line, path);
+                if (include != null) {
+                    output.AddRange(ReadAndFlatten(include, included));
+                    continue;
+                }
+                output.Add(line);
+            }
+            if (isOuter) {
+                output.Add("//////////////////");
+                output.Add("// END SPS PATCH");
+                output.Add("//////////////////");
+            }
+            return output.ToArray();
+        }
+        private static string[] ReadFile(string path) {
             StreamReader sr = new StreamReader(path);
             try {
-                return sr.ReadToEnd();
+                return sr.ReadToEnd().Split('\n').Select(line => line.TrimEnd()).ToArray();
             } finally {
                 sr.Close();
             }

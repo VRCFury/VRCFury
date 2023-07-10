@@ -15,6 +15,7 @@ namespace VF.Builder.Haptics {
         private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
         public static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
         public static readonly int SpsLength = Shader.PropertyToID("_SPS_Length");
+        public static readonly int SpsBakedLength = Shader.PropertyToID("_SPS_BakedLength");
         public static readonly int SpsBake = Shader.PropertyToID("_SPS_Bake");
         public static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
         private static readonly int TpsPenetratorRight = Shader.PropertyToID("_TPS_PenetratorRight");
@@ -100,6 +101,7 @@ namespace VF.Builder.Haptics {
                 var m = mutableManager.MakeMutable(original);
                 SpsPatcher.patch(m, mutableManager);
                 m.SetFloat(SpsLength, worldLength);
+                m.SetFloat(SpsBakedLength, worldLength);
 
                 var bakedMesh2 = MeshBaker.BakeMesh(skin, rootTransform, true);
                 if (bakedMesh2 == null)
@@ -178,6 +180,10 @@ namespace VF.Builder.Haptics {
 
         public static bool IsTps(Material mat) {
             return mat && mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
+        }
+        
+        public static bool IsSps(Material mat) {
+            return mat && mat.HasProperty(SpsBake);
         }
 
         public static bool IsLocked(Material mat) {

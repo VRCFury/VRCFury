@@ -82,7 +82,7 @@ namespace VF.Inspector {
                 return c;
             }, configureTps));
             
-            container.Add(VRCFuryEditorUtils.Prop(configureSps, "Auto-configure SPS Penetration System (PRE-ALPHA, DO NOT USE)"));
+            container.Add(VRCFuryEditorUtils.Prop(configureSps, "Auto-configure SPS Penetration System (ALPHA, USE WITH CAUTION)"));
 
             var adv = new Foldout {
                 text = "Advanced",
