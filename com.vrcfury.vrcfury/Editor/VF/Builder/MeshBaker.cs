@@ -31,11 +31,15 @@ namespace VF.Builder {
             if (!mesh) return null;
 
             Vector3[] vertices;
+            Vector3[] normals;
             if (origin) {
                 vertices = mesh.vertices
                     .Select(v => origin.InverseTransformPoint(renderer.transform.TransformPoint(v))).ToArray();
+                normals = mesh.normals
+                    .Select(v => origin.InverseTransformDirection(renderer.transform.TransformDirection(v))).ToArray();
             } else {
                 vertices = mesh.vertices;
+                normals = mesh.normals;
             }
 
             if (applyScale && origin != null) {
@@ -44,7 +48,7 @@ namespace VF.Builder {
 
             return new BakedMesh() {
                 vertices = vertices,
-                normals = mesh.normals
+                normals = normals
             };
         }
 
