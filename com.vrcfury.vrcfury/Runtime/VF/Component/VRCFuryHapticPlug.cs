@@ -14,6 +14,9 @@ namespace VF.Component {
         public bool unitsInMeters = false;
         public bool configureTps = false;
         public bool configureSps = false;
+        public bool defaultChannel = false;
+        public bool addChannelToggle = false;
+        public string channelToggleMenuPath = "";
         public GuidTexture2d configureTpsMask = null;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
 

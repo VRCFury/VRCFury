@@ -22,6 +22,8 @@ namespace VF.Inspector {
             var configureTps = serializedObject.FindProperty("configureTps");
             var configureSps = serializedObject.FindProperty("configureSps");
             
+            var addChannelToggle = serializedObject.FindProperty("addChannelToggle");
+            
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
@@ -83,6 +85,21 @@ namespace VF.Inspector {
             }, configureTps));
             
             container.Add(VRCFuryEditorUtils.Prop(configureSps, "Auto-configure SPS Penetration System (ALPHA, USE WITH CAUTION)"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (configureSps.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("defaultChannel"), "Default Channel to use (Use 0 if you don't know what this is)"));
+                    c.Add(VRCFuryEditorUtils.Prop(addChannelToggle, "Auto Generate Channel Toggle"));
+                }
+                return c;
+            }, configureSps));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (addChannelToggle.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("channelToggleMenuPath"), "Menu Path"));
+                }
+                return c;
+            }, addChannelToggle));
 
             var adv = new Foldout {
                 text = "Advanced",
