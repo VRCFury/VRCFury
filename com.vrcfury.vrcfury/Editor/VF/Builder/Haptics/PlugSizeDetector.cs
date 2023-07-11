@@ -10,34 +10,6 @@ namespace VF.Builder.Haptics {
     internal static class PlugSizeDetector {
         private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
 
-        public static IImmutableList<Renderer> GetAutoRenderer(GameObject obj) {
-            var foundWithDps = GetAutoRenderer(obj, true);
-            if (foundWithDps.Count > 0) return foundWithDps;
-            return GetAutoRenderer(obj, false);
-        }
-        
-        private static IImmutableList<Renderer> GetAutoRenderer(GameObject obj, bool dpsOnly) {
-            bool IsDps(Renderer r) => !dpsOnly || HasDpsMaterial(r);
-
-            var foundOnObject = obj.GetComponents<Renderer>().Where(IsDps).ToImmutableList();
-            if (foundOnObject.Count > 0) return foundOnObject;
-
-            var foundInChildren = obj.GetComponentsInChildren<Renderer>(true).Where(IsDps).ToImmutableList();
-            if (foundInChildren.Count > 0) return foundInChildren;
-            
-            var parent = obj.transform.parent;
-            while (parent != null) {
-                var foundOnParent = Enumerable.Range(0, parent.childCount)
-                    .Select(childNum => parent.GetChild(childNum))
-                    .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps))
-                    .ToImmutableList();
-                if (foundOnParent.Count > 0) return foundOnParent;
-                parent = parent.parent;
-            }
-
-            return ImmutableList.Create<Renderer>();
-        }
-
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
             return HapticUtils.GetMeshRoot(renderer).rotation * localRotation;
