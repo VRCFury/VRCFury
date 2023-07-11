@@ -139,7 +139,7 @@ namespace VF.Builder.Haptics {
                 bone.localPosition = pos;
                 bones.Add(bone);
                 lastParent = bone;
-                bindPoses.Add(skin.rootBone.localToWorldMatrix * bone.worldToLocalMatrix);
+                bindPoses.Add(bone.worldToLocalMatrix * skin.rootBone.localToWorldMatrix);
             }
 
             if (skin.bones.Length != 1) {
