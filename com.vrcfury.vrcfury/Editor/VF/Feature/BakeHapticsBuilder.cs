@@ -41,8 +41,11 @@ namespace VF.Feature {
                     foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
                         objectsToDisableTemporarily.Add(r.gameObject);
                     }
-                    foreach (var renderer in renderers) {
-                        addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
+
+                    if (c.configureTps || c.configureSps) {
+                        foreach (var renderer in renderers) {
+                            addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
+                        }
                     }
                 }
             }
