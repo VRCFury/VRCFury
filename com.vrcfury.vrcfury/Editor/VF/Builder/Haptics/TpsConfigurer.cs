@@ -34,8 +34,17 @@ namespace VF.Builder.Haptics {
             MutableManager mutableManager,
             bool useSps
         ) {
-            if (!useSps && !renderer.sharedMaterials.Any(m => IsTps(m))) {
-                return null;
+            if (useSps) {
+                if (PlugSizeDetector.HasDpsMaterial(renderer)) {
+                    throw new Exception(
+                        $"VRCFury haptic plug was asked to configure SPS on renderer {renderer}," +
+                        $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
+                        $" on the mesh instead.");
+                }
+            } else {
+                if (!renderer.sharedMaterials.Any(m => IsTps(m))) {
+                    return null;
+                }
             }
 
             // Convert MeshRenderer to SkinnedMeshRenderer

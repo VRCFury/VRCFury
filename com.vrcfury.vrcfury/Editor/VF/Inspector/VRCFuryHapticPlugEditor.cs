@@ -279,6 +279,11 @@ namespace VF.Inspector {
             }
             
             if ((pen.configureTps || pen.configureSps) && mutableManager != null) {
+                if (pen.configureTps && pen.configureSps) {
+                    throw new VRCFBuilderException(
+                        "Auto-Configure TPS and Auto-Configure SPS cannot be enabled at the same time.");
+                }
+                
                 var configuredOne = false;
                 foreach (var renderer in renderers) {
                     var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.configureSps);
