@@ -16,7 +16,7 @@ namespace VF.Builder.Haptics {
         }
         
         public static Vector3 GetAutoWorldPosition(Renderer renderer) {
-            return HapticUtils.GetMeshRoot(renderer).transform.position;
+            return HapticUtils.GetMeshRoot(renderer).position;
         }
 
         public static Tuple<float, float> GetAutoWorldSize(Renderer renderer, Vector3? worldPosition_ = null, Quaternion? worldRotation_ = null) {
