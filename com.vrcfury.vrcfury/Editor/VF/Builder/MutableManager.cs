@@ -292,5 +292,9 @@ namespace VF.Builder {
             mutableObjects.Add(copy);
             return copy;
         }
+
+        public string GetTmpDir() {
+            return tmpDir;
+        }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
 using VF.Builder.Exceptions;
@@ -9,48 +10,13 @@ namespace VF.Builder.Haptics {
     internal static class PlugSizeDetector {
         private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
 
-        public static Renderer GetAutoRenderer(GameObject obj) {
-            return GetAutoRenderer(obj, true) ?? GetAutoRenderer(obj, false);
-        }
-        
-        private static Renderer GetAutoRenderer(GameObject obj, bool dpsOnly) {
-            bool IsDps(Renderer r) => !dpsOnly || HasDpsMaterial(r);
-            Renderer Try(IEnumerable<Renderer> enumerable) {
-                var arr = enumerable.ToArray();
-                if (arr.Length > 1) {
-                    throw new VRCFBuilderException(
-                        "Plug found multiple possible meshes. Please specify mesh in component manually.");
-                }
-                return arr.Length == 1 ? arr[0] : null;
-            }
-            
-            Renderer found;
-                
-            found = Try(obj.GetComponents<Renderer>().Where(IsDps));
-            if (found) return found;
-
-            found = Try(obj.GetComponentsInChildren<Renderer>(true).Where(IsDps));
-            if (found) return found;
-            
-            var parent = obj.transform.parent;
-            while (parent != null) {
-                found = Try(Enumerable.Range(0, parent.childCount)
-                    .Select(childNum => parent.GetChild(childNum))
-                    .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps)));
-                if (found) return found;
-                parent = parent.parent;
-            }
-
-            return null;
-        }
-        
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
             return HapticUtils.GetMeshRoot(renderer).rotation * localRotation;
         }
         
         public static Vector3 GetAutoWorldPosition(Renderer renderer) {
-            return HapticUtils.GetMeshRoot(renderer).transform.position;
+            return HapticUtils.GetMeshRoot(renderer).position;
         }
 
         public static Tuple<float, float> GetAutoWorldSize(Renderer renderer, Vector3? worldPosition_ = null, Quaternion? worldRotation_ = null) {

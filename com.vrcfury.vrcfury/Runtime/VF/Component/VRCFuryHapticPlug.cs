@@ -13,6 +13,7 @@ namespace VF.Component {
         public new string name;
         public bool unitsInMeters = false;
         public bool configureTps = false;
+        public bool configureSps = false;
         public GuidTexture2d configureTpsMask = null;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
 

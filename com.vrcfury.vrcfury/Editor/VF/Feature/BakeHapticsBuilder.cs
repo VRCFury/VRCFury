@@ -37,9 +37,15 @@ namespace VF.Feature {
                 var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, mutableManager: mutableManager);
 
                 if (bakeInfo != null) {
-                    var (name, bakeRoot, renderer, worldLength, worldRadius) = bakeInfo;
+                    var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
                     foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
                         objectsToDisableTemporarily.Add(r.gameObject);
+                    }
+
+                    if (c.configureTps || c.configureSps) {
+                        foreach (var renderer in renderers) {
+                            addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
+                        }
                     }
                 }
             }
