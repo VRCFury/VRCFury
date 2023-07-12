@@ -6,7 +6,7 @@ using VF.Model;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryGlobalCollider), true)]
-    public class VRCFGlobalColliderEditor : VRCFuryComponentEditor {
+    public class VRCFGlobalColliderEditor : VRCFuryComponentEditor<VRCFuryGlobalCollider> {
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryGlobalCollider collider, GizmoType gizmoType) {
             var transform = collider.GetTransform();
@@ -22,9 +22,7 @@ namespace VF.Inspector {
             );
         }
         
-        public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
-            var self = (VRCFuryGlobalCollider)target;
-
+        public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryGlobalCollider target) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("rootTransform"), "Root Transform Override"));

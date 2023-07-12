@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Reflection;
 using UnityEditor;
@@ -7,6 +8,15 @@ namespace VF.Component {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver, IVrcfEditorOnly {
         [SerializeField]
         private int version = -1;
+
+        [NonSerialized] public GameObject gameObjectOverride;
+
+        public new GameObject gameObject {
+            get {
+                if (gameObjectOverride != null) return gameObjectOverride;
+                return base.gameObject;
+            }
+        }
 
         public bool IsBroken() {
             return GetBrokenMessage() != null;

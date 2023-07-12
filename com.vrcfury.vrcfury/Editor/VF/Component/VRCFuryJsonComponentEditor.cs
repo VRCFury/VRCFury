@@ -12,8 +12,8 @@ using Object = UnityEngine.Object;
 
 namespace VF.Component {
     [InitializeOnLoad]
-    public class VRCFuryComponentEditor : JsonComponentEditor {
-        static VRCFuryComponentEditor() {
+    public class VRCFuryJsonComponentEditor : JsonComponentEditor {
+        static VRCFuryJsonComponentEditor() {
             var jsonSettings = new JsonSerializerSettings();
             jsonSettings.Converters.Add(JsonSubtypesConverterBuilder
                 .Of(typeof(FeatureBuilder), "type")

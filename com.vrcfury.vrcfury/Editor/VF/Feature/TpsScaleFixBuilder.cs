@@ -86,7 +86,7 @@ namespace VF.Feature {
                     }
 
                     var parentPaths =
-                        rootBone.GetComponentsInParent<Transform>()
+                        rootBone.GetComponentsInParent<Transform>(true)
                             .Select(t => AnimationUtility.CalculateTransformPath(t, avatarObject.transform))
                             .ToList();
 
