@@ -227,7 +227,7 @@ namespace VF.Feature {
             var animatedBindings = manager.GetAllUsedControllersRaw()
                 .Select(tuple => tuple.Item2)
                 .SelectMany(controller => GetBindings(avatarObject, controller))
-                .Concat(avatarObject.GetComponentsInChildren<Animator>()
+                .Concat(avatarObject.GetComponentsInChildren<Animator>(true)
                     .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
                 .ToList();
 
