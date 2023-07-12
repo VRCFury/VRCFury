@@ -15,10 +15,8 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
-    public class VRCFuryHapticSocketEditor : VRCFuryComponentEditor {
-        public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
-            var self = (VRCFuryHapticSocket)target;
-
+    public class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
+        public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name in menu / connected apps"));

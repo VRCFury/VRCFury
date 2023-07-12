@@ -14,10 +14,8 @@ using VRC.Dynamics;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
-    public class VRCFuryHapticPlugEditor : VRCFuryComponentEditor {
-        public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
-            var self = (VRCFuryHapticPlug)target;
-
+    public class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
+        public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");
             var configureSps = serializedObject.FindProperty("configureSps");
@@ -93,7 +91,7 @@ namespace VF.Inspector {
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                var (renderers, worldLength, worldRadius, localRotation, localPosition) = GetWorldSize(self);
+                var (renderers, worldLength, worldRadius, localRotation, localPosition) = GetWorldSize(target);
                 var text = new List<string>();
                 text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => r.gameObject.name)));
                 text.Add($"Detected Length: {worldLength}m");

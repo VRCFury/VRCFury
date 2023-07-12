@@ -1,22 +1,14 @@
 using System;
-using System.Drawing;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
-using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
-using VF.Model;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using Color = UnityEngine.Color;
-using FontStyle = UnityEngine.FontStyle;
-using Image = UnityEngine.UIElements.Image;
-using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
-    public class VRCFuryComponentEditor : Editor {
+    public class VRCFuryComponentEditor<T> : Editor where T : VRCFuryComponent {
 
         /*
         public override bool UseDefaultMargins() {
@@ -174,8 +166,8 @@ namespace VF.Inspector {
             if (!(target is UnityEngine.Component c)) {
                 return VRCFuryEditorUtils.Error("This isn't a component?");
             }
-            if (!(c is VRCFuryComponent v)) {
-                return CreateEditor(serializedObject, c, c.gameObject);
+            if (!(c is T v)) {
+                return VRCFuryEditorUtils.Error("Unexpected type?");
             }
 
             var loadError = v.GetBrokenMessage();
@@ -210,13 +202,14 @@ namespace VF.Inspector {
             if (isImmutable || isInstance) {
                 var copy = CopyComponent(v);
                 copy.Upgrade();
+                copy.gameObjectOverride = v.gameObject;
                 var copySo = new SerializedObject(copy);
-                body = CreateEditor(copySo, copy, v.gameObject);
+                body = CreateEditor(copySo, copy);
                 body.SetEnabled(false);
             } else {
                 v.Upgrade();
                 serializedObject.Update();
-                body = CreateEditor(serializedObject, v, v.gameObject);
+                body = CreateEditor(serializedObject, v);
             }
             
             container.Add(body);
@@ -262,7 +255,7 @@ namespace VF.Inspector {
             }
         }
 
-        public virtual VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
+        public virtual VisualElement CreateEditor(SerializedObject serializedObject, T target) {
             return new VisualElement();
         }
         

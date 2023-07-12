@@ -8,10 +8,10 @@ using VF.Model;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryToggle))]
-    public class VRCFuryToggleEditor : VRCFuryComponentEditor {
+    public class VRCFuryToggleEditor : VRCFuryComponentEditor<VRCFuryToggle> {
 
 
-        public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
+        public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryToggle target) {
             var content = new VisualElement();
 
             VRCFuryEditorUtils.Padding(content, 5);

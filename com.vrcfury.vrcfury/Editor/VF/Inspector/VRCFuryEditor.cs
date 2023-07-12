@@ -15,10 +15,8 @@ namespace VF.Inspector {
     
 
 [CustomEditor(typeof(VRCFury), true)]
-public class VRCFuryEditor : VRCFuryComponentEditor {
-    public override VisualElement CreateEditor(SerializedObject serializedObject, UnityEngine.Component target, GameObject gameObject) {
-        var self = (VRCFury)target;
-
+public class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
+    public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFury target) {
         var container = new VisualElement();
 
         var features = serializedObject.FindProperty("config.features");
@@ -27,8 +25,8 @@ public class VRCFuryEditor : VRCFuryComponentEditor {
         } else {
 
             var featureList = VRCFuryEditorUtils.List(features, 
-                renderElement: (i, prop) => renderFeature(self.config.features[i], prop, gameObject),
-                onPlus: () => OnPlus(features, gameObject),
+                renderElement: (i, prop) => renderFeature(target.config.features[i], prop, target.gameObject),
+                onPlus: () => OnPlus(features, target.gameObject),
                 onEmpty: () => {
                     var c = new VisualElement();
                     VRCFuryEditorUtils.Padding(c, 10);
@@ -43,7 +41,7 @@ public class VRCFuryEditor : VRCFuryComponentEditor {
             container.Add(featureList);
         }
 
-        var pointingToAvatar = gameObject.GetComponent<VRCAvatarDescriptor>() != null;
+        var pointingToAvatar = target.gameObject.GetComponent<VRCAvatarDescriptor>() != null;
         if (pointingToAvatar) {
             var box = new Box();
             box.style.marginTop = box.style.marginBottom = 10;
