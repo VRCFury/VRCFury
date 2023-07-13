@@ -69,6 +69,7 @@ namespace VF.Builder.Haptics {
 
         // https://support.unity.com/hc/en-us/articles/206486626-How-can-I-get-pixels-from-unreadable-textures-
         private static Texture2D MakeReadable(Texture2D texture) {
+            if (texture == null) return null;
             if (texture.isReadable) return texture;
             var tmp = RenderTexture.GetTemporary( 
                 texture.width,
