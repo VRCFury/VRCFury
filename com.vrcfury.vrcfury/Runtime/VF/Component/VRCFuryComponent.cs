@@ -82,7 +82,6 @@ namespace VF.Component {
 #if UNITY_EDITOR
             if (!this) return;
             if (PrefabUtility.IsPartOfPrefabInstance(this)) return;
-            if (Application.isPlaying) return;
             if (IsBroken()) return;
             UpgradeAlways();
             var fromVersion = GetVersion();
