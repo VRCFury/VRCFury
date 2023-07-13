@@ -234,7 +234,7 @@ namespace VF.Builder.Haptics {
             // Auto-add plugs from DPS and TPS
             foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 var (renderer, _, _) = tuple;
-                if (PlugSizeDetector.HasDpsMaterial(renderer) && PlugSizeDetector.GetAutoWorldSize(renderer) != null)
+                if (TpsConfigurer.HasDpsOrTpsMaterial(renderer) && PlugSizeDetector.GetAutoWorldSize(renderer) != null)
                     AddPlug(renderer.gameObject);
             }
             

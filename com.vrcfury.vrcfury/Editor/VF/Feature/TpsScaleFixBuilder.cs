@@ -66,7 +66,7 @@ namespace VF.Feature {
 
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                     var isTps = TpsConfigurer.IsTps(mat);
-                    var isSps = TpsConfigurer.IsSps(mat);
+                    var isSps = SpsConfigurer.IsSps(mat);
 
                     if (!isTps && !isSps) return mat;
 
@@ -205,7 +205,7 @@ namespace VF.Feature {
                 if (TpsConfigurer.IsTps(mat)) {
                     AddProp("_TPS_PenetratorLength", false);
                     AddProp("_TPS_PenetratorScale", true);
-                } else if (TpsConfigurer.IsSps(mat)) {
+                } else if (SpsConfigurer.IsSps(mat)) {
                     AddProp("_SPS_Length", false);
                 }
             }

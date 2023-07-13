@@ -142,7 +142,7 @@ namespace VF.Inspector {
             if (pen.autoRenderer) {
                 var autoParams = new PlugRendererFinder.Params();
                 if (pen.configureSps) {
-                    autoParams.PreferDps = false;
+                    autoParams.PreferDpsOrTps = false;
                     autoParams.SearchChildren = false;
                     autoParams.PreferWeightedToBone = true;
                     autoParams.EmptyIfMultiple = true;
@@ -281,17 +281,13 @@ namespace VF.Inspector {
                     throw new VRCFBuilderException(
                         "Auto-Configure TPS and Auto-Configure SPS cannot be enabled at the same time.");
                 }
-                
-                var configuredOne = false;
-                foreach (var renderer in renderers) {
-                    var newRenderer = TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.configureSps);
-                    if (newRenderer) configuredOne = true;
+                if (renderers.Count == 0) {
+                    throw new VRCFBuilderException(
+                        "VRCFury Haptic Plug has 'auto-configure SPS' or 'auto-configure TPS' enabled, but no renderer was found.");
                 }
 
-                if (!configuredOne) {
-                    throw new VRCFBuilderException(
-                        "VRCFury Haptic Plug has 'auto-configure TPS' enabled, but no renderer was found " +
-                        "using Poiyomi Pro 8.1+ with the 'Penetrator' feature enabled in the Color & Normals tab.");
+                foreach (var renderer in renderers) {
+                    TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.configureSps);
                 }
             }
             

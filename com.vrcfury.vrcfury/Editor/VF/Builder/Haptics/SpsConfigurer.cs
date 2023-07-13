@@ -1,0 +1,37 @@
+using System;
+using UnityEngine;
+
+namespace VF.Builder.Haptics {
+    public static class SpsConfigurer {
+        private static readonly int SpsLength = Shader.PropertyToID("_SPS_Length");
+        private static readonly int SpsBakedLength = Shader.PropertyToID("_SPS_BakedLength");
+        private static readonly int SpsBake = Shader.PropertyToID("_SPS_Bake");
+
+        public static Material ConfigureSpsMaterial(
+            SkinnedMeshRenderer skin,
+            Material original,
+            float worldLength,
+            Texture2D mask,
+            MutableManager mutableManager
+        ) {
+            if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
+                throw new Exception(
+                    $"VRCFury haptic plug was asked to configure SPS on renderer {skin}," +
+                    $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
+                    $" on the mesh instead.");
+            }
+                
+            var m = mutableManager.MakeMutable(original);
+            SpsPatcher.patch(m, mutableManager);
+            m.SetFloat(SpsLength, worldLength);
+            m.SetFloat(SpsBakedLength, worldLength);
+            var bake = SpsBaker.Bake(skin, mutableManager.GetTmpDir());
+            m.SetTexture(SpsBake, bake);
+            return m;
+        }
+
+        public static bool IsSps(Material mat) {
+            return mat && mat.HasProperty(SpsBake);
+        }
+    }
+}
