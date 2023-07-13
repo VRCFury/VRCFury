@@ -8,8 +8,6 @@ using VF.Model;
 
 namespace VF.Builder.Haptics {
     internal static class PlugSizeDetector {
-        private static readonly int Poi7PenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
-
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
             return HapticUtils.GetMeshRoot(renderer).rotation * localRotation;
@@ -53,28 +51,16 @@ namespace VF.Builder.Haptics {
             return Tuple.Create(length, radius);
         }
 
-        public static bool HasDpsMaterial(Renderer r) {
-            return GetMaterialDpsRotation(r) != null;
-        }
-
         private static Quaternion? GetMaterialDpsRotation(Renderer r) {
             return r.sharedMaterials.Select(GetMaterialDpsRotation).FirstOrDefault(c => c != null);
         }
 
         private static Quaternion? GetMaterialDpsRotation(Material mat) {
-            if (mat == null) return null;
-            if (!mat.shader) return null;
-            if (mat.shader.name == "Raliv/Penetrator") return Quaternion.identity; // Raliv
-            if (mat.shader.name.Contains("XSToon") && mat.shader.name.Contains("Penetrator")) return Quaternion.identity; // XSToon w/ Raliv
-            if (mat.HasProperty(Poi7PenetratorEnabled) && mat.GetFloat(Poi7PenetratorEnabled) > 0) return Quaternion.identity; // Poiyomi 7 w/ Raliv
-            if (mat.shader.name.Contains("DPS") && mat.HasProperty("_ReCurvature")) return Quaternion.identity; // UnityChanToonShader w/ Raliv
-            if (TpsConfigurer.IsTps(mat)) {
-                // Poiyomi 8 w/ TPS
-                if (mat.HasProperty(TpsConfigurer.TpsPenetratorForward)) {
-                    var c = mat.GetVector(TpsConfigurer.TpsPenetratorForward);
-                    return Quaternion.LookRotation(new Vector3(c.x, c.y, c.z));
-                }
+            if (DpsConfigurer.IsDps(mat)) {
                 return Quaternion.identity;
+            }
+            if (TpsConfigurer.IsTps(mat)) {
+                return TpsConfigurer.GetTpsRotation(mat);
             }
             return null;
         }

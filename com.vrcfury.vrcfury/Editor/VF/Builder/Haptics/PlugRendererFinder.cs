@@ -8,14 +8,14 @@ namespace VF.Builder.Haptics {
     /** Automatically finds the renderer to use for a plug */
     public class PlugRendererFinder {
         public class Params {
-            public bool PreferDps = true;
+            public bool PreferDpsOrTps = true;
             public bool SearchChildren = true;
             public bool PreferWeightedToBone = false;
             public bool EmptyIfMultiple = false;
         }
         
         public static IImmutableList<Renderer> GetAutoRenderer(GameObject obj, Params p) {
-            if (p.PreferDps) {
+            if (p.PreferDpsOrTps) {
                 var foundWithDps = GetAutoRendererInner(obj, p, true);
                 if (foundWithDps.Count > 0) return foundWithDps;
             }
@@ -27,8 +27,8 @@ namespace VF.Builder.Haptics {
             return found;
         }
 
-        private static IImmutableList<Renderer> GetAutoRendererInner(GameObject obj, Params p, bool dpsOnly) {
-            bool IsDps(Renderer r) => !dpsOnly || PlugSizeDetector.HasDpsMaterial(r);
+        private static IImmutableList<Renderer> GetAutoRendererInner(GameObject obj, Params p, bool dpsOrTpsOnly) {
+            bool IsDps(Renderer r) => !dpsOrTpsOnly || TpsConfigurer.HasDpsOrTpsMaterial(r);
 
             var foundOnObject = obj.GetComponents<Renderer>().Where(IsDps).ToImmutableList();
             if (foundOnObject.Count > 0) return foundOnObject;

@@ -87,9 +87,11 @@ namespace VF.Menu {
                     list.Add(c.GetType().Name + " in " + AnimationUtility.CalculateTransformPath(c.transform, obj.transform));
                 }
 
+                Debug.Log($"List of components on {obj}:\n" + string.Join("\n", list));
+
                 EditorUtility.DisplayDialog(
                     "Debug",
-                    string.Join("\n", list),
+                    $"Found {list.Count} components in {obj.name} and logged them to the console",
                     "Ok"
                 );
             });

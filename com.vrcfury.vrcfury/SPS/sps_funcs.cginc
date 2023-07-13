@@ -2,9 +2,6 @@
 #include "sps_search.cginc"
 #include "sps_bake.cginc"
 
-float _SPS_Length;
-float _SPS_BakedLength;
-
 // SPS Penetration Shader
 void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 {
@@ -25,7 +22,7 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 	float3 frontNormal;
 	float entranceAngle;
 	float targetAngle;
-	bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle);
+	const bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle);
 	if (!found) return;
 
 	float orfDistance = length(rootPos);
@@ -34,8 +31,8 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 	const float3 p1 = float3(0,0,orfDistance/4);
 	const float3 p2 = rootPos + frontNormal * (orfDistance/2);
 	const float3 p3 = rootPos;
-	float t = saturate(restingVertex.z / orfDistance);
-	t = sps_bezierAdjustT(p0, p1, p2, p3, t);
+	float curveLength;
+	float t = sps_bezierFindT(p0, p1, p2, p3, restingVertex.z, curveLength);
 
 	float3 bezierPos = sps_bezier(p0,p1,p2,p3,t);
 	float3 bezierDerivative = sps_bezierDerivative(p0,p1,p2,p3,t);
@@ -46,46 +43,48 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 	// Handle holes and rings
 	float holeShrink = 1;
 	if (isRing) {
-		if (restingVertex.z >= orfDistance) {
+		if (restingVertex.z >= curveLength) {
 			// Straighten if past socket
-			bezierPos += (restingVertex.z - orfDistance) * bezierForward;
+			bezierPos += (restingVertex.z - curveLength) * bezierForward;
 		}
 	} else {
 		float holeRecessDistance = 0.02 * scaleAdjustment; // 2cm
 		float holeRecessDistance2 = 0.04 * scaleAdjustment; // 4cm
 		holeShrink = saturate(sps_map(
 			restingVertex.z,
-			orfDistance + holeRecessDistance, orfDistance + holeRecessDistance2,
+			curveLength + holeRecessDistance, curveLength + holeRecessDistance2,
 			1, 0));
-		if (restingVertex.z >= orfDistance + holeRecessDistance2) {
+		if (restingVertex.z >= curveLength + holeRecessDistance2) {
 			// If way past socket, condense to point
 			bezierPos += holeRecessDistance2 * bezierForward;
-		} else if (restingVertex.z >= orfDistance) {
+		} else if (restingVertex.z >= curveLength) {
 			// Straighten if past socket
-			bezierPos += (restingVertex.z - orfDistance) * bezierForward;
+			bezierPos += (restingVertex.z - curveLength) * bezierForward;
 		}
 	}
 
-	float3 deformedVertex = bezierPos + bezierRight * restingVertex.x * holeShrink + bezierUp * restingVertex.y * holeShrink;
-	float3 deformedNormal = bezierRight * restingNormal.x + bezierUp * restingNormal.y + bezierForward * restingNormal.z;
+	const float3 deformedVertex = bezierPos + bezierRight * restingVertex.x * holeShrink + bezierUp * restingVertex.y * holeShrink;
+	const float3 deformedNormal = bezierRight * restingNormal.x + bezierUp * restingNormal.y + bezierForward * restingNormal.z;
 
-	// Cancel if the entrance angle is too sharp
-	float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 0, 1));
-	float applyLerp = 1-entranceAngleTooSharp;
+	float applyLerp = 1;
 
 	// Cancel if base angle is too sharp
-	float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.3, SPS_PI*0.4, 0, 1));
+	const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.2, SPS_PI*0.3, 0, 1));
 	applyLerp = min(applyLerp, 1-targetAngleTooSharp);
 
 	// Uncancel if hilted in a hole
 	if (!isRing)
 	{
-		float hilted = saturate(sps_map(orfDistance, worldLength*0.5, worldLength*0.4, 0, 1));
+		const float hilted = saturate(sps_map(orfDistance, worldLength*0.5, worldLength*0.4, 0, 1));
 		applyLerp = max(applyLerp, hilted);
 	}
 
+	// Cancel if the entrance angle is too sharp
+	const float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 0, 1));
+	applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
+
 	// Cancel if too far away
-	float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
+	const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
 	applyLerp = min(applyLerp, 1-tooFar);
 
 	vertex = lerp(origVertex, deformedVertex, applyLerp);
