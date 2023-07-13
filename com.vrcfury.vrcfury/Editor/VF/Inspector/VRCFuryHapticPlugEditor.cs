@@ -277,13 +277,14 @@ namespace VF.Inspector {
             }
             
             if ((pen.configureTps || pen.enableSps) && mutableManager != null) {
-                if (pen.configureTps && pen.enableSps) {
-                    throw new VRCFBuilderException(
-                        "Auto-Configure TPS and Auto-Configure SPS cannot be enabled at the same time.");
-                }
                 if (renderers.Count == 0) {
-                    throw new VRCFBuilderException(
-                        "VRCFury Haptic Plug has 'auto-configure SPS' or 'auto-configure TPS' enabled, but no renderer was found.");
+                    if (pen.enableSps) {
+                        throw new VRCFBuilderException(
+                            "VRCFury Haptic Plug has 'Enable SPS' checked, but no renderer was found.");
+                    } else {
+                        throw new VRCFBuilderException(
+                            "VRCFury Haptic Plug has 'Auto-Configure TPS' checked, but no renderer was found.");
+                    }
                 }
 
                 foreach (var renderer in renderers) {
