@@ -60,9 +60,18 @@ namespace VF.Inspector {
                 }
                 return c;
             }, autoRadius));
+
+            container.Add(VRCFuryEditorUtils.Prop(configureSps, "Enable SPS (Super Plug Shader) (BETA)"));
+
+            var adv = new Foldout {
+                text = "Advanced",
+                value = false
+            };
+            container.Add(adv);
+            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             
-            container.Add(VRCFuryEditorUtils.Prop(configureTps, "Auto-configure Poiyomi TPS"));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            adv.Add(VRCFuryEditorUtils.Prop(configureTps, "Auto-configure Poiyomi TPS (Deprecated)"));
+            adv.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (configureTps.boolValue) {
                     c.Add(VRCFuryEditorUtils.Info(
@@ -79,15 +88,6 @@ namespace VF.Inspector {
                 }
                 return c;
             }, configureTps));
-            
-            container.Add(VRCFuryEditorUtils.Prop(configureSps, "Auto-configure SPS Penetration System (ALPHA, USE WITH CAUTION)"));
-
-            var adv = new Foldout {
-                text = "Advanced",
-                value = false
-            };
-            container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
