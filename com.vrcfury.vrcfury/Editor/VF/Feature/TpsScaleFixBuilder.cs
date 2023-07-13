@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -56,126 +58,158 @@ namespace VF.Feature {
             foreach (var renderer in renderers) {
                 var pathToRenderer =
                     AnimationUtility.CalculateTransformPath(renderer.transform, avatarObject.transform);
-                if (renderer.sharedMaterials.Count(TpsConfigurer.IsTps) > 1) {
-                    throw new VRCFBuilderException(
-                        "TpsScaleFix cannot work if multiple deforming materials are used on a single renderer. "
-                        + pathToRenderer);
+
+                var scaledProps = GetScaledProps(renderer.sharedMaterials);
+                if (scaledProps.Count == 0) {
+                    continue;
                 }
 
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
-                    Transform rootBone = renderer.transform;
-                    if (renderer is SkinnedMeshRenderer skin && skin.rootBone != null) {
-                        rootBone = skin.rootBone;
-                    }
+                    var isTps = TpsConfigurer.IsTps(mat);
+                    var isSps = TpsConfigurer.IsSps(mat);
 
-                    string lengthParam = null;
-                    string scaleParam = null;
-                    if (TpsConfigurer.IsTps(mat)) {
-                        lengthParam = "_TPS_PenetratorLength";
-                        scaleParam = "_TPS_PenetratorScale";
-                    } else if (TpsConfigurer.IsSps(mat)) {
-                        lengthParam = "_SPS_Length";
-                    } else {
-                        return mat;
-                    }
+                    if (!isTps && !isSps) return mat;
+
                     if (TpsConfigurer.IsLocked(mat)) {
                         throw new VRCFBuilderException(
                             "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
                             "Please unlock the material on " +
                             pathToRenderer);
                     }
-
-                    var parentPaths =
-                        rootBone.GetComponentsInParent<Transform>(true)
-                            .Select(t => AnimationUtility.CalculateTransformPath(t, avatarObject.transform))
-                            .ToList();
-
-                    var animatedParentPaths = parentPaths
-                        .Where(path => animatedPaths.Contains(path))
-                        .ToList();
-
-                    objectNumber++;
-                    Debug.Log("Processing " + pathToRenderer + " " + mat);
                     mat = mutableManager.MakeMutable(mat);
-                    if (lengthParam != null) mat.SetOverrideTag(lengthParam + "Animated", "1");
-                    if (scaleParam != null) mat.SetOverrideTag(scaleParam + "Animated", "1");
-
-                    var pathToParam = new Dictionary<string, VFAFloat>();
-                    var pathNumber = 0;
-                    foreach (var path in animatedParentPaths) {
-                        pathNumber++;
-                        var param = GetFx().NewFloat("shaderScale_" + objectNumber + "_" + pathNumber, def: avatarObject.transform.Find(path).localScale.z);
-                        pathToParam[path] = param;
-                        Debug.Log(path + " " + param.Name());
+                    if (isTps) {
+                        mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
+                        mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
                     }
-                    foreach (var clip in GetFx().GetClips()) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            if (!IsScaleBinding(binding)) continue;
-                            if (!pathToParam.TryGetValue(binding.path, out var param)) continue;
-                            var newBinding = new EditorCurveBinding();
-                            newBinding.type = typeof(Animator);
-                            newBinding.path = "";
-                            newBinding.propertyName = param.Name();
-                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
-                        }
+                    if (isSps) {
+                        mat.SetOverrideTag("_SPS_LengthAnimated", "1");
                     }
-
-                    float handledScale = 1;
-                    foreach (var path in animatedParentPaths) {
-                        handledScale *= avatarObject.transform.Find(path).localScale.z;
-                    }
-
-                    if (directTree == null) {
-                        Debug.Log("Creating direct layer");
-                        var layer = GetFx().NewLayer("shaderScale");
-                        var state = layer.NewState("Scale");
-                        directTree = GetFx().NewBlendTree("shaderScale");
-                        directTree.blendType = BlendTreeType.Direct;
-                        state.WithAnimation(directTree);
-
-                        zeroClip = GetFx().NewClip("zeroScale");
-                        var one = GetFx().NewFloat("one", def: 1);
-                        directTree.AddChild(zeroClip);
-                        SetLastParam(directTree, one);
-                    }
-
-                    var scaleClip = GetFx().NewClip("tpsScale_" + objectNumber);
-                    if (scaleParam != null) {
-                        var scaleOffset = mat.GetVector(scaleParam).z / handledScale;
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{scaleParam}.x", ClipBuilder.OneFrame(scaleOffset));
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{scaleParam}.y", ClipBuilder.OneFrame(scaleOffset));
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{scaleParam}.z", ClipBuilder.OneFrame(scaleOffset));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{scaleParam}.x", ClipBuilder.OneFrame(0));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{scaleParam}.y", ClipBuilder.OneFrame(0));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{scaleParam}.z", ClipBuilder.OneFrame(0));
-                    }
-                    if (lengthParam != null) {
-                        var lengthOffset = mat.GetFloat(lengthParam) / handledScale;
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{lengthParam}", ClipBuilder.OneFrame(lengthOffset));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{lengthParam}", ClipBuilder.OneFrame(0));
-                    }
-
-                    pathToParam["nativeScale"] = GetFx().NewFloat("ScaleFactor", def: 1, usePrefix: false);
-                    
-                    var tree = directTree;
-                    foreach (var (param,index) in pathToParam.Values.Select((p,index) => (p,index))) {
-                        var isLast = index == pathToParam.Count - 1;
-                        if (isLast) {
-                            tree.AddChild(scaleClip);
-                            SetLastParam(tree, param);
-                        } else {
-                            var subTree = GetFx().NewBlendTree("shaderScaleSub");
-                            subTree.blendType = BlendTreeType.Direct;
-                            tree.AddChild(subTree);
-                            SetLastParam(tree, param);
-                            tree = subTree;
-                        }
-                    }
-
                     return mat;
                 }).ToArray();
 
+                Transform rootBone = renderer.transform;
+                if (renderer is SkinnedMeshRenderer skin && skin.rootBone != null) {
+                    rootBone = skin.rootBone;
+                }
+
+                var parentPaths =
+                    rootBone.GetComponentsInParent<Transform>(true)
+                        .Select(t => AnimationUtility.CalculateTransformPath(t, avatarObject.transform))
+                        .ToList();
+
+                var animatedParentPaths = parentPaths
+                    .Where(path => animatedPaths.Contains(path))
+                    .ToList();
+
+                objectNumber++;
+                Debug.Log("Processing " + pathToRenderer);
+
+                var pathToParam = new Dictionary<string, VFAFloat>();
+                var pathNumber = 0;
+                foreach (var path in animatedParentPaths) {
+                    pathNumber++;
+                    var param = GetFx().NewFloat("shaderScale_" + objectNumber + "_" + pathNumber, def: avatarObject.transform.Find(path).localScale.z);
+                    pathToParam[path] = param;
+                    Debug.Log(path + " " + param.Name());
+                }
+                foreach (var clip in GetFx().GetClips()) {
+                    foreach (var binding in clip.GetFloatBindings()) {
+                        if (!IsScaleBinding(binding)) continue;
+                        if (!pathToParam.TryGetValue(binding.path, out var param)) continue;
+                        var newBinding = new EditorCurveBinding();
+                        newBinding.type = typeof(Animator);
+                        newBinding.path = "";
+                        newBinding.propertyName = param.Name();
+                        clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                    }
+                }
+
+                float handledScale = 1;
+                foreach (var path in animatedParentPaths) {
+                    handledScale *= avatarObject.transform.Find(path).localScale.z;
+                }
+
+                if (directTree == null) {
+                    Debug.Log("Creating direct layer");
+                    var layer = GetFx().NewLayer("shaderScale");
+                    var state = layer.NewState("Scale");
+                    directTree = GetFx().NewBlendTree("shaderScale");
+                    directTree.blendType = BlendTreeType.Direct;
+                    state.WithAnimation(directTree);
+
+                    zeroClip = GetFx().NewClip("zeroScale");
+                    var one = GetFx().NewFloat("one", def: 1);
+                    directTree.AddChild(zeroClip);
+                    SetLastParam(directTree, one);
+                }
+
+                var scaleClip = GetFx().NewClip("tpsScale_" + objectNumber);
+                foreach (var scaledProp in scaledProps) {
+                    var propertyName = scaledProp.Key;
+                    if (scaledProp.Value is float f) {
+                        var lengthOffset = f / handledScale;
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilder.OneFrame(lengthOffset));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilder.OneFrame(0));
+                    } else if (scaledProp.Value is Vector4 vec) {
+                        var scaleOffset = vec.z / handledScale;
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilder.OneFrame(scaleOffset));
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilder.OneFrame(scaleOffset));
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilder.OneFrame(scaleOffset));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilder.OneFrame(0));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilder.OneFrame(0));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilder.OneFrame(0));
+                    }
+                }
+
+                pathToParam["nativeScale"] = GetFx().NewFloat("ScaleFactor", def: 1, usePrefix: false);
+                
+                var tree = directTree;
+                foreach (var (param,index) in pathToParam.Values.Select((p,index) => (p,index))) {
+                    var isLast = index == pathToParam.Count - 1;
+                    if (isLast) {
+                        tree.AddChild(scaleClip);
+                        SetLastParam(tree, param);
+                    } else {
+                        var subTree = GetFx().NewBlendTree("shaderScaleSub");
+                        subTree.blendType = BlendTreeType.Direct;
+                        tree.AddChild(subTree);
+                        SetLastParam(tree, param);
+                        tree = subTree;
+                    }
+                }
             }
+        }
+
+        private static Dictionary<string, object> GetScaledProps(IEnumerable<Material> materials) {
+            var scaledProps = new Dictionary<string, object>();
+            foreach (var mat in materials) {
+                void AddProp(string propName, bool isVector) {
+                    if (!mat.HasProperty(propName)) return;
+                    if (!isVector) {
+                        var newVal = mat.GetFloat(propName);
+                        if (scaledProps.TryGetValue(propName, out var oldVal) && newVal != (float)oldVal) {
+                            throw new Exception(
+                                "This renderer contains multiple materials with different scale values");
+                        }
+                        scaledProps[propName] = newVal;
+                    } else {
+                        var newVal = mat.GetVector(propName);
+                        if (scaledProps.TryGetValue(propName, out var oldVal) && newVal != (Vector4)oldVal) {
+                            throw new Exception(
+                                "This renderer contains multiple materials with different scale values");
+                        }
+                        scaledProps[propName] = newVal;
+                    }
+                }
+                
+                if (TpsConfigurer.IsTps(mat)) {
+                    AddProp("_TPS_PenetratorLength", false);
+                    AddProp("_TPS_PenetratorScale", true);
+                } else if (TpsConfigurer.IsSps(mat)) {
+                    AddProp("_SPS_Length", false);
+                }
+            }
+            return scaledProps;
         }
 
         private static bool IsScaleBinding(EditorCurveBinding binding) {
