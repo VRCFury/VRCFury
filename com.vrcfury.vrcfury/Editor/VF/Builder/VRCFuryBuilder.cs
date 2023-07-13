@@ -132,6 +132,10 @@ public class VRCFuryBuilder {
         }
 
         progress.Progress(0, "Collecting features");
+        foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryComponent>(true)) {
+            c.Upgrade();
+        }
+
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
             if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
@@ -142,7 +146,6 @@ public class VRCFuryBuilder {
             if (loadFailure != null) {
                 throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
             }
-            vrcFury.Upgrade();
             var config = vrcFury.config;
             if (config.features != null) {
                 Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
