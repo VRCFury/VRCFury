@@ -141,7 +141,7 @@ namespace VF.Inspector {
             var renderers = new List<Renderer>();
             if (pen.autoRenderer) {
                 var autoParams = new PlugRendererFinder.Params();
-                if (pen.configureSps) {
+                if (pen.enableSps) {
                     autoParams.PreferDpsOrTps = false;
                     autoParams.SearchChildren = false;
                     autoParams.PreferWeightedToBone = true;
@@ -160,7 +160,7 @@ namespace VF.Inspector {
 
             Quaternion worldRotation = pen.transform.rotation;
             Vector3 worldPosition = pen.transform.position;
-            if (!pen.configureTps && !pen.configureSps && pen.autoPosition && renderers.Count > 0) {
+            if (!pen.configureTps && !pen.enableSps && pen.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
                 worldRotation = PlugSizeDetector.GetAutoWorldRotation(firstRenderer);
                 worldPosition = PlugSizeDetector.GetAutoWorldPosition(firstRenderer);
@@ -276,8 +276,8 @@ namespace VF.Inspector {
                 HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
             }
             
-            if ((pen.configureTps || pen.configureSps) && mutableManager != null) {
-                if (pen.configureTps && pen.configureSps) {
+            if ((pen.configureTps || pen.enableSps) && mutableManager != null) {
+                if (pen.configureTps && pen.enableSps) {
                     throw new VRCFBuilderException(
                         "Auto-Configure TPS and Auto-Configure SPS cannot be enabled at the same time.");
                 }
@@ -287,7 +287,7 @@ namespace VF.Inspector {
                 }
 
                 foreach (var renderer in renderers) {
-                    TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.configureSps);
+                    TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.enableSps);
                 }
             }
             

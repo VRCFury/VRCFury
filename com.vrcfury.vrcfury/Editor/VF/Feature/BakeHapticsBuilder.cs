@@ -42,7 +42,7 @@ namespace VF.Feature {
                         objectsToDisableTemporarily.Add(r.gameObject);
                     }
 
-                    if (c.configureTps || c.configureSps) {
+                    if (c.configureTps || c.enableSps) {
                         foreach (var renderer in renderers) {
                             addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
                         }

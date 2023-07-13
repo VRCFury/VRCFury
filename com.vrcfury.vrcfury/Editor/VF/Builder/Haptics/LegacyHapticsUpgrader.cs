@@ -92,7 +92,9 @@ namespace VF.Builder.Haptics {
                 if (AlreadyExistsAboveOrBelow(obj, hasExistingPlug.Concat(addedPlug))) return null;
                 addedPlug.Add(obj.transform);
                 if (dryRun) return null;
-                return obj.AddComponent<VRCFuryHapticPlug>();
+                var plug = obj.AddComponent<VRCFuryHapticPlug>();
+                plug.enableSps = false;
+                return plug;
             }
             VRCFuryHapticSocket AddSocket(GameObject obj) {
                 if (AlreadyExistsAboveOrBelow(obj, hasExistingSocket.Concat(addedSocket))) return null;

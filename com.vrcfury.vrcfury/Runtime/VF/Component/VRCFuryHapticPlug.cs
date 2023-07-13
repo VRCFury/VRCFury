@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VF.Model;
@@ -13,9 +14,11 @@ namespace VF.Component {
         public new string name;
         public bool unitsInMeters = false;
         public bool configureTps = false;
-        public bool configureSps = false;
+        public bool enableSps = true;
         public GuidTexture2d configureTpsMask = null;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
+
+        [Obsolete] public bool configureSps = false;
 
         protected override void Upgrade(int fromVersion) {
             if (fromVersion < 1) { 
@@ -26,10 +29,13 @@ namespace VF.Component {
                 autoLength = length == 0;
                 autoRadius = radius == 0;
             }
+            if (fromVersion < 3) {
+                enableSps = configureSps;
+            }
         }
 
         protected override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
 }

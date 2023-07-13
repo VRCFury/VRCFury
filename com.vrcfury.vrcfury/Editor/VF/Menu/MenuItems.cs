@@ -15,12 +15,14 @@ namespace VF.Menu {
         public const string autoUpload = prefix + "Skip VRChat upload screen";
         public const int autoUploadPriority = 1223;
         
-        public const string upgradeLegacyHaptics = prefix + "Haptics/Upgrade legacy haptics";
-        public const int upgradeLegacyHapticsPriority = 1301;
         public const string createSocket = prefix + "Haptics/Create Socket";
-        public const int createSocketPriority = 1302;
+        public const int createSocketPriority = 1301;
+        public const string createPlug = prefix + "Haptics/Create Plug";
+        public const int createPlugPriority = 1302;
+        public const string upgradeLegacyHaptics = prefix + "Haptics/Upgrade legacy haptics";
+        public const int upgradeLegacyHapticsPriority = 1303;
         public const string bakeHaptic = prefix + "Haptics/Bake Haptic Component";
-        public const int bakeHapticPriority = 1303;
+        public const int bakeHapticPriority = 1304;
 
         public const string nukeZawoo = prefix + "Utilites/Nuke Zawoo";
         public const int nukeZawooPriority = 1311;
@@ -44,9 +46,16 @@ namespace VF.Menu {
         }
         
         [MenuItem(createSocket, priority = createSocketPriority)]
-        public static void RunHole() {
+        public static void RunSocket() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                HapticsMenuItem.Create();
+                HapticsMenuItem.Create(false);
+            });
+        }
+        
+        [MenuItem(createPlug, priority = createPlugPriority)]
+        public static void RunPlug() {
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                HapticsMenuItem.Create(true);
             });
         }
 
