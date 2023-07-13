@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -206,6 +207,8 @@ namespace VF.Inspector {
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy);
                 body.SetEnabled(false);
+                // TODO: This doesn't seem to work and it binds back to the original all the time
+                //body.Bind(copySo);
             } else {
                 v.Upgrade();
                 serializedObject.Update();

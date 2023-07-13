@@ -29,7 +29,7 @@ namespace VF.Feature {
             // When you first load into a world, contact receivers already touching a sender register as 0 proximity
             // until they are removed and then reintroduced to each other.
             var objectsToDisableTemporarily = new HashSet<GameObject>();
-            // This is here so if users have an existing toggle that turns off holes, we forcefully turn it back
+            // This is here so if users have an existing toggle that turns off sockets, we forcefully turn it back
             // on if it's managed by our new menu system.
             var objectsToForceEnable = new HashSet<GameObject>();
             
@@ -50,8 +50,8 @@ namespace VF.Feature {
                 }
             }
 
-            var holesMenu = "Holes";
-            var optionsFolder = $"{holesMenu}/<b>Hole Options";
+            var socketsMenu = "Sockets";
+            var optionsFolder = $"{socketsMenu}/<b>Hole Options";
 
             var enableAuto = avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)
                 .Where(o => o.addMenuItem && o.enableAuto)
@@ -143,7 +143,7 @@ namespace VF.Feature {
                     }
                     
                     var holeOn = fx.NewBool(name, synced: true);
-                    manager.GetMenu().NewMenuToggle($"Holes/{name}", holeOn);
+                    manager.GetMenu().NewMenuToggle($"{socketsMenu}/{name}", holeOn);
 
                     var layer = fx.NewLayer(name);
                     var offState = layer.NewState("Off");

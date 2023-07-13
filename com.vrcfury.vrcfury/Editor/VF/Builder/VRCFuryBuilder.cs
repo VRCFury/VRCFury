@@ -142,7 +142,6 @@ public class VRCFuryBuilder {
             if (loadFailure != null) {
                 throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
             }
-            // Probably not needed since it's upgraded right after deserialize, but JUST IN CASE
             vrcFury.Upgrade();
             var config = vrcFury.config;
             if (config.features != null) {

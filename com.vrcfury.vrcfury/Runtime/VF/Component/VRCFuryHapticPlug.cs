@@ -29,13 +29,13 @@ namespace VF.Component {
                 autoLength = length == 0;
                 autoRadius = radius == 0;
             }
-            if (fromVersion < 3) {
+            if (fromVersion < 4) {
                 enableSps = configureSps;
             }
         }
 
         protected override int GetLatestVersion() {
-            return 3;
+            return 4;
         }
     }
 }

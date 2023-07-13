@@ -18,7 +18,7 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");
-            var configureSps = serializedObject.FindProperty("configureSps");
+            var configureSps = serializedObject.FindProperty("enableSps");
             
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
