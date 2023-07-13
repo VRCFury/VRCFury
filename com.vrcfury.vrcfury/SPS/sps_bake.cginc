@@ -1,4 +1,4 @@
-uniform Texture2D _SPS_Bake;
+#include "sps_globals.cginc"
 
 float4 SpsBakedDataRaw(uint offset)
 {
