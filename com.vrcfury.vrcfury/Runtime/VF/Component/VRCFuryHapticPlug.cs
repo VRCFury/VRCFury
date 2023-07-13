@@ -29,7 +29,7 @@ namespace VF.Component {
                 autoLength = length == 0;
                 autoRadius = radius == 0;
             }
-            if (fromVersion < 4) {
+            if (fromVersion < 3) {
                 enableSps = configureSps;
             }
         }
