@@ -55,6 +55,8 @@ namespace VF.Feature {
 
             var i = 0;
             foreach (var globalContact in globalContacts) {
+                PhysboneUtils.RemoveFromPhysbones(globalContact.transform);
+
                 var target = globalContact.GetTransform();
                 fakeHead.MarkEligible(target.gameObject);
                 var finger = fingers[i].Item2;
@@ -71,28 +73,26 @@ namespace VF.Feature {
                 // If collider length >= radius*2, it will be a capsule with one end attached to the set transform's parent,
                 //   facing the direction of the set transform.
                 
-                var childObj = new GameObject("GlobalContact");
-                childObj.transform.SetParent(target, false);
+                var childObj = GameObjects.Create("GlobalContact", target);
                 if (globalContact.height <= globalContact.radius * 2) {
                     // It's a sphere
-                    finger.transform = childObj.transform;
+                    finger.transform = childObj;
                     finger.height = 0;
                 } else {
                     // It's a capsule
-                    childObj.transform.localPosition = new Vector3(0, 0, -globalContact.height / 2);
-                    var directionObj = new GameObject("Direction");
-                    directionObj.transform.SetParent(childObj.transform, false);
-                    directionObj.transform.localPosition = new Vector3(0, 0, 0.0001f);
-                    finger.transform = directionObj.transform;
+                    childObj.localPosition = new Vector3(0, 0, -globalContact.height / 2);
+                    var directionObj = GameObjects.Create("Direction", childObj);
+                    directionObj.localPosition = new Vector3(0, 0, 0.0001f);
+                    finger.transform = directionObj;
                     finger.height = globalContact.height;
                     
                     // Turns out capsules work in game differently than they do in the vrcsdk in the editor
                     // They're even more weird. The capsules in game DO NOT include the endcaps in the height,
                     // and attach the end of the cylinder to the parent (not the endcap).
                     // This fixes them so they work properly in game:
-                    var p = childObj.transform.localPosition;
+                    var p = childObj.localPosition;
                     p.z += finger.radius;
-                    childObj.transform.localPosition = p;
+                    childObj.localPosition = p;
                     finger.height -= finger.radius * 2;
                 }
                 setFinger(finger);

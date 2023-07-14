@@ -19,7 +19,7 @@ namespace VF.Builder {
 public class VRCFuryBuilder {
 
     public bool SafeRun(GameObject avatarObject, GameObject originalObject = null) {
-        Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
+        Debug.Log("VRCFury invoked on " + GameObjects.GetName(avatarObject) + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
@@ -71,7 +71,7 @@ public class VRCFuryBuilder {
         GameObject originalObject,
         ProgressBar progress
     ) {
-        var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
+        var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(GameObjects.GetName(avatarObject))}";
         // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
         // old asset and messes with the new copy.
         var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
@@ -137,6 +137,10 @@ public class VRCFuryBuilder {
         }
 
         progress.Progress(0, "Collecting features");
+        foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryComponent>(true)) {
+            c.Upgrade();
+        }
+
         foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
             var configObject = vrcFury.gameObject;
             if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
@@ -145,13 +149,11 @@ public class VRCFuryBuilder {
 
             var loadFailure = vrcFury.GetBrokenMessage();
             if (loadFailure != null) {
-                throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
+                throw new VRCFBuilderException($"VRCFury component is corrupted on {GameObjects.GetName(configObject)} ({loadFailure})");
             }
-            // Probably not needed since it's upgraded right after deserialize, but JUST IN CASE
-            vrcFury.Upgrade();
             var config = vrcFury.config;
             if (config.features != null) {
-                Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
+                Debug.Log("Importing " + config.features.Count + " features from " + GameObjects.GetName(configObject));
                 foreach (var feature in config.features) {
                     AddModel(feature, configObject);
                 }
@@ -186,7 +188,7 @@ public class VRCFuryBuilder {
             currentModelClipPrefix = $"VF{currentModelNumber} {builder.GetClipPrefix() ?? builder.GetType().Name}";
             currentMenuSortPosition = menuSortPositionByBuilder[builder];
             
-            var statusMessage = $"Applying {action.GetName()} on {builder.avatarObject.name} {configPath}";
+            var statusMessage = $"Applying {action.GetName()} on {GameObjects.GetName(builder.avatarObject)} {configPath}";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {

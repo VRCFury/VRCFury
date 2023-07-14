@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VF.Component;
 using VF.Inspector;
 using VF.Model;
@@ -9,16 +10,15 @@ namespace VF.Menu {
 
         private const string DialogTitle = "VRCFury Haptics";
 
-        public static void Create() {
-            var newObj = new GameObject("Haptic Socket");
+        public static void Create(bool plug) {
+            var newObj = GameObjects.Create(plug ? "Haptic Plug" : "Haptic Socket", Selection.activeTransform);
 
-            var o = newObj.AddComponent<VRCFuryHapticSocket>();
-
-            if (Selection.activeGameObject) {
-                newObj.transform.SetParent(Selection.activeGameObject.transform);
-                newObj.transform.localPosition = Vector3.zero;
+            if (plug) {
+                GameObjects.AddComponent<VRCFuryHapticPlug>(newObj);
+            } else {
+                GameObjects.AddComponent<VRCFuryHapticSocket>(newObj);
             }
-            
+
             Tools.pivotRotation = PivotRotation.Local;
             Tools.pivotMode = PivotMode.Pivot;
             Tools.current = Tool.Move;
@@ -26,7 +26,7 @@ namespace VF.Menu {
             //SceneView.FrameLastActiveSceneView();
             
             EditorUtility.DisplayDialog(DialogTitle,
-                "Object created!\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so the arrow faces correctly!", "Ok");
+                $"{(plug ? "Plug" : "Socket")} created!\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so it faces the correct direction!", "Ok");
             
             SceneView sv = EditorWindow.GetWindow<SceneView>();
             if (sv != null) sv.drawGizmos = true;

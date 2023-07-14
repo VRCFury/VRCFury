@@ -116,6 +116,7 @@ namespace VF {
                 foreach (var o in root.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
                     if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
+                    o.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         VRCFuryHapticSocketEditor.Bake(o, onlySenders: true);
                     });
@@ -124,6 +125,7 @@ namespace VF {
                 foreach (var o in root.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
                     if (!o.gameObject.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(o.gameObject)) continue;
+                    o.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         var mutableManager = new MutableManager(tmpDir);
                         VRCFuryHapticPlugEditor.Bake(o, onlySenders: true, mutableManager: mutableManager);
@@ -148,7 +150,8 @@ namespace VF {
         }
 
         private static bool IsAv3EmulatorClone(GameObject obj) {
-            return obj.name.Contains("(ShadowClone)") || obj.name.Contains("(MirrorReflection)");
+            return GameObjects.GetName(obj).Contains("(ShadowClone)")
+                   || GameObjects.GetName(obj).Contains("(MirrorReflection)");
         }
 
         private static void DestroyAllOfType(string typeStr) {

@@ -11,6 +11,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using VF.Builder;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
@@ -253,6 +254,25 @@ public static class VRCFuryEditorUtils {
         };
         Margin(b, 0);
         return b;
+    }
+
+    public static VisualElement BetterCheckbox(
+        SerializedProperty prop,
+        string label,
+        Action<IStyle> style = null
+    ) {
+        var el = new VisualElement() {
+            style = {
+                flexDirection = FlexDirection.Row
+            }
+        };
+        el.Add(Prop(prop, style: s => {
+            s.flexShrink = 0;
+            s.paddingRight = 3;
+        }));
+        el.Add(WrappedLabel(label));
+        style?.Invoke(el.style);
+        return el;
     }
     
     public static VisualElement Prop(
@@ -593,7 +613,7 @@ public static class VRCFuryEditorUtils {
      */
     public static bool IsInRagdollSystem(Transform obj) {
         while (obj != null) {
-            if (obj.name == "Ragdoll System") return true;
+            if (GameObjects.GetName(obj) == "Ragdoll System") return true;
             obj = obj.parent;
         }
         return false;

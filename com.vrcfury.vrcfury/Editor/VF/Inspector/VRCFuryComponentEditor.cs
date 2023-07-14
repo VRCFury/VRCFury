@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -206,6 +207,8 @@ namespace VF.Inspector {
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy);
                 body.SetEnabled(false);
+                // TODO: This doesn't seem to work and it binds back to the original all the time
+                //body.Bind(copySo);
             } else {
                 v.Upgrade();
                 serializedObject.Update();
@@ -226,7 +229,7 @@ namespace VF.Inspector {
             return container;
         }
 
-        private T CopyComponent<T>(T original) where T : UnityEngine.Component {
+        private C CopyComponent<C>(C original) where C : UnityEngine.Component {
             OnDestroy();
             var originalObject = original.gameObject;
             var id = originalObject
@@ -240,7 +243,7 @@ namespace VF.Inspector {
             foreach (Transform child in dummyObject.transform) {
                 DestroyImmediate(child.gameObject);
             }
-            var copy = (T)dummyObject.GetComponents(original.GetType())
+            var copy = (C)dummyObject.GetComponents(original.GetType())
                 .ElementAt(id);
             foreach (var other in dummyObject.GetComponents(typeof(UnityEngine.Component))) {
                 if (other is Transform || other == copy) continue;

@@ -57,8 +57,9 @@ namespace VF.Inspector {
         }
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(VRCFuryHapticSocket orf, GizmoType gizmoType) {
-            var autoInfo = GetInfoFromLightsOrComponent(orf);
+        static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
+            var transform = socket.transform;
+            var autoInfo = GetInfoFromLightsOrComponent(socket);
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
@@ -69,47 +70,47 @@ namespace VF.Inspector {
             if (lightType == VRCFuryHapticSocket.AddLight.Hole) text = "Haptic Socket (Hole)";
             if (lightType == VRCFuryHapticSocket.AddLight.Ring) text = "Haptic Socket (Ring)";
 
-            var handTouchZoneSize = GetHandTouchZoneSize(orf);
+            var handTouchZoneSize = GetHandTouchZoneSize(socket);
             if (handTouchZoneSize != null) {
                 var worldLength = handTouchZoneSize.Item1;
-                var localLength = worldLength / orf.transform.lossyScale.x;
+                var localLength = worldLength / socket.transform.lossyScale.x;
                 var worldRadius = handTouchZoneSize.Item2;
                 VRCFuryHapticPlugEditor.DrawCapsule(
-                    orf.gameObject,
+                    transform,
                     localPosition + localForward * -(localLength / 2),
                     localCapsuleRotation,
                     worldLength,
                     worldRadius
                 );
                 VRCFuryGizmoUtils.DrawText(
-                    orf.transform.TransformPoint(localPosition + localForward * -(localLength / 2)),
+                    transform.TransformPoint(localPosition + localForward * -(localLength / 2)),
                     "Hand Touch Zone\n(should be INSIDE)",
                     Color.red
                 );
             }
 
             VRCFuryGizmoUtils.DrawSphere(
-                orf.transform.TransformPoint(localPosition),
+                transform.TransformPoint(localPosition),
                 0.03f,
                 Color.green
             );
             VRCFuryGizmoUtils.DrawArrow(
-                orf.transform.TransformPoint(localPosition),
-                orf.transform.TransformPoint(localPosition + localForward * -0.1f / orf.transform.lossyScale.x),
+                transform.TransformPoint(localPosition),
+                transform.TransformPoint(localPosition + localForward * -0.1f / transform.lossyScale.x),
                 Color.green
             );
             VRCFuryGizmoUtils.DrawText(
-                orf.transform.TransformPoint(localPosition),
+                transform.TransformPoint(localPosition),
                 text + "\n(Arrow points INWARD)",
                 Color.green
             );
         }
         
-        public static Tuple<string,GameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
-            var obj = socket.gameObject;
-            HapticUtils.RemoveTPSSenders(obj);
+        public static Tuple<string,Transform> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
+            var transform = socket.transform;
+            HapticUtils.RemoveTPSSenders(transform);
             
-            HapticUtils.AssertValidScale(obj, "socket");
+            HapticUtils.AssertValidScale(transform, "socket");
 
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
@@ -118,15 +119,13 @@ namespace VF.Inspector {
             var name = GetName(socket);
             if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
 
-            Debug.Log("Baking haptic component in " + obj + " as " + name);
+            Debug.Log("Baking haptic component in " + transform + " as " + name);
 
-            var bakeRoot = new GameObject("BakedHapticSocket");
-            bakeRoot.transform.SetParent(socket.transform, false);
-            bakeRoot.transform.localPosition = localPosition;
-            bakeRoot.transform.localRotation = localRotation;
+            var bakeRoot = GameObjects.Create("BakedHapticSocket", transform);
+            bakeRoot.localPosition = localPosition;
+            bakeRoot.localRotation = localRotation;
 
-            var senders = new GameObject("Senders");
-            senders.transform.SetParent(bakeRoot.transform, false);
+            var senders = GameObjects.Create("Senders", bakeRoot);
 
             // Senders
             HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, HapticUtils.CONTACT_ORF_MAIN);
@@ -135,17 +134,14 @@ namespace VF.Inspector {
             var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
 
             if (onlySenders) {
-                var info = new GameObject("Info");
-                info.transform.SetParent(bakeRoot.transform, false);
+                var info = GameObjects.Create("Info", bakeRoot);
                 if (!string.IsNullOrWhiteSpace(socket.name)) {
-                    var nameObj = new GameObject("name=" + socket.name);
-                    nameObj.transform.SetParent(info.transform, false);
+                    var nameObj = GameObjects.Create("name=" + socket.name, info);
                 }
             } else {
                 // Receivers
                 var handTouchZoneSize = GetHandTouchZoneSize(socket);
-                var receivers = new GameObject("Receivers");
-                receivers.transform.SetParent(bakeRoot.transform, false);
+                var receivers = GameObjects.Create("Receivers", bakeRoot);
                 if (handTouchZoneSize != null) {
                     var oscDepth = handTouchZoneSize.Item1;
                     var closeRadius = handTouchZoneSize.Item2;
@@ -171,28 +167,24 @@ namespace VF.Inspector {
             HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, false);
 
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
-                var lights = new GameObject("Lights");
-                lights.transform.SetParent(bakeRoot.transform, false);
+                var lights = GameObjects.Create("Lights", bakeRoot);
 
-                ForEachPossibleLight(obj.transform, false, light => {
+                ForEachPossibleLight(transform, false, light => {
                     AvatarCleaner.RemoveComponent(light);
                 });
 
                 if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
-                    var main = new GameObject("Root");
-                    main.transform.SetParent(lights.transform, false);
-                    main.transform.localPosition = Vector3.zero;
-                    var mainLight = main.AddComponent<Light>();
+                    var main = GameObjects.Create("Root", lights);
+                    var mainLight = GameObjects.AddComponent<Light>(main);
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
                     mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.42f : 0.41f;
                     mainLight.shadows = LightShadows.None;
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
-                    var front = new GameObject("Front");
-                    front.transform.SetParent(lights.transform, false);
-                    front.transform.localPosition = Vector3.forward * 0.01f / lights.transform.lossyScale.x;
-                    var frontLight = front.AddComponent<Light>();
+                    var front = GameObjects.Create("Front", lights);
+                    front.localPosition = Vector3.forward * 0.01f / lights.lossyScale.x;
+                    var frontLight = GameObjects.AddComponent<Light>(front);
                     frontLight.type = LightType.Point;
                     frontLight.color = Color.black;
                     frontLight.range = 0.45f;
@@ -233,16 +225,16 @@ namespace VF.Inspector {
             return rangeId >= 0.045f && rangeId <= 0.055f;
         }
 
-        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(VRCFuryHapticSocket orf) {
-            if (orf.addLight != VRCFuryHapticSocket.AddLight.None) {
-                var type = orf.addLight;
-                if (type == VRCFuryHapticSocket.AddLight.Auto) type = ShouldProbablyBeHole(orf) ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring;
-                var position = orf.position;
-                var rotation = Quaternion.Euler(orf.rotation);
+        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(VRCFuryHapticSocket socket) {
+            if (socket.addLight != VRCFuryHapticSocket.AddLight.None) {
+                var type = socket.addLight;
+                if (type == VRCFuryHapticSocket.AddLight.Auto) type = ShouldProbablyBeHole(socket) ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring;
+                var position = socket.position;
+                var rotation = Quaternion.Euler(socket.rotation);
                 return Tuple.Create(type, position, rotation);
             }
             
-            var lightInfo = GetInfoFromLights(orf.gameObject);
+            var lightInfo = GetInfoFromLights(socket.transform);
             if (lightInfo != null) {
                 return lightInfo;
             }
@@ -273,11 +265,11 @@ namespace VF.Inspector {
                 }
             }
         }
-        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLights(GameObject obj, bool directOnly = false) {
+        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLights(Transform obj, bool directOnly = false) {
             var isRing = false;
             Light main = null;
             Light normal = null;
-            ForEachPossibleLight(obj.transform, directOnly, light => {
+            ForEachPossibleLight(obj, directOnly, light => {
                 if (main == null) {
                     if (IsHole(light)) {
                         main = light;
@@ -293,27 +285,27 @@ namespace VF.Inspector {
 
             if (main == null || normal == null) return null;
 
-            var position = obj.transform.InverseTransformPoint(main.transform.position);
-            var normalPosition = obj.transform.InverseTransformPoint(normal.transform.position);
+            var position = obj.InverseTransformPoint(main.transform.position);
+            var normalPosition = obj.InverseTransformPoint(normal.transform.position);
             var forward = (normalPosition - position).normalized;
             var rotation = Quaternion.LookRotation(forward);
 
             return Tuple.Create(isRing ? VRCFuryHapticSocket.AddLight.Ring : VRCFuryHapticSocket.AddLight.Hole, position, rotation);
         }
 
-        private static bool IsDirectChildOfHips(VRCFuryHapticSocket orf) {
-            return IsChildOfBone(orf, HumanBodyBones.Hips)
-                && !IsChildOfBone(orf, HumanBodyBones.Chest)
-                && !IsChildOfBone(orf, HumanBodyBones.Spine)
-                && !IsChildOfBone(orf, HumanBodyBones.LeftUpperArm)
-                && !IsChildOfBone(orf, HumanBodyBones.LeftUpperLeg)
-                && !IsChildOfBone(orf, HumanBodyBones.RightUpperArm)
-                && !IsChildOfBone(orf, HumanBodyBones.RightUpperLeg);
+        private static bool IsDirectChildOfHips(VRCFuryHapticSocket socket) {
+            return IsChildOfBone(socket, HumanBodyBones.Hips)
+                && !IsChildOfBone(socket, HumanBodyBones.Chest)
+                && !IsChildOfBone(socket, HumanBodyBones.Spine)
+                && !IsChildOfBone(socket, HumanBodyBones.LeftUpperArm)
+                && !IsChildOfBone(socket, HumanBodyBones.LeftUpperLeg)
+                && !IsChildOfBone(socket, HumanBodyBones.RightUpperArm)
+                && !IsChildOfBone(socket, HumanBodyBones.RightUpperLeg);
         }
 
-        public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket orf) {
-            if (IsDirectChildOfHips(orf)) {
-                var name = GetName(orf).ToLower();
+        public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
+            if (IsDirectChildOfHips(socket)) {
+                var name = GetName(socket).ToLower();
                 if (name.Contains("rubbing") || name.Contains("job")) {
                     return false;
                 }
@@ -322,17 +314,17 @@ namespace VF.Inspector {
             return false;
         }
         
-        public static bool ShouldProbablyBeHole(VRCFuryHapticSocket orf) {
-            if (IsChildOfBone(orf, HumanBodyBones.Head)) return true;
-            return ShouldProbablyHaveTouchZone(orf);
+        public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
+            if (IsChildOfBone(socket, HumanBodyBones.Head)) return true;
+            return ShouldProbablyHaveTouchZone(socket);
         }
 
-        private static bool IsChildOfBone(VRCFuryHapticSocket orf, HumanBodyBones bone) {
+        private static bool IsChildOfBone(VRCFuryHapticSocket socket, HumanBodyBones bone) {
             try {
-                var avatarObject = orf.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+                var avatarObject = socket.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
-                return boneObj && IsChildOf(boneObj.transform, orf.transform);
+                return boneObj && IsChildOf(boneObj.transform, socket.transform);
             } catch (Exception) {
                 return false;
             }
@@ -341,7 +333,7 @@ namespace VF.Inspector {
         private static string GetName(VRCFuryHapticSocket socket) {
             var name = socket.name;
             if (string.IsNullOrWhiteSpace(name)) {
-                name = socket.gameObject.name;
+                name = GameObjects.GetName(socket);
             }
             return name;
         }

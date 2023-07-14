@@ -25,16 +25,12 @@ namespace VF.Builder.Haptics {
         private static readonly string TpsIsSkinnedMeshKeyword = "TPS_IsSkinnedMesh";
         private static readonly int TpsBakedMesh = Shader.PropertyToID("_TPS_BakedMesh");
 
-        public static void ConfigureRenderer(
+        // Converts MeshRenderers or 0-bone SkinnedMeshRenderers to real weighted SkinnedMeshRenderers
+        public static SkinnedMeshRenderer NormalizeRenderer(
             Renderer renderer,
             Transform rootTransform,
-            float worldLength,
-            Texture2D mask,
-            MutableManager mutableManager,
-            bool useSps
+            MutableManager mutableManager
         ) {
-            var canAutoRig = false;
-
             // Convert MeshRenderer to SkinnedMeshRenderer
             if (renderer is MeshRenderer) {
                 var obj = renderer.gameObject;
@@ -51,7 +47,6 @@ namespace VF.Builder.Haptics {
                 newSkin.sharedMaterials = mats;
                 newSkin.probeAnchor = anchor;
                 renderer = newSkin;
-                canAutoRig = true;
             }
 
             var skin = renderer as SkinnedMeshRenderer;
@@ -61,48 +56,21 @@ namespace VF.Builder.Haptics {
             
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
             if (skin.sharedMesh.boneWeights.Length == 0) {
-                var mainBone = new GameObject("MainBone");
-                mainBone.transform.SetParent(skin.transform, false);
-                mainBone.transform.SetParent(rootTransform, true);
+                var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.transform);
                 var meshCopy = mutableManager.MakeMutable(skin.sharedMesh);
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 
                 };
                 VRCFuryEditorUtils.MarkDirty(meshCopy);
-                skin.bones = new[] { mainBone.transform };
+                skin.bones = new[] { mainBone };
                 skin.sharedMesh = meshCopy;
                 VRCFuryEditorUtils.MarkDirty(skin);
-                canAutoRig = true;
             }
             
             skin.rootBone = rootTransform;
-
-            if (canAutoRig && useSps) {
-                SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
-            }
-
-            var configuredTps = false;
-            skin.sharedMaterials = skin.sharedMaterials
-                .Select(mat => {
-                    if (useSps) {
-                        return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, mask, mutableManager);
-                    } else if (IsTps(mat)) {
-                        configuredTps = true;
-                        return ConfigureTpsMaterial(skin, mat, worldLength, mask, mutableManager);
-                    }
-                    return mat;
-                })
-                .ToArray();
-
-            if (!useSps && !configuredTps) {
-                throw new VRCFBuilderException(
-                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but no material on the linked renderer has TPS enabled in the Poiyomi settings.");
-            }
             
-            VRCFuryEditorUtils.MarkDirty(skin);
-
-            var bake = MeshBaker.BakeMesh(skin, rootTransform);
+            var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
             var bounds = new Bounds();
             foreach (var vertex in bake.vertices) {
                 bounds.Encapsulate(vertex);
@@ -113,9 +81,11 @@ namespace VF.Builder.Haptics {
             bounds.extents *= 2*multiplyLength;
             skin.localBounds = bounds;
             BoundingBoxFixBuilder.AdjustBoundingBox(skin);
+
+            return skin;
         }
 
-        private static Material ConfigureTpsMaterial(
+        public static Material ConfigureTpsMaterial(
             SkinnedMeshRenderer skin,
             Material original,
             float worldLength,
@@ -145,7 +115,7 @@ namespace VF.Builder.Haptics {
             mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
             mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
-            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, mutableManager.GetTmpDir(), mask, true));
+            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, mutableManager.GetTmpDir(), mask, false, true));
             VRCFuryEditorUtils.MarkDirty(mat);
 
             return mat;

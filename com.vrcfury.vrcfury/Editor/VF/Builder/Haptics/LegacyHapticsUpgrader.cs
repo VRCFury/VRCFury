@@ -62,12 +62,12 @@ namespace VF.Builder.Haptics {
 
         private static bool IsHapticContact(UnityEngine.Component c, List<string> collisionTags) {
             if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) return true;
-            else if (c.gameObject.name.StartsWith("OGB_")) return true;
+            else if (GameObjects.GetName(c).StartsWith("OGB_")) return true;
             return false;
         }
 
         public static string Apply(GameObject avatarObject, bool dryRun) {
-            var objectsToDelete = new List<GameObject>();
+            var objectsToDelete = new List<Transform>();
             var componentsToDelete = new List<UnityEngine.Component>();
             var hasExistingSocket = new HashSet<Transform>();
             var hasExistingPlug = new HashSet<Transform>();
@@ -76,9 +76,9 @@ namespace VF.Builder.Haptics {
             var addedPlug = new HashSet<Transform>();
             var foundParentConstraint = false;
 
-            bool AlreadyExistsAboveOrBelow(GameObject obj, IEnumerable<Transform> list) {
+            bool AlreadyExistsAboveOrBelow(Transform obj, IEnumerable<Transform> list) {
                 var parentIsDeleted = obj.GetComponentsInParent<Transform>(true)
-                    .Any(t => objectsToDelete.Contains(t.gameObject));
+                    .Any(t => objectsToDelete.Contains(t));
                 if (parentIsDeleted) return true;
                 return obj.GetComponentsInChildren<Transform>(true)
                     .Concat(obj.GetComponentsInParent<Transform>(true))
@@ -88,17 +88,19 @@ namespace VF.Builder.Haptics {
             string GetPath(Transform obj) {
                 return AnimationUtility.CalculateTransformPath(obj, avatarObject.transform);
             }
-            VRCFuryHapticPlug AddPlug(GameObject obj) {
+            VRCFuryHapticPlug AddPlug(Transform obj) {
                 if (AlreadyExistsAboveOrBelow(obj, hasExistingPlug.Concat(addedPlug))) return null;
-                addedPlug.Add(obj.transform);
+                addedPlug.Add(obj);
                 if (dryRun) return null;
-                return obj.AddComponent<VRCFuryHapticPlug>();
+                var plug = GameObjects.AddComponent<VRCFuryHapticPlug>(obj);
+                plug.enableSps = false;
+                return plug;
             }
-            VRCFuryHapticSocket AddSocket(GameObject obj) {
+            VRCFuryHapticSocket AddSocket(Transform obj) {
                 if (AlreadyExistsAboveOrBelow(obj, hasExistingSocket.Concat(addedSocket))) return null;
-                addedSocket.Add(obj.transform);
+                addedSocket.Add(obj);
                 if (dryRun) return null;
-                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                var socket = GameObjects.AddComponent<VRCFuryHapticSocket>(obj);
                 socket.addLight = VRCFuryHapticSocket.AddLight.None;
                 socket.addMenuItem = false;
                 return socket;
@@ -129,7 +131,7 @@ namespace VF.Builder.Haptics {
                     continue;
                 }
                 
-                var parentInfo = GetIsParent(parent.gameObject);
+                var parentInfo = GetIsParent(parent);
                 if (parentInfo == null) continue;
 
                 var parentLightType = parentInfo.Item1;
@@ -137,7 +139,7 @@ namespace VF.Builder.Haptics {
                 var parentRotation = parentInfo.Item3;
 
                 foundParentConstraint = true;
-                objectsToDelete.Add(parent.gameObject);
+                objectsToDelete.Add(parent);
                 
                 for (var i = 0; i < constraint.sourceCount; i++) {
                     var source = constraint.GetSource(i);
@@ -145,8 +147,7 @@ namespace VF.Builder.Haptics {
                     var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
                     var t = source.sourceTransform;
                     if (t == null) continue;
-                    var obj = t.gameObject;
-                    var name = obj.name;
+                    var name = GameObjects.GetName(t);
                     var id = name.IndexOf("(");
                     if (id >= 0) name = name.Substring(id+1);
                     id = name.IndexOf(")");
@@ -172,8 +173,8 @@ namespace VF.Builder.Haptics {
 
                     var fullName = "Socket (" + name + ")";
 
-                    var socket = AddSocket(obj);
-                    addedSocketNames[obj.transform] = name;
+                    var socket = AddSocket(t);
+                    addedSocketNames[t] = name;
                     if (socket != null) {
                         socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
                             * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
@@ -181,13 +182,13 @@ namespace VF.Builder.Haptics {
                         socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
                         socket.name = name;
                         socket.addMenuItem = true;
-                        obj.name = fullName;
+                        GameObjects.SetName(t, fullName);
                         
                         if (name.ToLower().Contains("vag")) {
-                            AddBlendshapeIfPresent(avatarObject, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
+                            AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
                         }
                         if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
-                            AddBlendshapeIfPresent(avatarObject, socket, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
+                            AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
                         }
                     }
                 }
@@ -201,26 +202,26 @@ namespace VF.Builder.Haptics {
                     if (!baked) return;
                     var info = baked.Find("Info");
                     if (!info) info = baked;
-                    var p = AddPlug(baked.parent.gameObject);
+                    var p = AddPlug(baked.parent);
                     if (p) {
                         var size = info.Find("size");
                         if (size) {
                             p.length = size.localScale.x;
                             p.radius = size.localScale.y;
                         }
-                        p.name = GetNameFromBakeInfo(info.gameObject);
+                        p.name = GetNameFromBakeInfo(info);
                     }
-                    objectsToDelete.Add(baked.gameObject);
+                    objectsToDelete.Add(baked);
                 }
                 void UnbakeOrf(Transform baked) {
                     if (!baked) return;
                     var info = baked.Find("Info");
                     if (!info) info = baked;
-                    var o = AddSocket(baked.parent.gameObject);
+                    var o = AddSocket(baked.parent);
                     if (o) {
-                        o.name = GetNameFromBakeInfo(info.gameObject);
+                        o.name = GetNameFromBakeInfo(info);
                     }
-                    objectsToDelete.Add(baked.gameObject);
+                    objectsToDelete.Add(baked);
                 }
 
                 UnbakePen(t.Find("OGB_Baked_Pen"));
@@ -235,16 +236,15 @@ namespace VF.Builder.Haptics {
             foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 var (renderer, _, _) = tuple;
                 if (TpsConfigurer.HasDpsOrTpsMaterial(renderer) && PlugSizeDetector.GetAutoWorldSize(renderer) != null)
-                    AddPlug(renderer.gameObject);
+                    AddPlug(renderer.transform);
             }
             
             // Auto-add sockets from DPS
             foreach (var light in avatarObject.GetComponentsInChildren<Light>(true)) {
-                var parent = light.gameObject.transform.parent;
+                var parent = light.transform.parent;
                 if (parent) {
-                    var parentObj = parent.gameObject;
-                    if (VRCFuryHapticSocketEditor.GetInfoFromLights(parentObj, true) != null)
-                        AddSocket(parentObj);
+                    if (VRCFuryHapticSocketEditor.GetInfoFromLights(parent, true) != null)
+                        AddSocket(parent);
                 }
             }
             
@@ -253,22 +253,22 @@ namespace VF.Builder.Haptics {
                 if (!t) continue; // this can happen if we're visiting one of the things we deleted below
                 var penMarker = t.Find("OGB_Marker_Pen");
                 if (penMarker) {
-                    AddPlug(t.gameObject);
-                    objectsToDelete.Add(penMarker.gameObject);
+                    AddPlug(t);
+                    objectsToDelete.Add(penMarker);
                 }
 
                 var holeMarker = t.Find("OGB_Marker_Hole");
                 if (holeMarker) {
-                    var o = AddSocket(t.gameObject);
+                    var o = AddSocket(t);
                     if (o) o.addLight = VRCFuryHapticSocket.AddLight.Hole;
-                    objectsToDelete.Add(holeMarker.gameObject);
+                    objectsToDelete.Add(holeMarker);
                 }
                 
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
-                    var o = AddSocket(t.gameObject);
+                    var o = AddSocket(t);
                     if (o) o.addLight = VRCFuryHapticSocket.AddLight.Ring;
-                    objectsToDelete.Add(ringMarker.gameObject);
+                    objectsToDelete.Add(ringMarker);
                 }
             }
             
@@ -277,7 +277,7 @@ namespace VF.Builder.Haptics {
                 if (!dryRun) {
                     foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
                         if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                            var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.gameObject);
+                            var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
                             if (info != null) {
                                 var type = info.Item1;
                                 var position = info.Item2;
@@ -300,8 +300,8 @@ namespace VF.Builder.Haptics {
                 avatarObject,
                 perform: !dryRun,
                 ShouldRemoveObj: obj => {
-                    return obj.name == "GUIDES_DELETE"
-                           || objectsToDelete.Contains(obj);
+                    return GameObjects.GetName(obj) == "GUIDES_DELETE" 
+                           || objectsToDelete.Contains(obj.transform);
                 },
                 ShouldRemoveAsset: asset => {
                     if (asset == null) return false;
@@ -367,21 +367,22 @@ namespace VF.Builder.Haptics {
             return string.Join("\n\n", parts);
         }
 
-        private static string GetNameFromBakeInfo(GameObject marker) {
-            foreach (Transform child in marker.transform) {
-                if (child.name.StartsWith("name=")) {
-                    return child.name.Substring(5);
+        private static string GetNameFromBakeInfo(Transform marker) {
+            foreach (Transform child in marker) {
+                var name = GameObjects.GetName(child);
+                if (name.StartsWith("name=")) {
+                    return name.Substring(5);
                 }
             }
             return "";
         }
 
-        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetIsParent(GameObject obj) {
+        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetIsParent(Transform obj) {
             var lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(obj, true);
             if (lightInfo == null) {
-                var child = obj.transform.Find("Orifice");
-                if (child != null && obj.transform.childCount == 1) {
-                    lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(child.gameObject, true);
+                var child = obj.Find("Orifice");
+                if (child != null && obj.childCount == 1) {
+                    lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(child, true);
                 }
             }
             if (lightInfo != null) {
@@ -389,7 +390,7 @@ namespace VF.Builder.Haptics {
             }
 
             // For some reason, on some avatars, this one doesn't have child lights even though it's supposed to
-            if (obj.name == "__dps_lightobject") {
+            if (GameObjects.GetName(obj) == "__dps_lightobject") {
                 return Tuple.Create(VRCFuryHapticSocket.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0));
             }
 
@@ -397,7 +398,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static void AddBlendshapeIfPresent(
-            GameObject avatarObject,
+            Transform avatarObject,
             VRCFuryHapticSocket orf,
             string name,
             float minDepth,
@@ -417,7 +418,7 @@ namespace VF.Builder.Haptics {
                 });
             }
         }
-        private static bool HasBlendshape(GameObject avatarObject, string name) {
+        private static bool HasBlendshape(Transform avatarObject, string name) {
             var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             foreach (var skin in skins) {
                 if (!skin.sharedMesh) continue;

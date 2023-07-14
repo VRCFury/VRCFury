@@ -547,6 +547,18 @@ namespace VF.Model.Feature {
     public class MoveMenuItem : NewFeatureModel {
         public string fromPath;
         public string toPath;
+        
+        public override void Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (fromPath.StartsWith("Holes/") || fromPath == "Holes") {
+                    fromPath = "Sockets" + fromPath.Substring(5);
+                }
+            }
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]

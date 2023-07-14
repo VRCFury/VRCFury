@@ -133,7 +133,7 @@ public class ClipBuilder {
             if (current == null) {
                 throw new Exception("Animated object wasn't a child of the root GameObject: " + string.Join("/", parts));
             }
-            parts.Insert(0, current.name);
+            parts.Insert(0, GameObjects.GetName(current));
             current = current.parent;
         }
         return string.Join("/", parts);

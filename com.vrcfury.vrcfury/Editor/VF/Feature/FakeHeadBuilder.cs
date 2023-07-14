@@ -33,12 +33,9 @@ namespace VF.Feature {
             if (objectsForFakeHead.Count == 0) return;
             
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
-            var vrcfAlwaysVisibleHead = new GameObject("vrcfAlwaysVisibleHead");
-            vrcfAlwaysVisibleHead.transform.SetParent(head.transform, false);
-            vrcfAlwaysVisibleHead.transform.SetParent(head.transform.parent, true);
-            vrcfAlwaysVisibleHead.transform.localScale = head.transform.localScale;
+            var vrcfAlwaysVisibleHead = GameObjects.Create("vrcfAlwaysVisibleHead", head.transform.parent, useTransformFrom: head.transform);
             
-            var p = vrcfAlwaysVisibleHead.AddComponent<ParentConstraint>();
+            var p = GameObjects.AddComponent<ParentConstraint>(vrcfAlwaysVisibleHead);
             p.AddSource(new ConstraintSource() {
                 sourceTransform = head.transform,
                 weight = 1
@@ -48,7 +45,7 @@ namespace VF.Feature {
             p.locked = true;
 
             foreach (var obj in objectsForFakeHead) {
-                mover.Move(obj, vrcfAlwaysVisibleHead);
+                mover.Move(obj, vrcfAlwaysVisibleHead.gameObject);
             }
         }
     }

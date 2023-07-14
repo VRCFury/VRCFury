@@ -47,7 +47,7 @@ namespace VF.Menu {
                 return false;
             }
             if (ShouldRemoveAsset(obj)) return true;
-            var lower = obj.name.ToLower();
+            var lower = GameObjects.GetName(obj).ToLower();
             if (lower.Contains("caninepeen")) return true;
             if (lower.Contains("hybridpeen")) return true;
             if (lower.Contains("hybridanthropeen")) return true;

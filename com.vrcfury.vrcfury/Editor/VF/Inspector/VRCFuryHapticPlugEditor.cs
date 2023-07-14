@@ -18,12 +18,12 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");
-            var configureSps = serializedObject.FindProperty("configureSps");
+            var enableSps = serializedObject.FindProperty("enableSps");
             
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
-            container.Add(VRCFuryEditorUtils.Prop(autoMesh, "Automatically find mesh"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoMesh, "Automatically find mesh"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoMesh.boolValue) {
@@ -34,15 +34,15 @@ namespace VF.Inspector {
 
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
-                if (!configureTps.boolValue && !configureSps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("autoPosition"),
+                if (!configureTps.boolValue && !enableSps.boolValue) {
+                    c.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("autoPosition"),
                         "Detect position/rotation from mesh"));
                 }
                 return c;
-            }, configureTps, configureSps));
+            }, configureTps, enableSps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
-            container.Add(VRCFuryEditorUtils.Prop(autoLength, "Detect length from mesh"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoLength, "Detect length from mesh"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoLength.boolValue) {
@@ -52,7 +52,7 @@ namespace VF.Inspector {
             }, autoLength));
 
             var autoRadius = serializedObject.FindProperty("autoRadius");
-            container.Add(VRCFuryEditorUtils.Prop(autoRadius, "Detect radius from mesh"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoRadius, "Detect radius from mesh"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoRadius.boolValue) {
@@ -61,29 +61,55 @@ namespace VF.Inspector {
                 return c;
             }, autoRadius));
 
-            container.Add(VRCFuryEditorUtils.Prop(configureSps, "Enable SPS (Super Plug Shader) (BETA)"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader) (BETA)"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableSps.boolValue) {
+                    var spsBox = new VisualElement() {
+                        style = {
+                            backgroundColor = new Color(0,0,0,0.1f),
+                            marginTop = 5,
+                            marginBottom = 10
+                        }
+                    };
+                    VRCFuryEditorUtils.Padding(spsBox, 5);
+                    VRCFuryEditorUtils.BorderRadius(spsBox, 5);
+                    c.Add(spsBox);
+                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("SPS (Super Plug Shader)", style => {
+                        style.unityFontStyleAndWeight = FontStyle.Bold;
+                        style.unityTextAlign = TextAnchor.MiddleCenter;
+                    }));
+                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("Check out vrcfury.com/sps for details", style => {
+                        style.unityTextAlign = TextAnchor.MiddleCenter;
+                        style.paddingBottom = 5;
+                    }));
+                    spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
+                        serializedObject.FindProperty("spsAutorig"),
+                        "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
+                        style: style => { style.paddingBottom = 5; }
+                    ));
+                    spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
+                        serializedObject.FindProperty("spsBoneMask"),
+                        "Automatically mask SPS using bone weights",
+                        style: style => { style.paddingBottom = 5; }
+                    ));
+                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("Optional additional texture mask (white = 'do not deform')"));
+                    spsBox.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("spsTextureMask")));
+                }
+                return c;
+            }, enableSps));
 
             var adv = new Foldout {
                 text = "Advanced",
                 value = false
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             
-            adv.Add(VRCFuryEditorUtils.Prop(configureTps, "Auto-configure Poiyomi TPS (Deprecated)"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "Auto-configure Poiyomi TPS (Deprecated)"));
             adv.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (configureTps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Info(
-                        "Auto-configure TPS will cause this VRCFury Haptic Plug to automatically configure Poiyomi TPS on the associated renderer." +
-                        " When using this option:\n" +
-                        "1. The mesh should be posed in the editor in the 'erect' state. It can still use physbones or be animated to different poses, but will return to this resting editor pose when penetrating.\n" +
-                        "2. This component should be placed on an EMPTY OBJECT (not on the renderer).\n" +
-                        "3. Move the empty object to where you want deformation to start.\n" +
-                        "4. Enable gizmos and rotate the empty object so the tip is aligned properly, and the red gizmo capsule fits the proper shape.\n" +
-                        "5. If this mesh is rigged (with bones), the empty object should be a child of the nearest bone on the rig (don't forget to exclude it from physbones if needed).\n" +
-                        "6. The material must be using Poiyomi Pro 8.1+ with the 'penetrator' checkbox enabled.\n" +
-                        "7. DO NOT run the TPS setup wizard, this checkbox will do everything needed."));
                     c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTpsMask"), "Optional mask for TPS"));
                 }
                 return c;
@@ -93,7 +119,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 var (renderers, worldLength, worldRadius, localRotation, localPosition) = GetWorldSize(target);
                 var text = new List<string>();
-                text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => r.gameObject.name)));
+                text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => GameObjects.GetName(r))));
                 text.Add($"Detected Length: {worldLength}m");
                 text.Add($"Detected Radius: {worldRadius}m");
                 return string.Join("\n", text);
@@ -103,37 +129,38 @@ namespace VF.Inspector {
         }
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(VRCFuryHapticPlug scr, GizmoType gizmoType) {
+        static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
+            var transform = plug.transform;
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
-                size = GetWorldSize(scr);
+                size = GetWorldSize(plug);
             } catch (Exception e) {
-                VRCFuryGizmoUtils.DrawText(scr.transform.position, e.Message, Color.white);
+                VRCFuryGizmoUtils.DrawText(transform.position, e.Message, Color.white);
                 return;
             }
             
             var (renderers, worldLength, worldRadius, localRotation, localPosition) = size;
-            var localLength = worldLength / scr.transform.lossyScale.x;
-            var localRadius = worldRadius / scr.transform.lossyScale.x;
+            var localLength = worldLength / transform.lossyScale.x;
+            var localRadius = worldRadius / transform.lossyScale.x;
             var localForward = localRotation * Vector3.forward;
             var localHalfway = localForward * (localLength / 2);
             var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
 
-            var worldPosTip = scr.transform.TransformPoint(localPosition + localForward * localLength);
+            var worldPosTip = transform.TransformPoint(localPosition + localForward * localLength);
 
-            DrawCapsule(scr.gameObject, localPosition + localHalfway, localCapsuleRotation, worldLength, worldRadius);
+            DrawCapsule(transform, localPosition + localHalfway, localCapsuleRotation, worldLength, worldRadius);
             VRCFuryGizmoUtils.DrawText(worldPosTip, "Tip", Color.white);
         }
 
         public static void DrawCapsule(
-            GameObject obj,
+            Transform obj,
             Vector3 localPosition,
             Quaternion localRotation,
             float worldLength,
             float worldRadius
         ) {
-            var worldPos = obj.transform.TransformPoint(localPosition);
-            var worldRot = obj.transform.rotation * localRotation;
+            var worldPos = obj.TransformPoint(localPosition);
+            var worldRot = obj.rotation * localRotation;
             VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
 
@@ -141,7 +168,7 @@ namespace VF.Inspector {
             var renderers = new List<Renderer>();
             if (pen.autoRenderer) {
                 var autoParams = new PlugRendererFinder.Params();
-                if (pen.configureSps) {
+                if (pen.enableSps) {
                     autoParams.PreferDpsOrTps = false;
                     autoParams.SearchChildren = false;
                     autoParams.PreferWeightedToBone = true;
@@ -154,18 +181,18 @@ namespace VF.Inspector {
             return renderers;
         }
 
-        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(VRCFuryHapticPlug pen) {
+        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(VRCFuryHapticPlug plug) {
+            var transform = plug.transform;
+            var renderers = GetRenderers(plug);
 
-            var renderers = GetRenderers(pen);
-
-            Quaternion worldRotation = pen.transform.rotation;
-            Vector3 worldPosition = pen.transform.position;
-            if (!pen.configureTps && !pen.configureSps && pen.autoPosition && renderers.Count > 0) {
+            Quaternion worldRotation = transform.rotation;
+            Vector3 worldPosition = transform.position;
+            if (!plug.configureTps && !plug.enableSps && plug.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
                 worldRotation = PlugSizeDetector.GetAutoWorldRotation(firstRenderer);
                 worldPosition = PlugSizeDetector.GetAutoWorldPosition(firstRenderer);
             }
-            var testBase = pen.transform.Find("OGBTestBase");
+            var testBase = transform.Find("OGBTestBase");
             if (testBase != null) {
                 worldPosition = testBase.position;
                 worldRotation = testBase.rotation;
@@ -173,54 +200,53 @@ namespace VF.Inspector {
 
             float worldLength = 0;
             float worldRadius = 0;
-            if (pen.autoRadius || pen.autoLength) {
+            if (plug.autoRadius || plug.autoLength) {
                 if (renderers.Count == 0) {
                     throw new VRCFBuilderException("Failed to find plug renderer");
                 }
                 foreach (var renderer in renderers) {
                     var autoSize = PlugSizeDetector.GetAutoWorldSize(renderer, worldPosition, worldRotation);
                     if (autoSize == null) continue;
-                    if (pen.autoLength) worldLength = autoSize.Item1;
-                    if (pen.autoRadius) worldRadius = autoSize.Item2;
+                    if (plug.autoLength) worldLength = autoSize.Item1;
+                    if (plug.autoRadius) worldRadius = autoSize.Item2;
                     break;
                 }
             }
 
-            if (!pen.autoLength) {
-                worldLength = pen.length;
-                if (!pen.unitsInMeters) worldLength *= pen.transform.lossyScale.x;
+            if (!plug.autoLength) {
+                worldLength = plug.length;
+                if (!plug.unitsInMeters) worldLength *= transform.lossyScale.x;
             }
-            if (!pen.autoRadius) {
-                worldRadius = pen.radius;
-                if (!pen.unitsInMeters) worldRadius *= pen.transform.lossyScale.x;
+            if (!plug.autoRadius) {
+                worldRadius = plug.radius;
+                if (!plug.unitsInMeters) worldRadius *= transform.lossyScale.x;
             }
 
             if (worldLength <= 0) throw new VRCFBuilderException("Failed to detect plug length");
             if (worldRadius <= 0) throw new VRCFBuilderException("Failed to detect plug radius");
             if (worldRadius > worldLength / 2) worldRadius = worldLength / 2;
-            var localRotation = Quaternion.Inverse(pen.transform.rotation) * worldRotation;
-            var localPosition = pen.transform.InverseTransformPoint(worldPosition);
+            var localRotation = Quaternion.Inverse(transform.rotation) * worldRotation;
+            var localPosition = transform.InverseTransformPoint(worldPosition);
             return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, GameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug pen, List<string> usedNames = null, bool onlySenders = false, MutableManager mutableManager = null) {
-            var obj = pen.gameObject;
-            HapticUtils.RemoveTPSSenders(obj);
-
-            HapticUtils.AssertValidScale(obj, "plug");
+        public static Tuple<string, Transform, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug plug, List<string> usedNames = null, bool onlySenders = false, MutableManager mutableManager = null) {
+            var transform = plug.transform;
+            HapticUtils.RemoveTPSSenders(transform);
+            HapticUtils.AssertValidScale(transform, "plug");
 
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
-                size = GetWorldSize(pen);
+                size = GetWorldSize(plug);
             } catch (Exception) {
                 return null;
             }
 
             var (renderers, worldLength, worldRadius, localRotation, localPosition) = size;
 
-            var name = pen.name;
+            var name = plug.name;
             if (string.IsNullOrWhiteSpace(name)) {
-                name = obj.name;
+                name = GameObjects.GetName(plug);
             }
             if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
             
@@ -232,17 +258,15 @@ namespace VF.Inspector {
             // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
             var extraRadiusForRub = 0.08f;
             
-            Debug.Log("Baking haptic component in " + obj + " as " + name);
+            Debug.Log("Baking haptic component in " + transform + " as " + name);
             
-            var bakeRoot = new GameObject("BakedHapticPlug");
-            bakeRoot.transform.SetParent(pen.transform, false);
-            bakeRoot.transform.localPosition = localPosition;
-            bakeRoot.transform.localRotation = localRotation;
+            var bakeRoot = GameObjects.Create("BakedHapticPlug", transform);
+            bakeRoot.localPosition = localPosition;
+            bakeRoot.localRotation = localRotation;
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
-            var senders = new GameObject("Senders");
-            senders.transform.SetParent(bakeRoot.transform, false);
+            var senders = GameObjects.Create("Senders", bakeRoot);
             HapticUtils.AddSender(senders, Vector3.zero, "Length", worldLength, HapticUtils.CONTACT_PEN_MAIN);
             HapticUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), HapticUtils.CONTACT_PEN_WIDTH);
             HapticUtils.AddSender(senders, halfWay, "Envelope", worldRadius, HapticUtils.CONTACT_PEN_CLOSE, rotation: capsuleRotation, height: worldLength);
@@ -251,21 +275,17 @@ namespace VF.Inspector {
             var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
 
             if (onlySenders) {
-                var info = new GameObject("Info");
-                info.transform.SetParent(bakeRoot.transform, false);
-                if (!string.IsNullOrWhiteSpace(pen.name)) {
-                    var nameObj = new GameObject("name=" + pen.name);
-                    nameObj.transform.SetParent(info.transform, false);
+                var info = GameObjects.Create("Info", bakeRoot);
+                if (!string.IsNullOrWhiteSpace(plug.name)) {
+                    var nameObj = GameObjects.Create("name=" + plug.name, info);
                 }
-                if (pen.length != 0 || pen.radius != 0) {
-                    var sizeObj = new GameObject("size");
-                    sizeObj.transform.SetParent(info.transform, false);
-                    sizeObj.transform.localScale = new Vector3(pen.length, pen.radius, 0);
+                if (plug.length != 0 || plug.radius != 0) {
+                    var sizeObj = GameObjects.Create("size", info);
+                    sizeObj.localScale = new Vector3(plug.length, plug.radius, 0);
                 }
             } else {
                 // Receivers
-                var receivers = new GameObject("Receivers");
-                receivers.transform.SetParent(bakeRoot.transform, false);
+                var receivers = GameObjects.Create("Receivers", bakeRoot);
                 HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, allowOthers:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, allowOthers:false, localOnly:true);
                 HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
@@ -276,18 +296,41 @@ namespace VF.Inspector {
                 HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
             }
             
-            if ((pen.configureTps || pen.configureSps) && mutableManager != null) {
-                if (pen.configureTps && pen.configureSps) {
-                    throw new VRCFBuilderException(
-                        "Auto-Configure TPS and Auto-Configure SPS cannot be enabled at the same time.");
-                }
+            if ((plug.configureTps || plug.enableSps) && mutableManager != null) {
+                var checkboxName = plug.enableSps ? "Enable SPS" : "Auto-Configure TPS";
                 if (renderers.Count == 0) {
                     throw new VRCFBuilderException(
-                        "VRCFury Haptic Plug has 'auto-configure SPS' or 'auto-configure TPS' enabled, but no renderer was found.");
+                        $"VRCFury Haptic Plug has '{checkboxName}' checked, but no renderer was found.");
                 }
 
                 foreach (var renderer in renderers) {
-                    TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.configureSps);
+                    var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager);
+
+                    if (plug.enableSps && plug.spsAutorig) {
+                        SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
+                    }
+                    
+                    var configuredOne = false;
+                    skin.sharedMaterials = skin.sharedMaterials
+                        .Select(mat => {
+                            if (mat == null) return null;
+                            if (plug.enableSps) {
+                                configuredOne = true;
+                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, plug.spsTextureMask, plug.spsBoneMask, mutableManager);
+                            } else if (TpsConfigurer.IsTps(mat)) {
+                                configuredOne = true;
+                                return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, plug.configureTpsMask, mutableManager);
+                            }
+                            return mat;
+                        })
+                        .ToArray();
+
+                    if (!configuredOne) {
+                        throw new VRCFBuilderException(
+                            $"VRCFury Haptic Plug has '{checkboxName}' checked, but there no valid material was on the linked renderer.");
+                    }
+
+                    VRCFuryEditorUtils.MarkDirty(skin);
                 }
             }
             

@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Builder;
 
 namespace VF.Updater {
     /**
@@ -93,7 +94,9 @@ namespace VF.Updater {
                 if (!updateScene.IsValid() || !updateScene.isLoaded) return;
 
                 Debug.Log("VRCFury is re-opening loaded scenes");
-                var paths = updateScene.GetRootGameObjects().Select(obj => obj.name).ToList();
+                var paths = updateScene.GetRootGameObjects()
+                    .Select(obj => GameObjects.GetName(obj))
+                    .ToList();
                 var first = true;
                 foreach (var path in paths.Where(File.Exists)) {
                     var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);

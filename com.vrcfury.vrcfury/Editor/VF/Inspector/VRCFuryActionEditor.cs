@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Model;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
@@ -196,9 +197,9 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                                 for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
                                     var bs = skin.sharedMesh.GetBlendShapeName(i);
                                     if (shapes.ContainsKey(bs)) {
-                                        shapes[bs] += ", " + skin.gameObject.name;
+                                        shapes[bs] += ", " + GameObjects.GetName(skin);
                                     } else {
-                                        shapes[bs] = skin.gameObject.name;
+                                        shapes[bs] = GameObjects.GetName(skin);
                                     }
                                 }
                             }
