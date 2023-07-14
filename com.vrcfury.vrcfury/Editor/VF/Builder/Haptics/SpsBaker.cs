@@ -46,7 +46,7 @@ namespace VF.Builder.Haptics {
                     + bakedMesh.vertices.Length * 7 // positions + normals + active
                     ;
             }
-            var width = 8192;
+            var width = tpsCompatibility ? 8190 : 8192;
             var height = (bitsRequired / width) + 1;
 
             Texture2D bake = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
