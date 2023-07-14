@@ -59,7 +59,7 @@ public static class FeatureFinder {
             .Select(tuple => tuple.Item2);
     }
 
-    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, GameObject gameObject) {
+    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, VFGameObject gameObject) {
         string title = "???";
         
         try {
@@ -82,7 +82,7 @@ public static class FeatureFinder {
                 );
             }
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
-            featureInstance.avatarObject = gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+            featureInstance.avatarObject = gameObject.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.gameObject;
             featureInstance.featureBaseObject = gameObject;
             featureInstance.GetType().GetField("model").SetValue(featureInstance, model);
 

@@ -39,7 +39,7 @@ namespace VF.Feature {
         }
 
         public static void AdjustBoundingBox(SkinnedMeshRenderer skin) {
-            var avatarObject = skin.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+            var avatarObject = skin.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.gameObject;
             if (avatarObject == null) return;
 
             var startBounds = CalculateFullBounds(avatarObject);

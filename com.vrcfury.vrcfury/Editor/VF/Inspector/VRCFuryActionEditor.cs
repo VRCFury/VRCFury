@@ -188,7 +188,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     var editorObject = prop.serializedObject.targetObject;
                     var shapes = new Dictionary<string,string>();
                     if (editorObject is UnityEngine.Component c) {
-                        VFGameObject avatarObject = c.GetComponentInParent<VRCAvatarDescriptor>();
+                        VFGameObject avatarObject = c.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>();
                         if (avatarObject) {
                             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                                 if (!skin.sharedMesh) continue;
