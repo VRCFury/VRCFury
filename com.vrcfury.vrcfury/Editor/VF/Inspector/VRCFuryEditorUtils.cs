@@ -11,6 +11,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using VF.Builder;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
@@ -612,7 +613,7 @@ public static class VRCFuryEditorUtils {
      */
     public static bool IsInRagdollSystem(Transform obj) {
         while (obj != null) {
-            if (obj.name == "Ragdoll System") return true;
+            if (GameObjects.GetName(obj) == "Ragdoll System") return true;
             obj = obj.parent;
         }
         return false;

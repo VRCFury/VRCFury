@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -20,30 +21,26 @@ namespace VF.Feature {
             if (!avatar.enableEyeLook) return;
             var eyeLeft = avatar.customEyeLookSettings.leftEye;
             var eyeRight = avatar.customEyeLookSettings.rightEye;
-            if (eyeLeft) avatar.customEyeLookSettings.leftEye = AddFakeEye(eyeLeft.gameObject).transform;
-            if (eyeRight) avatar.customEyeLookSettings.rightEye = AddFakeEye(eyeRight.gameObject).transform;
+            if (eyeLeft) avatar.customEyeLookSettings.leftEye = AddFakeEye(eyeLeft);
+            if (eyeRight) avatar.customEyeLookSettings.rightEye = AddFakeEye(eyeRight);
         }
 
-        private GameObject AddFakeEye(GameObject originalEye) {
-            var realEyeUp = new GameObject(originalEye.name + ".Up");
-            realEyeUp.transform.SetParent(originalEye.transform, false);
-            realEyeUp.transform.rotation = Quaternion.identity;
-            realEyeUp.transform.SetParent(originalEye.transform.parent, true);
-            
-            var fakeEye = new GameObject(originalEye.name + ".Fake");
-            fakeEye.transform.SetParent(originalEye.transform, false);
-            fakeEye.transform.SetParent(originalEye.transform.parent, true);
+        private Transform AddFakeEye(Transform originalEye) {
+            var baseName = GameObjects.GetName(originalEye);
 
-            var fakeEyeUp = new GameObject(originalEye.name + ".Fake.Up");
-            fakeEyeUp.transform.SetParent(realEyeUp.transform, false);
-            fakeEyeUp.transform.SetParent(fakeEye.transform, true);
+            var realEyeUp = GameObjects.Create(baseName + ".Up", originalEye.parent, useTransformFrom: originalEye);
+            realEyeUp.rotation = Quaternion.identity;
+            
+            var fakeEye = GameObjects.Create(baseName + ".Fake", originalEye.parent, useTransformFrom: originalEye);
+
+            var fakeEyeUp = GameObjects.Create(baseName + ".Fake.Up", fakeEye, useTransformFrom: realEyeUp);
             
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
-            mover.Move(originalEye, realEyeUp);
+            mover.Move(originalEye.gameObject, realEyeUp.gameObject);
 
-            var constraint = realEyeUp.AddComponent<RotationConstraint>();
+            var constraint = GameObjects.AddComponent<RotationConstraint>(realEyeUp);
             constraint.AddSource(new ConstraintSource() {
-                sourceTransform = fakeEyeUp.transform,
+                sourceTransform = fakeEyeUp,
                 weight = 1
             });
             constraint.rotationAxis = Axis.X | Axis.Y;

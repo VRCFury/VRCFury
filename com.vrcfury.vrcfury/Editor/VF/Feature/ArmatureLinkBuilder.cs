@@ -83,7 +83,7 @@ namespace VF.Feature {
                     mover.Move(
                         objectToMove,
                         newParent,
-                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name,
+                        "vrcf_" + uniqueModelNum + "_" + GameObjects.GetName(objectToMove),
                         worldPositionStays: keepBoneOffsets
                     );
 
@@ -93,7 +93,7 @@ namespace VF.Feature {
                     }
 
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
-                    RemoveFromPhysbones(objectToMove);
+                    PhysboneUtils.RemoveFromPhysbones(objectToMove.transform, true);
                 }
 
                 // Now, update all the skinned meshes in the prop to use the avatar's bone objects
@@ -161,7 +161,7 @@ namespace VF.Feature {
                     mover.Move(
                         propBone,
                         avatarBone,
-                        "vrcf_" + uniqueModelNum + "_" + propBone.name
+                        "vrcf_" + uniqueModelNum + "_" + GameObjects.GetName(propBone)
                     );
                     if (!keepBoneOffsets) {
                         propBone.transform.localPosition = Vector3.zero;
@@ -170,7 +170,7 @@ namespace VF.Feature {
                     }
 
                     // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
-                    RemoveFromPhysbones(propBone);
+                    PhysboneUtils.RemoveFromPhysbones(propBone.transform, true);
                 }
             } else if (linkMode == ArmatureLink.ArmatureLinkMode.ParentConstraint) {
                 foreach (var mergeBone in links.mergeBones) {
@@ -270,15 +270,6 @@ namespace VF.Feature {
             }
         }
 
-        private void RemoveFromPhysbones(GameObject obj) {
-            foreach (var physbone in avatarObject.GetComponentsInChildren<VRCPhysBone>(true)) {
-                var root = physbone.GetRootTransform();
-                if (obj.transform != root && obj.transform.IsChildOf(root)) {
-                    physbone.ignoreTransforms.Add(obj.transform);
-                }
-            }
-        }
-        
         private ArmatureLink.ArmatureLinkMode GetLinkMode() {
             if (model.linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
                 var usesBonesFromProp = false;
@@ -357,8 +348,10 @@ namespace VF.Feature {
 
             var removeBoneSuffix = model.removeBoneSuffix;
             if (string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
-                if (propBone.name.Contains(avatarBone.name) && propBone.name != avatarBone.name) {
-                    removeBoneSuffix = propBone.name.Replace(avatarBone.name, "");
+                var avatarBoneName = GameObjects.GetName(avatarBone);
+                var propBoneName = GameObjects.GetName(propBone);
+                if (propBoneName.Contains(avatarBoneName) && propBoneName != avatarBoneName) {
+                    removeBoneSuffix = propBoneName.Replace(avatarBoneName, "");
                 }
             }
             
@@ -372,7 +365,7 @@ namespace VF.Feature {
                 var check = checkStack.Pop();
                 foreach (Transform child in check.Item1.transform) {
                     var childPropBone = child.gameObject;
-                    var searchName = childPropBone.name;
+                    var searchName = GameObjects.GetName(childPropBone);
                     if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
                         searchName = searchName.Replace(removeBoneSuffix, "");
                     }
@@ -410,9 +403,9 @@ namespace VF.Feature {
             if (source.sourceTransform == null) return null;
             var scaleTargetInMarshmallow = source.sourceTransform
                 .GetComponentsInParent<Transform>(true)
-                .Any(t => t.gameObject.name.ToLower().Contains("marshmallow"));
+                .Any(t => GameObjects.GetName(t).ToLower().Contains("marshmallow"));
             if (!scaleTargetInMarshmallow) return null;
-            var child = orig.transform.Find(orig.name);
+            var child = orig.transform.Find(GameObjects.GetName(orig));
             if (!child) return null;
             return child.gameObject;
         }

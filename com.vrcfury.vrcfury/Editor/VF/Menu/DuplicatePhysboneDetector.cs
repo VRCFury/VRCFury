@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Builder;
 using VF.Builder.Exceptions;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
@@ -136,11 +137,11 @@ namespace VF.Menu {
         }
 
         private static string GetName(Transform t) {
-            return t.root.name + "/" + AnimationUtility.CalculateTransformPath(t, t.root)
+            return GameObjects.GetPath(t)
                    + " (" + AssetDatabase.GetAssetPath(t) + ")";
         }
         private static string GetName<T>(T c, Dictionary<T, string> sources) where T : UnityEngine.Component {
-            return c.transform.root.name + "/" + AnimationUtility.CalculateTransformPath(c.transform, c.transform.root)
+            return GameObjects.GetPath(c.transform)
                    + " (" + sources[c] + ")"
                    + (IsMutable(c) ? "" : " (Immutable)");
         }

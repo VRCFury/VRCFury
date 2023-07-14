@@ -150,7 +150,8 @@ namespace VF {
         }
 
         private static bool IsAv3EmulatorClone(GameObject obj) {
-            return obj.name.Contains("(ShadowClone)") || obj.name.Contains("(MirrorReflection)");
+            return GameObjects.GetName(obj).Contains("(ShadowClone)")
+                   || GameObjects.GetName(obj).Contains("(MirrorReflection)");
         }
 
         private static void DestroyAllOfType(string typeStr) {

@@ -23,7 +23,7 @@ namespace VF.Feature {
             if (newParent != null)
                 obj.transform.SetParent(newParent.transform, worldPositionStays);
             if (newName != null)
-                obj.name = newName;
+                GameObjects.SetName(obj, newName);
             var newPath = clipBuilder.GetPath(obj);
             redirects.Add(Tuple.Create(oldPath, newPath));
         }

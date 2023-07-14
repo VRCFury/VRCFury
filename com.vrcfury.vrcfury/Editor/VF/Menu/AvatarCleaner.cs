@@ -229,7 +229,7 @@ namespace VF.Menu {
                         Object.DestroyImmediate(component);
                     }
                 }
-                obj.name = "_deleted_" + obj.name;
+                GameObjects.SetName(obj, "_deleted_" + GameObjects.GetName(obj));
             }
         }
 

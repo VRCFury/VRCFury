@@ -28,18 +28,19 @@ namespace VF.Feature {
 
             // When you first load into a world, contact receivers already touching a sender register as 0 proximity
             // until they are removed and then reintroduced to each other.
-            var objectsToDisableTemporarily = new HashSet<GameObject>();
+            var objectsToDisableTemporarily = new HashSet<Transform>();
             // This is here so if users have an existing toggle that turns off sockets, we forcefully turn it back
             // on if it's managed by our new menu system.
-            var objectsToForceEnable = new HashSet<GameObject>();
+            var objectsToForceEnable = new HashSet<Transform>();
             
             foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
+                PhysboneUtils.RemoveFromPhysbones(c.transform);
                 var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, mutableManager: mutableManager);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
                     foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                        objectsToDisableTemporarily.Add(r.gameObject);
+                        objectsToDisableTemporarily.Add(r.transform);
                     }
 
                     if (c.configureTps || c.enableSps) {
@@ -102,44 +103,43 @@ namespace VF.Feature {
 
             var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
             var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
-            foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
-                fakeHead.MarkEligible(c.gameObject);
-                var (name,bakeRoot) = VRCFuryHapticSocketEditor.Bake(c, usedNames);
+            foreach (var socket in avatarObject.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
+                PhysboneUtils.RemoveFromPhysbones(socket.transform);
+                fakeHead.MarkEligible(socket.gameObject);
+                var (name,bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
                 
-                foreach (var r in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                    objectsToDisableTemporarily.Add(r.gameObject);
+                foreach (var receiver in bakeRoot.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                    objectsToDisableTemporarily.Add(receiver.transform);
                 }
-                
-                var animRoot = new GameObject("Animations");
-                animRoot.transform.SetParent(bakeRoot.transform, false);
 
-                if (c.addMenuItem) {
+                var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
+
+                if (socket.addMenuItem) {
                     var fx = GetFx();
 
-                    c.gameObject.SetActive(true);
-                    objectsToForceEnable.Add(c.gameObject);
+                    GameObjects.Activate(socket.transform);
+                    objectsToForceEnable.Add(socket.transform);
 
-                    ICollection<GameObject> FindChildren(params string[] names) {
-                        return names.Select(n => bakeRoot.transform.Find(n))
+                    ICollection<Transform> FindChildren(params string[] names) {
+                        return names.Select(n => bakeRoot.Find(n))
                             .Where(t => t != null)
-                            .Select(t => t.gameObject)
                             .ToArray();
                     }
 
                     foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "VersionBeacon", "Animations")) {
-                        obj.SetActive(false);
+                        GameObjects.Deactivate(obj);
                     }
                     var onLocalClip = fx.NewClip($"{name} (Local)");
                     foreach (var obj in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "Animations")) {
-                        clipBuilder.Enable(onLocalClip, obj);
+                        clipBuilder.Enable(onLocalClip, obj.gameObject);
                     }
                     var onRemoteClip = fx.NewClip($"{name} (Remote)");
                     foreach (var obj in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
-                        clipBuilder.Enable(onRemoteClip, obj);
+                        clipBuilder.Enable(onRemoteClip, obj.gameObject);
                     }
                     var onStealthClip = fx.NewClip($"{name} (Stealth)");
                     foreach (var obj in FindChildren("Receivers", "VersionLocal")) {
-                        clipBuilder.Enable(onStealthClip, obj);
+                        clipBuilder.Enable(onStealthClip, obj.gameObject);
                     }
                     
                     var holeOn = fx.NewBool(name, synced: true);
@@ -167,7 +167,7 @@ namespace VF.Feature {
 
                     exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
 
-                    if (c.enableAuto && autoOnClip) {
+                    if (socket.enableAuto && autoOnClip) {
                         var distParam = fx.NewFloat(name + "/AutoDistance");
                         var distReceiver = HapticUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
                             new[] { HapticUtils.CONTACT_PEN_MAIN });
@@ -178,7 +178,7 @@ namespace VF.Feature {
                 }
 
                 var actionNum = 0;
-                foreach (var depthAction in c.depthActions) {
+                foreach (var depthAction in socket.depthActions) {
                     actionNum++;
                     var prefix = name + actionNum;
 
@@ -317,13 +317,13 @@ namespace VF.Feature {
                 
                 var firstFrameClip = fx.NewClip("Load (First Frame)");
                 foreach (var obj in objectsToDisableTemporarily) {
-                    clipBuilder.Enable(firstFrameClip, obj, false);
+                    clipBuilder.Enable(firstFrameClip, obj.gameObject, false);
                 }
                 off.WithAnimation(firstFrameClip);
                 
                 var onClip = fx.NewClip("Load (On)");
                 foreach (var obj in objectsToForceEnable) {
-                    clipBuilder.Enable(onClip, obj);
+                    clipBuilder.Enable(onClip, obj.gameObject);
                 }
                 on.WithAnimation(onClip);
             }

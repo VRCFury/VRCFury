@@ -33,16 +33,16 @@ namespace VF.Feature {
             var undoers = new List<Action>();
             foreach (var child in avatarObject.GetComponentsInChildren<Transform>(true)) {
                 if (child.gameObject == hips) continue;
-                if (child.gameObject.name != hips.name) continue;
+                if (GameObjects.GetName(child) != GameObjects.GetName(hips)) continue;
                 // Amogus follower uses a sub-animator to animate its avatar, and (currently) we don't rewrite sub-animator
                 // clips, so just skip these for now.
                 if (AnimationUtility.CalculateTransformPath(child, avatarObject.transform).Contains("Follower")) {
                     continue;
                 }
 
-                var oldName = child.gameObject.name;
-                child.gameObject.name = child.gameObject.name + "_vrcfdup" + (++i);
-                undoers.Add(() => child.gameObject.name = oldName);
+                var oldName = GameObjects.GetName(child);
+                GameObjects.SetName(child, oldName + "_vrcfdup" + (++i));
+                undoers.Add(() => GameObjects.SetName(child, oldName));
                 movedOne = true;
             }
 

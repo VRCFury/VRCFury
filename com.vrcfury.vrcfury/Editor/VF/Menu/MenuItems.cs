@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 
@@ -100,7 +101,7 @@ namespace VF.Menu {
 
                 EditorUtility.DisplayDialog(
                     "Debug",
-                    $"Found {list.Count} components in {obj.name} and logged them to the console",
+                    $"Found {list.Count} components in {GameObjects.GetName(obj)} and logged them to the console",
                     "Ok"
                 );
             });

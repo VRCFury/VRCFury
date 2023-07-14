@@ -17,6 +17,12 @@ namespace VF.Component {
                 return base.gameObject;
             }
         }
+        public new Transform transform {
+            get {
+                var obj = gameObject;
+                return obj == null ? null : obj.transform;
+            }
+        }
 
         public bool IsBroken() {
             return GetBrokenMessage() != null;

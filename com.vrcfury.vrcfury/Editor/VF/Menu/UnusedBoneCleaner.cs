@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
+using VF.Builder;
 using VF.Builder.Exceptions;
 
 namespace VF.Menu {
@@ -58,11 +59,13 @@ namespace VF.Menu {
                 ShouldRemoveObj: obj => {
                     var parent = obj.transform.parent;
                     if (!parent) return false;
+                    var name = GameObjects.GetName(obj);
+                    var parentName = GameObjects.GetName(parent);
                     if (PrefabUtility.IsPartOfPrefabInstance(obj) && !PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
                         return false;
                     }
-                    if (!obj.name.Contains(parent.name)) return false;
-                    if (obj.name == parent.name + "_end") return false;
+                    if (!name.Contains(parentName)) return false;
+                    if (name == parentName + "_end") return false;
                     if (obj.transform.childCount > 0) return false;
                     if (obj.GetComponents<UnityEngine.Component>().Length > 1) return false;
                     if (usedBones.Contains(obj.transform)) return false;

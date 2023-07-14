@@ -6,7 +6,6 @@ using UnityEngine;
 using VF.Menu;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
-using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
     public class HapticUtils {
@@ -46,7 +45,7 @@ namespace VF.Builder.Haptics {
         }
         
         public static void AddSender(
-            GameObject obj,
+            Transform obj,
             Vector3 pos,
             String objName,
             float radius,
@@ -55,10 +54,8 @@ namespace VF.Builder.Haptics {
             Quaternion rotation = default,
             bool worldScale = true
         ) {
-            var child = new GameObject();
-            child.name = objName;
-            child.transform.SetParent(obj.transform, false);
-            var sender = child.AddComponent<VRCContactSender>();
+            var child = GameObjects.Create(objName, obj);
+            var sender = GameObjects.AddComponent<VRCContactSender>(child);
             sender.position = pos;
             sender.radius = radius;
             sender.collisionTags = new List<string> { tag };
@@ -68,15 +65,14 @@ namespace VF.Builder.Haptics {
                 sender.rotation = rotation;
             }
             if (worldScale) {
-                sender.position /= child.transform.lossyScale.x;
-                sender.radius /= child.transform.lossyScale.x;
-                sender.height /= child.transform.lossyScale.x;
+                sender.position /= child.lossyScale.x;
+                sender.radius /= child.lossyScale.x;
+                sender.height /= child.lossyScale.x;
             }
         }
 
-        public static void AddVersionContacts(GameObject obj, string paramPrefix, bool baked, bool isPen) {
-            var versionLocal = new GameObject("VersionLocal");
-            versionLocal.transform.SetParent(obj.transform, false);
+        public static void AddVersionContacts(Transform obj, string paramPrefix, bool baked, bool isPen) {
+            var versionLocal = GameObjects.Create("VersionLocal", obj);
             // Version Local
             var varName = baked ? "BakedVersion" : "Version";
             var versionLocalTag = RandomTag();
@@ -95,7 +91,7 @@ namespace VF.Builder.Haptics {
         }
 
         public static GameObject AddReceiver(
-            GameObject obj,
+            Transform obj,
             Vector3 pos,
             String param,
             String objName,
@@ -109,10 +105,8 @@ namespace VF.Builder.Haptics {
             ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity,
             bool worldScale = true
         ) {
-            var child = new GameObject();
-            child.name = objName;
-            child.transform.SetParent(obj.transform, false);
-            var receiver = child.AddComponent<VRCContactReceiver>();
+            var child = GameObjects.Create(objName, obj);
+            var receiver = GameObjects.AddComponent<VRCContactReceiver>(child);
             receiver.position = pos;
             receiver.parameter = param;
             receiver.radius = radius;
@@ -127,16 +121,16 @@ namespace VF.Builder.Haptics {
                 receiver.rotation = rotation;
             }
             if (worldScale) {
-                receiver.position /= child.transform.lossyScale.x;
-                receiver.radius /= child.transform.lossyScale.x;
-                receiver.height /= child.transform.lossyScale.x;
+                receiver.position /= child.lossyScale.x;
+                receiver.radius /= child.lossyScale.x;
+                receiver.height /= child.lossyScale.x;
             }
-            return child;
+            return child.gameObject;
         }
 
-        public static void RemoveTPSSenders(GameObject obj) {
+        public static void RemoveTPSSenders(Transform obj) {
             var remove = new List<UnityEngine.Component>();
-            foreach (Transform child in obj.transform) {
+            foreach (Transform child in obj) {
                 foreach (var sender in child.gameObject.GetComponents<VRCContactSender>()) {
                     if (IsTPSSender(sender)) {
                         Debug.Log("Deleting TPS sender on " + sender.gameObject);
@@ -149,8 +143,8 @@ namespace VF.Builder.Haptics {
                 AvatarCleaner.RemoveComponent(c);
             }
 
-            if (obj.transform.parent) {
-                RemoveTPSSenders(obj.transform.parent.gameObject);
+            if (obj.parent) {
+                RemoveTPSSenders(obj.parent);
             }
         }
 
@@ -172,21 +166,21 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static bool IsZeroScale(GameObject obj) {
-            var scale = obj.transform.localScale;
+        private static bool IsZeroScale(Transform obj) {
+            var scale = obj.localScale;
             return scale.x == 0 || scale.y == 0 || scale.z == 0;
         }
-        private static bool IsNegativeScale(GameObject obj) {
-            var scale = obj.transform.localScale;
+        private static bool IsNegativeScale(Transform obj) {
+            var scale = obj.localScale;
             return scale.x < 0 || scale.y < 0 || scale.z < 0;
         }
-        private static bool IsNonUniformScale(GameObject obj) {
-            var scale = obj.transform.localScale;
+        private static bool IsNonUniformScale(Transform obj) {
+            var scale = obj.localScale;
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
         }
-        public static void AssertValidScale(GameObject obj, string type) {
-            var path = AnimationUtility.CalculateTransformPath(obj.transform, obj.transform.root);
+        public static void AssertValidScale(Transform obj, string type) {
+            var path = AnimationUtility.CalculateTransformPath(obj, obj.root);
 
             var current = obj;
             while (true) {
@@ -195,30 +189,30 @@ namespace VF.Builder.Haptics {
                         "A haptic component exists on an object with zero scale." +
                         " This object must not be zero scale or size calculation will fail.\n\n" +
                         "Component path: " + path + "\n" +
-                        "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
+                        "Offending object: " + GameObjects.GetPath(current));
                 }
                 if (IsNegativeScale(current)) {
                     throw new Exception(
                         "A haptic component exists on an object with negative scale." +
                         " This object must have a positive scale or size calculation will fail.\n\n" +
                         "Component path: " + path + "\n" +
-                        "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
+                        "Offending object: " + GameObjects.GetPath(current));
                 }
                 if (IsNonUniformScale(current)) {
-                    var bypass = obj.transform.Find("ItsOkayThatOgbMightBeBroken") != null;
+                    var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
                     if (!bypass) {
                         throw new Exception(
                             "A haptic component exists on an object with a non-uniform scale." +
                             " This object (and all parents) must have an X, Y, and Z scale value that match" +
                             " each other, or size calculation will fail.\n\n" +
                             "Component path: " + path + "\n" +
-                            "Offending object: " + AnimationUtility.CalculateTransformPath(current.transform, current.transform.root));
+                            "Offending object: " + GameObjects.GetPath(current));
                     }
                 }
 
-                var parent = current.transform.parent;
+                var parent = current.parent;
                 if (parent == null) break;
-                current = parent.gameObject;
+                current = parent;
             }
         }
 

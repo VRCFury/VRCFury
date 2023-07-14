@@ -6,6 +6,7 @@ using UnityEditor.Animations;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Menu;
@@ -35,7 +36,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
             var isCanine = false;
             foreach (Transform c in child) {
                 if (c.GetComponent<VRCFury>() != null) continue;
-                var name = c.gameObject.name.ToLower();
+                var name = GameObjects.GetName(c).ToLower();
                 if (name.Contains("constraint") && name.Contains("peen")) {
                     maybeValid = true;
                     isCanine |= name.Contains("canine");
@@ -49,7 +50,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
     }
 
     private void ApplyZawoo(Type type, GameObject root) {
-        Debug.Log("Probably found zawoo prefab at " + root.name);
+        Debug.Log("Probably found zawoo prefab at " + GameObjects.GetName(root));
 
         AnimatorController fx = null;
         VRCExpressionsMenu menu = null;

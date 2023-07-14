@@ -39,7 +39,7 @@ public static class FeatureFinder {
     }
 
     private static bool AllowAvatarFeatures(GameObject gameObject) {
-        return gameObject.GetComponent<VRCAvatarDescriptor>() || gameObject.name == "AvatarVrcFuryFeatures";
+        return gameObject.GetComponent<VRCAvatarDescriptor>() || GameObjects.GetName(gameObject) == "AvatarVrcFuryFeatures";
     }
 
     public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(GameObject gameObject) {

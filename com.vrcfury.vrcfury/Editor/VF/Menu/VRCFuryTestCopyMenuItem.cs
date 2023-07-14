@@ -21,10 +21,10 @@ namespace VF.Menu {
 
             VRCFPrefabFixer.Fix(new[] {originalObject});
 
-            var cloneName = "VRCF Test Copy for " + originalObject.name;
+            var cloneName = "VRCF Test Copy for " + GameObjects.GetName(originalObject);
             var exists = originalObject.scene
                 .GetRootGameObjects()
-                .FirstOrDefault(o => o.name == cloneName);
+                .FirstOrDefault(o => GameObjects.GetName(o) == cloneName);
             if (exists) {
                 Object.DestroyImmediate(exists);
             }
@@ -35,7 +35,7 @@ namespace VF.Menu {
             if (clone.scene != originalObject.scene) {
                 SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
             }
-            clone.name = cloneName;
+            GameObjects.SetName(clone, cloneName);
 
             var builder = new VRCFuryBuilder();
             var result = builder.SafeRun(clone, originalObject);

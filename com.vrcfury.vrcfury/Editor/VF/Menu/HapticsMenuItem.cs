@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VF.Component;
 using VF.Inspector;
 using VF.Model;
@@ -10,16 +11,12 @@ namespace VF.Menu {
         private const string DialogTitle = "VRCFury Haptics";
 
         public static void Create(bool plug) {
-            var newObj = new GameObject(plug ? "Haptic Plug" : "Haptic Socket");
+            var newObj = GameObjects.Create(plug ? "Haptic Plug" : "Haptic Socket", Selection.activeTransform);
 
             if (plug) {
-                newObj.AddComponent<VRCFuryHapticPlug>();
+                GameObjects.AddComponent<VRCFuryHapticPlug>(newObj);
             } else {
-                newObj.AddComponent<VRCFuryHapticSocket>();
-            }
-
-            if (Selection.activeGameObject) {
-                newObj.transform.SetParent(Selection.activeGameObject.transform, false);
+                GameObjects.AddComponent<VRCFuryHapticSocket>(newObj);
             }
 
             Tools.pivotRotation = PivotRotation.Local;

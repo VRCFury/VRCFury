@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Builder;
 using VF.Component;
 using VF.Model;
 
@@ -33,7 +34,7 @@ namespace VF {
                 }
 
                 foreach (var brokenComponent in brokenComponents) {
-                    blocked.Add($"{brokenComponent.gameObject.name} in {path} ({brokenComponent.GetBrokenMessage()})");
+                    blocked.Add($"{GameObjects.GetName(brokenComponent)} in {path} ({brokenComponent.GetBrokenMessage()})");
                     blockedPaths.Add(path);
                 }
             }
