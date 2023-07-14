@@ -3,7 +3,7 @@
 #include "sps_bake.cginc"
 
 // SPS Penetration Shader
-void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
+void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color)
 {
 	const float worldLength = _SPS_Length;
 	const float averageLength = 0.28;
@@ -11,11 +11,12 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 
 	const float3 origVertex = vertex;
 	const float3 origNormal = normal;
-	const float3 bakeIndex = 1 + vertexId * 6;
+	const float3 bakeIndex = 1 + vertexId * 7;
 	const float3 restingVertex = SpsBakedVertex(bakeIndex) * (_SPS_Length / _SPS_BakedLength);
 	const float3 restingNormal = SpsBakedVertex(bakeIndex+3);
+	const float active = saturate(SpsBakedFloat(bakeIndex + 6));
 
-	if (vertex.z < 0) return;
+	if (vertex.z < 0 || active == 0) return;
 
 	float3 rootPos;
 	bool isRing;
@@ -50,6 +51,8 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 		// Cancel if too far away
 		const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
 		applyLerp = min(applyLerp, 1-tooFar);
+
+		applyLerp = applyLerp * active;
 
 		dumbLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));
 		bezierLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));

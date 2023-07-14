@@ -84,7 +84,7 @@ namespace VF.Builder.Haptics {
             });
 
             var passNum = 0;
-            contents = WithEachPass(contents, pass => {
+            contents = WithEachPass(contents, (string pass) => {
                 passNum++;
                 void ex(String msg) {
                     throw new Exception("Pass " + passNum + ": " + msg);
@@ -162,6 +162,7 @@ namespace VF.Builder.Haptics {
                 newHeader.Add("#define LIL_APP_POSITION");
                 newHeader.Add("#define LIL_APP_NORMAL");
                 newHeader.Add("#define LIL_APP_VERTEXID");
+                newHeader.Add("#define LIL_APP_COLOR");
 
                 var newBody = new List<string>();
                 newBody.Add(ReadAndFlattenPath($"{pathToSps}/sps_funcs.cginc"));
@@ -181,6 +182,11 @@ namespace VF.Builder.Haptics {
                     newBody.Add("  uint spsVertexId : SV_VertexID;");
                     vertexIdParam = "spsVertexId";
                 };
+                var colorParam = FindParam("COLOR");
+                if (colorParam == null) {
+                    newBody.Add("  float4 spsColor : COLOR;");
+                    colorParam = "spsColor";
+                };
                 newBody.Add("};");
                 var ret = returnType == "void" ? "" : "return ";
                 if (returnType == "void" && oldVertFunction == "vertShadowCaster") {
@@ -195,7 +201,7 @@ namespace VF.Builder.Haptics {
                         #endif
                     ");
                     newBody.Add(") {");
-                    newBody.Add($"  sps_apply(input.{vertexParam}.xyz, input.{normalParam}, input.{vertexIdParam});");
+                    newBody.Add($"  sps_apply(input.{vertexParam}.xyz, input.{normalParam}, input.{vertexIdParam}, input.{colorParam});");
                     newBody.Add($"  {ret}{oldVertFunction}(({paramType})input");
                     newBody.Add(@"
                         , opos
@@ -210,7 +216,7 @@ namespace VF.Builder.Haptics {
                     newBody.Add("}");
                 } else {
                     newBody.Add($"{returnType} spsVert(SpsInputs input) {{");
-                    newBody.Add($"  sps_apply(input.{vertexParam}.xyz, input.{normalParam}, input.{vertexIdParam});");
+                    newBody.Add($"  sps_apply(input.{vertexParam}.xyz, input.{normalParam}, input.{vertexIdParam}, input.{colorParam});");
                     newBody.Add($"  {ret}{oldVertFunction}(({paramType})input);");
                     newBody.Add("}");
                 }
