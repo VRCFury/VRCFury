@@ -27,6 +27,38 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 
 	float orfDistance = length(rootPos);
 
+	// Decide if we should cancel deformation due to extreme angles, long distance, etc
+	float bezierLerp;
+	float dumbLerp;
+	{
+		float applyLerp = 1;
+		// Cancel if base angle is too sharp
+		const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.2, SPS_PI*0.3, 0, 1));
+		applyLerp = min(applyLerp, 1-targetAngleTooSharp);
+
+		// Uncancel if hilted in a hole
+		if (!isRing)
+		{
+			const float hilted = saturate(sps_map(orfDistance, worldLength*0.5, worldLength*0.4, 0, 1));
+			applyLerp = max(applyLerp, hilted);
+		}
+
+		// Cancel if the entrance angle is too sharp
+		const float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 0, 1));
+		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
+
+		// Cancel if too far away
+		const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
+		applyLerp = min(applyLerp, 1-tooFar);
+
+		dumbLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));
+		bezierLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));
+	}
+
+	rootPos = lerp(float3(0,0,worldLength), rootPos, bezierLerp);
+	frontNormal = normalize(lerp(float3(0,0,-1), frontNormal, bezierLerp));
+	orfDistance = length(rootPos);
+
 	const float3 p0 = float3(0,0,0);
 	const float3 p1 = float3(0,0,orfDistance/4);
 	const float3 p2 = rootPos + frontNormal * (orfDistance/2);
@@ -66,27 +98,6 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId)
 	const float3 deformedVertex = bezierPos + bezierRight * restingVertex.x * holeShrink + bezierUp * restingVertex.y * holeShrink;
 	const float3 deformedNormal = bezierRight * restingNormal.x + bezierUp * restingNormal.y + bezierForward * restingNormal.z;
 
-	float applyLerp = 1;
-
-	// Cancel if base angle is too sharp
-	const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.2, SPS_PI*0.3, 0, 1));
-	applyLerp = min(applyLerp, 1-targetAngleTooSharp);
-
-	// Uncancel if hilted in a hole
-	if (!isRing)
-	{
-		const float hilted = saturate(sps_map(orfDistance, worldLength*0.5, worldLength*0.4, 0, 1));
-		applyLerp = max(applyLerp, hilted);
-	}
-
-	// Cancel if the entrance angle is too sharp
-	const float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 0, 1));
-	applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
-
-	// Cancel if too far away
-	const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
-	applyLerp = min(applyLerp, 1-tooFar);
-
-	vertex = lerp(origVertex, deformedVertex, applyLerp);
-	normal = lerp(origNormal, deformedNormal, applyLerp);
+	vertex = lerp(origVertex, deformedVertex, dumbLerp);
+	normal = lerp(origNormal, deformedNormal, dumbLerp);
 }
