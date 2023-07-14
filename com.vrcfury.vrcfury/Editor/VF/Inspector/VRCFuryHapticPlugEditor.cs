@@ -18,12 +18,12 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");
-            var configureSps = serializedObject.FindProperty("enableSps");
+            var enableSps = serializedObject.FindProperty("enableSps");
             
             container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
-            container.Add(VRCFuryEditorUtils.Prop(autoMesh, "Automatically find mesh"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoMesh, "Automatically find mesh"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoMesh.boolValue) {
@@ -34,15 +34,15 @@ namespace VF.Inspector {
 
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
-                if (!configureTps.boolValue && !configureSps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("autoPosition"),
+                if (!configureTps.boolValue && !enableSps.boolValue) {
+                    c.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("autoPosition"),
                         "Detect position/rotation from mesh"));
                 }
                 return c;
-            }, configureTps, configureSps));
+            }, configureTps, enableSps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
-            container.Add(VRCFuryEditorUtils.Prop(autoLength, "Detect length from mesh"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoLength, "Detect length from mesh"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoLength.boolValue) {
@@ -52,7 +52,7 @@ namespace VF.Inspector {
             }, autoLength));
 
             var autoRadius = serializedObject.FindProperty("autoRadius");
-            container.Add(VRCFuryEditorUtils.Prop(autoRadius, "Detect radius from mesh"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoRadius, "Detect radius from mesh"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoRadius.boolValue) {
@@ -61,29 +61,55 @@ namespace VF.Inspector {
                 return c;
             }, autoRadius));
 
-            container.Add(VRCFuryEditorUtils.Prop(configureSps, "Enable SPS (Super Plug Shader) (BETA)"));
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader) (BETA)"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableSps.boolValue) {
+                    var spsBox = new VisualElement() {
+                        style = {
+                            backgroundColor = new Color(0,0,0,0.1f),
+                            marginTop = 5,
+                            marginBottom = 10
+                        }
+                    };
+                    VRCFuryEditorUtils.Padding(spsBox, 5);
+                    VRCFuryEditorUtils.BorderRadius(spsBox, 5);
+                    c.Add(spsBox);
+                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("SPS (Super Plug Shader)", style => {
+                        style.unityFontStyleAndWeight = FontStyle.Bold;
+                        style.unityTextAlign = TextAnchor.MiddleCenter;
+                    }));
+                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("Check out vrcfury.com/sps for details", style => {
+                        style.unityTextAlign = TextAnchor.MiddleCenter;
+                        style.paddingBottom = 5;
+                    }));
+                    spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
+                        serializedObject.FindProperty("spsAutorig"),
+                        "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
+                        style: style => { style.paddingBottom = 5; }
+                    ));
+                    spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
+                        serializedObject.FindProperty("spsBoneMask"),
+                        "Automatically mask SPS using bone weights",
+                        style: style => { style.paddingBottom = 5; }
+                    ));
+                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("Optional additional texture mask (white = 'do not deform')"));
+                    spsBox.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("spsTextureMask")));
+                }
+                return c;
+            }, enableSps));
 
             var adv = new Foldout {
                 text = "Advanced",
                 value = false
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             
-            adv.Add(VRCFuryEditorUtils.Prop(configureTps, "Auto-configure Poiyomi TPS (Deprecated)"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "Auto-configure Poiyomi TPS (Deprecated)"));
             adv.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (configureTps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Info(
-                        "Auto-configure TPS will cause this VRCFury Haptic Plug to automatically configure Poiyomi TPS on the associated renderer." +
-                        " When using this option:\n" +
-                        "1. The mesh should be posed in the editor in the 'erect' state. It can still use physbones or be animated to different poses, but will return to this resting editor pose when penetrating.\n" +
-                        "2. This component should be placed on an EMPTY OBJECT (not on the renderer).\n" +
-                        "3. Move the empty object to where you want deformation to start.\n" +
-                        "4. Enable gizmos and rotate the empty object so the tip is aligned properly, and the red gizmo capsule fits the proper shape.\n" +
-                        "5. If this mesh is rigged (with bones), the empty object should be a child of the nearest bone on the rig (don't forget to exclude it from physbones if needed).\n" +
-                        "6. The material must be using Poiyomi Pro 8.1+ with the 'penetrator' checkbox enabled.\n" +
-                        "7. DO NOT run the TPS setup wizard, this checkbox will do everything needed."));
                     c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTpsMask"), "Optional mask for TPS"));
                 }
                 return c;
@@ -288,7 +314,31 @@ namespace VF.Inspector {
                 }
 
                 foreach (var renderer in renderers) {
-                    TpsConfigurer.ConfigureRenderer(renderer, bakeRoot.transform, worldLength, pen.configureTpsMask, mutableManager, pen.enableSps);
+                    var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot.transform, mutableManager);
+
+                    if (pen.enableSps && pen.spsAutorig) {
+                        SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
+                    }
+                    
+                    var configuredTps = false;
+                    skin.sharedMaterials = skin.sharedMaterials
+                        .Select(mat => {
+                            if (pen.enableSps) {
+                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, pen.spsTextureMask, pen.spsBoneMask, mutableManager);
+                            } else if (TpsConfigurer.IsTps(mat)) {
+                                configuredTps = true;
+                                return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, pen.configureTpsMask, mutableManager);
+                            }
+                            return mat;
+                        })
+                        .ToArray();
+
+                    if (!pen.enableSps && !configuredTps) {
+                        throw new VRCFBuilderException(
+                            "VRCFury Haptic Plug has 'auto-configure TPS' checked, but no material on the linked renderer has TPS enabled in the Poiyomi settings.");
+                    }
+
+                    VRCFuryEditorUtils.MarkDirty(skin);
                 }
             }
             

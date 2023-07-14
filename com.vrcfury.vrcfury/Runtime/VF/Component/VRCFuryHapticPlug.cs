@@ -15,6 +15,9 @@ namespace VF.Component {
         public bool unitsInMeters = false;
         public bool configureTps = false;
         public bool enableSps = true;
+        public bool spsAutorig = true;
+        public bool spsBoneMask = true;
+        public GuidTexture2d spsTextureMask = null;
         public GuidTexture2d configureTpsMask = null;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
 

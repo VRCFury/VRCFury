@@ -10,8 +10,9 @@ namespace VF.Builder.Haptics {
         public static Texture2D Bake(
             SkinnedMeshRenderer skin,
             string tmpDir,
-            Texture2D textureMask = null,
-            bool tpsCompatibility = false
+            Texture2D textureMask,
+            bool boneMask,
+            bool tpsCompatibility
         ) {
             var bakedMesh = MeshBaker.BakeMesh(skin, skin.rootBone, !tpsCompatibility);
             if (bakedMesh == null)
@@ -19,22 +20,21 @@ namespace VF.Builder.Haptics {
 
             textureMask = MakeReadable(textureMask);
 
-            var firstBone = skin.rootBone;
-            while (firstBone != null) {
-                if (skin.bones.Contains(firstBone)) {
-                    break;
+            ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
+            if (boneMask) {
+                var firstBone = skin.rootBone;
+                while (firstBone != null) {
+                    if (skin.bones.Contains(firstBone)) {
+                        break;
+                    }
+                    firstBone = firstBone.parent;
                 }
-                firstBone = firstBone.parent;
-            }
-
-            ISet<int> includedBoneIds;
-            if (firstBone != null) {
-                includedBoneIds = firstBone.GetComponentsInChildren<Transform>(true)
-                    .Select(bone => Array.IndexOf(skin.bones, bone))
-                    .Where(id => id >= 0)
-                    .ToImmutableHashSet();
-            } else {
-                includedBoneIds = ImmutableHashSet<int>.Empty;
+                if (firstBone != null) {
+                    includedBoneIds = firstBone.GetComponentsInChildren<Transform>(true)
+                        .Select(bone => Array.IndexOf(skin.bones, bone))
+                        .Where(id => id >= 0)
+                        .ToImmutableHashSet();
+                }
             }
 
             int bitsRequired;

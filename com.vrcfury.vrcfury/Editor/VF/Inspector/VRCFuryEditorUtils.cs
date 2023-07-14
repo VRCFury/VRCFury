@@ -254,6 +254,25 @@ public static class VRCFuryEditorUtils {
         Margin(b, 0);
         return b;
     }
+
+    public static VisualElement BetterCheckbox(
+        SerializedProperty prop,
+        string label,
+        Action<IStyle> style = null
+    ) {
+        var el = new VisualElement() {
+            style = {
+                flexDirection = FlexDirection.Row
+            }
+        };
+        el.Add(Prop(prop, style: s => {
+            s.flexShrink = 0;
+            s.paddingRight = 3;
+        }));
+        el.Add(WrappedLabel(label));
+        style?.Invoke(el.style);
+        return el;
+    }
     
     public static VisualElement Prop(
         SerializedProperty prop,

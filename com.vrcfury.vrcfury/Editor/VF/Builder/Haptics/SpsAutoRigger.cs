@@ -8,6 +8,10 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 namespace VF.Builder.Haptics {
     public static class SpsAutoRigger {
         public static void AutoRig(SkinnedMeshRenderer skin, float worldLength, MutableManager mutableManager) {
+            if (skin.bones.Length != 1) {
+                return;
+            }
+
             var mesh = skin.sharedMesh;
             mesh = mutableManager.MakeMutable(mesh);
             skin.sharedMesh = mesh;
@@ -26,11 +30,7 @@ namespace VF.Builder.Haptics {
                 bone.localPosition = pos;
                 bones.Add(bone);
                 lastParent = bone;
-                bindPoses.Add(bone.worldToLocalMatrix * skin.rootBone.localToWorldMatrix);
-            }
-
-            if (skin.bones.Length != 1) {
-                throw new Exception("Expected skin to contain exactly 1 main bone");
+                bindPoses.Add(bone.worldToLocalMatrix * skin.localToWorldMatrix);
             }
 
             var boneOffset = skin.bones.Length;
