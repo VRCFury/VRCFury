@@ -257,7 +257,7 @@ namespace VF.Inspector {
                             "Maybe there was an extra created by accident?\n\n" +
                             $"Renderer: {r.owner().GetPath()}\n\n" +
                             $"Plug 1: {otherPlug.owner().GetPath()}\n\n" +
-                            $"Plug 2: {plug.owner().GetPath()}")
+                            $"Plug 2: {plug.owner().GetPath()}");
                     }
                     usedRenderers.Add(r, plug);
                 }
