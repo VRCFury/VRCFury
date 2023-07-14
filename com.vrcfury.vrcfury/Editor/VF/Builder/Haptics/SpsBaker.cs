@@ -22,15 +22,15 @@ namespace VF.Builder.Haptics {
 
             ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
             if (boneMask) {
-                var firstBone = skin.rootBone;
+                VFGameObject firstBone = skin.rootBone;
                 while (firstBone != null) {
-                    if (skin.bones.Contains(firstBone)) {
+                    if (skin.bones.Contains((Transform)firstBone)) {
                         break;
                     }
                     firstBone = firstBone.parent;
                 }
                 if (firstBone != null) {
-                    includedBoneIds = firstBone.GetComponentsInChildren<Transform>(true)
+                    includedBoneIds = firstBone.GetSelfAndAllChildren()
                         .Select(bone => Array.IndexOf(skin.bones, bone))
                         .Where(id => id >= 0)
                         .ToImmutableHashSet();

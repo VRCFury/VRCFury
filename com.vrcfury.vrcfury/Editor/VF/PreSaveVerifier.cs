@@ -2,11 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Component;
-using VF.Model;
 
 namespace VF {
     public class PreSaveVerifier : UnityEditor.AssetModificationProcessor
@@ -22,8 +20,8 @@ namespace VF {
                     for (int n = 0; n < SceneManager.sceneCount; ++n) {
                         var scene = SceneManager.GetSceneAt(n);
                         if (scene.path == path) {
-                            brokenComponents.UnionWith(scene.GetRootGameObjects()
-                                .SelectMany(obj => obj.GetComponentsInChildren<VRCFuryComponent>(true))
+                            brokenComponents.UnionWith(VFGameObject.GetRoots(scene)
+                                .SelectMany(obj => obj.GetComponentsInSelfAndChildren<VRCFuryComponent>())
                                 .Where(vrcf => vrcf.IsBroken()));
                         }
                     }
@@ -34,7 +32,7 @@ namespace VF {
                 }
 
                 foreach (var brokenComponent in brokenComponents) {
-                    blocked.Add($"{GameObjects.GetName(brokenComponent)} in {path} ({brokenComponent.GetBrokenMessage()})");
+                    blocked.Add($"{brokenComponent.owner().name} in {path} ({brokenComponent.GetBrokenMessage()})");
                     blockedPaths.Add(path);
                 }
             }

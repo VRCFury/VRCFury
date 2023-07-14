@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor.Animations;
 using UnityEngine;
-using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VRC.SDK3.Avatars.Components;
@@ -11,7 +9,7 @@ namespace VF.Feature {
     public class FixDoubleFxBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixDoubleFx)]
         public void Apply() {
-            var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>(true);
+            var avatars = avatarObject.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>();
             foreach (var avatar in avatars) {
                 var fxLayers = new List<RuntimeAnimatorController>();
                 var fxLayerIds = new List<int>();

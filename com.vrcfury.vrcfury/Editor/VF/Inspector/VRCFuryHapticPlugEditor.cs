@@ -9,7 +9,6 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
-using VF.Model;
 using VRC.Dynamics;
 
 namespace VF.Inspector {
@@ -119,7 +118,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 var (renderers, worldLength, worldRadius, localRotation, localPosition) = GetWorldSize(target);
                 var text = new List<string>();
-                text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => GameObjects.GetName(r))));
+                text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => r.owner().name)));
                 text.Add($"Detected Length: {worldLength}m");
                 text.Add($"Detected Radius: {worldRadius}m");
                 return string.Join("\n", text);
@@ -164,19 +163,19 @@ namespace VF.Inspector {
             VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
         }
 
-        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug pen) {
+        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
             var renderers = new List<Renderer>();
-            if (pen.autoRenderer) {
+            if (plug.autoRenderer) {
                 var autoParams = new PlugRendererFinder.Params();
-                if (pen.enableSps) {
+                if (plug.enableSps) {
                     autoParams.PreferDpsOrTps = false;
                     autoParams.SearchChildren = false;
                     autoParams.PreferWeightedToBone = true;
                     autoParams.EmptyIfMultiple = true;
                 }
-                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(pen.gameObject, autoParams));
+                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.gameObject, autoParams));
             } else {
-                renderers.AddRange(pen.configureTpsMesh.Where(r => r != null));
+                renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
             }
             return renderers;
         }
@@ -230,7 +229,7 @@ namespace VF.Inspector {
             return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, Transform, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug plug, List<string> usedNames = null, bool onlySenders = false, MutableManager mutableManager = null) {
+        public static Tuple<string, VFGameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug plug, List<string> usedNames = null, bool onlySenders = false, MutableManager mutableManager = null) {
             var transform = plug.transform;
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "plug");
@@ -246,7 +245,7 @@ namespace VF.Inspector {
 
             var name = plug.name;
             if (string.IsNullOrWhiteSpace(name)) {
-                name = GameObjects.GetName(plug);
+                name = plug.owner().name;
             }
             if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
             

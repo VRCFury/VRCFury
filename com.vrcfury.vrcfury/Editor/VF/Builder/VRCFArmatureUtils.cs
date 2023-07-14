@@ -1,18 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Builder {
     public class VRCFArmatureUtils {
-        private static FieldInfo parentNameField = 
-            typeof(SkeletonBone).GetField("parentName", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-        public static GameObject FindBoneOnArmatureOrNull(GameObject avatarObject, HumanBodyBones findBone) {
+        public static VFGameObject FindBoneOnArmatureOrNull(VFGameObject avatarObject, HumanBodyBones findBone) {
             try {
                 return FindBoneOnArmatureOrException(avatarObject, findBone);
             } catch (Exception e) {
@@ -25,7 +18,7 @@ namespace VF.Builder {
          * This basically does what Animator.GetBoneTransform SHOULD do, except GetBoneTransform randomly sometimes
          * returns bones on clothing armatures instead of the avatar, and also sometimes returns null for no reason.
          */
-        public static GameObject FindBoneOnArmatureOrException(GameObject avatarObject, HumanBodyBones findBone) {
+        public static GameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator) {
                 throw new VRCFBuilderException("Avatar does not contain an Animator. Are you sure the avatar's rig is set to Humanoid?");

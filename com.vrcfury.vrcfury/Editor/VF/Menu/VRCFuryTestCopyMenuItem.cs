@@ -1,6 +1,5 @@
 using System.Linq;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Model;
@@ -13,7 +12,7 @@ namespace VF.Menu {
             BuildTestCopy(originalObject);
         }
         
-        public static void BuildTestCopy(GameObject originalObject) {
+        public static void BuildTestCopy(VFGameObject originalObject) {
             if (IsTestCopy(originalObject)) {
                 EditorUtility.DisplayDialog("VRCFury Error", "This object is already a VRCF editor test copy.", "Ok");
                 return;
@@ -21,21 +20,18 @@ namespace VF.Menu {
 
             VRCFPrefabFixer.Fix(new[] {originalObject});
 
-            var cloneName = "VRCF Test Copy for " + GameObjects.GetName(originalObject);
-            var exists = originalObject.scene
-                .GetRootGameObjects()
-                .FirstOrDefault(o => GameObjects.GetName(o) == cloneName);
+            var cloneName = "VRCF Test Copy for " + originalObject.name;
+            var exists = VFGameObject.GetRoots(originalObject.scene)
+                .FirstOrDefault(o => o.name == cloneName);
             if (exists) {
-                Object.DestroyImmediate(exists);
+                exists.Destroy();
             }
-            var clone = Object.Instantiate(originalObject);
-            if (!clone.activeSelf) {
-                clone.SetActive(true);
-            }
+            var clone = originalObject.Clone();
+            clone.active = true;
             if (clone.scene != originalObject.scene) {
                 SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
             }
-            GameObjects.SetName(clone, cloneName);
+            clone.name = cloneName;
 
             var builder = new VRCFuryBuilder();
             var result = builder.SafeRun(clone, originalObject);
@@ -44,12 +40,12 @@ namespace VF.Menu {
                 clone.AddComponent<VRCFuryTest>();
                 Selection.SetActiveObjectWithContext(clone, clone);
             } else {
-                Object.DestroyImmediate(clone);
+                clone.Destroy();
             }
         }
 
-        public static bool IsTestCopy(GameObject obj) {
-            return obj.GetComponentInChildren<VRCFuryTest>(true) != null;
+        public static bool IsTestCopy(VFGameObject obj) {
+            return obj.GetComponentsInSelfAndChildren<VRCFuryTest>().Length > 0;
         }
 
         public static bool CheckBuildTestCopy() {

@@ -9,8 +9,8 @@ namespace VF.Builder {
 
 public class ClipBuilder {
     //private static float ONE_FRAME = 1 / 60f;
-    private readonly GameObject baseObject;
-    public ClipBuilder(GameObject baseObject) {
+    private readonly VFGameObject baseObject;
+    public ClipBuilder(VFGameObject baseObject) {
         this.baseObject = baseObject;
     }
 
@@ -84,15 +84,15 @@ public class ClipBuilder {
         }
     }
 
-    public void Enable(AnimationClip clip, GameObject obj, bool active = true) {
+    public void Enable(AnimationClip clip, VFGameObject obj, bool active = true) {
         clip.SetCurve(GetPath(obj), typeof(GameObject), "m_IsActive", OneFrame(active ? 1 : 0));
     }
-    public void Scale(AnimationClip clip, GameObject obj, AnimationCurve curve) {
+    public void Scale(AnimationClip clip, VFGameObject obj, AnimationCurve curve) {
         foreach (var axis in new[]{"x","y","z"}) {
             clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale." + axis, curve);
         }
     }
-    public void Scale(AnimationClip clip, GameObject obj, float x, float y, float z) {
+    public void Scale(AnimationClip clip, VFGameObject obj, float x, float y, float z) {
         clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.x", OneFrame(x));
         clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.y", OneFrame(y));
         clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.z", OneFrame(z));
@@ -104,7 +104,7 @@ public class ClipBuilder {
         BlendShape(clip, skin, blendShape, OneFrame(value));
     }
 
-    public void Material(AnimationClip clip, GameObject obj, int matSlot, Material mat) {
+    public void Material(AnimationClip clip, VFGameObject obj, int matSlot, Material mat) {
         foreach (var renderer in obj.GetComponents<Renderer>()) {
             Material(clip, renderer, matSlot, mat);
         }
@@ -123,28 +123,16 @@ public class ClipBuilder {
         });
     }
 
-    public string GetPath(GameObject obj) {
-        return GetPath(obj.transform);
-    }
-    public string GetPath(Transform transform) {
-        var parts = new List<string>();
-        var current = transform;
-        while (current != baseObject.transform) {
-            if (current == null) {
-                throw new Exception("Animated object wasn't a child of the root GameObject: " + string.Join("/", parts));
-            }
-            parts.Insert(0, GameObjects.GetName(current));
-            current = current.parent;
-        }
-        return string.Join("/", parts);
+    public string GetPath(VFGameObject gameObject) {
+        return gameObject.GetPath(baseObject);
     }
 
-    public static bool IsEmptyMotion(Motion motion, GameObject avatarRoot = null) {
+    public static bool IsEmptyMotion(Motion motion, VFGameObject avatarRoot = null) {
         return new AnimatorIterator.Clips().From(motion)
             .All(clip => IsEmptyClip(clip, avatarRoot));
     }
 
-    private static bool IsEmptyClip(AnimationClip clip, GameObject avatarRoot = null) {
+    private static bool IsEmptyClip(AnimationClip clip, VFGameObject avatarRoot = null) {
         if (!IsStaticClip(clip)) return false;
         foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
             if (!avatarRoot) return false;

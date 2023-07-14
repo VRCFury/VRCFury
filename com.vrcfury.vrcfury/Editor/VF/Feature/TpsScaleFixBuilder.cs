@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Net;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -29,7 +28,7 @@ namespace VF.Feature {
                     renderers.Add(component.singleRenderer);
                 } else {
                     allRenderers = true;
-                    renderers.UnionWith(avatarObject.GetComponentsInChildren<Renderer>(true));
+                    renderers.UnionWith(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
                 }
             }
             
@@ -87,13 +86,13 @@ namespace VF.Feature {
                     return mat;
                 }).ToArray();
 
-                Transform rootBone = renderer.transform;
+                VFGameObject rootBone = renderer.transform;
                 if (renderer is SkinnedMeshRenderer skin && skin.rootBone != null) {
                     rootBone = skin.rootBone;
                 }
 
                 var parentPaths =
-                    rootBone.GetComponentsInParent<Transform>(true)
+                    rootBone.GetComponentsInSelfAndParents<Transform>()
                         .Select(t => AnimationUtility.CalculateTransformPath(t, avatarObject.transform))
                         .ToList();
 

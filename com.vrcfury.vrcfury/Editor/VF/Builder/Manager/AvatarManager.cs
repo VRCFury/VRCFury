@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Inspector;
@@ -11,7 +10,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
     public class AvatarManager {
-        private readonly GameObject avatarObject;
+        private readonly VFGameObject avatarObject;
         private readonly VRCAvatarDescriptor avatar;
         private readonly string tmpDir;
         private readonly Func<int> currentFeatureNumProvider;
@@ -43,7 +42,7 @@ namespace VF.Builder {
         public MenuManager GetMenu() {
             if (_menu == null) {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + GameObjects.GetName(avatarObject));
+                VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarObject.name);
                 var initializing = true;
                 _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : currentMenuSortPosition());
 
@@ -61,7 +60,7 @@ namespace VF.Builder {
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             if (!_controllers.TryGetValue(type, out var output)) {
                 var existingController = VRCAvatarUtils.GetAvatarController(avatar, type);
-                var filename = "VRCFury " + type + " for " + GameObjects.GetName(avatarObject);
+                var filename = "VRCFury " + type + " for " + avatarObject.name;
                 AnimatorController ctrl;
                 if (existingController != null) {
                     ctrl = mutableManager.CopyRecursive(existingController, filename);
@@ -101,7 +100,7 @@ namespace VF.Builder {
         public ParamManager GetParams() {
             if (_params == null) {
                 var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
-                var filename = "VRCFury Params for " + GameObjects.GetName(avatarObject);
+                var filename = "VRCFury Params for " + avatarObject.name;
                 VRCExpressionParameters prms;
                 if (origParams != null) {
                     prms = mutableManager.CopyRecursive(origParams, filename);

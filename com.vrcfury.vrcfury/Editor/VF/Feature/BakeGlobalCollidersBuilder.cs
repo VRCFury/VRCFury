@@ -6,7 +6,6 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature.Base;
-using VF.Model;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
@@ -15,7 +14,7 @@ namespace VF.Feature {
         public void Apply() {
 
             var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
-            var globalContacts = avatarObject.GetComponentsInChildren<VRCFuryGlobalCollider>(true);
+            var globalContacts = avatarObject.GetComponentsInSelfAndChildren<VRCFuryGlobalCollider>();
             if (globalContacts.Length == 0) return;
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 

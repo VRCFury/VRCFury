@@ -38,8 +38,8 @@ public static class FeatureFinder {
         return allFeatures;
     }
 
-    private static bool AllowAvatarFeatures(GameObject gameObject) {
-        return gameObject.GetComponent<VRCAvatarDescriptor>() || GameObjects.GetName(gameObject) == "AvatarVrcFuryFeatures";
+    private static bool AllowAvatarFeatures(VFGameObject gameObject) {
+        return gameObject.GetComponent<VRCAvatarDescriptor>() || gameObject.name == "AvatarVrcFuryFeatures";
     }
 
     public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(GameObject gameObject) {

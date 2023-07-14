@@ -1,16 +1,13 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
-using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
-using AnimatorControllerParameterType = UnityEngine.AnimatorControllerParameterType;
 
 namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {

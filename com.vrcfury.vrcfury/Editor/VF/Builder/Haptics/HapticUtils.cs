@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using VF.Menu;
 using VRC.Dynamics;
@@ -10,11 +9,11 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Builder.Haptics {
     public class HapticUtils {
         
-        // Bump when pen senders or receivers are changed
-        public static int penVersion = 8;
+        // Bump when plug senders or receivers are changed
+        public static int plugVersion = 8;
         
-        // Bump when orf senders or receivers are changed
-        public static int orfVersion = 9;
+        // Bump when socket senders or receivers are changed
+        public static int socketVersion = 9;
         
         // Bump when any senders are changed
         public static int beaconVersion = 6;
@@ -55,7 +54,7 @@ namespace VF.Builder.Haptics {
             bool worldScale = true
         ) {
             var child = GameObjects.Create(objName, obj);
-            var sender = GameObjects.AddComponent<VRCContactSender>(child);
+            var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
             sender.collisionTags = new List<string> { tag };
@@ -65,9 +64,9 @@ namespace VF.Builder.Haptics {
                 sender.rotation = rotation;
             }
             if (worldScale) {
-                sender.position /= child.lossyScale.x;
-                sender.radius /= child.lossyScale.x;
-                sender.height /= child.lossyScale.x;
+                sender.position /= child.worldScale.x;
+                sender.radius /= child.worldScale.x;
+                sender.height /= child.worldScale.x;
             }
         }
 
@@ -78,7 +77,7 @@ namespace VF.Builder.Haptics {
             var versionLocalTag = RandomTag();
             AddSender(versionLocal, Vector3.zero, "Sender", 0.01f, versionLocalTag);
             // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-            var versionLocalNum = isPen ? penVersion : orfVersion;
+            var versionLocalNum = isPen ? plugVersion : socketVersion;
             AddReceiver(versionLocal, Vector3.one * 0.01f, paramPrefix + "/" + varName + "/" + versionLocalNum, "Receiver", 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
 
             // Version Remote
@@ -106,7 +105,7 @@ namespace VF.Builder.Haptics {
             bool worldScale = true
         ) {
             var child = GameObjects.Create(objName, obj);
-            var receiver = GameObjects.AddComponent<VRCContactReceiver>(child);
+            var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
             receiver.parameter = param;
             receiver.radius = radius;
@@ -121,9 +120,9 @@ namespace VF.Builder.Haptics {
                 receiver.rotation = rotation;
             }
             if (worldScale) {
-                receiver.position /= child.lossyScale.x;
-                receiver.radius /= child.lossyScale.x;
-                receiver.height /= child.lossyScale.x;
+                receiver.position /= child.worldScale.x;
+                receiver.radius /= child.worldScale.x;
+                receiver.height /= child.worldScale.x;
             }
             return child.gameObject;
         }
@@ -179,24 +178,22 @@ namespace VF.Builder.Haptics {
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
         }
-        public static void AssertValidScale(Transform obj, string type) {
-            var path = AnimationUtility.CalculateTransformPath(obj, obj.root);
-
+        public static void AssertValidScale(VFGameObject obj, string type) {
             var current = obj;
             while (true) {
                 if (IsZeroScale(current)) {
                     throw new Exception(
                         "A haptic component exists on an object with zero scale." +
                         " This object must not be zero scale or size calculation will fail.\n\n" +
-                        "Component path: " + path + "\n" +
-                        "Offending object: " + GameObjects.GetPath(current));
+                        "Component path: " + obj.GetPath() + "\n" +
+                        "Offending object: " + current.GetPath());
                 }
                 if (IsNegativeScale(current)) {
                     throw new Exception(
                         "A haptic component exists on an object with negative scale." +
                         " This object must have a positive scale or size calculation will fail.\n\n" +
-                        "Component path: " + path + "\n" +
-                        "Offending object: " + GameObjects.GetPath(current));
+                        "Component path: " + obj.GetPath() + "\n" +
+                        "Offending object: " + current.GetPath());
                 }
                 if (IsNonUniformScale(current)) {
                     var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
@@ -205,8 +202,8 @@ namespace VF.Builder.Haptics {
                             "A haptic component exists on an object with a non-uniform scale." +
                             " This object (and all parents) must have an X, Y, and Z scale value that match" +
                             " each other, or size calculation will fail.\n\n" +
-                            "Component path: " + path + "\n" +
-                            "Offending object: " + GameObjects.GetPath(current));
+                            "Component path: " + obj.GetPath() + "\n" +
+                            "Offending object: " + current.GetPath());
                     }
                 }
 

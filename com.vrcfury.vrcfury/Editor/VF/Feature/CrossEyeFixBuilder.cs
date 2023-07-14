@@ -25,11 +25,11 @@ namespace VF.Feature {
             if (eyeRight) avatar.customEyeLookSettings.rightEye = AddFakeEye(eyeRight);
         }
 
-        private Transform AddFakeEye(Transform originalEye) {
-            var baseName = GameObjects.GetName(originalEye);
+        private Transform AddFakeEye(VFGameObject originalEye) {
+            var baseName = originalEye.name;
 
             var realEyeUp = GameObjects.Create(baseName + ".Up", originalEye.parent, useTransformFrom: originalEye);
-            realEyeUp.rotation = Quaternion.identity;
+            realEyeUp.worldRotation = Quaternion.identity;
             
             var fakeEye = GameObjects.Create(baseName + ".Fake", originalEye.parent, useTransformFrom: originalEye);
 
@@ -38,7 +38,7 @@ namespace VF.Feature {
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
             mover.Move(originalEye.gameObject, realEyeUp.gameObject);
 
-            var constraint = GameObjects.AddComponent<RotationConstraint>(realEyeUp);
+            var constraint = realEyeUp.AddComponent<RotationConstraint>();
             constraint.AddSource(new ConstraintSource() {
                 sourceTransform = fakeEyeUp,
                 weight = 1

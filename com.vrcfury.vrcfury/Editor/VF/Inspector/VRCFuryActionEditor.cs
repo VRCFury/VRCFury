@@ -1,11 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Model;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
 
@@ -190,16 +188,16 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     var editorObject = prop.serializedObject.targetObject;
                     var shapes = new Dictionary<string,string>();
                     if (editorObject is UnityEngine.Component c) {
-                        var avatarObject = c.GetComponentInParent<VRCAvatarDescriptor>();
+                        VFGameObject avatarObject = c.GetComponentInParent<VRCAvatarDescriptor>();
                         if (avatarObject) {
-                            foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                                 if (!skin.sharedMesh) continue;
                                 for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
                                     var bs = skin.sharedMesh.GetBlendShapeName(i);
                                     if (shapes.ContainsKey(bs)) {
-                                        shapes[bs] += ", " + GameObjects.GetName(skin);
+                                        shapes[bs] += ", " + skin.owner().name;
                                     } else {
-                                        shapes[bs] = GameObjects.GetName(skin);
+                                        shapes[bs] = skin.owner().name;
                                     }
                                 }
                             }

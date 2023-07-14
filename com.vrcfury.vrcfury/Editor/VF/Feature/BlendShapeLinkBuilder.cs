@@ -97,9 +97,9 @@ namespace VF.Feature {
                 var mappings = GetMappings(baseSkin, linkSkins);
 
                 var text = new List<string>();
-                text.Add("Base Skin: " + GameObjects.GetName(baseSkin));
+                text.Add("Base Skin: " + baseSkin.owner().name);
                 if (linkSkins.Count > 0) {
-                    text.Add("Linked Skins: " + string.Join(", ", linkSkins.Select(l => GameObjects.GetName(l))));
+                    text.Add("Linked Skins: " + string.Join(", ", linkSkins.Select(l => l.owner().name)));
                 } else {
                     text.Add("No valid linked skins found");
                 }
@@ -128,8 +128,8 @@ namespace VF.Feature {
         }
 
         private SkinnedMeshRenderer GetBaseSkin() {
-            return avatarObject.GetComponentsInChildren<Transform>(true)
-                .Where(t => GameObjects.GetName(t) == model.baseObj)
+            return avatarObject.GetSelfAndAllChildren()
+                .Where(t => t.name == model.baseObj)
                 .Select(t => t.GetComponent<SkinnedMeshRenderer>())
                 .Where(skin => skin && skin.sharedMesh)
                 .OrderBy(skin => AnimationUtility.CalculateTransformPath(skin.transform, avatarObject.transform).Length)

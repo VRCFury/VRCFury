@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -18,12 +17,12 @@ namespace VF.Feature {
         private List<Tuple<string, string>> redirects = new List<Tuple<string, string>>();
         private readonly List<EasyAnimationClip> additionalClips = new List<EasyAnimationClip>();
 
-        public void Move(GameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {
+        public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {
             var oldPath = clipBuilder.GetPath(obj);
             if (newParent != null)
                 obj.transform.SetParent(newParent.transform, worldPositionStays);
             if (newName != null)
-                GameObjects.SetName(obj, newName);
+                obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);
             redirects.Add(Tuple.Create(oldPath, newPath));
         }

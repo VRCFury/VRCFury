@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 

@@ -89,19 +89,19 @@ namespace VF.Menu {
         [MenuItem(listComponents, priority = listComponentsPriority)]
         private static void ListChildComponents() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                var obj = Selection.activeGameObject;
+                VFGameObject obj = Selection.activeGameObject;
                 if (obj == null) return;
                 var list = new List<string>();
-                foreach (var c in obj.GetComponentsInChildren<UnityEngine.Component>(true)) {
+                foreach (var c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                     if (c == null || c is Transform) continue;
-                    list.Add(c.GetType().Name + " in " + AnimationUtility.CalculateTransformPath(c.transform, obj.transform));
+                    list.Add(c.GetType().Name + " in " + c.owner().GetPath(obj));
                 }
 
                 Debug.Log($"List of components on {obj}:\n" + string.Join("\n", list));
 
                 EditorUtility.DisplayDialog(
                     "Debug",
-                    $"Found {list.Count} components in {GameObjects.GetName(obj)} and logged them to the console",
+                    $"Found {list.Count} components in {obj.name} and logged them to the console",
                     "Ok"
                 );
             });

@@ -50,7 +50,7 @@ namespace VF.Builder.Haptics {
                 weights[i] = CalculateWeight(closestBoneId, otherBoneId, distanceToOther);
             }
 
-            var physbone = GameObjects.AddComponent<VRCPhysBone>(bones.First());
+            var physbone = bones.First().asVf().AddComponent<VRCPhysBone>();
             physbone.integrationType = VRCPhysBoneBase.IntegrationType.Advanced;
             physbone.pull = 0.8f;
             physbone.spring = 0.1f;

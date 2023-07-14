@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.UIElements;
@@ -9,7 +8,6 @@ using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Menu;
-using VF.Model;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 
@@ -106,7 +104,7 @@ namespace VF.Inspector {
             );
         }
         
-        public static Tuple<string,Transform> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
+        public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
             var transform = socket.transform;
             HapticUtils.RemoveTPSSenders(transform);
             
@@ -175,7 +173,7 @@ namespace VF.Inspector {
 
                 if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                     var main = GameObjects.Create("Root", lights);
-                    var mainLight = GameObjects.AddComponent<Light>(main);
+                    var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
                     mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.42f : 0.41f;
@@ -183,8 +181,8 @@ namespace VF.Inspector {
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
                     var front = GameObjects.Create("Front", lights);
-                    front.localPosition = Vector3.forward * 0.01f / lights.lossyScale.x;
-                    var frontLight = GameObjects.AddComponent<Light>(front);
+                    front.localPosition = Vector3.forward * 0.01f / lights.worldScale.x;
+                    var frontLight = front.AddComponent<Light>();
                     frontLight.type = LightType.Point;
                     frontLight.color = Color.black;
                     frontLight.range = 0.45f;
@@ -246,7 +244,7 @@ namespace VF.Inspector {
          * Visit every light that could possibly be used for this socket. This includes all children,
          * and single-depth children of all parents.
          */
-        public static void ForEachPossibleLight(Transform obj, bool directOnly, Action<Light> act) {
+        public static void ForEachPossibleLight(VFGameObject obj, bool directOnly, Action<Light> act) {
             var visited = new HashSet<Light>();
             void Visit(Light light) {
                 if (visited.Contains(light)) return;
@@ -254,13 +252,13 @@ namespace VF.Inspector {
                 if (!IsHole(light) && !IsRing(light) && !IsNormal(light)) return;
                 act(light);
             }
-            foreach (Transform child in obj) {
+            foreach (var child in obj.Children()) {
                 foreach (var light in child.gameObject.GetComponents<Light>()) {
                     Visit(light);
                 }
             }
             if (!directOnly) {
-                foreach (var light in obj.GetComponentsInChildren<Light>(true)) {
+                foreach (var light in obj.GetComponentsInSelfAndChildren<Light>()) {
                     Visit(light);
                 }
             }
@@ -321,7 +319,8 @@ namespace VF.Inspector {
 
         private static bool IsChildOfBone(VRCFuryHapticSocket socket, HumanBodyBones bone) {
             try {
-                var avatarObject = socket.gameObject.GetComponentInParent<VRCAvatarDescriptor>()?.gameObject;
+                VFGameObject obj = socket;
+                VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>();
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj.transform, socket.transform);
@@ -333,7 +332,7 @@ namespace VF.Inspector {
         private static string GetName(VRCFuryHapticSocket socket) {
             var name = socket.name;
             if (string.IsNullOrWhiteSpace(name)) {
-                name = GameObjects.GetName(socket);
+                name = socket.owner().name;
             }
             return name;
         }

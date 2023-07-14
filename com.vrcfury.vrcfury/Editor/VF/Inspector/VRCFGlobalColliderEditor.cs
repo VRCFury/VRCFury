@@ -2,7 +2,6 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Component;
-using VF.Model;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryGlobalCollider), true)]

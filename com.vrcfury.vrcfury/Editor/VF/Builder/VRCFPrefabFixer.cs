@@ -19,7 +19,7 @@ namespace VF.Builder {
          * To combat both of these issues, this method will find all prefabs on the object which contain VRCFury
          * components, then will force-reimport them in bottom-up order.
          */
-        public static void Fix(ICollection<GameObject> objs) {
+        public static void Fix(ICollection<VFGameObject> objs) {
             Debug.Log("Running VRCFury prefab fix pass on " + objs);
 
             var dependsOn = new Dictionary<string, HashSet<string>>();
@@ -27,7 +27,7 @@ namespace VF.Builder {
                 if (!dependsOn.ContainsKey(childPath)) dependsOn[childPath] = new HashSet<string>();
                 return dependsOn[childPath];
             }
-            foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInChildren<VRCFury>(true))) {
+            foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInSelfAndChildren<VRCFury>())) {
                 string childPath = null;
                 for (var vrcf = sceneVrcf; vrcf != null; vrcf = PrefabUtility.GetCorrespondingObjectFromSource(vrcf)) {
                     var path = AssetDatabase.GetAssetPath(vrcf);
@@ -65,7 +65,7 @@ namespace VF.Builder {
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
             }
             
-            foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInChildren<VRCFury>(true))) {
+            foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInSelfAndChildren<VRCFury>())) {
                 for (var vrcf = sceneVrcf; vrcf != null; vrcf = PrefabUtility.GetCorrespondingObjectFromSource(vrcf)) {
                     var mods = GetModifications(vrcf);
                     if (mods.Count > 0) {

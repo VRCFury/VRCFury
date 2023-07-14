@@ -27,7 +27,7 @@ namespace VF.VrcHooks {
             var runField = sdkBuilder.GetField(fieldName,
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             if (runField == null) throw new Exception($"Failed to find {fieldName}");
-            void Fix(GameObject obj) => VRCFPrefabFixer.Fix(new[] { obj });
+            void Fix(GameObject obj) => VRCFPrefabFixer.Fix(new VFGameObject[] { obj });
             var runObj = runField.GetValue(null);
             if (runObj is Action<GameObject> run1) {
                 runField.SetValue(null, Fix + run1);

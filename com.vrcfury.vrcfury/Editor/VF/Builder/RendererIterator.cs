@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using VF.Inspector;
 
@@ -10,9 +9,9 @@ namespace VF.Builder {
          * Gets all the renderers + associated meshes on the avatar.
          * This could have been a simple iteration, but for some reason unity uses Mesh Filters for non-skinned meshes for some reason.
          */
-        public static  ICollection<Tuple<Renderer, Mesh, Action<Mesh>>> GetRenderersWithMeshes(GameObject obj) {
+        public static  ICollection<Tuple<Renderer, Mesh, Action<Mesh>>> GetRenderersWithMeshes(VFGameObject obj) {
             var output = new List<Tuple<Renderer, Mesh, Action<Mesh>>>();
-            foreach (var renderer in obj.GetComponentsInChildren<Renderer>(true)) {
+            foreach (var renderer in obj.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (renderer is SkinnedMeshRenderer skin) {
                     output.Add(Tuple.Create(
                         renderer,

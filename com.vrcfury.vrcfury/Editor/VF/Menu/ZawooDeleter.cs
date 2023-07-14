@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
-using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Menu {
     public static class ZawooDeleter {
@@ -40,14 +38,14 @@ namespace VF.Menu {
             );
         }
 
-        private static bool ShouldRemoveObj(GameObject obj) {
+        private static bool ShouldRemoveObj(VFGameObject obj) {
             if (obj == null) return false;
             if (PrefabUtility.IsPartOfPrefabInstance(obj) && !PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
                 // Don't try to remove if it's part of a prefab, because it's probly inside the VRCFury prefab
                 return false;
             }
             if (ShouldRemoveAsset(obj)) return true;
-            var lower = GameObjects.GetName(obj).ToLower();
+            var lower = obj.name.ToLower();
             if (lower.Contains("caninepeen")) return true;
             if (lower.Contains("hybridpeen")) return true;
             if (lower.Contains("hybridanthropeen")) return true;

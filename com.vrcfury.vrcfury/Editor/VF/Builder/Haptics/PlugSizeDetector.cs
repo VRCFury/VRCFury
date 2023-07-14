@@ -1,10 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
-using VF.Builder.Exceptions;
-using VF.Model;
 
 namespace VF.Builder.Haptics {
     internal static class PlugSizeDetector {

@@ -35,7 +35,7 @@ namespace VF.Feature {
             var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
             var vrcfAlwaysVisibleHead = GameObjects.Create("vrcfAlwaysVisibleHead", head.transform.parent, useTransformFrom: head.transform);
             
-            var p = GameObjects.AddComponent<ParentConstraint>(vrcfAlwaysVisibleHead);
+            var p = vrcfAlwaysVisibleHead.AddComponent<ParentConstraint>();
             p.AddSource(new ConstraintSource() {
                 sourceTransform = head.transform,
                 weight = 1

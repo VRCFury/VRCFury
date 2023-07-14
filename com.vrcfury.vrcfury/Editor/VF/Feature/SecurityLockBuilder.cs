@@ -1,15 +1,12 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
-using VRC.SDKBase;
 
 namespace VF.Feature {
 
