@@ -190,7 +190,7 @@ namespace VF.Builder.Haptics {
                 newBody.Add("};");
                 var ret = returnType == "void" ? "" : "return ";
                 if (returnType == "void" && oldVertFunction == "vertShadowCaster") {
-                    newBody.Add($"{returnType} spsVert(SpsInputs input");
+                    newBody.Add($"{returnType} {newVertFunction}(SpsInputs input");
                     newBody.Add(@"
                         , out float4 opos : SV_POSITION
                         #ifdef UNITY_STANDARD_USE_SHADOW_OUTPUT_STRUCT
@@ -215,7 +215,7 @@ namespace VF.Builder.Haptics {
                     newBody.Add(");");
                     newBody.Add("}");
                 } else {
-                    newBody.Add($"{returnType} spsVert(SpsInputs input) {{");
+                    newBody.Add($"{returnType} {newVertFunction}(SpsInputs input) {{");
                     newBody.Add($"  sps_apply(input.{vertexParam}.xyz, input.{normalParam}, input.{vertexIdParam}, input.{colorParam});");
                     newBody.Add($"  {ret}{oldVertFunction}(({paramType})input);");
                     newBody.Add("}");

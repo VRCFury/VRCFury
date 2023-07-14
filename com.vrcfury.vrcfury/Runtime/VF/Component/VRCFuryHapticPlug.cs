@@ -33,7 +33,9 @@ namespace VF.Component {
                 autoRadius = radius == 0;
             }
             if (fromVersion < 3) {
+#pragma warning disable 0612
                 enableSps = configureSps;
+#pragma warning restore 0612
             }
         }
 
