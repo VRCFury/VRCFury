@@ -35,6 +35,13 @@ public class VFAController {
     }
     
     public void RemoveLayer(int i) {
+        // Due to some unity bug, removing any layer from a controller
+        // also removes ALL layers marked as synced for some reason.
+        // VRChat synced layers are broken anyways, so we can just turn them off.
+        ctrl.layers = ctrl.layers.Select(layer => {
+            layer.syncedLayerIndex = -1;
+            return layer;
+        }).ToArray();
         ctrl.RemoveLayer(i);
     }
 
