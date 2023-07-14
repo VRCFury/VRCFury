@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -112,15 +110,9 @@ namespace VF.Menu {
                 map[key].Add(c);
             }
 
-            foreach (var scene in Enumerable.Range(0, SceneManager.sceneCount)
-                         .Select(SceneManager.GetSceneAt)) {
-                if (scene.isLoaded) {
-                    foreach (var c in scene.GetRootGameObjects()
-                                 .SelectMany(obj => obj.GetComponentsInChildren<T>(true))) {
-                        AddOne(c);
-                        sources[c] = scene.path;
-                    }
-                }
+            foreach (var c in VFGameObject.GetRoots().SelectMany(obj => obj.GetComponentsInSelfAndChildren<T>())) {
+                AddOne(c);
+                sources[c] = c.gameObject.scene.path;
             }
 
             foreach (var path in AssetDatabase.GetAllAssetPaths()) {
@@ -136,12 +128,12 @@ namespace VF.Menu {
             return (map, sources);
         }
 
-        private static string GetName(Transform t) {
-            return GameObjects.GetPath(t)
+        private static string GetName(VFGameObject t) {
+            return t.GetPath()
                    + " (" + AssetDatabase.GetAssetPath(t) + ")";
         }
         private static string GetName<T>(T c, Dictionary<T, string> sources) where T : UnityEngine.Component {
-            return GameObjects.GetPath(c.transform)
+            return c.owner().GetPath()
                    + " (" + sources[c] + ")"
                    + (IsMutable(c) ? "" : " (Immutable)");
         }

@@ -3,7 +3,6 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -18,7 +17,7 @@ namespace VF.Feature {
             } catch (Exception) {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Hips);
             }
-            foreach (var skin in avatarObject.GetComponentsInChildren<Renderer>(true)) {
+            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 skin.probeAnchor = root.transform;
             }
         }

@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -53,7 +51,7 @@ namespace VF {
             var problyUploading = aboutToUploadTime <= now && aboutToUploadTime > Now() - 10;
             if (state == PlayModeStateChange.ExitingEditMode) {
                 if (!problyUploading && PlayModeMenuItem.Get()) {
-                    var rootObjects = GetRootObjects().ToArray();
+                    var rootObjects = VFGameObject.GetRoots();
                     VRCFPrefabFixer.Fix(rootObjects);
                 }
 
@@ -74,9 +72,9 @@ namespace VF {
         }
 
         // This should absolutely always be false in play mode, but we check just in case
-        private static bool ContainsAnyPrefabs(GameObject obj) {
-            foreach (var t in obj.GetComponentsInChildren<Transform>(true)) {
-                if (PrefabUtility.IsPartOfAnyPrefab(t.gameObject)) {
+        private static bool ContainsAnyPrefabs(VFGameObject obj) {
+            foreach (var t in obj.GetSelfAndAllChildren()) {
+                if (PrefabUtility.IsPartOfAnyPrefab(t)) {
                     return true;
                 }
             }
@@ -97,40 +95,43 @@ namespace VF {
 
             var builder = new VRCFuryBuilder();
             var oneChanged = false;
-            foreach (var root in GetRootObjects()) {
-                foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>(true)) {
-                    if (!avatar.gameObject.activeInHierarchy) continue;
-                    if (ContainsAnyPrefabs(avatar.gameObject)) continue;
-                    if (IsAv3EmulatorClone(avatar.gameObject)) {
+            foreach (var root in VFGameObject.GetRoots()) {
+                foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
+                    var obj = avatar.owner();
+                    if (!obj.activeInHierarchy) continue;
+                    if (ContainsAnyPrefabs(obj)) continue;
+                    if (IsAv3EmulatorClone(obj)) {
                         // these are av3emulator temp objects. Building on them doesn't work.
                         continue;
                     }
-                    if (avatar.gameObject.GetComponentsInChildren<VRCFuryTest>(true).Length > 0) {
+                    if (obj.GetComponentsInSelfAndChildren<VRCFuryTest>().Length > 0) {
                         continue;
                     }
-                    if (!VRCFuryBuilder.ShouldRun(avatar.gameObject)) continue;
-                    builder.SafeRun(avatar.gameObject);
-                    VRCFuryBuilder.StripAllVrcfComponents(avatar.gameObject);
+                    if (!VRCFuryBuilder.ShouldRun(obj)) continue;
+                    builder.SafeRun(obj);
+                    VRCFuryBuilder.StripAllVrcfComponents(obj);
                     oneChanged = true;
                 }
-                foreach (var o in root.GetComponentsInChildren<VRCFuryHapticSocket>(true)) {
-                    if (!o.gameObject.activeInHierarchy) continue;
-                    if (ContainsAnyPrefabs(o.gameObject)) continue;
-                    o.Upgrade();
+                foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
+                    var obj = socket.owner();
+                    if (!obj.activeInHierarchy) continue;
+                    if (ContainsAnyPrefabs(obj)) continue;
+                    socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        VRCFuryHapticSocketEditor.Bake(o, onlySenders: true);
+                        VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
                     });
-                    Object.DestroyImmediate(o);
+                    Object.DestroyImmediate(socket);
                 }
-                foreach (var o in root.GetComponentsInChildren<VRCFuryHapticPlug>(true)) {
-                    if (!o.gameObject.activeInHierarchy) continue;
-                    if (ContainsAnyPrefabs(o.gameObject)) continue;
-                    o.Upgrade();
+                foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
+                    var obj = plug.owner();
+                    if (!obj.activeInHierarchy) continue;
+                    if (ContainsAnyPrefabs(obj)) continue;
+                    plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         var mutableManager = new MutableManager(tmpDir);
-                        VRCFuryHapticPlugEditor.Bake(o, onlySenders: true, mutableManager: mutableManager);
+                        VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
                     });
-                    Object.DestroyImmediate(o);
+                    Object.DestroyImmediate(plug);
                 }
             }
 
@@ -142,16 +143,9 @@ namespace VF {
             }
         }
 
-        private static IEnumerable<GameObject> GetRootObjects() {
-            return Enumerable.Range(0, SceneManager.sceneCount)
-                .Select(SceneManager.GetSceneAt)
-                .Where(scene => scene.isLoaded)
-                .SelectMany(scene => scene.GetRootGameObjects());
-        }
-
-        private static bool IsAv3EmulatorClone(GameObject obj) {
-            return GameObjects.GetName(obj).Contains("(ShadowClone)")
-                   || GameObjects.GetName(obj).Contains("(MirrorReflection)");
+        private static bool IsAv3EmulatorClone(VFGameObject obj) {
+            return obj.name.Contains("(ShadowClone)")
+                   || obj.name.Contains("(MirrorReflection)");
         }
 
         private static void DestroyAllOfType(string typeStr) {
@@ -230,9 +224,9 @@ namespace VF {
                     restartField.SetValue(emulator, true);
                 }
 
-                foreach (var root in GetRootObjects()) {
+                foreach (var root in VFGameObject.GetRoots()) {
                     if (IsAv3EmulatorClone(root)) {
-                        Object.DestroyImmediate(root);
+                        root.Destroy();
                     }
                 }
             } catch (Exception e) {

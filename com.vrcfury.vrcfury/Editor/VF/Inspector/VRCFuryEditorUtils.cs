@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -611,9 +610,9 @@ public static class VRCFuryEditorUtils {
      * VRLabs Ragdoll System makes a copy of the entire armature, including VRCFury components,
      * which can result in a lot of duplicates.
      */
-    public static bool IsInRagdollSystem(Transform obj) {
+    public static bool IsInRagdollSystem(VFGameObject obj) {
         while (obj != null) {
-            if (GameObjects.GetName(obj) == "Ragdoll System") return true;
+            if (obj.name == "Ragdoll System") return true;
             obj = obj.parent;
         }
         return false;

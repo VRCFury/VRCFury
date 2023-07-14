@@ -1,6 +1,6 @@
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -10,16 +10,17 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.ForceObjectState)]
         public void Apply() {
             foreach (var state in model.states) {
-                if (state.obj == null) continue;
+                VFGameObject obj = state.obj;
+                if (!obj) continue;
                 switch (state.action) {
                     case ObjectState.Action.DELETE:
-                        Object.DestroyImmediate(state.obj);
+                        obj.Destroy();
                         break;
                     case ObjectState.Action.ACTIVATE:
-                        state.obj.SetActive(true);
+                        obj.active = true;
                         break;
                     case ObjectState.Action.DEACTIVATE:
-                        state.obj.SetActive(false);
+                        obj.active = false;
                         break;
                 }
             }

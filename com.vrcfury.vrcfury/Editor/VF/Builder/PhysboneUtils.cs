@@ -5,11 +5,11 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder {
     public class PhysboneUtils {
-        public static void RemoveFromPhysbones(Transform obj, bool evenIfRendered = false) {
+        public static void RemoveFromPhysbones(VFGameObject obj, bool evenIfRendered = false) {
             if (!evenIfRendered && ContainsRenderer(obj)) {
                 return;
             }
-            foreach (var physbone in obj.root.GetComponentsInChildren<VRCPhysBone>(true)) {
+            foreach (var physbone in obj.root.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 var root = physbone.GetRootTransform();
                 if (obj != root && obj.IsChildOf(root)) {
                     var alreadyExcluded = physbone.ignoreTransforms.Any(other => obj.IsChildOf(other));
@@ -20,20 +20,20 @@ namespace VF.Builder {
             }
         }
 
-        private static bool ContainsRenderer(Transform obj) {
-            foreach (var s in obj.root.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+        private static bool ContainsRenderer(VFGameObject obj) {
+            foreach (var s in obj.root.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 foreach (var bone in s.bones) {
                     if (bone && bone.IsChildOf(obj)) return true;
                 }
                 if (s.rootBone && s.rootBone.IsChildOf(obj)) return true;
             }
-            foreach (var c in obj.root.GetComponentsInChildren<IConstraint>(true)) {
+            foreach (var c in obj.root.GetComponentsInSelfAndChildren<IConstraint>()) {
                 for (var i = 0; i < c.sourceCount; i++) {
                     var t = c.GetSource(i).sourceTransform;
                     if (t && t.IsChildOf(obj)) return true;
                 }
             }
-            if (obj.GetComponentsInChildren<Renderer>(true).Length > 1) {
+            if (obj.GetComponentsInSelfAndChildren<Renderer>().Length > 1) {
                 return true;
             }
             return false;

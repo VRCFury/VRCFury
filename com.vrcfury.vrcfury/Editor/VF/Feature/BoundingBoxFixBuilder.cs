@@ -1,13 +1,11 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
-using VF.Model;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
@@ -19,7 +17,7 @@ namespace VF.Feature {
         public void Apply() {
             float maxLinear = 0;
             Renderer maxRenderer = null;
-            foreach (var renderer in avatarObject.GetComponentsInChildren<Renderer>(true)) {
+            foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 var bounds = renderer.bounds;
                 bounds.Encapsulate(avatarObject.transform.position);
                 var extents = bounds.extents;
@@ -34,7 +32,7 @@ namespace VF.Feature {
                 Debug.Log($"Largest renderer is {clipBuilder.GetPath(maxRenderer.transform)} with linear size of {maxLinear}");
             }
             
-            var skins = avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>();
             foreach (var skin in skins) {
                 AdjustBoundingBox(skin);
             }
@@ -114,9 +112,9 @@ namespace VF.Feature {
             return b;
         }
 
-        private static Bounds CalculateFullBounds(GameObject avatarObject) {
+        private static Bounds CalculateFullBounds(VFGameObject avatarObject) {
             var bounds = new Bounds(avatarObject.transform.position, Vector3.zero);
-            foreach (Renderer renderer in avatarObject.GetComponentsInChildren<Renderer>(true)) {
+            foreach (Renderer renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) {
                     bounds.Encapsulate(renderer.bounds);
                 }

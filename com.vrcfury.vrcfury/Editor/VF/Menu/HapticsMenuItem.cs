@@ -3,7 +3,6 @@ using UnityEngine;
 using VF.Builder;
 using VF.Component;
 using VF.Inspector;
-using VF.Model;
 
 namespace VF.Menu {
     public class HapticsMenuItem {
@@ -14,9 +13,9 @@ namespace VF.Menu {
             var newObj = GameObjects.Create(plug ? "Haptic Plug" : "Haptic Socket", Selection.activeTransform);
 
             if (plug) {
-                GameObjects.AddComponent<VRCFuryHapticPlug>(newObj);
+                newObj.AddComponent<VRCFuryHapticPlug>();
             } else {
-                GameObjects.AddComponent<VRCFuryHapticSocket>(newObj);
+                newObj.AddComponent<VRCFuryHapticSocket>();
             }
 
             Tools.pivotRotation = PivotRotation.Local;
@@ -53,20 +52,20 @@ namespace VF.Menu {
                 return;
             }
 
-            var pen = Selection.activeGameObject.GetComponent<VRCFuryHapticPlug>();
-            var orf = Selection.activeGameObject.GetComponent<VRCFuryHapticSocket>();
-            if (!pen && !orf) {
+            var plug = Selection.activeGameObject.GetComponent<VRCFuryHapticPlug>();
+            var socket = Selection.activeGameObject.GetComponent<VRCFuryHapticSocket>();
+            if (!plug && !socket) {
                 EditorUtility.DisplayDialog(DialogTitle,"No haptic components found on selected object", "Ok");
                 return;
             }
 
-            if (pen) {
-                VRCFuryHapticPlugEditor.Bake(pen, onlySenders:true);
-                Object.DestroyImmediate(pen);
+            if (plug) {
+                VRCFuryHapticPlugEditor.Bake(plug, onlySenders:true);
+                Object.DestroyImmediate(plug);
             }
-            if (orf) {
-                VRCFuryHapticSocketEditor.Bake(orf, onlySenders:true);
-                Object.DestroyImmediate(orf);
+            if (socket) {
+                VRCFuryHapticSocketEditor.Bake(socket, onlySenders:true);
+                Object.DestroyImmediate(socket);
             }
         }
     }

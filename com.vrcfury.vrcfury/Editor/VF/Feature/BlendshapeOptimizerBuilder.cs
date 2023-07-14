@@ -12,7 +12,6 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
-using Object = UnityEngine.Object;
 
 namespace VF.Feature {
     public class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
@@ -95,7 +94,7 @@ namespace VF.Feature {
                 }
                 VRCFuryEditorUtils.MarkDirty(meshCopy);
 
-                var avatars = avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>(true);
+                var avatars = avatarObject.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>();
                 foreach (var (skin, weights) in savedWeights) {
                     skin.sharedMesh = meshCopy;
                     var newId = 0;
@@ -199,7 +198,7 @@ namespace VF.Feature {
         }
 
         private ICollection<SkinnedMeshRenderer> GetAllSkins() {
-            return avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            return avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>();
         }
 
         private ICollection<SkinnedMeshRenderer> CollectSkinsUsingMesh(Mesh mesh) {
@@ -227,7 +226,7 @@ namespace VF.Feature {
             var animatedBindings = manager.GetAllUsedControllersRaw()
                 .Select(tuple => tuple.Item2)
                 .SelectMany(controller => GetBindings(avatarObject, controller))
-                .Concat(avatarObject.GetComponentsInChildren<Animator>(true)
+                .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
                     .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
                 .ToList();
 
@@ -269,7 +268,7 @@ namespace VF.Feature {
                 }
             }
 
-            foreach (var avatar in avatarObject.GetComponentsInChildren<VRCAvatarDescriptor>(true)) {
+            foreach (var avatar in avatarObject.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
                 if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
                     if (skins.Contains(avatar.customEyeLookSettings.eyelidsSkinnedMesh)) {
                         foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {

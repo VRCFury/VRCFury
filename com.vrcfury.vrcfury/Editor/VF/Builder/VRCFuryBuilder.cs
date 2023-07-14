@@ -18,8 +18,8 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    public bool SafeRun(GameObject avatarObject, GameObject originalObject = null) {
-        Debug.Log("VRCFury invoked on " + GameObjects.GetName(avatarObject) + " ...");
+    public bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+        Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
@@ -32,12 +32,12 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    public static bool ShouldRun(GameObject avatarObject) {
-        return avatarObject.GetComponentsInChildren<VRCFuryComponent>(true).Length > 0;
+    public static bool ShouldRun(VFGameObject avatarObject) {
+        return avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>().Length > 0;
     }
 
-    public static void StripAllVrcfComponents(GameObject obj) {
-        foreach (var c in obj.GetComponentsInChildren<VRCFuryComponent>(true)) {
+    public static void StripAllVrcfComponents(VFGameObject obj) {
+        foreach (var c in obj.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
             Object.DestroyImmediate(c);
         }
     }
@@ -67,11 +67,11 @@ public class VRCFuryBuilder {
     }
 
     private static void ApplyFuryConfigs(
-        GameObject avatarObject,
-        GameObject originalObject,
+        VFGameObject avatarObject,
+        VFGameObject originalObject,
         ProgressBar progress
     ) {
-        var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(GameObjects.GetName(avatarObject))}";
+        var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
         // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
         // old asset and messes with the new copy.
         var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
@@ -137,11 +137,11 @@ public class VRCFuryBuilder {
         }
 
         progress.Progress(0, "Collecting features");
-        foreach (var c in avatarObject.GetComponentsInChildren<VRCFuryComponent>(true)) {
+        foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
             c.Upgrade();
         }
 
-        foreach (var vrcFury in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
+        foreach (var vrcFury in avatarObject.GetComponentsInSelfAndChildren<VRCFury>()) {
             var configObject = vrcFury.gameObject;
             if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
                 continue;
@@ -149,11 +149,11 @@ public class VRCFuryBuilder {
 
             var loadFailure = vrcFury.GetBrokenMessage();
             if (loadFailure != null) {
-                throw new VRCFBuilderException($"VRCFury component is corrupted on {GameObjects.GetName(configObject)} ({loadFailure})");
+                throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
             }
             var config = vrcFury.config;
             if (config.features != null) {
-                Debug.Log("Importing " + config.features.Count + " features from " + GameObjects.GetName(configObject));
+                Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
                 foreach (var feature in config.features) {
                     AddModel(feature, configObject);
                 }
@@ -188,7 +188,7 @@ public class VRCFuryBuilder {
             currentModelClipPrefix = $"VF{currentModelNumber} {builder.GetClipPrefix() ?? builder.GetType().Name}";
             currentMenuSortPosition = menuSortPositionByBuilder[builder];
             
-            var statusMessage = $"Applying {action.GetName()} on {GameObjects.GetName(builder.avatarObject)} {configPath}";
+            var statusMessage = $"Applying {action.GetName()} on {builder.avatarObject.name} {configPath}";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {

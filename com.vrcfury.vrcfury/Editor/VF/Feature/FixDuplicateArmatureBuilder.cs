@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -31,18 +30,18 @@ namespace VF.Feature {
             if (!hips) return;
             var i = 0;
             var undoers = new List<Action>();
-            foreach (var child in avatarObject.GetComponentsInChildren<Transform>(true)) {
+            foreach (var child in avatarObject.GetSelfAndAllChildren()) {
                 if (child.gameObject == hips) continue;
-                if (GameObjects.GetName(child) != GameObjects.GetName(hips)) continue;
+                if (child.name != hips.name) continue;
                 // Amogus follower uses a sub-animator to animate its avatar, and (currently) we don't rewrite sub-animator
                 // clips, so just skip these for now.
                 if (AnimationUtility.CalculateTransformPath(child, avatarObject.transform).Contains("Follower")) {
                     continue;
                 }
 
-                var oldName = GameObjects.GetName(child);
-                GameObjects.SetName(child, oldName + "_vrcfdup" + (++i));
-                undoers.Add(() => GameObjects.SetName(child, oldName));
+                var oldName = child.name;
+                child.name = oldName + "_vrcfdup" + (++i);
+                undoers.Add(() => child.name = oldName);
                 movedOne = true;
             }
 

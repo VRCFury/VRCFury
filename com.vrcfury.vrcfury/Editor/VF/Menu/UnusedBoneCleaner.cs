@@ -39,15 +39,15 @@ namespace VF.Menu {
             Clean(avatarObj, true);
         }
         
-        private static List<string> Clean(GameObject avatarObj, bool perform = false) {
+        private static List<string> Clean(VFGameObject avatarObj, bool perform = false) {
             var usedBones = new HashSet<Transform>();
-            foreach (var s in avatarObj.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+            foreach (var s in avatarObj.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 foreach (var bone in s.bones) {
                     if (bone) usedBones.Add(bone);
                 }
                 if (s.rootBone) usedBones.Add(s.rootBone);
             }
-            foreach (var c in avatarObj.GetComponentsInChildren<IConstraint>(true)) {
+            foreach (var c in avatarObj.GetComponentsInSelfAndChildren<IConstraint>()) {
                 for (var i = 0; i < c.sourceCount; i++) {
                     var t = c.GetSource(i).sourceTransform;
                     if (t) usedBones.Add(t);
@@ -57,10 +57,10 @@ namespace VF.Menu {
                 avatarObj,
                 perform: perform,
                 ShouldRemoveObj: obj => {
-                    var parent = obj.transform.parent;
+                    var parent = obj.parent;
                     if (!parent) return false;
-                    var name = GameObjects.GetName(obj);
-                    var parentName = GameObjects.GetName(parent);
+                    var name = obj.name;
+                    var parentName = parent.name;
                     if (PrefabUtility.IsPartOfPrefabInstance(obj) && !PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
                         return false;
                     }

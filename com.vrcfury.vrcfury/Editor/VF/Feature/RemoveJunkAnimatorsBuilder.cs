@@ -10,7 +10,7 @@ namespace VF.Feature {
     public class RemoveJunkAnimatorsBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.RemoveJunkAnimators)]
         public void Apply() {
-            foreach (var c in avatarObject.GetComponentsInChildren<VRCFury>(true)) {
+            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFury>()) {
                 var animator = c.gameObject.GetComponent<Animator>();
                 if (animator != null && c.gameObject != avatarObject)
                     Object.DestroyImmediate(animator);

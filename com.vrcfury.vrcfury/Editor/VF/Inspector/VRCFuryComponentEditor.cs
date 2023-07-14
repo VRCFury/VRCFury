@@ -1,12 +1,10 @@
 using System;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
-using Color = UnityEngine.Color;
 
 namespace VF.Inspector {
     public class VRCFuryComponentEditor<T> : Editor where T : VRCFuryComponent {

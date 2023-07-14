@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -6,7 +5,6 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
@@ -15,6 +13,7 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Toggle = VF.Model.Feature.Toggle;
@@ -80,12 +79,12 @@ namespace VF.Feature {
                 manager.GetMenu().MergeMenu(prefix, m.menu, RewriteParamName);
             }
             
-            foreach (var receiver in GetBaseObject().GetComponentsInChildren<VRCContactReceiver>(true)) {
+            foreach (var receiver in GetBaseObject().GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                 if (rewrittenParams.Contains(receiver.parameter)) {
                     receiver.parameter = RewriteParamName(receiver.parameter);
                 }
             }
-            foreach (var physbone in GetBaseObject().GetComponentsInChildren<VRCPhysBone>(true)) {
+            foreach (var physbone in GetBaseObject().GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed")
                     || rewrittenParams.Contains(physbone.parameter + "_Angle")
                     || rewrittenParams.Contains(physbone.parameter + "_Stretch")
@@ -266,7 +265,7 @@ namespace VF.Feature {
             toMain.TakeOwnershipOf(from);
         }
 
-        GameObject GetBaseObject() {
+        VFGameObject GetBaseObject() {
             if (model.rootObjOverride) return model.rootObjOverride;
             return featureBaseObject;
         }

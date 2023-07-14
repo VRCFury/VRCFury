@@ -69,8 +69,8 @@ namespace VF.Component {
             
             // Scripts just reloaded, so delete all holders so they get recreated fresh,
             // instead of the json components trying to reconnect to them
-            foreach (var c in Resources.FindObjectsOfTypeAll<ParsedJsonHolder>()) {
-                Object.DestroyImmediate(c);
+            foreach (var holder in Resources.FindObjectsOfTypeAll<ParsedJsonHolder>()) {
+                Object.DestroyImmediate(holder);
             }
         }
 

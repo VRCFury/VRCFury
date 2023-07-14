@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
@@ -27,14 +25,14 @@ namespace VF.Builder.Haptics {
             return found;
         }
 
-        private static IImmutableList<Renderer> GetAutoRendererInner(GameObject obj, Params p, bool dpsOrTpsOnly) {
+        private static IImmutableList<Renderer> GetAutoRendererInner(VFGameObject obj, Params p, bool dpsOrTpsOnly) {
             bool IsDps(Renderer r) => !dpsOrTpsOnly || TpsConfigurer.HasDpsOrTpsMaterial(r);
 
             var foundOnObject = obj.GetComponents<Renderer>().Where(IsDps).ToImmutableList();
             if (foundOnObject.Count > 0) return foundOnObject;
 
             if (p.SearchChildren) {
-                var foundInChildren = obj.GetComponentsInChildren<Renderer>(true).Where(IsDps).ToImmutableList();
+                var foundInChildren = obj.GetComponentsInSelfAndChildren<Renderer>().Where(IsDps).ToImmutableList();
                 if (foundInChildren.Count > 0) return foundInChildren;
             }
 
@@ -64,13 +62,14 @@ namespace VF.Builder.Haptics {
             return PreferWeightedToBone(inputs, bone.parent);
         }
         
-        private static long GetVertsWeightedToBone(Renderer r, Transform bone) {
+        private static long GetVertsWeightedToBone(Renderer r, VFGameObject bone) {
             if (!(r is SkinnedMeshRenderer skin)) return 0;
             var mesh = skin.sharedMesh;
             if (!mesh) return 0;
-            var children = bone.GetComponentsInChildren<Transform>(true)
+            var children = bone.GetSelfAndAllChildren()
                 .ToImmutableHashSet();
             var childrenBoneIds = skin.bones.Select((b, i) => (b, i))
+                // TODO: Verify .contains works when it's two different instances
                 .Where(pair => children.Contains(pair.b))
                 .Select(pair => pair.i)
                 .ToImmutableHashSet();

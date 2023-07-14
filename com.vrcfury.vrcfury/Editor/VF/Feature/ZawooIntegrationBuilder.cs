@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Animations;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
-using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -31,12 +29,12 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
 
     private List<Tuple<Type, GameObject>> GetZawooRoots() {
         var roots = new List<Tuple<Type, GameObject>>();
-        foreach (var child in avatarObject.GetComponentsInChildren<Transform>(true)) {
+        foreach (var child in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
             var maybeValid = false;
             var isCanine = false;
             foreach (Transform c in child) {
                 if (c.GetComponent<VRCFury>() != null) continue;
-                var name = GameObjects.GetName(c).ToLower();
+                var name = c.asVf().name.ToLower();
                 if (name.Contains("constraint") && name.Contains("peen")) {
                     maybeValid = true;
                     isCanine |= name.Contains("canine");
@@ -49,8 +47,8 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         return roots;
     }
 
-    private void ApplyZawoo(Type type, GameObject root) {
-        Debug.Log("Probably found zawoo prefab at " + GameObjects.GetName(root));
+    private void ApplyZawoo(Type type, VFGameObject root) {
+        Debug.Log("Probably found zawoo prefab at " + root.name);
 
         AnimatorController fx = null;
         VRCExpressionsMenu menu = null;

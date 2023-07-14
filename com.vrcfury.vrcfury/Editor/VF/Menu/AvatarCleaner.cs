@@ -13,9 +13,9 @@ using Object = UnityEngine.Object;
 namespace VF.Menu {
     public class AvatarCleaner {
         public static List<string> Cleanup(
-            GameObject avatarObj,
+            VFGameObject avatarObj,
             bool perform = false,
-            Func<GameObject, bool> ShouldRemoveObj = null,
+            Func<VFGameObject, bool> ShouldRemoveObj = null,
             Func<UnityEngine.Component, bool> ShouldRemoveComponent = null,
             Func<Object, bool> ShouldRemoveAsset = null,
             Func<string, bool> ShouldRemoveLayer = null,
@@ -28,7 +28,7 @@ namespace VF.Menu {
             }
 
             if (ShouldRemoveAsset != null) {
-                var animators = avatarObj.GetComponentsInChildren<Animator>(true);
+                var animators = avatarObj.GetComponentsInSelfAndChildren<Animator>();
                 foreach (var animator in animators) {
                     if (animator.runtimeAnimatorController != null &&
                         ShouldRemoveAsset(animator.runtimeAnimatorController)) {
@@ -220,16 +220,16 @@ namespace VF.Menu {
             else
                 Object.DestroyImmediate(c);
         }
-        public static void RemoveObject(GameObject obj) {
+        public static void RemoveObject(VFGameObject obj) {
             if (!PrefabUtility.IsPartOfPrefabInstance(obj) || PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
-                Object.DestroyImmediate(obj);
+                obj.Destroy();
             } else {
-                foreach (var component in obj.GetComponentsInChildren<UnityEngine.Component>(true)) {
+                foreach (var component in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                     if (!(component is Transform)) {
                         Object.DestroyImmediate(component);
                     }
                 }
-                GameObjects.SetName(obj, "_deleted_" + GameObjects.GetName(obj));
+                obj.name = "_deleted_" + obj.name;
             }
         }
 

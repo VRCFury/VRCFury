@@ -1,16 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Feature;
 using VF.Inspector;
-using VF.Model;
-using VRC.Dynamics;
-using VRC.SDK3.Dynamics.PhysBone.Components;
-using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
     public static class TpsConfigurer {
@@ -63,11 +55,11 @@ namespace VF.Builder.Haptics {
                     Matrix4x4.identity, 
                 };
                 VRCFuryEditorUtils.MarkDirty(meshCopy);
-                skin.bones = new[] { mainBone };
+                skin.bones = new Transform[] { mainBone };
                 skin.sharedMesh = meshCopy;
                 VRCFuryEditorUtils.MarkDirty(skin);
             }
-            
+
             skin.rootBone = rootTransform;
             
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);

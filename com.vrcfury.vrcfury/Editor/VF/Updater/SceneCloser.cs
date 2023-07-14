@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -94,8 +93,8 @@ namespace VF.Updater {
                 if (!updateScene.IsValid() || !updateScene.isLoaded) return;
 
                 Debug.Log("VRCFury is re-opening loaded scenes");
-                var paths = updateScene.GetRootGameObjects()
-                    .Select(obj => GameObjects.GetName(obj))
+                var paths = VFGameObject.GetRoots(updateScene)
+                    .Select(obj => obj.name)
                     .ToList();
                 var first = true;
                 foreach (var path in paths.Where(File.Exists)) {

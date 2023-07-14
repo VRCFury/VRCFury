@@ -13,10 +13,12 @@ namespace VF.VrcHooks {
         // This has to be before -1024 when VRCSDK deletes our components
         public int callbackOrder => -10000;
 
-        public bool OnPreprocessAvatar(GameObject vrcCloneObject) {
+        public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
+            VFGameObject vrcCloneObject = _vrcCloneObject;
+
             // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
             // Let's get a reference to the original avatar, so we can apply our changes to it as well.
-            var cloneObjectName = GameObjects.GetName(vrcCloneObject);
+            var cloneObjectName = vrcCloneObject.name;
 
             if (!cloneObjectName.EndsWith("(Clone)")) {
                 Debug.LogError("Seems that we're not operating on a vrc avatar clone? Bailing. Please report this to VRCFury.");
@@ -28,7 +30,7 @@ namespace VF.VrcHooks {
             GameObject original = null;
             {
                 foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
-                    if (GameObjects.GetName(desc) + "(Clone)" == cloneObjectName && desc.gameObject.activeInHierarchy) {
+                    if (desc.owner().name + "(Clone)" == cloneObjectName && desc.gameObject.activeInHierarchy) {
                         original = desc.gameObject;
                         break;
                     }

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -13,7 +12,6 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using VRC.SDK3.Avatars.Components;
-using AnimationClip = UnityEngine.AnimationClip;
 
 namespace VF.Feature.Base {
     public abstract class FeatureBuilder {
@@ -22,9 +20,9 @@ namespace VF.Feature.Base {
         [NonSerialized] [JsonIgnore] public ClipBuilder clipBuilder;
         [NonSerialized] [JsonIgnore] public string tmpDirParent;
         [NonSerialized] [JsonIgnore] public string tmpDir;
-        [NonSerialized] [JsonIgnore] public GameObject avatarObject;
-        [NonSerialized] [JsonIgnore] public GameObject originalObject;
-        [NonSerialized] [JsonIgnore] public GameObject featureBaseObject;
+        [NonSerialized] [JsonIgnore] public VFGameObject avatarObject;
+        [NonSerialized] [JsonIgnore] public VFGameObject originalObject;
+        [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
         [NonSerialized] [JsonIgnore] public Action<FeatureModel> addOtherFeature;
         [NonSerialized] [JsonIgnore] public int uniqueModelNum;
         [NonSerialized] [JsonIgnore] public List<FeatureModel> allFeaturesInRun;
@@ -197,7 +195,7 @@ namespace VF.Feature.Base {
                         break;
                     case BlendShapeAction blendShape:
                         var foundOne = false;
-                        foreach (var skin in avatarObject.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                        foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                             if (!skin.sharedMesh) continue;
                             var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
                             if (blendShapeIndex < 0) continue;

@@ -1,12 +1,10 @@
 using System;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Builder.Exceptions;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
