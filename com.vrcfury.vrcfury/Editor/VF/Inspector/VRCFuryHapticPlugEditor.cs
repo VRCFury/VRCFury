@@ -303,14 +303,10 @@ namespace VF.Inspector {
             }
             
             if ((pen.configureTps || pen.enableSps) && mutableManager != null) {
+                var checkboxName = pen.enableSps ? "Enable SPS" : "Auto-Configure TPS";
                 if (renderers.Count == 0) {
-                    if (pen.enableSps) {
-                        throw new VRCFBuilderException(
-                            "VRCFury Haptic Plug has 'Enable SPS' checked, but no renderer was found.");
-                    } else {
-                        throw new VRCFBuilderException(
-                            "VRCFury Haptic Plug has 'Auto-Configure TPS' checked, but no renderer was found.");
-                    }
+                    throw new VRCFBuilderException(
+                        $"VRCFury Haptic Plug has '{checkboxName}' checked, but no renderer was found.");
                 }
 
                 foreach (var renderer in renderers) {
@@ -320,22 +316,24 @@ namespace VF.Inspector {
                         SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
                     }
                     
-                    var configuredTps = false;
+                    var configuredOne = false;
                     skin.sharedMaterials = skin.sharedMaterials
                         .Select(mat => {
+                            if (mat == null) return null;
                             if (pen.enableSps) {
+                                configuredOne = true;
                                 return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, pen.spsTextureMask, pen.spsBoneMask, mutableManager);
                             } else if (TpsConfigurer.IsTps(mat)) {
-                                configuredTps = true;
+                                configuredOne = true;
                                 return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, pen.configureTpsMask, mutableManager);
                             }
                             return mat;
                         })
                         .ToArray();
 
-                    if (!pen.enableSps && !configuredTps) {
+                    if (!configuredOne) {
                         throw new VRCFBuilderException(
-                            "VRCFury Haptic Plug has 'auto-configure TPS' checked, but no material on the linked renderer has TPS enabled in the Poiyomi settings.");
+                            $"VRCFury Haptic Plug has '{checkboxName}' checked, but there no valid material was on the linked renderer.");
                     }
 
                     VRCFuryEditorUtils.MarkDirty(skin);

@@ -21,7 +21,7 @@ namespace VF.Builder.Haptics {
                     $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
                     $" on the mesh instead.");
             }
-                
+
             var m = mutableManager.MakeMutable(original);
             SpsPatcher.patch(m, mutableManager);
             m.SetFloat(SpsLength, worldLength);
