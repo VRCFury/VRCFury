@@ -12,7 +12,7 @@ namespace VF.Builder {
             foreach (var physbone in obj.root.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 var root = physbone.GetRootTransform();
                 if (obj != root && obj.IsChildOf(root)) {
-                    var alreadyExcluded = physbone.ignoreTransforms.Any(other => obj.IsChildOf(other));
+                    var alreadyExcluded = physbone.ignoreTransforms.Any(other => other != null && obj.IsChildOf(other));
                     if (!alreadyExcluded) {
                         physbone.ignoreTransforms.Add(obj);
                     }
