@@ -229,7 +229,13 @@ namespace VF.Inspector {
             return (renderers, worldLength, worldRadius, localRotation, localPosition);
         }
 
-        public static Tuple<string, VFGameObject, ICollection<Renderer>, float, float> Bake(VRCFuryHapticPlug plug, List<string> usedNames = null, bool onlySenders = false, MutableManager mutableManager = null) {
+        public static Tuple<string, VFGameObject, ICollection<Renderer>, float, float> Bake(
+            VRCFuryHapticPlug plug,
+            List<string> usedNames = null,
+            Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
+            bool onlySenders = false,
+            MutableManager mutableManager = null
+        ) {
             var transform = plug.transform;
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "plug");
@@ -242,6 +248,21 @@ namespace VF.Inspector {
             }
 
             var (renderers, worldLength, worldRadius, localRotation, localPosition) = size;
+
+            if (usedRenderers != null) {
+                foreach (var r in renderers) {
+                    var rendererObject = r.owner();
+                    if (usedRenderers.TryGetValue(rendererObject, out var otherPlug)) {
+                        throw new Exception(
+                            "Multiple VRCFury Haptic Plugs target the same renderer. This is probably a mistake. " +
+                            "Maybe there was an extra created by accident?\n\n" +
+                            $"Renderer: {r.owner().GetPath()}\n\n" +
+                            $"Plug 1: {otherPlug.owner().GetPath()}\n\n" +
+                            $"Plug 2: {plug.owner().GetPath()}");
+                    }
+                    usedRenderers[rendererObject] = plug;
+                }
+            }
 
             var name = plug.name;
             if (string.IsNullOrWhiteSpace(name)) {

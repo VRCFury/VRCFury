@@ -3,7 +3,6 @@ using System.Collections;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
 
 namespace VF.Component {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver, IVrcfEditorOnly {
@@ -12,7 +11,7 @@ namespace VF.Component {
 
         [NonSerialized] public GameObject gameObjectOverride;
 
-        public new VFGameObject gameObject {
+        public new GameObject gameObject {
             get {
                 if (gameObjectOverride != null) return gameObjectOverride;
                 return base.gameObject;
