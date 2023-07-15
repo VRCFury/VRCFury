@@ -94,6 +94,27 @@ namespace VF.Inspector {
                     ));
                     spsBox.Add(VRCFuryEditorUtils.WrappedLabel("Optional additional texture mask (white = 'do not deform')"));
                     spsBox.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("spsTextureMask")));
+                    
+                    var animated = new VisualElement() {
+                        style = {
+                            backgroundColor = new Color(0,0,0,0.1f),
+                            marginTop = 5
+                        }
+                    };
+                    VRCFuryEditorUtils.Padding(animated, 5);
+                    VRCFuryEditorUtils.BorderRadius(animated, 5);
+                    spsBox.Add(animated);
+                    
+                    animated.Add(VRCFuryEditorUtils.WrappedLabel("Animated Properties", style => {
+                        style.unityFontStyleAndWeight = FontStyle.Bold;
+                        style.unityTextAlign = TextAnchor.MiddleCenter;
+                    }));
+                    animated.Add(VRCFuryEditorUtils.WrappedLabel("(You can animate these in clips!)", style => {
+                        style.unityTextAlign = TextAnchor.MiddleCenter;
+                        style.paddingBottom = 5;
+                    }));
+                    animated.Add(VRCFuryEditorUtils.WrappedLabel("Enabled (0 = disabled, 1 = enabled, can be in between)"));
+                    animated.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("spsAnimatedEnabled")));
                 }
                 return c;
             }, enableSps));
@@ -323,24 +344,27 @@ namespace VF.Inspector {
                         $"VRCFury Haptic Plug has '{checkboxName}' checked, but no renderer was found.");
                 }
 
-                foreach (var renderer in renderers) {
+                renderers = renderers.Select(renderer => {
                     var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager);
 
                     if (plug.enableSps && plug.spsAutorig) {
                         SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
                     }
-                    
+
                     var configuredOne = false;
                     skin.sharedMaterials = skin.sharedMaterials
                         .Select(mat => {
                             if (mat == null) return null;
                             if (plug.enableSps) {
                                 configuredOne = true;
-                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, plug.spsTextureMask, plug.spsBoneMask, mutableManager);
+                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, plug.spsTextureMask,
+                                    plug.spsBoneMask, mutableManager);
                             } else if (TpsConfigurer.IsTps(mat)) {
                                 configuredOne = true;
-                                return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, plug.configureTpsMask, mutableManager);
+                                return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, plug.configureTpsMask,
+                                    mutableManager);
                             }
+
                             return mat;
                         })
                         .ToArray();
@@ -351,9 +375,10 @@ namespace VF.Inspector {
                     }
 
                     VRCFuryEditorUtils.MarkDirty(skin);
-                }
+                    return skin;
+                }).ToArray();
             }
-            
+
             HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
 
             return Tuple.Create(name, bakeRoot, renderers, worldLength, worldRadius);
