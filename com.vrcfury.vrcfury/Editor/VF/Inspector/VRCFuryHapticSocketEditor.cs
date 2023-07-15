@@ -319,8 +319,8 @@ namespace VF.Inspector {
 
         private static bool IsChildOfBone(VRCFuryHapticSocket socket, HumanBodyBones bone) {
             try {
-                VFGameObject obj = socket;
-                VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>();
+                VFGameObject obj = socket.owner();
+                VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj.transform, socket.transform);

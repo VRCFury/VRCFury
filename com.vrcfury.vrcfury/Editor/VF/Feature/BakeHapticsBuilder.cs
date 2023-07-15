@@ -18,6 +18,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.BakeHaptics)]
         public void Apply() {
             var usedNames = new List<string>();
+            var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
             var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
 
             // When you first load into a world, contact receivers already touching a sender register as 0 proximity
@@ -29,7 +30,7 @@ namespace VF.Feature {
             
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 PhysboneUtils.RemoveFromPhysbones(c.transform);
-                var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, mutableManager: mutableManager);
+                var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, plugRenderers, mutableManager: mutableManager);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;

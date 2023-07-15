@@ -19,7 +19,6 @@ namespace VF.Builder {
         public Transform transform => _gameObject == null ? null : _gameObject.transform;
         public static implicit operator VFGameObject(GameObject d) => new VFGameObject(d);
         public static implicit operator VFGameObject(Transform d) => new VFGameObject(d == null ? null : d.gameObject);
-        public static implicit operator VFGameObject(UnityEngine.Component d) => new VFGameObject(d == null ? null : d.gameObject);
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
         public static implicit operator UnityEngine.Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
@@ -147,6 +146,9 @@ namespace VF.Builder {
         public string GetPath(VFGameObject root = null) {
             if (root == null) {
                 root = transform.root;
+                if (this == root) {
+                    return root.name;
+                }
                 return root.name + "/" + AnimationUtility.CalculateTransformPath(this, root);
             }
             if (!IsChildOf(root)) {

@@ -232,7 +232,7 @@ namespace VF.Inspector {
         public static Tuple<string, VFGameObject, ICollection<Renderer>, float, float> Bake(
             VRCFuryHapticPlug plug,
             List<string> usedNames = null,
-            Dictionary<Renderer, VRCFuryHapticPlug> usedRenderers = null,
+            Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool onlySenders = false,
             MutableManager mutableManager = null
         ) {
@@ -251,7 +251,8 @@ namespace VF.Inspector {
 
             if (usedRenderers != null) {
                 foreach (var r in renderers) {
-                    if (usedRenderers.TryGetValue(r, out var otherPlug)) {
+                    var rendererObject = r.owner();
+                    if (usedRenderers.TryGetValue(rendererObject, out var otherPlug)) {
                         throw new Exception(
                             "Multiple VRCFury Haptic Plugs target the same renderer. This is probably a mistake. " +
                             "Maybe there was an extra created by accident?\n\n" +
@@ -259,7 +260,7 @@ namespace VF.Inspector {
                             $"Plug 1: {otherPlug.owner().GetPath()}\n\n" +
                             $"Plug 2: {plug.owner().GetPath()}");
                     }
-                    usedRenderers.Add(r, plug);
+                    usedRenderers[rendererObject] = plug;
                 }
             }
 
