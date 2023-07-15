@@ -52,7 +52,7 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout fl
 		const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
 		applyLerp = min(applyLerp, 1-tooFar);
 
-		applyLerp = applyLerp * active;
+		applyLerp = applyLerp * active * saturate(_SPS_Enabled);
 
 		dumbLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));
 		bezierLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));

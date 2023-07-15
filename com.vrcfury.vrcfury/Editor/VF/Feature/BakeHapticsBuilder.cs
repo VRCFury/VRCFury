@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -28,9 +29,9 @@ namespace VF.Feature {
             // on if it's managed by our new menu system.
             var objectsToForceEnable = new HashSet<VFGameObject>();
             
-            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                PhysboneUtils.RemoveFromPhysbones(c.transform);
-                var bakeInfo = VRCFuryHapticPlugEditor.Bake(c, usedNames, plugRenderers, mutableManager: mutableManager);
+            foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
+                PhysboneUtils.RemoveFromPhysbones(plug.transform);
+                var bakeInfo = VRCFuryHapticPlugEditor.Bake(plug, usedNames, plugRenderers, mutableManager: mutableManager);
 
                 if (bakeInfo != null) {
                     var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
@@ -38,9 +39,42 @@ namespace VF.Feature {
                         objectsToDisableTemporarily.Add(r.transform);
                     }
 
-                    if (c.configureTps || c.enableSps) {
+                    if (plug.configureTps || plug.enableSps) {
                         foreach (var renderer in renderers) {
                             addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
+                        }
+                    }
+
+                    if (plug.enableSps) {
+                        foreach (var renderer in renderers) {
+                            var pathToPlug = plug.owner().GetPath(avatarObject);
+                            var pathToRenderer = renderer.owner().GetPath(avatarObject);
+                            foreach (var c in manager.GetAllUsedControllers()) {
+                                foreach (var clip in c.GetClips()) {
+                                    foreach (var binding in clip.GetFloatBindings()) {
+                                        if (binding.path == pathToRenderer) {
+                                            if (binding.propertyName == "material._TPS_AnimatedToggle") {
+                                                var newBinding = EditorCurveBinding.FloatCurve(
+                                                    pathToRenderer,
+                                                    typeof(SkinnedMeshRenderer),
+                                                    "material._SPS_Enabled"
+                                                );
+                                                clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                            }
+                                        }
+                                        if (binding.path == pathToPlug) {
+                                            if (binding.propertyName == "spsAnimatedEnabled") {
+                                                var newBinding = EditorCurveBinding.FloatCurve(
+                                                    pathToRenderer,
+                                                    typeof(SkinnedMeshRenderer),
+                                                    "material._SPS_Enabled"
+                                                );
+                                                clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

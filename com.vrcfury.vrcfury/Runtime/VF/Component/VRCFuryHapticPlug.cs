@@ -20,6 +20,7 @@ namespace VF.Component {
         public GuidTexture2d spsTextureMask = null;
         public GuidTexture2d configureTpsMask = null;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
+        public float spsAnimatedEnabled = 1;
 
         [Obsolete] public bool configureSps = false;
 
