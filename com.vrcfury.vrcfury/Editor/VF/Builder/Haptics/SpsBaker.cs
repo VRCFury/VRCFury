@@ -10,32 +10,12 @@ namespace VF.Builder.Haptics {
         public static Texture2D Bake(
             SkinnedMeshRenderer skin,
             string tmpDir,
-            Texture2D textureMask,
-            bool boneMask,
+            float[] activeFromMask,
             bool tpsCompatibility
         ) {
             var bakedMesh = MeshBaker.BakeMesh(skin, skin.rootBone, !tpsCompatibility);
             if (bakedMesh == null)
                 throw new VRCFBuilderException("Failed to bake mesh for SPS configuration");
-
-            textureMask = MakeReadable(textureMask);
-
-            ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
-            if (boneMask) {
-                VFGameObject firstBone = skin.rootBone;
-                while (firstBone != null) {
-                    if (skin.bones.Contains((Transform)firstBone)) {
-                        break;
-                    }
-                    firstBone = firstBone.parent;
-                }
-                if (firstBone != null) {
-                    includedBoneIds = firstBone.GetSelfAndAllChildren()
-                        .Select(bone => Array.IndexOf(skin.bones, bone))
-                        .Where(id => id >= 0)
-                        .ToImmutableHashSet();
-                }
-            }
 
             int bitsRequired;
             if (tpsCompatibility) {
@@ -73,30 +53,25 @@ namespace VF.Builder.Haptics {
                 WriteColor(0, 0, 0, 0);
             }
 
-            var uv = skin.sharedMesh.uv;
             var vertices = bakedMesh.vertices;
             var normals = bakedMesh.normals;
-            var boneWeights = skin.sharedMesh.boneWeights;
+
+            float GetActive(int i) {
+                return activeFromMask == null ? 1 : activeFromMask[i];
+            }
 
             for (var i = 0; i < vertices.Length; i++) {
-                var activeByTexture = 1f;
-                if (textureMask != null) {
-                    var p = textureMask.GetPixelBilinear(uv[i].x, uv[i].y);
-                    activeByTexture = 1 - Math.Min(p.maxColorComponent, p.a);
-                }
-
                 WriteVector3(vertices[i]);
 
                 if (tpsCompatibility) {
-                    if (activeByTexture == 0) {
+                    if (GetActive(i) == 0) {
                         WriteVector3(new Vector3(0,0,0));
                     } else {
                         WriteVector3(normals[i]);
                     }
                 } else {
-                    var activeByWeight = GetWeight(boneWeights[i], includedBoneIds);
                     WriteVector3(normals[i]);
-                    WriteFloat(Math.Min(activeByWeight, activeByTexture));
+                    WriteFloat(GetActive(i));
                 }
 
             }
@@ -105,41 +80,6 @@ namespace VF.Builder.Haptics {
             bake.Apply(false);
             VRCFuryAssetDatabase.SaveAsset(bake, tmpDir, "sps_bake");
             return bake;
-        }
-
-        private static float GetWeight(BoneWeight boneWeight, ICollection<int> boneIds) {
-            if (boneIds.Count == 0) return 1;
-            var weightedToBone = 0f;
-            if (boneIds.Contains(boneWeight.boneIndex0)) weightedToBone += boneWeight.weight0;
-            if (boneIds.Contains(boneWeight.boneIndex1)) weightedToBone += boneWeight.weight1;
-            if (boneIds.Contains(boneWeight.boneIndex2)) weightedToBone += boneWeight.weight2;
-            if (boneIds.Contains(boneWeight.boneIndex3)) weightedToBone += boneWeight.weight3;
-            var totalWeight = boneWeight.weight0 + boneWeight.weight1 + boneWeight.weight2 + boneWeight.weight3;
-            if (totalWeight > 0) {
-                weightedToBone /= totalWeight;
-            }
-            return weightedToBone;
-        }
-
-        // https://support.unity.com/hc/en-us/articles/206486626-How-can-I-get-pixels-from-unreadable-textures-
-        private static Texture2D MakeReadable(Texture2D texture) {
-            if (texture == null) return null;
-            if (texture.isReadable) return texture;
-            var tmp = RenderTexture.GetTemporary( 
-                texture.width,
-                texture.height,
-                0,
-                RenderTextureFormat.Default,
-                RenderTextureReadWrite.Linear);
-            Graphics.Blit(texture, tmp);
-            RenderTexture previous = RenderTexture.active;
-            RenderTexture.active = tmp;
-            Texture2D myTexture2D = new Texture2D(texture.width, texture.height);
-            myTexture2D.ReadPixels(new Rect(0, 0, tmp.width, tmp.height), 0, 0);
-            myTexture2D.Apply();
-            RenderTexture.active = previous;
-            RenderTexture.ReleaseTemporary(tmp);
-            return myTexture2D;
         }
     }
 }

@@ -19,7 +19,7 @@ namespace VF.Inspector {
             var configureTps = serializedObject.FindProperty("configureTps");
             var enableSps = serializedObject.FindProperty("enableSps");
             
-            container.Add(new PropertyField(serializedObject.FindProperty("name"), "Name in connected apps"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in connected apps"));
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
             container.Add(VRCFuryEditorUtils.BetterCheckbox(autoMesh, "Automatically find mesh"));
@@ -45,7 +45,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoLength.boolValue) {
-                    c.Add(new PropertyField(serializedObject.FindProperty("length"), "Length"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("length"), "Length"));
                 }
                 return c;
             }, autoLength));
@@ -55,10 +55,20 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoRadius.boolValue) {
-                    c.Add(new PropertyField(serializedObject.FindProperty("radius"), "Radius"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));
                 }
                 return c;
             }, autoRadius));
+            
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(
+                serializedObject.FindProperty("useBoneMask"),
+                "Automatically mask using bone weights"
+            ));
+
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("textureMask"),
+                "Optional additional texture mask (white = 'do not deform or use in length calculations')"
+            ));
 
             container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader) (BETA)"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -87,14 +97,7 @@ namespace VF.Inspector {
                         "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
                         style: style => { style.paddingBottom = 5; }
                     ));
-                    spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
-                        serializedObject.FindProperty("spsBoneMask"),
-                        "Automatically mask SPS using bone weights",
-                        style: style => { style.paddingBottom = 5; }
-                    ));
-                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("Optional additional texture mask (white = 'do not deform')"));
-                    spsBox.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("spsTextureMask")));
-                    
+
                     var animated = new VisualElement() {
                         style = {
                             backgroundColor = new Color(0,0,0,0.1f),
@@ -113,8 +116,10 @@ namespace VF.Inspector {
                         style.unityTextAlign = TextAnchor.MiddleCenter;
                         style.paddingBottom = 5;
                     }));
-                    animated.Add(VRCFuryEditorUtils.WrappedLabel("Enabled (0 = disabled, 1 = enabled, can be in between)"));
-                    animated.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("spsAnimatedEnabled")));
+                    animated.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsAnimatedEnabled"),
+                        "Enabled (0 = disabled, 1 = enabled, can be in between)"
+                    ));
                 }
                 return c;
             }, enableSps));
@@ -127,17 +132,10 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
             
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "Auto-configure Poiyomi TPS (Deprecated)"));
-            adv.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (configureTps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("configureTpsMask"), "Optional mask for TPS"));
-                }
-                return c;
-            }, configureTps));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                var (renderers, worldLength, worldRadius, localRotation, localPosition) = GetWorldSize(target);
+                var (renderers, worldLength, worldRadius, localRotation, localPosition) = PlugSizeDetector.GetWorldSize(target);
                 var text = new List<string>();
                 text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => r.owner().name)));
                 text.Add($"Detected Length: {worldLength}m");
@@ -153,7 +151,7 @@ namespace VF.Inspector {
             var transform = plug.transform;
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
-                size = GetWorldSize(plug);
+                size = PlugSizeDetector.GetWorldSize(plug);
             } catch (Exception e) {
                 VRCFuryGizmoUtils.DrawText(transform.position, e.Message, Color.white);
                 return;
@@ -201,55 +199,6 @@ namespace VF.Inspector {
             return renderers;
         }
 
-        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(VRCFuryHapticPlug plug) {
-            var transform = plug.transform;
-            var renderers = GetRenderers(plug);
-
-            Quaternion worldRotation = transform.rotation;
-            Vector3 worldPosition = transform.position;
-            if (!plug.configureTps && !plug.enableSps && plug.autoPosition && renderers.Count > 0) {
-                var firstRenderer = renderers.First();
-                worldRotation = PlugSizeDetector.GetAutoWorldRotation(firstRenderer);
-                worldPosition = PlugSizeDetector.GetAutoWorldPosition(firstRenderer);
-            }
-            var testBase = transform.Find("OGBTestBase");
-            if (testBase != null) {
-                worldPosition = testBase.position;
-                worldRotation = testBase.rotation;
-            }
-
-            float worldLength = 0;
-            float worldRadius = 0;
-            if (plug.autoRadius || plug.autoLength) {
-                if (renderers.Count == 0) {
-                    throw new VRCFBuilderException("Failed to find plug renderer");
-                }
-                foreach (var renderer in renderers) {
-                    var autoSize = PlugSizeDetector.GetAutoWorldSize(renderer, worldPosition, worldRotation);
-                    if (autoSize == null) continue;
-                    if (plug.autoLength) worldLength = autoSize.Item1;
-                    if (plug.autoRadius) worldRadius = autoSize.Item2;
-                    break;
-                }
-            }
-
-            if (!plug.autoLength) {
-                worldLength = plug.length;
-                if (!plug.unitsInMeters) worldLength *= transform.lossyScale.x;
-            }
-            if (!plug.autoRadius) {
-                worldRadius = plug.radius;
-                if (!plug.unitsInMeters) worldRadius *= transform.lossyScale.x;
-            }
-
-            if (worldLength <= 0) throw new VRCFBuilderException("Failed to detect plug length");
-            if (worldRadius <= 0) throw new VRCFBuilderException("Failed to detect plug radius");
-            if (worldRadius > worldLength / 2) worldRadius = worldLength / 2;
-            var localRotation = Quaternion.Inverse(transform.rotation) * worldRotation;
-            var localPosition = transform.InverseTransformPoint(worldPosition);
-            return (renderers, worldLength, worldRadius, localRotation, localPosition);
-        }
-
         public static Tuple<string, VFGameObject, ICollection<Renderer>, float, float> Bake(
             VRCFuryHapticPlug plug,
             List<string> usedNames = null,
@@ -263,7 +212,7 @@ namespace VF.Inspector {
 
             (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
             try {
-                size = GetWorldSize(plug);
+                size = PlugSizeDetector.GetWorldSize(plug);
             } catch (Exception) {
                 return null;
             }
@@ -351,18 +300,18 @@ namespace VF.Inspector {
                         SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
                     }
 
+                    var activeFromMask = PlugMaskGenerator.GetMask(renderer, plug);
+
                     var configuredOne = false;
                     skin.sharedMaterials = skin.sharedMaterials
                         .Select(mat => {
                             if (mat == null) return null;
                             if (plug.enableSps) {
                                 configuredOne = true;
-                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, plug.spsTextureMask,
-                                    plug.spsBoneMask, mutableManager);
+                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);
                             } else if (TpsConfigurer.IsTps(mat)) {
                                 configuredOne = true;
-                                return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, plug.configureTpsMask,
-                                    mutableManager);
+                                return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);
                             }
 
                             return mat;

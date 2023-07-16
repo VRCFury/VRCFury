@@ -262,16 +262,39 @@ public static class VRCFuryEditorUtils {
     ) {
         var el = new VisualElement() {
             style = {
-                flexDirection = FlexDirection.Row
+                flexDirection = FlexDirection.Row,
+                paddingBottom = 5
             }
         };
         el.Add(Prop(prop, style: s => {
             s.flexShrink = 0;
             s.paddingRight = 3;
         }));
-        el.Add(WrappedLabel(label));
+        el.Add(WrappedLabel(label, style: s => {
+            s.flexShrink = 1;
+        }));
         style?.Invoke(el.style);
         return el;
+    }
+    
+    public static VisualElement BetterProp(
+        SerializedProperty prop,
+        string label = null,
+        Action<IStyle> style = null
+    ) {
+        if (label != null && label.Length > 20) {
+            var el = new VisualElement();
+            el.Add(WrappedLabel(label));
+            el.Add(Prop(prop, style: s => {
+                s.paddingBottom = 5;
+                style?.Invoke(s);
+            }));
+            return el;
+        }
+        return Prop(prop, label, style: s => {
+            s.paddingBottom = 5;
+            style?.Invoke(s);
+        });
     }
     
     public static VisualElement Prop(
