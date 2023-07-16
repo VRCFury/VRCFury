@@ -8,6 +8,8 @@ namespace VF.Component {
         public bool autoRenderer = true;
         public bool autoPosition = true;
         public bool autoLength = true;
+        public bool useBoneMask = true;
+        public GuidTexture2d textureMask = null;
         public float length;
         public bool autoRadius = true;
         public float radius;
@@ -16,15 +18,16 @@ namespace VF.Component {
         public bool configureTps = false;
         public bool enableSps = true;
         public bool spsAutorig = true;
-        public bool spsBoneMask = true;
-        public GuidTexture2d spsTextureMask = null;
-        public GuidTexture2d configureTpsMask = null;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
         public float spsAnimatedEnabled = 1;
 
         [Obsolete] public bool configureSps = false;
+        [Obsolete] public bool spsBoneMask = true;
+        [Obsolete] public GuidTexture2d spsTextureMask = null;
+        [Obsolete] public GuidTexture2d configureTpsMask = null;
 
         protected override void Upgrade(int fromVersion) {
+#pragma warning disable 0612
             if (fromVersion < 1) { 
                 unitsInMeters = true;
             }
@@ -34,14 +37,24 @@ namespace VF.Component {
                 autoRadius = radius == 0;
             }
             if (fromVersion < 3) {
-#pragma warning disable 0612
                 enableSps = configureSps;
-#pragma warning restore 0612
             }
+            if (fromVersion < 5) {
+                if (enableSps) {
+                    useBoneMask = spsBoneMask;
+                    textureMask = spsTextureMask;
+                } else if (configureTps) {
+                    useBoneMask = false;
+                    textureMask = configureTpsMask;
+                } else {
+                    useBoneMask = false;
+                }
+            }
+#pragma warning restore 0612
         }
 
         protected override int GetLatestVersion() {
-            return 4;
+            return 5;
         }
     }
 }

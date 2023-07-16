@@ -11,8 +11,7 @@ namespace VF.Builder.Haptics {
             SkinnedMeshRenderer skin,
             Material original,
             float worldLength,
-            Texture2D textureMask,
-            bool boneMask,
+            float[] activeFromMask,
             MutableManager mutableManager
         ) {
             if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
@@ -26,7 +25,7 @@ namespace VF.Builder.Haptics {
             SpsPatcher.patch(m, mutableManager);
             m.SetFloat(SpsLength, worldLength);
             m.SetFloat(SpsBakedLength, worldLength);
-            var bake = SpsBaker.Bake(skin, mutableManager.GetTmpDir(), textureMask, boneMask, false);
+            var bake = SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false);
             m.SetTexture(SpsBake, bake);
             return m;
         }

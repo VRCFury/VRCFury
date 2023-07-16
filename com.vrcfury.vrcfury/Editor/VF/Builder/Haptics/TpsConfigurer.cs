@@ -81,7 +81,7 @@ namespace VF.Builder.Haptics {
             SkinnedMeshRenderer skin,
             Material original,
             float worldLength,
-            Texture2D mask,
+            float[] activeFromMask,
             MutableManager mutableManager
         ) {
             var mat = mutableManager.MakeMutable(original);
@@ -107,7 +107,7 @@ namespace VF.Builder.Haptics {
             mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
             mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
-            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, mutableManager.GetTmpDir(), mask, false, true));
+            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, true));
             VRCFuryEditorUtils.MarkDirty(mat);
 
             return mat;
