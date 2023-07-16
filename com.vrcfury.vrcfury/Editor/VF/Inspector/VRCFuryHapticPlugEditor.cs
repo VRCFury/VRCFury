@@ -300,7 +300,7 @@ namespace VF.Inspector {
                         SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
                     }
 
-                    var activeFromMask = PlugMaskGenerator.GetMask(renderer, plug);
+                    var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
 
                     var configuredOne = false;
                     skin.sharedMaterials = skin.sharedMaterials
