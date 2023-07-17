@@ -20,6 +20,7 @@ namespace VF.Component {
         public bool spsAutorig = true;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
         public float spsAnimatedEnabled = 1;
+        public bool useLegacyRendererFinder = false;
 
         [Obsolete] public bool configureSps = false;
         [Obsolete] public bool spsBoneMask = true;
@@ -50,11 +51,14 @@ namespace VF.Component {
                     useBoneMask = false;
                 }
             }
+            if (fromVersion < 6) {
+                useLegacyRendererFinder = !enableSps;
+            }
 #pragma warning restore 0612
         }
 
         protected override int GetLatestVersion() {
-            return 5;
+            return 6;
         }
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using UnityEditor;
+using UnityEditor.Graphs;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace VF.Inspector {
     public class VRCFuryGizmoUtils {
@@ -9,21 +11,13 @@ namespace VF.Inspector {
             Vector3 worldEnd,
             Color color
         ) {
-            WithGizmos(() => {
-                Gizmos.color = color;
+            WithHandles(() => {
+                Handles.color = color;
                 var dir = worldEnd - worldStart;
                 var length = dir.magnitude;
-                var up = Vector3.Cross(dir, Vector3.up).normalized;
-                var left = Vector3.Cross(dir, Vector3.left).normalized;
-                var a = worldEnd - dir * 0.1f + up * length * 0.1f;
-                var b = worldEnd - dir * 0.1f + -up * length * 0.1f;
-                var c = worldEnd - dir * 0.1f + left * length * 0.1f;
-                var d = worldEnd - dir * 0.1f + -left * length * 0.1f;
-                Gizmos.DrawLine(worldStart, worldEnd);
-                Gizmos.DrawLine(worldEnd, a);
-                Gizmos.DrawLine(worldEnd, b);
-                Gizmos.DrawLine(worldEnd, c);
-                Gizmos.DrawLine(worldEnd, d);
+                Handles.DrawLine(worldStart, worldEnd);
+                var capSize = length / 4;
+                Handles.ConeHandleCap(0, worldEnd - dir.normalized * capSize * 0.7f, Quaternion.LookRotation(dir), capSize, EventType.Repaint);
             });
         }
 
@@ -45,44 +39,47 @@ namespace VF.Inspector {
             float worldRadius,
             Color color
         ) {
-            WithGizmos(() => {
-                Gizmos.color = color;
-                Gizmos.DrawWireSphere(worldPos, worldRadius);
+            WithHandles(() => {
+                Handles.color = color;
+                Handles.DrawWireDisc(worldPos, Vector3.forward, worldRadius);
+                Handles.DrawWireDisc(worldPos, Vector3.up, worldRadius);
+                Handles.DrawWireDisc(worldPos, Vector3.right, worldRadius);
             });
         }
 
         public static void DrawText(
             Vector3 worldPos,
             string text,
-            Color color
+            Color color,
+            bool worldSize = false,
+            bool left = false
         ) {
             var style = new GUIStyle(GUI.skin.label);
-            style.alignment = TextAnchor.UpperCenter;
+            style.alignment = left ? TextAnchor.UpperLeft : TextAnchor.UpperCenter;
             style.normal.textColor = color;
+            //style.fontSize = 12;
+            if (worldSize) {
+                style.fontSize = (int)(1.5 / HandleUtility.GetHandleSize(worldPos));
+                if (style.fontSize < 8) return;
+            }
             WithHandles(() => {
                 Handles.Label(worldPos, text, style);                
             });
         }
 
-        private static void WithHandles(Action func) {
+        public static void WithHandles(Action func, Color? color = null) {
             var cbak = Handles.color;
             var mbak = Handles.matrix;
+            var zbak = Handles.zTest;
             try {
-                Handles.color = Color.white;
+                Handles.color = color ?? Color.white;
                 Handles.matrix = Matrix4x4.identity;
+                Handles.zTest = CompareFunction.Always;
                 func.Invoke();
             } finally {
                 Handles.color = cbak;
                 Handles.matrix = mbak;
-            }
-        }
-        private static void WithGizmos(Action func) {
-            var cbak = Gizmos.color;
-            try {
-                Gizmos.color = Color.white;
-                func.Invoke();
-            } finally {
-                Gizmos.color = cbak;
+                Handles.zTest = zbak;
             }
         }
     }

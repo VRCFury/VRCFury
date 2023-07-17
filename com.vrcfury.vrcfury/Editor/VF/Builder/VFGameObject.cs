@@ -41,6 +41,9 @@ namespace VF.Builder {
             }
             return false;
         }
+        public override int GetHashCode() {
+            return gameObject == null ? 0 : gameObject.GetHashCode();
+        }
 
         public Matrix4x4 worldToLocalMatrix => transform.worldToLocalMatrix;
         public Matrix4x4 localToWorldMatrix => transform.localToWorldMatrix;
@@ -85,10 +88,6 @@ namespace VF.Builder {
         public VFGameObject parent => transform.parent;
 
         public VFGameObject root => transform.root;
-
-        public override int GetHashCode() {
-            return gameObject == null ? 0 : gameObject.GetHashCode();
-        }
 
         public VFGameObject[] GetSelfAndAllChildren() {
             return GetComponentsInSelfAndChildren<Transform>()

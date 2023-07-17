@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -53,22 +54,39 @@ namespace VF.Inspector {
 
             return container;
         }
-        
+
+        public class GizmoCache {
+            public double time = 0;
+            public Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> autoInfo = null;
+            public Tuple<float, float> touchZoneSize = null;
+        }
+
+        private static ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache> gizmoCache
+            = new ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache>();
+
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
             var transform = socket.transform;
-            var autoInfo = GetInfoFromLightsOrComponent(socket);
+
+            var cache = gizmoCache.GetOrCreateValue(socket);
+            if (cache.time == 0 || EditorApplication.timeSinceStartup > cache.time + 1) {
+                cache.time = EditorApplication.timeSinceStartup;
+                cache.autoInfo = GetInfoFromLightsOrComponent(socket);
+                cache.touchZoneSize = GetHandTouchZoneSize(socket);
+            };
+
+            var autoInfo = cache.autoInfo;
+            var handTouchZoneSize = cache.touchZoneSize;
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
             
-            var text = "Haptic Socket (DPS Disabled)";
-            if (lightType == VRCFuryHapticSocket.AddLight.Hole) text = "Haptic Socket (Hole)";
-            if (lightType == VRCFuryHapticSocket.AddLight.Ring) text = "Haptic Socket (Ring)";
+            var text = "Socket\n(SPS disabled)";
+            if (lightType == VRCFuryHapticSocket.AddLight.Hole) text = "Socket Hole\n(plug follows orange arrow)";
+            if (lightType == VRCFuryHapticSocket.AddLight.Ring) text = "Socket Ring\n(plug follows orange arrow)";
 
-            var handTouchZoneSize = GetHandTouchZoneSize(socket);
             if (handTouchZoneSize != null) {
                 var worldLength = handTouchZoneSize.Item1;
                 var localLength = worldLength / socket.transform.lossyScale.x;
@@ -83,24 +101,43 @@ namespace VF.Inspector {
                 VRCFuryGizmoUtils.DrawText(
                     transform.TransformPoint(localPosition + localForward * -(localLength / 2)),
                     "Hand Touch Zone\n(should be INSIDE)",
-                    Color.red
+                    Color.red,
+                    true
                 );
             }
 
-            VRCFuryGizmoUtils.DrawSphere(
-                transform.TransformPoint(localPosition),
-                0.03f,
-                Color.green
-            );
-            VRCFuryGizmoUtils.DrawArrow(
-                transform.TransformPoint(localPosition),
-                transform.TransformPoint(localPosition + localForward * -0.1f / transform.lossyScale.x),
-                Color.green
-            );
+            var gray = new Color(0.5f, 0.5f, 0.5f, 0.3f);
+            var orange = new Color(1f, 0.5f, 0);
+
+            var worldPos = transform.TransformPoint(localPosition);
+            var worldForward = transform.TransformDirection(localForward);
+            VRCFuryGizmoUtils.WithHandles(() => {
+                Handles.color = orange;
+                Handles.DrawWireDisc(worldPos, worldForward, 0.02f);
+            });
+            VRCFuryGizmoUtils.WithHandles(() => {
+                Handles.color = orange;
+                Handles.DrawWireDisc(worldPos, worldForward, 0.04f);
+            });
+            if (lightType == VRCFuryHapticSocket.AddLight.Ring) {
+                VRCFuryGizmoUtils.DrawArrow(
+                    transform.TransformPoint(localPosition + localForward * 0.05f / transform.lossyScale.x),
+                    transform.TransformPoint(localPosition + localForward * -0.05f / transform.lossyScale.x),
+                    orange
+                );
+            } else {
+                VRCFuryGizmoUtils.DrawArrow(
+                    transform.TransformPoint(localPosition + localForward * 0.1f / transform.lossyScale.x),
+                    transform.TransformPoint(localPosition),
+                    orange
+                );
+            }
             VRCFuryGizmoUtils.DrawText(
                 transform.TransformPoint(localPosition),
-                text + "\n(Arrow points INWARD)",
-                Color.green
+                "\n" + text,
+                Color.gray,
+                true,
+                true
             );
         }
         
