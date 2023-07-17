@@ -106,7 +106,8 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 }
 void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color) {
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
-	#ifdef VERTEXLIGHT_ON
+	// Temporarily disable this check since apparently it causes some passes to not apply SPS
+	//#ifdef VERTEXLIGHT_ON
 	sps_apply_real(vertex, normal, vertexId, color);
-	#endif
+	//#endif
 }
