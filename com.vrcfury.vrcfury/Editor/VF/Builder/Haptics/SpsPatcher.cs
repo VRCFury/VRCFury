@@ -10,10 +10,10 @@ using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public class SpsPatcher {
-        public static void patch(Material mat, MutableManager mutableManager) {
+        public static void patch(Material mat, MutableManager mutableManager, bool keepImports) {
             if (!mat.shader) return;
             try {
-                patchUnsafe(mat, mutableManager);
+                patchUnsafe(mat, mutableManager, keepImports);
             } catch (Exception e) {
                 throw new Exception(
                     "Failed to patch shader with SPS. Report this on the VRCFury discord. Maybe this shader isn't supported yet.\n\n" +
@@ -25,7 +25,7 @@ namespace VF.Builder.Haptics {
             return new Regex(pattern, RegexOptions.Compiled);
         }
 
-        public static void patchUnsafe(Material mat, MutableManager mutableManager) {
+        public static void patchUnsafe(Material mat, MutableManager mutableManager, bool keepImports) {
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(mat, out var guid, out long localId);
             var newShaderName = $"SPSPatched/{guid}";
             var shader = mat.shader;
@@ -162,7 +162,11 @@ namespace VF.Builder.Haptics {
                 newHeader.Add("#define LIL_APP_COLOR");
 
                 var newBody = new List<string>();
-                newBody.Add(ReadAndFlattenPath($"{pathToSps}/sps_funcs.cginc"));
+                if (keepImports) {
+                    newBody.Add($"#include \"{pathToSps}/sps_funcs.cginc\"");
+                } else {
+                    newBody.Add(ReadAndFlattenPath($"{pathToSps}/sps_funcs.cginc"));
+                }
                 newBody.Add($"struct SpsInputs : {paramType} {{");
                 var vertexParam = FindParam("POSITION");
                 if (vertexParam == null) {

@@ -133,6 +133,9 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
+            //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
@@ -324,7 +327,7 @@ namespace VF.Inspector {
                             if (mat == null) return null;
                             if (plug.enableSps) {
                                 configuredOne = true;
-                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);
+                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager, /*plug.channel,*/ plug.spsKeepImports);
                             } else if (TpsConfigurer.IsTps(mat)) {
                                 configuredOne = true;
                                 return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);

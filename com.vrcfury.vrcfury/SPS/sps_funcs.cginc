@@ -3,7 +3,7 @@
 #include "sps_bake.cginc"
 
 // SPS Penetration Shader
-void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color)
+void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color)
 {
 	const float worldLength = _SPS_Length;
 	const float averageLength = 0.28;
@@ -23,7 +23,7 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout fl
 	float3 frontNormal;
 	float entranceAngle;
 	float targetAngle;
-	const bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle);
+	const bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle, color);
 	if (!found) return;
 
 	float orfDistance = length(rootPos);
@@ -103,4 +103,10 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout fl
 
 	vertex = lerp(origVertex, deformedVertex, dumbLerp);
 	normal = lerp(origNormal, deformedNormal, dumbLerp);
+}
+void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color) {
+	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
+	#ifdef VERTEXLIGHT_ON
+	sps_apply_real(vertex, normal, vertexId, color);
+	#endif
 }

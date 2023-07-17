@@ -18,22 +18,18 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addLight"), "Add DPS Light"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Enable hand touch zone? (Auto will add only if child of Hips)"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableHandTouchZone2")));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
-
-            var adv = new Foldout {
-                text = "Advanced transform override",
-                value = false,
-            };
-            container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("position"), "Position"));
-            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("rotation"), "Rotation"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addLight"), "Add DPS Light"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?"));
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("enableHandTouchZone2"),
+                "Enable hand touch zone? (Auto will add only if child of Hips)"
+            ));
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("length"),
+                "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"
+            ));
 
             container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when penetrated:"));
             container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
@@ -41,16 +37,21 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.Info(
                     "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Penetrated state:"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of minimum penetration in meters (can be slightly negative to trigger outside!):"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("minDepth")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of maximum penetration in meters (0 for default):"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("maxDepth")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Allow avatar to trigger its own animation?"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableSelf")));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state"), "Penetrated state"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("minDepth"), "Depth of minimum penetration in meters (can be slightly negative to trigger outside!)"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("maxDepth"), "Depth of maximum penetration in meters (0 for default)"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
                 return c;
             }));
+            
+            var adv = new Foldout {
+                text = "Advanced",
+                value = false,
+            };
+            container.Add(adv);
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
+            //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
 
             return container;
         }

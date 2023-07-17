@@ -1,41 +1,33 @@
 #include "UnityShaderVariables.cginc"
+#include "sps_globals.cginc"
 
 #define SPS_PI float(3.14159265359)
 
 // Type: 0=invalid 1=hole 2=ring 3=front
-void sps_parse_light(float alpha, float range, out int type, int myChannel) {
+void sps_parse_light(float range, out int type, int myChannel) {
 	if (range >= 0.5) {
 		type = 0;
 		return;
 	}
 
 	int legacyRange = round((range % 0.1) * 100);
-	bool isHoleRange = legacyRange == 1;
-	bool isRingRange = legacyRange == 2;
-	bool isFrontRange = legacyRange == 5;
-	bool isEnhancedRange = 0.451 < range && range < 0.485;
-	bool isEnhanced = false;
-	int alphaBits = round(alpha * 255);
-	if (legacyRange == 1 || legacyRange == 2 || legacyRange == 5 || isEnhancedRange) {
-		isEnhanced = (alphaBits >> 6) & 3 == 2;
-	}
 
 	int channel = 0;
-	if (isEnhanced) {
-		if (isEnhancedRange) {
-			channel = round((range - 0.452) / 0.002) + 1;
-		} else {
-			channel = 0;
-		}
-		type = ((alphaBits >> 4) & 3) + 1;
-		if (type == 4) {
-			type = 0;
-		}
-	} else {
-		if (isHoleRange) type = 1;
-		if (isRingRange) type = 2;
-		if (isFrontRange) type = 3;
-	}
+	// if (((alpha >> 6) & 3) == 2) {
+	// 	if (0.451 < range && range < 0.485) {
+	// 		channel = round((range - 0.452) / 0.002) + 1;
+	// 	} else {
+	// 		channel = 0;
+	// 	}
+	// 	type = ((alpha >> 4) & 3) + 1;
+	// 	if (type == 4) {
+	// 		type = 0;
+	// 	}
+	// } else {
+		if (legacyRange == 1) type = 1;
+		if (legacyRange == 2) type = 2;
+		if (legacyRange == 5) type = 3;
+	// }
 
 	if (channel != myChannel) {
 		type = 0;
@@ -53,19 +45,19 @@ bool sps_search(
 	out bool isRing,
 	out float3 rootNormal,
 	out float entranceAngle,
-	out float targetAngle
+	out float targetAngle,
+	inout float4 color
 ) {
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];
-	int myChannel = 0;
+	const int myChannel = 0; // _SPS_Channel;
 	float3 lightWorldPos[4];
 	float3 lightLocalPos[4];
 	{
 		for(int i = 0; i < 4; i++) {
-			const float alpha = unity_LightColor[i];
 	 		const float range = sps_attenToRange(unity_4LightAtten0[i]);
-			sps_parse_light(alpha, range, lightType[i], myChannel);
+			sps_parse_light(range, lightType[i], myChannel);
 	 		lightWorldPos[i] = float3(unity_4LightPosX0[i], unity_4LightPosY0[i], unity_4LightPosZ0[i]);
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}
