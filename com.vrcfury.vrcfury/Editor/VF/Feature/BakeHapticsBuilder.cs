@@ -142,8 +142,6 @@ namespace VF.Feature {
                     objectsToDisableTemporarily.Add(receiver.transform);
                 }
 
-                var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
-
                 if (socket.addMenuItem) {
                     var fx = GetFx();
 
@@ -208,6 +206,7 @@ namespace VF.Feature {
                 }
 
                 var actionNum = 0;
+                var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
                 foreach (var depthAction in socket.depthActions) {
                     actionNum++;
                     var prefix = name + actionNum;
