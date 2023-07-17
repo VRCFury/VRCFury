@@ -55,7 +55,7 @@ void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout fl
 		applyLerp = applyLerp * active * saturate(_SPS_Enabled);
 
 		dumbLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));
-		bezierLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));
+		bezierLerp = saturate(sps_map(applyLerp, 0.2, 1, 0, 1));
 	}
 
 	rootPos = lerp(float3(0,0,worldLength), rootPos, bezierLerp);
