@@ -3,10 +3,9 @@
 #define SPS_PI float(3.14159265359)
 
 // Type: 0=invalid 1=hole 2=ring 3=front
-void sps_parse_light(float alpha, float range, out int type, out int channel) {
+void sps_parse_light(float alpha, float range, out int type, int myChannel) {
 	if (range >= 0.5) {
 		type = 0;
-		channel = 0;
 		return;
 	}
 
@@ -21,6 +20,7 @@ void sps_parse_light(float alpha, float range, out int type, out int channel) {
 		isEnhanced = (alphaBits >> 6) & 3 == 2;
 	}
 
+	int channel = 0;
 	if (isEnhanced) {
 		if (isEnhancedRange) {
 			channel = round((range - 0.452) / 0.002) + 1;
@@ -35,6 +35,11 @@ void sps_parse_light(float alpha, float range, out int type, out int channel) {
 		if (isHoleRange) type = 1;
 		if (isRingRange) type = 2;
 		if (isFrontRange) type = 3;
+	}
+
+	if (channel != myChannel) {
+		type = 0;
+		return;
 	}
 }
 float3 sps_toLocal(float3 v) { return mul(unity_WorldToObject, float4(v, 1)); }
@@ -53,14 +58,14 @@ bool sps_search(
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];
-	int lightChannel[4];
+	int myChannel = 0;
 	float3 lightWorldPos[4];
 	float3 lightLocalPos[4];
 	{
 		for(int i = 0; i < 4; i++) {
 			const float alpha = unity_LightColor[i];
 	 		const float range = sps_attenToRange(unity_4LightAtten0[i]);
-			sps_parse_light(alpha, range, lightType[i], lightChannel[i]);
+			sps_parse_light(alpha, range, lightType[i], myChannel);
 	 		lightWorldPos[i] = float3(unity_4LightPosX0[i], unity_4LightPosY0[i], unity_4LightPosZ0[i]);
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}
@@ -88,7 +93,7 @@ bool sps_search(
 	 	// Find front (normal) light for socket root if available
 	 	float minDistance = 0.1;
 	 	for(int i = 0; i < 4; i++) {
-	 		const float distFromRoot = abs(lightWorldPos[i] - lightWorldPos[rootIndex]);
+	 		const float distFromRoot = length(lightWorldPos[i] - lightWorldPos[rootIndex]);
 	 		if (lightType[i] == 3 && distFromRoot < minDistance) {
 	 			frontFound = true;
 	 			frontIndex = i;
