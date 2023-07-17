@@ -282,6 +282,9 @@ public static class VRCFuryEditorUtils {
         string label = null,
         Action<IStyle> style = null
     ) {
+        if (prop != null && prop.propertyType == SerializedPropertyType.Boolean) {
+            return BetterCheckbox(prop, label, style);
+        }
         if (label != null && label.Length > 20) {
             var el = new VisualElement();
             el.Add(WrappedLabel(label));

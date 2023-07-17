@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -129,9 +130,12 @@ namespace VF.Inspector {
                 value = false
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Size unaffected by scale (Legacy Mode)"));
-            
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "Auto-configure Poiyomi TPS (Deprecated)"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
+            //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
@@ -146,18 +150,40 @@ namespace VF.Inspector {
             return container;
         }
         
+        public class GizmoCache {
+            public double time = 0;
+            public (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
+            public string error;
+            public Vector3 position;
+            public Quaternion rotation;
+        }
+
+        private static ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
+            = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
+        
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
             var transform = plug.transform;
-            (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
-            try {
-                size = PlugSizeDetector.GetWorldSize(plug);
-            } catch (Exception e) {
-                VRCFuryGizmoUtils.DrawText(transform.position, e.Message, Color.white);
+            
+            var cache = gizmoCache.GetOrCreateValue(plug);
+            if (cache.time == 0 || transform.position != cache.position || transform.rotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
+                cache.time = EditorApplication.timeSinceStartup;
+                cache.error = "";
+                cache.position = transform.position;
+                cache.rotation = transform.rotation;
+                try {
+                    cache.size = PlugSizeDetector.GetWorldSize(plug);
+                } catch (Exception e) {
+                    cache.error = e.Message;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(cache.error)) {
+                VRCFuryGizmoUtils.DrawText(transform.position, cache.error, Color.white, true);
                 return;
             }
-            
-            var (renderers, worldLength, worldRadius, localRotation, localPosition) = size;
+
+            var (renderers, worldLength, worldRadius, localRotation, localPosition) = cache.size;
             var localLength = worldLength / transform.lossyScale.x;
             var localRadius = worldRadius / transform.lossyScale.x;
             var localForward = localRotation * Vector3.forward;
@@ -167,7 +193,7 @@ namespace VF.Inspector {
             var worldPosTip = transform.TransformPoint(localPosition + localForward * localLength);
 
             DrawCapsule(transform, localPosition + localHalfway, localCapsuleRotation, worldLength, worldRadius);
-            VRCFuryGizmoUtils.DrawText(worldPosTip, "Tip", Color.white);
+            VRCFuryGizmoUtils.DrawText(worldPosTip, "Tip", Color.white, true);
         }
 
         public static void DrawCapsule(
@@ -185,14 +211,7 @@ namespace VF.Inspector {
         public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
             var renderers = new List<Renderer>();
             if (plug.autoRenderer) {
-                var autoParams = new PlugRendererFinder.Params();
-                if (plug.enableSps) {
-                    autoParams.PreferDpsOrTps = false;
-                    autoParams.SearchChildren = false;
-                    autoParams.PreferWeightedToBone = true;
-                    autoParams.EmptyIfMultiple = true;
-                }
-                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.gameObject, autoParams));
+                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.gameObject, !plug.useLegacyRendererFinder));
             } else {
                 renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
             }
@@ -308,7 +327,7 @@ namespace VF.Inspector {
                             if (mat == null) return null;
                             if (plug.enableSps) {
                                 configuredOne = true;
-                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);
+                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager, /*plug.channel,*/ plug.spsKeepImports);
                             } else if (TpsConfigurer.IsTps(mat)) {
                                 configuredOne = true;
                                 return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);

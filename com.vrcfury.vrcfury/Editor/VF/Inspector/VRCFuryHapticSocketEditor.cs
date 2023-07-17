@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -17,22 +18,18 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addLight"), "Add DPS Light"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Enable hand touch zone? (Auto will add only if child of Hips)"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("enableHandTouchZone2")));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"));
-            container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("length")));
-
-            var adv = new Foldout {
-                text = "Advanced transform override",
-                value = false,
-            };
-            container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("position"), "Position"));
-            adv.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("rotation"), "Rotation"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addLight"), "Add DPS Light"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
+            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?"));
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("enableHandTouchZone2"),
+                "Enable hand touch zone? (Auto will add only if child of Hips)"
+            ));
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("length"),
+                "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"
+            ));
 
             container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when penetrated:"));
             container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
@@ -40,35 +37,99 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.Info(
                     "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Penetrated state:"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of minimum penetration in meters (can be slightly negative to trigger outside!):"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("minDepth")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Depth of maximum penetration in meters (0 for default):"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("maxDepth")));
-                c.Add(VRCFuryEditorUtils.WrappedLabel("Allow avatar to trigger its own animation?"));
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableSelf")));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state"), "Penetrated state"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("minDepth"), "Depth of minimum penetration in meters (can be slightly negative to trigger outside!)"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("maxDepth"), "Depth of maximum penetration in meters (0 for default)"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
                 return c;
             }));
+            
+            var adv = new Foldout {
+                text = "Advanced",
+                value = false,
+            };
+            container.Add(adv);
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
+            //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
 
             return container;
         }
-        
+
+        public class GizmoCache {
+            public double time = 0;
+            public Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> autoInfo = null;
+            public Tuple<float, float> touchZoneSize = null;
+        }
+
+        private static ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache> gizmoCache
+            = new ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache>();
+
+        [CustomEditor(typeof(VRCFurySocketGizmo), true)]
+        public class VRCFuryHapticPlaySocketEditor : Editor {
+            [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
+            static void DrawGizmo2(VRCFurySocketGizmo socket, GizmoType gizmoType) {
+                DrawGizmo(socket.transform.position, socket.transform.rotation, socket.type);
+            }
+        }
+
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type) {
+            var text = "Socket\n(SPS disabled)";
+            if (type == VRCFuryHapticSocket.AddLight.Hole) text = "Socket Hole\n(plug follows orange arrow)";
+            if (type == VRCFuryHapticSocket.AddLight.Ring) text = "Socket Ring\n(plug follows orange arrow)";
+
+            var orange = new Color(1f, 0.5f, 0);
+
+            var worldForward = worldRot * Vector3.forward;
+            VRCFuryGizmoUtils.WithHandles(() => {
+                Handles.color = orange;
+                Handles.DrawWireDisc(worldPos, worldForward, 0.02f);
+            });
+            VRCFuryGizmoUtils.WithHandles(() => {
+                Handles.color = orange;
+                Handles.DrawWireDisc(worldPos, worldForward, 0.04f);
+            });
+            if (type == VRCFuryHapticSocket.AddLight.Ring) {
+                VRCFuryGizmoUtils.DrawArrow(
+                    worldPos + worldForward * 0.05f,
+                    worldPos + worldForward * -0.05f,
+                    orange
+                );
+            } else {
+                VRCFuryGizmoUtils.DrawArrow(
+                    worldPos + worldForward * 0.1f,
+                    worldPos,
+                    orange
+                );
+            }
+            VRCFuryGizmoUtils.DrawText(
+                worldPos,
+                "\n" + text,
+                Color.gray,
+                true,
+                true
+            );
+        }
+
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
             var transform = socket.transform;
-            var autoInfo = GetInfoFromLightsOrComponent(socket);
+
+            var cache = gizmoCache.GetOrCreateValue(socket);
+            if (cache.time == 0 || EditorApplication.timeSinceStartup > cache.time + 1) {
+                cache.time = EditorApplication.timeSinceStartup;
+                cache.autoInfo = GetInfoFromLightsOrComponent(socket);
+                cache.touchZoneSize = GetHandTouchZoneSize(socket);
+            };
+
+            var autoInfo = cache.autoInfo;
+            var handTouchZoneSize = cache.touchZoneSize;
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
-            
-            var text = "Haptic Socket (DPS Disabled)";
-            if (lightType == VRCFuryHapticSocket.AddLight.Hole) text = "Haptic Socket (Hole)";
-            if (lightType == VRCFuryHapticSocket.AddLight.Ring) text = "Haptic Socket (Ring)";
 
-            var handTouchZoneSize = GetHandTouchZoneSize(socket);
             if (handTouchZoneSize != null) {
                 var worldLength = handTouchZoneSize.Item1;
                 var localLength = worldLength / socket.transform.lossyScale.x;
@@ -83,27 +144,14 @@ namespace VF.Inspector {
                 VRCFuryGizmoUtils.DrawText(
                     transform.TransformPoint(localPosition + localForward * -(localLength / 2)),
                     "Hand Touch Zone\n(should be INSIDE)",
-                    Color.red
+                    Color.red,
+                    true
                 );
             }
 
-            VRCFuryGizmoUtils.DrawSphere(
-                transform.TransformPoint(localPosition),
-                0.03f,
-                Color.green
-            );
-            VRCFuryGizmoUtils.DrawArrow(
-                transform.TransformPoint(localPosition),
-                transform.TransformPoint(localPosition + localForward * -0.1f / transform.lossyScale.x),
-                Color.green
-            );
-            VRCFuryGizmoUtils.DrawText(
-                transform.TransformPoint(localPosition),
-                text + "\n(Arrow points INWARD)",
-                Color.green
-            );
+            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType);
         }
-        
+
         public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
             var transform = socket.transform;
             HapticUtils.RemoveTPSSenders(transform);
@@ -188,6 +236,12 @@ namespace VF.Inspector {
                     frontLight.range = 0.45f;
                     frontLight.shadows = LightShadows.None;
                     frontLight.renderMode = LightRenderMode.ForceVertex;
+                }
+
+                if (EditorApplication.isPlaying) {
+                    var added = lights.AddComponent<VRCFurySocketGizmo>();
+                    added.type = lightType;
+                    added.hideFlags = HideFlags.DontSave;
                 }
             }
 
