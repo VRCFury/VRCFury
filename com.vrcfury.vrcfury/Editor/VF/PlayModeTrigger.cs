@@ -111,6 +111,7 @@ namespace VF {
                     builder.SafeRun(obj);
                     VRCFuryBuilder.StripAllVrcfComponents(obj);
                     oneChanged = true;
+                    RestartPhysbones(obj);
                 }
                 foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                     var obj = socket.owner();
@@ -121,6 +122,7 @@ namespace VF {
                         VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
                     });
                     Object.DestroyImmediate(socket);
+                    RestartPhysbones(socket.owner());
                 }
                 foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                     var obj = plug.owner();
@@ -132,6 +134,7 @@ namespace VF {
                         VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
                     });
                     Object.DestroyImmediate(plug);
+                    RestartPhysbones(plug.owner());
                 }
             }
 
@@ -278,6 +281,12 @@ namespace VF {
                     gm.gameObject.SetActive(false);
                     gm.gameObject.SetActive(true);
                 }
+            }
+        }
+
+        private static void RestartPhysbones(VFGameObject obj) {
+            foreach (var physbone in obj.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
+                physbone.InitTransforms(true);
             }
         }
     }

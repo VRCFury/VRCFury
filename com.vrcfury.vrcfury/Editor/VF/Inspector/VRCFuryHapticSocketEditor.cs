@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -11,6 +13,7 @@ using VF.Component;
 using VF.Menu;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
@@ -72,16 +75,18 @@ namespace VF.Inspector {
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
         public class VRCFuryHapticPlaySocketEditor : Editor {
-            [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
+            [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo socket, GizmoType gizmoType) {
-                DrawGizmo(socket.transform.position, socket.transform.rotation, socket.type);
+                DrawGizmo(socket.transform.position, socket.transform.rotation, socket.type, "");
             }
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type) {
-            var text = "Socket\n(SPS disabled)";
-            if (type == VRCFuryHapticSocket.AddLight.Hole) text = "Socket Hole\n(plug follows orange arrow)";
-            if (type == VRCFuryHapticSocket.AddLight.Ring) text = "Socket Ring\n(plug follows orange arrow)";
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name) {
+            var text = "Socket";
+            if (!string.IsNullOrWhiteSpace(name)) text += $" '{name}'";
+            if (type == VRCFuryHapticSocket.AddLight.Hole) text += " (Hole)\nPlug follows orange arrow";
+            else if (type == VRCFuryHapticSocket.AddLight.Ring) text += " (Ring)\nPlug follows orange arrow";
+            else text += " (SPS disabled)";
 
             var orange = new Color(1f, 0.5f, 0);
 
@@ -114,9 +119,13 @@ namespace VF.Inspector {
                 true,
                 true
             );
+
+            // So that it's actually clickable
+            Gizmos.color = Color.clear;
+            Gizmos.DrawSphere(worldPos, 0.04f);
         }
 
-        [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
             var transform = socket.transform;
 
@@ -154,7 +163,7 @@ namespace VF.Inspector {
                 );
             }
 
-            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType);
+            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
         public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
@@ -242,11 +251,17 @@ namespace VF.Inspector {
                     frontLight.shadows = LightShadows.None;
                     frontLight.renderMode = LightRenderMode.ForceVertex;
                 }
-
-                if (EditorApplication.isPlaying) {
-                    var added = lights.AddComponent<VRCFurySocketGizmo>();
-                    added.type = lightType;
-                    added.hideFlags = HideFlags.DontSave;
+            }
+            
+            if (EditorApplication.isPlaying) {
+                var added = bakeRoot.AddComponent<VRCFurySocketGizmo>();
+                added.type = lightType;
+                added.hideFlags = HideFlags.DontSave;
+                foreach (var light in bakeRoot.GetComponentsInSelfAndChildren<Light>()) {
+                    light.hideFlags |= HideFlags.HideInHierarchy;
+                }
+                foreach (var contact in bakeRoot.GetComponentsInSelfAndChildren<ContactBase>()) {
+                    contact.hideFlags |= HideFlags.HideInHierarchy;
                 }
             }
 
@@ -390,10 +405,8 @@ namespace VF.Inspector {
 
         private static string GetName(VRCFuryHapticSocket socket) {
             var name = socket.name;
-            if (string.IsNullOrWhiteSpace(name)) {
-                name = socket.owner().name;
-            }
-            return name;
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+            return HapticUtils.GetName(socket.owner());
         }
 
         private static bool IsChildOf(Transform parent, Transform child) {
