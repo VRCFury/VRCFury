@@ -11,6 +11,7 @@ using VF.Component;
 using VF.Menu;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
@@ -116,7 +117,7 @@ namespace VF.Inspector {
             );
         }
 
-        [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
             var transform = socket.transform;
 
@@ -242,11 +243,17 @@ namespace VF.Inspector {
                     frontLight.shadows = LightShadows.None;
                     frontLight.renderMode = LightRenderMode.ForceVertex;
                 }
-
-                if (EditorApplication.isPlaying) {
-                    var added = lights.AddComponent<VRCFurySocketGizmo>();
-                    added.type = lightType;
-                    added.hideFlags = HideFlags.DontSave;
+            }
+            
+            if (EditorApplication.isPlaying) {
+                var added = bakeRoot.AddComponent<VRCFurySocketGizmo>();
+                added.type = lightType;
+                added.hideFlags = HideFlags.DontSave;
+                foreach (var light in bakeRoot.GetComponentsInSelfAndChildren<Light>()) {
+                    light.hideFlags |= HideFlags.HideInHierarchy;
+                }
+                foreach (var contact in bakeRoot.GetComponentsInSelfAndChildren<ContactBase>()) {
+                    contact.hideFlags |= HideFlags.HideInHierarchy;
                 }
             }
 
