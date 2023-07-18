@@ -39,5 +39,19 @@ namespace VF.Component {
             public bool enableSelf;
             public bool ResetMePlease;
         }
+        
+        protected override void Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                if (name.Contains("D P S")) {
+                    name = "";
+                }
+            }
+#pragma warning restore 0612
+        }
+
+        protected override int GetLatestVersion() {
+            return 1;
+        }
     }
 }

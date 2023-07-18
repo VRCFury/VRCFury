@@ -147,31 +147,7 @@ namespace VF.Builder.Haptics {
                     var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
                     VFGameObject t = source.sourceTransform;
                     if (t == null) continue;
-                    var name = t.name;
-                    var id = name.IndexOf("(");
-                    if (id >= 0) name = name.Substring(id+1);
-                    id = name.IndexOf(")");
-                    if (id >= 0) name = name.Substring(0, id);
-                    // Convert camel case to spaces
-                    name = name.Replace("EZDPS_CB_", "");
-                    name = name.Replace("EZDPS_OB", "");
-                    name = name.Replace("EZDPS_OA", "");
-                    name = name.Replace("EZDPS_T_", "");
-                    name = name.Replace("EZDPS_", "");
-                    name = name.Replace("Adv_", "");
-                    name = Regex.Replace(name, "(\\B[A-Z])", " $1");
-                    name = name.ToLower();
-                    name = name.Replace(VRCFuryEditorUtils.Rev("spd"), "");
-                    name = name.Replace(VRCFuryEditorUtils.Rev("ecifiro"), "");
-                    name = name.Replace('_', ' ');
-                    name = name.Replace('-', ' ');
-                    while (name.Contains("  ")) {
-                        name = name.Replace("  ", " ");
-                    }
-                    name = name.Trim();
-                    name = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(name);
-
-                    var fullName = "Socket (" + name + ")";
+                    var name = HapticUtils.GetName(t);
 
                     var socket = AddSocket(t);
                     addedSocketNames[t] = name;
@@ -180,9 +156,8 @@ namespace VF.Builder.Haptics {
                             * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
                         socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
                         socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
-                        socket.name = name;
                         socket.addMenuItem = true;
-                        t.name = fullName;
+                        t.name = "Haptic Socket";
                         
                         if (name.ToLower().Contains("vag")) {
                             AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);

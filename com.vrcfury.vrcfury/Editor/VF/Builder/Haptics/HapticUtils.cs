@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
+using VF.Inspector;
 using VF.Menu;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -218,6 +221,43 @@ namespace VF.Builder.Haptics {
                 return skin.rootBone;
             }
             return r.transform;
+        }
+        
+        public static string GetName(VFGameObject obj) {
+            var current = obj;
+            while (current != null) {
+                var name = NormalizeName(current.name);
+                if (!string.IsNullOrWhiteSpace(name)) {
+                    return name;
+                }
+                current = current.parent;
+            }
+            return "Unknown";
+        }
+
+        private static string NormalizeName(string name) {
+            var openParen = name.IndexOf("(");
+            if (openParen >= 0) {
+                var closeParen = name.IndexOf(")", openParen);
+                if (closeParen >= 0) {
+                    var inner = name.Substring(openParen+1, closeParen-openParen-1);
+                    var normalizedInner = NormalizeName(inner);
+                    if (!string.IsNullOrWhiteSpace(normalizedInner)) {
+                        return normalizedInner;
+                    }
+                }
+            }
+
+            name = Regex.Replace(name, @"ezdps_([a-z][a-z]?_?)?", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"dps", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"haptic", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"socket", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecifiro"), "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"(\B[A-Z])", " $1");
+            name = name.ToLower();
+            name = Regex.Replace(name, @"[_\- .]+", " ");
+            name = name.Trim();
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(name);
         }
     }
 }

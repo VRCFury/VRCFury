@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -75,14 +77,16 @@ namespace VF.Inspector {
         public class VRCFuryHapticPlaySocketEditor : Editor {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo socket, GizmoType gizmoType) {
-                DrawGizmo(socket.transform.position, socket.transform.rotation, socket.type);
+                DrawGizmo(socket.transform.position, socket.transform.rotation, socket.type, "");
             }
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type) {
-            var text = "Socket\n(SPS disabled)";
-            if (type == VRCFuryHapticSocket.AddLight.Hole) text = "Socket Hole\n(plug follows orange arrow)";
-            if (type == VRCFuryHapticSocket.AddLight.Ring) text = "Socket Ring\n(plug follows orange arrow)";
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name) {
+            var text = "Socket";
+            if (!string.IsNullOrWhiteSpace(name)) text += $" '{name}'";
+            if (type == VRCFuryHapticSocket.AddLight.Hole) text += " (Hole)\nPlug follows orange arrow";
+            else if (type == VRCFuryHapticSocket.AddLight.Ring) text += " (Ring)\nPlug follows orange arrow";
+            else text += " (SPS disabled)";
 
             var orange = new Color(1f, 0.5f, 0);
 
@@ -159,7 +163,7 @@ namespace VF.Inspector {
                 );
             }
 
-            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType);
+            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
         public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
@@ -401,10 +405,8 @@ namespace VF.Inspector {
 
         private static string GetName(VRCFuryHapticSocket socket) {
             var name = socket.name;
-            if (string.IsNullOrWhiteSpace(name)) {
-                name = socket.owner().name;
-            }
-            return name;
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+            return HapticUtils.GetName(socket.owner());
         }
 
         private static bool IsChildOf(Transform parent, Transform child) {
