@@ -356,6 +356,15 @@ namespace VF.Inspector {
             }
 
             HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
+            
+            if (EditorApplication.isPlaying) {
+                foreach (var light in bakeRoot.GetComponentsInSelfAndChildren<Light>()) {
+                    light.hideFlags |= HideFlags.HideInHierarchy;
+                }
+                foreach (var contact in bakeRoot.GetComponentsInSelfAndChildren<ContactBase>()) {
+                    contact.hideFlags |= HideFlags.HideInHierarchy;
+                }
+            }
 
             return Tuple.Create(name, bakeRoot, renderers, worldLength, worldRadius);
         }
