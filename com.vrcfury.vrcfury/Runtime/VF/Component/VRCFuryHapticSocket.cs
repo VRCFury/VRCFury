@@ -29,6 +29,7 @@ namespace VF.Component {
         //public VRCFuryHapticPlug.Channel channel;
 
         public List<DepthAction> depthActions = new List<DepthAction>();
+        public State activeActions;
 
         [Serializable]
         public class DepthAction {
