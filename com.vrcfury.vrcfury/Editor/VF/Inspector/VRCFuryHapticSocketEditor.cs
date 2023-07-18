@@ -118,7 +118,7 @@ namespace VF.Inspector {
 
             // So that it's actually clickable
             Gizmos.color = Color.clear;
-            Gizmos.DrawWireSphere(worldPos, 0.04f);
+            Gizmos.DrawSphere(worldPos, 0.04f);
         }
 
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
