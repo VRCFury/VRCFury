@@ -84,8 +84,11 @@ public class ClipBuilder {
         }
     }
 
+    public void OneFrame(AnimationClip clip, VFGameObject obj, Type type, string propertyName, float value) {
+        clip.SetCurve(GetPath(obj), type, propertyName, OneFrame(value));
+    }
     public void Enable(AnimationClip clip, VFGameObject obj, bool active = true) {
-        clip.SetCurve(GetPath(obj), typeof(GameObject), "m_IsActive", OneFrame(active ? 1 : 0));
+        OneFrame(clip, obj, typeof(GameObject), "m_IsActive", active ? 1 : 0);
     }
     public void Scale(AnimationClip clip, VFGameObject obj, AnimationCurve curve) {
         foreach (var axis in new[]{"x","y","z"}) {
@@ -93,9 +96,9 @@ public class ClipBuilder {
         }
     }
     public void Scale(AnimationClip clip, VFGameObject obj, float x, float y, float z) {
-        clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.x", OneFrame(x));
-        clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.y", OneFrame(y));
-        clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale.z", OneFrame(z));
+        OneFrame(clip, obj, typeof(Transform), "m_LocalScale.x", x);
+        OneFrame(clip, obj, typeof(Transform), "m_LocalScale.y", y);
+        OneFrame(clip, obj, typeof(Transform), "m_LocalScale.z", z);
     }
     public void BlendShape(AnimationClip clip, SkinnedMeshRenderer skin, string blendShape, AnimationCurve curve) {
         clip.SetCurve(GetPath(skin.gameObject), typeof(SkinnedMeshRenderer), "blendShape." + blendShape, curve);

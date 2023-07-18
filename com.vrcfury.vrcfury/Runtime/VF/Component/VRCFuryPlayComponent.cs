@@ -9,5 +9,6 @@ namespace VF.Component {
         public VRCFuryHapticSocket.AddLight type;
         public Vector3 pos;
         public Quaternion rot;
+        public bool show = true;
     }
 }

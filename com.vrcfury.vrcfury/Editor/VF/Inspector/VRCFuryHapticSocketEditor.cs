@@ -77,6 +77,7 @@ namespace VF.Inspector {
         public class VRCFuryHapticPlaySocketEditor : Editor {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
+                if (!gizmo.show) return;
                 DrawGizmo(gizmo.transform.TransformPoint(gizmo.pos), gizmo.transform.rotation * gizmo.rot, gizmo.type, "");
             }
         }
