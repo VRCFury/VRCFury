@@ -16,6 +16,43 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Feature {
     public class BakeHapticsBuilder : FeatureBuilder {
 
+        private List<(VFGameObject, VFGameObject)> spsRewritesToDo
+            = new List<(VFGameObject, VFGameObject)>();
+
+        [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
+        public void ApplySpsRewrites() {
+            foreach (var (plugObj, rendererObj) in spsRewritesToDo) {
+                var pathToPlug = plugObj.GetPath(avatarObject);
+                var pathToRenderer = rendererObj.GetPath(avatarObject);
+                foreach (var c in manager.GetAllUsedControllers()) {
+                    foreach (var clip in c.GetClips()) {
+                        foreach (var binding in clip.GetFloatBindings()) {
+                            if (binding.path == pathToRenderer) {
+                                if (binding.propertyName == "material._TPS_AnimatedToggle") {
+                                    var newBinding = EditorCurveBinding.FloatCurve(
+                                        pathToRenderer,
+                                        typeof(SkinnedMeshRenderer),
+                                        "material._SPS_Enabled"
+                                    );
+                                    clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                }
+                            }
+                            if (binding.path == pathToPlug) {
+                                if (binding.propertyName == "spsAnimatedEnabled") {
+                                    var newBinding = EditorCurveBinding.FloatCurve(
+                                        pathToRenderer,
+                                        typeof(SkinnedMeshRenderer),
+                                        "material._SPS_Enabled"
+                                    );
+                                    clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         [FeatureBuilderAction(FeatureOrder.BakeHaptics)]
         public void Apply() {
             var usedNames = new List<string>();
@@ -54,34 +91,7 @@ namespace VF.Feature {
 
                 if (plug.enableSps) {
                     foreach (var renderer in renderers) {
-                        var pathToPlug = plug.owner().GetPath(avatarObject);
-                        var pathToRenderer = renderer.owner().GetPath(avatarObject);
-                        foreach (var c in manager.GetAllUsedControllers()) {
-                            foreach (var clip in c.GetClips()) {
-                                foreach (var binding in clip.GetFloatBindings()) {
-                                    if (binding.path == pathToRenderer) {
-                                        if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                            var newBinding = EditorCurveBinding.FloatCurve(
-                                                pathToRenderer,
-                                                typeof(SkinnedMeshRenderer),
-                                                "material._SPS_Enabled"
-                                            );
-                                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
-                                        }
-                                    }
-                                    if (binding.path == pathToPlug) {
-                                        if (binding.propertyName == "spsAnimatedEnabled") {
-                                            var newBinding = EditorCurveBinding.FloatCurve(
-                                                pathToRenderer,
-                                                typeof(SkinnedMeshRenderer),
-                                                "material._SPS_Enabled"
-                                            );
-                                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        spsRewritesToDo.Add((plug.owner(), renderer.owner()));
                     }
                 }
 

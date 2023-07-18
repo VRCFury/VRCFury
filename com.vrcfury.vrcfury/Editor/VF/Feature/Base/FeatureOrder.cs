@@ -57,6 +57,8 @@ namespace VF.Feature.Base {
         // Needs to run after things are done moving objects
         ObjectMoveBuilderFixAnimations = 140,
         
+        HapticsAnimationRewrites = 145,
+        
         // Needs to run after most things are done messing with animations,
         // since it'll make copies of the blendshape curves
         BlendShapeLinkFixAnimations = 150,
