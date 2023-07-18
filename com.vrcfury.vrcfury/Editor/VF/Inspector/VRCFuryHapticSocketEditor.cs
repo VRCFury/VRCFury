@@ -76,8 +76,8 @@ namespace VF.Inspector {
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
         public class VRCFuryHapticPlaySocketEditor : Editor {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
-            static void DrawGizmo2(VRCFurySocketGizmo socket, GizmoType gizmoType) {
-                DrawGizmo(socket.transform.position, socket.transform.rotation, socket.type, "");
+            static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
+                DrawGizmo(gizmo.transform.TransformPoint(gizmo.pos), gizmo.transform.rotation * gizmo.rot, gizmo.type, "");
             }
         }
 
@@ -254,9 +254,11 @@ namespace VF.Inspector {
             }
             
             if (EditorApplication.isPlaying) {
-                var added = bakeRoot.AddComponent<VRCFurySocketGizmo>();
-                added.type = lightType;
-                added.hideFlags = HideFlags.DontSave;
+                var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
+                gizmo.pos = localPosition;
+                gizmo.rot = localRotation;
+                gizmo.type = lightType;
+                gizmo.hideFlags = HideFlags.DontSave;
                 foreach (var light in bakeRoot.GetComponentsInSelfAndChildren<Light>()) {
                     light.hideFlags |= HideFlags.HideInHierarchy;
                 }

@@ -61,6 +61,7 @@ namespace VF.Inspector {
             if (worldSize) {
                 style.fontSize = (int)(1.5 / HandleUtility.GetHandleSize(worldPos));
                 if (style.fontSize < 8) return;
+                if (style.fontSize > 40) style.fontSize = 40;
             }
             WithHandles(() => {
                 Handles.Label(worldPos, text, style);                

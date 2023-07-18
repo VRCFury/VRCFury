@@ -7,5 +7,7 @@ namespace VF.Component {
 
     public class VRCFurySocketGizmo : VRCFuryPlayComponent {
         public VRCFuryHapticSocket.AddLight type;
+        public Vector3 pos;
+        public Quaternion rot;
     }
 }

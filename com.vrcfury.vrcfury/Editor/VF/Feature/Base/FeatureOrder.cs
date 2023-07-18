@@ -21,9 +21,6 @@ namespace VF.Feature.Base {
         // Needs to run after all haptic components are in place
         // Needs to run before Toggles, because of its "After Bake" action
         BakeHaptics = -3,
-        
-        // Needs to run after all TPS materials are done
-        TpsScaleFix = -2,
 
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1,
@@ -47,6 +44,10 @@ namespace VF.Feature.Base {
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix = 10,
         AnchorOverrideFix = 11,
+        
+        // Needs to run after all TPS materials are done
+        // Needs to run after toggles are in place
+        TpsScaleFix = 120,
 
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
         // an object moved onto the fake head bone
