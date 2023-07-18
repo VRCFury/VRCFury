@@ -6,7 +6,12 @@ using VF.Model.StateAction;
 namespace VF.Inspector {
 
 public class VRCFuryStateEditor {
-    public static VisualElement render(SerializedProperty prop, string myLabel = null, int labelWidth = 100) {
+    public static VisualElement render(
+        SerializedProperty prop,
+        string myLabel = null,
+        int labelWidth = 100,
+        string tooltip = null
+    ) {
         var container = new VisualElement();
         container.AddToClassList("vfState");
 
@@ -36,7 +41,6 @@ public class VRCFuryStateEditor {
         container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var body = new VisualElement();
 
-            var showLabel = myLabel != null;
             VisualElement singleLineEditor = null;
             if (list.arraySize == 1) {
                 singleLineEditor = VRCFuryEditorUtils.Prop(list.GetArrayElementAtIndex(0));
@@ -46,18 +50,12 @@ public class VRCFuryStateEditor {
             var showSingleLineEditor = singleLineEditor != null;
             var showList = singleLineEditor == null && list.arraySize > 0;
 
-            if (showLabel || showSingleLineEditor || showPlus) {
+            if (showSingleLineEditor || showPlus) {
                 var segments = new VisualElement();
                 body.Add(segments);
                 segments.style.flexDirection = FlexDirection.Row;
                 segments.style.alignItems = Align.FlexStart;
 
-                if (showLabel) {
-                    var label = new Label(myLabel);
-                    label.style.flexBasis = labelWidth;
-                    label.style.flexGrow = 0;
-                    segments.Add(label);
-                }
                 if (showSingleLineEditor) {
                     singleLineEditor.style.flexGrow = 1;
                     segments.Add(singleLineEditor);
@@ -80,7 +78,7 @@ public class VRCFuryStateEditor {
                 body.Add(VRCFuryEditorUtils.List(list, onPlus: OnPlus));
             }
 
-            return body;
+            return VRCFuryEditorUtils.AssembleProp(myLabel, tooltip, body, false, showList, labelWidth);
         }, list, actions));
 
         return container;

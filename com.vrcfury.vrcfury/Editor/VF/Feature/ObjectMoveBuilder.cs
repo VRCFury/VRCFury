@@ -17,6 +17,9 @@ namespace VF.Feature {
         private List<Tuple<string, string>> redirects = new List<Tuple<string, string>>();
         private readonly List<EasyAnimationClip> additionalClips = new List<EasyAnimationClip>();
 
+        // TODO: This should probably rewrite clips as the Moves come in.
+        // Otherwise, if there's an animation targeting an old name and a new name in the FixWriteDefaultsBuilder,
+        // one of them will clobber the other one
         public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {
             var oldPath = clipBuilder.GetPath(obj);
             if (newParent != null)

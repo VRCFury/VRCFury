@@ -87,13 +87,13 @@ namespace VF.Feature.Base {
             return state != null;
         }
 
-        protected AnimationClip LoadState(string name, State state) {
+        protected AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
             if (state == null || state.actions.Count == 0) {
                 return GetFx().GetNoopClip();
             }
 
             void RewriteClip(AnimationClip c) {
-                var rewriter = new ClipRewriter(fromObj: featureBaseObject, fromRoot: avatarObject);
+                var rewriter = new ClipRewriter(animObject: animObjectOverride ?? featureBaseObject, rootObject: avatarObject);
                 rewriter.Rewrite(c);
             }
 
@@ -200,6 +200,39 @@ namespace VF.Feature.Base {
                 }
             }
             return clip;
+        }
+        
+        public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
+            if (recordDefaultStateFirst) {
+                var defaultsManager = allBuildersInRun
+                    .OfType<FixWriteDefaultsBuilder>()
+                    .First();
+                foreach (var b in AnimationUtility.GetCurveBindings(clip))
+                    defaultsManager.RecordDefaultNow(b, true);
+                foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip))
+                    defaultsManager.RecordDefaultNow(b, false);
+            }
+
+            ResetAnimatorBuilder.WithoutAnimator(avatarObject, () => { clip.SampleAnimation(avatarObject, 0); });
+            foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+                if (!binding.propertyName.StartsWith("material.")) continue;
+                var propName = binding.propertyName.Substring("material.".Length);
+                var transform = avatarObject.transform.Find(binding.path);
+                if (!transform) continue;
+                var obj = transform.gameObject;
+                if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) continue;
+                var renderer = obj.GetComponent(binding.type) as Renderer;
+                if (!renderer) continue;
+                var curve = AnimationUtility.GetEditorCurve(clip, binding);
+                if (curve.length == 0) continue;
+                var val = curve.keys[0].value;
+                renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
+                    if (!mat.HasProperty(propName)) return mat;
+                    mat = mutableManager.MakeMutable(mat);
+                    mat.SetFloat(propName, val);
+                    return mat;
+                }).ToArray();
+            }
         }
 
         public List<FeatureBuilderAction> GetActions() {

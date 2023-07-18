@@ -10,14 +10,14 @@ namespace VF.Builder {
     public class ClipRewriter {
 
         private readonly Func<string,string> rewriteBinding;
-        private readonly GameObject fromRoot;
-        private readonly string prefix;
+        private readonly VFGameObject rootObject;
+        private readonly VFGameObject animObject;
         private readonly bool rootBindingsApplyToAvatar;
         private readonly Func<string, string> rewriteParam;
 
         public ClipRewriter(
-            GameObject fromObj = null,
-            GameObject fromRoot = null,
+            VFGameObject animObject = null,
+            VFGameObject rootObject = null,
             Func<string,string> rewriteBinding = null,
             bool rootBindingsApplyToAvatar = false,
             Func<string,string> rewriteParam = null
@@ -25,60 +25,83 @@ namespace VF.Builder {
             this.rewriteBinding = rewriteBinding;
             this.rootBindingsApplyToAvatar = rootBindingsApplyToAvatar;
             this.rewriteParam = rewriteParam;
-            this.fromRoot = fromRoot;
+            this.rootObject = rootObject;
+            this.animObject = animObject;
 
-            if (fromObj == null) {
-                prefix = "";
-            } else if (fromRoot == null) {
-                throw new VRCFBuilderException("fromRoot != null && fromBase == null");
-            } else if (fromObj == fromRoot) {
-                prefix = "";
-            } else if (!fromObj.transform.IsChildOf(fromRoot.transform)) {
-                throw new VRCFBuilderException("fromRoot not child of fromBase");
-            } else {
-                prefix = AnimationUtility.CalculateTransformPath(fromObj.transform, fromRoot.transform);
+            if (animObject == null) {
+                throw new VRCFBuilderException("animObject cannot be null");
+            }
+            if (rootObject == null) {
+                throw new VRCFBuilderException("rootObject cannot be null");
+            }
+            if (!animObject.IsChildOf(rootObject)) {
+                throw new VRCFBuilderException("animObject not child of rootObject");
             }
         }
 
         public string RewritePath(string path) {
+            var testBinding = EditorCurveBinding.FloatCurve(path, typeof(Transform), "m_LocalScale.x");
+            return RewriteBinding(testBinding, true).path;
+        }
+
+        private EditorCurveBinding RewriteBinding(EditorCurveBinding binding, bool isFloat) {
+            // First, apply the rewrites that the user has specified
             if (rewriteBinding != null) {
-                path = rewriteBinding(path);
+                binding.path = rewriteBinding(binding.path);
             }
-            if (path == "" && rootBindingsApplyToAvatar) {
-                return "";
+
+            // Special treatment for animator parameters
+            if (isFloat && binding.path == "" && binding.type == typeof(Animator)) {
+                var propName = binding.propertyName;
+                if (GetIsMuscle(propName)) {
+                    // Use the muscle
+                    var _ = 1;
+                } else if (rewriteParam != null) {
+                    //Debug.LogWarning("Rewritten prop found: " + bindingToUse.propertyName);
+                    binding.propertyName = rewriteParam(binding.propertyName);
+                }
+
+                return binding;
             }
-            path = Join(prefix, path);
-            return path;
+            
+            // Search up the path, starting from the current object, to find the first
+            // base object that the animation works within
+            if (binding.path == "" && rootBindingsApplyToAvatar) {
+                // No path search!
+                var _ = 1;
+            } else {
+                string foundPath = null;
+                VFGameObject current = animObject;
+                while (current != null) {
+                    var prefix = current.GetPath(rootObject);
+                    var copy = binding;
+                    copy.path = Join(prefix, binding.path);
+                    var exists = (isFloat && GetFloatFromAvatar(rootObject, copy, out _))
+                        || (!isFloat && GetObjectFromAvatar(rootObject, copy, out _));
+                    if (exists || foundPath == null) foundPath = copy.path;
+                    if (exists) break;
+                    if (current == rootObject) break;
+                    current = current.parent;
+                }
+                binding.path = foundPath;
+            }
+
+            return binding;
         }
 
         public void Rewrite(
             AnimationClip clip_
         ) {
             var clip = new EasyAnimationClip(clip_);
-
             foreach (var originalBinding in clip.GetFloatBindings()) {
-                var rewrittenBinding = originalBinding;
-                rewrittenBinding.path = RewritePath(rewrittenBinding.path);
                 var curve = clip.GetFloatCurve(originalBinding);
-                
-                var bindingToUse = rewrittenBinding;
-                var forceUpdate = false;
-
-                if (originalBinding.path == "" && originalBinding.type == typeof(Animator)) {
-                    bindingToUse = originalBinding;
-                    var propName = originalBinding.propertyName;
-                    if (GetIsMuscle(propName)) {
-                        // Use the muscle
-                    } else if (rewriteParam != null) {
-                        //Debug.LogWarning("Rewritten prop found: " + bindingToUse.propertyName);
-                        bindingToUse.propertyName = rewriteParam(bindingToUse.propertyName);
-                    }
-                } else if (
-                    rewrittenBinding.path == "" 
-                    && rewrittenBinding.type == typeof(Transform)
-                    && rewrittenBinding.propertyName.StartsWith("m_LocalScale.")
-                    && fromRoot
-                    && GetFloatFromAvatar(fromRoot, originalBinding, out var avatarScale)
+                var rewrittenBinding = RewriteBinding(originalBinding, true);
+                bool forceUpdate = false;
+                if (
+                    originalBinding.path == "" 
+                    && originalBinding.type == typeof(Transform)
+                    && originalBinding.propertyName.StartsWith("m_LocalScale.")
+                    && GetFloatFromAvatar(rootObject, originalBinding, out var avatarScale)
                 ) {
                     forceUpdate = true;
                     curve.keys = curve.keys.Select(k => {
@@ -87,42 +110,26 @@ namespace VF.Builder {
                         k.outTangent *= avatarScale;
                         return k;
                     }).ToArray();
-                } else if (fromRoot) {
-                    var existsOnProp = GetFloatFromAvatar(fromRoot, rewrittenBinding, out _);
-                    var existsOnAvatar = GetFloatFromAvatar(fromRoot, originalBinding, out _);
-                    if (existsOnAvatar && !existsOnProp)
-                        bindingToUse = originalBinding;
                 }
-
-                if (originalBinding != bindingToUse || forceUpdate) {
+                if (originalBinding != rewrittenBinding || forceUpdate) {
                     clip.SetFloatCurve(originalBinding, null);
-                    clip.SetFloatCurve(bindingToUse, curve);
+                    clip.SetFloatCurve(rewrittenBinding, curve);
                 }
             }
             foreach (var originalBinding in clip.GetObjectBindings()) {
-                var rewrittenBinding = originalBinding;
-                rewrittenBinding.path = RewritePath(rewrittenBinding.path);
                 var curve = clip.GetObjectCurve(originalBinding);
-                var bindingToUse = rewrittenBinding;
-                if (fromRoot) {
-                    var existsOnProp = GetObjectFromAvatar(fromRoot, rewrittenBinding, out _);
-                    var existsOnAvatar = GetObjectFromAvatar(fromRoot, originalBinding, out _);
-                    if (existsOnAvatar && !existsOnProp) {
-                        bindingToUse = originalBinding;
-                    }
-                }
-
-                if (originalBinding != bindingToUse) {
+                var rewrittenBinding = RewriteBinding(originalBinding, false);
+                if (originalBinding != rewrittenBinding) {
                     clip.SetObjectCurve(originalBinding, null);
-                    clip.SetObjectCurve(bindingToUse, curve);
+                    clip.SetObjectCurve(rewrittenBinding, curve);
                 }
             }
         }
 
-        private static bool GetFloatFromAvatar(GameObject avatar, EditorCurveBinding binding, out float output) {
+        private static bool GetFloatFromAvatar(VFGameObject avatar, EditorCurveBinding binding, out float output) {
             return AnimationUtility.GetFloatValue(avatar, binding, out output);
         }
-        private static bool GetObjectFromAvatar(GameObject avatar, EditorCurveBinding binding, out Object output) {
+        private static bool GetObjectFromAvatar(VFGameObject avatar, EditorCurveBinding binding, out Object output) {
             return AnimationUtility.GetObjectReferenceValue(avatar, binding, out output);
         }
         

@@ -98,16 +98,20 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
         var c = new VisualElement();
         c.Add(VRCFuryEditorUtils.Info(
             "This feature will manage eye-blinking for your avatar. Note this will disable 'Eyelid Type' on the VRC avatar descriptor."));
-        c.Add(VRCFuryEditorUtils.WrappedLabel("Blinking state:"));
-        c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
+        c.Add(VRCFuryEditorUtils.Prop(
+            prop.FindPropertyRelative("state"),
+            "Blinking State"
+        ));
         var adv = new Foldout {
             text = "Advanced",
             value = false
         };
-        adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionTime"), "Transition Time (s)"));
-        adv.Add(VRCFuryEditorUtils.WrappedLabel("-1 will use VRCFury recommended value"));
-        adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("holdTime"), "Hold Time (s)"));
-        adv.Add(VRCFuryEditorUtils.WrappedLabel("Time eyelids will remain closed, -1 will use VRCFury recommended value"));
+        adv.Add(VRCFuryEditorUtils.Prop(
+            prop.FindPropertyRelative("transitionTime"),
+            "Transition Time (in seconds, -1 will use VRCFury recommended value)"));
+        adv.Add(VRCFuryEditorUtils.Prop(
+            prop.FindPropertyRelative("holdTime"),
+            "Hold Time - Time eyelids will remain closed (in seconds, -1 will use VRCFury recommended value)"));
         c.Add(adv);
         return c;
     }

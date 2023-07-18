@@ -4,10 +4,11 @@ using VF.Component;
 
 namespace VF.Builder.Haptics {
     public static class SpsConfigurer {
-        private static readonly int SpsLength = Shader.PropertyToID("_SPS_Length");
-        private static readonly int SpsBakedLength = Shader.PropertyToID("_SPS_BakedLength");
-        private static readonly int SpsBake = Shader.PropertyToID("_SPS_Bake");
-        //private static readonly int SpsChannel = Shader.PropertyToID("_SPS_Channel");
+        private const string SpsEnabled = "_SPS_Enabled";
+        private const string SpsLength = "_SPS_Length";
+        private const string SpsBakedLength = "_SPS_BakedLength";
+        private const string SpsBake = "_SPS_Bake";
+        //private const string SpsChannel = "_SPS_Channel";
 
         public static Material ConfigureSpsMaterial(
             SkinnedMeshRenderer skin,
@@ -15,8 +16,7 @@ namespace VF.Builder.Haptics {
             float worldLength,
             float[] activeFromMask,
             MutableManager mutableManager,
-            //VRCFuryHapticPlug.Channel channel,
-            bool keepImports
+            VRCFuryHapticPlug plug
         ) {
             if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
                 throw new Exception(
@@ -26,7 +26,9 @@ namespace VF.Builder.Haptics {
             }
 
             var m = mutableManager.MakeMutable(original);
-            SpsPatcher.patch(m, mutableManager, keepImports);
+            SpsPatcher.patch(m, mutableManager, plug.spsKeepImports);
+            m.SetOverrideTag(SpsEnabled + "Animated", "1");
+            m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
             m.SetFloat(SpsLength, worldLength);
             m.SetFloat(SpsBakedLength, worldLength);
             var bake = SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false);

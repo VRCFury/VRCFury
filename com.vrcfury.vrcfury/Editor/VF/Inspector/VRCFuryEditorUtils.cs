@@ -260,44 +260,50 @@ public static class VRCFuryEditorUtils {
         string label,
         Action<IStyle> style = null
     ) {
-        var el = new VisualElement() {
-            style = {
-                flexDirection = FlexDirection.Row,
-                paddingBottom = 5
-            }
-        };
-        el.Add(Prop(prop, style: s => {
-            s.flexShrink = 0;
-            s.paddingRight = 3;
-        }));
-        el.Add(WrappedLabel(label, style: s => {
-            s.flexShrink = 1;
-        }));
-        style?.Invoke(el.style);
-        return el;
+        return BetterProp(prop, label, style: style);
     }
     
     public static VisualElement BetterProp(
         SerializedProperty prop,
         string label = null,
-        Action<IStyle> style = null
+        Action<IStyle> style = null,
+        string tooltip = null
     ) {
-        if (prop != null && prop.propertyType == SerializedPropertyType.Boolean) {
-            return BetterCheckbox(prop, label, style);
-        }
-        if (label != null && label.Length > 20) {
-            var el = new VisualElement();
-            el.Add(WrappedLabel(label));
-            el.Add(Prop(prop, style: s => {
-                s.paddingBottom = 5;
-                style?.Invoke(s);
-            }));
-            return el;
-        }
-        return Prop(prop, label, style: s => {
+        return Prop(prop, label, tooltip: tooltip, style: s => {
             s.paddingBottom = 5;
             style?.Invoke(s);
         });
+    }
+
+    public static (VisualElement, VisualElement) CreateTooltip(string label, string content) {
+        VisualElement labelBox = null;
+        if (label != null) {
+            if (content == null) {
+                return (WrappedLabel(label), null);
+            }
+
+            labelBox = new VisualElement();
+            labelBox.style.flexGrow = 0;
+            labelBox.style.flexDirection = FlexDirection.Row;
+            labelBox.Add(WrappedLabel(label));
+            var im = new Image {
+                image = EditorGUIUtility.FindTexture("_Help"),
+                scaleMode = ScaleMode.ScaleToFit
+            };
+            labelBox.Add(im);
+        }
+
+        VisualElement tooltipBox = null;
+        if (content != null && labelBox != null) {
+            tooltipBox = Info(content);
+            tooltipBox.AddToClassList("vfTooltip");
+            tooltipBox.AddToClassList("vfTooltipHidden");
+            labelBox.AddManipulator(new Clickable(e => {
+                tooltipBox.ToggleInClassList("vfTooltipHidden");
+            }));
+        }
+
+        return (labelBox, tooltipBox);
     }
     
     public static VisualElement Prop(
@@ -308,78 +314,97 @@ public static class VRCFuryEditorUtils {
         Action<IStyle> style = null,
         string tooltip = null
     ) {
-        if (prop == null) return WrappedLabel("Prop is null");
-        VisualElement f = null;
-        var labelHandled = false;
-        switch (prop.propertyType) {
-            case SerializedPropertyType.Enum: {
-                f = new PopupField<string>(
-                    prop.enumDisplayNames.ToList(),
-                    prop.enumValueIndex,
-                    formatSelectedValueCallback: formatEnum,
-                    formatListItemCallback: formatEnum
-                ) { bindingPath = prop.propertyPath };
-                break;
-            }
-            case SerializedPropertyType.Generic: {
-                if (prop.type == "State") {
-                    f = VRCFuryStateEditor.render(prop, label, labelWidth);
-                    labelHandled = true;
+        VisualElement field = null;
+        if (prop == null) {
+            field = WrappedLabel("Prop is null");
+        } else {
+            switch (prop.propertyType) {
+                case SerializedPropertyType.Enum: {
+                    field = new PopupField<string>(
+                        prop.enumDisplayNames.ToList(),
+                        prop.enumValueIndex,
+                        formatSelectedValueCallback: formatEnum,
+                        formatListItemCallback: formatEnum
+                    ) { bindingPath = prop.propertyPath };
+                    break;
                 }
-                break;
-            }
-        }
+                case SerializedPropertyType.Generic: {
+                    if (prop.type == "State") {
+                        return VRCFuryStateEditor.render(prop, label, labelWidth, tooltip);
+                    }
 
-        if (f == null) {
-            f = new PropertyField(prop);
-        }
-
-        VisualElement labelBox = null;
-        if (!labelHandled) {
-            f.AddToClassList("VrcFuryEditorProp");
-            
-            if (label != null) {
-                var flex = new VisualElement();
-                flex.style.flexDirection = FlexDirection.Row;
-
-                labelBox = new VisualElement();
-                labelBox.style.minWidth = labelWidth;
-                labelBox.style.flexGrow = 0;
-                labelBox.style.flexDirection = FlexDirection.Row;
-                labelBox.Add(new Label(label));
-                if (tooltip != null) {
-                    var im = new Image {
-                        image = EditorGUIUtility.FindTexture("_Help"),
-                        scaleMode = ScaleMode.ScaleToFit
-                    };
-                    labelBox.Add(im);
+                    break;
                 }
-                flex.Add(labelBox);
-                var field = Prop(prop);
-                field.style.flexGrow = 1;
-                flex.Add(field);
-                f = flex;
+            }
+            if (field == null) {
+                field = new PropertyField(prop);
             }
         }
-        
-        if (tooltip != null && labelBox != null) {
-            var tooltipBox = Info(tooltip);
-            tooltipBox.AddToClassList("vfTooltip");
-            tooltipBox.AddToClassList("vfTooltipHidden");
-  
-            labelBox.AddManipulator(new Clickable(e => {
-                tooltipBox.ToggleInClassList("vfTooltipHidden");
-            }));
-            
-            var wrapper = new VisualElement();
-            wrapper.Add(f);
+
+        field.AddToClassList("VrcFuryEditorProp");
+
+        var output = AssembleProp(
+            label,
+            tooltip,
+            field,
+            prop != null && prop.propertyType == SerializedPropertyType.Boolean,
+            false,
+            labelWidth
+        );
+        style?.Invoke(output.style);
+        return output;
+    }
+
+    public static VisualElement AssembleProp(
+        string label,
+        string tooltip,
+        VisualElement field,
+        bool isCheckbox,
+        bool forceLabelOnOwnLine,
+        int labelWidth
+    ) {
+        var (labelBox, tooltipBox) = CreateTooltip(label, tooltip);
+        var wrapper = new VisualElement();
+        var addFieldLast = false;
+        if (isCheckbox && labelBox != null) {
+            var row = new VisualElement() {
+                style = {
+                    flexDirection = FlexDirection.Row
+                }
+            };
+            field.style.paddingRight = 3;
+            field.style.flexShrink = 0;
+            row.Add(field);
+            labelBox.style.flexShrink = 1;
+            row.Add(labelBox);
+            wrapper.Add(row);
+        } else if (forceLabelOnOwnLine || (label != null && label.Length > 20) || labelBox == null || field == null) {
+            if (labelBox != null) {
+                wrapper.Add(labelBox);
+            }
+            addFieldLast = true;
+        } else {
+            var labelRow = new VisualElement();
+            labelRow.style.flexDirection = FlexDirection.Row;
+
+            labelBox.style.minWidth = labelWidth;
+            labelBox.style.flexGrow = 0;
+            labelRow.Add(labelBox);
+
+            field.style.flexGrow = 1;
+            labelRow.Add(field);
+
+            wrapper.Add(labelRow);
+        }
+
+        if (tooltipBox != null) {
             wrapper.Add(tooltipBox);
-            f = wrapper;
+        }
+        if (field != null && addFieldLast) {
+            wrapper.Add(field);
         }
 
-        style?.Invoke(f.style);
-        
-        return f;
+        return wrapper;
     }
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {

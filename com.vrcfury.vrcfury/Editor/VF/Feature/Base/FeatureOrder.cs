@@ -15,6 +15,15 @@ namespace VF.Feature.Base {
         // Needs to happen before any objects are moved, so otherwise the imported
         // animations would not be adjusted to point to the new moved object paths
         FullController = -5,
+        
+        UpgradeLegacyHaptics = -4,
+        
+        // Needs to run after all haptic components are in place
+        // Needs to run before Toggles, because of its "After Bake" action
+        BakeHaptics = -3,
+        
+        // Needs to run after all TPS materials are done
+        TpsScaleFix = -2,
 
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1,
@@ -39,15 +48,6 @@ namespace VF.Feature.Base {
         BoundingBoxFix = 10,
         AnchorOverrideFix = 11,
 
-        // Needs to run after TPS integration (since it may add new TPS material meshes)
-        UpgradeLegacyHaptics = 100,
-        
-        // Needs to run after all haptic components are in place
-        BakeHaptics = 110,
-        
-        // Needs to run after all TPS materials are done
-        TpsScaleFix = 120,
-        
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
         // an object moved onto the fake head bone
         FakeHeadBuilder = 130,
@@ -71,9 +71,6 @@ namespace VF.Feature.Base {
         SetMenuIcons1 = 10001,
         MoveMenuItems = 10002,
         SetMenuIcons2 = 10003,
-
-        // Needs to run after FixWriteDefaults collects the defaults for the defaults layer
-        ApplyToggleRestingState = 10005,
         
         // Needs to run after all animations are locked in and done
         BlendshapeOptimizer = 10011,

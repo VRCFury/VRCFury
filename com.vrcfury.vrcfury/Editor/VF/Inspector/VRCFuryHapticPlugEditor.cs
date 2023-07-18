@@ -98,6 +98,14 @@ namespace VF.Inspector {
                         "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
                         style: style => { style.paddingBottom = 5; }
                     ));
+                    
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("postBakeActions"),
+                        "Post-Bake Actions",
+                        tooltip: "Haptic Plug meshes should be posed 'straight' so that length and pose calculations" +
+                                 " can be performed. If you'd like it to appear in a different way by default in game, you can add actions here" +
+                                 " which will be applied to the avatar after the calculations are finished."
+                    ));
 
                     var animated = new VisualElement() {
                         style = {
@@ -327,7 +335,7 @@ namespace VF.Inspector {
                             if (mat == null) return null;
                             if (plug.enableSps) {
                                 configuredOne = true;
-                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager, /*plug.channel,*/ plug.spsKeepImports);
+                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager, plug);
                             } else if (TpsConfigurer.IsTps(mat)) {
                                 configuredOne = true;
                                 return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);

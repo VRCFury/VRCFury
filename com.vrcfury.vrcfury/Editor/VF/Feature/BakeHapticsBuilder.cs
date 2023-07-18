@@ -49,6 +49,9 @@ namespace VF.Feature {
                     }
                 }
 
+                var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                ApplyClipToRestingState(postBakeClip);
+
                 if (plug.enableSps) {
                     foreach (var renderer in renderers) {
                         var pathToPlug = plug.owner().GetPath(avatarObject);
@@ -254,7 +257,7 @@ namespace VF.Feature {
                     var off = layer.NewState("Off");
                     var on = layer.NewState("On");
 
-                    var clip = LoadState(prefix, depthAction.state);
+                    var clip = LoadState(prefix, depthAction.state, socket.owner());
                     if (ClipBuilder.IsStaticMotion(clip)) {
                         var tree = fx.NewBlendTree(prefix + " tree");
                         tree.blendType = BlendTreeType.Simple1D;
