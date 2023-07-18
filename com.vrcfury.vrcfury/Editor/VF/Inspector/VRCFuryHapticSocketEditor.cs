@@ -73,7 +73,7 @@ namespace VF.Inspector {
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
         public class VRCFuryHapticPlaySocketEditor : Editor {
-            [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
+            [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo socket, GizmoType gizmoType) {
                 DrawGizmo(socket.transform.position, socket.transform.rotation, socket.type);
             }
@@ -115,9 +115,13 @@ namespace VF.Inspector {
                 true,
                 true
             );
+
+            // So that it's actually clickable
+            Gizmos.color = Color.clear;
+            Gizmos.DrawWireSphere(worldPos, 0.04f);
         }
 
-        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
             var transform = socket.transform;
 
