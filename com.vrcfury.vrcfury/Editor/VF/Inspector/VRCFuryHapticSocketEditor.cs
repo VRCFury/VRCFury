@@ -30,8 +30,13 @@ namespace VF.Inspector {
                 serializedObject.FindProperty("length"),
                 "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"
             ));
+            
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("activeActions"),
+                "Additional animation when socket is active"
+            ));
 
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when penetrated:"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when plug is present"));
             container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
                 var c = new VisualElement();
                 c.Add(VRCFuryEditorUtils.Info(

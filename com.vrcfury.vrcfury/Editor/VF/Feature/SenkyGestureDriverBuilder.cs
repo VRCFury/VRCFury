@@ -110,8 +110,7 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
             text = "Advanced",
             value = false
         };
-        adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionTime"), "Transition Time (s)"));
-        adv.Add(VRCFuryEditorUtils.WrappedLabel("-1 will use VRCFury recommended value"));
+        adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionTime"), "Transition Time (in seconds, -1 will use VRCFury recommended value)"));
         content.Add(adv);
 
         return content;

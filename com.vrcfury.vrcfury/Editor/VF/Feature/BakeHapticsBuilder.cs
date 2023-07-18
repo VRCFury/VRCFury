@@ -49,6 +49,9 @@ namespace VF.Feature {
                     }
                 }
 
+                var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                ApplyClipToRestingState(postBakeClip);
+
                 if (plug.enableSps) {
                     foreach (var renderer in renderers) {
                         var pathToPlug = plug.owner().GetPath(avatarObject);
@@ -177,14 +180,18 @@ namespace VF.Feature {
                             .ToArray();
                     }
 
+                    var additionalActiveClip = LoadState("socketActive", socket.activeActions);
+
                     foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "VersionBeacon", "Animations")) {
                         child.active = false;
                     }
                     var onLocalClip = fx.NewClip($"{name} (Local)");
+                    ClipRewriter.Copy(additionalActiveClip, onLocalClip);
                     foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "Animations")) {
                         clipBuilder.Enable(onLocalClip, child.gameObject);
                     }
                     var onRemoteClip = fx.NewClip($"{name} (Remote)");
+                    ClipRewriter.Copy(additionalActiveClip, onRemoteClip);
                     foreach (var child in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
                         clipBuilder.Enable(onRemoteClip, child.gameObject);
                     }
@@ -254,7 +261,7 @@ namespace VF.Feature {
                     var off = layer.NewState("Off");
                     var on = layer.NewState("On");
 
-                    var clip = LoadState(prefix, depthAction.state);
+                    var clip = LoadState(prefix, depthAction.state, socket.owner());
                     if (ClipBuilder.IsStaticMotion(clip)) {
                         var tree = fx.NewBlendTree(prefix + " tree");
                         tree.blendType = BlendTreeType.Simple1D;
@@ -357,6 +364,10 @@ namespace VF.Feature {
                     }
                 }
 
+                var firstSocket = autoSockets[0];
+                // If this isn't here, the first socket will never activate unless another one is already active
+                start.TransitionsTo(states[Tuple.Create(0, -1)])
+                    .When(firstSocket.Item2.IsFalse().And(firstSocket.Item3.IsGreaterThan(0)));
                 start.TransitionsTo(states[Tuple.Create(0, 1)]).When(fx.Always());
             }
 

@@ -26,7 +26,7 @@ public class TalkingBuilder : FeatureBuilder<Talking> {
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
         content.Add(VRCFuryEditorUtils.Info("This feature will activate the given animation whenever the avatar is talking."));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state")));
+        content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
         return content;
     }
 }

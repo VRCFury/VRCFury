@@ -24,6 +24,7 @@ namespace VF.Component {
         public bool useLegacyRendererFinder = false;
         public bool addDpsTipLight = false;
         public bool spsKeepImports = false;
+        public State postBakeActions;
 
         [Obsolete] public bool configureSps = false;
         [Obsolete] public bool spsBoneMask = true;

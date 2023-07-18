@@ -80,7 +80,7 @@ namespace VF.Builder.Haptics {
         private static Texture2D MakeReadable(Texture2D texture) {
             if (texture == null) return null;
             if (texture.isReadable) return texture;
-            var tmp = RenderTexture.GetTemporary( 
+            var tmp = RenderTexture.GetTemporary(
                 texture.width,
                 texture.height,
                 0,

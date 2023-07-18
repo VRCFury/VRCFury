@@ -164,8 +164,8 @@ namespace VF.Feature {
             var type = toMain.GetType();
             
             var rewriter = new ClipRewriter(
-                fromObj: GetBaseObject(),
-                fromRoot: avatarObject,
+                animObject: GetBaseObject(),
+                rootObject: avatarObject,
                 rewriteBinding: RewriteBinding,
                 rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
                 rewriteParam: RewriteParamName
@@ -183,7 +183,7 @@ namespace VF.Feature {
                 for (var i = 0; i < layer.avatarMask.transformCount; i++) {
                     var path = layer.avatarMask.GetTransformPath(i);
                     var rewritten = rewriter.RewritePath(path);
-                    if (avatarObject.transform.Find(path) == null || avatarObject.transform.Find(rewritten) != null) {
+                    if (path != rewritten) {
                         layer.avatarMask.SetTransformPath(i, rewritten);
                     }
                 }
