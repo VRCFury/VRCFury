@@ -318,7 +318,7 @@ namespace VF.Inspector {
                 }
 
                 renderers = renderers.Select(renderer => {
-                    var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager);
+                    var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
 
                     if (plug.enableSps && plug.spsAutorig) {
                         SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);

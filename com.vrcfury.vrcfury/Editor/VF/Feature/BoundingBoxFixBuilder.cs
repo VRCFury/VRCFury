@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -15,6 +16,23 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BoundingBoxFix)]
         public void Apply() {
+            if (this != allBuildersInRun.OfType<BoundingBoxFixBuilder>().First()) {
+                return;
+            }
+
+            var skins = new HashSet<SkinnedMeshRenderer>();
+            var skipSkins = new HashSet<SkinnedMeshRenderer>();
+            foreach (var component in allFeaturesInRun.OfType<BoundingBoxFix2>()) {
+                if (component.singleRenderer) {
+                    skins.Add(component.singleRenderer);
+                } else if (component.skipRenderer) {
+                    skipSkins.Add(component.skipRenderer);
+                } else {
+                    skins.UnionWith(avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>());
+                }
+            }
+            skins.RemoveWhere(s => skipSkins.Contains(s));
+
             float maxLinear = 0;
             Renderer maxRenderer = null;
             foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
@@ -31,8 +49,7 @@ namespace VF.Feature {
             if (maxRenderer != null) {
                 Debug.Log($"Largest renderer is {clipBuilder.GetPath(maxRenderer.transform)} with linear size of {maxLinear}");
             }
-            
-            var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>();
+
             foreach (var skin in skins) {
                 AdjustBoundingBox(skin);
             }
