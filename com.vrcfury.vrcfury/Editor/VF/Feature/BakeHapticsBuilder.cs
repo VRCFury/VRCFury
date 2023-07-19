@@ -213,7 +213,14 @@ namespace VF.Feature {
                     foreach (var child in FindChildren("Receivers", "VersionLocal")) {
                         clipBuilder.Enable(onStealthClip, child.gameObject);
                     }
-                    
+
+                    var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
+                    if (gizmo != null) {
+                        gizmo.show = false;
+                        clipBuilder.OneFrame(onLocalClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
+                        clipBuilder.OneFrame(onRemoteClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
+                    }
+
                     var holeOn = fx.NewBool(name, synced: true);
                     manager.GetMenu().NewMenuToggle($"{socketsMenu}/{name}", holeOn);
 
