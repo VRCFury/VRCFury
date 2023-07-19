@@ -85,6 +85,9 @@ namespace VF.Feature {
                 if (plug.configureTps || plug.enableSps) {
                     foreach (var renderer in renderers) {
                         addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
+                        if (renderer is SkinnedMeshRenderer skin) {
+                            addOtherFeature(new BoundingBoxFix2() { skipRenderer = skin });
+                        }
                     }
                 }
 

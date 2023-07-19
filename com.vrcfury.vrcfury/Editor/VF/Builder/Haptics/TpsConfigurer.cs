@@ -1,8 +1,10 @@
+using System;
 using System.Linq;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Feature;
 using VF.Inspector;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
     public static class TpsConfigurer {
@@ -21,7 +23,8 @@ namespace VF.Builder.Haptics {
         public static SkinnedMeshRenderer NormalizeRenderer(
             Renderer renderer,
             Transform rootTransform,
-            MutableManager mutableManager
+            MutableManager mutableManager,
+            float worldLength
         ) {
             // Convert MeshRenderer to SkinnedMeshRenderer
             if (renderer is MeshRenderer) {
@@ -67,12 +70,11 @@ namespace VF.Builder.Haptics {
             foreach (var vertex in bake.vertices) {
                 bounds.Encapsulate(vertex);
             }
-            // This needs to be at least the distance of tooFar in the SPS shader, so that the lights are in range
-            // before deformation may happen
-            var multiplyLength = 2.5f;
-            bounds.extents *= 2*multiplyLength;
+
+            var localLength = worldLength / rootTransform.lossyScale.z;
+            bounds.Encapsulate(new Vector3(localLength * 1.5f,localLength * 1.5f,localLength * 2.5f));
+            bounds.Encapsulate(new Vector3(localLength * -1.5f,localLength * -1.5f,localLength * 2.5f));
             skin.localBounds = bounds;
-            BoundingBoxFixBuilder.AdjustBoundingBox(skin);
 
             return skin;
         }
