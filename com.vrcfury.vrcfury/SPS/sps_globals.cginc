@@ -6,5 +6,6 @@ float _SPS_BakedLength;
 Texture2D _SPS_Bake;
 float _SPS_Enabled;
 //float _SPS_Channel;
+float _SPS_Overrun;
 
 #endif

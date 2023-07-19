@@ -6,6 +6,7 @@ namespace VF.Builder.Haptics {
     public static class SpsConfigurer {
         private const string SpsEnabled = "_SPS_Enabled";
         private const string SpsLength = "_SPS_Length";
+        private const string SpsOverrun = "_SPS_Overrun";
         private const string SpsBakedLength = "_SPS_BakedLength";
         private const string SpsBake = "_SPS_Bake";
         //private const string SpsChannel = "_SPS_Channel";
@@ -31,6 +32,7 @@ namespace VF.Builder.Haptics {
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
             m.SetFloat(SpsLength, worldLength);
             m.SetFloat(SpsBakedLength, worldLength);
+            m.SetFloat(SpsOverrun, plug.spsOverrun ? 1 : 0);
             var bake = SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false);
             m.SetTexture(SpsBake, bake);
             //m.SetFloat(SpsChannel, (int)channel);
