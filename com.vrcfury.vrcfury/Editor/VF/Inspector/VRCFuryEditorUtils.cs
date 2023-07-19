@@ -378,7 +378,7 @@ public static class VRCFuryEditorUtils {
             labelBox.style.flexShrink = 1;
             row.Add(labelBox);
             wrapper.Add(row);
-        } else if (forceLabelOnOwnLine || (label != null && label.Length > 20) || labelBox == null || field == null) {
+        } else if (forceLabelOnOwnLine || (label != null && label.Length > 16) || labelBox == null || field == null) {
             if (labelBox != null) {
                 wrapper.Add(labelBox);
             }

@@ -25,6 +25,7 @@ namespace VF.Component {
         public bool addDpsTipLight = false;
         public bool spsKeepImports = false;
         public State postBakeActions;
+        public bool spsOverrun = true;
 
         [Obsolete] public bool configureSps = false;
         [Obsolete] public bool spsBoneMask = true;

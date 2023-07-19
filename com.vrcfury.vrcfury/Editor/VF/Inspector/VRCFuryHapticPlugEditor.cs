@@ -107,34 +107,31 @@ namespace VF.Inspector {
                                  " which will be applied to the avatar after the calculations are finished."
                     ));
 
-                    var animated = new VisualElement() {
-                        style = {
-                            backgroundColor = new Color(0,0,0,0.1f),
-                            marginTop = 5
-                        }
+                    var shaderAdv = new Foldout {
+                        text = "Advanced SPS Options",
+                        value = false,
+                        style = { paddingLeft = 13 }
                     };
-                    VRCFuryEditorUtils.Padding(animated, 5);
-                    VRCFuryEditorUtils.BorderRadius(animated, 5);
-                    spsBox.Add(animated);
-                    
-                    animated.Add(VRCFuryEditorUtils.WrappedLabel("Animated Properties", style => {
-                        style.unityFontStyleAndWeight = FontStyle.Bold;
-                        style.unityTextAlign = TextAnchor.MiddleCenter;
-                    }));
-                    animated.Add(VRCFuryEditorUtils.WrappedLabel("(You can animate these in clips!)", style => {
-                        style.unityTextAlign = TextAnchor.MiddleCenter;
-                        style.paddingBottom = 5;
-                    }));
-                    animated.Add(VRCFuryEditorUtils.BetterProp(
+                    shaderAdv.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsAnimatedEnabled"),
-                        "Enabled (0 = disabled, 1 = enabled, can be in between)"
+                        "Deformation Enabled",
+                        tooltip: "This field can range from 0 (SPS fully disabled) to 1 (SPS fully enabled)." +
+                                 " You can ANIMATE this field to disable deformation during animations when plug should not be attracted toward sockets." +
+                                 " You can smoothly animate from 0 to 1 to smoothly activate deformation, just in case plug is near a socket while activated."
                     ));
+                    shaderAdv.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsOverrun"),
+                        "Allow Hole Overrun",
+                        tooltip: "This allows the plug to extend very slightly past holes to improve collapse visuals." +
+                                 " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
+                    ));
+                    spsBox.Add(shaderAdv);
                 }
                 return c;
             }, enableSps));
 
             var adv = new Foldout {
-                text = "Advanced",
+                text = "Advanced Plug Options",
                 value = false
             };
             container.Add(adv);
