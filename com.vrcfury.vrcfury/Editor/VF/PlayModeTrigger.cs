@@ -100,10 +100,7 @@ namespace VF {
                     var obj = avatar.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
-                    if (IsAv3EmulatorClone(obj)) {
-                        // these are av3emulator temp objects. Building on them doesn't work.
-                        continue;
-                    }
+                    if (IsWithinAv3EmulatorClone(obj)) continue;
                     if (obj.GetComponentsInSelfAndChildren<VRCFuryTest>().Length > 0) {
                         continue;
                     }
@@ -117,24 +114,26 @@ namespace VF {
                     var obj = socket.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
+                    if (IsWithinAv3EmulatorClone(obj)) continue;
                     socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
                     });
                     Object.DestroyImmediate(socket);
-                    RestartPhysbones(socket.owner());
+                    RestartPhysbones(obj);
                 }
                 foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                     var obj = plug.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
+                    if (IsWithinAv3EmulatorClone(obj)) continue;
                     plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         var mutableManager = new MutableManager(tmpDir);
                         VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
                     });
                     Object.DestroyImmediate(plug);
-                    RestartPhysbones(plug.owner());
+                    RestartPhysbones(obj);
                 }
             }
 
@@ -149,6 +148,10 @@ namespace VF {
         private static bool IsAv3EmulatorClone(VFGameObject obj) {
             return obj.name.Contains("(ShadowClone)")
                    || obj.name.Contains("(MirrorReflection)");
+        }
+        
+        private static bool IsWithinAv3EmulatorClone(VFGameObject obj) {
+            return obj.GetSelfAndAllParents().Any(IsAv3EmulatorClone);
         }
 
         private static void DestroyAllOfType(string typeStr) {
