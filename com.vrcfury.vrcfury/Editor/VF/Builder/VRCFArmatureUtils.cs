@@ -1,10 +1,19 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Builder {
     public class VRCFArmatureUtils {
+        private static ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, Transform>> cache
+            = new ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, Transform>>();
+
+        public static void ClearCache() {
+            cache = new ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, Transform>>();
+        }
+
         public static VFGameObject FindBoneOnArmatureOrNull(VFGameObject avatarObject, HumanBodyBones findBone) {
             try {
                 return FindBoneOnArmatureOrException(avatarObject, findBone);
@@ -17,13 +26,21 @@ namespace VF.Builder {
          * This basically does what Animator.GetBoneTransform SHOULD do, except GetBoneTransform randomly sometimes
          * returns bones on clothing armatures instead of the avatar, and also sometimes returns null for no reason.
          */
-        public static GameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
+        public static VFGameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator) {
                 throw new VRCFBuilderException("Avatar does not contain an Animator. Are you sure the avatar's rig is set to Humanoid?");
             }
             if (!animator.avatar) {
                 throw new VRCFBuilderException("Avatar's Animator does not have a rig present. Are you sure the avatar's rig is set to Humanoid?");
+            }
+
+            if (!cache.TryGetValue(animator.avatar, out var cacheDict)) {
+                cacheDict = new Dictionary<HumanBodyBones, Transform>();
+                cache.Add(animator.avatar, cacheDict);
+            }
+            if (cacheDict.TryGetValue(findBone, out var cached)) {
+                return cached;
             }
 
             var so = new SerializedObject(animator.avatar);
@@ -38,7 +55,9 @@ namespace VF.Builder {
                     "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
                     bonePath);
             }
-            return found.gameObject;
+
+            cacheDict[findBone] = found;
+            return found;
         }
 
         private static int GetSkeletonIndex(SerializedObject so, HumanBodyBones humanoidIndex) {
@@ -93,7 +112,7 @@ namespace VF.Builder {
 
             return boneHashArray.GetArrayElementAtIndex(skeletonIndex).longValue;
         }
-        
+
         private static string GetBonePathFromBoneHash(SerializedObject so, long boneHash) {
             var tosArray = so.FindProperty("m_TOS");
             for (int i = 0; i < tosArray.arraySize; i++) {

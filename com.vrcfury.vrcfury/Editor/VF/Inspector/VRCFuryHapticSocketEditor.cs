@@ -64,15 +64,6 @@ namespace VF.Inspector {
             return container;
         }
 
-        public class GizmoCache {
-            public double time = 0;
-            public Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> autoInfo = null;
-            public Tuple<float, float> touchZoneSize = null;
-        }
-
-        private static ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache> gizmoCache
-            = new ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache>();
-
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
         public class VRCFuryHapticPlaySocketEditor : Editor {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
@@ -130,15 +121,8 @@ namespace VF.Inspector {
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
             var transform = socket.transform;
 
-            var cache = gizmoCache.GetOrCreateValue(socket);
-            if (cache.time == 0 || EditorApplication.timeSinceStartup > cache.time + 1) {
-                cache.time = EditorApplication.timeSinceStartup;
-                cache.autoInfo = GetInfoFromLightsOrComponent(socket);
-                cache.touchZoneSize = GetHandTouchZoneSize(socket);
-            };
-
-            var autoInfo = cache.autoInfo;
-            var handTouchZoneSize = cache.touchZoneSize;
+            var autoInfo = GetInfoFromLightsOrComponent(socket);
+            var handTouchZoneSize = GetHandTouchZoneSize(socket);
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
