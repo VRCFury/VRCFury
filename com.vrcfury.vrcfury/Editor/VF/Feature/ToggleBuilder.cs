@@ -21,8 +21,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private string layerName;
     private VFACondition onCase;
     private bool onEqualsOut;
-    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState>();
-    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, VFAState>();
+    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
+    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
+
     private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private bool appliedToRest = false;
     
@@ -266,7 +267,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
             Apply(fx, layer, off, onCase.And(isLocal.Not()), layerName + " On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), layerName + " On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), layerName + " On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter, true);
         } else {
             Apply(fx, layer, off, onCase, layerName + " On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
@@ -299,7 +300,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State action,
         State inAction,
         State outAction,
-        VFABool physBoneResetter
+        VFABool physBoneResetter,
+        bool isLocal = false
     ) {
         var isHumanoidLayer = controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
 
@@ -437,8 +439,20 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        inStates[controller.GetType()] = inState;
-        outStates[controller.GetType()] = outState;
+        if (!model.separateLocal)
+        {
+            inStates[controller.GetType()] = (inState, null, null);
+            outStates[controller.GetType()] = (outState, null, null);
+        } else {
+            if (!isLocal) {
+                inStates[controller.GetType()] = (null, inState, null);
+                outStates[controller.GetType()] = (null, outState, null);
+            } else {
+                inStates[controller.GetType()] = (null, inStates[controller.GetType()].Item2, inState);
+                outStates[controller.GetType()] = (null, inStates[controller.GetType()].Item2, outState);
+            }
+        }
+        
 
 
         if (physBoneResetter != null) {
@@ -469,9 +483,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var paramsToTurnOff = new HashSet<VFABool>();
         var paramsToTurnToZero = new Dictionary<String, HashSet<(VFAInteger, int)>>();
         var allOthersOff = controllers[0].Always();
+        var isLocal = controllers[0].IsLocal().IsTrue();
 
         foreach (var controller in controllers) {
-            VFAState outState = outStates.ContainsKey(controller.GetType()) ? outStates[controller.GetType()] : null;
+            (VFAState outState, VFAState outStateR, VFAState outStateL) = outStates.ContainsKey(controller.GetType()) ? outStates[controller.GetType()] : (null, null, null);
             
             foreach (var exclusiveTag in GetExclusiveTags()) {
                 foreach (var other in allBuildersInRun
@@ -494,9 +509,36 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                                     allOthersOff = allOthersOff.And(otherOnCondition.Not());
                                 }
                             }
-                            VFAState inState = other.inStates.ContainsKey(controller.GetType()) ? other.inStates[controller.GetType()] : null;
-                            if (inState != null && outState != null && inState.GetRawStateMachine() == outState.GetRawStateMachine()) {
-                                outState.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                            (VFAState inState, VFAState inStateR, VFAState inStateL) = other.inStates.ContainsKey(controller.GetType()) ? other.inStates[controller.GetType()] : (null, null, null);
+
+                            if (inState != null) {
+                                if (outState != null && inState.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                    outState.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                }
+                                if (outStateR != null && inState.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
+                                    outStateR.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                }
+                                if (outStateL != null && inState.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
+                                    outStateL.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                }
+                            }
+
+                            if (inStateR != null) {
+                                if (outState != null && inStateR.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                    outState.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal.Not())).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                }
+                                if (outStateR != null && inStateR.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
+                                    outStateR.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal).Not()).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                }
+                            }
+
+                            if (inStateL != null) {
+                                if (outState != null && inStateL.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                    outState.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                }
+                                if (outStateL != null && inStateL.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
+                                    outStateL.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                }
                             }
                         }
                     }
@@ -505,6 +547,24 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             if (outState != null) {
                 var exitTransition = outState.TransitionsToExit();
+                if (onEqualsOut) {
+                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                } else {
+                    exitTransition.When().WithTransitionExitTime(1);
+                }
+            }
+
+            if (outStateR != null) {
+                var exitTransition = outStateR.TransitionsToExit();
+                if (onEqualsOut) {
+                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                } else {
+                    exitTransition.When().WithTransitionExitTime(1);
+                }
+            }
+
+            if (outStateL != null) {
+                var exitTransition = outStateL.TransitionsToExit();
                 if (onEqualsOut) {
                     exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
                 } else {
