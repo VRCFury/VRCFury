@@ -9,7 +9,6 @@ namespace VF.Builder {
             try {
                 return FindBoneOnArmatureOrException(avatarObject, findBone);
             } catch (Exception e) {
-                Debug.LogWarning("Failed to find bone " + findBone + ": " + e.Message);
                 return null;
             }
         }
