@@ -236,28 +236,37 @@ namespace VF.Builder.Haptics {
         }
 
         private static string NormalizeName(string name) {
-            var openParen = name.IndexOf("(");
-            if (openParen >= 0) {
-                var closeParen = name.IndexOf(")", openParen);
-                if (closeParen >= 0) {
-                    var inner = name.Substring(openParen+1, closeParen-openParen-1);
-                    var normalizedInner = NormalizeName(inner);
-                    if (!string.IsNullOrWhiteSpace(normalizedInner)) {
-                        return normalizedInner;
-                    }
-                }
-            }
-
             name = Regex.Replace(name, @"ezdps_([a-z][a-z]?_?)?", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"dps", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"gameobject", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"object", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"tps", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"haptic", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"socket", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"plug", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"\(\d+\)", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecifiro"), "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"[_\-.\[\]\(\)]+", " ");
+            name = LowerCaseSequentialUpperCaseChars(name);
             name = Regex.Replace(name, @"(\B[A-Z])", " $1");
+            name = Regex.Replace(name, @" +", " ");
             name = name.ToLower();
-            name = Regex.Replace(name, @"[_\- .]+", " ");
             name = name.Trim();
             return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(name);
+        }
+
+        private static string LowerCaseSequentialUpperCaseChars(string str) {
+            var arr = str.ToCharArray();
+            var lastWasUpper = false;
+            for (var i = 0; i < arr.Length; i++) {
+                var currentIsUpper = Char.IsUpper(arr[i]);
+                if (lastWasUpper && currentIsUpper) {
+                    arr[i - 1] = Char.ToLower(arr[i - 1]);
+                    arr[i] = Char.ToLower(arr[i]);
+                }
+                lastWasUpper = currentIsUpper;
+            }
+            return new string(arr);
         }
     }
 }

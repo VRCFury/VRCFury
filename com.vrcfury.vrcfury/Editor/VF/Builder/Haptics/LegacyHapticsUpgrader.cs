@@ -157,7 +157,7 @@ namespace VF.Builder.Haptics {
                         socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
                         socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
                         socket.addMenuItem = true;
-                        t.name = "Haptic Socket";
+                        //t.name = "Haptic Socket";
                         
                         if (name.ToLower().Contains("vag")) {
                             AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);

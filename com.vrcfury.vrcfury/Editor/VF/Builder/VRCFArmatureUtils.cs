@@ -1,15 +1,23 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Builder {
     public class VRCFArmatureUtils {
+        private static ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, string>> cache
+            = new ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, string>>();
+
+        public static void ClearCache() {
+            cache = new ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, string>>();
+        }
+
         public static VFGameObject FindBoneOnArmatureOrNull(VFGameObject avatarObject, HumanBodyBones findBone) {
             try {
                 return FindBoneOnArmatureOrException(avatarObject, findBone);
             } catch (Exception e) {
-                Debug.LogWarning("Failed to find bone " + findBone + ": " + e.Message);
                 return null;
             }
         }
@@ -18,19 +26,8 @@ namespace VF.Builder {
          * This basically does what Animator.GetBoneTransform SHOULD do, except GetBoneTransform randomly sometimes
          * returns bones on clothing armatures instead of the avatar, and also sometimes returns null for no reason.
          */
-        public static GameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
-            var animator = avatarObject.GetComponent<Animator>();
-            if (!animator) {
-                throw new VRCFBuilderException("Avatar does not contain an Animator. Are you sure the avatar's rig is set to Humanoid?");
-            }
-            if (!animator.avatar) {
-                throw new VRCFBuilderException("Avatar's Animator does not have a rig present. Are you sure the avatar's rig is set to Humanoid?");
-            }
-
-            var so = new SerializedObject(animator.avatar);
-            var skeletonIndex = GetSkeletonIndex(so, findBone);
-            var boneHash = GetBoneHashFromSkeletonIndex(so, skeletonIndex);
-            var bonePath = GetBonePathFromBoneHash(so, boneHash);
+        public static VFGameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
+            var bonePath = FindBonePathOrException(avatarObject, findBone);
 
             var found = avatarObject.transform.Find(bonePath);
             if (!found) {
@@ -39,7 +36,31 @@ namespace VF.Builder {
                     "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
                     bonePath);
             }
-            return found.gameObject;
+
+            return found;
+        }
+        
+        private static string FindBonePathOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
+            var animator = avatarObject.GetComponent<Animator>();
+            if (!animator) {
+                throw new VRCFBuilderException("Avatar does not contain an Animator. Are you sure the avatar's rig is set to Humanoid?");
+            }
+            if (!animator.avatar) {
+                throw new VRCFBuilderException("Avatar's Animator does not have a rig present. Are you sure the avatar's rig is set to Humanoid?");
+            }
+
+            if (!cache.TryGetValue(animator.avatar, out var cacheDict)) {
+                cacheDict = new Dictionary<HumanBodyBones, string>();
+                cache.Add(animator.avatar, cacheDict);
+            }
+            if (cacheDict.TryGetValue(findBone, out var cached)) {
+                return cached;
+            }
+
+            var so = new SerializedObject(animator.avatar);
+            var skeletonIndex = GetSkeletonIndex(so, findBone);
+            var boneHash = GetBoneHashFromSkeletonIndex(so, skeletonIndex);
+            return GetBonePathFromBoneHash(so, boneHash);
         }
 
         private static int GetSkeletonIndex(SerializedObject so, HumanBodyBones humanoidIndex) {
@@ -94,7 +115,7 @@ namespace VF.Builder {
 
             return boneHashArray.GetArrayElementAtIndex(skeletonIndex).longValue;
         }
-        
+
         private static string GetBonePathFromBoneHash(SerializedObject so, long boneHash) {
             var tosArray = so.FindProperty("m_TOS");
             for (int i = 0; i < tosArray.arraySize; i++) {
