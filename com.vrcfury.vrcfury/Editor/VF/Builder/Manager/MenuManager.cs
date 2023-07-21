@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
@@ -126,8 +127,7 @@ namespace VF.Builder {
         private VRCExpressionsMenu GetSubmenu(
             IList<string> path,
             bool createIfMissing = true,
-            VRCExpressionsMenu.Control createFromControl = null,
-            Func<string,string> rewriteParamName = null
+            VRCExpressionsMenu.Control createFromControl = null
         ) {
             var current = GetRaw();
             for (var i = 0; i < path.Count; i++) {
@@ -145,7 +145,7 @@ namespace VF.Builder {
                 if (folderControl == null) {
                     if (!createIfMissing) return null;
                     if (createFromControl != null && i == path.Count - 1) {
-                        folderControl = CloneControl(createFromControl, rewriteParamName);
+                        folderControl = CloneControl(createFromControl);
                     } else {
                         folderControl = NewControl();
                     }
@@ -220,14 +220,13 @@ namespace VF.Builder {
             return str.Trim();
         }
 
-        public void MergeMenu(VRCExpressionsMenu from, Func<string,string> rewriteParamName = null) {
-            MergeMenu(new string[]{}, from, rewriteParamName);
+        public void MergeMenu(VRCExpressionsMenu from) {
+            MergeMenu(new string[]{}, from);
         }
 
         public void MergeMenu(
             IList<string> prefix,
             VRCExpressionsMenu from,
-            Func<string,string> rewriteParamName = null,
             Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
         ) {
             var to = GetSubmenu(prefix);
@@ -244,28 +243,28 @@ namespace VF.Builder {
                 if (fromControl.type == VRCExpressionsMenu.Control.ControlType.SubMenu && fromControl.subMenu != null) {
                     // Properly handle loops
                     if (seen.ContainsKey(fromControl.subMenu)) {
-                        var toControl = CloneControl(fromControl, rewriteParamName);
+                        var toControl = CloneControl(fromControl);
                         toControl.subMenu = seen[fromControl.subMenu];
                         to.controls.Add(toControl);
                     } else {
                         var submenuDupId = GetNextSubmenuDupId(fromControl.name);
                         var prefix2 = new List<string>(prefix);
                         prefix2.Add(fromControl.name + (submenuDupId > 0 ? (".dup." + submenuDupId) : ""));
-                        GetSubmenu(prefix2.ToArray(), createFromControl: fromControl, rewriteParamName: rewriteParamName);
-                        MergeMenu(prefix2.ToArray(), fromControl.subMenu, rewriteParamName, seen);
+                        GetSubmenu(prefix2.ToArray(), createFromControl: fromControl);
+                        MergeMenu(prefix2.ToArray(), fromControl.subMenu, seen);
                     }
                 } else {
-                    to.controls.Add(CloneControl(fromControl, rewriteParamName));
+                    to.controls.Add(CloneControl(fromControl));
                 }
             }
         }
 
-        private VRCExpressionsMenu.Control CloneControl(VRCExpressionsMenu.Control from, Func<string,string> rewriteParamName) {
+        private VRCExpressionsMenu.Control CloneControl(VRCExpressionsMenu.Control from) {
             var control = NewControl();
             control.name = from.name;
             control.icon = from.icon;
             control.type = from.type;
-            control.parameter = CloneControlParam(from.parameter, rewriteParamName);
+            control.parameter = CloneControlParam(from.parameter);
             control.value = from.value;
             control.style = from.style;
             control.subMenu = from.subMenu;
@@ -273,14 +272,14 @@ namespace VF.Builder {
             control.subParameters = from.subParameters == null
                 ? null
                 : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
-                    .Select(p => CloneControlParam(p, rewriteParamName))
+                    .Select(p => CloneControlParam(p))
                     .ToArray();
             return control;
         }
-        private VRCExpressionsMenu.Control.Parameter CloneControlParam(VRCExpressionsMenu.Control.Parameter from, Func<string,string> rewriteParamName) {
+        private VRCExpressionsMenu.Control.Parameter CloneControlParam(VRCExpressionsMenu.Control.Parameter from) {
             if (from == null) return null;
             return new VRCExpressionsMenu.Control.Parameter {
-                name = rewriteParamName != null ? rewriteParamName(from.name) : from.name
+                name = from.name
             };
         }
 
@@ -289,7 +288,7 @@ namespace VF.Builder {
         }
 
         public void SortMenu() {
-            MenuSplitter.ForEachMenu(rootMenu, (menu, path) => {
+            rootMenu.ForEachMenu((menu, path) => {
                 menu.controls.Sort((a, b) => {
                     sortPositions.TryGetValue(a, out var aPos);
                     sortPositions.TryGetValue(b, out var bPos);

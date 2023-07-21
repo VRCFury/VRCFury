@@ -6,6 +6,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Inspector;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
@@ -182,30 +183,30 @@ namespace VF.Menu {
                         }
                         while (true) {
                             var startRemoveCount = removeControls.Count;
-                            MenuSplitter.ForEachMenu(m, ForEachItem: (item, path) => {
+                            m.ForEachMenu(ForEachItem: (item, path) => {
                                 if (removeControls.Contains(item)) {
-                                    return MenuSplitter.ForEachMenuItemResult.Skip;
+                                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
                                 }
 
                                 if (ShouldRemoveMenuItem(item)) {
                                     removeControls.Add(item);
-                                    return MenuSplitter.ForEachMenuItemResult.Skip;
+                                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
                                 }
 
-                                return MenuSplitter.ForEachMenuItemResult.Continue;
+                                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
                             });
                             var endRemoveCount = removeControls.Count;
                             if (startRemoveCount == endRemoveCount) break;
                         }
 
-                        MenuSplitter.ForEachMenu(m, ForEachItem: (item, path) => {
+                        m.ForEachMenu(ForEachItem: (item, path) => {
                             if (removeControls.Contains(item)) {
                                 removeItems.Add("Menu Item: " + string.Join("/", path));
                                 return perform
-                                    ? MenuSplitter.ForEachMenuItemResult.Delete
-                                    : MenuSplitter.ForEachMenuItemResult.Skip;
+                                    ? VRCExpressionsMenuExtensions.ForEachMenuItemResult.Delete
+                                    : VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
                             }
-                            return MenuSplitter.ForEachMenuItemResult.Continue;
+                            return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
                         });
                     }
                 }
