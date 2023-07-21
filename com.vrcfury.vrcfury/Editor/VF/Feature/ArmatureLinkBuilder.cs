@@ -106,7 +106,7 @@ namespace VF.Feature {
                     var avatarBone = mergeBone.Item2;
                     FailIfComponents(propBone);
                     UpdatePhysbones(propBone, avatarBone);
-                    UpdatePhysboneColliders(propBone, avatarBone);
+                    UpdatePhysboneColliders(propBone, avatarBone, scalingRequired, scalingFactor);
                     UpdateConstraints(propBone, avatarBone);
                     boneMapping[propBone.transform] = avatarBone.transform;
                     mover.AddDirectRewrite(propBone, avatarBone);
@@ -274,11 +274,19 @@ namespace VF.Feature {
             }
         }
         
-        private void UpdatePhysboneColliders(GameObject propBone, GameObject avatarBone) {
+        private void UpdatePhysboneColliders(GameObject propBone, GameObject avatarBone, bool scalingRequired, float scalingFactor) {
             foreach (var collider in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneCollider>()) {
                 var root = collider.GetRootTransform();
                 if (propBone.transform == root) {
-                    collider.rootTransform = avatarBone.transform;
+                    if (scalingRequired) {
+                        var scaleBone = new GameObject("vrcf_" + uniqueModelNum + "_" + propBone.name);
+                        scaleBone.transform.localScale = Vector3.one * scalingFactor;
+                        scaleBone.transform.SetParent(avatarBone.transform, false);
+                        collider.rootTransform = scaleBone.transform;
+                    } else {
+                        collider.rootTransform = avatarBone.transform;
+
+                    }
                 }
             }
         }
