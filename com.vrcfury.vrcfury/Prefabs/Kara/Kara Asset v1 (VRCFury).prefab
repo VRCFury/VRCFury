@@ -115,6 +115,15 @@ MonoBehaviour:
   m_Script: {fileID: 1661641543, guid: 2a2c05204084d904aa4945ccff20d8e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  foldout_transforms: 1
+  foldout_forces: 1
+  foldout_collision: 1
+  foldout_stretchsquish: 1
+  foldout_limits: 1
+  foldout_grabpose: 1
+  foldout_options: 1
+  foldout_gizmos: 0
+  version: 0
   integrationType: 0
   rootTransform: {fileID: 7266031094848633998}
   ignoreTransforms: []
@@ -164,6 +173,9 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   allowCollision: 1
+  collisionFilter:
+    allowSelf: 1
+    allowOthers: 1
   radius: 0.02
   radiusCurve:
     serializedVersion: 2
@@ -207,7 +219,14 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   allowGrabbing: 1
+  grabFilter:
+    allowSelf: 1
+    allowOthers: 1
   allowPosing: 1
+  poseFilter:
+    allowSelf: 1
+    allowOthers: 1
+  snapToHand: 0
   grabMovement: 0.5
   maxStretch: 0
   maxStretchCurve:
@@ -216,7 +235,22 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  maxSquish: 0
+  maxSquishCurve:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  stretchMotion: 0
+  stretchMotionCurve:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isAnimated: 0
+  resetWhenDisabled: 0
   parameter: 
   showGizmos: 1
   boneOpacity: 0.5
@@ -231,8 +265,9 @@ GameObject:
   m_Component:
   - component: {fileID: 7266031094732673518}
   - component: {fileID: 7266031094732673513}
+  - component: {fileID: 4577120646286265252}
   m_Layer: 0
-  m_Name: Kara Asset (VRCFury)
+  m_Name: Kara Asset v1 (VRCFury)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -313,6 +348,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000001:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -328,14 +366,14 @@ MonoBehaviour:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
         version: 0
-        name: Kara/Low
+        name: Kara/Soft
         state:
           actions:
           - id: 4
         saved: 0
         slider: 0
         securityEnabled: 0
-        defaultOn: 0
+        defaultOn: 1
         includeInRest: 0
         exclusiveOffState: 0
         enableExclusiveTag: 0
@@ -363,6 +401,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000003:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
@@ -374,6 +415,25 @@ MonoBehaviour:
           fileID: 7400000
           guid: b1e72b318f1d93542918488cb4996cf6
           obj: {fileID: 7400000, guid: b1e72b318f1d93542918488cb4996cf6, type: 2}
+--- !u!95 &4577120646286265252
+Animator:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7266031094732673519}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 19ff9c6ad439d4b42bd3617b9677fb29, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorControllerStateOnDisable: 0
 --- !u!1 &7266031095317316467
 GameObject:
   m_ObjectHideFlags: 0
@@ -383,7 +443,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7266031095317316466}
-  - component: {fileID: 7266031095317316477}
+  - component: {fileID: 5110129788451543506}
   m_Layer: 0
   m_Name: Haptics
   m_TagString: Untagged
@@ -399,13 +459,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7266031095317316467}
   m_LocalRotation: {x: -0.69939923, y: -1.7708057e-14, z: 8.2555317e-13, w: 0.7147313}
-  m_LocalPosition: {x: 1.0610409e-13, y: 0.0000000037208139, z: 0.000000001929468}
+  m_LocalPosition: {x: 0, y: -0.0157, z: -0.0004}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 7266031094848633988}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: -88.758, y: 0, z: 0}
---- !u!114 &7266031095317316477
+--- !u!114 &5110129788451543506
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -417,21 +477,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d4cd252f8c146639507ecd55bc2b48a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  version: 2
+  version: 6
   autoRenderer: 1
   autoPosition: 0
   autoLength: 1
+  useBoneMask: 1
+  textureMask:
+    fileID: 0
+    guid: 
+    obj: {fileID: 0}
   length: 0
   autoRadius: 1
   radius: 0
   name: 
   unitsInMeters: 0
   configureTps: 0
+  enableSps: 1
+  spsAutorig: 1
+  configureTpsMesh: []
+  spsAnimatedEnabled: 1
+  useLegacyRendererFinder: 0
+  addDpsTipLight: 0
+  spsKeepImports: 0
+  postBakeActions:
+    actions: []
+  spsOverrun: 1
+  configureSps: 0
+  spsBoneMask: 1
+  spsTextureMask:
+    fileID: 0
+    guid: 
+    obj: {fileID: 0}
   configureTpsMask:
     fileID: 0
     guid: 
     obj: {fileID: 0}
-  configureTpsMesh: []
+  references:
+    version: 1
 --- !u!1 &7266031095763374463
 GameObject:
   m_ObjectHideFlags: 0
@@ -475,6 +557,15 @@ MonoBehaviour:
   m_Script: {fileID: 1661641543, guid: 2a2c05204084d904aa4945ccff20d8e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  foldout_transforms: 1
+  foldout_forces: 1
+  foldout_collision: 1
+  foldout_stretchsquish: 1
+  foldout_limits: 1
+  foldout_grabpose: 1
+  foldout_options: 1
+  foldout_gizmos: 0
+  version: 0
   integrationType: 1
   rootTransform: {fileID: 7266031094848633988}
   ignoreTransforms:
@@ -525,6 +616,9 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   allowCollision: 1
+  collisionFilter:
+    allowSelf: 1
+    allowOthers: 1
   radius: 0.02
   radiusCurve:
     serializedVersion: 2
@@ -568,7 +662,14 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   allowGrabbing: 1
+  grabFilter:
+    allowSelf: 1
+    allowOthers: 1
   allowPosing: 1
+  poseFilter:
+    allowSelf: 1
+    allowOthers: 1
+  snapToHand: 0
   grabMovement: 0.5
   maxStretch: 0
   maxStretchCurve:
@@ -577,7 +678,22 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  maxSquish: 0
+  maxSquishCurve:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  stretchMotion: 0
+  stretchMotionCurve:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   isAnimated: 0
+  resetWhenDisabled: 0
   parameter: 
   showGizmos: 1
   boneOpacity: 0.5

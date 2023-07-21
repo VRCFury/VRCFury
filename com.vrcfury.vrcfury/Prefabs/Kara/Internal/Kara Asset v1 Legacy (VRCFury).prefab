@@ -1,32 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &2690245843292628039
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 304941798821794610}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2d4cd252f8c146639507ecd55bc2b48a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  version: 2
-  autoRenderer: 1
-  autoPosition: 0
-  autoLength: 1
-  length: 0
-  autoRadius: 1
-  radius: 0
-  name: 
-  unitsInMeters: 0
-  configureTps: 1
-  configureTpsMask:
-    fileID: 0
-    guid: 
-    obj: {fileID: 0}
-  configureTpsMesh: []
 --- !u!1001 &6984377393027076161
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -94,17 +67,5 @@ PrefabInstance:
       propertyPath: m_Name
       value: Kara Asset with TPS (VRCFury)
       objectReference: {fileID: 0}
-    - target: {fileID: 7266031094853676460, guid: 249db48512adaa3409ba424509a2dea8,
-        type: 3}
-      propertyPath: m_Materials.Array.data[0]
-      value: 
-      objectReference: {fileID: 2100000, guid: 39fa0eb06bf2f7547a78b391c8a5a7ec, type: 2}
-    m_RemovedComponents:
-    - {fileID: 7266031095317316477, guid: 249db48512adaa3409ba424509a2dea8, type: 3}
+    m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 249db48512adaa3409ba424509a2dea8, type: 3}
---- !u!1 &304941798821794610 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7266031095317316467, guid: 249db48512adaa3409ba424509a2dea8,
-    type: 3}
-  m_PrefabInstance: {fileID: 6984377393027076161}
-  m_PrefabAsset: {fileID: 0}
