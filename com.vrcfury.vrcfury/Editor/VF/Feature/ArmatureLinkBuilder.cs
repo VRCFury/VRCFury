@@ -287,6 +287,8 @@ namespace VF.Feature {
                         if (keepBoneOffsets) {
                             childBone.transform.position = propBone.transform.position;
                             childBone.transform.rotation = propBone.transform.rotation;
+                            var lossyScale = propBone.transform.localScale;
+                            childBone.transform.localScale *= Mathf.Max(lossyScale.x, lossyScale.y, lossyScale.z);
                         }
                         collider.rootTransform = childBone.transform;
                     } else {
