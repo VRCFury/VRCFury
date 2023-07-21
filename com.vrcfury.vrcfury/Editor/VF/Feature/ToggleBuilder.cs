@@ -119,8 +119,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return layer.NewState(stateName);
     }
 
-    private void checkExclusives() {
-        
+    public string getPrimaryExclusive() {
         string targetTag = "";
         int targetMax = -1;
         int targetIndex = 0;
@@ -147,6 +146,27 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
+        return targetTag;
+    }
+
+    private void checkExclusives() {
+        
+        string targetTag = getPrimaryExclusive();
+        int tagCount = 1;
+        int tagIndex = 0;
+
+       
+        foreach (var toggle in allBuildersInRun
+                    .OfType<ToggleBuilder>()) {
+
+            if (!model.exclusiveOffState && toggle == this) {
+                tagIndex = tagCount;
+            }
+            if (!toggle.model.exclusiveOffState && toggle.getPrimaryExclusive() == targetTag) {
+                tagCount++;
+            }
+        }
+
         var temp = targetTag;
 
         foreach (var exclusiveTag in GetExclusiveTags()) {
@@ -155,16 +175,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        if (targetMax > 256) {
+        if (tagCount > 256) {
             throw new Exception("Too many toggles for exclusive tag " + targetTag + ". Please reduce the number of toggles using this tag to below 255.");
         }
 
-        if (targetMax > 8) {
+        if (tagCount > 8) {
             model.useInt = true;
-            model.intTarget = targetIndex;
+            model.intTarget = tagIndex;
         }
-
-
     }
 		
     private void CreateSlider() {
