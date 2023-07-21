@@ -106,7 +106,7 @@ namespace VF.Feature {
                     var avatarBone = mergeBone.Item2;
                     FailIfComponents(propBone);
                     UpdatePhysbones(propBone, avatarBone);
-                    UpdatePhysboneColliders(propBone, avatarBone, scalingRequired, scalingFactor);
+                    UpdatePhysboneColliders(propBone, avatarBone, scalingRequired, scalingFactor, keepBoneOffsets);
                     UpdateConstraints(propBone, avatarBone);
                     boneMapping[propBone.transform] = avatarBone.transform;
                     mover.AddDirectRewrite(propBone, avatarBone);
@@ -274,18 +274,23 @@ namespace VF.Feature {
             }
         }
         
-        private void UpdatePhysboneColliders(GameObject propBone, GameObject avatarBone, bool scalingRequired, float scalingFactor) {
+        private void UpdatePhysboneColliders(GameObject propBone, GameObject avatarBone, bool scalingRequired, float scalingFactor, bool keepBoneOffsets) {
             foreach (var collider in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneCollider>()) {
                 var root = collider.GetRootTransform();
                 if (propBone.transform == root) {
-                    if (scalingRequired) {
-                        var scaleBone = new GameObject("vrcf_" + uniqueModelNum + "_" + propBone.name);
-                        scaleBone.transform.localScale = Vector3.one * scalingFactor;
-                        scaleBone.transform.SetParent(avatarBone.transform, false);
-                        collider.rootTransform = scaleBone.transform;
+                    if (scalingRequired || keepBoneOffsets) {
+                        var childBone = new GameObject("vrcf_" + uniqueModelNum + "_" + propBone.name);
+                        if (scalingRequired) {
+                            childBone.transform.localScale = Vector3.one * scalingFactor;
+                        }
+                        childBone.transform.SetParent(avatarBone.transform, false);
+                        if (keepBoneOffsets) {
+                            childBone.transform.position = propBone.transform.position;
+                            childBone.transform.rotation = propBone.transform.rotation;
+                        }
+                        collider.rootTransform = childBone.transform;
                     } else {
                         collider.rootTransform = avatarBone.transform;
-
                     }
                 }
             }
