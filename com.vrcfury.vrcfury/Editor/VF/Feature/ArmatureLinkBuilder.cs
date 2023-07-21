@@ -157,7 +157,6 @@ namespace VF.Feature {
                     } else {
                         FailIfComponents(propBone);
                         UpdatePhysbones(propBone, avatarBone);
-                        UpdatePhysboneColliders(propBone, avatarBone);
                     }
 
                     // Move the object
