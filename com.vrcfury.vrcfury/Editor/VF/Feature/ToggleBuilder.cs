@@ -497,6 +497,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
+        
+        if (!model.enableExclusiveTag) return;
+
         ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
         var paramsToTurnOff = new HashSet<VFABool>();
         var paramsToTurnToZero = new Dictionary<String, HashSet<(VFAInteger, int)>>();
@@ -624,8 +627,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 s1.TransitionsTo(triggerState).When().WithTransitionExitTime(1);
             }
 
+            triggerState.TransitionsFromAny().When(onParam);
             foreach (var p in paramsToTurnOff) {
-                triggerState.TransitionsFromAny().When(onParam);
                 triggerState.Drives(p, false);
             }
 
