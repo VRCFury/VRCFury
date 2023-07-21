@@ -106,6 +106,7 @@ namespace VF.Feature {
                     var avatarBone = mergeBone.Item2;
                     FailIfComponents(propBone);
                     UpdatePhysbones(propBone, avatarBone);
+                    UpdatePhysboneColliders(propBone, avatarBone);
                     UpdateConstraints(propBone, avatarBone);
                     boneMapping[propBone.transform] = avatarBone.transform;
                     mover.AddDirectRewrite(propBone, avatarBone);
@@ -156,6 +157,7 @@ namespace VF.Feature {
                     } else {
                         FailIfComponents(propBone);
                         UpdatePhysbones(propBone, avatarBone);
+                        UpdatePhysboneColliders(propBone, avatarBone);
                     }
 
                     // Move the object
@@ -268,6 +270,23 @@ namespace VF.Feature {
                             "Physbone " + physbonePath + " points to a bone that is going to" +
                             " stop existing because it is being merged into the avatar using Armature Link." +
                             " If this physbone needs to exist, it should be placed on a new child object of the linked bone.");
+                    }
+                }
+            }
+        }
+        
+        private void UpdatePhysboneColliders(GameObject propBone, GameObject avatarBone) {
+            foreach (var collider in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneCollider>()) {
+                var root = collider.GetRootTransform();
+                if (propBone.transform == root) {
+                    if (model.physbonesOnAvatarBones) {
+                        collider.rootTransform = avatarBone.transform;
+                    } else {
+                        var colliderPath = clipBuilder.GetPath(collider.gameObject);
+                        throw new VRCFBuilderException(
+                            "Physbone Collider " + colliderPath + " points to a bone that is going to" +
+                            " stop existing because it is being merged into the avatar using Armature Link." +
+                            " If this collider needs to exist, it should be placed on a new child object of the linked bone.");
                     }
                 }
             }
