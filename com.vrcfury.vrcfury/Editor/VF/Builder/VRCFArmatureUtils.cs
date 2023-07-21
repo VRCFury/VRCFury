@@ -17,7 +17,7 @@ namespace VF.Builder {
         public static VFGameObject FindBoneOnArmatureOrNull(VFGameObject avatarObject, HumanBodyBones findBone) {
             try {
                 return FindBoneOnArmatureOrException(avatarObject, findBone);
-            } catch (Exception e) {
+            } catch (Exception) {
                 return null;
             }
         }

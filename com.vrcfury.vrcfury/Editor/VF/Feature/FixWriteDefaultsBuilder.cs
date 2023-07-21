@@ -130,12 +130,15 @@ namespace VF.Feature {
         ) {
             // Record default values for things
             if (recordDefaults) {
-                foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
-                    foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                        RecordDefaultNow(binding, true);
-                    }
-                    foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                        RecordDefaultNow(binding, false);
+                foreach (var state in new AnimatorIterator.States().From(layer)) {
+                    if (!state.writeDefaultValues) continue;
+                    foreach (var clip in new AnimatorIterator.Clips().From(state)) {
+                        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+                            RecordDefaultNow(binding, true);
+                        }
+                        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                            RecordDefaultNow(binding, false);
+                        }
                     }
                 }
             }

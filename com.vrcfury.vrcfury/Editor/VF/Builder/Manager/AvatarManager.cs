@@ -5,6 +5,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -119,7 +120,7 @@ namespace VF.Builder {
             if (_menu != null) {
                 _menu.SortMenu();
                 MenuSplitter.SplitMenus(_menu.GetRaw(), menuSettings);
-                MenuSplitter.FixNulls(_menu.GetRaw());
+                _menu.GetRaw().FixNulls();
             }
 
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have

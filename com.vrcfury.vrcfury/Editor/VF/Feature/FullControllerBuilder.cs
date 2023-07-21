@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -12,6 +13,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -29,11 +31,11 @@ namespace VF.Feature {
                 VRCExpressionParameters prms = p.parameters;
                 if (!prms) continue;
                 var copy = mutableManager.CopyRecursive(prms, saveFilename: "tmp");
+                copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
                     if (param.name == model.toggleParam && param.valueType == VRCExpressionParameters.ValueType.Int)
                         toggleIsInt = true;
-                    param.name = RewriteParamName(param.name);
                     if (model.ignoreSaved) {
                         param.saved = false;
                     }
@@ -70,15 +72,20 @@ namespace VF.Feature {
 
             foreach (var (type, from) in toMerge) {
                 var targetController = manager.GetController(type);
+                from.RewriteParameters(RewriteParamName);
                 Merge(from, targetController);
             }
 
             foreach (var m in model.menus) {
-                if (m.menu == null) continue;
+                VRCExpressionsMenu menu = m.menu;
+                if (menu == null) continue;
+                var copy = mutableManager.CopyRecursive(menu, saveFilename: "tmp");
+                copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
-                manager.GetMenu().MergeMenu(prefix, m.menu, RewriteParamName);
+                manager.GetMenu().MergeMenu(prefix, copy);
+                AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
             }
-            
+
             foreach (var receiver in GetBaseObject().GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                 if (rewrittenParams.Contains(receiver.parameter)) {
                     receiver.parameter = RewriteParamName(receiver.parameter);
@@ -163,14 +170,22 @@ namespace VF.Feature {
             var to = toMain.GetRaw();
             var type = toMain.GetType();
             
+            // Check for gogoloco
+            foreach (var p in from.parameters) {
+                if (p.name.EndsWith("Go/Locomotion")) {
+                    var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+                    if (avatar) {
+                        avatar.autoLocomotion = false;
+                    }
+                }
+            }
+
             var rewriter = new ClipRewriter(
                 animObject: GetBaseObject(),
                 rootObject: avatarObject,
                 rewriteBinding: RewriteBinding,
-                rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar,
-                rewriteParam: RewriteParamName
+                rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
             );
-            
             void RewriteClip(AnimationClip clip) {
                 if (clip == null) return;
                 if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
@@ -202,15 +217,8 @@ namespace VF.Feature {
                 toMain.UnionBaseMask(mask);
             }
 
-            // Rewrite and merge parameters
+            // Merge Params
             foreach (var p in from.parameters) {
-                if (p.name == "Go/Locomotion") {
-                    var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-                    if (avatar) {
-                        avatar.autoLocomotion = false;
-                    }
-                }
-                p.name = RewriteParamName(p.name);
                 var exists = to.parameters.Any(existing => existing.name == p.name);
                 if (!exists) {
                     to.parameters = to.parameters.Concat(new [] { p }).ToArray();
@@ -221,47 +229,14 @@ namespace VF.Feature {
                 from.layers[0].defaultWeight = 1;
             }
 
-            foreach (var state in new AnimatorIterator.States().From(from)) {
-                state.speedParameter = RewriteParamName(state.speedParameter);
-                state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
-                state.mirrorParameter = RewriteParamName(state.mirrorParameter);
-                state.timeParameter = RewriteParamName(state.timeParameter);
-                VRCFuryEditorUtils.MarkDirty(state);
-            }
-
-            foreach (var b in new AnimatorIterator.Behaviours().From(from)) {
-                if (b is VRCAvatarParameterDriver oldB) {
-                    foreach (var p in oldB.parameters) {
-                        p.name = RewriteParamName(p.name);
-                        var sourceField = p.GetType().GetField("source");
-                        if (sourceField != null) {
-                            sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
-                        }
-                    }
-                }
-            }
-
+            // Rewrite Clip Paths
             foreach (var motion in new AnimatorIterator.Motions().From(from)) {
-                if (motion is BlendTree tree) {
-                    tree.blendParameter = RewriteParamName(tree.blendParameter);
-                    tree.blendParameterY = RewriteParamName(tree.blendParameterY);
-                    tree.children = tree.children.Select(child => {
-                        child.directBlendParameter = RewriteParamName(child.directBlendParameter);
-                        return child;
-                    }).ToArray();
-                } else if (motion is AnimationClip clip) {
+                if (motion is AnimationClip clip) {
                     RewriteClip(clip);
                 }
             }
-            
-            foreach (var transition in new AnimatorIterator.Transitions().From(from)) {
-                transition.conditions = transition.conditions.Select(c => {
-                    c.parameter = RewriteParamName(c.parameter);
-                    return c;
-                }).ToArray();
-                VRCFuryEditorUtils.MarkDirty(transition);
-            }
 
+            // Merge Layers
             toMain.TakeOwnershipOf(from);
         }
 
@@ -370,39 +345,44 @@ namespace VF.Feature {
             
             content.Add(new VisualElement { style = { paddingTop = 10 } });
             content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                if (avatarObject == null) {
-                    return "Avatar descriptor is missing";
-                }
-                
                 var text = new List<string>();
 
                 var baseObject = GetBaseObject();
-                if (avatarObject != baseObject) {
+                if (avatarObject == null || avatarObject != baseObject) {
+                    var missingPaths = new HashSet<string>();
+                    var usesWdOff = false;
                     foreach (var c in model.controllers) {
                         RuntimeAnimatorController rc = c.controller;
                         var controller = rc as AnimatorController;
                         if (controller == null) continue;
-                        var paths = new AnimatorIterator.Clips().From(controller)
-                            .SelectMany(clip =>
-                                AnimationUtility.GetCurveBindings(clip)
-                                    .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip)))
-                            .Select(binding => RewriteBinding(binding.path))
-                            .ToImmutableHashSet();
-                        var missingPaths = paths
-                            .Where(path => baseObject.transform.Find(path) == null)
-                            .OrderBy(path => path)
-                            .ToImmutableList();
-
-                        if (missingPaths.Count > 0) {
-                            text.Add(
-                                "These paths are animated in the controller, but not found as children of this object. " +
-                                "If you want this prop to be reusable, you should use 'Rewrite bindings' above to rewrite " +
-                                "these paths so they work with how the objects are located within this object.");
-                            text.Add("");
-                            text.AddRange(missingPaths);
-                        } else {
-                            text.Add("No info to display");
+                        foreach (var state in new AnimatorIterator.States().From(controller)) {
+                            if (!state.writeDefaultValues) {
+                                usesWdOff = true;
+                            }
+                            missingPaths.UnionWith(new AnimatorIterator.Clips().From(state)
+                                .SelectMany(clip =>
+                                    AnimationUtility.GetCurveBindings(clip)
+                                        .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip)))
+                                .Select(binding => RewriteBinding(binding.path))
+                                .Where(path => baseObject.transform.Find(path) == null));
                         }
+                    }
+
+                    if (usesWdOff) {
+                        text.Add(
+                            "These controllers use WD off!" +
+                            " If you want this prop to be reusable, you should use WD on." +
+                            " VRCFury will automatically convert the WD on or off to match the client's avatar," +
+                            " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
+                        text.Add("");
+                    }
+                    if (missingPaths.Count > 0) {
+                        text.Add(
+                            "These paths are animated in the controller, but not found as children of this object. " +
+                            "If you want this prop to be reusable, you should use 'Rewrite bindings' above to rewrite " +
+                            "these paths so they work with how the objects are located within this object.");
+                        text.Add("");
+                        text.AddRange(missingPaths.OrderBy(path => path));
                     }
                 }
 

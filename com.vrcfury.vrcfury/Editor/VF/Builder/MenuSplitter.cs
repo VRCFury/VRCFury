@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
@@ -14,75 +15,6 @@ namespace VF.Builder {
      * and also capable of re-joining them back into oversized menus again.
      */
     public static class MenuSplitter {
-        /**
-         * This method is our primary way of iterating through menus. It needs to be recursion-aware,
-         * since many avatars have recursion in their menus for some reason.
-         */
-        public static void ForEachMenu(
-            VRCExpressionsMenu root,
-            Action<VRCExpressionsMenu,IList<string>> ForEachMenu = null,
-            Func<VRCExpressionsMenu.Control,IList<string>,ForEachMenuItemResult> ForEachItem = null
-        ) {
-            var stack = new Stack<Tuple<string[],VRCExpressionsMenu>>();
-            var seen = new HashSet<VRCExpressionsMenu>();
-            stack.Push(Tuple.Create(new string[]{}, root));
-            while (stack.Count > 0) {
-                var (path,menu) = stack.Pop();
-                if (menu == null || seen.Contains(menu)) continue;
-                seen.Add(menu);
-                if (ForEachMenu != null)
-                    ForEachMenu(menu, path);
-                for (var i = 0; i < menu.controls.Count; i++) {
-                    var item = menu.controls[i];
-                    var itemPath = new List<string>();
-                    itemPath.AddRange(path);
-                    itemPath.Add(item.name);
-                    var itemPathArr = itemPath.ToArray();
-
-                    var recurse = true;
-                    if (ForEachItem != null) {
-                        var result = ForEachItem(item, itemPathArr);
-                        if (result == ForEachMenuItemResult.Skip) {
-                            recurse = false;
-                        } else if (result == ForEachMenuItemResult.Delete) {
-                            menu.controls.RemoveAt(i);
-                            i--;
-                            VRCFuryEditorUtils.MarkDirty(menu);
-                            recurse = false;
-                        }
-                    }
-                    if (recurse && item.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                        stack.Push(Tuple.Create(itemPathArr, item.subMenu));
-                    }
-                }
-            }
-        }
-        
-        public enum ForEachMenuItemResult {
-            Continue,
-            Delete,
-            Skip
-        }
-
-        public static void FixNulls(VRCExpressionsMenu root) {
-            ForEachMenu(root, ForEachItem: (control, path) => {
-                // VRChat doesn't care, but SDK3ToCCKConverter crashes if there are any null parameters
-                // on a submenu. GestureManager crashes if there's any null parameters on ANYTHING.
-                if (control.parameter == null) {
-                    control.parameter = new VRCExpressionsMenu.Control.Parameter() {
-                        name = ""
-                    };
-                }
-
-                // Av3emulator crashes if subParameters is null
-                if (control.subParameters == null) {
-                    control.subParameters = new VRCExpressionsMenu.Control.Parameter[] { };
-                }
-
-                return ForEachMenuItemResult.Continue;
-            });
-        }
-        
         public static void SplitMenus(VRCExpressionsMenu root, OverrideMenuSettings menuSettings = null) {
             var nextText = "Next";
             Texture2D nextIcon = null;
@@ -91,7 +23,7 @@ namespace VF.Builder {
                 if (menuSettings.nextIcon != null) nextIcon = menuSettings.nextIcon;
             }
             var maxControlsPerPage = GetMaxControlsPerPage();
-            ForEachMenu(root, (menu, path) => {
+            root.ForEachMenu((menu, path) => {
                 var page = menu;
                 var pageNum = 2;
                 while (page.controls.Count > maxControlsPerPage) {

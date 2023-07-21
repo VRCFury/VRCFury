@@ -176,6 +176,7 @@ public class VRCFuryBuilder {
         AddBuilder(new CleanupBaseMasksBuilder(), avatarObject);
         AddBuilder(new CleanupEmptyLayersBuilder(), avatarObject);
         AddBuilder(new ResetAnimatorBuilder(), avatarObject);
+        AddBuilder(new FixBadVrcParameterNamesBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();

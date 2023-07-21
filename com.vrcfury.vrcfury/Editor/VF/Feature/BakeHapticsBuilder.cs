@@ -184,6 +184,9 @@ namespace VF.Feature {
                 foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                     objectsToDisableTemporarily.Add(receiver.transform);
                 }
+                
+                // This needs to be created before we make the menu item, because it turns this off.
+                var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
 
                 if (socket.addMenuItem) {
                     var fx = GetFx();
@@ -260,7 +263,6 @@ namespace VF.Feature {
                 }
 
                 var actionNum = 0;
-                var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
                 foreach (var depthAction in socket.depthActions) {
                     actionNum++;
                     var prefix = name + actionNum;
