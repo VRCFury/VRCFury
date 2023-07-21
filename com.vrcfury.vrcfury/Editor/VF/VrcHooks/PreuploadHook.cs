@@ -41,32 +41,6 @@ namespace VF.VrcHooks {
             var vrcFurySuccess = builder.SafeRun(vrcCloneObject, original);
             if (!vrcFurySuccess) return false;
 
-            // Try to detect conflicting parameter names that break OSC
-            try {
-                var avatar = vrcCloneObject.GetComponent<VRCAvatarDescriptor>();
-                var normalizedNames = new HashSet<string>();
-                var fullNames = new HashSet<string>();
-                foreach (var c in VRCAvatarUtils.GetAllControllers(avatar).Select(c => c.Item1).Where(c => c != null)) {
-                    foreach (var param in c.parameters) {
-                        if (!fullNames.Contains(param.name)) {
-                            var normalized = param.name.Replace(' ', '_');
-                            if (normalizedNames.Contains(normalized)) {
-                                EditorUtility.DisplayDialog("VRCFury Error",
-                                    "Your avatar controllers contain multiple parameters with the same normalized name: " +
-                                    normalized
-                                    + " This will cause OSC and various other vrchat functions to fail. Please fix it.", "Ok");
-                                return false;
-                            }
-
-                            fullNames.Add(param.name);
-                            normalizedNames.Add(normalized);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                Debug.LogException(e);
-            }
-            
             // Make absolutely positively certain that we've removed every non-standard component from the avatar
             // before it gets uploaded
             VRCFuryBuilder.StripAllVrcfComponents(vrcCloneObject);
