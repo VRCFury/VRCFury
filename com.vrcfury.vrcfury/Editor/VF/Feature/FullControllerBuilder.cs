@@ -370,39 +370,44 @@ namespace VF.Feature {
             
             content.Add(new VisualElement { style = { paddingTop = 10 } });
             content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                if (avatarObject == null) {
-                    return "Avatar descriptor is missing";
-                }
-                
                 var text = new List<string>();
 
                 var baseObject = GetBaseObject();
-                if (avatarObject != baseObject) {
+                if (avatarObject == null || avatarObject != baseObject) {
+                    var missingPaths = new HashSet<string>();
+                    var usesWdOff = false;
                     foreach (var c in model.controllers) {
                         RuntimeAnimatorController rc = c.controller;
                         var controller = rc as AnimatorController;
                         if (controller == null) continue;
-                        var paths = new AnimatorIterator.Clips().From(controller)
-                            .SelectMany(clip =>
-                                AnimationUtility.GetCurveBindings(clip)
-                                    .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip)))
-                            .Select(binding => RewriteBinding(binding.path))
-                            .ToImmutableHashSet();
-                        var missingPaths = paths
-                            .Where(path => baseObject.transform.Find(path) == null)
-                            .OrderBy(path => path)
-                            .ToImmutableList();
-
-                        if (missingPaths.Count > 0) {
-                            text.Add(
-                                "These paths are animated in the controller, but not found as children of this object. " +
-                                "If you want this prop to be reusable, you should use 'Rewrite bindings' above to rewrite " +
-                                "these paths so they work with how the objects are located within this object.");
-                            text.Add("");
-                            text.AddRange(missingPaths);
-                        } else {
-                            text.Add("No info to display");
+                        foreach (var state in new AnimatorIterator.States().From(controller)) {
+                            if (!state.writeDefaultValues) {
+                                usesWdOff = true;
+                            }
+                            missingPaths.UnionWith(new AnimatorIterator.Clips().From(state)
+                                .SelectMany(clip =>
+                                    AnimationUtility.GetCurveBindings(clip)
+                                        .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip)))
+                                .Select(binding => RewriteBinding(binding.path))
+                                .Where(path => baseObject.transform.Find(path) == null));
                         }
+                    }
+
+                    if (usesWdOff) {
+                        text.Add(
+                            "These controllers use WD off!" +
+                            " If you want this prop to be reusable, you should use WD on." +
+                            " VRCFury will automatically convert the WD on or off to match the client's avatar," +
+                            " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
+                        text.Add("");
+                    }
+                    if (missingPaths.Count > 0) {
+                        text.Add(
+                            "These paths are animated in the controller, but not found as children of this object. " +
+                            "If you want this prop to be reusable, you should use 'Rewrite bindings' above to rewrite " +
+                            "these paths so they work with how the objects are located within this object.");
+                        text.Add("");
+                        text.AddRange(missingPaths.OrderBy(path => path));
                     }
                 }
 
