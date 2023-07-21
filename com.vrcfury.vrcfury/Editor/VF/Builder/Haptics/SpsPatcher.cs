@@ -27,14 +27,11 @@ namespace VF.Builder.Haptics {
 
         public static void patchUnsafe(Material mat, MutableManager mutableManager, bool keepImports) {
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(mat, out var guid, out long localId);
-            var newShaderName = $"SPSPatched/{guid}";
+            var newShaderName = $"Hidden/SPSPatched/{guid}";
             var shader = mat.shader;
             var pathToSps = GetPathToSps();
             var newPath = VRCFuryAssetDatabase.GetUniquePath(mutableManager.GetTmpDir(), "SPS Patched " + shader.name, "shader");
             var contents = ReadFile(shader);
-
-            // TODO: Add support for DPS channel 1 and TPS channels
-            // TODO: Add animatable toggle
 
             void Replace(string pattern, string replacement, int count) {
                 var startLen = contents.Length + "" + contents.GetHashCode();
@@ -56,193 +53,25 @@ namespace VF.Builder.Haptics {
                 $"$1\n{propertiesContent}\n",
                 1
             );
-            
-            contents = GetRegex(@"\n[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(contents, match => {
-                var shaderName = match.Groups[1].ToString();
-                var passName = match.Groups[2].ToString();
-                var includedShader = Shader.Find(shaderName);
-                if (!includedShader) {
-                    throw new Exception("Failed to find included shader: " + shaderName);
-                }
-                var includedShaderBody = ReadFile(includedShader);
-                string foundPass = null;
-                WithEachPass(includedShaderBody, pass => {
-                    if (GetRegex(@"\n[ \t]*Name[ \t]+""" + Regex.Escape(passName) + @"""").Match(pass).Success) {
-                        foundPass = pass;
-                    }
 
-                    return "";
-                });
-                if (foundPass == null) {
-                    throw new Exception($"Failed to find pass named {passName} in shader {shaderName}");
-                }
-
-                return "\n" + foundPass + "\n";
-            });
+            contents = FlattenUsePass(contents);
 
             var passNum = 0;
-            contents = WithEachPass(contents, (string pass) => {
+            contents = WithEachPass(contents, (pass) => {
                 passNum++;
-                void ex(String msg) {
-                    throw new Exception("Pass " + passNum + ": " + msg);
+                try {
+                    return PatchPass(pass, keepImports, false);
+                } catch (Exception e) {
+                    throw new Exception($"Failed to patch pass #{passNum}: " + e.Message, e);
                 }
-
-                string oldVertFunction = null;
-                var newVertFunction = "spsVert";
-                pass = GetRegex(@"(#pragma[ \t]+vertex[ \t]+)([^\s]+)([^\n]*)").Replace(pass, match => {
-                    oldVertFunction = match.Groups[2].ToString();
-                    return "// " + match.Groups[0].ToString() + "\n"
-                        + $"{match.Groups[1]}spsVert{match.Groups[3]}\n";
-                }, 1);
-                if (oldVertFunction == null) {
-                    ex("Failed to find #pragma vertex");
-                }
-
-                var flattenedPass = ReadAndFlattenContent(pass, includeLibraryFiles: true);
-                
-                string returnType;
-                string paramType;
-                var foundOldVert = GetRegex(Regex.Escape(oldVertFunction) + @"\s*\(\s*([^\s]+)[^\);]*\)\s*\{")
-                    .Matches(flattenedPass)
-                    .Cast<Match>()
-                    .Select(m => {
-                        // The reason we search backward for the return type instead of just including it in the regex
-                        // is because it makes the regex REALLY SLOW to have wildcards at the start.
-                        var p = m.Groups[1].ToString();
-                        var i = m.Index-1;
-                        if (!Char.IsWhiteSpace(flattenedPass[i])) return null;
-                        while (Char.IsWhiteSpace(flattenedPass[i])) i--;
-                        var endOfReturnType = i + 1;
-                        while (!Char.IsWhiteSpace(flattenedPass[i])) i--;
-                        var startOfReturnType = i + 1;
-                        var r = flattenedPass.Substring(startOfReturnType, endOfReturnType-startOfReturnType);
-                        return Tuple.Create(p, r);
-                    })
-                    .Where(t => t != null)
-                    .ToArray();
-                if (foundOldVert.Length > 0) {
-                    foundOldVert = foundOldVert.Where(m => !m.Item2.ToString().Contains("Simple")).ToArray();
-                }
-                if (foundOldVert.Length == 0) {
-                    ex("Failed to find vertex method: " + oldVertFunction);
-                }
-                if (foundOldVert.Length > 1) {
-                    ex("Found vertex method multiple times: " + oldVertFunction);
-                }
-                paramType = foundOldVert[0].Item1;
-                returnType = foundOldVert[0].Item2;
-
-                // Poi 8
-                if (returnType == "VertexOut" && paramType == "#ifndef") {
-                    paramType = "appdata";
-                }
-
-                string paramBody;
-                var foundOldParam = GetRegex(@"struct\s+" + Regex.Escape(paramType) + @"\s[^}]*}")
-                    .Match(flattenedPass);
-                if (foundOldParam.Success) {
-                    paramBody = foundOldParam.Groups[0].ToString();
-                } else {
-                    ex("Failed to find vertex parameter: " + paramType);
-                }
-
-                string FindParam(string keyword) {
-                    var match = GetRegex(@"([^ \t]+)[ \t]+([^ \t:]+)[ \t:]+" + Regex.Escape(keyword)).Match(paramBody);
-                    if (match.Success) {
-                        return match.Groups[2].ToString();
-                    }
-
-                    return null;
-                }
-
-                var newHeader = new List<string>();
-                newHeader.Add("#define LIL_APP_POSITION");
-                newHeader.Add("#define LIL_APP_NORMAL");
-                newHeader.Add("#define LIL_APP_VERTEXID");
-                newHeader.Add("#define LIL_APP_COLOR");
-
-                var newBody = new List<string>();
-                if (keepImports) {
-                    newBody.Add($"#include \"{pathToSps}/sps_funcs.cginc\"");
-                } else {
-                    newBody.Add(ReadAndFlattenPath($"{pathToSps}/sps_funcs.cginc"));
-                }
-                newBody.Add($"struct SpsInputs : {paramType} {{");
-                var vertexParam = FindParam("POSITION");
-                if (vertexParam == null) {
-                    newBody.Add("  float3 spsPosition : POSITION;");
-                    vertexParam = "spsPosition";
-                };
-                var normalParam = FindParam("NORMAL");
-                if (normalParam == null) {
-                    newBody.Add("  float3 spsNormal : NORMAL;");
-                    normalParam = "spsNormal";
-                };
-                var vertexIdParam = FindParam("SV_VertexID");
-                if (vertexIdParam == null) {
-                    newBody.Add("  uint spsVertexId : SV_VertexID;");
-                    vertexIdParam = "spsVertexId";
-                };
-                var colorParam = FindParam("COLOR");
-                if (colorParam == null) {
-                    newBody.Add("  float4 spsColor : COLOR;");
-                    colorParam = "spsColor";
-                };
-                newBody.Add("};");
-                var ret = returnType == "void" ? "" : "return ";
-                if (returnType == "void" && oldVertFunction == "vertShadowCaster") {
-                    newBody.Add($"{returnType} {newVertFunction}(SpsInputs input");
-                    newBody.Add(@"
-                        , out float4 opos : SV_POSITION
-                        #ifdef UNITY_STANDARD_USE_SHADOW_OUTPUT_STRUCT
-                        , out VertexOutputShadowCaster o
-                        #endif
-                        #ifdef UNITY_STANDARD_USE_STEREO_SHADOW_OUTPUT_STRUCT
-                        , out VertexOutputStereoShadowCaster os
-                        #endif
-                    ");
-                    newBody.Add(") {");
-                    newBody.Add($"  sps_apply(input.{vertexParam}.xyz, input.{normalParam}, input.{vertexIdParam}, input.{colorParam});");
-                    newBody.Add($"  {ret}{oldVertFunction}(({paramType})input");
-                    newBody.Add(@"
-                        , opos
-                        #ifdef UNITY_STANDARD_USE_SHADOW_OUTPUT_STRUCT
-                        , o
-                        #endif
-                        #ifdef UNITY_STANDARD_USE_STEREO_SHADOW_OUTPUT_STRUCT
-                        , os
-                        #endif
-                    ");
-                    newBody.Add(");");
-                    newBody.Add("}");
-                } else {
-                    newBody.Add($"{returnType} {newVertFunction}(SpsInputs input) {{");
-                    newBody.Add($"  sps_apply(input.{vertexParam}.xyz, input.{normalParam}, input.{vertexIdParam}, input.{colorParam});");
-                    newBody.Add($"  {ret}{oldVertFunction}(({paramType})input);");
-                    newBody.Add("}");
-                }
-                
-                // We add the body to the end of the pass, since otherwise it may be too early and
-                // get inserted before includes that are needed for the base data types
-                var startCg = pass.IndexOf("CGPROGRAM");
-                if (startCg < 0) startCg = pass.IndexOf("HLSLPROGRAM");
-                if (startCg > 0) startCg = pass.IndexOf("\n", startCg);
-                if (startCg < 0) throw new Exception("Failed to find CGPROGRAM");
-                pass = pass.Substring(0, startCg) + "\n"
-                       + string.Join("\n", newHeader)
-                       + "\n" + pass.Substring(startCg);
-
-                // We add the body to the end of the pass, since otherwise it may be too early and
-                // get inserted before includes that are needed for the base data types
-                var endCg = pass.LastIndexOf("ENDCG");
-                if (endCg < 0) endCg = pass.LastIndexOf("ENDHLSL");
-                if (endCg < 0) throw new Exception("Failed to find ENDCG");
-                pass = pass.Substring(0, endCg) + "\n"
-                       + string.Join("\n", newBody)
-                       + "\n" + pass.Substring(endCg);
-
-                return pass;
             });
+            if (passNum == 0) {
+                try {
+                    contents = PatchPass(contents, keepImports, true);
+                } catch (Exception e) {
+                    throw new Exception($"Failed to patch surface shader (or no passes found): " + e.Message, e);
+                }
+            }
 
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 WriteFile(newPath, contents);
@@ -260,14 +89,245 @@ namespace VF.Builder.Haptics {
             VRCFuryEditorUtils.MarkDirty(mat);
         }
 
+        private static string FlattenUsePass(string shader) {
+            return GetRegex(@"\n[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(shader, match => {
+                var shaderName = match.Groups[1].ToString();
+                var passName = match.Groups[2].ToString();
+                var includedShader = Shader.Find(shaderName);
+                if (!includedShader) {
+                    throw new Exception("Failed to find included shader: " + shaderName);
+                }
+                var includedShaderBody = ReadFile(includedShader);
+                string foundPass = null;
+                WithEachPass(includedShaderBody, pass => {
+                    if (new Regex(@"\n[ \t]*Name[ \t]+""(?i:" + Regex.Escape(passName) + @")""").Match(pass).Success) {
+                        foundPass = pass;
+                    }
+
+                    return "";
+                });
+                if (foundPass == null) {
+                    throw new Exception($"Failed to find pass named {passName} in shader {shaderName}");
+                }
+
+                return "\n" + foundPass + "\n";
+            });
+        }
+
+        private static string PatchPass(string pass, bool keepImports, bool isSurfaceShader) {
+            var newVertFunction = "spsVert";
+            var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
+            string oldVertFunction = null;
+            var foundPragma = false;
+            pass = GetRegex(@"(#pragma[ \t]+" + pragmaKeyword + @"[ \t]+)([^\s]+)([^\n]*)").Replace(pass, match => {
+                string newPragma;
+                if (isSurfaceShader) {
+                    var extraParams = match.Groups[3].ToString();
+                    extraParams = GetRegex(@"vertex:(\S+)").Replace(extraParams, vertMatch => {
+                        oldVertFunction = vertMatch.Groups[1].ToString();
+                        return "vertex:" + newVertFunction;
+                    });
+                    if (oldVertFunction == null) {
+                        newPragma = $"{match.Groups[0]} vertex:{newVertFunction}";
+                    } else {
+                        newPragma = $"{match.Groups[1]}{match.Groups[2]}{extraParams}";
+                    }
+                } else {
+                    oldVertFunction = match.Groups[2].ToString();
+                    newPragma = $"{match.Groups[1]}spsVert{match.Groups[3]}";
+                }
+
+                foundPragma = true;
+                return $"// {match.Groups[0]}\n{newPragma}\n";
+            }, 1);
+            if (!foundPragma) {
+                throw new Exception($"Failed to find #pragma {pragmaKeyword}");
+            }
+
+            var flattenedPass = ReadAndFlattenContent(pass, includeLibraryFiles: true);
+
+            string oldStructType;
+            string returnType;
+            string newInputParams;
+            string newPassParams;
+            string mainParamName;
+            string searchForOldStruct;
+            bool useStructExtends;
+            if (oldVertFunction != null) {
+                var foundOldVert = GetRegex(Regex.Escape(oldVertFunction) + @"\s*\(([^\);]*)\)\s*\{")
+                    .Matches(flattenedPass)
+                    .Cast<Match>()
+                    .Select(m => {
+                        // The reason we search backward for the return type instead of just including it in the regex
+                        // is because it makes the regex REALLY SLOW to have wildcards at the start.
+                        var ps = m.Groups[1].ToString();
+                        var i = m.Index - 1;
+                        if (!Char.IsWhiteSpace(flattenedPass[i])) return null;
+                        while (Char.IsWhiteSpace(flattenedPass[i])) i--;
+                        var endOfReturnType = i + 1;
+                        while (!Char.IsWhiteSpace(flattenedPass[i])) i--;
+                        var startOfReturnType = i + 1;
+                        var r = flattenedPass.Substring(startOfReturnType, endOfReturnType - startOfReturnType);
+                        return Tuple.Create(ps, r);
+                    })
+                    .Where(t => t != null)
+                    .ToArray();
+                if (foundOldVert.Length > 0) {
+                    foundOldVert = foundOldVert.Where(m => !m.Item2.ToString().Contains("Simple")).ToArray();
+                }
+
+                if (foundOldVert.Length == 0) {
+                    throw new Exception("Failed to find vertex method: " + oldVertFunction);
+                }
+
+                if (foundOldVert.Length > 1) {
+                    throw new Exception("Found vertex method multiple times: " + oldVertFunction);
+                }
+
+                var paramList = foundOldVert[0].Item1;
+                returnType = foundOldVert[0].Item2;
+
+                var rewrittenInputParams = RewriteParamList(paramList, rewriteFirstParamTypeTo: "SpsInputs");
+                newInputParams = rewrittenInputParams.rewritten;
+                oldStructType = rewrittenInputParams.firstParamType;
+                mainParamName = rewrittenInputParams.firstParamName;
+                var firstParamType = rewrittenInputParams.firstParamType;
+                var rewrittenPassParams = RewriteParamList(paramList, stripTypes: true,
+                    rewriteFirstParamNameTo: $"({firstParamType}){mainParamName}");
+                newPassParams = rewrittenPassParams.rewritten;
+                searchForOldStruct = flattenedPass;
+                useStructExtends = true;
+            } else {
+                oldStructType = "appdata_full";
+                searchForOldStruct = ReadAndFlattenContent("#include \"UnityCG.cginc\"", includeLibraryFiles: true);
+                returnType = "void";
+                newInputParams = "inout SpsInputs input";
+                mainParamName = "input";
+                newPassParams = null;
+                useStructExtends = false;
+            }
+
+            var oldStructBody = "";
+            if (oldStructType != null) {
+                var foundOldParam = GetRegex(@"struct\s+" + Regex.Escape(oldStructType) + @"\s*{([^}]*)}")
+                    .Match(searchForOldStruct);
+                if (foundOldParam.Success) {
+                    oldStructBody = foundOldParam.Groups[1].ToString();
+                } else {
+                    throw new Exception("Failed to find old struct: " + oldStructType);
+                }
+            }
+
+            var newStructBody = "";
+            if (!useStructExtends) newStructBody += oldStructBody;
+            string FindParam(string keyword, string defaultName, string defaultType) {
+                if (oldStructBody != null) {
+                    var match = GetRegex(@"([^ \t]+)[ \t]+([^ \t:]+)[ \t:]+" + Regex.Escape(keyword))
+                        .Match(oldStructBody);
+                    if (match.Success) {
+                        return match.Groups[2].ToString();
+                    }
+                }
+                newStructBody += $"  {defaultType} {defaultName} : {keyword};\n";
+                return defaultName;
+            }
+
+            var vertexParam = FindParam("POSITION", "spsPosition", "float3");
+            var normalParam = FindParam("NORMAL", "spsNormal", "float3");
+            var vertexIdParam = FindParam("SV_VertexID", "spsVertexId", "uint");
+            var colorParam = FindParam("COLOR", "spsColor", "float4");
+            
+            var newHeader = new List<string>();
+            // liltoon
+            newHeader.Add("#define LIL_APP_POSITION");
+            newHeader.Add("#define LIL_APP_NORMAL");
+            newHeader.Add("#define LIL_APP_VERTEXID");
+            newHeader.Add("#define LIL_APP_COLOR");
+            
+            var newBody = new List<string>();
+            if (keepImports) {
+                newBody.Add($"#include \"{GetPathToSps()}/sps_funcs.cginc\"");
+            } else {
+                newBody.Add(ReadAndFlattenPath($"{GetPathToSps()}/sps_funcs.cginc"));
+            }
+            var extends = useStructExtends ? $" : {oldStructType}" : "";
+            newBody.Add($"struct SpsInputs{extends} {{");
+            newBody.Add(newStructBody);
+            newBody.Add("};");
+            newBody.Add($"{returnType} {newVertFunction}({newInputParams}) {{");
+            newBody.Add($"  sps_apply({mainParamName}.{vertexParam}.xyz, {mainParamName}.{normalParam}, {mainParamName}.{vertexIdParam}, {mainParamName}.{colorParam});");
+            if (newPassParams != null) {
+                var ret = returnType == "void" ? "" : "return ";
+                newBody.Add($"  {ret}{oldVertFunction}({newPassParams});");
+            }
+            newBody.Add("}");
+
+            // We add the body to the end of the pass, since otherwise it may be too early and
+            // get inserted before includes that are needed for the base data types
+            var startCg = pass.IndexOf("CGPROGRAM");
+            if (startCg < 0) startCg = pass.IndexOf("HLSLPROGRAM");
+            if (startCg > 0) startCg = pass.IndexOf("\n", startCg);
+            if (startCg < 0) throw new Exception("Failed to find CGPROGRAM");
+            pass = pass.Substring(0, startCg) + "\n"
+                   + string.Join("\n", newHeader)
+                   + "\n" + pass.Substring(startCg);
+
+            // We add the body to the end of the pass, since otherwise it may be too early and
+            // get inserted before includes that are needed for the base data types
+            var endCg = pass.LastIndexOf("ENDCG");
+            if (endCg < 0) endCg = pass.LastIndexOf("ENDHLSL");
+            if (endCg < 0) throw new Exception("Failed to find ENDCG");
+            pass = pass.Substring(0, endCg) + "\n"
+                   + string.Join("\n", newBody)
+                   + "\n" + pass.Substring(endCg);
+
+            return pass;
+        }
+
+        public class RewriteParamListOutput {
+            public string firstParamName;
+            public string firstParamType;
+            public string rewritten;
+        }
+        private static RewriteParamListOutput RewriteParamList(string paramList, string rewriteFirstParamTypeTo = null, string rewriteFirstParamNameTo = null, bool stripTypes = false) {
+            string firstParamName = null;
+            string firstParamType = null;
+            var rewritten = string.Join("\n", paramList.Split('\n').Select(line => {
+                if (line.Trim().StartsWith("#")) return line;
+                return string.Join(",", line.Split(',').Select(p => {
+                    var trimmed = p.Trim();
+                    if (trimmed.Length == 0) return p;
+                    if (firstParamName == null) {
+                        var m = Regex.Match(trimmed, @"(\S+)\s+(\S+)$");
+                        firstParamType = m.Groups[1].ToString();
+                        firstParamName = m.Groups[2].ToString();
+                        if (rewriteFirstParamTypeTo != null) {
+                            p = Regex.Replace(p, @"(\S+)(\s+\S+\s*)$", rewriteFirstParamTypeTo+"$2");
+                        }
+                        if (rewriteFirstParamNameTo != null) {
+                            p = Regex.Replace(p, @"(\S+)(\s*)$", rewriteFirstParamNameTo+"$2");
+                        }
+                    }
+                    if (stripTypes) {
+                        p = Regex.Replace(p, @":.*", "");
+                        p = Regex.Replace(p, @"\S.*\s(\S+)\s*$", "$1");
+                    }
+                    return p;
+                }));
+            }));
+            return new RewriteParamListOutput() {
+                firstParamType = firstParamType,
+                firstParamName = firstParamName,
+                rewritten = rewritten,
+            };
+        }
+
         private static string WithEachPass(string content, Func<string, string> with) {
             var output = "";
-            var foundPasses = 0;
             var i = 0;
             while (true) {
                 var nextPassStart = GetRegex(@"\n\s*Pass[\s{]*\s*\n").Match(content, i);
                 if (nextPassStart.Success) {
-                    foundPasses++;
                     var start = nextPassStart.Index;
                     output += content.Substring(i, start - i);
                     var end = IndexOfEndOfNextContext(content, start);
@@ -279,10 +339,6 @@ namespace VF.Builder.Haptics {
                     output += content.Substring(i);
                     break;
                 }
-            }
-
-            if (foundPasses == 0) {
-                throw new Exception("Didn't find any passes");
             }
             return output;
         }
@@ -346,6 +402,11 @@ namespace VF.Builder.Haptics {
         }
         private static string ReadAndFlattenContent(string content, HashSet<string> included = null, bool includeLibraryFiles = false) {
             var output = new List<string>();
+            // if (includeLibraryFiles && content.Contains("CGPROGRAM")) {
+            //     content = "#include \"HLSLSupport.cginc\"\n"
+            //         + "#include \"UnityShaderVariables.cginc\"\n"
+            //         + content;
+            // }
             content = WithEachInclude(content, null, includePath => {
                 return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
             }, includeLibraryFiles);

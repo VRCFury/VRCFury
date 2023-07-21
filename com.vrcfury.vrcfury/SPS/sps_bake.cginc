@@ -2,7 +2,7 @@
 
 float4 SpsBakedDataRaw(uint offset)
 {
-    return _SPS_Bake[uint2(offset%8192, offset/8192)];
+    return SPS_BAKEDATA(offset%8192, offset/8192);
 }
 int4 SpsBakedData(uint offset)
 {
