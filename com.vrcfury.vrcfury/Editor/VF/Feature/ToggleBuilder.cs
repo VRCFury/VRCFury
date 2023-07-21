@@ -605,6 +605,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             triggerState.TransitionsToExit().When(onParam.Not());
 
+            var allOrParam = controllers[0].Never();
+
             foreach (var tag in paramsToTurnToZero.Keys) {
                 var orParam = controllers[0].Never();
                 VFAInteger tagParam = paramsToTurnToZero[tag].First().Item1;
@@ -616,6 +618,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 intTriggerState.Drives(tagParam, 0);
 
                 intStates.Add((onParam.And(orParam), intTriggerState));
+                allOrParam = allOrParam.Or(orParam);
             }
 
             foreach (var (condition, s1) in intStates) {
@@ -624,10 +627,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                         s1.TransitionsTo(s2).When(condition);
                     }
                 }
-                s1.TransitionsTo(triggerState).When().WithTransitionExitTime(1);
+                s1.TransitionsTo(triggerState).When(allOrParam.Not());
             }
 
-            triggerState.TransitionsFromAny().When(onParam);
+            triggerState.TransitionsFromAny().When(onParam.And(allOrParam.Not()));
+            
             foreach (var p in paramsToTurnOff) {
                 triggerState.Drives(p, false);
             }
@@ -636,8 +640,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 startState.TransitionsTo(triggerState).When(allOthersOff);
                 triggerState.Drives((param as VFABool), true);
             }
-
-            startState.TransitionsTo(triggerState).When(onParam);
         }
     }
 
