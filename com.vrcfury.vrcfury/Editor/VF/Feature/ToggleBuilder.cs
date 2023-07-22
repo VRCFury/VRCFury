@@ -194,7 +194,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var on = layer.NewState("On");
         var x = fx.NewFloat(
             model.name,
-            synced: true,
+            synced: model.addMenuItem,
             saved: model.saved,
             def: model.defaultOn ? model.defaultSliderValue : 0
         );
@@ -266,15 +266,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
         if (model.useInt) {
             if (model.intTarget == -1) {
-                var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+                var numParam = fx.NewInt(paramName, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 onCase = numParam.IsNotEqualTo(0);
             } else {
-                var numParam = fx.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: true, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
+                var numParam = fx.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
                 onCase = numParam.IsEqualTo(model.intTarget);
                 param = numParam;
             }
         } else {
-            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
@@ -331,10 +331,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var off2 = getStartState("Off", layer2);
             VFACondition onCase2;
             if (model.useInt) {
-                var param2 = actionLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: true, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
+                var param2 = actionLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
                 onCase2 = param2.IsEqualTo(model.intTarget);
             } else {
-                var param2 = actionLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+                var param2 = actionLayer.NewBool(model.name, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
                 onCase2 = param2.IsTrue();
             }
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
@@ -347,10 +347,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var off2 = getStartState("Off", layer2);
                 VFACondition onCase2;
             if (model.useInt) {
-                var param2 = gestureLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: true, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
+                var param2 = gestureLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
                 onCase2 = param2.IsEqualTo(model.intTarget);
             } else {
-                var param2 = gestureLayer.NewBool(model.name, synced: !string.IsNullOrWhiteSpace(model.name), saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+                var param2 = gestureLayer.NewBool(model.name, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
                 onCase2 = param2.IsTrue();
             }
                 Apply(gestureLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
