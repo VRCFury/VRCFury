@@ -336,7 +336,7 @@ namespace VF.Builder {
             }
         }
 
-        private static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
+        public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
             "Voice",

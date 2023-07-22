@@ -130,7 +130,7 @@ namespace VF.Feature {
         
         string RewriteParamName(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
-            if (VRChatGlobalParams.Contains(name)) return name;
+            if (ControllerManager.VRChatGlobalParams.Contains(name)) return name;
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     VRCExpressionParameters prms = p.parameters;
@@ -391,31 +391,5 @@ namespace VF.Feature {
 
             return content;
         }
-        
-        private static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
-            "IsLocal",
-            "Viseme",
-            "Voice",
-            "GestureLeft",
-            "GestureRight",
-            "GestureLeftWeight",
-            "GestureRightWeight",
-            "AngularY",
-            "VelocityX",
-            "VelocityY",
-            "VelocityZ",
-            "Upright",
-            "Grounded",
-            "Seated",
-            "AFK",
-            "TrackingType",
-            "VRMode",
-            "MuteSelf",
-            "InStation",
-            "AvatarVersion",
-            "GroundProximity",
-            "VelocityMagnitude"
-        };
     }
-
 }
