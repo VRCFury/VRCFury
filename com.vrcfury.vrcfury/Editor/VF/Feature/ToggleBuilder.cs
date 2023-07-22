@@ -17,14 +17,12 @@ namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFAParam param;
-    private AnimationClip restingClip;
     private string layerName;
     private VFACondition onCase;
     private bool onEqualsOut;
     private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
     private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
 
-    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private bool appliedToRest = false;
     
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
@@ -65,7 +63,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return false;
     }
 
-    private string getMaskName(AnimationClip clip) {
+    private string GetMaskName(AnimationClip clip) {
         
         var bones = AnimationUtility.GetCurveBindings(clip);
         var leftHand = false;
@@ -89,7 +87,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return "";
     }
 
-    private VFALayer getLayer(string layerName, ControllerManager controller, string maskName = "") {
+    private VFALayer GetLayer(string layerName, ControllerManager controller, string maskName = "") {
         if (model.enableExclusiveTag) {
             var exclusiveTags = GetExclusiveTags();
             if (exclusiveTags.Count() == 0) return controller.NewLayer(layerName);
@@ -102,7 +100,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return controller.NewLayer(layerName);
     }
 
-    private VFALayer getLayerForParameters(string exclusiveTag) {
+    private VFALayer GetLayerForParameters(string exclusiveTag) {
         if (!exclusiveParameterLayers.ContainsKey(exclusiveTag)) {
             exclusiveParameterLayers[exclusiveTag] = GetFx().NewLayer(exclusiveTag + " Parameters");
             exclusiveParameterLayers[exclusiveTag].NewState("Default");
@@ -110,7 +108,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return exclusiveParameterLayers[exclusiveTag];
     }
 
-    private VFAState getStartState(string stateName, VFALayer layer) {
+    private VFAState GetStartState(string stateName, VFALayer layer) {
         if (layer.GetRawStateMachine().defaultState != null) {
             foreach (var s in layer.GetRawStateMachine().states) {
                 if (s.state == layer.GetRawStateMachine().defaultState) return new VFAState(s, layer.GetRawStateMachine());
@@ -119,20 +117,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return layer.NewState(stateName);
     }
 
-    public string getPrimaryExclusive() {
+    public string GetPrimaryExclusive() {
         string targetTag = "";
         int targetMax = -1;
-        int targetIndex = 0;
 
         foreach (var exclusiveTag in GetExclusiveTags()) {
             int tagCount = 1;
-            int tagIndex = 0;
             foreach (var toggle in allBuildersInRun
                         .OfType<ToggleBuilder>()) {
 
-                if (!model.exclusiveOffState && toggle == this) {
-                    tagIndex = tagCount;
-                }
                 if (!toggle.model.exclusiveOffState && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
                     tagCount++;
                 }
@@ -142,16 +135,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (tagCount > targetMax) {
                 targetTag = exclusiveTag;
                 targetMax = tagCount;
-                targetIndex = tagIndex;
             }
         }
 
         return targetTag;
     }
 
-    private void checkExclusives() {
+    private void CheckExclusives() {
         
-        string targetTag = getPrimaryExclusive();
+        string targetTag = GetPrimaryExclusive();
         int tagCount = 1;
         int tagIndex = 0;
 
@@ -162,7 +154,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (!model.exclusiveOffState && toggle == this) {
                 tagIndex = tagCount;
             }
-            if (!toggle.model.exclusiveOffState && toggle.getPrimaryExclusive() == targetTag) {
+            if (!toggle.model.exclusiveOffState && toggle.GetPrimaryExclusive() == targetTag) {
                 tagCount++;
             }
         }
@@ -240,8 +232,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         var fx = GetFx();
-        var layer = getLayer(layerName, fx);
-        var off = getStartState("Off", layer);
+        var layer = GetLayer(layerName, fx);
+        var off = GetStartState("Off", layer);
 
         if (model.useGlobalParam && model.globalParam != null && model.paramOverride == null) {
             model.paramOverride = model.globalParam;
@@ -249,7 +241,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (model.enableExclusiveTag) {
-            checkExclusives();
+            CheckExclusives();
         }
 
         string paramName;
@@ -327,8 +319,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
             var actionLayer = GetAction();
-            var layer2 = getLayer(layerName, actionLayer);
-            var off2 = getStartState("Off", layer2);
+            var layer2 = GetLayer(layerName, actionLayer);
+            var off2 = GetStartState("Off", layer2);
             VFACondition onCase2;
             if (model.useInt) {
                 var param2 = actionLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
@@ -340,11 +332,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
         } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
-            var maskName = getMaskName(clip);
+            var maskName = GetMaskName(clip);
             if (maskName.ToLower().Contains("hand")) {
                 var gestureLayer = GetGesture();
-                var layer2 = getLayer(layerName, gestureLayer, maskName);
-                var off2 = getStartState("Off", layer2);
+                var layer2 = GetLayer(layerName, gestureLayer, maskName);
+                var off2 = GetStartState("Off", layer2);
                 VFACondition onCase2;
             if (model.useInt) {
                 var param2 = gestureLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
@@ -421,7 +413,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 outState = blendOut;
             }
         } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Gesture) {
-            var maskName = getMaskName(clip);
+            var maskName = GetMaskName(clip);
             off.TrackingController(maskName + "Tracking");
             inState.TrackingController(maskName + "Animation");
             var maskGuid = "";
@@ -596,8 +588,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (paramsToTurnOff.Count + paramsToTurnToZero.Count > 0) {
 
-            var exclusiveLayer = getLayerForParameters(GetExclusiveTags().First());
-            var startState = getStartState("Default", exclusiveLayer);
+            var exclusiveLayer = GetLayerForParameters(GetExclusiveTags().First());
+            var startState = GetStartState("Default", exclusiveLayer);
             var triggerState = exclusiveLayer.NewState(layerName);
             var onParam = model.useInt ? (param as VFAInteger).IsEqualTo(model.intTarget) : (param as VFABool).IsTrue();
 

@@ -392,7 +392,7 @@ namespace VF.Feature {
             return content;
         }
         
-        private static HashSet<string> VRChatGlobalParams = new HashSet<string> {
+        private static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
             "Voice",
