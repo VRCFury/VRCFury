@@ -254,7 +254,7 @@ namespace VF.Feature {
                 usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
                 usedBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
             }
-            usedBindings.RemoveWhere(binding => binding.path == "_ignored");
+            usedBindings.RemoveWhere(binding => binding.path.Contains("_ignored"));
             return usedBindings;
         }
 
