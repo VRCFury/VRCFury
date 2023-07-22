@@ -336,38 +336,6 @@ namespace VF.Builder {
             }
         }
 
-        public class MutableClip {
-            private AnimationClip clip;
-            
-            public MutableClip(AnimationClip clip) {
-                this.clip = clip;
-            }
-            
-            public EditorCurveBinding[] GetFloatBindings() {
-                return AnimationUtility.GetCurveBindings(clip);
-            }
-            
-            public EditorCurveBinding[] GetObjectBindings() {
-                return AnimationUtility.GetObjectReferenceCurveBindings(clip);
-            }
-            
-            public AnimationCurve GetFloatCurve(EditorCurveBinding binding) {
-                return AnimationUtility.GetEditorCurve(clip, binding);
-            }
-            
-            public ObjectReferenceKeyframe[] GetObjectCurve(EditorCurveBinding binding) {
-                return AnimationUtility.GetObjectReferenceCurve(clip, binding);
-            }
-
-            public void SetFloatCurve(EditorCurveBinding binding, AnimationCurve curve) {
-                AnimationUtility.SetEditorCurve(clip, binding, curve);
-            }
-            
-            public void SetObjectCurve(EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
-                AnimationUtility.SetObjectReferenceCurve(clip, binding, curve);
-            }
-        }
-
         private static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
