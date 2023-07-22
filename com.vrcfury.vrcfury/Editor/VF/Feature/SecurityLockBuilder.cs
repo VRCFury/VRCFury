@@ -59,11 +59,17 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         var entry = layer.NewState("Entry")
             .Move(remote, 1, 0);
         
+        var clear = layer.NewState("Clear")
+            .Move(entry, 1, 1);
+        clear.TransitionsTo(entry).When(fx.Always());
+
         remote.TransitionsTo(entry).When(fx.IsLocal().IsTrue());
         
         var digitParams = new List<VFAInteger>();
         for (var i = 0; i < numDigitSlots; i++) {
-            digitParams.Add(fx.NewInt("SecurityDigit" + i));
+            var savedDigit = fx.NewInt("SecurityDigit" + i);
+            digitParams.Add(savedDigit);
+            clear.Drives(savedDigit, 0);
         }
 
         var saveStates = new List<VFAState>();
@@ -81,7 +87,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
             }
         }
 
-        entry.TransitionsTo(entry).When(paramInput.IsEqualTo(8));
+        entry.TransitionsTo(clear).When(paramInput.IsEqualTo(8));
         entry.Drives(paramInput, 0);
         entry.Drives(paramSecuritySync, false);
 
@@ -98,7 +104,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         check.TransitionsTo(entry).When(fx.Always());
         unlocked.Drives(paramInput, 8);
         unlocked.Drives(paramSecuritySync, true);
-        unlocked.TransitionsTo(entry).When(paramInput.IsNotEqualTo(8));
+        unlocked.TransitionsTo(clear).When(paramInput.IsNotEqualTo(8));
     }
 
     public override string GetEditorTitle() {
