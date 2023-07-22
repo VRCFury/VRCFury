@@ -60,7 +60,9 @@ namespace VF.Builder {
             var so = new SerializedObject(animator.avatar);
             var skeletonIndex = GetSkeletonIndex(so, findBone);
             var boneHash = GetBoneHashFromSkeletonIndex(so, skeletonIndex);
-            return GetBonePathFromBoneHash(so, boneHash);
+            var result = GetBonePathFromBoneHash(so, boneHash);
+            cacheDict[findBone] = result;
+            return result;
         }
 
         private static int GetSkeletonIndex(SerializedObject so, HumanBodyBones humanoidIndex) {
