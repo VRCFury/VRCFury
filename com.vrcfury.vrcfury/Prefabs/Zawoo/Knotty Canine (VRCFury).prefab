@@ -98,33 +98,86 @@ MonoBehaviour:
         - obj: {fileID: 3344568644173286835}
           action: 1
           ResetMePlease: 0
---- !u!114 &1498230397312983678
+--- !u!1 &5037118760527491881
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9186664314685866829}
+  - component: {fileID: 1514413462217835959}
+  m_Layer: 0
+  m_Name: Haptic Plug
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9186664314685866829
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5037118760527491881}
+  m_LocalRotation: {x: 0.007441199, y: -0, z: -0, w: 0.99997234}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 4977769483496473346}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0.85300004, y: 0, z: 0}
+--- !u!114 &1514413462217835959
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8138877281814717452}
+  m_GameObject: {fileID: 5037118760527491881}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2d4cd252f8c146639507ecd55bc2b48a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  version: 2
+  version: 6
   autoRenderer: 1
   autoPosition: 1
   autoLength: 1
+  useBoneMask: 1
+  textureMask:
+    fileID: 0
+    guid: 
+    obj: {fileID: 0}
   length: 0
   autoRadius: 1
   radius: 0
   name: 
   unitsInMeters: 0
   configureTps: 0
+  enableSps: 1
+  spsAutorig: 1
+  configureTpsMesh: []
+  spsAnimatedEnabled: 1
+  useLegacyRendererFinder: 0
+  addDpsTipLight: 0
+  spsKeepImports: 0
+  postBakeActions:
+    actions: []
+  spsOverrun: 1
+  configureSps: 0
+  spsBoneMask: 1
+  spsTextureMask:
+    fileID: 0
+    guid: 
+    obj: {fileID: 0}
   configureTpsMask:
     fileID: 0
     guid: 
     obj: {fileID: 0}
-  configureTpsMesh: []
+  references:
+    version: 1
 --- !u!1001 &3344568645372403570
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -132,6 +185,11 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 3344568644173286834}
     m_Modifications:
+    - target: {fileID: 2808439906996020105, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: de1c8b8737270c248801558e3bb33030, type: 2}
     - target: {fileID: 4833610413082082573, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
         type: 3}
       propertyPath: m_Name
@@ -196,6 +254,7 @@ PrefabInstance:
     - {fileID: 6816570435909755593, guid: e46d7cde4bbf2ef4c86271fe6d19728d, type: 3}
     - {fileID: 631084105439565901, guid: e46d7cde4bbf2ef4c86271fe6d19728d, type: 3}
     - {fileID: 6816570436923751281, guid: e46d7cde4bbf2ef4c86271fe6d19728d, type: 3}
+    - {fileID: 6816570437418138929, guid: e46d7cde4bbf2ef4c86271fe6d19728d, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: e46d7cde4bbf2ef4c86271fe6d19728d, type: 3}
 --- !u!1 &7889783702869647999 stripped
 GameObject:
@@ -209,9 +268,9 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 3344568645372403570}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &8138877281814717452 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6816570436923751294, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
+--- !u!4 &4977769483496473346 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7745872014296128624, guid: e46d7cde4bbf2ef4c86271fe6d19728d,
     type: 3}
   m_PrefabInstance: {fileID: 3344568645372403570}
   m_PrefabAsset: {fileID: 0}
