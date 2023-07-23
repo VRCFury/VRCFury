@@ -319,19 +319,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var clip = LoadState(onName, action, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
-            var actionLayer = GetBase();
+            var baseLayer = GetBase();
             var maskName = GetMaskName(clip);
-            var layer2 = GetLayer(layerName, actionLayer, maskName);
+            var layer2 = GetLayer(layerName, baseLayer, maskName);
             var off2 = GetStartState("Off", layer2);
             VFACondition onCase2;
             if (useInt) {
-                var param2 = actionLayer.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                var param2 = baseLayer.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
                 onCase2 = param2.IsEqualTo(intTarget);
             } else {
-                var param2 = actionLayer.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+                var param2 = baseLayer.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase2 = param2.IsTrue();
             }
-            Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
+            Apply(baseLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
         }
 
