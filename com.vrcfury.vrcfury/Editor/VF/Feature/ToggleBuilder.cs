@@ -906,6 +906,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     tags.Add("This is the Exclusive Off State");
                 if (holdButtonProp != null && holdButtonProp.boolValue)
                     tags.Add("Hold Button");
+                if (hasExitTimeProp != null && hasExitTimeProp.boolValue)
+                    tags.Add("Run to Completion");
 
                 var row = new VisualElement();
                 row.style.flexWrap = Wrap.Wrap;
