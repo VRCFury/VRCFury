@@ -15,7 +15,7 @@ namespace VF.Feature {
                     var mask = new AvatarMask();
 
                     for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                        //mask.SetHumanoidBodyPartActive(bodyPart, false);
+                        mask.SetHumanoidBodyPartActive(bodyPart, false);
                     }
                     mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
                     mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);

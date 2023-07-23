@@ -91,7 +91,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (leftHand) return "leftHand";
         if (rightHand) return "rightHand";
         
-        return "";
+        return "emote";
     }
 
     private VFALayer GetLayer(string layerName, ControllerManager controller, string maskName = "") {
@@ -319,8 +319,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var clip = LoadState(onName, action, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
-            var actionLayer = GetAction();
-            var layer2 = GetLayer(layerName, actionLayer);
+            var actionLayer = GetBase();
+            var maskName = GetMaskName(clip);
+            var layer2 = GetLayer(layerName, actionLayer, maskName);
             var off2 = GetStartState("Off", layer2);
             VFACondition onCase2;
             if (useInt) {
@@ -332,24 +333,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
-        } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
-            var maskName = GetMaskName(clip);
-            if (maskName.ToLower().Contains("hand")) {
-                var gestureLayer = GetGesture();
-                var layer2 = GetLayer(layerName, gestureLayer, maskName);
-                var off2 = GetStartState("Off", layer2);
-                VFACondition onCase2;
-            if (useInt) {
-                var param2 = gestureLayer.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
-                onCase2 = param2.IsEqualTo(intTarget);
-            } else {
-                var param2 = gestureLayer.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-                onCase2 = param2.IsTrue();
-            }
-                Apply(gestureLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
-                return;
-            }
-            
         }
 
         if (model.includeInRest && !appliedToRest) {
@@ -398,25 +381,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             outState = onState;
         }
 
-        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action) {
-            off.WithAnimation(inState.GetRaw().motion);
-            off.TrackingController("emoteTracking").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 0, 0);
-            inState.TrackingController("emoteAnimation").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action, 1, 0);
-
-            if (inState != onState) {
-                var blendOut = layer.NewState(onName + " Blendout").WithAnimation(inState.GetRaw().motion);
-                var transition = outState.TransitionsTo(blendOut);
-                if (outState == onState) {
-                    transition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
-                } else {
-                    transition.When().WithTransitionExitTime(1);
-                }
-                outState = blendOut;
-            }
-        } else if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Gesture) {
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Base) {
             var maskName = GetMaskName(clip);
-            off.TrackingController(maskName + "Tracking");
-            inState.TrackingController(maskName + "Animation");
+            off.TrackingController(maskName + "Tracking").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Gesture, 1, 0);
+            inState.TrackingController(maskName + "Animation").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Gesture, 0, 0);
+
             var maskGuid = "";
             switch (maskName) {
                 case "hands":
@@ -493,7 +462,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (!model.enableExclusiveTag) return;
 
-        ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
+        ControllerManager[] controllers = { GetFx(), GetBase() };
         var paramsToTurnOff = new HashSet<VFABool>();
         var paramsToTurnToZero = new Dictionary<String, HashSet<(VFAInteger, int)>>();
         var allOthersOff = controllers[0].Always();

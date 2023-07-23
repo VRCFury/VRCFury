@@ -18,7 +18,6 @@ namespace VF.Feature {
         public void Apply() {
 
             var singleOwnerTypes = new HashSet<VRCAvatarDescriptor.AnimLayerType>() {
-                VRCAvatarDescriptor.AnimLayerType.Base,
                 VRCAvatarDescriptor.AnimLayerType.TPose,
                 VRCAvatarDescriptor.AnimLayerType.IKPose,
                 VRCAvatarDescriptor.AnimLayerType.Sitting

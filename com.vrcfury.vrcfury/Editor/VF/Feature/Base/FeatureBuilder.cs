@@ -63,6 +63,10 @@ namespace VF.Feature.Base {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
         }
 
+        public ControllerManager GetBase() {
+            return manager.GetController(VRCAvatarDescriptor.AnimLayerType.Base);
+        }
+
         protected VFABool CreatePhysBoneResetter(List<GameObject> resetPhysbones, string name) {
             if (resetPhysbones == null || resetPhysbones.Count == 0) return null;
 
