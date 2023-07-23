@@ -53,16 +53,6 @@ namespace VF.Builder {
             foreach (var layer in ctrl.layers) {
                 layerOwners[layer.stateMachine] = "Base Avatar";
             }
-            
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && GetMask(0) == null) {
-                var mask = new AvatarMask();
-                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                    if (bodyPart == AvatarMaskBodyPart.LeftFingers || bodyPart == AvatarMaskBodyPart.RightFingers) continue;
-                    mask.SetHumanoidBodyPartActive(bodyPart, false);
-                }
-                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
-                SetMask(0, mask);
-            }
         }
 
         public AnimatorController GetRaw() {
@@ -357,7 +347,8 @@ namespace VF.Builder {
             "MuteSelf",
             "InStation",
             "AvatarVersion",
-            "GroundProximity"
+            "GroundProximity",
+            "VelocityMagnitude"
         };
         public IImmutableSet<EasyAnimationClip> GetClips() {
             return new AnimatorIterator.Clips().From(GetRaw())

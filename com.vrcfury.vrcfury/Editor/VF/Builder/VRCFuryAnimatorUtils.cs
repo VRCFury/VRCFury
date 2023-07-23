@@ -170,16 +170,14 @@ public class VFAState {
     }
     public VRCAnimatorTrackingControl GetTrackingControl() {
          foreach (var b in node.state.behaviours) {
-            var d = b as VRCAnimatorTrackingControl;
-            if (d) return d;
-        }
+            if (b is VRCAnimatorTrackingControl tc) return tc;
+         }
         var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAnimatorTrackingControl>(node.state);
         return driver;
     }
     public VRCPlayableLayerControl GetPlayableLayerControl(VRC_PlayableLayerControl.BlendableLayer layer) {
          foreach (var b in node.state.behaviours) {
-            var d = b as VRCPlayableLayerControl;
-            if (d && d.layer == layer) return d;
+            if (b is VRCPlayableLayerControl lc) return lc;
         }
         var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(node.state);
         return driver;
@@ -228,6 +226,8 @@ public class VFAState {
 
     public VFAState TrackingController(int trackingHead, int trackingLeftHand, int trackingRightHand, int trackingHip, int trackingLeftFoot, int trackingRightFoot, int trackingLeftFingers, int trackingRightFingers, int trackingEyes, int trackingMouth) {
         
+        //TODO: not multi toggle safe
+
         var controller = GetTrackingControl();
         controller.trackingHead = (VRC_AnimatorTrackingControl.TrackingType)trackingHead;
         controller.trackingLeftHand = (VRC_AnimatorTrackingControl.TrackingType)trackingLeftHand;
@@ -243,8 +243,8 @@ public class VFAState {
 
     }
 
-    public VFAState TrackingController(string quickChoise) {
-        switch (quickChoise) {
+    public VFAState TrackingController(string quickChoice) {
+        switch (quickChoice) {
             case "allTracking":
                 return TrackingController(1,1,1,1,1,1,1,1,1,1);
             case "allAnimation":
@@ -266,7 +266,7 @@ public class VFAState {
             case "rightHandAnimation":
                 return TrackingController(0,0,0,0,0,0,0,2,0,0);
         }
-        throw new VRCFBuilderException("Unrecognized Tracking Controller Quick Choice: " + quickChoise);
+        throw new VRCFBuilderException("Unrecognized Tracking Controller Quick Choice: " + quickChoice);
     }
 
     public VFAState PlayableLayerController(VRC_PlayableLayerControl.BlendableLayer layer, float goal, float duration) {

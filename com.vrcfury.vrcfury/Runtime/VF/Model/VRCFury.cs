@@ -69,8 +69,5 @@ namespace VF.Model {
     [Serializable]
     public class State {
         [SerializeReference] public List<Action> actions = new List<Action>();
-        public bool IsEmpty(){
-            return actions.Count == 0;
-        }
     }
 }

@@ -23,6 +23,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
     private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
 
+    private bool addMenuItem;
+    private bool usePrefixOnParam;
+    private float transitionTime;
+    private string paramOverride;
+    private bool useInt;
+    private int intTarget = -1;
+
     private bool appliedToRest = false;
     
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
@@ -159,21 +166,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        var temp = targetTag;
-
-        foreach (var exclusiveTag in GetExclusiveTags()) {
-            if (exclusiveTag != targetTag) {
-                temp += (", " + exclusiveTag);
-            }
-        }
-
         if (tagCount > 256) {
             throw new Exception("Too many toggles for exclusive tag " + targetTag + ". Please reduce the number of toggles using this tag to below 255.");
         }
 
         if (tagCount > 8) {
-            model.useInt = true;
-            model.intTarget = tagIndex;
+            useInt = true;
+            intTarget = tagIndex;
         }
     }
 		
@@ -186,7 +185,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var on = layer.NewState("On");
         var x = fx.NewFloat(
             model.name,
-            synced: model.addMenuItem,
+            synced: addMenuItem,
             saved: model.saved,
             def: model.defaultOn ? model.defaultSliderValue : 0
         );
@@ -217,6 +216,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
+        paramOverride = model.paramOverride;
+        usePrefixOnParam = model.usePrefixOnParam;
+        transitionTime =model.transitionTime;
+        useInt = model.useInt;
+        addMenuItem = model.addMenuItem;
+
         if (model.slider) {
             CreateSlider();
             return;
@@ -228,16 +233,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.name == "" && model.useGlobalParam) {
             layerName = model.globalParam;
-            model.addMenuItem = false;
+            addMenuItem = false;
         }
 
         var fx = GetFx();
         var layer = GetLayer(layerName, fx);
         var off = GetStartState("Off", layer);
 
-        if (model.useGlobalParam && model.globalParam != null && model.paramOverride == null) {
-            model.paramOverride = model.globalParam;
-            model.usePrefixOnParam = false;
+        if (model.useGlobalParam && model.globalParam != null && paramOverride == null) {
+            paramOverride = model.globalParam;
+            usePrefixOnParam = false;
         }
 
         if (model.enableExclusiveTag) {
@@ -245,34 +250,30 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         string paramName;
-        bool usePrefixOnParam;
-        if (model.paramOverride != null) {
-            paramName = model.paramOverride;
-            usePrefixOnParam = model.usePrefixOnParam;
+        if (paramOverride != null) {
+            paramName = paramOverride;
         } else if (model.useGlobalParam && model.globalParam != null) {
             paramName = model.globalParam;
             usePrefixOnParam = false;
         } else {
             paramName = model.name;
-            usePrefixOnParam = model.usePrefixOnParam;
         }
-        if (model.useInt) {
-            if (model.intTarget == -1) {
-                var numParam = fx.NewInt(paramName, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+        if (useInt) {
+            if (intTarget == -1) {
+                var numParam = fx.NewInt(paramName, synced: addMenuItem, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 onCase = numParam.IsNotEqualTo(0);
             } else {
-                var numParam = fx.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
-                onCase = numParam.IsEqualTo(model.intTarget);
+                var numParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                onCase = numParam.IsEqualTo(intTarget);
                 param = numParam;
             }
         } else {
-            var boolParam = fx.NewBool(paramName, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
 
-        if (!model.hasTransitionTime)  model.transitionTime = 0;
-        if (!model.hasExitTime) model.exitTime = 0;
+        if (!model.hasTransitionTime)  transitionTime = 0;
         
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
@@ -282,20 +283,20 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(fx, layer, off, onCase, layerName + " On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
-        if (model.addMenuItem) {
+        if (addMenuItem) {
             if (model.holdButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
                     param,
                     icon: model.enableIcon ? model.icon : null,
-                    value: model.intTarget != -1 ? model.intTarget : 1
+                    value: intTarget != -1 ? intTarget : 1
                 );
             } else {
                 manager.GetMenu().NewMenuToggle(
                     model.name,
                     param,
                     icon: model.enableIcon ? model.icon : null,
-                    value: model.intTarget != -1 ? model.intTarget : 1
+                    value: intTarget != -1 ? intTarget : 1
                 );
             }
         }
@@ -322,11 +323,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var layer2 = GetLayer(layerName, actionLayer);
             var off2 = GetStartState("Off", layer2);
             VFACondition onCase2;
-            if (model.useInt) {
-                var param2 = actionLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
-                onCase2 = param2.IsEqualTo(model.intTarget);
+            if (useInt) {
+                var param2 = actionLayer.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                onCase2 = param2.IsEqualTo(intTarget);
             } else {
-                var param2 = actionLayer.NewBool(model.name, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+                var param2 = actionLayer.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase2 = param2.IsTrue();
             }
             Apply(actionLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
@@ -338,11 +339,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var layer2 = GetLayer(layerName, gestureLayer, maskName);
                 var off2 = GetStartState("Off", layer2);
                 VFACondition onCase2;
-            if (model.useInt) {
-                var param2 = gestureLayer.NewInt("VF_" + GetExclusiveTags().First() + "_Exclusives", synced: model.addMenuItem, def: model.defaultOn ? model.intTarget : 0, usePrefix: false);
-                onCase2 = param2.IsEqualTo(model.intTarget);
+            if (useInt) {
+                var param2 = gestureLayer.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                onCase2 = param2.IsEqualTo(intTarget);
             } else {
-                var param2 = gestureLayer.NewBool(model.name, synced: model.addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: model.usePrefixOnParam);
+                var param2 = gestureLayer.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase2 = param2.IsTrue();
             }
                 Apply(gestureLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
@@ -372,11 +373,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         AnimationClip transitionClipIn = null;
 
-        if (model.hasTransition && inAction != null && !inAction.IsEmpty()) {
+        if (model.hasTransition && inAction != null) {
             transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
-            var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(model.transitionTime);
+            var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
             if (transitionClipIn.length <= 1f/transitionClipIn.frameRate) {
                 transition.When(controller.Always());
             } else {
@@ -386,13 +387,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
 
-        off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(model.transitionTime);
+        off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(transitionTime);
 
         if (model.simpleOutTransition) outAction = inAction;
-        if (model.hasTransition && outAction != null && !outAction.IsEmpty()) {
+        if (model.hasTransition && outAction != null) {
             var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(model.transitionTime).WithTransitionExitTime(model.exitTime);
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : 0);
         } else {
             outState = onState;
         }
@@ -406,7 +407,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var blendOut = layer.NewState(onName + " Blendout").WithAnimation(inState.GetRaw().motion);
                 var transition = outState.TransitionsTo(blendOut);
                 if (outState == onState) {
-                    transition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                    transition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     transition.When().WithTransitionExitTime(1);
                 }
@@ -443,7 +444,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var exitTransition = outState.TransitionsToExit();
 
             if (onEqualsOut) {
-                exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
             } else {
                 exitTransition.When().WithTransitionExitTime(1);
             }
@@ -508,13 +509,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     if (other.GetExclusiveTags().Contains(exclusiveTag)) {
                         var otherParam = other.GetParam();
                         if (otherParam != null) {
-                            var otherOnCondition = other.model.useInt ? (otherParam as VFAInteger).IsEqualTo(other.model.intTarget) : (otherParam as VFABool).IsTrue();
-                            if (other.model.useInt) {
+                            var otherOnCondition = other.useInt ? (otherParam as VFAInteger).IsEqualTo(other.intTarget) : (otherParam as VFABool).IsTrue();
+                            if (other.useInt) {
                                 if (param.Name() != otherParam.Name()) {
                                     if (!paramsToTurnToZero.ContainsKey(otherParam.Name())) {
                                         paramsToTurnToZero[otherParam.Name()] = new HashSet<(VFAInteger, int)>();
                                     }
-                                    paramsToTurnToZero[otherParam.Name()].Add((otherParam as VFAInteger, other.model.intTarget));
+                                    paramsToTurnToZero[otherParam.Name()].Add((otherParam as VFAInteger, other.intTarget));
                                 }
                             } else {
                                 paramsToTurnOff.Add(otherParam as VFABool);
@@ -526,31 +527,31 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
                             if (inState != null) {
                                 if (outState != null && inState.GetRawStateMachine() == outState.GetRawStateMachine()) {
-                                    outState.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                    outState.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                                 }
                                 if (outStateR != null && inState.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
-                                    outStateR.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                    outStateR.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                                 }
                                 if (outStateL != null && inState.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
-                                    outStateL.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                    outStateL.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                                 }
                             }
 
                             if (inStateR != null) {
                                 if (outState != null && inStateR.GetRawStateMachine() == outState.GetRawStateMachine()) {
-                                    outState.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal.Not())).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                    outState.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal.Not())).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                                 }
                                 if (outStateR != null && inStateR.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
-                                    outStateR.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal).Not()).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                    outStateR.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal).Not()).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                                 }
                             }
 
                             if (inStateL != null) {
                                 if (outState != null && inStateL.GetRawStateMachine() == outState.GetRawStateMachine()) {
-                                    outState.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                    outState.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                                 }
                                 if (outStateL != null && inStateL.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
-                                    outStateL.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(model.transitionTime);
+                                    outStateL.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                                 }
                             }
                         }
@@ -561,7 +562,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (outState != null) {
                 var exitTransition = outState.TransitionsToExit();
                 if (onEqualsOut) {
-                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
                 }
@@ -570,7 +571,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (outStateR != null) {
                 var exitTransition = outStateR.TransitionsToExit();
                 if (onEqualsOut) {
-                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
                 }
@@ -579,7 +580,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (outStateL != null) {
                 var exitTransition = outStateL.TransitionsToExit();
                 if (onEqualsOut) {
-                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.exitTime).WithTransitionDurationSeconds(model.transitionTime);
+                    exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
                 }
@@ -588,10 +589,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (paramsToTurnOff.Count + paramsToTurnToZero.Count > 0) {
 
-            var exclusiveLayer = GetLayerForParameters(GetExclusiveTags().First());
+            var exclusiveLayer = GetLayerForParameters(GetPrimaryExclusive());
             var startState = GetStartState("Default", exclusiveLayer);
             var triggerState = exclusiveLayer.NewState(layerName);
-            var onParam = model.useInt ? (param as VFAInteger).IsEqualTo(model.intTarget) : (param as VFABool).IsTrue();
+            var onParam = useInt ? (param as VFAInteger).IsEqualTo(intTarget) : (param as VFABool).IsTrue();
 
             var intStates = new HashSet<(VFACondition, VFAState)>();
 
@@ -628,7 +629,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 triggerState.Drives(p, false);
             }
 
-            if (!model.useInt && model.exclusiveOffState) {
+            if (!useInt && model.exclusiveOffState) {
                 startState.TransitionsTo(triggerState).When(allOthersOff);
                 triggerState.Drives((param as VFABool), true);
             }
@@ -773,7 +774,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     hasTransitionTimeProp.boolValue = !hasTransitionTimeProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            advMenu.AddItem(new GUIContent("Has Exit Time"), hasExitTimeProp.boolValue, () => {
+            advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
                     hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
@@ -909,15 +910,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             return c;
         }, hasTransitionProp));
-
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var c = new VisualElement();
-            if (hasExitTimeProp.boolValue)
-            {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("exitTime"), "Exit Time"));
-            }
-            return c;
-        }, hasExitTimeProp));
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var c = new VisualElement();
