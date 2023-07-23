@@ -2,6 +2,9 @@ namespace VF.Feature.Base {
     public enum FeatureOrder {
         CleanupLegacy = -2000,
         
+        // Needs to happen before toggles begin getting processed
+        ForceObjectState = -1500,
+        
         // Needs to happen before everything
         FixDoubleFx = -1000,
 
@@ -22,9 +25,6 @@ namespace VF.Feature.Base {
         // Needs to run before Toggles, because of its "After Bake" action
         BakeHaptics = -3,
 
-        // Needs to happen before toggles begin getting processed
-        ForceObjectState = -1,
-        
         Default = 0,
         
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
