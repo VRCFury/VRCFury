@@ -319,19 +319,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var clip = LoadState(onName, action, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
-            var baseLayer = GetBase();
+            var gestureLayer = GetGesture();
             var maskName = GetMaskName(clip);
-            var layer2 = GetLayer(layerName, baseLayer, maskName);
+            var layer2 = GetLayer(layerName, gestureLayer, maskName);
             var off2 = GetStartState("Off", layer2);
             VFACondition onCase2;
             if (useInt) {
-                var param2 = baseLayer.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                var param2 = gestureLayer.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
                 onCase2 = param2.IsEqualTo(intTarget);
             } else {
-                var param2 = baseLayer.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+                var param2 = gestureLayer.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase2 = param2.IsTrue();
             }
-            Apply(baseLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
+            Apply(gestureLayer, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
         }
 
@@ -381,10 +381,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             outState = onState;
         }
 
-        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Base) {
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Gesture) {
             var maskName = GetMaskName(clip);
-            off.TrackingController(maskName + "Tracking").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Gesture, 1, 0);
-            inState.TrackingController(maskName + "Animation").PlayableLayerController(VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Gesture, 0, 0);
+            off.TrackingController(maskName + "Tracking");
+            inState.TrackingController(maskName + "Animation");
 
             var maskGuid = "";
             switch (maskName) {
@@ -462,7 +462,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (!model.enableExclusiveTag) return;
 
-        ControllerManager[] controllers = { GetFx(), GetBase() };
+        ControllerManager[] controllers = { GetFx(), GetGesture() };
         var paramsToTurnOff = new HashSet<VFABool>();
         var paramsToTurnToZero = new Dictionary<String, HashSet<(VFAInteger, int)>>();
         var allOthersOff = controllers[0].Always();
