@@ -280,15 +280,12 @@ namespace VF.Feature {
                 if (propBone.transform == root) {
                     if (scalingRequired || keepBoneOffsets) {
                         var childBone = new GameObject("vrcf_" + uniqueModelNum + "_" + propBone.name);
-                        if (scalingRequired) {
+                        if (keepBoneOffsets) { // reparenting solves scaling requirement
+                            childBone.transform.SetParent(propBone.transform, false);
+                            childBone.transform.SetParent(avatarBone.transform, true);
+                        } else { // only scaling required
                             childBone.transform.localScale = Vector3.one * scalingFactor;
-                        }
-                        childBone.transform.SetParent(avatarBone.transform, false);
-                        if (keepBoneOffsets) {
-                            childBone.transform.position = propBone.transform.position;
-                            childBone.transform.rotation = propBone.transform.rotation;
-                            var lossyScale = propBone.transform.lossyScale;
-                            childBone.transform.localScale *= Mathf.Max(lossyScale.x, lossyScale.y, lossyScale.z);
+                            childBone.transform.SetParent(avatarBone.transform, false);
                         }
                         collider.rootTransform = childBone.transform;
                     } else {
