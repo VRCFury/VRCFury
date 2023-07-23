@@ -56,6 +56,7 @@ MonoBehaviour:
     - id: 1
     - id: 2
     - id: 3
+    - id: 4
   somethingIsBroken: 0
   references:
     version: 1
@@ -66,7 +67,7 @@ MonoBehaviour:
         name: ThiccWater/Enable
         state:
           actions:
-          - id: 4
+          - id: 5
         saved: 0
         slider: 0
         securityEnabled: 0
@@ -97,6 +98,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000001:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -183,9 +187,85 @@ MonoBehaviour:
           action: 0
           ResetMePlease: 0
     00000004:
+      type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
+      data:
+        version: 0
+        name: ThiccWater/_BoundFixDoNotEnable
+        state:
+          actions:
+          - id: 6
+          - id: 7
+          - id: 8
+          - id: 9
+          - id: 10
+          - id: 11
+        saved: 0
+        slider: 0
+        securityEnabled: 0
+        defaultOn: 0
+        includeInRest: 1
+        exclusiveOffState: 0
+        enableExclusiveTag: 0
+        exclusiveTag: 
+        resetPhysbones: []
+        enableIcon: 0
+        icon:
+          fileID: 0
+          guid: 
+          obj: {fileID: 0}
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 1
+    00000005:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
         obj: {fileID: 8616299105019085890}
+    00000006:
+      type: {class: ScaleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 83922805647445219}
+        scale: 0.001
+    00000007:
+      type: {class: ScaleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 4430348298649973990}
+        scale: 0.001
+    00000008:
+      type: {class: ScaleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 1715240247509601980}
+        scale: 0.001
+    00000009:
+      type: {class: ScaleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 3331434799118413379}
+        scale: 0.001
+    0000000A:
+      type: {class: ScaleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 4708635832870579080}
+        scale: 0.001
+    0000000B:
+      type: {class: ScaleAction, ns: VF.Model.StateAction, asm: VRCFury}
+      data:
+        obj: {fileID: 8695902163928189815}
+        scale: 0.001
 --- !u!1001 &854378293625824677
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -347,6 +427,18 @@ PrefabInstance:
 --- !u!4 &1836782230709505706 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 375219876141636940, guid: a947272e0c51b024a88170bd1c58856a,
+    type: 3}
+  m_PrefabInstance: {fileID: 2038023727494861798}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &83922805647445219 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2117435715784384261, guid: a947272e0c51b024a88170bd1c58856a,
+    type: 3}
+  m_PrefabInstance: {fileID: 2038023727494861798}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &4430348298649973990 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2392327869728532224, guid: a947272e0c51b024a88170bd1c58856a,
     type: 3}
   m_PrefabInstance: {fileID: 2038023727494861798}
   m_PrefabAsset: {fileID: 0}
@@ -526,6 +618,18 @@ PrefabInstance:
 --- !u!4 &8425738440040634006 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1630534290607577217, guid: d079eda7c82300c4aa44f2f6dbcb831f,
+    type: 3}
+  m_PrefabInstance: {fileID: 7083861171563646487}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1715240247509601980 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8467664359084556459, guid: d079eda7c82300c4aa44f2f6dbcb831f,
+    type: 3}
+  m_PrefabInstance: {fileID: 7083861171563646487}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3331434799118413379 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5509393800405459028, guid: d079eda7c82300c4aa44f2f6dbcb831f,
     type: 3}
   m_PrefabInstance: {fileID: 7083861171563646487}
   m_PrefabAsset: {fileID: 0}
@@ -724,6 +828,18 @@ PrefabInstance:
 --- !u!4 &2484740994958341026 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6579422597038635386, guid: 5dfc76558943f1442a6f017c3803b0c8,
+    type: 3}
+  m_PrefabInstance: {fileID: 8733991759513504472}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &4708635832870579080 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4065959282121695568, guid: 5dfc76558943f1442a6f017c3803b0c8,
+    type: 3}
+  m_PrefabInstance: {fileID: 8733991759513504472}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8695902163928189815 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 115778346545070511, guid: 5dfc76558943f1442a6f017c3803b0c8,
     type: 3}
   m_PrefabInstance: {fileID: 8733991759513504472}
   m_PrefabAsset: {fileID: 0}
