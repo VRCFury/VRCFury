@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Utils;
 
 namespace VF.Feature {
     /** This builder is responsible for moving objects for other builders,
@@ -15,7 +16,7 @@ namespace VF.Feature {
      */
     public class ObjectMoveBuilder : FeatureBuilder {
         private List<Tuple<string, string>> redirects = new List<Tuple<string, string>>();
-        private readonly List<EasyAnimationClip> additionalClips = new List<EasyAnimationClip>();
+        private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
         // TODO: This should probably rewrite clips as the Moves come in.
         // Otherwise, if there's an animation targeting an old name and a new name in the FixWriteDefaultsBuilder,
@@ -36,7 +37,7 @@ namespace VF.Feature {
             redirects.Add(Tuple.Create(oldPath, newPath));
         }
 
-        public void AddAdditionalManagedClip(EasyAnimationClip clip) {
+        public void AddAdditionalManagedClip(AnimationClip clip) {
             additionalClips.Add(clip);
         }
         
@@ -44,7 +45,7 @@ namespace VF.Feature {
         public void FixAnimations() {
             if (redirects.Count == 0) return;
             
-            var clips = new HashSet<EasyAnimationClip>();
+            var clips = new HashSet<AnimationClip>();
             var masks = new HashSet<AvatarMask>();
 
             clips.UnionWith(additionalClips);

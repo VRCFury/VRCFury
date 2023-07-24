@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -84,9 +85,8 @@ namespace VF.Builder {
         }
 
         public void Rewrite(
-            AnimationClip clip_
+            AnimationClip clip
         ) {
-            var clip = new EasyAnimationClip(clip_);
             foreach (var originalBinding in clip.GetFloatBindings()) {
                 var curve = clip.GetFloatCurve(originalBinding);
                 var rewrittenBinding = RewriteBinding(originalBinding, true);
@@ -172,12 +172,10 @@ namespace VF.Builder {
             AnimationClip from,
             AnimationClip to
         ) {
-            var fromC = new EasyAnimationClip(from);
-            var toC = new EasyAnimationClip(to);
-            foreach (var binding in fromC.GetFloatBindings())
-                toC.SetFloatCurve(binding, fromC.GetFloatCurve(binding));
-            foreach (var binding in fromC.GetObjectBindings())
-                toC.SetObjectCurve(binding, fromC.GetObjectCurve(binding));
+            foreach (var binding in from.GetFloatBindings())
+                to.SetFloatCurve(binding, from.GetFloatCurve(binding));
+            foreach (var binding in from.GetObjectBindings())
+                to.SetObjectCurve(binding, from.GetObjectCurve(binding));
         }
     }
 }

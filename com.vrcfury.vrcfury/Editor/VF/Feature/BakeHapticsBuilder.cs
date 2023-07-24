@@ -10,6 +10,7 @@ using VF.Component;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 

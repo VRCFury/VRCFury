@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
