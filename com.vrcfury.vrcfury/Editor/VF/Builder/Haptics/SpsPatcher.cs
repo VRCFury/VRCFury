@@ -13,7 +13,9 @@ namespace VF.Builder.Haptics {
         public static void patch(Material mat, MutableManager mutableManager, bool keepImports) {
             if (!mat.shader) return;
             try {
+                var renderQueue = mat.renderQueue;
                 patchUnsafe(mat, mutableManager, keepImports);
+                mat.renderQueue = renderQueue;
             } catch (Exception e) {
                 throw new Exception(
                     "Failed to patch shader with SPS. Report this on the VRCFury discord. Maybe this shader isn't supported yet.\n\n" +
