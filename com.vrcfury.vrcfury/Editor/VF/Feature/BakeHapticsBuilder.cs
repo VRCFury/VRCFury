@@ -25,27 +25,29 @@ namespace VF.Feature {
             foreach (var (plugObj, rendererObj) in spsRewritesToDo) {
                 var pathToPlug = plugObj.GetPath(avatarObject);
                 var pathToRenderer = rendererObj.GetPath(avatarObject);
+                var spsEnabledBinding = EditorCurveBinding.FloatCurve(
+                    pathToRenderer,
+                    typeof(SkinnedMeshRenderer),
+                    "material._SPS_Enabled"
+                );
+                var hapticsEnabledBinding = EditorCurveBinding.FloatCurve(
+                    pathToPlug,
+                    typeof(GameObject),
+                    "m_IsActive"
+                );
                 foreach (var c in manager.GetAllUsedControllers()) {
                     foreach (var clip in c.GetClips()) {
                         foreach (var binding in clip.GetFloatBindings()) {
                             if (binding.path == pathToRenderer) {
                                 if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                    var newBinding = EditorCurveBinding.FloatCurve(
-                                        pathToRenderer,
-                                        typeof(SkinnedMeshRenderer),
-                                        "material._SPS_Enabled"
-                                    );
-                                    clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                    clip.SetFloatCurve(spsEnabledBinding, clip.GetFloatCurve(binding));
+                                    clip.SetFloatCurve(hapticsEnabledBinding, clip.GetFloatCurve(binding));
                                 }
                             }
                             if (binding.path == pathToPlug) {
                                 if (binding.propertyName == "spsAnimatedEnabled") {
-                                    var newBinding = EditorCurveBinding.FloatCurve(
-                                        pathToRenderer,
-                                        typeof(SkinnedMeshRenderer),
-                                        "material._SPS_Enabled"
-                                    );
-                                    clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                    clip.SetFloatCurve(spsEnabledBinding, clip.GetFloatCurve(binding));
+                                    clip.SetFloatCurve(hapticsEnabledBinding, clip.GetFloatCurve(binding));
                                 }
                             }
                         }
