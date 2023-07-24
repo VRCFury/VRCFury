@@ -89,7 +89,8 @@ namespace VF.Builder {
         public IEnumerable<ControllerManager> GetAllUsedControllers() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.Item1 != null)
-                .Select(c => GetController(c.Item3));
+                .Select(c => GetController(c.Item3))
+                .ToArray();
         }
         public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> GetAllUsedControllersRaw() {
             return VRCAvatarUtils.GetAllControllers(avatar)

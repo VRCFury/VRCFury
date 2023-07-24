@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,6 +16,10 @@ namespace VF.Builder {
         
         public EditorCurveBinding[] GetObjectBindings() {
             return AnimationUtility.GetObjectReferenceCurveBindings(clip);
+        }
+
+        public EditorCurveBinding[] GetAllBindings() {
+            return GetFloatBindings().Concat(GetObjectBindings()).ToArray();
         }
         
         public AnimationCurve GetFloatCurve(EditorCurveBinding binding) {
