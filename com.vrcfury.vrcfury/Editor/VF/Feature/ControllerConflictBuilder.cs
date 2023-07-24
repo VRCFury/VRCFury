@@ -57,7 +57,7 @@ namespace VF.Feature {
                             // In theory, this should probably work for all types of controllers, but for some reason it doesn't.
                             // (see Hailey avatar, Gesture Controller, SB_FX Weight layer)
                             // For now, only worry about things driving action
-                            if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action) {
+                            if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action && drivesType != VRCAvatarDescriptor.AnimLayerType.Gesture) {
                                 return true;
                             }
 
@@ -92,8 +92,8 @@ namespace VF.Feature {
                 }
             }
             
-            if (true || (ownersByController.ContainsKey(VRCAvatarDescriptor.AnimLayerType.Action)
-                && ownersByController[VRCAvatarDescriptor.AnimLayerType.Action].Count > 1)) {
+            if (ownersByController.ContainsKey(VRCAvatarDescriptor.AnimLayerType.Action)
+                && ownersByController[VRCAvatarDescriptor.AnimLayerType.Action].Count > 1) {
                 var action = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                 // Make sure there's nothing on the base layer, since we won't be able to change its weight
                 action.EnsureEmptyBaseLayer();
@@ -105,7 +105,7 @@ namespace VF.Feature {
                 var i = 0;
                 foreach (var layer in action.GetLayers()) {
                     var layerNum = i++;
-                    //if (layerNum != 0) action.SetWeight(layer, 0);
+                    if (layerNum != 0) action.SetWeight(layer, 0);
                 }
             }
             

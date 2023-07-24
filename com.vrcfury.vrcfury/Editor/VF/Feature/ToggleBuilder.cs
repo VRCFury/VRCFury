@@ -381,10 +381,29 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             outState = onState;
         }
 
+        onEqualsOut = outState == onState;
+
         if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
             var maskName = GetMaskName(clip);
-            off.TrackingController(maskName + "Tracking");
-            inState.TrackingController(maskName + "Animation");
+            var blendableLayer = controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action ? VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action : VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Gesture;
+            off.TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
+            inState.TrackingController(maskName + "Animation").PlayableLayerController(blendableLayer, 1, 0);
+
+            var blendOut = layer.NewState(onName + " Blendout").WithAnimation(onState.GetRaw().motion).Speed(-1).TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
+
+            var transition = outState.TransitionsTo(blendOut);
+
+            outState = blendOut;
+
+            if (onEqualsOut) {
+                transition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
+            } else {
+                transition.When().WithTransitionExitTime(1);
+            }
+
+            if (!model.enableExclusiveTag) {
+                blendOut.TransitionsToExit().When(controller.Always());
+            }
 
             var maskGuid = "";
             switch (maskName) {
@@ -404,12 +423,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var mask = AssetDatabase.LoadAssetAtPath<AvatarMask>(maskPath);
                 controller.SetMask(controller.GetLayers().Count() - 1, mask);
             }
-        }
-
-         onEqualsOut = outState == onState;
-
-        if (!model.enableExclusiveTag)
-        {
+        } else if (!model.enableExclusiveTag) {
             var exitTransition = outState.TransitionsToExit();
 
             if (onEqualsOut) {
@@ -530,7 +544,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             if (outState != null) {
                 var exitTransition = outState.TransitionsToExit();
-                if (onEqualsOut) {
+                if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
+                    exitTransition.When(controller.Always());
+                } else if (onEqualsOut) {
                     exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
@@ -539,7 +555,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             if (outStateR != null) {
                 var exitTransition = outStateR.TransitionsToExit();
-                if (onEqualsOut) {
+                if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
+                    exitTransition.When(controller.Always());
+                } else if (onEqualsOut) {
                     exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
@@ -548,7 +566,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             if (outStateL != null) {
                 var exitTransition = outStateL.TransitionsToExit();
-                if (onEqualsOut) {
+                if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
+                    exitTransition.When(controller.Always());
+                } else if (onEqualsOut) {
                     exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
