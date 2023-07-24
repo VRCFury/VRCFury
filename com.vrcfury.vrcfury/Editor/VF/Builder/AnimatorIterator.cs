@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
 
 namespace VF.Builder {
     /**
@@ -16,7 +17,7 @@ namespace VF.Builder {
         ) {
             foreach (var stateMachine in GetAllStateMachines(root)) {
                 for (var i = 0; i < stateMachine.behaviours.Length; i++) {
-                    var keep = action(stateMachine.behaviours[i], type => VRCFAnimatorUtils.AddStateMachineBehaviour(stateMachine, type));
+                    var keep = action(stateMachine.behaviours[i], type => stateMachine.VAddStateMachineBehaviour(type));
                     if (!keep) {
                         var behaviours = stateMachine.behaviours.ToList();
                         behaviours.RemoveAt(i);
@@ -27,7 +28,7 @@ namespace VF.Builder {
             }
             foreach (var state in new States().From(root)) {
                 for (var i = 0; i < state.behaviours.Length; i++) {
-                    var keep = action(state.behaviours[i], type => VRCFAnimatorUtils.AddStateMachineBehaviour(state, type));
+                    var keep = action(state.behaviours[i], type => state.VAddStateMachineBehaviour(type));
                     if (!keep) {
                         var behaviours = state.behaviours.ToList();
                         behaviours.RemoveAt(i);

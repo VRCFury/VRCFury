@@ -5,6 +5,7 @@ using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
 
 namespace VF.Feature {
     /**
@@ -99,7 +100,7 @@ namespace VF.Feature {
                 action.EnsureEmptyBaseLayer();
                 var enableLayer = action.NewLayer("VRCF Force Enable", hasOwner: false);
                 var enable = enableLayer.NewState("Enable");
-                var enableControl = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(enable.GetRaw());
+                var enableControl = enable.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                 enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 enableControl.goalWeight = 1;
                 var i = 0;

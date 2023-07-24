@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
 
 namespace VF.Builder {
 
@@ -164,7 +165,7 @@ public class VFAState {
             var d = b as VRCAvatarParameterDriver;
             if (d && d.localOnly == local) return d;
         }
-        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAvatarParameterDriver>(node.state);
+        var driver = node.state.VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
         driver.localOnly = local;
         return driver;
     }
