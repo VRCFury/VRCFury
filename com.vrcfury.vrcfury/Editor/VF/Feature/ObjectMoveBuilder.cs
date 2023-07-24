@@ -29,6 +29,8 @@ namespace VF.Feature {
                 obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);
             redirects.Add(Tuple.Create(oldPath, newPath));
+
+            PhysboneUtils.RemoveFromPhysbones(obj, true);
         }
 
         public void AddDirectRewrite(GameObject oldObj, GameObject newObj) {
