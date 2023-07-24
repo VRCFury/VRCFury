@@ -84,7 +84,13 @@ namespace VF.Feature.Base {
         CleanupEmptyLayers = 10021,
         ControllerConflictCheck = 10022,
         AnimatorLayerControlFix = 10023,
+
         FixBadParameters = 10024,
+        
+        FinalizeParams = 10030,
+        FinalizeMenu = 10031,
+        FinalizeController = 10032,
+        MarkThingsAsDirtyJustInCase = 10033,
         
         RemoveJunkAnimators = 11000,
         

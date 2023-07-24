@@ -56,25 +56,6 @@ namespace VF.Utils {
             Skip
         }
 
-        public static void FixNulls(this VRCExpressionsMenu root) {
-            root.ForEachMenu(ForEachItem: (control, path) => {
-                // VRChat doesn't care, but SDK3ToCCKConverter crashes if there are any null parameters
-                // on a submenu. GestureManager crashes if there's any null parameters on ANYTHING.
-                if (control.parameter == null) {
-                    control.parameter = new VRCExpressionsMenu.Control.Parameter() {
-                        name = ""
-                    };
-                }
-
-                // Av3emulator crashes if subParameters is null
-                if (control.subParameters == null) {
-                    control.subParameters = new VRCExpressionsMenu.Control.Parameter[] { };
-                }
-
-                return ForEachMenuItemResult.Continue;
-            });
-        }
-
         public static void RewriteParameters(this VRCExpressionsMenu root, Func<string,string> each) {
             root.ForEachMenu(ForEachItem: (item,path) => {
                 if (item.parameter != null && item.parameter.name != null) {

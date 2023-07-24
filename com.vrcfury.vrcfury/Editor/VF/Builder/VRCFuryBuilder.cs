@@ -172,6 +172,10 @@ public class VRCFuryBuilder {
         AddBuilder(new CleanupEmptyLayersBuilder(), avatarObject);
         AddBuilder(new ResetAnimatorBuilder(), avatarObject);
         AddBuilder(new FixBadVrcParameterNamesBuilder(), avatarObject);
+        AddBuilder(new FinalizeMenuBuilder(), avatarObject);
+        AddBuilder(new FinalizeParamsBuilder(), avatarObject);
+        AddBuilder(new FinalizeControllerBuilder(), avatarObject);
+        AddBuilder(new MarkThingsAsDirtyJustInCaseBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();
@@ -195,10 +199,6 @@ public class VRCFuryBuilder {
                 throw new VRCFActionException(currentModelName, e);
             }
         }
-        
-        progress.Progress(1, "Finalizing avatar changes");
-        var menuSettings = collectedModels.OfType<OverrideMenuSettings>().FirstOrDefault();
-        manager.Finish(menuSettings);
     }
 }
 
