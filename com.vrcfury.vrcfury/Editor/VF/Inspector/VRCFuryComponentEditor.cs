@@ -183,7 +183,7 @@ namespace VF.Inspector {
             var isImmutable = assetPath != null && PreSaveVerifier.IsImmutableVrcf(assetPath);
 
             var container = new VisualElement();
-            container.styleSheets.Add(Resources.Load<StyleSheet>("VRCFuryStyle"));
+            container.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
 
             container.Add(CreateOverrideLabel());
 

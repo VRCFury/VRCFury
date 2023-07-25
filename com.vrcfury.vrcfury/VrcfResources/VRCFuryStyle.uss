@@ -1,0 +1,35 @@
+.VRCFProgressWindow ProgressBar {
+    padding-bottom: 10px;
+}
+.VRCFProgressWindow ProgressBar Label {
+    font-size: 24px;
+}
+.VRCFProgressWindow .label {
+    font-size: 14px;
+    -unity-text-align: middle-center;
+}
+.VRCFProgressWindow .spacer {
+    flex-grow: 1;
+}
+.VRCFProgressWindow Image {
+    width: 256px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}
+.VRCFProgressWindow {
+    height: 250px;
+}
+
+PropertyField.VrcFuryEditorProp > .unity-base-field > Label {
+    display: none;
+}
+PropertyField.VrcFuryEditorProp > .unity-base-field {
+    margin: 0;
+}
+.VrcFuryEditorProp.unity-base-field {
+    margin: 0;
+}
+.vfTooltip.vfTooltipHidden {
+    display: none;
+}

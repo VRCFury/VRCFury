@@ -31,7 +31,7 @@ namespace VF.Builder.Haptics {
                     " Please unlock the material using TPS to use this feature. (Don't worry, it will be re-locked during the upload).");
             }
 
-            var m = mutableManager.MakeMutable(original);
+            var m = mutableManager.MakeMutable(original, false);
             SpsPatcher.patch(m, mutableManager, plug.spsKeepImports);
             m.SetOverrideTag(SpsEnabled + "Animated", "1");
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);

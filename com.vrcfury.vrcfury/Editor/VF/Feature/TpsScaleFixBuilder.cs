@@ -76,7 +76,7 @@ namespace VF.Feature {
                             "Please unlock the material on " +
                             pathToRenderer);
                     }
-                    mat = mutableManager.MakeMutable(mat);
+                    mat = mutableManager.MakeMutable(mat, true);
                     if (isTps) {
                         mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                         mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");

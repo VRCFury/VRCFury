@@ -728,6 +728,11 @@ public static class VRCFuryEditorUtils {
         Array.Reverse(charArray);
         return new string(charArray);
     }
+    
+    public static T GetResource<T>(string path) where T : Object {
+        var resourcesPath = AssetDatabase.GUIDToAssetPath("c4e4fa889bc2bc54abfc219a5424b763");
+        return AssetDatabase.LoadAssetAtPath<T>($"{resourcesPath}/{path}");
+    }
 }
     
 }

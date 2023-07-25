@@ -27,7 +27,6 @@ public class VRCFuryBuilder {
         });
 
         AssetDatabase.SaveAssets();
-        EditorUtility.ClearProgressBar();
         return result;
     }
 
@@ -55,14 +54,17 @@ public class VRCFuryBuilder {
             return;
         }
 
-        var progress = new ProgressBar("VRCFury is building ...");
+        var progress = VRCFProgressWindow.Create();
 
-        // Apply configs
-        ApplyFuryConfigs(
-            avatarObject,
-            originalObject,
-            progress
-        );
+        try {
+            ApplyFuryConfigs(
+                avatarObject,
+                originalObject,
+                progress
+            );
+        } finally {
+            progress.Close();
+        }
 
         Debug.Log("VRCFury Finished!");
     }
@@ -70,7 +72,7 @@ public class VRCFuryBuilder {
     private static void ApplyFuryConfigs(
         VFGameObject avatarObject,
         VFGameObject originalObject,
-        ProgressBar progress
+        VRCFProgressWindow progress
     ) {
         var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
         // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
@@ -183,11 +185,12 @@ public class VRCFuryBuilder {
             var builder = action.GetBuilder();
             
             currentModelNumber = builder.uniqueModelNum;
-            currentModelName = $"{action.GetName()} on {builder.featureBaseObject.GetPath()}";
+            var objectName = builder.featureBaseObject.GetPath(avatarObject);
+            currentModelName = $"{builder.GetType().Name}.{action.GetName()} on {objectName}";
             currentModelClipPrefix = $"VF{currentModelNumber} {builder.GetClipPrefix() ?? builder.GetType().Name}";
             currentMenuSortPosition = menuSortPositionByBuilder[builder];
 
-            var statusMessage = $"Applying {currentModelName}";
+            var statusMessage = $"{objectName}\n{builder.GetType().Name} ({currentModelNumber})\n{action.GetName()}";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {

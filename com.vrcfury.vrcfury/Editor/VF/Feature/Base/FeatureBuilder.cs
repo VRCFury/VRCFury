@@ -132,7 +132,7 @@ namespace VF.Feature.Base {
                             var propName = $"_InventoryItem{shaderInventoryAction.slot:D2}Animated";
                             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                                 if (!mat.HasProperty(propName)) return mat;
-                                mat = mutableManager.MakeMutable(mat);
+                                mat = mutableManager.MakeMutable(mat, true);
                                 mat.SetFloat(propName, 0);
                                 return mat;
                             }).ToArray();
@@ -228,7 +228,7 @@ namespace VF.Feature.Base {
                 var val = curve.keys[0].value;
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                     if (!mat.HasProperty(propName)) return mat;
-                    mat = mutableManager.MakeMutable(mat);
+                    mat = mutableManager.MakeMutable(mat, true);
                     mat.SetFloat(propName, val);
                     return mat;
                 }).ToArray();

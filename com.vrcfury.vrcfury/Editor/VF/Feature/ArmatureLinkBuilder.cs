@@ -51,7 +51,7 @@ namespace VF.Feature {
                         .Where(skin =>
                             bonesInProp.Contains(skin.rootBone) || skin.bones.Any(b => bonesInProp.Contains(b)));
                     foreach (var skin in skinsUsingBonesInProp) {
-                        skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh);
+                        skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh, false);
                         VRCFuryEditorUtils.MarkDirty(skin);
 
                         var mesh = skin.sharedMesh;
