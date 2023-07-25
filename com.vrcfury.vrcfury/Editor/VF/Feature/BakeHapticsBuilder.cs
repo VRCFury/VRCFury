@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
@@ -75,57 +76,66 @@ namespace VF.Feature {
             AnimationClip tipLightOnClip = null;
             
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                PhysboneUtils.RemoveFromPhysbones(plug.transform);
-                var bakeInfo = VRCFuryHapticPlugEditor.Bake(plug, usedNames, plugRenderers, mutableManager: mutableManager);
+                try {
+                    PhysboneUtils.RemoveFromPhysbones(plug.transform);
+                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(plug, usedNames, plugRenderers,
+                        mutableManager: mutableManager);
 
-                if (bakeInfo == null) continue;
+                    if (bakeInfo == null) continue;
 
-                var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
-                foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                    objectsToDisableTemporarily.Add(r.transform);
-                }
+                    var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
+                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                        objectsToDisableTemporarily.Add(r.transform);
+                    }
 
-                if (plug.configureTps || plug.enableSps) {
-                    foreach (var renderer in renderers) {
-                        addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
-                        if (renderer is SkinnedMeshRenderer skin) {
-                            addOtherFeature(new BoundingBoxFix2() { skipRenderer = skin });
+                    if (plug.configureTps || plug.enableSps) {
+                        foreach (var renderer in renderers) {
+                            addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
+                            if (renderer is SkinnedMeshRenderer skin) {
+                                addOtherFeature(new BoundingBoxFix2() { skipRenderer = skin });
+                            }
                         }
                     }
-                }
 
-                var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                ApplyClipToRestingState(postBakeClip);
+                    var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                    ApplyClipToRestingState(postBakeClip);
 
-                if (plug.enableSps) {
-                    foreach (var renderer in renderers) {
-                        spsRewritesToDo.Add((plug.owner(), renderer.owner()));
+                    if (plug.enableSps) {
+                        foreach (var renderer in renderers) {
+                            spsRewritesToDo.Add((plug.owner(), renderer.owner()));
+                        }
                     }
-                }
 
-                if (plug.addDpsTipLight) {
-                    var tip = GameObjects.Create("LegacyDpsTip", bakeRoot);
-                    tip.active = false;
-                    var light = tip.AddComponent<Light>();
-                    light.type = LightType.Point;
-                    light.color = Color.black;
-                    light.range = 0.49f;
-                    light.shadows = LightShadows.None;
-                    light.renderMode = LightRenderMode.ForceVertex;
+                    if (plug.addDpsTipLight) {
+                        var tip = GameObjects.Create("LegacyDpsTip", bakeRoot);
+                        tip.active = false;
+                        var light = tip.AddComponent<Light>();
+                        light.type = LightType.Point;
+                        light.color = Color.black;
+                        light.range = 0.49f;
+                        light.shadows = LightShadows.None;
+                        light.renderMode = LightRenderMode.ForceVertex;
 
-                    if (tipLightOnClip == null) {
-                        var fx = GetFx();
-                        var param = fx.NewBool("tipLight", synced: true);
-                        manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations", param);
-                        tipLightOnClip = fx.NewClip("EnableAutoReceivers");
-                        var layer = fx.NewLayer("Tip Light");
-                        var off = layer.NewState("Off");
-                        var on = layer.NewState("On").WithAnimation(tipLightOnClip);
-                        var whenOn = param.IsTrue();
-                        off.TransitionsTo(on).When(whenOn);
-                        on.TransitionsTo(off).When(whenOn.Not());
+                        if (tipLightOnClip == null) {
+                            var fx = GetFx();
+                            var param = fx.NewBool("tipLight", synced: true);
+                            manager.GetMenu()
+                                .NewMenuToggle(
+                                    $"{optionsFolder}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
+                                    param);
+                            tipLightOnClip = fx.NewClip("EnableAutoReceivers");
+                            var layer = fx.NewLayer("Tip Light");
+                            var off = layer.NewState("Off");
+                            var on = layer.NewState("On").WithAnimation(tipLightOnClip);
+                            var whenOn = param.IsTrue();
+                            off.TransitionsTo(on).When(whenOn);
+                            on.TransitionsTo(off).When(whenOn.Not());
+                        }
+
+                        clipBuilder.Enable(tipLightOnClip, tip);
                     }
-                    clipBuilder.Enable(tipLightOnClip, tip);
+                } catch (Exception e) {
+                    throw new ExceptionWithCause($"Failed to bake haptic plug: ({plug.owner().GetPath()})", e);
                 }
             }
 
@@ -179,133 +189,148 @@ namespace VF.Feature {
             var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
             var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
-                VFGameObject obj = socket.gameObject;
-                PhysboneUtils.RemoveFromPhysbones(socket.transform);
-                fakeHead.MarkEligible(socket.gameObject);
-                var (name,bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
-                
-                foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                    objectsToDisableTemporarily.Add(receiver.transform);
-                }
-                
-                // This needs to be created before we make the menu item, because it turns this off.
-                var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
+                try {
+                    VFGameObject obj = socket.gameObject;
+                    PhysboneUtils.RemoveFromPhysbones(socket.transform);
+                    fakeHead.MarkEligible(socket.gameObject);
+                    var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
 
-                if (socket.addMenuItem) {
-                    var fx = GetFx();
-
-                    obj.active = true;
-                    objectsToForceEnable.Add(obj);
-
-                    ICollection<VFGameObject> FindChildren(params string[] names) {
-                        return names.Select(n => bakeRoot.Find(n))
-                            .Where(t => t != null)
-                            .ToArray();
+                    foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                        objectsToDisableTemporarily.Add(receiver.transform);
                     }
 
-                    var additionalActiveClip = LoadState("socketActive", socket.activeActions);
+                    // This needs to be created before we make the menu item, because it turns this off.
+                    var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
 
-                    foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "VersionBeacon", "Animations")) {
-                        child.active = false;
-                    }
-                    var onLocalClip = fx.NewClip($"{name} (Local)");
-                    ClipRewriter.Copy(additionalActiveClip, onLocalClip);
-                    foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal", "Animations")) {
-                        clipBuilder.Enable(onLocalClip, child.gameObject);
-                    }
-                    var onRemoteClip = fx.NewClip($"{name} (Remote)");
-                    ClipRewriter.Copy(additionalActiveClip, onRemoteClip);
-                    foreach (var child in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
-                        clipBuilder.Enable(onRemoteClip, child.gameObject);
-                    }
-                    var onStealthClip = fx.NewClip($"{name} (Stealth)");
-                    foreach (var child in FindChildren("Receivers", "VersionLocal")) {
-                        clipBuilder.Enable(onStealthClip, child.gameObject);
-                    }
+                    if (socket.addMenuItem) {
+                        var fx = GetFx();
 
-                    var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
-                    if (gizmo != null) {
-                        gizmo.show = false;
-                        clipBuilder.OneFrame(onLocalClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
-                        clipBuilder.OneFrame(onRemoteClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
-                    }
+                        obj.active = true;
+                        objectsToForceEnable.Add(obj);
 
-                    var holeOn = fx.NewBool(name, synced: true);
-                    manager.GetMenu().NewMenuToggle($"{socketsMenu}/{name}", holeOn);
+                        ICollection<VFGameObject> FindChildren(params string[] names) {
+                            return names.Select(n => bakeRoot.Find(n))
+                                .Where(t => t != null)
+                                .ToArray();
+                        }
 
-                    var layer = fx.NewLayer(name);
-                    var offState = layer.NewState("Off");
-                    var stealthState = layer.NewState("On Local Stealth").WithAnimation(onStealthClip).Move(offState, 1, 0);
-                    var onLocalMultiState = layer.NewState("On Local Multi").WithAnimation(onLocalClip);
-                    var onLocalState = layer.NewState("On Local").WithAnimation(onLocalClip);
-                    var onRemoteState = layer.NewState("On Remote").WithAnimation(onRemoteClip);
+                        var additionalActiveClip = LoadState("socketActive", socket.activeActions);
 
-                    var whenOn = holeOn.IsTrue();
-                    var whenLocal = fx.IsLocal().IsTrue();
-                    var whenStealthEnabled = stealthOn?.IsTrue() ?? fx.Never();
-                    var whenMultiEnabled = multiOn?.IsTrue() ?? fx.Never();
+                        foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal",
+                                     "VersionBeacon", "Animations")) {
+                            child.active = false;
+                        }
 
-                    VFAState.FakeAnyState(
-                        (stealthState, whenOn.And(whenLocal.And(whenStealthEnabled))),
-                        (onLocalMultiState, whenOn.And(whenLocal.And(whenMultiEnabled))),
-                        (onLocalState, whenOn.And(whenLocal)),
-                        (onRemoteState, whenOn.And(whenStealthEnabled.Not())),
-                        (offState, fx.Always())
-                    );
+                        var onLocalClip = fx.NewClip($"{name} (Local)");
+                        ClipRewriter.Copy(additionalActiveClip, onLocalClip);
+                        foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal",
+                                     "Animations")) {
+                            clipBuilder.Enable(onLocalClip, child.gameObject);
+                        }
 
-                    exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
+                        var onRemoteClip = fx.NewClip($"{name} (Remote)");
+                        ClipRewriter.Copy(additionalActiveClip, onRemoteClip);
+                        foreach (var child in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
+                            clipBuilder.Enable(onRemoteClip, child.gameObject);
+                        }
 
-                    if (socket.enableAuto && autoOnClip) {
-                        var distParam = fx.NewFloat(name + "/AutoDistance");
-                        var distReceiver = HapticUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(), "AutoDistance", 0.3f,
-                            new[] { HapticUtils.CONTACT_PEN_MAIN });
-                        distReceiver.SetActive(false);
-                        clipBuilder.Enable(autoOnClip, distReceiver);
-                        autoSockets.Add(Tuple.Create(name, holeOn, distParam));
-                    }
-                }
+                        var onStealthClip = fx.NewClip($"{name} (Stealth)");
+                        foreach (var child in FindChildren("Receivers", "VersionLocal")) {
+                            clipBuilder.Enable(onStealthClip, child.gameObject);
+                        }
 
-                var actionNum = 0;
-                foreach (var depthAction in socket.depthActions) {
-                    actionNum++;
-                    var prefix = name + actionNum;
+                        var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
+                        if (gizmo != null) {
+                            gizmo.show = false;
+                            clipBuilder.OneFrame(onLocalClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
+                            clipBuilder.OneFrame(onRemoteClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
+                        }
 
-                    var minDepth = depthAction.minDepth;
+                        var holeOn = fx.NewBool(name, synced: true);
+                        manager.GetMenu().NewMenuToggle($"{socketsMenu}/{name}", holeOn);
 
-                    var maxDepth = depthAction.maxDepth;
-                    if (maxDepth <= minDepth) maxDepth = 0.25f;
-                    if (maxDepth <= minDepth) continue;
+                        var layer = fx.NewLayer(name);
+                        var offState = layer.NewState("Off");
+                        var stealthState = layer.NewState("On Local Stealth").WithAnimation(onStealthClip)
+                            .Move(offState, 1, 0);
+                        var onLocalMultiState = layer.NewState("On Local Multi").WithAnimation(onLocalClip);
+                        var onLocalState = layer.NewState("On Local").WithAnimation(onLocalClip);
+                        var onRemoteState = layer.NewState("On Remote").WithAnimation(onRemoteClip);
 
-                    var length = maxDepth - minDepth;
+                        var whenOn = holeOn.IsTrue();
+                        var whenLocal = fx.IsLocal().IsTrue();
+                        var whenStealthEnabled = stealthOn?.IsTrue() ?? fx.Never();
+                        var whenMultiEnabled = multiOn?.IsTrue() ?? fx.Never();
 
-                    var fx = GetFx();
+                        VFAState.FakeAnyState(
+                            (stealthState, whenOn.And(whenLocal.And(whenStealthEnabled))),
+                            (onLocalMultiState, whenOn.And(whenLocal.And(whenMultiEnabled))),
+                            (onLocalState, whenOn.And(whenLocal)),
+                            (onRemoteState, whenOn.And(whenStealthEnabled.Not())),
+                            (offState, fx.Always())
+                        );
 
-                    var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
-                    HapticUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(), "AnimRoot" + actionNum, 0.01f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
-                    
-                    var depthParam = fx.NewFloat(prefix + "/AnimDepth");
-                    HapticUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(), "AnimInside" + actionNum, length, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:depthAction.enableSelf);
+                        exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
 
-                    var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
-                    var off = layer.NewState("Off");
-                    var on = layer.NewState("On");
-
-                    var clip = LoadState(prefix, depthAction.state, socket.owner());
-                    if (ClipBuilder.IsStaticMotion(clip)) {
-                        var tree = fx.NewBlendTree(prefix + " tree");
-                        tree.blendType = BlendTreeType.Simple1D;
-                        tree.useAutomaticThresholds = false;
-                        tree.blendParameter = depthParam.Name();
-                        tree.AddChild(fx.GetNoopClip(), 0);
-                        tree.AddChild(clip, 1);
-                        on.WithAnimation(tree);
-                    } else {
-                        on.WithAnimation(clip).MotionTime(depthParam);
+                        if (socket.enableAuto && autoOnClip) {
+                            var distParam = fx.NewFloat(name + "/AutoDistance");
+                            var distReceiver = HapticUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(),
+                                "AutoDistance", 0.3f,
+                                new[] { HapticUtils.CONTACT_PEN_MAIN });
+                            distReceiver.SetActive(false);
+                            clipBuilder.Enable(autoOnClip, distReceiver);
+                            autoSockets.Add(Tuple.Create(name, holeOn, distParam));
+                        }
                     }
 
-                    var onWhen = depthParam.IsGreaterThan(0).And(contactingRootParam.IsTrue());
-                    off.TransitionsTo(on).When(onWhen);
-                    on.TransitionsTo(off).When(onWhen.Not());
+                    var actionNum = 0;
+                    foreach (var depthAction in socket.depthActions) {
+                        actionNum++;
+                        var prefix = name + actionNum;
+
+                        var minDepth = depthAction.minDepth;
+
+                        var maxDepth = depthAction.maxDepth;
+                        if (maxDepth <= minDepth) maxDepth = 0.25f;
+                        if (maxDepth <= minDepth) continue;
+
+                        var length = maxDepth - minDepth;
+
+                        var fx = GetFx();
+
+                        var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
+                        HapticUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(),
+                            "AnimRoot" + actionNum, 0.01f, new[] { HapticUtils.CONTACT_PEN_MAIN },
+                            allowSelf: depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
+
+                        var depthParam = fx.NewFloat(prefix + "/AnimDepth");
+                        HapticUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(),
+                            "AnimInside" + actionNum, length, new[] { HapticUtils.CONTACT_PEN_MAIN },
+                            allowSelf: depthAction.enableSelf);
+
+                        var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
+                        var off = layer.NewState("Off");
+                        var on = layer.NewState("On");
+
+                        var clip = LoadState(prefix, depthAction.state, socket.owner());
+                        if (ClipBuilder.IsStaticMotion(clip)) {
+                            var tree = fx.NewBlendTree(prefix + " tree");
+                            tree.blendType = BlendTreeType.Simple1D;
+                            tree.useAutomaticThresholds = false;
+                            tree.blendParameter = depthParam.Name();
+                            tree.AddChild(fx.GetNoopClip(), 0);
+                            tree.AddChild(clip, 1);
+                            on.WithAnimation(tree);
+                        } else {
+                            on.WithAnimation(clip).MotionTime(depthParam);
+                        }
+
+                        var onWhen = depthParam.IsGreaterThan(0).And(contactingRootParam.IsTrue());
+                        off.TransitionsTo(on).When(onWhen);
+                        on.TransitionsTo(off).When(onWhen.Not());
+                    }
+                } catch (Exception e) {
+                    throw new ExceptionWithCause($"Failed to bake Haptic Socket: ({socket.owner().GetPath()})", e);
                 }
             }
 

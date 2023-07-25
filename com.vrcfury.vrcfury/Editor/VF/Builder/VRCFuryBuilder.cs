@@ -181,22 +181,19 @@ public class VRCFuryBuilder {
             var action = actions.Min();
             actions.Remove(action);
             var builder = action.GetBuilder();
-            var configPath = AnimationUtility.CalculateTransformPath(builder.featureBaseObject.transform,
-                avatarObject.transform);
-            if (configPath == "") configPath = "Avatar Root";
             
             currentModelNumber = builder.uniqueModelNum;
-            currentModelName = $"{action.GetName()} (Feature {currentModelNumber}) from {configPath}";
+            currentModelName = $"{action.GetName()} on {builder.featureBaseObject.GetPath()}";
             currentModelClipPrefix = $"VF{currentModelNumber} {builder.GetClipPrefix() ?? builder.GetType().Name}";
             currentMenuSortPosition = menuSortPositionByBuilder[builder];
-            
-            var statusMessage = $"Applying {action.GetName()} on {builder.avatarObject.name} {configPath}";
+
+            var statusMessage = $"Applying {currentModelName}";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {
                 action.Call();
             } catch (Exception e) {
-                throw new VRCFActionException(currentModelName, e);
+                throw new ExceptionWithCause($"Failed to build VRCFury component: {currentModelName}", VRCFExceptionUtils.GetGoodCause(e));
             }
         }
     }

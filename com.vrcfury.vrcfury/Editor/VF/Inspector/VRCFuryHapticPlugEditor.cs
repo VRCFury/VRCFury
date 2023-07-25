@@ -313,42 +313,54 @@ namespace VF.Inspector {
             if ((plug.configureTps || plug.enableSps) && mutableManager != null) {
                 var checkboxName = plug.enableSps ? "Enable SPS" : "Auto-Configure TPS";
                 if (renderers.Count == 0) {
-                    throw new VRCFBuilderException(
+                    throw new Exception(
                         $"VRCFury Haptic Plug has '{checkboxName}' checked, but no renderer was found.");
                 }
 
                 renderers = renderers.Select(renderer => {
-                    var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
+                    try {
+                        var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
 
-                    if (plug.enableSps && plug.spsAutorig) {
-                        SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
+                        if (plug.enableSps && plug.spsAutorig) {
+                            SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
+                        }
+
+                        var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
+
+                        var configuredOne = false;
+                        skin.sharedMaterials = skin.sharedMaterials
+                            .Select(mat => {
+                                try {
+                                    if (mat == null) return null;
+                                    if (plug.enableSps) {
+                                        configuredOne = true;
+                                        return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength,
+                                            activeFromMask,
+                                            mutableManager, plug);
+                                    } else if (TpsConfigurer.IsTps(mat)) {
+                                        configuredOne = true;
+                                        return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength,
+                                            activeFromMask,
+                                            mutableManager);
+                                    }
+
+                                    return mat;
+                                } catch (Exception e) {
+                                    throw new ExceptionWithCause($"Failed to configure material: {mat.name}", e);
+                                }
+                            })
+                            .ToArray();
+
+                        if (!configuredOne) {
+                            throw new Exception(
+                                $"VRCFury Haptic Plug has '{checkboxName}' checked, but there no valid material was on the linked renderer.");
+                        }
+
+                        VRCFuryEditorUtils.MarkDirty(skin);
+                        return skin;
+                    } catch (Exception e) {
+                        throw new ExceptionWithCause($"Failed to configure renderer: {renderer.owner().GetPath()}", e);
                     }
-
-                    var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
-
-                    var configuredOne = false;
-                    skin.sharedMaterials = skin.sharedMaterials
-                        .Select(mat => {
-                            if (mat == null) return null;
-                            if (plug.enableSps) {
-                                configuredOne = true;
-                                return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager, plug);
-                            } else if (TpsConfigurer.IsTps(mat)) {
-                                configuredOne = true;
-                                return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength, activeFromMask, mutableManager);
-                            }
-
-                            return mat;
-                        })
-                        .ToArray();
-
-                    if (!configuredOne) {
-                        throw new VRCFBuilderException(
-                            $"VRCFury Haptic Plug has '{checkboxName}' checked, but there no valid material was on the linked renderer.");
-                    }
-
-                    VRCFuryEditorUtils.MarkDirty(skin);
-                    return skin;
                 }).ToArray();
             }
 
