@@ -52,7 +52,7 @@ namespace VF.Builder.Haptics {
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
             if (skin.sharedMesh.boneWeights.Length == 0) {
                 var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.transform);
-                var meshCopy = mutableManager.MakeMutable(skin.sharedMesh);
+                var meshCopy = mutableManager.MakeMutable(skin.sharedMesh, false);
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 
@@ -86,7 +86,7 @@ namespace VF.Builder.Haptics {
             float[] activeFromMask,
             MutableManager mutableManager
         ) {
-            var mat = mutableManager.MakeMutable(original);
+            var mat = mutableManager.MakeMutable(original, false);
             
             var shaderRotation = Quaternion.identity;
             if (IsLocked(mat)) {

@@ -78,7 +78,7 @@ namespace VF.Feature {
                     .Select(id => new SavedBlendshape(mesh, id))
                     .ToArray();
 
-                var meshCopy = mutableManager.MakeMutable(mesh);
+                var meshCopy = mutableManager.MakeMutable(mesh, false);
                 meshCopy.ClearBlendShapes();
                 
                 for (var id = 0; id < blendshapeCount; id++) {

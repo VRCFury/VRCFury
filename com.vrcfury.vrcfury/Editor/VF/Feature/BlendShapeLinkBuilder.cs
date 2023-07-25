@@ -8,6 +8,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
     public class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {

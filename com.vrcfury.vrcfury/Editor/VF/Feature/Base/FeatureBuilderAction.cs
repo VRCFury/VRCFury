@@ -26,7 +26,7 @@ namespace VF.Feature.Base {
         }
 
         public string GetName() {
-            return builder.GetType().Name + "." + method.Name;
+            return method.Name;
         }
     }
 }

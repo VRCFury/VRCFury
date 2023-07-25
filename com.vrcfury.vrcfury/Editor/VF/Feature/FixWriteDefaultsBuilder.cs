@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
@@ -32,10 +33,10 @@ namespace VF.Feature {
             }
         }
         
-        private EasyAnimationClip _defaultClip = null;
-        private EasyAnimationClip GetDefaultClip() {
+        private AnimationClip _defaultClip = null;
+        private AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
-                _defaultClip = new EasyAnimationClip(GetFx().NewClip("Defaults"));
+                _defaultClip = GetFx().NewClip("Defaults");
                 allBuildersInRun.OfType<ObjectMoveBuilder>().First().AddAdditionalManagedClip(_defaultClip);
             }
             return _defaultClip;
@@ -115,7 +116,7 @@ namespace VF.Feature {
             var defaultClip = GetDefaultClip();
             if (defaultClip.GetFloatBindings().Length > 0 || defaultClip.GetObjectBindings().Length > 0) {
                 var defaultLayer = GetFx().NewLayer("Defaults", 0);
-                defaultLayer.NewState("Defaults").WithAnimation(defaultClip.GetRaw());
+                defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
                 foreach (var state in new AnimatorIterator.States().From(defaultLayer.GetRawStateMachine())) {
                     state.writeDefaultValues = useWriteDefaults;
                 }

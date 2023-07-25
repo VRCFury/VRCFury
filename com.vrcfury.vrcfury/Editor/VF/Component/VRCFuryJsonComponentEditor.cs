@@ -24,7 +24,7 @@ namespace VF.Component {
 
             Func<FeatureBuilder, SerializedProperty, VisualElement> CreateEditor = (builder, prop) => {
                 var c = new VisualElement();
-                c.styleSheets.Add(Resources.Load<StyleSheet>("VRCFuryStyle"));
+                c.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
                 c.Add(builder.CreateEditor(prop));
                 return c;
             };

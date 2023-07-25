@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -14,6 +15,8 @@ namespace VF.Builder {
         private readonly VFGameObject animObject;
         private readonly bool rootBindingsApplyToAvatar;
         private readonly Func<string, string> rewriteParam;
+
+        public static string DeleteBindingMarker = "___removebinding";
 
         public ClipRewriter(
             VFGameObject animObject = null,
@@ -42,6 +45,7 @@ namespace VF.Builder {
             // First, apply the rewrites that the user has specified
             if (rewriteBinding != null) {
                 binding.path = rewriteBinding(binding.path);
+                if (binding.path == DeleteBindingMarker) return binding;
             }
 
             // Special treatment for animator parameters
@@ -84,12 +88,15 @@ namespace VF.Builder {
         }
 
         public void Rewrite(
-            AnimationClip clip_
+            AnimationClip clip
         ) {
-            var clip = new EasyAnimationClip(clip_);
             foreach (var originalBinding in clip.GetFloatBindings()) {
                 var curve = clip.GetFloatCurve(originalBinding);
                 var rewrittenBinding = RewriteBinding(originalBinding, true);
+                if (rewrittenBinding.path == DeleteBindingMarker) {
+                    clip.SetFloatCurve(originalBinding, null);
+                    continue;
+                }
                 bool forceUpdate = false;
                 if (
                     rootObject
@@ -114,6 +121,10 @@ namespace VF.Builder {
             foreach (var originalBinding in clip.GetObjectBindings()) {
                 var curve = clip.GetObjectCurve(originalBinding);
                 var rewrittenBinding = RewriteBinding(originalBinding, false);
+                if (rewrittenBinding.path == DeleteBindingMarker) {
+                    clip.SetObjectCurve(originalBinding, null);
+                    continue;
+                }
                 if (originalBinding != rewrittenBinding) {
                     clip.SetObjectCurve(originalBinding, null);
                     clip.SetObjectCurve(rewrittenBinding, curve);
@@ -172,12 +183,10 @@ namespace VF.Builder {
             AnimationClip from,
             AnimationClip to
         ) {
-            var fromC = new EasyAnimationClip(from);
-            var toC = new EasyAnimationClip(to);
-            foreach (var binding in fromC.GetFloatBindings())
-                toC.SetFloatCurve(binding, fromC.GetFloatCurve(binding));
-            foreach (var binding in fromC.GetObjectBindings())
-                toC.SetObjectCurve(binding, fromC.GetObjectCurve(binding));
+            foreach (var binding in from.GetFloatBindings())
+                to.SetFloatCurve(binding, from.GetFloatCurve(binding));
+            foreach (var binding in from.GetObjectBindings())
+                to.SetObjectCurve(binding, from.GetObjectCurve(binding));
         }
     }
 }

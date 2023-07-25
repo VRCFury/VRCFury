@@ -51,7 +51,7 @@ namespace VF.Feature {
                         .Where(skin =>
                             bonesInProp.Contains(skin.rootBone) || skin.bones.Any(b => bonesInProp.Contains(b)));
                     foreach (var skin in skinsUsingBonesInProp) {
-                        skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh);
+                        skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh, false);
                         VRCFuryEditorUtils.MarkDirty(skin);
 
                         var mesh = skin.sharedMesh;
@@ -94,9 +94,6 @@ namespace VF.Feature {
                         objectToMove.transform.localScale *= scalingFactor;
                         objectToMove.transform.localPosition *= scalingFactor;
                     }
-
-                    // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
-                    PhysboneUtils.RemoveFromPhysbones(objectToMove.transform, true);
                 }
 
                 // Now, update all the skinned meshes in the prop to use the avatar's bone objects
@@ -171,9 +168,6 @@ namespace VF.Feature {
                         propBone.transform.localRotation = Quaternion.identity;
                         propBone.transform.localScale = Vector3.one * scalingFactor;
                     }
-
-                    // Because we're adding new children, we need to ensure they are ignored by any existing physbones on the avatar.
-                    PhysboneUtils.RemoveFromPhysbones(propBone.transform, true);
                 }
             } else if (linkMode == ArmatureLink.ArmatureLinkMode.ParentConstraint) {
                 foreach (var mergeBone in links.mergeBones) {

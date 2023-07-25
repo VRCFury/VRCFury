@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
     public class Slot4FixBuilder : FeatureBuilder<Slot4Fix> {
@@ -68,7 +69,7 @@ namespace VF.Feature {
             }
 
             foreach (var oldMesh in meshesToPatch) {
-                var newMesh = mutableManager.MakeMutable(oldMesh);
+                var newMesh = mutableManager.MakeMutable(oldMesh, true);
                 var submesh = newMesh.GetSubMesh(4);
                 newMesh.SetSubMesh(4, new SubMeshDescriptor());
                 newMesh.subMeshCount++;

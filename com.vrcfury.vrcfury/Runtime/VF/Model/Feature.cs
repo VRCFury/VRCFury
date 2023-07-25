@@ -171,6 +171,7 @@ namespace VF.Model.Feature {
         public class BindingRewrite {
             public string from;
             public string to;
+            public bool delete = false;
             public bool ResetMePlease;
         }
 
@@ -689,6 +690,10 @@ namespace VF.Model.Feature {
     [Serializable]
     public class TpsScaleFix : NewFeatureModel {
         [NonSerialized] public Renderer singleRenderer;
+    }
+    
+    [Serializable]
+    public class ShowInFirstPerson : NewFeatureModel {
     }
 
 }

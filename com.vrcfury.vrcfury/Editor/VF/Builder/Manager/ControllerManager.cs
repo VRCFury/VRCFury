@@ -320,9 +320,9 @@ namespace VF.Builder {
             ctrl.layers = layers;
         }
 
-        public void ForEachClip(Action<EasyAnimationClip> action) {
+        public void ForEachClip(Action<AnimationClip> action) {
             foreach (var clip in new AnimatorIterator.Clips().From(GetRaw())) {
-                action(new EasyAnimationClip(clip));
+                action(clip);
             }
         }
 
@@ -350,10 +350,9 @@ namespace VF.Builder {
             "GroundProximity",
             "VelocityMagnitude"
         };
-        public IImmutableSet<EasyAnimationClip> GetClips() {
-            return new AnimatorIterator.Clips().From(GetRaw())
-                .Select(c => new EasyAnimationClip(c))
-                .ToImmutableHashSet();
+
+        public IImmutableSet<AnimationClip> GetClips() {
+            return new AnimatorIterator.Clips().From(GetRaw());
         }
     }
 }

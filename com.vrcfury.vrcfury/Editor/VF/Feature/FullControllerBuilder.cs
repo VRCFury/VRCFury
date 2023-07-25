@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -155,11 +156,14 @@ namespace VF.Feature {
 
                 if (from == "") {
                     path = ClipRewriter.Join(to, path);
+                    if (rewrite.delete) return ClipRewriter.DeleteBindingMarker;
                 } else if (path.StartsWith(from + "/")) {
                     path = path.Substring(from.Length + 1);
                     path = ClipRewriter.Join(to, path);
+                    if (rewrite.delete) return ClipRewriter.DeleteBindingMarker;
                 } else if (path == from) {
                     path = to;
+                    if (rewrite.delete) return ClipRewriter.DeleteBindingMarker;
                 }
             }
 
@@ -300,29 +304,31 @@ namespace VF.Feature {
                 "parameters (such as gestures) are included by default."));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clip bindings:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clips:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
                 " in the controller were originally written to be based from a specific avatar root," +
                 " but you are now trying to use as a re-usable VRCFury prop."));
-            var r = new VisualElement {
-                style = { flexDirection = FlexDirection.Row }
-            };
-            r.Add(new Label("From Prefix") { style = { flexBasis = 0, flexGrow = 1 }});
-            r.Add(new Label("To Prefix") { style = { flexBasis = 0, flexGrow = 1 }});
-            content.Add(r);
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings"), (i, rewrite) => {
-                var row = new VisualElement {
-                    style = { flexDirection = FlexDirection.Row }
-                };
-                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
-                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to"), style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
+                var row = new VisualElement();
+                row.Add(VRCFuryEditorUtils.WrappedLabel("If animated path has this prefix:"));
+                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => s.paddingLeft = 15));
+                row.Add(VRCFuryEditorUtils.WrappedLabel("Then:"));
+                var deleteProp = rewrite.FindPropertyRelative("delete");
+                var selector = new PopupField<string>(new List<string>{ "Rewrite the prefix to", "Delete it" }, deleteProp.boolValue ? 1 : 0);
+                selector.style.paddingLeft = 15;
+                row.Add(selector);
+                var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to"), style: s => s.paddingLeft = 15);
+                row.Add(to);
+
+                void Update() {
+                    deleteProp.boolValue = selector.index == 1;
+                    deleteProp.serializedObject.ApplyModifiedProperties();
+                    to.style.display = deleteProp.boolValue ? DisplayStyle.None : DisplayStyle.Flex;
+                }
+                selector.RegisterValueChangedCallback(str => Update());
+                Update();
+                
                 return row;
             }));
 
@@ -364,6 +370,7 @@ namespace VF.Feature {
                                     AnimationUtility.GetCurveBindings(clip)
                                         .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip)))
                                 .Select(binding => RewriteBinding(binding.path))
+                                .Where(path => path != ClipRewriter.DeleteBindingMarker)
                                 .Where(path => baseObject.transform.Find(path) == null));
                         }
                     }

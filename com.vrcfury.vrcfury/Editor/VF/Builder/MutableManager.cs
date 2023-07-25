@@ -283,8 +283,8 @@ namespace VF.Builder {
         
         
         private readonly HashSet<Object> mutableObjects = new HashSet<Object>();
-        public T MakeMutable<T>(T original) where T : Object {
-            if (mutableObjects.Contains(original)) return original;
+        public T MakeMutable<T>(T original, bool useCache) where T : Object {
+            if (useCache && mutableObjects.Contains(original)) return original;
             var copy = SafeInstantiate(original);
             copy.name = original.name;
             VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "vrcf_" + copy.name);

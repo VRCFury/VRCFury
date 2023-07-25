@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
 
 namespace VF.Builder {
 
@@ -164,7 +165,7 @@ public class VFAState {
             var d = b as VRCAvatarParameterDriver;
             if (d && d.localOnly == local) return d;
         }
-        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAvatarParameterDriver>(node.state);
+        var driver = node.state.VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
         driver.localOnly = local;
         return driver;
     }
@@ -172,14 +173,14 @@ public class VFAState {
          foreach (var b in node.state.behaviours) {
             if (b is VRCAnimatorTrackingControl tc) return tc;
          }
-        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCAnimatorTrackingControl>(node.state);
+        var driver = node.state.VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
         return driver;
     }
     public VRCPlayableLayerControl GetPlayableLayerControl(VRC_PlayableLayerControl.BlendableLayer layer) {
          foreach (var b in node.state.behaviours) {
             if (b is VRCPlayableLayerControl lc) return lc;
         }
-        var driver = VRCFAnimatorUtils.AddStateMachineBehaviour<VRCPlayableLayerControl>(node.state);
+        var driver = node.state.VAddStateMachineBehaviour<VRCPlayableLayerControl>();
         return driver;
     }
     private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {

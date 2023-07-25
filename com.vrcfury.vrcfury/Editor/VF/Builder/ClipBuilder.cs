@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -130,17 +132,17 @@ public class ClipBuilder {
         return gameObject.GetPath(baseObject);
     }
 
-    public static bool IsEmptyMotion(Motion motion, VFGameObject avatarRoot = null) {
+    public static bool IsEmptyMotion(Motion motion, VFGameObject avatarRoot) {
         return new AnimatorIterator.Clips().From(motion)
             .All(clip => IsEmptyClip(clip, avatarRoot));
     }
 
-    private static bool IsEmptyClip(AnimationClip clip, VFGameObject avatarRoot = null) {
-        foreach (var unused in AnimationUtility.GetCurveBindings(clip)) {
-            return false;
-        }
-        foreach (var unused in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-            return false;
+    private static bool IsEmptyClip(AnimationClip clip, VFGameObject avatarRoot) {
+        var usedPaths = clip.GetAllBindings().Select(binding => binding.path).Distinct().ToArray();
+        foreach (var path in usedPaths) {
+            if (avatarRoot.Find(path)) {
+                return false;
+            }
         }
         return true;
     }

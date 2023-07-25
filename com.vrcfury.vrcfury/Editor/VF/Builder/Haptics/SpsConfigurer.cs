@@ -21,17 +21,17 @@ namespace VF.Builder.Haptics {
         ) {
             if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
                 throw new Exception(
-                    $"VRCFury haptic plug was asked to configure SPS on renderer {skin}," +
+                    $"VRCFury haptic plug was asked to configure SPS on renderer," +
                     $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
                     $" on the mesh instead.");
             }
             if (TpsConfigurer.IsLocked(original)) {
                 throw new Exception(
-                    "VRCFury Haptic Plug was asked to configure SPS on renderer {skin}, but material is poiyomi locked." +
-                    "Please unlock the material using TPS to use this feature. (Don't worry, it will be re-locked during the upload).");
+                    $"VRCFury Haptic Plug was asked to configure SPS on renderer, but material is poiyomi locked." +
+                    " Please unlock the material using TPS to use this feature. (Don't worry, it will be re-locked during the upload).");
             }
 
-            var m = mutableManager.MakeMutable(original);
+            var m = mutableManager.MakeMutable(original, false);
             SpsPatcher.patch(m, mutableManager, plug.spsKeepImports);
             m.SetOverrideTag(SpsEnabled + "Animated", "1");
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);

@@ -12,6 +12,7 @@ using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
     public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
@@ -75,7 +76,7 @@ namespace VF.Feature {
                             "Please unlock the material on " +
                             pathToRenderer);
                     }
-                    mat = mutableManager.MakeMutable(mat);
+                    mat = mutableManager.MakeMutable(mat, true);
                     if (isTps) {
                         mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                         mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
