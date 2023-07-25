@@ -135,7 +135,7 @@ namespace VF.Feature {
                         clipBuilder.Enable(tipLightOnClip, tip);
                     }
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake haptic plug: ({plug.owner().GetPath()})", e);
+                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
                 }
             }
 
@@ -330,7 +330,7 @@ namespace VF.Feature {
                         on.TransitionsTo(off).When(onWhen.Not());
                     }
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Socket: ({socket.owner().GetPath()})", e);
+                    throw new ExceptionWithCause($"Failed to bake Haptic Socket: {socket.owner().GetPath()}", e);
                 }
             }
 
