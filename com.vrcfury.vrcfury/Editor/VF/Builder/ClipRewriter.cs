@@ -16,6 +16,8 @@ namespace VF.Builder {
         private readonly bool rootBindingsApplyToAvatar;
         private readonly Func<string, string> rewriteParam;
 
+        public static string DeleteBindingMarker = "___removebinding";
+
         public ClipRewriter(
             VFGameObject animObject = null,
             VFGameObject rootObject = null,
@@ -43,6 +45,7 @@ namespace VF.Builder {
             // First, apply the rewrites that the user has specified
             if (rewriteBinding != null) {
                 binding.path = rewriteBinding(binding.path);
+                if (binding.path == DeleteBindingMarker) return binding;
             }
 
             // Special treatment for animator parameters
@@ -90,6 +93,10 @@ namespace VF.Builder {
             foreach (var originalBinding in clip.GetFloatBindings()) {
                 var curve = clip.GetFloatCurve(originalBinding);
                 var rewrittenBinding = RewriteBinding(originalBinding, true);
+                if (rewrittenBinding.path == DeleteBindingMarker) {
+                    clip.SetFloatCurve(originalBinding, null);
+                    continue;
+                }
                 bool forceUpdate = false;
                 if (
                     rootObject
@@ -114,6 +121,10 @@ namespace VF.Builder {
             foreach (var originalBinding in clip.GetObjectBindings()) {
                 var curve = clip.GetObjectCurve(originalBinding);
                 var rewrittenBinding = RewriteBinding(originalBinding, false);
+                if (rewrittenBinding.path == DeleteBindingMarker) {
+                    clip.SetObjectCurve(originalBinding, null);
+                    continue;
+                }
                 if (originalBinding != rewrittenBinding) {
                     clip.SetObjectCurve(originalBinding, null);
                     clip.SetObjectCurve(rewrittenBinding, curve);

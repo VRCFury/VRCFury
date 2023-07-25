@@ -11,7 +11,7 @@ namespace VF.Feature {
                     if (i == 0) continue;
 
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
-                        .Any(clip => !ClipBuilder.IsEmptyMotion(clip));
+                        .Any(clip => !ClipBuilder.IsEmptyMotion(clip, avatarObject));
                     var hasBehaviour = new AnimatorIterator.Behaviours().From(layer)
                         .Any();
 

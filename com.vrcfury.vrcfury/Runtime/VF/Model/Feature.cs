@@ -171,6 +171,7 @@ namespace VF.Model.Feature {
         public class BindingRewrite {
             public string from;
             public string to;
+            public bool delete = false;
             public bool ResetMePlease;
         }
 
