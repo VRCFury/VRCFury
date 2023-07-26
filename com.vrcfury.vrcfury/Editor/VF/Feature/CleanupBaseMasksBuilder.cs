@@ -11,7 +11,7 @@ namespace VF.Feature {
     public class CleanupBaseMasksBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.CleanupBaseMasks)]
         public void Apply() {
-            var allControllers = manager.GetAllUsedControllers();
+            var allControllers = manager.GetAllUsedControllers().ToArray();
 
             foreach (var c in manager.GetAllUsedControllers()) {
                 var ctrl = c.GetRaw();
@@ -70,38 +70,36 @@ namespace VF.Feature {
             return mask;
         }
 
-        /**
-         * We generate the FX mask by allowing all transforms, EXCEPT for those that are animated in Gesture and not in FX.
-         * We disable those transforms so the animations will show through from Gesture. (Curiously, this isn't actually
-         * needed if using WD on, because animations will always show through).
-         */
         private AvatarMask GetFxMask(ControllerManager fx, IEnumerable<ControllerManager> allControllers) {
-            var pathsInGesture = allControllers
+            var gestureContainsTransform = allControllers
                 .Where(c => c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture)
-                .SelectMany(GetAnimatedPaths)
-                .Where(path => path != "")
-                .ToImmutableHashSet();
-            if (pathsInGesture.IsEmpty) return null;
-
-            var pathsInFx = GetAnimatedPaths(fx);
-            var mask = new AvatarMask();
-            for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                mask.SetHumanoidBodyPartActive(bodyPart, false);
-            }
-            foreach (var path in pathsInFx) {
-                mask.transformCount++;
-                mask.SetTransformPath(mask.transformCount-1, path);
-                mask.SetTransformActive(mask.transformCount-1, true);
-            }
-            VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMask");
-            return mask;
-        }
-
-        private IImmutableSet<string> GetAnimatedPaths(ControllerManager c) {
-            return c.GetClips()
+                .SelectMany(c => c.GetClips())
                 .SelectMany(clip => clip.GetAllBindings())
-                .Select(b => b.path)
-                .ToImmutableHashSet();
+                .Any(binding => binding.type == typeof(Transform));
+            if (!gestureContainsTransform) return null;
+
+            foreach (var layer in fx.GetLayers()) {
+                var layerId = fx.GetLayerId(layer);
+                var oldMask = fx.GetMask(layerId);
+
+                var transformedPaths = new AnimatorIterator.Clips().From(layer)
+                    .SelectMany(clip => clip.GetAllBindings())
+                    .Where(binding => binding.type == typeof(Transform))
+                    .Select(binding => binding.path)
+                    .ToImmutableHashSet();
+                if (transformedPaths.Count == 0) continue;
+                
+                var mask = new AvatarMask();
+                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                    mask.SetHumanoidBodyPartActive(bodyPart, false);
+                }
+                mask.SetTransforms(transformedPaths);
+                mask.IntersectWith(oldMask);
+                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layerId);
+                fx.SetMask(layerId, mask);
+            }
+
+            return null;
         }
     }
 }
