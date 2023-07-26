@@ -25,11 +25,6 @@ namespace VF.Builder.Haptics {
                     $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
                     $" on the mesh instead.");
             }
-            if (TpsConfigurer.IsLocked(original)) {
-                throw new Exception(
-                    $"VRCFury Haptic Plug was asked to configure SPS on renderer, but material is poiyomi locked." +
-                    " Please unlock the material using TPS to use this feature. (Don't worry, it will be re-locked during the upload).");
-            }
 
             var m = mutableManager.MakeMutable(original, false);
             SpsPatcher.patch(m, mutableManager, plug.spsKeepImports);

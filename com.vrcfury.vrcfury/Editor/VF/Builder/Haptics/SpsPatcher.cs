@@ -29,8 +29,15 @@ namespace VF.Builder.Haptics {
 
         public static void patchUnsafe(Material mat, MutableManager mutableManager, bool keepImports) {
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(mat, out var guid, out long localId);
-            var newShaderName = $"Hidden/SPSPatched/{guid}";
             var shader = mat.shader;
+
+            string newShaderName;
+            if (shader.name.StartsWith("Hidden/Locked/")) {
+                // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
+                newShaderName = $"Hidden/Locked/SPSPatched/{guid}";
+            } else {
+                newShaderName = $"Hidden/SPSPatched/{guid}";
+            }
             var pathToSps = GetPathToSps();
             var newPath = VRCFuryAssetDatabase.GetUniquePath(mutableManager.GetTmpDir(), "SPS Patched " + shader.name, "shader");
             var contents = ReadFile(shader);
