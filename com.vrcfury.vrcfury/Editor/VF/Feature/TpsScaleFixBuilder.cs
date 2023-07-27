@@ -70,18 +70,21 @@ namespace VF.Feature {
 
                     if (!isTps && !isSps) return mat;
 
-                    if (TpsConfigurer.IsLocked(mat)) {
-                        throw new VRCFBuilderException(
-                            "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                            "Please unlock the material on " +
-                            pathToRenderer);
-                    }
                     mat = mutableManager.MakeMutable(mat, true);
                     if (isTps) {
+                        if (TpsConfigurer.IsLocked(mat)) {
+                            throw new VRCFBuilderException(
+                                "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
+                                "Please unlock the material on " +
+                                pathToRenderer);
+                        }
                         mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                         mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
                     }
                     if (isSps) {
+                        // We can assume that SPS-patched poiyomi is always unlocked at this point, since either:
+                        // 1. The mat was unlocked before the build, we patched it and it's still unlocked (poi will lock it after vrcf)
+                        // 2. The mat was locked before the build, we patched it and now our fields are unlocked even though everything else is locked
                         mat.SetOverrideTag("_SPS_LengthAnimated", "1");
                     }
                     return mat;
