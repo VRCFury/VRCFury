@@ -218,7 +218,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     public void Apply() {
         paramOverride = model.paramOverride;
         usePrefixOnParam = model.usePrefixOnParam;
-        transitionTime =model.transitionTime;
+        transitionTime = model.transitionTime;
         useInt = model.useInt;
         addMenuItem = model.addMenuItem;
 
