@@ -8,8 +8,8 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class CleanupBaseMasksBuilder : FeatureBuilder {
-        [FeatureBuilderAction(FeatureOrder.CleanupBaseMasks)]
+    public class FixMasksBuilder : FeatureBuilder {
+        [FeatureBuilderAction(FeatureOrder.FixMasks)]
         public void Apply() {
             var allControllers = manager.GetAllUsedControllers().ToArray();
 
@@ -42,28 +42,13 @@ namespace VF.Feature {
          * hand gestures can work.
          */
         private AvatarMask GetGestureMask(ControllerManager gesture) {
-            var mask = new AvatarMask();
-
-            for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                mask.SetHumanoidBodyPartActive(bodyPart, false);
-            }
+            var mask = AvatarMaskExtensions.Empty();
             mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
             mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
 
             foreach (var union in gesture.GetUnionBaseMasks()) {
-                if (union == null) {
-                    continue;
-                }
-                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                    if (union.GetHumanoidBodyPartActive(bodyPart))
-                        mask.SetHumanoidBodyPartActive(bodyPart, true);
-                }
-                for (var i = 0; i < union.transformCount; i++) {
-                    if (union.GetTransformActive(i)) {
-                        mask.transformCount++;
-                        mask.SetTransformPath(mask.transformCount-1, union.GetTransformPath(i));
-                        mask.SetTransformActive(mask.transformCount-1, true);
-                    }
+                if (union != null) {
+                    mask.UnionWith(union);
                 }
             }
             VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
@@ -88,11 +73,8 @@ namespace VF.Feature {
                     .Select(binding => binding.path)
                     .ToImmutableHashSet();
                 if (transformedPaths.Count == 0) continue;
-                
-                var mask = new AvatarMask();
-                for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
-                    mask.SetHumanoidBodyPartActive(bodyPart, false);
-                }
+
+                var mask = AvatarMaskExtensions.Empty();
                 mask.SetTransforms(transformedPaths);
                 mask.IntersectWith(oldMask);
                 VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layerId);

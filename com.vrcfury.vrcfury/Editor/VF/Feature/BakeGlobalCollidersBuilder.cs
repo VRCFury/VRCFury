@@ -13,7 +13,7 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Apply() {
 
-            var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
+            var fakeHead = GetBuilder<FakeHeadBuilder>();
             var globalContacts = avatarObject.GetComponentsInSelfAndChildren<VRCFuryGlobalCollider>();
             if (globalContacts.Length == 0) return;
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();

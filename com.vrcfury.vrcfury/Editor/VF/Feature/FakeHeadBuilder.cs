@@ -32,7 +32,7 @@ namespace VF.Feature {
                 .ToList();
             if (objectsForFakeHead.Count == 0) return;
             
-            var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
+            var mover = GetBuilder<ObjectMoveBuilder>();
             var vrcfAlwaysVisibleHead = GameObjects.Create("vrcfAlwaysVisibleHead", head.transform.parent, useTransformFrom: head.transform);
             
             var p = vrcfAlwaysVisibleHead.AddComponent<ParentConstraint>();

@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
@@ -17,10 +18,14 @@ namespace VF.Feature {
                         obj.Destroy();
                         break;
                     case ObjectState.Action.ACTIVATE:
-                        obj.active = true;
+                        var clip = new AnimationClip();
+                        clipBuilder.Enable(clip, obj);
+                        GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(clip);
                         break;
                     case ObjectState.Action.DEACTIVATE:
-                        obj.active = false;
+                        var clip2 = new AnimationClip();
+                        clipBuilder.Enable(clip2, obj, false);
+                        GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(clip2);
                         break;
                 }
             }

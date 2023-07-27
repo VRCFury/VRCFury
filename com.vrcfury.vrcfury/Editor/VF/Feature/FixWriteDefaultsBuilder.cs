@@ -37,7 +37,7 @@ namespace VF.Feature {
         private AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
                 _defaultClip = GetFx().NewClip("Defaults");
-                allBuildersInRun.OfType<ObjectMoveBuilder>().First().AddAdditionalManagedClip(_defaultClip);
+                GetBuilder<ObjectMoveBuilder>().AddAdditionalManagedClip(_defaultClip);
             }
             return _defaultClip;
         }
@@ -114,7 +114,7 @@ namespace VF.Feature {
             }
 
             var defaultClip = GetDefaultClip();
-            if (defaultClip.GetFloatBindings().Length > 0 || defaultClip.GetObjectBindings().Length > 0) {
+            if (defaultClip.GetAllBindings().Length > 0) {
                 var defaultLayer = GetFx().NewLayer("Defaults", 0);
                 defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
                 foreach (var state in new AnimatorIterator.States().From(defaultLayer.GetRawStateMachine())) {

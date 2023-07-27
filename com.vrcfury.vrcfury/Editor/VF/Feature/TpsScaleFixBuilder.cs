@@ -18,7 +18,7 @@ namespace VF.Feature {
     public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {
-            if (this != allBuildersInRun.OfType<TpsScaleFixBuilder>().First()) {
+            if (this != GetBuilder<TpsScaleFixBuilder>()) {
                 return;
             }
 
@@ -70,18 +70,21 @@ namespace VF.Feature {
 
                     if (!isTps && !isSps) return mat;
 
-                    if (TpsConfigurer.IsLocked(mat)) {
-                        throw new VRCFBuilderException(
-                            "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                            "Please unlock the material on " +
-                            pathToRenderer);
-                    }
                     mat = mutableManager.MakeMutable(mat, true);
                     if (isTps) {
+                        if (TpsConfigurer.IsLocked(mat)) {
+                            throw new VRCFBuilderException(
+                                "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
+                                "Please unlock the material on " +
+                                pathToRenderer);
+                        }
                         mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                         mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
                     }
                     if (isSps) {
+                        // We can assume that SPS-patched poiyomi is always unlocked at this point, since either:
+                        // 1. The mat was unlocked before the build, we patched it and it's still unlocked (poi will lock it after vrcf)
+                        // 2. The mat was locked before the build, we patched it and now our fields are unlocked even though everything else is locked
                         mat.SetOverrideTag("_SPS_LengthAnimated", "1");
                     }
                     return mat;
@@ -139,8 +142,7 @@ namespace VF.Feature {
 
                     zeroClip = GetFx().NewClip("zeroScale");
                     var one = GetFx().NewFloat("one", def: 1);
-                    directTree.AddChild(zeroClip);
-                    SetLastParam(directTree, one);
+                    directTree.AddDirectChild(one.Name(), zeroClip);
                 }
 
                 var scaleClip = GetFx().NewClip("tpsScale_" + objectNumber);
@@ -167,13 +169,11 @@ namespace VF.Feature {
                 foreach (var (param,index) in pathToParam.Values.Select((p,index) => (p,index))) {
                     var isLast = index == pathToParam.Count - 1;
                     if (isLast) {
-                        tree.AddChild(scaleClip);
-                        SetLastParam(tree, param);
+                        tree.AddDirectChild(param.Name(), scaleClip);
                     } else {
                         var subTree = GetFx().NewBlendTree("shaderScaleSub");
                         subTree.blendType = BlendTreeType.Direct;
-                        tree.AddChild(subTree);
-                        SetLastParam(tree, param);
+                        tree.AddDirectChild(param.Name(), subTree);
                         tree = subTree;
                     }
                 }
@@ -214,14 +214,6 @@ namespace VF.Feature {
 
         private static bool IsScaleBinding(EditorCurveBinding binding) {
             return binding.type == typeof(Transform) && binding.propertyName == "m_LocalScale.z";
-        }
-
-        private static void SetLastParam(BlendTree tree, VFAParam param) {
-            var children = tree.children;
-            var child = children[children.Length - 1];
-            child.directBlendParameter = param.Name();
-            children[children.Length - 1] = child;
-            tree.children = children;
         }
 
         public override string GetEditorTitle() {

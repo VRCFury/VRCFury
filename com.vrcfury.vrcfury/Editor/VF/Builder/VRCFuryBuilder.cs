@@ -175,7 +175,7 @@ public class VRCFuryBuilder {
         AddBuilder(new FakeHeadBuilder(), avatarObject);
         AddBuilder(new ObjectMoveBuilder(), avatarObject);
         AddBuilder(new AnimatorLayerControlOffsetBuilder(), avatarObject);
-        AddBuilder(new CleanupBaseMasksBuilder(), avatarObject);
+        AddBuilder(new FixMasksBuilder(), avatarObject);
         AddBuilder(new CleanupEmptyLayersBuilder(), avatarObject);
         AddBuilder(new ResetAnimatorBuilder(), avatarObject);
         AddBuilder(new FixBadVrcParameterNamesBuilder(), avatarObject);
@@ -183,6 +183,8 @@ public class VRCFuryBuilder {
         AddBuilder(new FinalizeParamsBuilder(), avatarObject);
         AddBuilder(new FinalizeControllerBuilder(), avatarObject);
         AddBuilder(new MarkThingsAsDirtyJustInCaseBuilder(), avatarObject);
+        AddBuilder(new FixMaterialSwapWithMaskBuilder(), avatarObject);
+        AddBuilder(new RestingStateBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();

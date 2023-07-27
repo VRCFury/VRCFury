@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -8,6 +10,21 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
     public static class AnimatorControllerExtensions {
+        public static void RewritePaths(this AnimatorController c, Func<string,string> rewrite) {
+            // Rewrite clips
+            foreach (var clip in new AnimatorIterator.Clips().From(c)) {
+                if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) continue;
+                clip.RewritePaths(rewrite);
+            }
+
+            // Rewrite masks
+            foreach (var layer in c.layers) {
+                var mask = layer.avatarMask;
+                if (mask == null || mask.transformCount == 0) continue;
+                mask.SetTransforms(mask.GetTransforms().Select(rewrite).Where(path => path != null));
+            }
+        }
+
         public static void RewriteParameters(this AnimatorController c, Func<string, string> rewriteParamName) {
             // Params
             var prms = c.parameters;
@@ -37,11 +54,27 @@ namespace VF.Utils {
                     }
                 }
             }
+            
+            // Parameter Animations
+            foreach (var clip in new AnimatorIterator.Clips().From(c)) {
+                foreach (var binding in clip.GetFloatBindings()) {
+                    if (binding.path != "") continue;
+                    if (binding.type != typeof(Animator)) continue;
+
+                    var propName = binding.propertyName;
+                    if (IsMuscle(propName)) continue;
+
+                    var newPropName = rewriteParamName(propName);
+                    if (propName != newPropName) {
+                        var newBinding = binding;
+                        newBinding.propertyName = newPropName;
+                        clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                        clip.SetFloatCurve(binding, null);
+                    }
+                }
+            }
 
             // Motions
-            var rewriter = new ClipRewriter(
-                rewriteParam: rewriteParamName
-            );
             foreach (var motion in new AnimatorIterator.Motions().From(c)) {
                 if (motion is BlendTree tree) {
                     tree.blendParameter = rewriteParamName(tree.blendParameter);
@@ -50,8 +83,6 @@ namespace VF.Utils {
                         child.directBlendParameter = rewriteParamName(child.directBlendParameter);
                         return child;
                     }).ToArray();
-                } else if (motion is AnimationClip clip) {
-                    rewriter.Rewrite(clip);
                 }
             }
 
@@ -65,6 +96,23 @@ namespace VF.Utils {
             }
             
             VRCFuryEditorUtils.MarkDirty(c);
+        }
+        
+        private static HashSet<string> _humanMuscleList;
+        private static HashSet<string> GetHumanMuscleList() {
+            if (_humanMuscleList != null) return _humanMuscleList;
+            _humanMuscleList = new HashSet<string>();
+            _humanMuscleList.UnionWith(HumanTrait.MuscleName);
+            return _humanMuscleList;
+        }
+        private static bool IsMuscle(string name) {
+            return GetHumanMuscleList().Contains(name)
+                   || name.EndsWith(" Stretched")
+                   || name.EndsWith(".Spread")
+                   || name.EndsWith(".x")
+                   || name.EndsWith(".y")
+                   || name.EndsWith(".z")
+                   || name.EndsWith(".w");
         }
     }
 }

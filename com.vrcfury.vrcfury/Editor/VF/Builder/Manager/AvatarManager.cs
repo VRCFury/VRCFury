@@ -116,5 +116,9 @@ namespace VF.Builder {
             }
             return _params;
         }
+
+        public string GetCurrentlyExecutingFeatureName() {
+            return currentFeatureNameProvider();
+        }
     }
 }

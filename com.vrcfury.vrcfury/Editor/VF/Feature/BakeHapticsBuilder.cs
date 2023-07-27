@@ -61,7 +61,7 @@ namespace VF.Feature {
         public void Apply() {
             var usedNames = new List<string>();
             var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
-            var fakeHead = allBuildersInRun.OfType<FakeHeadBuilder>().First();
+            var fakeHead = GetBuilder<FakeHeadBuilder>();
 
             // When you first load into a world, contact receivers already touching a sender register as 0 proximity
             // until they are removed and then reintroduced to each other.
@@ -98,7 +98,7 @@ namespace VF.Feature {
                     }
 
                     var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                    ApplyClipToRestingState(postBakeClip);
+                    GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(postBakeClip);
 
                     if (plug.enableSps) {
                         foreach (var renderer in renderers) {
@@ -222,14 +222,14 @@ namespace VF.Feature {
                         }
 
                         var onLocalClip = fx.NewClip($"{name} (Local)");
-                        ClipRewriter.Copy(additionalActiveClip, onLocalClip);
+                        onLocalClip.CopyFrom(additionalActiveClip);
                         foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal",
                                      "Animations")) {
                             clipBuilder.Enable(onLocalClip, child.gameObject);
                         }
 
                         var onRemoteClip = fx.NewClip($"{name} (Remote)");
-                        ClipRewriter.Copy(additionalActiveClip, onRemoteClip);
+                        onRemoteClip.CopyFrom(additionalActiveClip);
                         foreach (var child in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
                             clipBuilder.Enable(onRemoteClip, child.gameObject);
                         }

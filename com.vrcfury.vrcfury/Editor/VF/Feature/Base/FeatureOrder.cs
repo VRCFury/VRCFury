@@ -80,12 +80,13 @@ namespace VF.Feature.Base {
         Slot4Fix = 10012,
         
         // Needs to happen after everything is done adding / removing controller layers
-        CleanupBaseMasks = 10020,
-        CleanupEmptyLayers = 10021,
-        ControllerConflictCheck = 10022,
-        AnimatorLayerControlFix = 10023,
+        CleanupEmptyLayers = 10020,
+        FixMasks = 10021,
+        FixMaterialSwapWithMask = 10022,
+        ControllerConflictCheck = 10023,
+        AnimatorLayerControlFix = 10024,
 
-        FixBadParameters = 10024,
+        FixBadParameters = 10025,
         
         FinalizeParams = 10030,
         FinalizeMenu = 10031,

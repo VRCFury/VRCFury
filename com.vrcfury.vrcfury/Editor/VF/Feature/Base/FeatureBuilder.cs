@@ -11,6 +11,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
@@ -109,10 +110,10 @@ namespace VF.Feature.Base {
                 return GetFx().GetNoopClip();
             }
 
-            void RewriteClip(AnimationClip c) {
-                var rewriter = new ClipRewriter(animObject: animObjectOverride ?? featureBaseObject, rootObject: avatarObject);
-                rewriter.Rewrite(c);
-            }
+            var pathRewriter = ClipRewriter.CreateNearestMatchPathRewriter(
+                animObject: animObjectOverride ?? featureBaseObject,
+                rootObject: avatarObject
+            );
 
             bool IsProxy(Model.StateAction.Action action) {
                 if (!(action is AnimationClipAction)) return false;
@@ -138,8 +139,9 @@ namespace VF.Feature.Base {
             if (actionsToAdd.Count() == 0) {
                 return GetFx().GetNoopClip();
             }
-            
+
             var clip = GetFx().NewClip(name);
+            var restingStateBuilder = GetBuilder<RestingStateBuilder>();
 
             AnimationClip firstClip = actionsToAdd
                 .OfType<AnimationClipAction>()
@@ -149,7 +151,7 @@ namespace VF.Feature.Base {
                 var nameBak = clip.name;
                 EditorUtility.CopySerialized(firstClip, clip);
                 clip.name = nameBak;
-                RewriteClip(clip);
+                clip.RewritePaths(pathRewriter);
             }
 
             foreach (var action in actionsToAdd) {
@@ -161,29 +163,26 @@ namespace VF.Feature.Base {
                             // in unity displaying frame 0 instead of 1. Instead, we target framenum+0.5, so there's
                             // leniency around it.
                             var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
-                            clip.SetCurve(
+                            var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(flipbook.obj),
                                 typeof(SkinnedMeshRenderer),
-                                "material._FlipbookCurrentFrame",
-                                ClipBuilder.OneFrame(frameAnimNum));
+                                "material._FlipbookCurrentFrame"
+                            );
+                            clip.SetConstant(binding, frameAnimNum);
                         }
                         break;
                     case ShaderInventoryAction shaderInventoryAction: {
                         var renderer = shaderInventoryAction.renderer;
                         if (renderer != null) {
-                            var propName = $"_InventoryItem{shaderInventoryAction.slot:D2}Animated";
-                            renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
-                                if (!mat.HasProperty(propName)) return mat;
-                                mat = mutableManager.MakeMutable(mat, true);
-                                mat.SetFloat(propName, 0);
-                                return mat;
-                            }).ToArray();
-                            VRCFuryEditorUtils.MarkDirty(renderer);
-                            clip.SetCurve(
+                            var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(renderer.gameObject),
                                 renderer.GetType(),
-                                $"material.{propName}",
-                                ClipBuilder.OneFrame(1));
+                                $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
+                            );
+                            var restingState = new AnimationClip();
+                            restingState.SetConstant(binding, 0);
+                            restingStateBuilder.ApplyClipToRestingState(restingState);
+                            clip.SetConstant(binding, 1);
                         }
                         break;
                     }
@@ -191,8 +190,8 @@ namespace VF.Feature.Base {
                         AnimationClip clipActionClip = clipAction.clip;
                         if (clipActionClip && clipActionClip != firstClip) {
                             var copy = mutableManager.CopyRecursive(clipActionClip, "Copy of " + clipActionClip.name);
-                            RewriteClip(copy);
-                            ClipRewriter.Copy(copy, clip);
+                            copy.RewritePaths(pathRewriter);
+                            clip.CopyFrom(copy);
                             AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                         }
                         break;
@@ -243,39 +242,6 @@ namespace VF.Feature.Base {
             }
             return clip;
         }
-        
-        public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
-            if (recordDefaultStateFirst) {
-                var defaultsManager = allBuildersInRun
-                    .OfType<FixWriteDefaultsBuilder>()
-                    .First();
-                foreach (var b in AnimationUtility.GetCurveBindings(clip))
-                    defaultsManager.RecordDefaultNow(b, true);
-                foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip))
-                    defaultsManager.RecordDefaultNow(b, false);
-            }
-
-            ResetAnimatorBuilder.WithoutAnimator(avatarObject, () => { clip.SampleAnimation(avatarObject, 0); });
-            foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
-                if (!binding.propertyName.StartsWith("material.")) continue;
-                var propName = binding.propertyName.Substring("material.".Length);
-                var transform = avatarObject.transform.Find(binding.path);
-                if (!transform) continue;
-                var obj = transform.gameObject;
-                if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) continue;
-                var renderer = obj.GetComponent(binding.type) as Renderer;
-                if (!renderer) continue;
-                var curve = AnimationUtility.GetEditorCurve(clip, binding);
-                if (curve.length == 0) continue;
-                var val = curve.keys[0].value;
-                renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
-                    if (!mat.HasProperty(propName)) return mat;
-                    mat = mutableManager.MakeMutable(mat, true);
-                    mat.SetFloat(propName, val);
-                    return mat;
-                }).ToArray();
-            }
-        }
 
         public List<FeatureBuilderAction> GetActions() {
             var list = new List<FeatureBuilderAction>();
@@ -284,14 +250,15 @@ namespace VF.Feature.Base {
                 if (attr == null) continue;
                 list.Add(new FeatureBuilderAction(attr, method, this));
             }
-            if (list.Count == 0) {
-                throw new Exception("Builder had no actions? This is probably a bug. " + GetType().Name);
-            }
             return list;
         }
 
         public virtual string GetClipPrefix() {
             return null;
+        }
+
+        public T GetBuilder<T>() {
+            return allBuildersInRun.OfType<T>().First();
         }
     }
 
