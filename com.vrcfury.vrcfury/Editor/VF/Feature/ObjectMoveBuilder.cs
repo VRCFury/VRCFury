@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -46,56 +45,12 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.ObjectMoveBuilderFixAnimations)]
         public void FixAnimations() {
             if (redirects.Count == 0) return;
-            
-            var clips = new HashSet<AnimationClip>();
-            var masks = new HashSet<AvatarMask>();
-
-            clips.UnionWith(additionalClips);
 
             foreach (var controller in manager.GetAllUsedControllers()) {
-                controller.ForEachClip(clip => {
-                    clips.Add(clip);
-                });
-                
-                var layers = controller.GetLayers().ToList();
-                for (var layerId = 0; layerId < layers.Count; layerId++) {
-                    var mask = controller.GetMask(layerId);
-                    if (mask != null) masks.Add(mask);
-                }
+                controller.GetRaw().RewritePaths(RewritePath);
             }
-
-            foreach (var clip in clips) {
-                foreach (var binding in clip.GetFloatBindings()) {
-                    var oldPath = binding.path;
-                    var newPath = RewritePath(oldPath);
-                    if (oldPath != newPath) {
-                        var newBinding = binding;
-                        newBinding.path = newPath;
-                        clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
-                        clip.SetFloatCurve(binding, null);
-                    }
-                }
-
-                foreach (var binding in clip.GetObjectBindings()) {
-                    var oldPath = binding.path;
-                    var newPath = RewritePath(oldPath);
-                    if (oldPath != newPath) {
-                        var newBinding = binding;
-                        newBinding.path = newPath;
-                        clip.SetObjectCurve(newBinding, clip.GetObjectCurve(binding));
-                        clip.SetObjectCurve(binding, null);
-                    }
-                }
-            }
-
-            foreach (var mask in masks) {
-                for (var i = 0; i < mask.transformCount; i++) {
-                    var oldPath = mask.GetTransformPath(i);
-                    var newPath = RewritePath(oldPath);
-                    if (oldPath != newPath) {
-                        mask.SetTransformPath(i, newPath);
-                    }
-                }
+            foreach (var clip in additionalClips) {
+                clip.RewritePaths(RewritePath);
             }
         }
 

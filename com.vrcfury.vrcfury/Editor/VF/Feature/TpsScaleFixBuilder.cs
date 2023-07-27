@@ -18,7 +18,7 @@ namespace VF.Feature {
     public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {
-            if (this != allBuildersInRun.OfType<TpsScaleFixBuilder>().First()) {
+            if (this != GetBuilder<TpsScaleFixBuilder>()) {
                 return;
             }
 
@@ -142,8 +142,7 @@ namespace VF.Feature {
 
                     zeroClip = GetFx().NewClip("zeroScale");
                     var one = GetFx().NewFloat("one", def: 1);
-                    directTree.AddChild(zeroClip);
-                    SetLastParam(directTree, one);
+                    directTree.AddDirectChild(one.Name(), zeroClip);
                 }
 
                 var scaleClip = GetFx().NewClip("tpsScale_" + objectNumber);
@@ -170,13 +169,11 @@ namespace VF.Feature {
                 foreach (var (param,index) in pathToParam.Values.Select((p,index) => (p,index))) {
                     var isLast = index == pathToParam.Count - 1;
                     if (isLast) {
-                        tree.AddChild(scaleClip);
-                        SetLastParam(tree, param);
+                        tree.AddDirectChild(param.Name(), scaleClip);
                     } else {
                         var subTree = GetFx().NewBlendTree("shaderScaleSub");
                         subTree.blendType = BlendTreeType.Direct;
-                        tree.AddChild(subTree);
-                        SetLastParam(tree, param);
+                        tree.AddDirectChild(param.Name(), subTree);
                         tree = subTree;
                     }
                 }
@@ -217,14 +214,6 @@ namespace VF.Feature {
 
         private static bool IsScaleBinding(EditorCurveBinding binding) {
             return binding.type == typeof(Transform) && binding.propertyName == "m_LocalScale.z";
-        }
-
-        private static void SetLastParam(BlendTree tree, VFAParam param) {
-            var children = tree.children;
-            var child = children[children.Length - 1];
-            child.directBlendParameter = param.Name();
-            children[children.Length - 1] = child;
-            tree.children = children;
         }
 
         public override string GetEditorTitle() {

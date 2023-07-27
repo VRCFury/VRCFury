@@ -24,7 +24,7 @@ namespace VF.Feature {
                 return;
             }
 
-            var mover = allBuildersInRun.OfType<ObjectMoveBuilder>().First();
+            var mover = GetBuilder<ObjectMoveBuilder>();
             
             var links = GetLinks();
             if (links == null) {

@@ -37,20 +37,6 @@ public class ClipBuilder {
         return new AnimationCurve(keyframes);
     }
 
-    public static int GetLengthInFrames(AnimationClip clip) {
-        var maxTime = AnimationUtility.GetCurveBindings(clip)
-            .Select(binding => AnimationUtility.GetEditorCurve(clip, binding))
-            .Select(curve => curve.keys.Max(key => key.time))
-            .DefaultIfEmpty(0)
-            .Max();
-        maxTime = Math.Max(maxTime, AnimationUtility.GetObjectReferenceCurveBindings(clip)
-            .Select(binding => AnimationUtility.GetObjectReferenceCurve(clip, binding))
-            .Select(curve => curve.Max(key => key.time))
-            .DefaultIfEmpty(0)
-            .Max());
-        return (int)Math.Round(maxTime / 60f);
-    }
-
     public void MergeSingleFrameClips(AnimationClip target, params Tuple<float, AnimationClip>[] sources) {
         foreach (var binding in sources.SelectMany(tuple => AnimationUtility.GetCurveBindings(tuple.Item2)).Distinct()) {
             var exists = AnimationUtility.GetFloatValue(baseObject, binding, out var defaultValue);

@@ -8,6 +8,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
@@ -151,7 +152,7 @@ namespace VF.Feature {
                             if (!(s.motion is AnimationClip clip)) return null;
                             if (s.timeParameterActive) return null;
                             if (clip.isLooping) return null;
-                            if (ClipBuilder.GetLengthInFrames(clip) > 5) return null;
+                            if (clip.GetLengthInFrames() > 5) return null;
                             var dualState = ClipBuilder.SplitRangeClip(clip);
                             if (dualState == null) return null;
                             AnimationClip single;
@@ -224,12 +225,7 @@ namespace VF.Feature {
                         motion = toggle.onState;
                     }
 
-                    tree.AddChild(motion);
-                    var children = tree.children;
-                    var child = children[children.Length - 1];
-                    child.directBlendParameter = param;
-                    children[children.Length - 1] = child;
-                    tree.children = children;
+                    tree.AddDirectChild(param, motion);
 
                     var fxRaw = fx.GetRaw();
                     fxRaw.parameters = fxRaw.parameters.Select(p => {

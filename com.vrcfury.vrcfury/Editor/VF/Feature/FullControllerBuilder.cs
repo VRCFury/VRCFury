@@ -68,12 +68,11 @@ namespace VF.Feature {
             }
 
             // Record the offsets so we can fix them later
-            var offsetBuilder = allBuildersInRun.OfType<AnimatorLayerControlOffsetBuilder>().First();
+            var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
             offsetBuilder.RegisterControllerSet(toMerge);
 
             foreach (var (type, from) in toMerge) {
                 var targetController = manager.GetController(type);
-                from.RewriteParameters(RewriteParamName);
                 Merge(from, targetController);
             }
 
@@ -145,7 +144,7 @@ namespace VF.Feature {
             return ControllerManager.NewParamName(name, uniqueModelNum);
         }
 
-        private string RewriteBinding(string path) {
+        private string RewritePath(string path) {
             foreach (var rewrite in model.rewriteBindings) {
                 var from = rewrite.from;
                 if (from == null) from = "";
@@ -156,14 +155,14 @@ namespace VF.Feature {
 
                 if (from == "") {
                     path = ClipRewriter.Join(to, path);
-                    if (rewrite.delete) return ClipRewriter.DeleteBindingMarker;
+                    if (rewrite.delete) return null;
                 } else if (path.StartsWith(from + "/")) {
                     path = path.Substring(from.Length + 1);
                     path = ClipRewriter.Join(to, path);
-                    if (rewrite.delete) return ClipRewriter.DeleteBindingMarker;
+                    if (rewrite.delete) return null;
                 } else if (path == from) {
                     path = to;
-                    if (rewrite.delete) return ClipRewriter.DeleteBindingMarker;
+                    if (rewrite.delete) return null;
                 }
             }
 
@@ -173,10 +172,10 @@ namespace VF.Feature {
         private void Merge(AnimatorController from, ControllerManager toMain) {
             var to = toMain.GetRaw();
             var type = toMain.GetType();
-            
+
             // Check for gogoloco
             foreach (var p in from.parameters) {
-                if (p.name.EndsWith("Go/Locomotion")) {
+                if (p.name == "Go/Locomotion") {
                     var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
                     if (avatar) {
                         avatar.autoLocomotion = false;
@@ -184,29 +183,34 @@ namespace VF.Feature {
                 }
             }
 
-            var rewriter = new ClipRewriter(
+            // Rewrite paths using component's "binding rewrites"
+            from.RewritePaths(RewritePath);
+
+            // Rewrite paths to nearest matching parent object
+            from.RewritePaths(ClipRewriter.CreateNearestMatchPathRewriter(
                 animObject: GetBaseObject(),
                 rootObject: avatarObject,
-                rewriteBinding: RewriteBinding,
                 rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
-            );
-            void RewriteClip(AnimationClip clip) {
-                if (clip == null) return;
-                if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) return;
-                rewriter.Rewrite(clip);
-            }
+            ));
 
-            // Rewrite masks
-            foreach (var layer in from.layers) {
-                if (layer.avatarMask == null) continue;
-                for (var i = 0; i < layer.avatarMask.transformCount; i++) {
-                    var path = layer.avatarMask.GetTransformPath(i);
-                    var rewritten = rewriter.RewritePath(path);
-                    if (path != rewritten) {
-                        layer.avatarMask.SetTransformPath(i, rewritten);
+            foreach (var clip in new AnimatorIterator.Clips().From(from)) {
+                // Adjust root scale
+                clip.AdjustRootScale(avatarObject);
+
+                // Make sure all animator parameter triggers hit the root animator
+                clip.RewriteBindings((binding, curve) => {
+                    if (binding.type == typeof(Animator)) {
+                        var newBinding = binding;
+                        newBinding.path = "";
+                        return newBinding;
                     }
-                }
+                    return binding;
+                });
             }
+            
+            // Rewrite params
+            // (we do this after rewriting paths to ensure animator bindings all hit "")
+            from.RewriteParameters(RewriteParamName);
 
             // Merge base mask
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
@@ -231,13 +235,6 @@ namespace VF.Feature {
 
             if (from.layers.Length > 0) {
                 from.layers[0].defaultWeight = 1;
-            }
-
-            // Rewrite Clip Paths
-            foreach (var motion in new AnimatorIterator.Motions().From(from)) {
-                if (motion is AnimationClip clip) {
-                    RewriteClip(clip);
-                }
             }
 
             // Merge Layers
@@ -366,11 +363,9 @@ namespace VF.Feature {
                                 usesWdOff = true;
                             }
                             missingPaths.UnionWith(new AnimatorIterator.Clips().From(state)
-                                .SelectMany(clip =>
-                                    AnimationUtility.GetCurveBindings(clip)
-                                        .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip)))
-                                .Select(binding => RewriteBinding(binding.path))
-                                .Where(path => path != ClipRewriter.DeleteBindingMarker)
+                                .SelectMany(clip => clip.GetAllBindings())
+                                .Select(binding => RewritePath(binding.path))
+                                .Where(path => path != null)
                                 .Where(path => baseObject.transform.Find(path) == null));
                         }
                     }

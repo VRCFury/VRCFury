@@ -12,8 +12,8 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Apply() {
             var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
-            allBuildersInRun.OfType<ObjectMoveBuilder>().First().Move(featureBaseObject, head);
-            allBuildersInRun.OfType<FakeHeadBuilder>().First().MarkEligible(featureBaseObject);
+            GetBuilder<ObjectMoveBuilder>().Move(featureBaseObject, head);
+            GetBuilder<FakeHeadBuilder>().MarkEligible(featureBaseObject);
         }
 
         public override string GetEditorTitle() {

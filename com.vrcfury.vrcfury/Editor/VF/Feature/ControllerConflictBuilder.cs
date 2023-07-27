@@ -82,7 +82,7 @@ namespace VF.Feature {
                                 layerControl.goalWeight = playableControl.goalWeight;
                                 layerControl.blendDuration = playableControl.blendDuration;
                                 layerControl.debugString = playableControl.debugString;
-                                var offsetBuilder = allBuildersInRun.OfType<AnimatorLayerControlOffsetBuilder>().First();
+                                var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
                                 offsetBuilder.Register(layerControl, drivesLayer);
                             }
                             return false;

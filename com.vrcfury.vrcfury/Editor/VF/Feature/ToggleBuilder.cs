@@ -155,7 +155,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.includeInRest && !appliedToRest) {
             appliedToRest = true;
-            ApplyClipToRestingState(clip, true);
+            GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(clip, true);
         }
 
         if (model.securityEnabled) {
