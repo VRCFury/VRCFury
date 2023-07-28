@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Utils;
-using Object = UnityEngine.Object;
 
 namespace VF.Feature {
     /**
@@ -15,6 +13,8 @@ namespace VF.Feature {
      * If two builders make a conflicting decision, something is wrong (perhaps the user gave conflicting instructions?)
      */
     public class RestingStateBuilder : FeatureBuilder {
+
+        public static float MagicToggleValue = -1.452f;
 
         public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
             if (recordDefaultStateFirst) {
@@ -29,7 +29,7 @@ namespace VF.Feature {
 
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 HandleMaterialProperties(binding, curve);
-                StoreBinding(binding, curve);
+                StoreBinding(binding, curve.GetFirst());
             }
         }
 
@@ -41,22 +41,35 @@ namespace VF.Feature {
             public FloatOrObject value;
         }
 
-        private void StoreBinding(EditorCurveBinding binding, FloatOrObjectCurve curve) {
-            var value = curve.GetFirst();
+        public void StoreBinding(EditorCurveBinding binding, FloatOrObject value) {
             var owner = manager.GetCurrentlyExecutingFeatureName();
+            binding = NormalizeBinding(binding);
             if (stored.TryGetValue(binding, out var otherStored)) {
                 if (value != otherStored.value) {
                     throw new Exception(
                         "VRCFury was told to set the resting pose of a property to two different values.\n\n" +
                         $"Property: {binding.path} {binding.propertyName}\n\n" +
-                        $"{otherStored.owner} set it to {otherStored.value}\n\n" +
-                        $"{owner} set it to {value}");
+                        $"{otherStored.owner} set it to {FormatValue(otherStored.value)}\n\n" +
+                        $"{owner} set it to {FormatValue(value)}");
                 }
             }
             stored[binding] = new StoredEntry() {
                 owner = owner,
                 value = value
             };
+        }
+
+        private string FormatValue(FloatOrObject value) {
+            if (value.IsFloat() && value.GetFloat() == MagicToggleValue) {
+                return "(toggle)";
+            }
+            return value.ToString();
+        }
+
+        // Used to make sure that two instances of EditorCurveBinding equal each other,
+        // even if they have different discrete settings, etc
+        private EditorCurveBinding NormalizeBinding(EditorCurveBinding binding) {
+            return EditorCurveBinding.FloatCurve(binding.path, binding.type, binding.propertyName);
         }
 
         private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObjectCurve curve) {

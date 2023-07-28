@@ -7,6 +7,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -17,8 +18,7 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
-    private bool appliedToRest = false;
-    
+
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
@@ -116,11 +116,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
         
         if (model.separateLocal) {
+            if (model.includeInRest) {
+                throw new VRCFBuilderException(
+                    "Toggle can not have a separate local state AND be applied in rest pose");
+            }
+            var remoteClip = LoadState("On Remote", model.state);
+            var localClip = LoadState("On Local", model.localState);
+
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", remoteClip, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), "On Local", localClip, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
         } else {
-            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            var clip = LoadState("On", model.state, activeInRestPose: model.includeInRest);
+            Apply(fx, layer, off, onCase, "On", clip, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
         if (model.addMenuItem) {
@@ -146,18 +154,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState off,
         VFACondition onCase,
         string onName,
-        State action,
+        AnimationClip clip,
         State inAction,
         State outAction,
         VFABool physBoneResetter
     ) {
-        var clip = LoadState(onName, action);
-
-        if (model.includeInRest && !appliedToRest) {
-            appliedToRest = true;
-            GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(clip, true);
-        }
-
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
                 .OfType<SecurityLockBuilder>()

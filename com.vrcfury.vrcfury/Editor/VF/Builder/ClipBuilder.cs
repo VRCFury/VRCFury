@@ -76,17 +76,20 @@ public class ClipBuilder {
         clip.SetCurve(GetPath(obj), type, propertyName, OneFrame(value));
     }
     public void Enable(AnimationClip clip, VFGameObject obj, bool active = true) {
-        OneFrame(clip, obj, typeof(GameObject), "m_IsActive", active ? 1 : 0);
-    }
-    public void Scale(AnimationClip clip, VFGameObject obj, AnimationCurve curve) {
-        foreach (var axis in new[]{"x","y","z"}) {
-            clip.SetCurve(GetPath(obj), typeof(Transform), "m_LocalScale." + axis, curve);
-        }
+        var path = GetPath(obj);
+        var binding = EditorCurveBinding.DiscreteCurve(path, typeof(GameObject), "m_IsActive");
+        clip.SetConstant(binding, active ? 1 : 0);
     }
     public void Scale(AnimationClip clip, VFGameObject obj, float x, float y, float z) {
-        OneFrame(clip, obj, typeof(Transform), "m_LocalScale.x", x);
-        OneFrame(clip, obj, typeof(Transform), "m_LocalScale.y", y);
-        OneFrame(clip, obj, typeof(Transform), "m_LocalScale.z", z);
+        var path = GetPath(obj);
+        var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), "");
+
+        binding.propertyName = "m_LocalScale.x";
+        clip.SetConstant(binding, x);
+        binding.propertyName = "m_LocalScale.y";
+        clip.SetConstant(binding, y);
+        binding.propertyName = "m_LocalScale.z";
+        clip.SetConstant(binding, z);
     }
     public void BlendShape(AnimationClip clip, SkinnedMeshRenderer skin, string blendShape, AnimationCurve curve) {
         clip.SetCurve(GetPath(skin.gameObject), typeof(SkinnedMeshRenderer), "blendShape." + blendShape, curve);
@@ -101,11 +104,11 @@ public class ClipBuilder {
         }
     }
     private void Material(AnimationClip clip, Renderer renderer, int matSlot, Material mat) {
-        var binding = new EditorCurveBinding {
-            path = GetPath(renderer.gameObject),
-            propertyName = "m_Materials.Array.data[" + matSlot + "]",
-            type = renderer.GetType()
-        };
+        var binding = EditorCurveBinding.PPtrCurve(
+            GetPath(renderer.gameObject),
+            renderer.GetType(),
+            "m_Materials.Array.data[" + matSlot + "]"
+        );
         AnimationUtility.SetObjectReferenceCurve(clip, binding, new[] {
             new ObjectReferenceKeyframe() {
                 time = 0,

@@ -2,6 +2,9 @@ namespace VF.Feature.Base {
     public enum FeatureOrder {
         CleanupLegacy = -2000,
         
+        // Needs to happen before ForceObjectState
+        FullControllerToggle = -1600,
+        
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1500,
         ResetRestingStateConflictList = -1400,
