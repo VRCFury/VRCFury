@@ -18,12 +18,18 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float3 rootPos;
 	bool isRing;
 	float3 frontNormal;
-	float entranceAngle;
-	float targetAngle;
-	const bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle, color);
+	const bool found = sps_search(rootPos, isRing, frontNormal, color);
 	if (!found) return;
 
 	float orfDistance = length(rootPos);
+	float entranceAngle = SPS_PI - acos(dot(frontNormal, normalize(rootPos)));
+	float targetAngle = acos(dot(normalize(rootPos), float3(0,0,1)));
+
+	// Flip backward rings
+	if (isRing && entranceAngle > SPS_PI/2) {
+		frontNormal *= -1;
+		entranceAngle = SPS_PI - entranceAngle;
+	}
 
 	// Decide if we should cancel deformation due to extreme angles, long distance, etc
 	float bezierLerp;
@@ -34,16 +40,21 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.5, SPS_PI*0.6, 0, 1));
 		applyLerp = min(applyLerp, 1-targetAngleTooSharp);
 
-		// Uncancel if hilted in a hole
-		if (!isRing)
-		{
+		// Cancel if the entrance angle is too sharp
+		float entranceAngleTooSharp = isRing
+			? saturate(sps_map(entranceAngle, SPS_PI*0.4, SPS_PI*0.5, 0, 1))
+			: saturate(sps_map(entranceAngle, SPS_PI*0.5, SPS_PI*0.6, 0, 1));
+		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
+
+		if (!isRing) {
+			// Uncancel if hilted in a hole
 			const float hilted = saturate(sps_map(orfDistance, worldLength*0.5, worldLength*0.4, 0, 1));
 			applyLerp = max(applyLerp, hilted);
+		} else {
+			// Cancel if hilted in a ring
+			const float hilted = saturate(sps_map(orfDistance, worldLength*0.05, 0, 0, 1));
+			applyLerp = min(applyLerp, 1-hilted);
 		}
-
-		// Cancel if the entrance angle is too sharp
-		const float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.5, SPS_PI*0.4, 0, 1));
-		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
 
 		// Cancel if too far away
 		const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
