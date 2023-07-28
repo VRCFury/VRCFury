@@ -58,10 +58,10 @@ namespace VF.Builder {
 
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator) {
-                throw new VRCFBuilderException("Avatar does not contain an Animator. Are you sure the avatar's rig is set to Humanoid?");
+                return new Dictionary<HumanBodyBones, string>();
             }
             if (!animator.avatar) {
-                throw new VRCFBuilderException("Avatar's Animator does not have a rig present. Are you sure the avatar's rig is set to Humanoid?");
+                return new Dictionary<HumanBodyBones, string>();
             }
 
             var so = new SerializedObject(animator.avatar);
