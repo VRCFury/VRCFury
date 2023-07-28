@@ -34,8 +34,12 @@ namespace VF.Utils {
 
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
             if (curve == null) {
-                clip.SetFloatCurve(binding, null);
-                clip.SetObjectCurve(binding, null);
+                // If we don't check if it exists first, unity throws a "Can't assign curve because the
+                // type does not inherit from Component" if type is a GameObject
+                if (clip.GetFloatCurve(binding) != null)
+                    clip.SetFloatCurve(binding, null);
+                if (clip.GetObjectCurve(binding) != null)
+                    clip.SetObjectCurve(binding, null);
             } else if (curve.IsFloat) {
                 clip.SetFloatCurve(binding, curve.FloatCurve);
             } else {
