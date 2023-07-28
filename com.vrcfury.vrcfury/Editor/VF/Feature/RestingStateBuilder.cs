@@ -71,11 +71,23 @@ namespace VF.Feature {
             if (!renderer) return;
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                 if (!mat.HasProperty(propName)) return mat;
-                mat = mutableManager.MakeMutable(mat, true);
+                mat = mutableManager.MakeMutable(mat, false);
                 mat.SetFloat(propName, val.GetFloat());
                 return mat;
             }).ToArray();
             VRCFuryEditorUtils.MarkDirty(renderer);
+        }
+
+        /**
+         * We allow users to have conflicts between Force Object State and other types of actions
+         * This is to allow more complex usages of Toggles.
+         * For instance Force Object State an object to off, then make an Object Toggle for that object,
+         * and then show the toggle in rest pose. This will allow the toggle to show in rest pose, but still be off
+         * in the default state.
+         */
+        [FeatureBuilderAction(FeatureOrder.ResetRestingStateConflictList)]
+        public void ResetList() {
+            stored.Clear();
         }
     }
 }

@@ -4,6 +4,7 @@ namespace VF.Feature.Base {
         
         // Needs to happen before toggles begin getting processed
         ForceObjectState = -1500,
+        ResetRestingStateConflictList = -1400,
         
         // Needs to happen before everything
         FixDoubleFx = -1000,

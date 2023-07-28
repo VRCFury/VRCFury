@@ -69,7 +69,7 @@ namespace VF.Feature {
             }
 
             foreach (var oldMesh in meshesToPatch) {
-                var newMesh = mutableManager.MakeMutable(oldMesh, true);
+                var newMesh = mutableManager.MakeMutable(oldMesh, false);
                 var submesh = newMesh.GetSubMesh(4);
                 newMesh.SetSubMesh(4, new SubMeshDescriptor());
                 newMesh.subMeshCount++;
