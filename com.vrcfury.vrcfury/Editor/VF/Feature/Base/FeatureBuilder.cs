@@ -212,7 +212,7 @@ namespace VF.Feature.Base {
             } else {
                 restingStateBuilder.ApplyClipToRestingState(offClip);
                 foreach (var binding in preventModifications) {
-                    restingStateBuilder.StoreBinding(binding, -1.5f);
+                    restingStateBuilder.StoreBinding(binding, RestingStateBuilder.MagicToggleValue);
                 }
             }
 
