@@ -34,7 +34,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	{
 		float applyLerp = 1;
 		// Cancel if base angle is too sharp
-		const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.2, SPS_PI*0.3, 0, 1));
+		const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.5, SPS_PI*0.6, 0, 1));
 		applyLerp = min(applyLerp, 1-targetAngleTooSharp);
 
 		// Uncancel if hilted in a hole
@@ -45,7 +45,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		}
 
 		// Cancel if the entrance angle is too sharp
-		const float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 0, 1));
+		const float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.5, SPS_PI*0.4, 0, 1));
 		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
 
 		// Cancel if too far away

@@ -119,8 +119,6 @@ bool sps_search(
 			if (isRing) {
 				rootNormal *= -1;
 				entranceAngle = SPS_PI - entranceAngle;
-			} else {
-				rootFound = false;
 			}
 		}
 	} else {
