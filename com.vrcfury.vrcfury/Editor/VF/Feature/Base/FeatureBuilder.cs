@@ -88,7 +88,7 @@ namespace VF.Feature.Base {
             return state != null;
         }
 
-        protected AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool activeInRestPose = false) {
+        protected AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
             if (state == null || state.actions.Count == 0) {
                 return GetFx().GetNoopClip();
             }
@@ -98,9 +98,6 @@ namespace VF.Feature.Base {
                 rootObject: avatarObject
             );
 
-            // Bindings added to this list will be prevented from being modified in other places like other toggles
-            // Use this if the outputs of the toggle depended on the inputs
-            var preventModifications = new List<EditorCurveBinding>();
             var offClip = new AnimationClip();
             var onClip = GetFx().NewClip(name);
 
@@ -158,10 +155,8 @@ namespace VF.Feature.Base {
                         if (toggle.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
                         } else {
-                            var temp = new AnimationClip();
-                            clipBuilder.Enable(temp, toggle.obj, !toggle.obj.activeSelf);
-                            preventModifications.AddRange(temp.GetAllBindings());
-                            onClip.CopyFrom(temp);
+                            clipBuilder.Enable(offClip, toggle.obj, toggle.obj.activeSelf);
+                            clipBuilder.Enable(onClip, toggle.obj, !toggle.obj.activeSelf);
                         }
                         break;
                     case BlendShapeAction blendShape:
@@ -182,14 +177,10 @@ namespace VF.Feature.Base {
                         if (scaleAction.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
                         } else {
-                            var temp = new AnimationClip();
                             var localScale = scaleAction.obj.transform.localScale;
-                            clipBuilder.Scale(temp, scaleAction.obj,
-                                localScale.x * scaleAction.scale,
-                                localScale.y * scaleAction.scale,
-                                localScale.z * scaleAction.scale);
-                            preventModifications.AddRange(temp.GetAllBindings());
-                            onClip.CopyFrom(temp);
+                            var newScale = localScale * scaleAction.scale;
+                            clipBuilder.Scale(offClip, scaleAction.obj, localScale);
+                            clipBuilder.Scale(onClip, scaleAction.obj, newScale);
                         }
                         break;
                     case MaterialAction matAction:
@@ -207,14 +198,7 @@ namespace VF.Feature.Base {
             }
 
             var restingStateBuilder = GetBuilder<RestingStateBuilder>();
-            if (activeInRestPose) {
-                restingStateBuilder.ApplyClipToRestingState(onClip, true);
-            } else {
-                restingStateBuilder.ApplyClipToRestingState(offClip);
-                foreach (var binding in preventModifications) {
-                    restingStateBuilder.StoreBinding(binding, RestingStateBuilder.MagicToggleValue);
-                }
-            }
+            restingStateBuilder.ApplyClipToRestingState(offClip);
 
             return onClip;
         }

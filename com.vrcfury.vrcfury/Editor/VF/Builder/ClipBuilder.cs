@@ -80,16 +80,16 @@ public class ClipBuilder {
         var binding = EditorCurveBinding.DiscreteCurve(path, typeof(GameObject), "m_IsActive");
         clip.SetConstant(binding, active ? 1 : 0);
     }
-    public void Scale(AnimationClip clip, VFGameObject obj, float x, float y, float z) {
+    public void Scale(AnimationClip clip, VFGameObject obj, Vector3 scale) {
         var path = GetPath(obj);
         var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), "");
 
         binding.propertyName = "m_LocalScale.x";
-        clip.SetConstant(binding, x);
+        clip.SetConstant(binding, scale.x);
         binding.propertyName = "m_LocalScale.y";
-        clip.SetConstant(binding, y);
+        clip.SetConstant(binding, scale.y);
         binding.propertyName = "m_LocalScale.z";
-        clip.SetConstant(binding, z);
+        clip.SetConstant(binding, scale.z);
     }
     public void BlendShape(AnimationClip clip, SkinnedMeshRenderer skin, string blendShape, AnimationCurve curve) {
         clip.SetCurve(GetPath(skin.gameObject), typeof(SkinnedMeshRenderer), "blendShape." + blendShape, curve);

@@ -105,7 +105,7 @@ namespace VF.Feature {
                     UpdatePhysbones(propBone, avatarBone);
                     UpdateConstraints(propBone, avatarBone);
                     boneMapping[propBone.transform] = avatarBone.transform;
-                    mover.AddDirectRewrite(propBone, avatarBone);
+                    mover.DirectRewrite(propBone, avatarBone);
                 }
                 foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                     if (skin.rootBone != null) {

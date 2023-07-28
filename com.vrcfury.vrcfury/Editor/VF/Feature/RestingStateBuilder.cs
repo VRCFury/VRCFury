@@ -14,7 +14,7 @@ namespace VF.Feature {
      */
     public class RestingStateBuilder : FeatureBuilder {
 
-        public static float MagicToggleValue = -1.452f;
+        private readonly List<AnimationClip> pendingClips = new List<AnimationClip>();
 
         public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
             if (recordDefaultStateFirst) {
@@ -25,12 +25,36 @@ namespace VF.Feature {
                     defaultsManager.RecordDefaultNow(b, false);
             }
 
-            ResetAnimatorBuilder.WithoutAnimator(avatarObject, () => { clip.SampleAnimation(avatarObject, 0); });
+            var copy = new AnimationClip();
+            copy.CopyFrom(clip);
+            pendingClips.Add(copy);
+            GetBuilder<ObjectMoveBuilder>().AddAdditionalManagedClip(copy);
+        }
 
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                HandleMaterialProperties(binding, curve);
-                StoreBinding(binding, curve.GetFirst());
+        /**
+         * There are three phases that resting state can be applied from,
+         * (1) ForceObjectState, (2) Toggles and other things, (3) Toggle Rest Pose
+         * Conflicts are allowed between phases, but not within a phase.
+         */
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState1)]
+        public void ApplyPendingClips() {
+            foreach (var clip in pendingClips) {
+                clip.SampleAnimation(avatarObject, 0);
+                foreach (var (binding,curve) in clip.GetAllCurves()) {
+                    HandleMaterialProperties(binding, curve);
+                    StoreBinding(binding, curve.GetFirst());
+                }
             }
+            pendingClips.Clear();
+            stored.Clear();
+        }
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState2)]
+        public void ApplyPendingClips2() {
+            ApplyPendingClips();
+        }
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState3)]
+        public void ApplyPendingClips3() {
+            ApplyPendingClips();
         }
 
         private readonly Dictionary<EditorCurveBinding, StoredEntry> stored =
@@ -49,21 +73,14 @@ namespace VF.Feature {
                     throw new Exception(
                         "VRCFury was told to set the resting pose of a property to two different values.\n\n" +
                         $"Property: {binding.path} {binding.propertyName}\n\n" +
-                        $"{otherStored.owner} set it to {FormatValue(otherStored.value)}\n\n" +
-                        $"{owner} set it to {FormatValue(value)}");
+                        $"{otherStored.owner} set it to {otherStored.value}\n\n" +
+                        $"{owner} set it to {value}");
                 }
             }
             stored[binding] = new StoredEntry() {
                 owner = owner,
                 value = value
             };
-        }
-
-        private string FormatValue(FloatOrObject value) {
-            if (value.IsFloat() && value.GetFloat() == MagicToggleValue) {
-                return "(toggle)";
-            }
-            return value.ToString();
         }
 
         // Used to make sure that two instances of EditorCurveBinding equal each other,
@@ -89,18 +106,6 @@ namespace VF.Feature {
                 return mat;
             }).ToArray();
             VRCFuryEditorUtils.MarkDirty(renderer);
-        }
-
-        /**
-         * We allow users to have conflicts between Force Object State and other types of actions
-         * This is to allow more complex usages of Toggles.
-         * For instance Force Object State an object to off, then make an Object Toggle for that object,
-         * and then show the toggle in rest pose. This will allow the toggle to show in rest pose, but still be off
-         * in the default state.
-         */
-        [FeatureBuilderAction(FeatureOrder.ResetRestingStateConflictList)]
-        public void ResetList() {
-            stored.Clear();
         }
     }
 }

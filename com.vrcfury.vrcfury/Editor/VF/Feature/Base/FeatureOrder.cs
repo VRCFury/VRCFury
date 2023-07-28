@@ -4,17 +4,16 @@ namespace VF.Feature.Base {
         
         // Needs to happen before ForceObjectState
         FullControllerToggle = -1600,
-        
-        // Needs to happen before toggles begin getting processed
-        ForceObjectState = -1500,
-        ResetRestingStateConflictList = -1400,
-        
+
         // Needs to happen before everything
         FixDoubleFx = -1000,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore = -101,
-        FixDuplicateArmature = -100,
+        
+        // Needs to happen before toggles begin getting processed
+        ForceObjectState = -51,
+        ApplyRestState1 = -50,
         
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase = -10,
@@ -56,13 +55,13 @@ namespace VF.Feature.Base {
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
         // an object moved onto the fake head bone
         FakeHeadBuilder = 130,
-        
-        // Needs to run after most things are done messing with the animation controller,
-        // since any changes after this won't have their animations rewritten
-        // Needs to run after things are done moving objects
-        ObjectMoveBuilderFixAnimations = 140,
-        
+
         HapticsAnimationRewrites = 145,
+        
+        // Needs to run after everything else is done messing with rest state
+        ApplyRestState2 = 146,
+        ApplyToggleRestingState = 147,
+        ApplyRestState3 = 148,
         
         // Needs to run after most things are done messing with animations,
         // since it'll make copies of the blendshape curves
