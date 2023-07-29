@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -22,6 +24,29 @@ namespace VF.Utils {
             return clip.GetObjectBindings().Select(b => (b, new FloatOrObjectCurve(clip.GetObjectCurve(b))))
                 .Concat(clip.GetFloatBindings().Select(b => (b, new FloatOrObjectCurve(clip.GetFloatCurve(b)))))
                 .ToArray();
+        }
+        
+        // TODO: Replace this with calls to AnimationUtility.SetEditorCurves / SetObjectReferenceCurves once in unity 2020+
+        private static readonly Type animUtil = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationUtility");
+        private static readonly MethodInfo setFloatNoSync = animUtil.GetMethod("SetEditorCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        public static void SetCurves(this AnimationClip clip, ICollection<(EditorCurveBinding,FloatOrObjectCurve)> curves) {
+            foreach (var (binding, curve) in curves) {
+                if (curve == null) {
+                    // If we don't check if it exists first, unity throws a "Can't assign curve because the
+                    // type does not inherit from Component" if type is a GameObject
+                    if (clip.GetFloatCurve(binding) != null)
+                        setFloatNoSync.Invoke(null, new object[] { clip, binding, null });
+                    if (clip.GetObjectCurve(binding) != null)
+                        setObjNoSync.Invoke(null, new object[] { clip, binding, null });
+                } else if (curve.IsFloat) {
+                    setFloatNoSync.Invoke(null, new object[] { clip, binding, curve.FloatCurve });
+                } else {
+                    setObjNoSync.Invoke(null, new object[] { clip, binding, curve.ObjectCurve });
+                }
+            }
+            triggerSync.Invoke(null, new object[] { clip });
         }
 
         public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {
@@ -64,15 +89,17 @@ namespace VF.Utils {
         }
 
         public static void RewriteBindings(this AnimationClip clip, Func<EditorCurveBinding, FloatOrObjectCurve, EditorCurveBinding?> rewrite) {
+            var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 var newBinding = rewrite(binding, curve);
                 if (newBinding == null) {
-                    clip.SetCurve(binding, null);
+                    output.Add((binding, null));
                 } else if (binding != newBinding) {
-                    clip.SetCurve(binding, null);
-                    clip.SetCurve(newBinding.Value, curve);
+                    output.Add((binding, null));
+                    output.Add((newBinding.Value, curve));
                 }
             }
+            clip.SetCurves(output);
         }
 
         public static void RewritePaths(this AnimationClip clip, Func<string,string> rewrite) {
@@ -113,9 +140,7 @@ namespace VF.Utils {
         }
 
         public static void CopyFrom(this AnimationClip clip, AnimationClip other) {
-            foreach (var (binding, curve) in other.GetAllCurves()) {
-                clip.SetCurve(binding, curve);
-            }
+            clip.SetCurves(other.GetAllCurves());
         }
     }
 }
