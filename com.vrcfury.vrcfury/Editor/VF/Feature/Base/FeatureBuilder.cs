@@ -120,10 +120,6 @@ namespace VF.Feature.Base {
                 AnimationClip c = (action as AnimationClipAction).clip;
                 return c.name.Contains("proxy_");
             }
-        
-            if (state == null) {
-                return GetFx().GetNoopClip();
-            }
 
             if (checkForProxy) {
                 foreach (var action in state.actions.OfType<AnimationClipAction>()) {
