@@ -23,12 +23,12 @@ namespace VF.Feature {
             // TODO: Work on this
             return;
             
-            var nextInt = 1;
-            foreach (var c in manager.GetAllUsedControllers()) {
-                foreach (var layer in c.GetLayers()) {
-                    CheckLayer(c, layer, ref nextInt);
-                }
-            }
+            // var nextInt = 1;
+            // foreach (var c in manager.GetAllUsedControllers()) {
+            //     foreach (var layer in c.GetLayers()) {
+            //         CheckLayer(c, layer, ref nextInt);
+            //     }
+            // }
         }
 
         private void CheckLayer(ControllerManager c, AnimatorStateMachine layer, ref int nextInt) {

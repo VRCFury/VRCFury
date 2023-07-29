@@ -78,9 +78,7 @@ namespace VF.Updater {
 
                     Directory.Move(tmpDir, "Packages/com.vrcfury.vrcfury");
 
-                    MethodInfo method = typeof(Client).GetMethod("Resolve",
-                        BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                    method.Invoke(null, null);
+                    TmpFilePackage.ReresolvePackages();
                 });
             }));
         }

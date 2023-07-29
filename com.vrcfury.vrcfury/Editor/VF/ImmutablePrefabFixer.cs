@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Reflection;
 using UnityEditor;
-using UnityEditor.Experimental.SceneManagement;
 using UnityEngine;
 
 namespace VF {
@@ -13,33 +12,51 @@ namespace VF {
      */
     [InitializeOnLoad]
     public class ImmutablePrefabFixer {
-        public static Action DisableAutosave;
+        private static Func<string> GetPrefabStagePath;
+        private static Action DisableAutosave;
         
         static ImmutablePrefabFixer() {
+            var stageUtility = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneManagement.PrefabStageUtility");
+            if (stageUtility == null) {
+                stageUtility = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Experimental.SceneManagement.PrefabStageUtility");
+            }
+            if (stageUtility == null) {
+                throw new Exception("Failed to find PrefabStageUtility");
+            }
+            var getCurrentStage = stageUtility.GetMethod("GetCurrentPrefabStage", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            if (getCurrentStage == null) {
+                throw new Exception("Failed to find GetCurrentPrefabStage");
+            }
+            GetPrefabStagePath = () => {
+                var stage = getCurrentStage.Invoke(null, new object[] { });
+                if (stage == null) return null;
+                var pathProp = stage.GetType().GetProperty("prefabAssetPath");
+                if (pathProp == null) {
+                    throw new Exception("Failed to find prefabAssetPath");
+                }
+                return pathProp.GetValue(stage) as string;
+            };
+
             var SceneNavigationManager =
                 ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneManagement.StageNavigationManager");
             if (SceneNavigationManager == null) {
-                Debug.LogError("Failed to find SceneNavigationManager");
-                return;
+                throw new Exception("Failed to find SceneNavigationManager");
             }
 
             var instanceField = SceneNavigationManager.GetProperty("instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy);
             if (instanceField == null) {
-                Debug.LogError("Failed to find instance field");
-                return;
+                throw new Exception("Failed to find instance field");
             }
 
             var instance = instanceField.GetValue(null);
             if (instance == null) {
-                Debug.LogError("Failed to find instance");
-                return;
+                throw new Exception("Failed to find instance");
             }
 
             var autoSaveField = SceneNavigationManager.GetProperty("autoSave",
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (autoSaveField == null) {
-                Debug.LogError("Failed to find autoSave field");
-                return;
+                throw new Exception("Failed to find autoSave field");
             }
 
             DisableAutosave = () => autoSaveField.SetValue(instance, false);
@@ -63,9 +80,7 @@ namespace VF {
         }
 
         public static string GetEditingPrefabPath() {
-            var stage = PrefabStageUtility.GetCurrentPrefabStage();
-            if (stage == null) return null;
-            return stage.prefabAssetPath;
+            return GetPrefabStagePath();
         }
     }
 }
