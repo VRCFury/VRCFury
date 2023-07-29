@@ -76,7 +76,10 @@ namespace VF.Feature {
 
                 var mask = AvatarMaskExtensions.Empty();
                 mask.SetTransforms(transformedPaths);
-                mask.IntersectWith(oldMask);
+                if (oldMask != null) {
+                    mask.IntersectWith(oldMask);
+                }
+
                 VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layerId);
                 fx.SetMask(layerId, mask);
             }
