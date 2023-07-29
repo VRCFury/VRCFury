@@ -6,27 +6,30 @@
 void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color)
 {
 	const float worldLength = _SPS_Length;
-	const float averageLength = 0.28;
-	const float scaleAdjustment = worldLength / averageLength;
-
 	const float3 origVertex = vertex;
 	const float3 origNormal = normal;
 	const float3 bakeIndex = 1 + vertexId * 7;
 	const float3 restingVertex = SpsBakedVertex(bakeIndex) * (_SPS_Length / _SPS_BakedLength);
 	const float3 restingNormal = SpsBakedVertex(bakeIndex+3);
-	const float active = saturate(SpsBakedFloat(bakeIndex + 6));
+	const float active = SpsBakedFloat(bakeIndex + 6) > 0 ? 1 : 0;
 
 	if (vertex.z < 0 || active == 0) return;
 
 	float3 rootPos;
 	bool isRing;
 	float3 frontNormal;
-	float entranceAngle;
-	float targetAngle;
-	const bool found = sps_search(rootPos, isRing, frontNormal, entranceAngle, targetAngle, color);
+	const bool found = sps_search(rootPos, isRing, frontNormal, color);
 	if (!found) return;
 
 	float orfDistance = length(rootPos);
+	float entranceAngle = SPS_PI - acos(dot(frontNormal, normalize(rootPos)));
+	float targetAngle = acos(dot(normalize(rootPos), float3(0,0,1)));
+
+	// Flip backward rings
+	if (isRing && entranceAngle > SPS_PI/2) {
+		frontNormal *= -1;
+		entranceAngle = SPS_PI - entranceAngle;
+	}
 
 	// Decide if we should cancel deformation due to extreme angles, long distance, etc
 	float bezierLerp;
@@ -34,19 +37,24 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	{
 		float applyLerp = 1;
 		// Cancel if base angle is too sharp
-		const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.2, SPS_PI*0.3, 0, 1));
+		const float targetAngleTooSharp = saturate(sps_map(targetAngle, SPS_PI*0.5, SPS_PI*0.6, 0, 1));
 		applyLerp = min(applyLerp, 1-targetAngleTooSharp);
 
-		// Uncancel if hilted in a hole
-		if (!isRing)
-		{
+		// Cancel if the entrance angle is too sharp
+		float entranceAngleTooSharp = isRing
+			? saturate(sps_map(entranceAngle, SPS_PI*0.4, SPS_PI*0.5, 0, 1))
+			: saturate(sps_map(entranceAngle, SPS_PI*0.5, SPS_PI*0.6, 0, 1));
+		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
+
+		if (!isRing) {
+			// Uncancel if hilted in a hole
 			const float hilted = saturate(sps_map(orfDistance, worldLength*0.5, worldLength*0.4, 0, 1));
 			applyLerp = max(applyLerp, hilted);
+		} else {
+			// Cancel if hilted in a ring
+			const float hilted = saturate(sps_map(orfDistance, worldLength*0.05, 0, 0, 1));
+			applyLerp = min(applyLerp, 1-hilted);
 		}
-
-		// Cancel if the entrance angle is too sharp
-		const float entranceAngleTooSharp = saturate(sps_map(entranceAngle, SPS_PI*0.65, SPS_PI*0.5, 0, 1));
-		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
 
 		// Cancel if too far away
 		const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
@@ -58,12 +66,9 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		bezierLerp = saturate(sps_map(applyLerp, 0, 1, 0, 1));
 	}
 
-	rootPos = lerp(float3(0,0,worldLength), rootPos, bezierLerp);
-	frontNormal = normalize(lerp(float3(0,0,-1), frontNormal, bezierLerp));
-	orfDistance = length(rootPos);
-
 	const float3 p0 = float3(0,0,0);
-	const float3 p1 = float3(0,0,orfDistance/4);
+	float p1Dist = sps_map(bezierLerp, 0, 1, worldLength * 5, 0);
+	const float3 p1 = float3(0,0,p1Dist);
 	const float3 p2 = rootPos + frontNormal * (orfDistance/2);
 	const float3 p3 = rootPos;
 	float curveLength;

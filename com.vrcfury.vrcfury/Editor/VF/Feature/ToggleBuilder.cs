@@ -20,8 +20,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private string layerName;
     private VFACondition onCase;
     private bool onEqualsOut;
-    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
-    private Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
+    private readonly Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
+    private readonly Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
 
     private bool addMenuItem;
     private bool usePrefixOnParam;
@@ -30,7 +30,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private bool useInt;
     private int intTarget = -1;
 
-    private bool appliedToRest = false;
+    private AnimationClip restingClip;
     
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -335,9 +335,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
         }
 
-        if (model.includeInRest && !appliedToRest) {
-            appliedToRest = true;
-            GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(clip, true);
+        if (restingClip == null && model.includeInRest) {
+            restingClip = clip;
         }
 
         if (model.securityEnabled) {
@@ -627,6 +626,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     public override string GetClipPrefix() {
         return "Toggle " + model.name.Replace('/', '_');
+    }
+
+    [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
+    public void ApplyRestingState() {
+        if (restingClip != null) {
+            var restingStateBuilder = allBuildersInRun
+                .OfType<RestingStateBuilder>()
+                .First();
+            restingStateBuilder.ApplyClipToRestingState(restingClip, true);
+        }
     }
 
     public override string GetEditorTitle() {

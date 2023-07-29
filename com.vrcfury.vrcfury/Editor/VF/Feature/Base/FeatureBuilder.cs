@@ -147,11 +147,14 @@ namespace VF.Feature.Base {
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
                 .FirstOrDefault();
+            var offClip = new AnimationClip();
+            var onClip = GetFx().NewClip(name);
+
             if (firstClip) {
-                var nameBak = clip.name;
-                EditorUtility.CopySerialized(firstClip, clip);
-                clip.name = nameBak;
-                clip.RewritePaths(pathRewriter);
+                var nameBak = onClip.name;
+                EditorUtility.CopySerialized(firstClip, onClip);
+                onClip.name = nameBak;
+                onClip.RewritePaths(pathRewriter);
             }
 
             foreach (var action in actionsToAdd) {
@@ -168,7 +171,7 @@ namespace VF.Feature.Base {
                                 typeof(SkinnedMeshRenderer),
                                 "material._FlipbookCurrentFrame"
                             );
-                            clip.SetConstant(binding, frameAnimNum);
+                            onClip.SetConstant(binding, frameAnimNum);
                         }
                         break;
                     case ShaderInventoryAction shaderInventoryAction: {
@@ -179,10 +182,8 @@ namespace VF.Feature.Base {
                                 renderer.GetType(),
                                 $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
                             );
-                            var restingState = new AnimationClip();
-                            restingState.SetConstant(binding, 0);
-                            restingStateBuilder.ApplyClipToRestingState(restingState);
-                            clip.SetConstant(binding, 1);
+                            offClip.SetConstant(binding, 0);
+                            onClip.SetConstant(binding, 1);
                         }
                         break;
                     }
@@ -191,7 +192,7 @@ namespace VF.Feature.Base {
                         if (clipActionClip && clipActionClip != firstClip) {
                             var copy = mutableManager.CopyRecursive(clipActionClip, "Copy of " + clipActionClip.name);
                             copy.RewritePaths(pathRewriter);
-                            clip.CopyFrom(copy);
+                            onClip.CopyFrom(copy);
                             AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                         }
                         break;
@@ -199,8 +200,8 @@ namespace VF.Feature.Base {
                         if (toggle.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
                         } else {
-                            var restingState = toggle.obj.activeSelf;
-                            clipBuilder.Enable(clip, toggle.obj, !restingState);
+                            clipBuilder.Enable(offClip, toggle.obj, toggle.obj.activeSelf);
+                            clipBuilder.Enable(onClip, toggle.obj, !toggle.obj.activeSelf);
                         }
                         break;
                     case BlendShapeAction blendShape:
@@ -211,7 +212,7 @@ namespace VF.Feature.Base {
                             if (blendShapeIndex < 0) continue;
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
-                            clipBuilder.BlendShape(clip, skin, blendShape.blendShape, blendShape.blendShapeValue);
+                            clipBuilder.BlendShape(onClip, skin, blendShape.blendShape, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
                             Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);
@@ -221,10 +222,10 @@ namespace VF.Feature.Base {
                         if (scaleAction.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
                         } else {
-                            clipBuilder.Scale(clip, scaleAction.obj,
-                                scaleAction.obj.transform.localScale.x * scaleAction.scale,
-                                scaleAction.obj.transform.localScale.y * scaleAction.scale,
-                                scaleAction.obj.transform.localScale.z * scaleAction.scale);
+                            var localScale = scaleAction.obj.transform.localScale;
+                            var newScale = localScale * scaleAction.scale;
+                            clipBuilder.Scale(offClip, scaleAction.obj, localScale);
+                            clipBuilder.Scale(onClip, scaleAction.obj, newScale);
                         }
                         break;
                     case MaterialAction matAction:
@@ -236,11 +237,14 @@ namespace VF.Feature.Base {
                             Debug.LogWarning("Missing material in action: " + name);
                             break;
                         }
-                        clipBuilder.Material(clip, matAction.obj, matAction.materialIndex, matAction.mat);
+                        clipBuilder.Material(onClip, matAction.obj, matAction.materialIndex, matAction.mat);
                         break;
                 }
             }
-            return clip;
+
+            restingStateBuilder.ApplyClipToRestingState(offClip);
+
+            return onClip;
         }
 
         public List<FeatureBuilderAction> GetActions() {

@@ -42,8 +42,6 @@ public class VRCFuryBuilder {
     }
 
     private void Run(GameObject avatarObject, GameObject originalObject) {
-        VRCFArmatureUtils.ClearCache();
-
         if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
@@ -167,7 +165,6 @@ public class VRCFuryBuilder {
         AddBuilder(new RemoveJunkAnimatorsBuilder(), avatarObject);
         AddBuilder(new CleanupLegacyBuilder(), avatarObject);
         AddBuilder(new FixDoubleFxBuilder(), avatarObject);
-        AddBuilder(new FixDuplicateArmatureBuilder(), avatarObject);
         AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
         AddBuilder(new BakeHapticsBuilder(), avatarObject);
         AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);

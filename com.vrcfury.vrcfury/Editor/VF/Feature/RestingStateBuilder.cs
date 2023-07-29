@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Utils;
-using Object = UnityEngine.Object;
 
 namespace VF.Feature {
     /**
@@ -15,6 +13,8 @@ namespace VF.Feature {
      * If two builders make a conflicting decision, something is wrong (perhaps the user gave conflicting instructions?)
      */
     public class RestingStateBuilder : FeatureBuilder {
+
+        private readonly List<AnimationClip> pendingClips = new List<AnimationClip>();
 
         public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
             if (recordDefaultStateFirst) {
@@ -25,12 +25,36 @@ namespace VF.Feature {
                     defaultsManager.RecordDefaultNow(b, false);
             }
 
-            ResetAnimatorBuilder.WithoutAnimator(avatarObject, () => { clip.SampleAnimation(avatarObject, 0); });
+            var copy = new AnimationClip();
+            copy.CopyFrom(clip);
+            pendingClips.Add(copy);
+            GetBuilder<ObjectMoveBuilder>().AddAdditionalManagedClip(copy);
+        }
 
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                HandleMaterialProperties(binding, curve);
-                StoreBinding(binding, curve);
+        /**
+         * There are three phases that resting state can be applied from,
+         * (1) ForceObjectState, (2) Toggles and other things, (3) Toggle Rest Pose
+         * Conflicts are allowed between phases, but not within a phase.
+         */
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState1)]
+        public void ApplyPendingClips() {
+            foreach (var clip in pendingClips) {
+                clip.SampleAnimation(avatarObject, 0);
+                foreach (var (binding,curve) in clip.GetAllCurves()) {
+                    HandleMaterialProperties(binding, curve);
+                    StoreBinding(binding, curve.GetFirst());
+                }
             }
+            pendingClips.Clear();
+            stored.Clear();
+        }
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState2)]
+        public void ApplyPendingClips2() {
+            ApplyPendingClips();
+        }
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState3)]
+        public void ApplyPendingClips3() {
+            ApplyPendingClips();
         }
 
         private readonly Dictionary<EditorCurveBinding, StoredEntry> stored =
@@ -41,9 +65,9 @@ namespace VF.Feature {
             public FloatOrObject value;
         }
 
-        private void StoreBinding(EditorCurveBinding binding, FloatOrObjectCurve curve) {
-            var value = curve.GetFirst();
+        public void StoreBinding(EditorCurveBinding binding, FloatOrObject value) {
             var owner = manager.GetCurrentlyExecutingFeatureName();
+            binding = NormalizeBinding(binding);
             if (stored.TryGetValue(binding, out var otherStored)) {
                 if (value != otherStored.value) {
                     throw new Exception(
@@ -59,6 +83,12 @@ namespace VF.Feature {
             };
         }
 
+        // Used to make sure that two instances of EditorCurveBinding equal each other,
+        // even if they have different discrete settings, etc
+        private EditorCurveBinding NormalizeBinding(EditorCurveBinding binding) {
+            return EditorCurveBinding.FloatCurve(binding.path, binding.type, binding.propertyName);
+        }
+
         private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObjectCurve curve) {
             var val = curve.GetFirst();
             if (!val.IsFloat()) return;
@@ -71,7 +101,7 @@ namespace VF.Feature {
             if (!renderer) return;
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                 if (!mat.HasProperty(propName)) return mat;
-                mat = mutableManager.MakeMutable(mat, true);
+                mat = mutableManager.MakeMutable(mat, false);
                 mat.SetFloat(propName, val.GetFloat());
                 return mat;
             }).ToArray();

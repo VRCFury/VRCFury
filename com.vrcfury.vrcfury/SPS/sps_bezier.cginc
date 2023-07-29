@@ -28,7 +28,7 @@ float sps_map(float value, float min1, float max1, float min2, float max2) {
 // https://www.geometrictools.com/Documentation/MovingAlongCurveSpecifiedSpeed.pdf
 float sps_bezierFindT(float3 p0, float3 p1, float3 p2, float3 p3, float lookingForLength, out float curveLength)
 {
-	#define SPS_BEZIER_SAMPLES 10
+	#define SPS_BEZIER_SAMPLES 50
 	float sampledT[SPS_BEZIER_SAMPLES];
 	float sampledLength[SPS_BEZIER_SAMPLES];
 	float totalLength = 0;

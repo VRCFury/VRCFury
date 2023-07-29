@@ -44,8 +44,6 @@ bool sps_search(
 	out float3 rootLocal,
 	out bool isRing,
 	out float3 rootNormal,
-	out float entranceAngle,
-	out float targetAngle,
 	inout float4 color
 ) {
 	// Collect useful info about all the nearby lights that unity tells us about
@@ -106,29 +104,15 @@ bool sps_search(
 	}
 	
 	if (rootFound) {
-		rootLocal = rootFound ? lightLocalPos[rootIndex] : float3(0,0,0);
-		isRing = rootFound ? lightType[rootIndex] != 1 : false;
+		rootLocal = lightLocalPos[rootIndex];
+		isRing = lightType[rootIndex] != 1;
 		rootNormal = frontFound
 			? normalize(lightLocalPos[frontIndex] - lightLocalPos[rootIndex])
 			: -1 * normalize(lightLocalPos[rootIndex]);
-		entranceAngle = acos(dot(rootNormal, float3(0,0,1)));
-		targetAngle = acos(dot(normalize(rootLocal), float3(0,0,1)));
-
-		if (entranceAngle < SPS_PI/2) {
-			// facing away
-			if (isRing) {
-				rootNormal *= -1;
-				entranceAngle = SPS_PI - entranceAngle;
-			} else {
-				rootFound = false;
-			}
-		}
 	} else {
 	 	rootLocal = float3(0,0,0);
 	 	isRing = false;
 	 	rootNormal = float3(0,0,0);
-	 	entranceAngle = 0;
-	 	targetAngle = 0;
 	}
 	
 	return rootFound;

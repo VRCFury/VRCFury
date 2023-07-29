@@ -7,11 +7,11 @@ using VF.Builder.Exceptions;
 
 namespace VF.Builder {
     public class VRCFArmatureUtils {
-        private static ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, string>> cache
-            = new ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, string>>();
+        private static ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>> cache
+            = new ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>>();
 
         public static void ClearCache() {
-            cache = new ConditionalWeakTable<Avatar, Dictionary<HumanBodyBones, string>>();
+            cache = new ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>>();
         }
 
         public static VFGameObject FindBoneOnArmatureOrNull(VFGameObject avatarObject, HumanBodyBones findBone) {
@@ -22,10 +22,6 @@ namespace VF.Builder {
             }
         }
 
-        /**
-         * This basically does what Animator.GetBoneTransform SHOULD do, except GetBoneTransform randomly sometimes
-         * returns bones on clothing armatures instead of the avatar, and also sometimes returns null for no reason.
-         */
         public static VFGameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
             var bonePath = FindBonePathOrException(avatarObject, findBone);
 
@@ -39,30 +35,48 @@ namespace VF.Builder {
 
             return found;
         }
+
+        public static void WarmupCache(VFGameObject avatarObject) {
+            Load(avatarObject);
+        }
         
-        private static string FindBonePathOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
-            var animator = avatarObject.GetComponent<Animator>();
-            if (!animator) {
-                throw new VRCFBuilderException("Avatar does not contain an Animator. Are you sure the avatar's rig is set to Humanoid?");
-            }
-            if (!animator.avatar) {
-                throw new VRCFBuilderException("Avatar's Animator does not have a rig present. Are you sure the avatar's rig is set to Humanoid?");
+        private static string FindBonePathOrException(Transform avatarObject, HumanBodyBones findBone) {
+            var lookup = Load(avatarObject);
+
+            if (!lookup.TryGetValue(findBone, out var path)) {
+                throw new VRCFBuilderException(
+                    "Bone isn't present in rig. Are you sure the rig for the avatar is humanoid and contains this bone?");
             }
 
-            if (!cache.TryGetValue(animator.avatar, out var cacheDict)) {
-                cacheDict = new Dictionary<HumanBodyBones, string>();
-                cache.Add(animator.avatar, cacheDict);
-            }
-            if (cacheDict.TryGetValue(findBone, out var cached)) {
+            return path;
+        }
+
+        private static Dictionary<HumanBodyBones, string> Load(Transform avatarObject) {
+            if (cache.TryGetValue(avatarObject, out var cached)) {
                 return cached;
             }
 
+            var animator = avatarObject.GetComponent<Animator>();
+            if (!animator) {
+                return new Dictionary<HumanBodyBones, string>();
+            }
+            if (!animator.avatar) {
+                return new Dictionary<HumanBodyBones, string>();
+            }
+
             var so = new SerializedObject(animator.avatar);
-            var skeletonIndex = GetSkeletonIndex(so, findBone);
-            var boneHash = GetBoneHashFromSkeletonIndex(so, skeletonIndex);
-            var result = GetBonePathFromBoneHash(so, boneHash);
-            cacheDict[findBone] = result;
-            return result;
+            var skeletonIndexToBoneHash = GetSkeletonIndexToBoneHash(so);
+            var boneHashToPath = GetBoneHashToPath(so);
+            var output = new Dictionary<HumanBodyBones, string>();
+            for (HumanBodyBones bone = 0; bone < HumanBodyBones.LastBone; bone++) {
+                var skeletonIndex = GetSkeletonIndex(so, bone);
+                if (!skeletonIndexToBoneHash.TryGetValue(skeletonIndex, out var boneHash)) continue;
+                if (!boneHashToPath.TryGetValue(boneHash, out var path)) continue;
+                output[bone] = path;
+            }
+            
+            cache.Add(avatarObject, output);
+            return output;
         }
 
         private static int GetSkeletonIndex(SerializedObject so, HumanBodyBones humanoidIndex) {
@@ -90,48 +104,44 @@ namespace VF.Builder {
 
             var array = so.FindProperty(boneIndexProp);
             if (array == null || !array.isArray) {
-                throw new VRCFBuilderException("Missing humanoid bone index array: " + boneIndexProp);
+                return -1;
             }
 
             if (indexInBoneIndex < 0 || indexInBoneIndex >= array.arraySize) {
-                throw new VRCFBuilderException("Missing humanoid bone index array element: " + boneIndexProp + " " + indexInBoneIndex);
+                return -1;
             }
 
-            var skeletonIndex = array.GetArrayElementAtIndex(indexInBoneIndex).intValue;
-            if (skeletonIndex < 0) {
-                throw new VRCFBuilderException(
-                    "Bone isn't present in rig. Are you sure the rig for the avatar is humanoid and contains this bone?");
-            }
-            return skeletonIndex;
+            return array.GetArrayElementAtIndex(indexInBoneIndex).intValue;
         }
 
-        private static long GetBoneHashFromSkeletonIndex(SerializedObject so, int skeletonIndex) {
+        private static Dictionary<int,long> GetSkeletonIndexToBoneHash(SerializedObject so) {
+            var output = new Dictionary<int, long>();
             var boneHashArray = so.FindProperty("m_Avatar.m_Human.data.m_Skeleton.data.m_ID");
             if (boneHashArray == null || !boneHashArray.isArray) {
                 throw new VRCFBuilderException("Bone hash array is missing");
             }
-
-            if (skeletonIndex < 0 || skeletonIndex >= boneHashArray.arraySize) {
-                throw new VRCFBuilderException("Bone hash array is missing element: " + skeletonIndex);
+            for (int i = 0; i < boneHashArray.arraySize; i++) {
+                output[i] = boneHashArray.GetArrayElementAtIndex(i).longValue;
             }
-
-            return boneHashArray.GetArrayElementAtIndex(skeletonIndex).longValue;
+            return output;
         }
 
-        private static string GetBonePathFromBoneHash(SerializedObject so, long boneHash) {
+        private static Dictionary<long,string> GetBoneHashToPath(SerializedObject so) {
             var tosArray = so.FindProperty("m_TOS");
+            if (tosArray == null || !tosArray.isArray) {
+                throw new VRCFBuilderException("TOS array is missing");
+            }
+            var output = new Dictionary<long, string>();
             for (int i = 0; i < tosArray.arraySize; i++) {
                 var element = tosArray.GetArrayElementAtIndex(i);
                 if (element == null) continue;
                 var hashProp = element.FindPropertyRelative("first");
                 if (hashProp == null) continue;
-                if (boneHash != hashProp.longValue) continue;
                 var pathProp = element.FindPropertyRelative("second");
                 if (pathProp == null) continue;
-                return pathProp.stringValue;
+                output[hashProp.longValue] = pathProp.stringValue;
             }
-
-            throw new VRCFBuilderException("Missing bone hash from TOS array: " + boneHash);
+            return output;
         }
     }
 }

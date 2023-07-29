@@ -27,7 +27,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
-            var toggleIsInt = false;
             foreach (var p in model.prms) {
                 VRCExpressionParameters prms = p.parameters;
                 if (!prms) continue;
@@ -35,8 +34,6 @@ namespace VF.Feature {
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
-                    if (param.name == model.toggleParam && param.valueType == VRCExpressionParameters.ValueType.Int)
-                        toggleIsInt = true;
                     if (model.ignoreSaved) {
                         param.saved = false;
                     }
@@ -101,29 +98,40 @@ namespace VF.Feature {
                     physbone.parameter = RewriteParamName(physbone.parameter);
                 }
             }
+        }
 
-            if (!string.IsNullOrWhiteSpace(model.toggleParam)) {
-                addOtherFeature(new ObjectState {
-                    states = {
-                        new ObjectState.ObjState {
-                            action = ObjectState.Action.DEACTIVATE,
-                            obj = GetBaseObject()
-                        }
-                    }
-                });
-                var toggleParam = RewriteParamName(model.toggleParam);
-                addOtherFeature(new Toggle {
-                    name = toggleParam,
-                    state = new State {
-                        actions = { new ObjectToggleAction { obj = GetBaseObject() } }
-                    },
-                    securityEnabled = model.useSecurityForToggle,
-                    addMenuItem = false,
-                    usePrefixOnParam = false,
-                    paramOverride = toggleParam,
-                    useInt = toggleIsInt
-                });
+        [FeatureBuilderAction(FeatureOrder.FullControllerToggle)]
+        public void ApplyOldToggle() {
+            if (string.IsNullOrWhiteSpace(model.toggleParam)) {
+                return;
             }
+            
+            var toggleIsInt = model.prms
+                .Select(entry => (VRCExpressionParameters)entry.parameters)
+                .SelectMany(file => file.parameters)
+                .Where(param => param.valueType == VRCExpressionParameters.ValueType.Int)
+                .Any(param => param.name == model.toggleParam);
+
+            addOtherFeature(new ObjectState {
+                states = {
+                    new ObjectState.ObjState {
+                        action = ObjectState.Action.DEACTIVATE,
+                        obj = GetBaseObject()
+                    }
+                }
+            });
+            var toggleParam = RewriteParamName(model.toggleParam);
+            addOtherFeature(new Toggle {
+                name = toggleParam,
+                state = new State {
+                    actions = { new ObjectToggleAction { obj = GetBaseObject() } }
+                },
+                securityEnabled = model.useSecurityForToggle,
+                addMenuItem = false,
+                usePrefixOnParam = false,
+                paramOverride = toggleParam,
+                useInt = toggleIsInt
+            });
         }
         
         private readonly HashSet<string> rewrittenParams = new HashSet<string>();
