@@ -1,21 +1,25 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
 
 namespace VF.Utils {
     public static class AvatarMaskExtensions {
+        private static string MagicEverythingString = "__vrcf_everything";
+
         public static AvatarMask Empty() {
             var mask = new AvatarMask();
             for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                 mask.SetHumanoidBodyPartActive(bodyPart, false);
             }
-            mask.EnsureOneTransform();
+            mask.SetTransforms(new string[] {});
             return mask;
         }
 
         private static void Combine(this AvatarMask mask, AvatarMask other, bool add) {
-            if (other == null) return;
+            if (other == null) throw new Exception("Combined mask cannot be null");
+
             for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                 if (add) {
                     if (other.GetHumanoidBodyPartActive(bodyPart))
@@ -26,13 +30,21 @@ namespace VF.Utils {
                 }
             }
 
-            var transforms = new HashSet<string>(mask.GetTransforms());
+            var ourTransforms = new HashSet<string>(mask.GetTransforms());
+            var otherTransforms = other.GetTransforms();
             if (add) {
-                transforms.UnionWith(other.GetTransforms());
+                ourTransforms.UnionWith(otherTransforms);
             } else {
-                transforms.IntersectWith(other.GetTransforms());
+                if (ourTransforms.Contains(MagicEverythingString)) {
+                    ourTransforms.Clear();
+                    ourTransforms.UnionWith(otherTransforms);
+                } else if (otherTransforms.Contains(MagicEverythingString)) {
+                    // Keep our existing transforms
+                } else {
+                    ourTransforms.IntersectWith(otherTransforms);
+                }
             }
-            mask.SetTransforms(transforms);
+            mask.SetTransforms(ourTransforms);
         }
         
         public static void IntersectWith(this AvatarMask mask, AvatarMask other) {
@@ -44,6 +56,9 @@ namespace VF.Utils {
         }
 
         public static ISet<string> GetTransforms(this AvatarMask mask) {
+            if (mask.transformCount == 0) {
+                return new HashSet<string> { MagicEverythingString };
+            }
             return Enumerable.Range(0, mask.transformCount)
                 .Where(mask.GetTransformActive)
                 .Select(mask.GetTransformPath)
@@ -52,6 +67,11 @@ namespace VF.Utils {
 
         public static void SetTransforms(this AvatarMask mask, IEnumerable<string> transforms) {
             var active = transforms.ToImmutableHashSet();
+            if (active.Contains(MagicEverythingString)) {
+                mask.transformCount = 0;
+                return;
+            }
+            
             var withParents = WithParents(active)
                 .ToImmutableHashSet()
                 .OrderBy(path => path)

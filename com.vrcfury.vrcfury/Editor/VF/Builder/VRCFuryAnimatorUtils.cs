@@ -20,6 +20,9 @@ public class VFAController {
     }
 
     public VFALayer NewLayer(string name, int insertAt = -1) {
+        // Unity breaks if name contains .
+        name = name.Replace(".", "");
+
         ctrl.AddLayer(name);
         var layers = ctrl.layers;
         var layer = layers.Last();
