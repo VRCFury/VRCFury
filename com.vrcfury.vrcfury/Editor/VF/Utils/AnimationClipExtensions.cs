@@ -46,7 +46,9 @@ namespace VF.Utils {
                     setObjNoSync.Invoke(null, new object[] { clip, binding, curve.ObjectCurve });
                 }
             }
-            triggerSync.Invoke(null, new object[] { clip });
+            if (curves.Count > 0) {
+                triggerSync.Invoke(null, new object[] { clip });
+            }
         }
 
         public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {
