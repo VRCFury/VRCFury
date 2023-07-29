@@ -353,7 +353,7 @@ namespace VF.Inspector {
 
                         if (!configuredOne) {
                             throw new Exception(
-                                $"VRCFury Haptic Plug has '{checkboxName}' checked, but there no valid material was on the linked renderer.");
+                                $"VRCFury Haptic Plug has '{checkboxName}' checked, but no valid material was on the linked renderer.");
                         }
 
                         VRCFuryEditorUtils.MarkDirty(skin);
