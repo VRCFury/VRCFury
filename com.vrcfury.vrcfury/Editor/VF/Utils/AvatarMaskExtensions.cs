@@ -67,6 +67,11 @@ namespace VF.Utils {
 
         public static void SetTransforms(this AvatarMask mask, IEnumerable<string> transforms) {
             var active = transforms.ToImmutableHashSet();
+            if (active.Contains(MagicEverythingString)) {
+                mask.transformCount = 0;
+                return;
+            }
+            
             var withParents = WithParents(active)
                 .ToImmutableHashSet()
                 .OrderBy(path => path)
