@@ -429,15 +429,18 @@ namespace VF.Builder.Haptics {
         private static string ReadFile(Shader shader) {
             var path = AssetDatabase.GetAssetPath(shader);
             if (string.IsNullOrWhiteSpace(path)) {
-                throw new Exception("Failed to find file for shader: " + shader.name);
+                throw new Exception("Failed to find source file for the shader");
             }
 
-            if (path.StartsWith("Resources")) {
+            if (path.StartsWith("Resources") || path.StartsWith("Library")) {
                 if (shader.name == "Standard") {
                     path = $"{GetPathToSps()}/Standard.shader.orig";
+                } else if (shader.name.Contains("Error")) {
+                    throw new VRCFBuilderException(
+                        "This is an error shader. Please verify that the base material actually loads.");
                 } else {
                     throw new VRCFBuilderException(
-                        "SPS does not yet support this built-in unity shader: " + shader.name);
+                        "SPS does not yet support this built-in unity shader.");
                 }
             }
 

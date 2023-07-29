@@ -108,6 +108,7 @@ namespace VF.Feature {
             
             var toggleIsInt = model.prms
                 .Select(entry => (VRCExpressionParameters)entry.parameters)
+                .Where(paramFile => paramFile != null)
                 .SelectMany(file => file.parameters)
                 .Where(param => param.valueType == VRCExpressionParameters.ValueType.Int)
                 .Any(param => param.name == model.toggleParam);

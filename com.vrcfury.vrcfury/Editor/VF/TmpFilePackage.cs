@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -16,11 +17,7 @@ namespace VF {
                 Encoding.UTF8.GetString(File.ReadAllBytes(TmpPackagePath)) != PackageJson) {
                 File.WriteAllBytes(TmpPackagePath, Encoding.UTF8.GetBytes(PackageJson));
 
-                EditorApplication.delayCall += () => {
-                    MethodInfo method = typeof(Client).GetMethod("Resolve",
-                        BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                    method.Invoke(null, null);
-                };
+                EditorApplication.delayCall += ReresolvePackages;
             }
 
             EditorApplication.delayCall += () => {
@@ -30,6 +27,16 @@ namespace VF {
             };
 
             return TmpDirPath;
+        }
+
+        public static void ReresolvePackages() {
+            MethodInfo method = typeof(Client).GetMethod("Resolve",
+                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
+                null,
+                new Type[] {},
+                null
+            );
+            method.Invoke(null, null);
         }
 
         static TmpFilePackage() {

@@ -101,18 +101,18 @@ namespace VF.Model {
         }
 
         public void OnBeforeSerialize() {
-            Refresh();
+            Refresh(true);
         }
 
         public void OnAfterDeserialize() {
 #if UNITY_EDITOR
-            EditorApplication.delayCall += Refresh;
+            EditorApplication.delayCall += () => Refresh();
 #endif
         }
 
         [NonSerialized] private Object lastSelected;
 
-        private void Refresh() {
+        private void Refresh(bool serializing = false) {
 #if UNITY_EDITOR
             if (obj != null) {
                 // The selected object is valid, so update our stored guid
@@ -129,7 +129,7 @@ namespace VF.Model {
                 return;
             }
 
-            if (!string.IsNullOrEmpty(guid)) {
+            if (!string.IsNullOrEmpty(guid) && !serializing) {
                 // Try and find the Object using our stored guid info
                 var path = AssetDatabase.GUIDToAssetPath(guid);
                 if (path == null) return;
