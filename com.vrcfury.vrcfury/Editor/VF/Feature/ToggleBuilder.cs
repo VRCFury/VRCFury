@@ -62,6 +62,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     // this currently isn't used, but keeping it here for future proofing if hand layer starts getting included in toggles
     private bool IsHuanoid(State state) {
+        if (state == null) return false;
         var clips = state.actions.OfType<AnimationClipAction>();
         foreach (AnimationClipAction clip in clips) {
             AnimationClip c = clip.clip;
@@ -318,7 +319,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var clip = LoadState(onName, action, isHumanoidLayer);
 
-        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && IsHuanoid(action)) {
+        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && (IsHuanoid(action) || IsHuanoid(inAction) || IsHuanoid(outAction))) {
             var maskName = GetMaskName(clip);
             var controller2 = maskName == "emote" ? GetAction() : GetGesture();
             var layer2 = GetLayer(layerName, controller2, maskName);
@@ -367,10 +368,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     transition.When().WithTransitionExitTime(1);
                 }
             } else {
-                var so = new SerializedObject(transitionClipIn);
-                so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = false;
+                var so = new SerializedObject(clip);
+                so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
                 so.ApplyModifiedProperties();
-                onState = inState;
+                onState = layer.NewState(onName).WithAnimation(transitionClipIn).MotionTime(controller.ConstantFloat(1f - 1f/transitionClipIn.frameRate));
+                var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
+                transition.When().WithTransitionExitTime(1);
             }
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
