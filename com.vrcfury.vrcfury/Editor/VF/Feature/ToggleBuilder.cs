@@ -390,7 +390,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             var blendOut = layer.NewState(onName + " Blendout").TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
 
-            var transition = outState.TransitionsTo(blendOut).WithTransitionDurationSeconds(1000);
+            var transition = outState.TransitionsTo(blendOut).WithTransitionDurationSeconds(1000).WithInterupt(TransitionInterruptionSource.Destination);
 
             outState = blendOut;
 
@@ -401,7 +401,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
 
             if (!model.enableExclusiveTag) {
-                blendOut.TransitionsToExit().When(controller.Always()).WithInterupt(TransitionInterruptionSource.Destination);
+                blendOut.TransitionsToExit().When(controller.Always());
             }
 
             var maskGuid = "";
