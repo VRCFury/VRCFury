@@ -318,6 +318,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var isHumanoidLayer = controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
 
         var clip = LoadState(onName, action, isHumanoidLayer);
+        var transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
+        var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && (IsHuanoid(action) || IsHuanoid(inAction) || IsHuanoid(outAction))) {
             var maskName = GetMaskName(clip);
@@ -333,7 +335,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 onCase2 = param2.IsTrue();
             }
             Apply(controller2, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
-            if (clip == GetFx().GetNoopClip()) return; // if only a proxy animation don't worry about making toggle in FX layer
         }
 
         if (restingClip == null && model.includeInRest) {
@@ -354,10 +355,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState onState;
         VFAState outState;
 
-        AnimationClip transitionClipIn = null;
-
-        if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {
-            transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
+        if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {    
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             if (action.actions.Count() != 0) {
                 onState = layer.NewState(onName).WithAnimation(clip);
@@ -368,7 +366,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     transition.When().WithTransitionExitTime(1);
                 }
             } else {
-                onState = layer.NewState(onName).WithAnimation(transitionClipIn).MotionTime(controller.ConstantFloat(1f - 1f/transitionClipIn.frameRate));
+                onState = layer.NewState(onName).WithAnimation(transitionClipIn).MotionTime(controller.ConstantFloat(0.99999999f));
                 var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
                 transition.When().WithTransitionExitTime(1);
             }
@@ -380,7 +378,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition && outAction != null && outAction.actions.Count() != 0) {
-            var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : 0);
         } else {
