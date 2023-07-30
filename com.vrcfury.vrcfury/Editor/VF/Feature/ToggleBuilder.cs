@@ -318,8 +318,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var isHumanoidLayer = controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
 
         var clip = LoadState(onName, action, isHumanoidLayer);
-        var transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
-        var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && (IsHuanoid(action) || IsHuanoid(inAction) || IsHuanoid(outAction))) {
             var maskName = GetMaskName(clip);
@@ -355,7 +353,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState onState;
         VFAState outState;
 
-        if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {    
+        if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {
+            var transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             if (action.actions.Count() != 0) {
                 onState = layer.NewState(onName).WithAnimation(clip);
@@ -366,7 +365,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     transition.When().WithTransitionExitTime(1);
                 }
             } else {
-                onState = layer.NewState(onName).WithAnimation(transitionClipIn).MotionTime(controller.ConstantFloat(0.99999999f));
+                onState = layer.NewState(onName).WithAnimation(transitionClipIn).MotionTime(controller.ConstantFloat(0.9999f));
                 var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
                 transition.When().WithTransitionExitTime(1);
             }
@@ -377,7 +376,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(transitionTime);
 
         if (model.simpleOutTransition) outAction = inAction;
+
+       
         if (model.hasTransition && outAction != null && outAction.actions.Count() != 0) {
+            var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : 0);
         } else {
