@@ -355,15 +355,22 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         AnimationClip transitionClipIn = null;
 
-        if (model.hasTransition && inAction != null) {
+        if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {
             transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
-            onState = layer.NewState(onName).WithAnimation(clip);
-            var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
-            if (transitionClipIn.length <= 1f/transitionClipIn.frameRate) {
-                transition.When(controller.Always());
+            if (action.actions.Count() != 0) {
+                onState = layer.NewState(onName).WithAnimation(clip);
+                var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
+                if (transitionClipIn.length <= 1f/transitionClipIn.frameRate) {
+                    transition.When(controller.Always());
+                } else {
+                    transition.When().WithTransitionExitTime(1);
+                }
             } else {
-                transition.When().WithTransitionExitTime(1);
+                var so = new SerializedObject(transitionClipIn);
+                so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = false;
+                so.ApplyModifiedProperties();
+                onState = inState;
             }
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
@@ -372,7 +379,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(transitionTime);
 
         if (model.simpleOutTransition) outAction = inAction;
-        if (model.hasTransition && outAction != null) {
+        if (model.hasTransition && outAction != null && outAction.actions.Count() != 0) {
             var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : 0);
