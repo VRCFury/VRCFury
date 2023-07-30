@@ -966,7 +966,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultOnProp,
             includeInRestProp,
             exclusiveOffStateProp,
-            holdButtonProp
+            holdButtonProp,
+            hasExitTimeProp
         ));
 
         return content;
