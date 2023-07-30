@@ -388,9 +388,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             off.TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
             inState.TrackingController(maskName + "Animation").PlayableLayerController(blendableLayer, 1, 0);
 
-            var blendOut = layer.NewState(onName + " Blendout").WithAnimation(onState.GetRaw().motion).Speed(-1).TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
+            var blendOut = layer.NewState(onName + " Blendout").TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
 
-            var transition = outState.TransitionsTo(blendOut);
+            var transition = outState.TransitionsTo(blendOut).WithTransitionDurationSeconds(1000);
 
             outState = blendOut;
 
@@ -401,7 +401,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
 
             if (!model.enableExclusiveTag) {
-                blendOut.TransitionsToExit().When(controller.Always());
+                blendOut.TransitionsToExit().When(controller.Always()).WithInterupt(TransitionInterruptionSource.Destination);
             }
 
             var maskGuid = "";

@@ -472,6 +472,19 @@ public class VFATransition {
         };
         return this;
     }
+
+    public VFATransition WithInterupt(TransitionInterruptionSource source) {
+        foreach (var t in createdTransitions) {
+            t.interruptionSource = source;
+        }
+        var oldProvider = transitionProvider;
+        transitionProvider = () => {
+            var trans = oldProvider();
+            trans.interruptionSource = source;
+            return trans;
+        };
+        return this;
+    }
 }
 
 }
