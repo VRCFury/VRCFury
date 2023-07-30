@@ -336,7 +336,7 @@ namespace VF.Inspector {
                                         configuredOne = true;
                                         return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength,
                                             activeFromMask,
-                                            mutableManager, plug);
+                                            mutableManager, plug, bakeRoot);
                                     } else if (TpsConfigurer.IsTps(mat)) {
                                         configuredOne = true;
                                         return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength,

@@ -17,7 +17,8 @@ namespace VF.Builder.Haptics {
             float worldLength,
             float[] activeFromMask,
             MutableManager mutableManager,
-            VRCFuryHapticPlug plug
+            VRCFuryHapticPlug plug,
+            VFGameObject bakeRoot
         ) {
             if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
                 throw new Exception(
@@ -30,6 +31,7 @@ namespace VF.Builder.Haptics {
             SpsPatcher.patch(m, mutableManager, plug.spsKeepImports);
             m.SetOverrideTag(SpsEnabled + "Animated", "1");
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
+            if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
             m.SetFloat(SpsLength, worldLength);
             m.SetFloat(SpsBakedLength, worldLength);
             m.SetFloat(SpsOverrun, plug.spsOverrun ? 1 : 0);
