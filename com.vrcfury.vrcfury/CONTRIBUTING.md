@@ -55,3 +55,5 @@ For more information, please refer to <https://unlicense.org>
   * Added global parameters for Toggles
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
+* Ximmer-VR
+  * Made Toggle sliders work with global parameters

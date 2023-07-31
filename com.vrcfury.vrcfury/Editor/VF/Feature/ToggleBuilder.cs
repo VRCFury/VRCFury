@@ -18,7 +18,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
     private AnimationClip restingClip;
-    
+
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
@@ -37,18 +37,31 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return param;
     }
 
+    private (string,bool) GetParamName() {
+        if (model.paramOverride != null) {
+            return (model.paramOverride, false);
+        }
+        if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
+            return (model.globalParam, false);
+        }
+        return (model.name, model.usePrefixOnParam);
+    }
+
     private void CreateSlider() {
         var fx = GetFx();
         var layerName = model.name;
         var layer = fx.NewLayer(layerName);
 
+        var (paramName, usePrefixOnParam) = GetParamName();
+
         var off = layer.NewState("Off");
         var on = layer.NewState("On");
         var x = fx.NewFloat(
-            model.name,
+            paramName,
             synced: true,
             saved: model.saved,
-            def: model.defaultOn ? model.defaultSliderValue : 0
+            def: model.defaultOn ? model.defaultSliderValue : 0,
+            usePrefix: usePrefixOnParam
         );
         manager.GetMenu().NewMenuSlider(
             model.name,
@@ -88,24 +101,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
 
-        if (model.useGlobalParam && model.globalParam != null && model.paramOverride == null) {
-            model.paramOverride = model.globalParam;
-            model.usePrefixOnParam = false;
-        }
-
+        var (paramName, usePrefixOnParam) = GetParamName();
         VFACondition onCase;
-        string paramName;
-        bool usePrefixOnParam;
-        if (model.paramOverride != null) {
-            paramName = model.paramOverride;
-            usePrefixOnParam = model.usePrefixOnParam;
-        } else if (model.useGlobalParam && model.globalParam != null) {
-            paramName = model.globalParam;
-            usePrefixOnParam = false;
-        } else {
-            paramName = model.name;
-            usePrefixOnParam = model.usePrefixOnParam;
-        }
         if (model.useInt) {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
@@ -114,7 +111,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
-        
+
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
             Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
@@ -139,7 +136,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
     }
-    
+
     private void Apply(
         ControllerManager fx,
         VFALayer layer,
@@ -211,7 +208,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
      [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
      public void ApplyExclusiveTags() {
         if (exclusiveTagTriggeringStates.Count == 0) return;
-        
+
         var fx = GetFx();
         var allOthersOffCondition = fx.Always();
 
@@ -346,7 +343,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
-            
+
             if (exclusiveOffStateProp != null) {
                 advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
                     exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
@@ -360,7 +357,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
-            
+
             if (enableDriveGlobalParamProp != null) {
                 advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
                     enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
@@ -402,7 +399,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         });
         button.style.flexGrow = 0;
         flex.Add(button);
-        
+
         renderBody(content);
 
         if (resetPhysboneProp != null) {
@@ -444,7 +441,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             return c;
         }, sliderProp, defaultOnProp));
-        
+
         if (enableIconProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
@@ -502,7 +499,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
                 if (!simpleOutTransitionProp.boolValue)
                     c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateOut"), "Local Trans. Out"));
-                    
+
             }
             return c;
         }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
