@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEngine;
 
 namespace VF.Utils {
@@ -17,21 +18,21 @@ namespace VF.Utils {
             return mask;
         }
 
-        private static void Combine(this AvatarMask mask, AvatarMask other, bool add) {
-            if (other == null) throw new Exception("Combined mask cannot be null");
-
+        private static void Combine(this AvatarMask mask, [CanBeNull] AvatarMask other, bool add) {
             for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                 if (add) {
-                    if (other.GetHumanoidBodyPartActive(bodyPart))
+                    if (other == null || other.GetHumanoidBodyPartActive(bodyPart))
                         mask.SetHumanoidBodyPartActive(bodyPart, true);
                 } else {
-                    if (!other.GetHumanoidBodyPartActive(bodyPart))
+                    if (other != null && !other.GetHumanoidBodyPartActive(bodyPart))
                         mask.SetHumanoidBodyPartActive(bodyPart, false);
                 }
             }
 
             var ourTransforms = new HashSet<string>(mask.GetTransforms());
-            var otherTransforms = other.GetTransforms();
+            var otherTransforms = other == null
+                ? (ICollection<string>)new []{ MagicEverythingString }
+                : other.GetTransforms();
             if (add) {
                 ourTransforms.UnionWith(otherTransforms);
             } else {
@@ -47,11 +48,11 @@ namespace VF.Utils {
             mask.SetTransforms(ourTransforms);
         }
         
-        public static void IntersectWith(this AvatarMask mask, AvatarMask other) {
+        public static void IntersectWith(this AvatarMask mask, [CanBeNull] AvatarMask other) {
             mask.Combine(other, false);
         }
         
-        public static void UnionWith(this AvatarMask mask, AvatarMask other) {
+        public static void UnionWith(this AvatarMask mask, [CanBeNull] AvatarMask other) {
             mask.Combine(other, true);
         }
 
@@ -92,6 +93,10 @@ namespace VF.Utils {
 
         public static void AllowAllTransforms(this AvatarMask mask) {
             mask.transformCount = 0;
+        }
+
+        public static bool AllowsAllTransforms(this AvatarMask mask) {
+            return mask.transformCount == 0;
         }
 
         private static ICollection<string> WithParents(ICollection<string> paths) {

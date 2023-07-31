@@ -20,23 +20,20 @@ namespace VF.Feature {
     public class FixMaterialSwapWithMaskBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixMaterialSwapWithMask)]
         public void Apply() {
-            // TODO: Work on this
-            return;
-            
-            // var nextInt = 1;
-            // foreach (var c in manager.GetAllUsedControllers()) {
-            //     foreach (var layer in c.GetLayers()) {
-            //         CheckLayer(c, layer, ref nextInt);
-            //     }
-            // }
+            var nextInt = 1;
+            foreach (var c in manager.GetAllUsedControllers()) {
+                foreach (var layer in c.GetLayers()) {
+                    CheckLayer(c, layer, ref nextInt);
+                }
+            }
         }
 
         private void CheckLayer(ControllerManager c, AnimatorStateMachine layer, ref int nextInt) {
             var mask = c.GetMask(c.GetLayerId(layer));
             if (mask == null) return;
-            if (mask.transformCount == 0) return;
+            if (mask.AllowsAllTransforms()) return;
 
-            var bindingMatToParam = new Dictionary<(EditorCurveBinding,Object), VFABool>();
+            var bindingMatToParam = new Dictionary<(EditorCurveBinding,Object), VFAFloat>();
             foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
                 foreach (var binding in clip.GetObjectBindings()) {
                     if (!binding.propertyName.StartsWith("m_Materials.")) continue;
@@ -46,9 +43,10 @@ namespace VF.Feature {
                         .Where(value => value != null)
                         .ToImmutableHashSet();
                     foreach (var mat in allMatsInCurve) {
-                        if (!bindingMatToParam.TryGetValue((binding, mat), out var param)) {
-                            param = c.NewBool($"transformMat{nextInt++}");
-                            bindingMatToParam[(binding, mat)] = param;
+                        var normalizedBinding = binding.Normalize();
+                        if (!bindingMatToParam.TryGetValue((normalizedBinding, mat), out var param)) {
+                            param = c.NewFloat($"transformMat{nextInt++}");
+                            bindingMatToParam[(normalizedBinding, mat)] = param;
                         }
 
                         var newCurve = curve
@@ -62,16 +60,19 @@ namespace VF.Feature {
             }
 
             if (bindingMatToParam.Count > 0) {
-                var directLayer = c.NewLayer($"{layer.name} - Mat Swaps");
+                var directLayer = c.NewLayer($"{layer.name} - Mat Swaps", c.GetLayerId(layer) + 1);
                 var directTree = c.NewBlendTree($"{layer.name} - Mat Swaps");
                 directTree.blendType = BlendTreeType.Direct;
                 directLayer.NewState("Direct").WithAnimation(directTree);
+                directLayer.NewState(
+                    "VRCFury created this layer because the layer above changes material slots AND contains a mask\n\n" +
+                    "Material slots >0 cannot be animated in layers containing a mask, so by moving the material swaps to this separate layer, that issue is avoided.");
                 foreach (var pair in bindingMatToParam) {
                     var (binding, mat) = pair.Key;
                     var param = pair.Value;
                     var clip = c.NewClip($"{layer.name} - Mat Swaps");
-                    clip.SetObjectCurve(binding, new ObjectReferenceKeyframe[] {
-                        new ObjectReferenceKeyframe() {
+                    clip.SetObjectCurve(binding, new [] {
+                        new ObjectReferenceKeyframe {
                             time = 0,
                             value = mat
                         }

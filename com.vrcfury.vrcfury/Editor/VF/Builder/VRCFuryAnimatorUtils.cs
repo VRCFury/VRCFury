@@ -80,7 +80,29 @@ public class VFALayer {
         this.stateMachine = stateMachine;
     }
 
+    private static string WrapStateName(string name, int attemptWrapAt = 35) {
+        var lines = new List<string>();
+        var currentLine = "";
+        foreach (var c in name) {
+            if (c == '\n' || (char.IsWhiteSpace(c) && currentLine.Length > attemptWrapAt)) {
+                lines.Add(currentLine);
+                currentLine = "";
+                continue;
+            }
+            if (char.IsWhiteSpace(c) && currentLine.Length == 0) {
+                continue;
+            }
+            currentLine += c;
+        }
+        if (!string.IsNullOrWhiteSpace(currentLine)) lines.Add(currentLine);
+        return string.Join("\n", lines);
+    }
+
     public VFAState NewState(string name) {
+        // Unity breaks if name contains .
+        name = WrapStateName(name);
+        name = name.Replace(".", "");
+
         var lastNode = GetLastNodeForPositioning();
         stateMachine.AddState(name);
         var node = GetLastNode().Value;
