@@ -35,7 +35,7 @@ public class VFAController {
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);
         ctrl.layers = layers;
-        return new VFALayer(layer.stateMachine, this);
+        return new VFALayer(layer.stateMachine);
     }
     
     public void RemoveLayer(int i) {
@@ -75,11 +75,9 @@ public class VFAController {
 
 public class VFALayer {
     private readonly AnimatorStateMachine stateMachine;
-    private readonly VFAController ctrl;
 
-    public VFALayer(AnimatorStateMachine stateMachine, VFAController ctrl) {
+    public VFALayer(AnimatorStateMachine stateMachine) {
         this.stateMachine = stateMachine;
-        this.ctrl = ctrl;
     }
 
     public VFAState NewState(string name) {
@@ -222,6 +220,9 @@ public class VFAState {
     }
     public VFATransition TransitionsTo(VFAState other) {
         return new VFATransition(() => node.state.AddTransition(other.node.state));
+    }
+    public VFATransition TransitionsTo(AnimatorState other) {
+        return new VFATransition(() => node.state.AddTransition(other));
     }
     public VFATransition TransitionsToExit() {
         return new VFATransition(() => node.state.AddExitTransition());

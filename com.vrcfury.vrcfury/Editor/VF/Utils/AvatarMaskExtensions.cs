@@ -68,7 +68,7 @@ namespace VF.Utils {
         public static void SetTransforms(this AvatarMask mask, IEnumerable<string> transforms) {
             var active = transforms.ToImmutableHashSet();
             if (active.Contains(MagicEverythingString)) {
-                mask.transformCount = 0;
+                mask.AllowAllTransforms();
                 return;
             }
             
@@ -82,6 +82,16 @@ namespace VF.Utils {
                 mask.SetTransformPath(i, path);
             }
             mask.EnsureOneTransform();
+        }
+        
+        public static void AllowAllMuscles(this AvatarMask mask) {
+            for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                mask.SetHumanoidBodyPartActive(bodyPart, true);
+            }
+        }
+
+        public static void AllowAllTransforms(this AvatarMask mask) {
+            mask.transformCount = 0;
         }
 
         private static ICollection<string> WithParents(ICollection<string> paths) {
