@@ -37,7 +37,8 @@ namespace VF.Feature {
          */
         private static void RebuildDebugHashes(VRCAvatarDescriptor avatar, ControllerManager ctrl) {
             foreach (var layer in ctrl.GetManagedLayers()) {
-                ProcessStateMachine(layer, "");
+                var rootStateMachine = layer.stateMachine;
+                ProcessStateMachine(rootStateMachine, "");
                 void ProcessStateMachine(AnimatorStateMachine stateMachine, string prefix) {
                     //Update prefix
                     prefix = prefix + stateMachine.name + ".";
@@ -47,7 +48,7 @@ namespace VF.Feature {
                         VRCAvatarDescriptor.DebugHash hash = new VRCAvatarDescriptor.DebugHash();
                         string fullName = prefix + state.state.name;
                         hash.hash = Animator.StringToHash(fullName);
-                        hash.name = fullName.Remove(0, layer.name.Length + 1);
+                        hash.name = fullName.Remove(0, rootStateMachine.name.Length + 1);
                         avatar.animationHashSet.Add(hash);
                     }
 
