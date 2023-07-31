@@ -174,6 +174,7 @@ namespace VF.Feature {
 
             var allManagedStateMachines = manager.GetAllTouchedControllers()
                 .SelectMany(controller => controller.GetManagedLayers())
+                .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
 
             var controllerInfos = manager.GetAllUsedControllersRaw().Select(tuple => {

@@ -393,6 +393,18 @@ public class VFATransition {
         };
         return this;
     }
+    public VFATransition Interruptable() {
+        foreach (var t in createdTransitions) {
+            t.interruptionSource = TransitionInterruptionSource.Destination;
+        }
+        var oldProvider = transitionProvider;
+        transitionProvider = () => {
+            var t = oldProvider();
+            t.interruptionSource = TransitionInterruptionSource.Destination;
+            return t;
+        };
+        return this;
+    }
     public VFATransition WithTransitionDurationSeconds(float time) {
         foreach (var t in createdTransitions) {
             t.duration = time;

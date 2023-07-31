@@ -27,11 +27,11 @@ namespace VF.Feature {
 
                 if (ctrl.layers.Length == 0) {
                     // don't need to worry about masks when there are no layers
-                } else if (c.GetMask(0) == expectedMask) {
+                } else if (ctrl.GetLayer(0).mask == expectedMask) {
                     // base mask is already good
                 } else {
                     c.EnsureEmptyBaseLayer();
-                    c.SetMask(0, expectedMask);
+                    ctrl.GetLayer(0).mask = expectedMask;
                 }
             }
         }
@@ -64,8 +64,7 @@ namespace VF.Feature {
             if (!gestureContainsTransform) return null;
 
             foreach (var layer in fx.GetLayers()) {
-                var layerId = fx.GetLayerId(layer);
-                var oldMask = fx.GetMask(layerId);
+                var oldMask = layer.mask;
 
                 var transformedPaths = new AnimatorIterator.Clips().From(layer)
                     .SelectMany(clip => clip.GetAllBindings())
@@ -80,8 +79,8 @@ namespace VF.Feature {
                     mask.IntersectWith(oldMask);
                 }
 
-                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layerId);
-                fx.SetMask(layerId, mask);
+                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layer.GetLayerId());
+                layer.mask = mask;
             }
 
             return null;

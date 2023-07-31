@@ -1,14 +1,12 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     /**
@@ -28,8 +26,8 @@ namespace VF.Feature {
             }
         }
 
-        private void CheckLayer(ControllerManager c, AnimatorStateMachine layer, ref int nextInt) {
-            var mask = c.GetMask(c.GetLayerId(layer));
+        private void CheckLayer(ControllerManager c, MutableLayer layer, ref int nextInt) {
+            var mask = layer.mask;
             if (mask == null) return;
             if (mask.AllowsAllTransforms()) return;
 
@@ -63,7 +61,7 @@ namespace VF.Feature {
                 // NOTE: We place this just BEFORE the existing layer, because if we place it after, it takes
                 // 1 extra frame for the animated parameter change to be reflected in the direct tree. If we put it before (above)
                 // then it is reflected on the same frame it is animated, which is what we want.
-                var directLayer = c.NewLayer($"{layer.name} - Mat Swaps", c.GetLayerId(layer));
+                var directLayer = c.NewLayer($"{layer.name} - Mat Swaps", layer.GetLayerId());
                 var directTree = c.NewBlendTree($"{layer.name} - Mat Swaps");
                 directTree.blendType = BlendTreeType.Direct;
                 directLayer.NewState("Direct").WithAnimation(directTree);
