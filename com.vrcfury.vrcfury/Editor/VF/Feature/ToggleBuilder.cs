@@ -28,6 +28,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private float transitionTime;
     private bool useInt;
     private int intTarget = -1;
+    private bool enableExclusiveTag;
+
+    private string humanoidMask = "";
 
     private AnimationClip restingClip;
 
@@ -37,7 +40,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
 
     public ISet<string> GetExclusives(string objects) {
-
         return objects.Split(',')
             .Select(tag => tag.Trim())
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
@@ -45,9 +47,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 	
     public ISet<string> GetExclusiveTags() {
-        if(model.enableExclusiveTag)
-            return GetExclusives(model.exclusiveTag);
-        return new HashSet<string>(); 
+        if (humanoidMask == "") CheckHumanoidMask();
+        var tags = model.enableExclusiveTag ? model.exclusiveTag : "";
+        if (humanoidMask == "emote") {
+            tags += ",VF_EMOTE";
+        }
+        if (humanoidMask == "leftHand" || humanoidMask == "hands") {
+            tags += ",VF_LEFT_HAND";
+        }
+        if (humanoidMask == "rightHand" || humanoidMask == "hands") {
+            tags += ",VF_RIGHT_HAND";
+        }
+        return GetExclusives(tags);
     }
 
     public ISet<string> GetGlobalParams() {
@@ -70,35 +81,39 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return false;
     }
 
-    private string GetMaskName(AnimationClip clip) {
+    private string GetHumanoidMaskName(params State[] states) {
         
-        var bones = AnimationUtility.GetCurveBindings(clip);
         var leftHand = false;
         var rightHand = false;
-        var other = false;
 
-        foreach (var b in bones) {
-
-            if (!(HumanTrait.MuscleName.Contains(b.propertyName) || b.propertyName.EndsWith(" Stretched") || b.propertyName.EndsWith(".Spread"))) continue;
-            if (b.propertyName.Contains("RightHand") || b.propertyName.Contains("Right Thumb") || b.propertyName.Contains("Right Index") ||
-                b.propertyName.Contains("Right Middle") || b.propertyName.Contains("Right Ring") || b.propertyName.Contains("Right Little")) { rightHand = true; continue; }
-            if (b.propertyName.Contains("LeftHand") || b.propertyName.Contains("Left Thumb") || b.propertyName.Contains("Left Index") || 
-                b.propertyName.Contains("Left Middle") || b.propertyName.Contains("Left Ring") || b.propertyName.Contains("Left Little")) { leftHand = true; continue; }
-            other = true;
+        foreach(var state in states) {
+            if (state == null) continue;
+            foreach(var action in state.actions) {
+                if (action is AnimationClipAction clip) {
+                    var bones = AnimationUtility.GetCurveBindings(clip.clip);
+                    foreach (var b in bones) {
+                        if (!(HumanTrait.MuscleName.Contains(b.propertyName) || b.propertyName.EndsWith(" Stretched") || b.propertyName.EndsWith(".Spread"))) continue;
+                        if (b.propertyName.Contains("RightHand") || b.propertyName.Contains("Right Thumb") || b.propertyName.Contains("Right Index") ||
+                            b.propertyName.Contains("Right Middle") || b.propertyName.Contains("Right Ring") || b.propertyName.Contains("Right Little")) { rightHand = true; continue; }
+                        if (b.propertyName.Contains("LeftHand") || b.propertyName.Contains("Left Thumb") || b.propertyName.Contains("Left Index") || 
+                            b.propertyName.Contains("Left Middle") || b.propertyName.Contains("Left Ring") || b.propertyName.Contains("Left Little")) { leftHand = true; continue; }
+                        return "emote";
+                    }
+                }
+            }
         }
-        if (other) return "emote"; 
+
         if (leftHand && rightHand) return "hands";
         if (leftHand) return "leftHand";
         if (rightHand) return "rightHand";
         
-        return "emote";
+        return "none";
     }
 
     private VFALayer GetLayer(string layerName, ControllerManager controller, string maskName = "") {
-        if (model.enableExclusiveTag) {
-            var exclusiveTags = GetExclusiveTags();
-            if (exclusiveTags.Count() == 0) return controller.NewLayer(layerName);
-            var firstExclusiveTag = exclusiveTags.First();
+        if (enableExclusiveTag) {
+            var firstExclusiveTag = GetPrimaryExclusive();
+            if (firstExclusiveTag == "") return controller.NewLayer(layerName);
             if (!exclusiveAnimationLayers.ContainsKey((firstExclusiveTag, controller.GetType(), maskName))) {
                  exclusiveAnimationLayers[(firstExclusiveTag, controller.GetType(), maskName)] = controller.NewLayer((firstExclusiveTag + " Animations " + maskName).Trim());
             }
@@ -148,8 +163,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return targetTag;
     }
 
+    private void CheckHumanoidMask() {
+        humanoidMask = GetHumanoidMaskName(model.state, model.transitionStateIn, model.transitionStateOut);
+        if (humanoidMask != "none") enableExclusiveTag = true;
+    }
+
     private void CheckExclusives() {
-        
         string targetTag = GetPrimaryExclusive();
         int tagCount = 1;
         int tagIndex = 0;
@@ -232,6 +251,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         transitionTime = model.transitionTime;
         useInt = model.useInt;
         addMenuItem = model.addMenuItem;
+        enableExclusiveTag = model.enableExclusiveTag || enableExclusiveTag;
 
         if (model.slider) {
             CreateSlider();
@@ -247,13 +267,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             addMenuItem = false;
         }
 
+        if (humanoidMask == "") CheckHumanoidMask();
+        if (enableExclusiveTag) CheckExclusives();
+
         var fx = GetFx();
         var layer = GetLayer(layerName, fx);
         var off = GetStartState("Off", layer);
-
-        if (model.enableExclusiveTag) {
-            CheckExclusives();
-        }
 
         var (paramName, usePrefixOnParam) = GetParamName();
         if (useInt) {
@@ -317,9 +336,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var clip = LoadState(onName, action, isHumanoidLayer);
 
         if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && (IsHuanoid(action) || IsHuanoid(inAction) || IsHuanoid(outAction))) {
-            var maskName = GetMaskName(clip);
-            var controller2 = maskName == "emote" ? GetAction() : GetGesture();
-            var layer2 = GetLayer(layerName, controller2, maskName);
+            var controller2 = humanoidMask == "emote" ? GetAction() : GetGesture();
+            var layer2 = GetLayer(layerName, controller2, humanoidMask);
             var off2 = GetStartState("Off", layer2);
             VFACondition onCase2;
             if (useInt) {
@@ -386,12 +404,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         onEqualsOut = outState == onState;
 
         if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
-            var maskName = GetMaskName(clip);
             var blendableLayer = controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action ? VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action : VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Gesture;
-            off.TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
-            inState.TrackingController(maskName + "Animation").PlayableLayerController(blendableLayer, 1, 0);
+            off.TrackingController(humanoidMask + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
+            inState.TrackingController(humanoidMask + "Animation").PlayableLayerController(blendableLayer, 1, 0);
 
-            var blendOut = layer.NewState(onName + " Blendout").TrackingController(maskName + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
+            var blendOut = layer.NewState(onName + " Blendout").TrackingController(humanoidMask + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
 
             var transition = outState.TransitionsTo(blendOut).WithTransitionDurationSeconds(1000).WithInterupt(TransitionInterruptionSource.Destination);
 
@@ -403,12 +420,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 transition.When().WithTransitionExitTime(1);
             }
 
-            if (!model.enableExclusiveTag) {
+            if (!enableExclusiveTag) {
                 blendOut.TransitionsToExit().When(controller.Always());
             }
 
             var maskGuid = "";
-            switch (maskName) {
+            switch (humanoidMask) {
                 case "hands":
                     maskGuid = "b2b8bad9583e56a46a3e21795e96ad92";
                     break;
@@ -425,7 +442,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var mask = AssetDatabase.LoadAssetAtPath<AvatarMask>(maskPath);
                 controller.SetMask(controller.GetLayers().Count() - 1, mask);
             }
-        } else if (!model.enableExclusiveTag) {
+        } else if (!enableExclusiveTag) {
             var exitTransition = outState.TransitionsToExit();
 
             if (onEqualsOut) {
@@ -475,7 +492,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
         
-        if (!model.enableExclusiveTag) return;
+        if (!enableExclusiveTag) return;
 
         ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
         var paramsToTurnOff = new HashSet<VFABool>();
