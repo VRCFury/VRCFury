@@ -164,7 +164,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     private void CheckHumanoidMask() {
-        humanoidMask = GetHumanoidMaskName(model.state, model.transitionStateIn, model.transitionStateOut);
+        humanoidMask = GetHumanoidMaskName(model.state, model.localState, model.transitionStateIn, model.localTransitionStateIn, model.transitionStateOut, model.localTransitionStateOut);
         if (humanoidMask != "none") enableExclusiveTag = true;
     }
 
