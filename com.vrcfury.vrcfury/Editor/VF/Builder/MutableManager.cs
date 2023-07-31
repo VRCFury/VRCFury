@@ -6,6 +6,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Inspector;
+using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
@@ -96,7 +97,7 @@ namespace VF.Builder {
                 if (originalToMutable.ContainsKey(original)) return false;
                 if (obj != original) {
                     if (!IsType(original, typesToMakeMutable)) return false;
-                    if (original is AnimationClip && AssetDatabase.GetAssetPath(original).Contains("/proxy_"))
+                    if (original is AnimationClip clip && clip.IsProxyAnimation())
                         return false;
                 }
 

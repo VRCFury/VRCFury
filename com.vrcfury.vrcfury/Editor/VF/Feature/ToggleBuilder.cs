@@ -26,12 +26,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private bool addMenuItem;
     private bool usePrefixOnParam;
     private float transitionTime;
-    private string paramOverride;
     private bool useInt;
     private int intTarget = -1;
 
     private AnimationClip restingClip;
-    
+
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
@@ -177,18 +176,31 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 		
+    private (string,bool) GetParamName() {
+        if (model.paramOverride != null) {
+            return (model.paramOverride, false);
+        }
+        if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
+            return (model.globalParam, false);
+        }
+        return (model.name, model.usePrefixOnParam);
+    }
+
     private void CreateSlider() {
         var fx = GetFx();
         var layerName = model.name;
         var layer = fx.NewLayer(layerName);
 
+        var (paramName, usePrefixOnParam) = GetParamName();
+
         var off = layer.NewState("Off");
         var on = layer.NewState("On");
         var x = fx.NewFloat(
-            model.name,
+            paramName,
             synced: addMenuItem,
             saved: model.saved,
-            def: model.defaultOn ? model.defaultSliderValue : 0
+            def: model.defaultOn ? model.defaultSliderValue : 0,
+            usePrefix: usePrefixOnParam
         );
         manager.GetMenu().NewMenuSlider(
             model.name,
@@ -217,8 +229,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        paramOverride = model.paramOverride;
-        usePrefixOnParam = model.usePrefixOnParam;
         transitionTime = model.transitionTime;
         useInt = model.useInt;
         addMenuItem = model.addMenuItem;
@@ -241,24 +251,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layer = GetLayer(layerName, fx);
         var off = GetStartState("Off", layer);
 
-        if (model.useGlobalParam && model.globalParam != null && paramOverride == null) {
-            paramOverride = model.globalParam;
-            usePrefixOnParam = false;
-        }
-
         if (model.enableExclusiveTag) {
             CheckExclusives();
         }
 
-        string paramName;
-        if (paramOverride != null) {
-            paramName = paramOverride;
-        } else if (model.useGlobalParam && model.globalParam != null) {
-            paramName = model.globalParam;
-            usePrefixOnParam = false;
-        } else {
-            paramName = model.name;
-        }
+        var (paramName, usePrefixOnParam) = GetParamName();
         if (useInt) {
             if (intTarget == -1) {
                 var numParam = fx.NewInt(paramName, synced: addMenuItem, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
@@ -302,7 +299,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
     }
-    
+
     private void Apply(
         ControllerManager controller,
         VFALayer layer,
@@ -474,7 +471,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
     }
-
 
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
@@ -736,7 +732,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
-            
+
             if (exclusiveOffStateProp != null) {
                 advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
                     exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
@@ -750,7 +746,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
-            
+
             if (enableDriveGlobalParamProp != null) {
                 advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
                     enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
@@ -801,7 +797,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         });
         button.style.flexGrow = 0;
         flex.Add(button);
-        
+
         renderBody(content);
 
         if (resetPhysboneProp != null) {
@@ -843,7 +839,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             return c;
         }, sliderProp, defaultOnProp));
-        
+
         if (enableIconProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
@@ -901,7 +897,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
                 if (!simpleOutTransitionProp.boolValue)
                     c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateOut"), "Local Trans. Out"));
-                    
+
             }
             return c;
         }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));

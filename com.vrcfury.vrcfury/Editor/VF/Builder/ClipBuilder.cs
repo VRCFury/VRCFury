@@ -127,6 +127,7 @@ public class ClipBuilder {
     }
 
     private static bool IsEmptyClip(AnimationClip clip, VFGameObject avatarRoot) {
+        if (clip.IsProxyAnimation()) return false;
         var usedPaths = clip.GetAllBindings().Select(binding => binding.path).Distinct().ToArray();
         foreach (var path in usedPaths) {
             if (avatarRoot.Find(path)) {
@@ -142,6 +143,7 @@ public class ClipBuilder {
     }
 
     private static bool IsStaticClip(AnimationClip clip) {
+        if (clip.IsProxyAnimation()) return false;
         var isStatic = true;
         foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
             var curve = AnimationUtility.GetEditorCurve(clip, binding);

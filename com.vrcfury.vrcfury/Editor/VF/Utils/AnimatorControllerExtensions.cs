@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -13,7 +12,7 @@ namespace VF.Utils {
         public static void RewritePaths(this AnimatorController c, Func<string,string> rewrite) {
             // Rewrite clips
             foreach (var clip in new AnimatorIterator.Clips().From(c)) {
-                if (AssetDatabase.GetAssetPath(clip).Contains("/proxy_")) continue;
+                if (clip.IsProxyAnimation()) continue;
                 clip.RewritePaths(rewrite);
             }
 

@@ -6,6 +6,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VF.Utils;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -19,9 +20,7 @@ public class BreathingBuilder : FeatureBuilder<Breathing> {
 
         var fx = GetFx();
         var clip = fx.NewClip("Breathing");
-        var so = new SerializedObject(clip);
-        so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = true;
-        so.ApplyModifiedProperties();
+        clip.SetLooping(true);
         clipBuilder.MergeSingleFrameClips(clip,
             Tuple.Create(0f, outClip),
             Tuple.Create(2.5f, inClip),

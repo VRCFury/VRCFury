@@ -67,7 +67,7 @@ namespace VF.Feature {
 
         public void StoreBinding(EditorCurveBinding binding, FloatOrObject value) {
             var owner = manager.GetCurrentlyExecutingFeatureName();
-            binding = NormalizeBinding(binding);
+            binding = binding.Normalize();
             if (stored.TryGetValue(binding, out var otherStored)) {
                 if (value != otherStored.value) {
                     throw new Exception(
@@ -81,12 +81,6 @@ namespace VF.Feature {
                 owner = owner,
                 value = value
             };
-        }
-
-        // Used to make sure that two instances of EditorCurveBinding equal each other,
-        // even if they have different discrete settings, etc
-        private EditorCurveBinding NormalizeBinding(EditorCurveBinding binding) {
-            return EditorCurveBinding.FloatCurve(binding.path, binding.type, binding.propertyName);
         }
 
         private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObjectCurve curve) {

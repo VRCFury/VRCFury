@@ -35,7 +35,7 @@ public class VFAController {
         layer.defaultWeight = 1;
         layer.stateMachine.anyStatePosition = VFAState.MovePos(layer.stateMachine.entryPosition, 0, 1);
         ctrl.layers = layers;
-        return new VFALayer(layer.stateMachine, this);
+        return new VFALayer(layer.stateMachine);
     }
     
     public void RemoveLayer(int i) {
@@ -75,14 +75,34 @@ public class VFAController {
 
 public class VFALayer {
     private readonly AnimatorStateMachine stateMachine;
-    private readonly VFAController ctrl;
 
-    public VFALayer(AnimatorStateMachine stateMachine, VFAController ctrl) {
+    public VFALayer(AnimatorStateMachine stateMachine) {
         this.stateMachine = stateMachine;
-        this.ctrl = ctrl;
+    }
+
+    private static string WrapStateName(string name, int attemptWrapAt = 35) {
+        var lines = new List<string>();
+        var currentLine = "";
+        foreach (var c in name) {
+            if (c == '\n' || (char.IsWhiteSpace(c) && currentLine.Length > attemptWrapAt)) {
+                lines.Add(currentLine);
+                currentLine = "";
+                continue;
+            }
+            if (char.IsWhiteSpace(c) && currentLine.Length == 0) {
+                continue;
+            }
+            currentLine += c;
+        }
+        if (!string.IsNullOrWhiteSpace(currentLine)) lines.Add(currentLine);
+        return string.Join("\n", lines);
     }
 
     public VFAState NewState(string name) {
+        // Unity breaks if name contains .
+        name = WrapStateName(name);
+        name = name.Replace(".", "");
+
         var lastNode = GetLastNodeForPositioning();
         stateMachine.AddState(name);
         var node = GetLastNode().Value;
@@ -289,6 +309,9 @@ public class VFAState {
     }
     public VFATransition TransitionsTo(VFAState other) {
         return new VFATransition(() => node.state.AddTransition(other.node.state));
+    }
+    public VFATransition TransitionsTo(AnimatorState other) {
+        return new VFATransition(() => node.state.AddTransition(other));
     }
     public VFATransition TransitionsToExit() {
         return new VFATransition(() => node.state.AddExitTransition());

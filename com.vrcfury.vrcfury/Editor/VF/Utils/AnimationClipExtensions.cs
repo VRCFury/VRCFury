@@ -144,5 +144,23 @@ namespace VF.Utils {
         public static void CopyFrom(this AnimationClip clip, AnimationClip other) {
             clip.SetCurves(other.GetAllCurves());
         }
+
+        public static bool IsProxyAnimation(this AnimationClip clip) {
+            if (clip == null) return false;
+            var path = AssetDatabase.GetAssetPath(clip);
+            if (path == null) return false;
+            return path.Contains("/proxy_");
+        }
+
+        public static bool IsLooping(this AnimationClip clip) {
+            var so = new SerializedObject(clip);
+            return so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
+        }
+
+        public static void SetLooping(this AnimationClip clip, bool on) {
+            var so = new SerializedObject(clip);
+            so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = on;
+            so.ApplyModifiedProperties();
+        }
     }
 }

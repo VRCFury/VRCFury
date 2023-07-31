@@ -129,7 +129,6 @@ namespace VF.Feature {
                 },
                 securityEnabled = model.useSecurityForToggle,
                 addMenuItem = false,
-                usePrefixOnParam = false,
                 paramOverride = toggleParam,
                 useInt = toggleIsInt
             });

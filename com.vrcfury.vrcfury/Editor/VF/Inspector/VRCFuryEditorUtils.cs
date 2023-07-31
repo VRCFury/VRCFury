@@ -580,7 +580,7 @@ public static class VRCFuryEditorUtils {
         return el;
     }
     
-    public static VisualElement Debug(string message = "", Func<string> refreshMessage = null, float interval = 1) {
+    public static VisualElement Debug(string message = "", Func<string> refreshMessage = null, Func<VisualElement> refreshElement = null, float interval = 1) {
         var el = new VisualElement() {
             style = {
                 backgroundColor = new Color(0,0,0,0.1f),
@@ -602,17 +602,30 @@ public static class VRCFuryEditorUtils {
         var title = WrappedLabel("Debug Info");
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         rightColumn.Add(title);
-        var label = WrappedLabel(message);
-        rightColumn.Add(label);
 
-        if (refreshMessage != null) {
+        if (refreshElement != null) {
+            var holder = new VisualElement();
+            rightColumn.Add(holder);
             RefreshOnInterval(el, () => {
+                holder.Clear();
                 try {
-                    label.text = refreshMessage();
+                    holder.Add(refreshElement());
                 } catch (Exception e) {
-                    label.text = $"Error: {e.Message}";
+                    holder.Add(WrappedLabel($"Error: {e.Message}"));
                 }
             }, interval);
+        } else {
+            var label = WrappedLabel(message);
+            rightColumn.Add(label);
+            if (refreshMessage != null) {
+                RefreshOnInterval(el, () => {
+                    try {
+                        label.text = refreshMessage();
+                    } catch (Exception e) {
+                        label.text = $"Error: {e.Message}";
+                    }
+                }, interval);
+            }
         }
         
         return el;
