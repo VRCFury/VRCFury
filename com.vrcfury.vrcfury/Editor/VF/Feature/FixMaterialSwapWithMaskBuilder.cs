@@ -60,12 +60,15 @@ namespace VF.Feature {
             }
 
             if (bindingMatToParam.Count > 0) {
-                var directLayer = c.NewLayer($"{layer.name} - Mat Swaps", c.GetLayerId(layer) + 1);
+                // NOTE: We place this just BEFORE the existing layer, because if we place it after, it takes
+                // 1 extra frame for the animated parameter change to be reflected in the direct tree. If we put it before (above)
+                // then it is reflected on the same frame it is animated, which is what we want.
+                var directLayer = c.NewLayer($"{layer.name} - Mat Swaps", c.GetLayerId(layer));
                 var directTree = c.NewBlendTree($"{layer.name} - Mat Swaps");
                 directTree.blendType = BlendTreeType.Direct;
                 directLayer.NewState("Direct").WithAnimation(directTree);
                 directLayer.NewState(
-                    "VRCFury created this layer because the layer above changes material slots AND contains a mask\n\n" +
+                    "VRCFury created this layer because the layer below this one changes material slots AND contains a mask\n\n" +
                     "Material slots >0 cannot be animated in layers containing a mask, so by moving the material swaps to this separate layer, that issue is avoided.");
                 foreach (var pair in bindingMatToParam) {
                     var (binding, mat) = pair.Key;
