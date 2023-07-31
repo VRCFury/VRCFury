@@ -6,8 +6,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Builder.Exceptions;
-using VF.Inspector;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -46,8 +45,9 @@ namespace VF.Builder {
             this._controller = new VFAController(ctrl, type);
 
             if (ctrl.layers.Length > 0) {
-                unionedBaseMasks.Add(ctrl.layers[0].avatarMask);
-                ctrl.layers[0].defaultWeight = 1;
+                var layer0 = ctrl.GetLayer(0);
+                unionedBaseMasks.Add(layer0.mask);
+                layer0.weight = 1;
             }
 
             foreach (var layer in ctrl.layers) {
@@ -71,7 +71,7 @@ namespace VF.Builder {
             if (ctrl.layers.Length > 0 && ctrl.layers[0].stateMachine.defaultState == null) return;
             NewLayer("Base Mask", insertAt: 0, hasOwner: false);
             if (ctrl.layers.Length >= 2) {
-                SetMask(0, GetMask(1));
+                ctrl.GetLayer(0).mask = ctrl.GetLayer(1).mask;
             }
         }
 
@@ -113,22 +113,11 @@ namespace VF.Builder {
         }
 
         public void RemoveLayer(AnimatorStateMachine sm) {
-            var id = GetLayerId(sm);
+            var layer = ctrl.GetLayer(sm);
+            var id = layer.GetLayerId();
             managedLayers.Remove(sm);
             layerOwners.Remove(sm);
             GetController().RemoveLayer(id);
-        }
-
-        public string GetLayerName(AnimatorStateMachine sm) {
-            return ctrl.layers[GetLayerId(sm)].name;
-        }
-
-        public int GetLayerId(AnimatorStateMachine sm) {
-            return GetLayers()
-                .Select((s, i) => (s, i))
-                .Where(tuple => tuple.Item1 == sm)
-                .Select(tuple => tuple.Item2)
-                .First();
         }
 
         /**
@@ -161,13 +150,13 @@ namespace VF.Builder {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
-        public IEnumerable<AnimatorStateMachine> GetLayers() {
-            return ctrl.layers.Select(l => l.stateMachine);
+        public IEnumerable<MutableLayer> GetLayers() {
+            return ctrl.GetLayers();
         }
-        public IEnumerable<AnimatorStateMachine> GetManagedLayers() {
-            return GetLayers().Where(IsManaged);
+        public IEnumerable<MutableLayer> GetManagedLayers() {
+            return GetLayers().Where(l => IsManaged(l));
         }
-        public IEnumerable<AnimatorStateMachine> GetUnmanagedLayers() {
+        public IEnumerable<MutableLayer> GetUnmanagedLayers() {
             return GetLayers().Where(l => !IsManaged(l));
         }
 
@@ -276,51 +265,12 @@ namespace VF.Builder {
         public List<AvatarMask> GetUnionBaseMasks() {
             return unionedBaseMasks;
         }
-        
-        public AvatarMask GetMask(int layerId) {
-            if (layerId < 0 || layerId >= ctrl.layers.Length) return null;
-            return ctrl.layers[layerId].avatarMask;
-        }
-        public void SetMask(int layerId, AvatarMask mask) {
-            if (layerId < 0 || layerId >= ctrl.layers.Length) return;
-            var layers = ctrl.layers;
-            layers[layerId].avatarMask = mask;
-            ctrl.layers = layers;
-            VRCFuryEditorUtils.MarkDirty(ctrl);
-        }
-        public void SetName(int layerId, string name) {
-            if (layerId < 0 || layerId >= ctrl.layers.Length) return;
-            var layers = ctrl.layers;
-            layers[layerId].name = name;
-            ctrl.layers = layers;
-            VRCFuryEditorUtils.MarkDirty(ctrl);
-        }
 
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
             if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
                 return null;
             }
             return layerOwner;
-        }
-
-        public float GetWeight(AnimatorStateMachine sm) {
-            return GetWeight(GetLayerId(sm));
-        }
-        public float GetWeight(int layerId) {
-            return ctrl.layers[layerId].defaultWeight;
-        }
-        public void SetWeight(int layerId, float weight) {
-            var layers = ctrl.layers;
-            var layer = layers[layerId];
-            layer.defaultWeight = weight;
-            ctrl.layers = layers;
-        }
-        public void SetWeight(AnimatorStateMachine stateMachine, float weight) {
-            var layers = ctrl.layers;
-            var layer = layers.FirstOrDefault(l => l.stateMachine == stateMachine);
-            if (layer == null) throw new VRCFBuilderException("Failed to find layer for stateMachine");
-            layer.defaultWeight = weight;
-            ctrl.layers = layers;
         }
 
         public void ForEachClip(Action<AnimationClip> action) {

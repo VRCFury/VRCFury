@@ -28,13 +28,13 @@ namespace VF.Feature {
                     debugLog.Add($"{layer.name} - {msg}");
                 }
 
-                var weight = fx.GetWeight(layer);
+                var weight = layer.weight;
                 if (!Mathf.Approximately(weight, 1)) {
                     AddDebug($"Not optimizing (layer weight is {weight}, not 1)");
                     continue;
                 }
 
-                if (layer.stateMachines.Length > 0) {
+                if (layer.stateMachine.stateMachines.Length > 0) {
                     AddDebug("Not optimizing (contains submachine)");
                     continue;
                 }
@@ -54,7 +54,7 @@ namespace VF.Feature {
                     .Select(pair => pair.Key)
                     .ToArray();
                 if (otherLayersAnimateTheSameThing.Length > 0) {
-                    var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => fx.GetLayerName(l)));
+                    var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => l.name));
                     AddDebug($"Not optimizing (shares animations with other layer: {names}");
                     continue;
                 }
@@ -63,7 +63,7 @@ namespace VF.Feature {
                 Motion offClip;
                 string param;
 
-                var states = layer.states;
+                var states = layer.stateMachine.states;
                 if (states.Length == 1) {
                     var state = states[0].state;
                     if (hasNonstaticClips) {
@@ -95,7 +95,7 @@ namespace VF.Feature {
                     ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
                         var output = new List<AnimatorTransitionBase>();
                         foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
-                            if (t.destinationState == state || (t.isExit && layer.defaultState == state)) {
+                            if (t.destinationState == state || (t.isExit && layer.stateMachine.defaultState == state)) {
                                 output.Add(t);
                             }
                         }
@@ -104,7 +104,7 @@ namespace VF.Feature {
 
                     if (states.Length == 3) {
                         bool IsJunkState(AnimatorState state) {
-                            return layer.defaultState == state && GetTransitionsTo(state).Count == 0;
+                            return layer.stateMachine.defaultState == state && GetTransitionsTo(state).Count == 0;
                         }
                         states = states.Where(child => !IsJunkState(child.state)).ToArray();
                     }

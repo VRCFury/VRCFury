@@ -59,10 +59,9 @@ namespace VF.Utils {
                 foreach (var binding in clip.GetFloatBindings()) {
                     if (binding.path != "") continue;
                     if (binding.type != typeof(Animator)) continue;
+                    if (binding.IsMuscle()) continue;
 
                     var propName = binding.propertyName;
-                    if (IsMuscle(propName)) continue;
-
                     var newPropName = rewriteParamName(propName);
                     if (propName != newPropName) {
                         var newBinding = binding;
@@ -97,21 +96,77 @@ namespace VF.Utils {
             VRCFuryEditorUtils.MarkDirty(c);
         }
         
-        private static HashSet<string> _humanMuscleList;
-        private static HashSet<string> GetHumanMuscleList() {
-            if (_humanMuscleList != null) return _humanMuscleList;
-            _humanMuscleList = new HashSet<string>();
-            _humanMuscleList.UnionWith(HumanTrait.MuscleName);
-            return _humanMuscleList;
+        public static IEnumerable<MutableLayer> GetLayers(this AnimatorController ctrl) {
+            return ctrl.layers.Select(l => new MutableLayer(ctrl, l.stateMachine));
         }
-        private static bool IsMuscle(string name) {
-            return GetHumanMuscleList().Contains(name)
-                   || name.EndsWith(" Stretched")
-                   || name.EndsWith(".Spread")
-                   || name.EndsWith(".x")
-                   || name.EndsWith(".y")
-                   || name.EndsWith(".z")
-                   || name.EndsWith(".w");
+        
+        public static int GetLayerId(this AnimatorController ctrl, AnimatorStateMachine stateMachine) {
+            return ctrl.layers
+                .Select((l, i) => (l, i))
+                .Where(tuple => tuple.Item1.stateMachine == stateMachine)
+                .Select(tuple => tuple.Item2)
+                .First();
         }
+        
+        public static MutableLayer GetLayer(this AnimatorController ctrl, int index) {
+            return new MutableLayer(ctrl, ctrl.layers[index].stateMachine);
+        }
+        
+        public static MutableLayer GetLayer(this AnimatorController ctrl, AnimatorStateMachine stateMachine) {
+            return ctrl.GetLayer(ctrl.GetLayerId(stateMachine));
+        }
+
+    }
+
+    public class MutableLayer {
+        private AnimatorController ctrl;
+        private AnimatorStateMachine _stateMachine;
+        
+        public static implicit operator AnimatorStateMachine(MutableLayer d) => d._stateMachine;
+
+        public MutableLayer(AnimatorController ctrl, AnimatorStateMachine stateMachine) {
+            this.ctrl = ctrl;
+            this._stateMachine = stateMachine;
+        }
+
+        public int GetLayerId() {
+            return ctrl.GetLayerId(_stateMachine);
+        }
+
+        private void WithLayer(Action<AnimatorControllerLayer> with) {
+            var layers = ctrl.layers;
+            with(layers[GetLayerId()]);
+            ctrl.layers = layers;
+        }
+
+        public float weight {
+            get => ctrl.layers[GetLayerId()].defaultWeight;
+            set { WithLayer(l => l.defaultWeight = value); }
+        }
+        
+        public string name {
+            get => ctrl.layers[GetLayerId()].name;
+            set { WithLayer(l => l.name = value); }
+        }
+        
+        public AvatarMask mask {
+            get => ctrl.layers[GetLayerId()].avatarMask;
+            set { WithLayer(l => l.avatarMask = value); }
+        }
+        
+        public static bool operator ==(MutableLayer a, MutableLayer b) {
+            return a?._stateMachine == b?._stateMachine;
+        }
+        public static bool operator !=(MutableLayer a, MutableLayer b) {
+            return !(a == b);
+        }
+        public override bool Equals(object obj) {
+            return this == (MutableLayer)obj;
+        }
+        public override int GetHashCode() {
+            return _stateMachine.GetHashCode();
+        }
+
+        public AnimatorStateMachine stateMachine => _stateMachine;
     }
 }

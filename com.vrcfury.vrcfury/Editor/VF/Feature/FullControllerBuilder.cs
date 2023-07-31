@@ -242,7 +242,7 @@ namespace VF.Feature {
             }
 
             if (from.layers.Length > 0) {
-                from.layers[0].defaultWeight = 1;
+                from.GetLayer(0).weight = 1;
             }
 
             // Merge Layers

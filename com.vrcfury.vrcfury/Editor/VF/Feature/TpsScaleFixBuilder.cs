@@ -217,14 +217,18 @@ namespace VF.Feature {
         }
 
         public override string GetEditorTitle() {
-            return "TPS Scale Fix (BETA)";
+            return "TPS Scale Fix (Deprecated)";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.Info(
+            var c = new VisualElement();
+            c.Add(VRCFuryEditorUtils.Error(
+                "This component is deprecated. It still works, but you may wish to migrate from TPS to SPS for" +
+                " native scaling support, as well as other benefits.\n\nCheck out https://vrcfury.com/sps"));
+            c.Add(VRCFuryEditorUtils.Info(
                 "This feature will allow Poiyomi TPS to work properly with scaling. While active, avatar scaling, " +
-                "object scaling, or any combination of the two may be used in conjunction with TPS.\n\n" +
-                "Beware: this feature is BETA and may not work properly.");
+                "object scaling, or any combination of the two may be used in conjunction with TPS."));
+            return c;
         }
 
         public override bool AvailableOnProps() {

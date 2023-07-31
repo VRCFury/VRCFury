@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1227330909385755638
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1227330909385755637}
+  m_Layer: 0
+  m_Name: GogoLoco Legacy Broke (VRCFury)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1227330909385755637
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1227330909385755638}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 5469400045678060766}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &6552575454122798891
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 1227330909385755637}
+    m_Modifications:
+    - target: {fileID: 1227330909385755637, guid: 0b870ff4c5e47b2418baa56efaba5324,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1227330909385755637, guid: 0b870ff4c5e47b2418baa56efaba5324,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1227330909385755637, guid: 0b870ff4c5e47b2418baa56efaba5324,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1227330909385755637, guid: 0b870ff4c5e47b2418baa56efaba5324,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1227330909385755638, guid: 0b870ff4c5e47b2418baa56efaba5324,
+        type: 3}
+      propertyPath: m_Name
+      value: GogoLoco Beyond (VRCFury)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 0b870ff4c5e47b2418baa56efaba5324, type: 3}
+--- !u!4 &5469400045678060766 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1227330909385755637, guid: 0b870ff4c5e47b2418baa56efaba5324,
+    type: 3}
+  m_PrefabInstance: {fileID: 6552575454122798891}
+  m_PrefabAsset: {fileID: 0}

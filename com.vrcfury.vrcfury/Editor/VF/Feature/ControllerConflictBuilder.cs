@@ -3,6 +3,7 @@ using System.Linq;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
@@ -31,7 +32,7 @@ namespace VF.Feature {
                 var uniqueOwners = new HashSet<string>();
                 foreach (var layer in controller.GetLayers()) {
                     // Ignore empty layers (bask mask, junk layers, etc)
-                    if (layer.defaultState == null) continue;
+                    if (layer.stateMachine.defaultState == null) continue;
                     uniqueOwners.Add(controller.GetLayerOwner(layer));
                 }
                 ownersByController[type] = uniqueOwners;
@@ -75,7 +76,6 @@ namespace VF.Feature {
                                 .Where(l => drivesController.GetLayerOwner(l) == layerOwner)
                                 .ToList();
                             foreach (var drivesLayer in drivesLayers) {
-                                var existingLayerWeight = drivesController.GetWeight(drivesLayer);
                                 var layerControl = (VRCAnimatorLayerControl)add(typeof(VRCAnimatorLayerControl));
                                 layerControl.playable =
                                     VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
@@ -106,7 +106,7 @@ namespace VF.Feature {
                 var i = 0;
                 foreach (var layer in action.GetLayers()) {
                     var layerNum = i++;
-                    if (layerNum != 0) action.SetWeight(layer, 0);
+                    if (layerNum != 0) layer.weight = 0;
                 }
             }
             

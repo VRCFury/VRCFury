@@ -31,7 +31,8 @@ namespace VF.Utils {
         private static readonly MethodInfo setFloatNoSync = animUtil.GetMethod("SetEditorCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        public static void SetCurves(this AnimationClip clip, ICollection<(EditorCurveBinding,FloatOrObjectCurve)> curves) {
+        public static void SetCurves(this AnimationClip clip, IEnumerable<(EditorCurveBinding,FloatOrObjectCurve)> curves) {
+            var changedOne = false;
             foreach (var (binding, curve) in curves) {
                 if (curve == null) {
                     // If we don't check if it exists first, unity throws a "Can't assign curve because the
@@ -45,8 +46,9 @@ namespace VF.Utils {
                 } else {
                     setObjNoSync.Invoke(null, new object[] { clip, binding, curve.ObjectCurve });
                 }
+                changedOne = true;
             }
-            if (curves.Count > 0) {
+            if (changedOne) {
                 triggerSync.Invoke(null, new object[] { clip });
             }
         }
