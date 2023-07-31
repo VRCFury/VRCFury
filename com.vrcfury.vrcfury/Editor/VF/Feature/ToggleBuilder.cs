@@ -37,23 +37,27 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return param;
     }
 
+    private (string,bool) GetParamName() {
+        if (model.paramOverride != null) {
+            return (model.paramOverride, false);
+        }
+        if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
+            return (model.globalParam, false);
+        }
+        return (model.name, model.usePrefixOnParam);
+    }
+
     private void CreateSlider() {
         var fx = GetFx();
         var layerName = model.name;
         var layer = fx.NewLayer(layerName);
-        var param = model.name;
-        bool usePrefixOnParam = true;
 
-        if (model.useGlobalParam && model.globalParam != null && model.paramOverride == null) {
-            model.paramOverride = model.globalParam;
-            param = model.paramOverride;
-            usePrefixOnParam = false;
-        }
+        var (paramName, usePrefixOnParam) = GetParamName();
 
         var off = layer.NewState("Off");
         var on = layer.NewState("On");
         var x = fx.NewFloat(
-            param,
+            paramName,
             synced: true,
             saved: model.saved,
             def: model.defaultOn ? model.defaultSliderValue : 0,
@@ -97,24 +101,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
 
-        if (model.useGlobalParam && model.globalParam != null && model.paramOverride == null) {
-            model.paramOverride = model.globalParam;
-            model.usePrefixOnParam = false;
-        }
-
+        var (paramName, usePrefixOnParam) = GetParamName();
         VFACondition onCase;
-        string paramName;
-        bool usePrefixOnParam;
-        if (model.paramOverride != null) {
-            paramName = model.paramOverride;
-            usePrefixOnParam = model.usePrefixOnParam;
-        } else if (model.useGlobalParam && model.globalParam != null) {
-            paramName = model.globalParam;
-            usePrefixOnParam = false;
-        } else {
-            paramName = model.name;
-            usePrefixOnParam = model.usePrefixOnParam;
-        }
         if (model.useInt) {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
