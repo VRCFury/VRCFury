@@ -27,7 +27,7 @@ namespace VF.Feature {
         private void ApplyToLayer(AnimatorStateMachine layer) {
             var newParams = new Dictionary<AnimatorState, VFAParam>();
             foreach (var state in new AnimatorIterator.States().From(layer)) {
-                var newParam = AddToAltLayer(state.motion);
+                var newParam = AddToAltLayer(state);
                 if (newParam != null) {
                     newParams[state] = newParam;
                 }
@@ -195,25 +195,24 @@ namespace VF.Feature {
         private int actionNum = 0;
 
         [CanBeNull]
-        private VFAFloat AddToAltLayer(Motion motion) {
-            var humanoidMask = GetHumanoidMaskName(motion);
+        private VFAFloat AddToAltLayer(AnimatorState state) {
+            var humanoidMask = GetHumanoidMaskName(state);
             if (humanoidMask == "none") {
                 return null;
             }
 
             var newParam = GetFx().NewFloat("action_" + (actionNum++));
             if (humanoidMask == "emote") {
-                AddToAltLayer(motion, LayerType.Action, newParam);
+                AddToAltLayer(state, LayerType.Action, newParam);
             } else {
-                if (humanoidMask == "hands" || humanoidMask == "leftHand") AddToAltLayer(motion, LayerType.LeftHand, newParam);
-                if (humanoidMask == "hands"|| humanoidMask == "rightHand") AddToAltLayer(motion, LayerType.RightHand, newParam);
+                if (humanoidMask == "hands" || humanoidMask == "leftHand") AddToAltLayer(state, LayerType.LeftHand, newParam);
+                if (humanoidMask == "hands"|| humanoidMask == "rightHand") AddToAltLayer(state, LayerType.RightHand, newParam);
             }
-
             return newParam;
         }
 
-        private void AddToAltLayer(Motion motion, LayerType type, VFAFloat param) {
-            var copy = mutableManager.CopyRecursive(motion, $"Action from {motion.name}");
+        private void AddToAltLayer(AnimatorState state, LayerType type, VFAFloat param) {
+            var originalMotion = state.motion;
 
             bool ShouldTransferBinding(EditorCurveBinding binding) {
                 switch (type) {
@@ -223,23 +222,27 @@ namespace VF.Feature {
                 }
             }
 
-            foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
+            var copyWithoutMuscles = mutableManager.CopyRecursive(originalMotion, $"{originalMotion.name} (no muscles)");
+            foreach (var clip in new AnimatorIterator.Clips().From(copyWithoutMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(ShouldTransferBinding);
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             }
-            foreach (var clip in new AnimatorIterator.Clips().From(copy)) {
+            var copyOnlyMuscles = mutableManager.CopyRecursive(originalMotion, $"{originalMotion.name} (only muscles)");
+            foreach (var clip in new AnimatorIterator.Clips().From(copyOnlyMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(b => !ShouldTransferBinding(b));
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             }
-            statesToCreate.Add((type, param, copy));
+
+            state.motion = copyWithoutMuscles;
+            statesToCreate.Add((type, param, copyOnlyMuscles));
         }
 
-        private string GetHumanoidMaskName(Motion motion) {
+        private string GetHumanoidMaskName(AnimatorState state) {
 
             var leftHand = false;
             var rightHand = false;
 
-            foreach(var clip in new AnimatorIterator.Clips().From(motion)) {
+            foreach(var clip in new AnimatorIterator.Clips().From(state)) {
                 var bones = AnimationUtility.GetCurveBindings(clip);
                 foreach (var b in bones) {
                     if (!(HumanTrait.MuscleName.Contains(b.propertyName) || b.propertyName.EndsWith(" Stretched") || b.propertyName.EndsWith(".Spread"))) continue;

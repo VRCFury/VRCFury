@@ -440,7 +440,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var controller = GetFx();
         var paramsToTurnOff = new HashSet<VFABool>();
-        var paramsToTurnToZero = new Dictionary<String, HashSet<(VFAInteger, int)>>();
+        var paramsToTurnToZero = new Dictionary<string, HashSet<(VFAInteger, int)>>();
         var allOthersOff = controller.Always();
         var isLocal = controller.IsLocal().IsTrue();
 
