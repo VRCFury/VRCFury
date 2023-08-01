@@ -1,0 +1,1 @@
+Avatar scaling is now built into VRChat. This prefab now does nothing.
