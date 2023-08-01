@@ -117,8 +117,6 @@ namespace VF.Feature.Base {
                 clip.RewriteBindings(ClipRewriter.AnimatorBindingsAlwaysTargetRoot);
             }
 
-
-            var clip = GetFx().NewClip(name);
             var restingStateBuilder = GetBuilder<RestingStateBuilder>();
 
             AnimationClip firstClip = state.actions
