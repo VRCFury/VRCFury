@@ -97,6 +97,11 @@ namespace VF.Feature.Base {
                 animObject: animObjectOverride ?? featureBaseObject,
                 rootObject: avatarObject
             );
+            void RewriteClip(AnimationClip clip) {
+                clip.RewritePaths(pathRewriter);
+                clip.AdjustRootScale(avatarObject);
+                clip.RewriteBindings(ClipRewriter.AnimatorBindingsAlwaysTargetRoot);
+            }
 
             var offClip = new AnimationClip();
             var onClip = GetFx().NewClip(name);
@@ -109,7 +114,7 @@ namespace VF.Feature.Base {
                 var nameBak = onClip.name;
                 EditorUtility.CopySerialized(firstClip, onClip);
                 onClip.name = nameBak;
-                onClip.RewritePaths(pathRewriter);
+                RewriteClip(onClip);
             }
 
             foreach (var action in state.actions) {
@@ -146,7 +151,7 @@ namespace VF.Feature.Base {
                         AnimationClip clipActionClip = clipAction.clip;
                         if (clipActionClip && clipActionClip != firstClip) {
                             var copy = mutableManager.CopyRecursive(clipActionClip, "Copy of " + clipActionClip.name);
-                            copy.RewritePaths(pathRewriter);
+                            RewriteClip(copy);
                             onClip.CopyFrom(copy);
                             AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                         }

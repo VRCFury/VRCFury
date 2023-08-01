@@ -9,6 +9,15 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
     public static class ClipRewriter {
 
+        public static EditorCurveBinding? AnimatorBindingsAlwaysTargetRoot(EditorCurveBinding binding) {
+            if (binding.type == typeof(Animator)) {
+                var newBinding = binding;
+                newBinding.path = "";
+                return newBinding;
+            }
+            return binding;
+        }
+
         /**
          * Creates a path rewriter that looks for a given object path, using
          * animObject as the prefix. If the object is not found, it removes one
