@@ -206,14 +206,7 @@ namespace VF.Feature {
                 clip.AdjustRootScale(avatarObject);
 
                 // Make sure all animator parameter triggers hit the root animator
-                clip.RewriteBindings((binding, curve) => {
-                    if (binding.type == typeof(Animator)) {
-                        var newBinding = binding;
-                        newBinding.path = "";
-                        return newBinding;
-                    }
-                    return binding;
-                });
+                clip.RewriteBindings(ClipRewriter.AnimatorBindingsAlwaysTargetRoot);
             }
             
             // Rewrite params

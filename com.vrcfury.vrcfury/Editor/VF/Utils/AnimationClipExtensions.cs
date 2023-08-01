@@ -92,10 +92,10 @@ namespace VF.Utils {
             }
         }
 
-        public static void RewriteBindings(this AnimationClip clip, Func<EditorCurveBinding, FloatOrObjectCurve, EditorCurveBinding?> rewrite) {
+        public static void RewriteBindings(this AnimationClip clip, Func<EditorCurveBinding, EditorCurveBinding?> rewrite) {
             var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
             foreach (var (binding,curve) in clip.GetAllCurves()) {
-                var newBinding = rewrite(binding, curve);
+                var newBinding = rewrite(binding);
                 if (newBinding == null) {
                     output.Add((binding, null));
                 } else if (binding != newBinding) {
@@ -107,7 +107,7 @@ namespace VF.Utils {
         }
 
         public static void RewritePaths(this AnimationClip clip, Func<string,string> rewrite) {
-            clip.RewriteBindings((binding,curve) => {
+            clip.RewriteBindings(binding => {
                 var newPath = rewrite(binding.path);
                 if (newPath == null) return null;
                 if (newPath == binding.path) return binding;
