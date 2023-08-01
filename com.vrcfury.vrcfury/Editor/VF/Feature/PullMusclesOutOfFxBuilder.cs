@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -57,17 +58,17 @@ namespace VF.Feature {
             RightHand
         };
 
-        private List<(LayerType, VFAFloat, Motion)> statesToCreate = new List<(LayerType, VFAFloat, Motion)>();
+        private List<(LayerType, VFAFloat, Motion, float)> statesToCreate = new List<(LayerType, VFAFloat, Motion, float)>();
 
         private void CreateAltLayers() {
             foreach (var group in statesToCreate.GroupBy(state => state.Item1)) {
                 var type = group.Key;
-                var states = group.Select(tuple => (tuple.Item2, tuple.Item3)).ToArray();
+                var states = group.Select(tuple => (tuple.Item2, tuple.Item3, tuple.Item4)).ToArray();
                 CreateAltLayer(type, states);
             }
         }
 
-        private void CreateAltLayer(LayerType type, IEnumerable<(VFAFloat,Motion)> states) {
+        private void CreateAltLayer(LayerType type, IEnumerable<(VFAFloat,Motion,float)> states) {
             ControllerManager controller;
             VFALayer layer;
             if (type == LayerType.Action) {
@@ -87,19 +88,22 @@ namespace VF.Feature {
 
             var previousStates = new List<(VFACondition, VFAState)>();
             foreach (var s in states) {
-                var (param, motion) = s;
+                var (param, motion, exitTime) = s;
                 var newState = layer.NewState(motion.name);
                 newState.WithAnimation(motion);
-                foreach (var (otherCond,other) in previousStates) {
-                    newState.TransitionsTo(other).When(otherCond);
-                }
                 // Because param came from another controller, we have to recreate it
                 var myParam = controller.NewFloat(param.Name(), usePrefix: false);
                 var myCond = myParam.IsGreaterThan(0);
 
                 var outState = layer.NewState($"{motion.name} - Out");
-                newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not());
-                outState.TransitionsTo(off).When(controller.Always());
+                off.TransitionsToExit().When(myCond);
+                newState.TransitionsFromEntry().When(myCond);
+                newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not()).WithTransitionExitTime(exitTime);
+                newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
+                foreach (var (otherCond,other) in previousStates) {
+                    newState.TransitionsToExit().When(otherCond).WithTransitionExitTime(exitTime);;
+                }
+                outState.TransitionsToExit().When(controller.Always());
 
                 if (type == LayerType.Action) {
                     var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
@@ -109,7 +113,6 @@ namespace VF.Feature {
                     weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOff.goalWeight = 0;
                 }
-
 
                 // TODO: this better
                 var trackingOff = newState.GetTrackingControl();
@@ -187,38 +190,71 @@ namespace VF.Feature {
                     trackingOff.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
                 }
 
-                off.TransitionsTo(newState).When(myCond);
+                off.TransitionsTo(newState).When(myCond).WithTransitionExitTime(exitTime);
                 previousStates.Add((myCond, newState));
             }
+
+            off.TransitionsFromEntry().When(controller.Always());
         }
 
         private int actionNum = 0;
 
         [CanBeNull]
         private VFAFloat AddToAltLayer(AnimatorState state) {
-            var humanoidMask = GetHumanoidMaskName(state);
-            if (humanoidMask == "none") {
-                return null;
+            var motion = state.motion;
+            if (motion == null) return null;
+
+            var muscleTypes = new AnimatorIterator.Clips().From(motion)
+                .SelectMany(clip => clip.GetMuscleBindingTypes())
+                .ToImmutableHashSet();
+
+            List<(AnimationClip,bool)> proxies;
+            if (motion is AnimationClip rootClip) {
+                proxies = rootClip.CollapseProxyBindings();
+            } else {
+                proxies = new List<(AnimationClip, bool)>();
+            }
+
+            if (muscleTypes.Count == 0 && proxies.Count == 0) return null;
+
+            var exitTime = -1f;
+
+            foreach (var transition in state.transitions) {
+                if (transition.hasExitTime && transition.exitTime > exitTime) {
+                    exitTime = transition.exitTime;
+                }
             }
 
             var newParam = GetFx().NewFloat("action_" + (actionNum++));
-            if (humanoidMask == "emote") {
-                AddToAltLayer(state, LayerType.Action, newParam);
+            if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
+                AddToAltLayer(state, LayerType.Action, newParam, exitTime);
             } else {
-                if (humanoidMask == "hands" || humanoidMask == "leftHand") AddToAltLayer(state, LayerType.LeftHand, newParam);
-                if (humanoidMask == "hands"|| humanoidMask == "rightHand") AddToAltLayer(state, LayerType.RightHand, newParam);
+                if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.LeftHand))
+                    AddToAltLayer(state, LayerType.LeftHand, newParam, exitTime);
+                if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.RightHand))
+                    AddToAltLayer(state, LayerType.RightHand, newParam, exitTime);
+            }
+
+            foreach (var proxy in proxies) {
+                var (proxyClip, isAction) = proxy;
+                if (isAction) {
+                    statesToCreate.Add((LayerType.Action, newParam, proxyClip, exitTime));
+                } else {
+                    statesToCreate.Add((LayerType.LeftHand, newParam, proxyClip, exitTime));
+                    statesToCreate.Add((LayerType.RightHand, newParam, proxyClip, exitTime));
+                }
             }
             return newParam;
         }
 
-        private void AddToAltLayer(AnimatorState state, LayerType type, VFAFloat param) {
+        private void AddToAltLayer(AnimatorState state, LayerType type, VFAFloat param, float exitTime) {
             var originalMotion = state.motion;
 
             bool ShouldTransferBinding(EditorCurveBinding binding) {
                 switch (type) {
                     case LayerType.Action: return binding.IsMuscle();
-                    case LayerType.LeftHand: return binding.IsLeftHand();
-                    default: return binding.IsRightHand();
+                    case LayerType.LeftHand: return binding.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.LeftHand;
+                    default: return binding.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.RightHand;
                 }
             }
 
@@ -234,47 +270,7 @@ namespace VF.Feature {
             }
 
             state.motion = copyWithoutMuscles;
-            statesToCreate.Add((type, param, copyOnlyMuscles));
-        }
-
-        private string GetHumanoidMaskName(AnimatorState state) {
-
-            var leftHand = false;
-            var rightHand = false;
-
-            foreach(var clip in new AnimatorIterator.Clips().From(state)) {
-                var bones = AnimationUtility.GetCurveBindings(clip);
-                foreach (var b in bones) {
-                    if (!(HumanTrait.MuscleName.Contains(b.propertyName) || b.propertyName.EndsWith(" Stretched") || b.propertyName.EndsWith(".Spread"))) continue;
-                    if (b.propertyName.Contains("RightHand") || b.propertyName.Contains("Right Thumb") || b.propertyName.Contains("Right Index") ||
-                        b.propertyName.Contains("Right Middle") || b.propertyName.Contains("Right Ring") || b.propertyName.Contains("Right Little")) { rightHand = true; continue; }
-                    if (b.propertyName.Contains("LeftHand") || b.propertyName.Contains("Left Thumb") || b.propertyName.Contains("Left Index") || 
-                        b.propertyName.Contains("Left Middle") || b.propertyName.Contains("Left Ring") || b.propertyName.Contains("Left Little")) { leftHand = true; continue; }
-                    return "emote";
-                }
-            }
-
-            if (leftHand && rightHand) return "hands";
-            if (leftHand) return "leftHand";
-            if (rightHand) return "rightHand";
-
-            return "none";
-        }
-
-        private bool HasAction(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion)
-                .SelectMany(clip => clip.GetFloatBindings())
-                .Any(b => b.IsMuscle() && !b.IsLeftHand() && !b.IsRightHand());
-        }
-        private bool HasLeftHand(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion)
-                .SelectMany(clip => clip.GetFloatBindings())
-                .Any(b => b.IsLeftHand());
-        }
-        private bool HasRightHand(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion)
-                .SelectMany(clip => clip.GetFloatBindings())
-                .Any(b => b.IsRightHand());
+            statesToCreate.Add((type, param, copyOnlyMuscles, exitTime));
         }
     }
 }

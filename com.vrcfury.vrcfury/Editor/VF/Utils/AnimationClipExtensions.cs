@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -95,6 +97,7 @@ namespace VF.Utils {
         public static void RewriteBindings(this AnimationClip clip, Func<EditorCurveBinding, EditorCurveBinding?> rewrite) {
             var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
             foreach (var (binding,curve) in clip.GetAllCurves()) {
+                if (binding.IsProxyBinding()) continue;
                 var newBinding = rewrite(binding);
                 if (newBinding == null) {
                     output.Add((binding, null));
@@ -147,13 +150,6 @@ namespace VF.Utils {
             clip.SetCurves(other.GetAllCurves());
         }
 
-        public static bool IsProxyAnimation(this AnimationClip clip) {
-            if (clip == null) return false;
-            var path = AssetDatabase.GetAssetPath(clip);
-            if (path == null) return false;
-            return path.Contains("/proxy_");
-        }
-
         public static bool IsLooping(this AnimationClip clip) {
             var so = new SerializedObject(clip);
             return so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
@@ -163,6 +159,13 @@ namespace VF.Utils {
             var so = new SerializedObject(clip);
             so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = on;
             so.ApplyModifiedProperties();
+        }
+
+        public static IImmutableSet<EditorCurveBindingExtensions.MuscleBindingType> GetMuscleBindingTypes(this AnimationClip clip) {
+            return clip.GetFloatBindings()
+                .Select(binding => binding.GetMuscleBindingType())
+                .Where(type => type != EditorCurveBindingExtensions.MuscleBindingType.None)
+                .ToImmutableHashSet();
         }
     }
 }
