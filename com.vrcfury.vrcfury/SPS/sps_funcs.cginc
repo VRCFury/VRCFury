@@ -11,7 +11,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	const float3 bakeIndex = 1 + vertexId * 7;
 	const float3 restingVertex = SpsBakedVertex(bakeIndex) * (_SPS_Length / _SPS_BakedLength);
 	const float3 restingNormal = SpsBakedVertex(bakeIndex+3);
-	const float active = SpsBakedFloat(bakeIndex + 6) > 0 ? 1 : 0;
+	const float active = SpsBakedFloat(bakeIndex + 6);
 
 	if (vertex.z < 0 || active == 0) return;
 
@@ -60,9 +60,9 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		const float tooFar = saturate(sps_map(orfDistance, worldLength*1.5, worldLength*2.5, 0, 1));
 		applyLerp = min(applyLerp, 1-tooFar);
 
-		applyLerp = applyLerp * active * saturate(_SPS_Enabled);
+		applyLerp = applyLerp * saturate(_SPS_Enabled);
 
-		dumbLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1));
+		dumbLerp = saturate(sps_map(applyLerp, 0, 0.2, 0, 1)) * active;
 		bezierLerp = saturate(sps_map(applyLerp, 0, 1, 0, 1));
 	}
 
