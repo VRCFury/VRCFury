@@ -440,7 +440,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (maskGuid != "") {
                 var maskPath = AssetDatabase.GUIDToAssetPath(maskGuid);
                 var mask = AssetDatabase.LoadAssetAtPath<AvatarMask>(maskPath);
-                controller.SetMask(controller.GetLayers().Count() - 1, mask);
+                controller.GetLayers().ToList()[controller.GetLayers().Count() - 1].mask = mask;
             }
         } else if (!enableExclusiveTag) {
             var exitTransition = outState.TransitionsToExit();
