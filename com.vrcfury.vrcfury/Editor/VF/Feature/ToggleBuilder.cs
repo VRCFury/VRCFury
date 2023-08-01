@@ -20,8 +20,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private string layerName;
     private VFACondition onCase;
     private bool onEqualsOut;
-    private readonly Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> inStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
-    private readonly Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)> outStates = new Dictionary<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType, (VFAState, VFAState, VFAState)>();
+    private (VFAState, VFAState, VFAState) inStates = (null, null, null);
+    private (VFAState, VFAState, VFAState) outStates = (null, null, null);
 
     private bool addMenuItem;
     private bool usePrefixOnParam;
@@ -331,24 +331,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFABool physBoneResetter,
         bool isLocal = false
     ) {
-        var isHumanoidLayer = controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
-
-        var clip = LoadState(onName, action, isHumanoidLayer);
-
-        if (controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX && (IsHuanoid(action) || IsHuanoid(inAction) || IsHuanoid(outAction))) {
-            var controller2 = humanoidMask == "emote" ? GetAction() : GetGesture();
-            var layer2 = GetLayer(layerName, controller2, humanoidMask);
-            var off2 = GetStartState("Off", layer2);
-            VFACondition onCase2;
-            if (useInt) {
-                var param2 = controller2.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
-                onCase2 = param2.IsEqualTo(intTarget);
-            } else {
-                var param2 = controller2.NewBool(model.name, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-                onCase2 = param2.IsTrue();
-            }
-            Apply(controller2, layer2, off2, onCase2, onName, action, inAction, outAction, physBoneResetter);
-        }
+        var clip = LoadState(onName, action);
 
         if (restingClip == null && model.includeInRest) {
             restingClip = clip;
@@ -369,7 +352,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState outState;
 
         if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {
-            var transitionClipIn = LoadState(onName + " In", inAction, isHumanoidLayer);
+            var transitionClipIn = LoadState(onName + " In", inAction);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             if (action.actions.Count() != 0) {
                 onState = layer.NewState(onName).WithAnimation(clip);
@@ -394,7 +377,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
        
         if (model.hasTransition && outAction != null && outAction.actions.Count() != 0) {
-            var transitionClipOut = LoadState(onName + " Out", outAction, isHumanoidLayer);
+            var transitionClipOut = LoadState(onName + " Out", outAction);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : 0);
         } else {
@@ -403,46 +386,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         onEqualsOut = outState == onState;
 
-        if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
-            var blendableLayer = controller.GetType() == VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.Action ? VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Action : VRC.SDKBase.VRC_PlayableLayerControl.BlendableLayer.Gesture;
-            off.TrackingController(humanoidMask + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
-            inState.TrackingController(humanoidMask + "Animation").PlayableLayerController(blendableLayer, 1, 0);
-
-            var blendOut = layer.NewState(onName + " Blendout").TrackingController(humanoidMask + "Tracking").PlayableLayerController(blendableLayer, 0, 0);
-
-            var transition = outState.TransitionsTo(blendOut).WithTransitionDurationSeconds(1000).WithInterupt(TransitionInterruptionSource.Destination);
-
-            outState = blendOut;
-
-            if (onEqualsOut) {
-                transition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
-            } else {
-                transition.When().WithTransitionExitTime(1);
-            }
-
-            if (!enableExclusiveTag) {
-                blendOut.TransitionsToExit().When(controller.Always());
-            }
-
-            var maskGuid = "";
-            switch (humanoidMask) {
-                case "hands":
-                    maskGuid = "b2b8bad9583e56a46a3e21795e96ad92";
-                    break;
-                case "rightHand":
-                    maskGuid = "903ce375d5f609d44b9f00b425d6eda9";
-                    break;
-                case "leftHand":
-                    maskGuid = "7ff0199655202a04eb175de45a6e078a";
-                    break;
-            }
-
-            if (maskGuid != "") {
-                var maskPath = AssetDatabase.GUIDToAssetPath(maskGuid);
-                var mask = AssetDatabase.LoadAssetAtPath<AvatarMask>(maskPath);
-                controller.GetLayers().ToList()[controller.GetLayers().Count() - 1].mask = mask;
-            }
-        } else if (!enableExclusiveTag) {
+        if (!enableExclusiveTag) {
             var exitTransition = outState.TransitionsToExit();
 
             if (onEqualsOut) {
@@ -454,15 +398,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (!model.separateLocal)
         {
-            inStates[controller.GetType()] = (inState, null, null);
-            outStates[controller.GetType()] = (outState, null, null);
+            inStates = (inState, null, null);
+            outStates = (outState, null, null);
         } else {
             if (!isLocal) {
-                inStates[controller.GetType()] = (null, inState, null);
-                outStates[controller.GetType()] = (null, outState, null);
+                inStates = (null, inState, null);
+                outStates = (null, outState, null);
             } else {
-                inStates[controller.GetType()] = (null, inStates[controller.GetType()].Item2, inState);
-                outStates[controller.GetType()] = (null, inStates[controller.GetType()].Item2, outState);
+                inStates = (null, inStates.Item2, inState);
+                outStates = (null, inStates.Item2, outState);
             }
         }
         
@@ -494,66 +438,62 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (!enableExclusiveTag) return;
 
-        ControllerManager[] controllers = { GetFx(), GetAction(), GetGesture() };
+        var controller = GetFx();
         var paramsToTurnOff = new HashSet<VFABool>();
         var paramsToTurnToZero = new Dictionary<String, HashSet<(VFAInteger, int)>>();
-        var allOthersOff = controllers[0].Always();
-        var isLocal = controllers[0].IsLocal().IsTrue();
+        var allOthersOff = controller.Always();
+        var isLocal = controller.IsLocal().IsTrue();
 
-        foreach (var controller in controllers) {
-            (VFAState outState, VFAState outStateR, VFAState outStateL) = outStates.ContainsKey(controller.GetType()) ? outStates[controller.GetType()] : (null, null, null);
+        (VFAState outState, VFAState outStateR, VFAState outStateL) = outStates;
             
-            foreach (var exclusiveTag in GetExclusiveTags()) {
-                foreach (var other in allBuildersInRun
-                            .OfType<ToggleBuilder>()
-                            .Where(b => b != this)) {
-                    if (other.GetExclusiveTags().Contains(exclusiveTag)) {
-                        var otherParam = other.GetParam();
-                        if (otherParam != null) {
-                            var otherOnCondition = other.useInt ? (otherParam as VFAInteger).IsEqualTo(other.intTarget) : (otherParam as VFABool).IsTrue();
-                            if (other.useInt) {
-                                if (param.Name() != otherParam.Name()) {
-                                    if (!paramsToTurnToZero.ContainsKey(otherParam.Name())) {
-                                        paramsToTurnToZero[otherParam.Name()] = new HashSet<(VFAInteger, int)>();
-                                    }
-                                    paramsToTurnToZero[otherParam.Name()].Add((otherParam as VFAInteger, other.intTarget));
+        foreach (var exclusiveTag in GetExclusiveTags()) {
+            foreach (var other in allBuildersInRun
+                        .OfType<ToggleBuilder>()
+                        .Where(b => b != this)) {
+                if (other.GetExclusiveTags().Contains(exclusiveTag)) {
+                    var otherParam = other.GetParam();
+                    if (otherParam != null) {
+                        var otherOnCondition = other.useInt ? (otherParam as VFAInteger).IsEqualTo(other.intTarget) : (otherParam as VFABool).IsTrue();
+                        if (other.useInt) {
+                            if (param.Name() != otherParam.Name()) {
+                                if (!paramsToTurnToZero.ContainsKey(otherParam.Name())) {
+                                    paramsToTurnToZero[otherParam.Name()] = new HashSet<(VFAInteger, int)>();
                                 }
-                            } else {
-                                paramsToTurnOff.Add(otherParam as VFABool);
-                                if (controller == controllers[0]) {
-                                    allOthersOff = allOthersOff.And(otherOnCondition.Not());
-                                }
+                                paramsToTurnToZero[otherParam.Name()].Add((otherParam as VFAInteger, other.intTarget));
                             }
-                            (VFAState inState, VFAState inStateR, VFAState inStateL) = other.inStates.ContainsKey(controller.GetType()) ? other.inStates[controller.GetType()] : (null, null, null);
+                        } else {
+                            paramsToTurnOff.Add(otherParam as VFABool);
+                            allOthersOff = allOthersOff.And(otherOnCondition.Not());
+                        }
+                        (VFAState inState, VFAState inStateR, VFAState inStateL) = other.inStates;
 
-                            if (inState != null) {
-                                if (outState != null && inState.GetRawStateMachine() == outState.GetRawStateMachine()) {
-                                    outState.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
-                                }
-                                if (outStateR != null && inState.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
-                                    outStateR.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
-                                }
-                                if (outStateL != null && inState.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
-                                    outStateL.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
-                                }
+                        if (inState != null) {
+                            if (outState != null && inState.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                outState.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                             }
-
-                            if (inStateR != null) {
-                                if (outState != null && inStateR.GetRawStateMachine() == outState.GetRawStateMachine()) {
-                                    outState.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal.Not())).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
-                                }
-                                if (outStateR != null && inStateR.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
-                                    outStateR.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal).Not()).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
-                                }
+                            if (outStateR != null && inState.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
+                                outStateR.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                             }
+                            if (outStateL != null && inState.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
+                                outStateL.TransitionsTo(inState).When(otherOnCondition).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
+                            }
+                        }
 
-                            if (inStateL != null) {
-                                if (outState != null && inStateL.GetRawStateMachine() == outState.GetRawStateMachine()) {
-                                    outState.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
-                                }
-                                if (outStateL != null && inStateL.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
-                                    outStateL.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
-                                }
+                        if (inStateR != null) {
+                            if (outState != null && inStateR.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                outState.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal.Not())).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
+                            }
+                            if (outStateR != null && inStateR.GetRawStateMachine() == outStateR.GetRawStateMachine()) {
+                                outStateR.TransitionsTo(inStateR).When(otherOnCondition.And(isLocal).Not()).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
+                            }
+                        }
+
+                        if (inStateL != null) {
+                            if (outState != null && inStateL.GetRawStateMachine() == outState.GetRawStateMachine()) {
+                                outState.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
+                            }
+                            if (outStateL != null && inStateL.GetRawStateMachine() == outStateL.GetRawStateMachine()) {
+                                outStateL.TransitionsTo(inStateL).When(otherOnCondition.And(isLocal)).WithTransitionExitTime(1).WithTransitionDurationSeconds(transitionTime);
                             }
                         }
                     }
@@ -562,9 +502,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             if (outState != null) {
                 var exitTransition = outState.TransitionsToExit();
-                if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
-                    exitTransition.When(controller.Always());
-                } else if (onEqualsOut) {
+                if (onEqualsOut) {
                     exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
@@ -573,9 +511,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             if (outStateR != null) {
                 var exitTransition = outStateR.TransitionsToExit();
-                if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
-                    exitTransition.When(controller.Always());
-                } else if (onEqualsOut) {
+                if (onEqualsOut) {
                     exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
@@ -584,9 +520,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             if (outStateL != null) {
                 var exitTransition = outStateL.TransitionsToExit();
-                if (controller.GetType() != VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX) {
-                    exitTransition.When(controller.Always());
-                } else if (onEqualsOut) {
+                if (onEqualsOut) {
                     exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
                 } else {
                     exitTransition.When().WithTransitionExitTime(1);
@@ -605,10 +539,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             triggerState.TransitionsToExit().When(onParam.Not());
 
-            var allOrParam = controllers[0].Never();
+            var allOrParam = controller.Never();
 
             foreach (var tag in paramsToTurnToZero.Keys) {
-                var orParam = controllers[0].Never();
+                var orParam = controller.Never();
                 VFAInteger tagParam = paramsToTurnToZero[tag].First().Item1;
                 foreach (var (p, i) in paramsToTurnToZero[tag]) {
                     orParam = orParam.Or(p.IsEqualTo(i));

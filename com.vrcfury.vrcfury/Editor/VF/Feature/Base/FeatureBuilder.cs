@@ -102,10 +102,7 @@ namespace VF.Feature.Base {
             return state != null;
         }
 
-        protected AnimationClip LoadState(string name, State state, bool checkForProxy) {
-            return LoadState(name, state, null, checkForProxy);
-        }
-        protected AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool checkForProxy = false) {
+        protected AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
             if (state == null || state.actions.Count == 0) {
                 return GetFx().GetNoopClip();
             }
@@ -115,31 +112,11 @@ namespace VF.Feature.Base {
                 rootObject: avatarObject
             );
 
-            bool IsProxy(Model.StateAction.Action action) {
-                if (!(action is AnimationClipAction)) return false;
-                AnimationClip c = (action as AnimationClipAction).clip;
-                return c.name.Contains("proxy_");
-            }
-
-            if (checkForProxy) {
-                foreach (var action in state.actions.OfType<AnimationClipAction>()) {
-                    if (IsProxy(action)) {
-                        AnimationClip c = action.clip;
-                        return c;
-                    }
-                }
-            }
-
-            var actionsToAdd = state.actions.Where(action => !IsProxy(action));
-
-            if (actionsToAdd.Count() == 0) {
-                return GetFx().GetNoopClip();
-            }
 
             var clip = GetFx().NewClip(name);
             var restingStateBuilder = GetBuilder<RestingStateBuilder>();
 
-            AnimationClip firstClip = actionsToAdd
+            AnimationClip firstClip = state.actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
                 .FirstOrDefault();
@@ -153,7 +130,7 @@ namespace VF.Feature.Base {
                 onClip.RewritePaths(pathRewriter);
             }
 
-            foreach (var action in actionsToAdd) {
+            foreach (var action in state.actions) {
                 switch (action) {
                     case FlipbookAction flipbook:
                         if (flipbook.obj != null) {

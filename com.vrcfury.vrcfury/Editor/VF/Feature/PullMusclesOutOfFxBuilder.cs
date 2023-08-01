@@ -110,6 +110,83 @@ namespace VF.Feature {
                     weightOff.goalWeight = 0;
                 }
 
+
+                // TODO: this better
+                var trackingOff = newState.GetTrackingControl();
+                var trackingOn = outState.GetTrackingControl();
+
+                if (type == LayerType.Action) {
+                    trackingOn.trackingHead = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingHip = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+
+                    trackingOff.trackingHead = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingHip = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                }
+
+                if (type == LayerType.LeftHand) {
+                    trackingOn.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+
+                    trackingOff.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                }
+
+                if (type == LayerType.RightHand) {
+                    trackingOn.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
+                    trackingOn.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOn.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+
+                    trackingOff.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
+                    trackingOff.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    trackingOff.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                }
+
                 off.TransitionsTo(newState).When(myCond);
                 previousStates.Add((myCond, newState));
             }
@@ -119,19 +196,17 @@ namespace VF.Feature {
 
         [CanBeNull]
         private VFAFloat AddToAltLayer(Motion motion) {
-            var hasAction = HasAction(motion);
-            var hasLeftHand = HasLeftHand(motion);
-            var hasRightHand = HasRightHand(motion);
-            if (!hasAction && !hasLeftHand && !hasRightHand) {
+            var humanoidMask = GetHumanoidMaskName(motion);
+            if (humanoidMask == "none") {
                 return null;
             }
 
             var newParam = GetFx().NewFloat("action_" + (actionNum++));
-            if (hasAction) {
+            if (humanoidMask == "emote") {
                 AddToAltLayer(motion, LayerType.Action, newParam);
             } else {
-                if (hasLeftHand) AddToAltLayer(motion, LayerType.LeftHand, newParam);
-                if (hasRightHand) AddToAltLayer(motion, LayerType.RightHand, newParam);
+                if (humanoidMask == "hands" || humanoidMask == "leftHand") AddToAltLayer(motion, LayerType.LeftHand, newParam);
+                if (humanoidMask == "hands"|| humanoidMask == "rightHand") AddToAltLayer(motion, LayerType.RightHand, newParam);
             }
 
             return newParam;
@@ -157,6 +232,30 @@ namespace VF.Feature {
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             }
             statesToCreate.Add((type, param, copy));
+        }
+
+        private string GetHumanoidMaskName(Motion motion) {
+
+            var leftHand = false;
+            var rightHand = false;
+
+            foreach(var clip in new AnimatorIterator.Clips().From(motion)) {
+                var bones = AnimationUtility.GetCurveBindings(clip);
+                foreach (var b in bones) {
+                    if (!(HumanTrait.MuscleName.Contains(b.propertyName) || b.propertyName.EndsWith(" Stretched") || b.propertyName.EndsWith(".Spread"))) continue;
+                    if (b.propertyName.Contains("RightHand") || b.propertyName.Contains("Right Thumb") || b.propertyName.Contains("Right Index") ||
+                        b.propertyName.Contains("Right Middle") || b.propertyName.Contains("Right Ring") || b.propertyName.Contains("Right Little")) { rightHand = true; continue; }
+                    if (b.propertyName.Contains("LeftHand") || b.propertyName.Contains("Left Thumb") || b.propertyName.Contains("Left Index") || 
+                        b.propertyName.Contains("Left Middle") || b.propertyName.Contains("Left Ring") || b.propertyName.Contains("Left Little")) { leftHand = true; continue; }
+                    return "emote";
+                }
+            }
+
+            if (leftHand && rightHand) return "hands";
+            if (leftHand) return "leftHand";
+            if (rightHand) return "rightHand";
+
+            return "none";
         }
 
         private bool HasAction(Motion motion) {
