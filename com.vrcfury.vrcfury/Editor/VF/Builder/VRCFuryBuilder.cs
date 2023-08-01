@@ -182,6 +182,7 @@ public class VRCFuryBuilder {
         AddBuilder(new MarkThingsAsDirtyJustInCaseBuilder(), avatarObject);
         AddBuilder(new FixMaterialSwapWithMaskBuilder(), avatarObject);
         AddBuilder(new RestingStateBuilder(), avatarObject);
+        AddBuilder(new PullMusclesOutOfFxBuilder(), avatarObject);
         
         while (actions.Count > 0) {
             var action = actions.Min();
