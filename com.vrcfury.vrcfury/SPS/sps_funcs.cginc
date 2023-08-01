@@ -67,9 +67,10 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	}
 
 	const float3 p0 = float3(0,0,0);
-	float p1Dist = sps_map(bezierLerp, 0, 1, worldLength * 5, 0);
+	float defaultP1Dist = rootPos.z / 4;
+	float p1Dist = sps_map(bezierLerp, 0, 1, worldLength * 5, defaultP1Dist);
 	const float3 p1 = float3(0,0,p1Dist);
-	const float3 p2 = rootPos + frontNormal * (orfDistance/2);
+	const float3 p2 = rootPos + frontNormal * defaultP1Dist;
 	const float3 p3 = rootPos;
 	float curveLength;
 	float t = sps_bezierFindT(p0, p1, p2, p3, restingVertex.z, curveLength);
