@@ -35,12 +35,18 @@ namespace VF.Utils {
             return _humanMuscleList;
         }
 
-        public static bool IsLeftHand(this EditorCurveBinding binding) {
-            return binding.IsMuscle() && binding.propertyName.Contains("LeftHand");
-        }
-        public static bool IsRightHand(this EditorCurveBinding binding) {
-            return binding.IsMuscle() && binding.propertyName.Contains("RightHand");
+        public enum MuscleBindingType {
+            None,
+            Other,
+            LeftHand,
+            RightHand
         }
 
+        public static MuscleBindingType GetMuscleBindingType(this EditorCurveBinding binding) {
+            if (!binding.IsMuscle()) return MuscleBindingType.None;
+            if (binding.propertyName.Contains("LeftHand")) return MuscleBindingType.LeftHand;
+            if (binding.propertyName.Contains("RightHand")) return MuscleBindingType.RightHand;
+            return MuscleBindingType.Other;
+        }
     }
 }

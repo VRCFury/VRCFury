@@ -127,9 +127,9 @@ public class ClipBuilder {
     }
 
     private static bool IsEmptyClip(AnimationClip clip, VFGameObject avatarRoot) {
-        if (clip.IsProxyAnimation()) return false;
-        var usedPaths = clip.GetAllBindings().Select(binding => binding.path).Distinct().ToArray();
-        foreach (var path in usedPaths) {
+        var allBindings = clip.GetAllBindings();
+        if (allBindings.Any(binding => binding.IsProxyBinding())) return false;
+        foreach (var path in allBindings.Select(binding => binding.path).Distinct()) {
             if (avatarRoot.Find(path)) {
                 return false;
             }
@@ -138,24 +138,23 @@ public class ClipBuilder {
     }
 
     public static bool IsStaticMotion(Motion motion) {
-        return new AnimatorIterator.Clips().From(motion)
-            .All(IsStaticClip);
+        return new AnimatorIterator.Clips().From(motion).All(IsStaticClip);
     }
 
     private static bool IsStaticClip(AnimationClip clip) {
-        if (clip.IsProxyAnimation()) return false;
-        var isStatic = true;
         foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+            if (binding.IsProxyBinding()) return false;
             var curve = AnimationUtility.GetEditorCurve(clip, binding);
-            if (curve.keys.All(key => key.time != 0)) isStatic = false;
-            if (curve.keys.Select(k => k.value).Distinct().Count() > 1) isStatic = false;
+            if (curve.keys.All(key => key.time != 0)) return false;
+            if (curve.keys.Select(k => k.value).Distinct().Count() > 1) return false;
         }
         foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+            if (binding.IsProxyBinding()) return false;
             var curve = AnimationUtility.GetObjectReferenceCurve(clip, binding);
-            if (curve.All(key => key.time != 0)) isStatic = false;
-            if (curve.Select(k => k.value).Distinct().Count() > 1) isStatic = false;
+            if (curve.All(key => key.time != 0)) return false;
+            if (curve.Select(k => k.value).Distinct().Count() > 1) return false;
         }
-        return isStatic;
+        return true;
     }
 
     public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(Motion motion) {

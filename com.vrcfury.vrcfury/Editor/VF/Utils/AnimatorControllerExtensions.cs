@@ -12,7 +12,6 @@ namespace VF.Utils {
         public static void RewritePaths(this AnimatorController c, Func<string,string> rewrite) {
             // Rewrite clips
             foreach (var clip in new AnimatorIterator.Clips().From(c)) {
-                if (clip.IsProxyAnimation()) continue;
                 clip.RewritePaths(rewrite);
             }
 

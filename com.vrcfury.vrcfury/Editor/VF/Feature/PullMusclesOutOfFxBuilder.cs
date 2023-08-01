@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -90,16 +91,19 @@ namespace VF.Feature {
                 var (param, motion) = s;
                 var newState = layer.NewState(motion.name);
                 newState.WithAnimation(motion);
-                foreach (var (otherCond,other) in previousStates) {
-                    newState.TransitionsTo(other).When(otherCond);
-                }
                 // Because param came from another controller, we have to recreate it
                 var myParam = controller.NewFloat(param.Name(), usePrefix: false);
                 var myCond = myParam.IsGreaterThan(0);
 
                 var outState = layer.NewState($"{motion.name} - Out");
+                off.TransitionsToExit().When(myCond);
+                newState.TransitionsFromEntry().When(myCond);
                 newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not());
-                outState.TransitionsTo(off).When(controller.Always());
+                newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
+                foreach (var (otherCond,other) in previousStates) {
+                    newState.TransitionsToExit().When(otherCond);
+                }
+                outState.TransitionsToExit().When(controller.Always());
 
                 if (type == LayerType.Action) {
                     var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
@@ -110,9 +114,10 @@ namespace VF.Feature {
                     weightOff.goalWeight = 0;
                 }
 
-                off.TransitionsTo(newState).When(myCond);
                 previousStates.Add((myCond, newState));
             }
+
+            off.TransitionsFromEntry().When(controller.Always());
         }
 
         private int actionNum = 0;
@@ -122,17 +127,37 @@ namespace VF.Feature {
             var motion = state.motion;
             if (motion == null) return null;
 
-            var hasAction = HasAction(motion);
-            var hasLeftHand = HasLeftHand(motion);
-            var hasRightHand = HasRightHand(motion);
-            if (!hasAction && !hasLeftHand && !hasRightHand) return null;
+            var muscleTypes = new AnimatorIterator.Clips().From(motion)
+                .SelectMany(clip => clip.GetMuscleBindingTypes())
+                .ToImmutableHashSet();
+
+            List<(AnimationClip,bool)> proxies;
+            if (motion is AnimationClip rootClip) {
+                proxies = rootClip.CollapseProxyBindings();
+            } else {
+                proxies = new List<(AnimationClip, bool)>();
+            }
+
+            if (muscleTypes.Count == 0 && proxies.Count == 0) return null;
 
             var newParam = GetFx().NewFloat("action_" + (actionNum++));
-            if (hasAction) {
+            if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
                 AddToAltLayer(state, LayerType.Action, newParam);
             } else {
-                if (hasLeftHand) AddToAltLayer(state, LayerType.LeftHand, newParam);
-                if (hasRightHand) AddToAltLayer(state, LayerType.RightHand, newParam);
+                if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.LeftHand))
+                    AddToAltLayer(state, LayerType.LeftHand, newParam);
+                if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.RightHand))
+                    AddToAltLayer(state, LayerType.RightHand, newParam);
+            }
+
+            foreach (var proxy in proxies) {
+                var (proxyClip, isAction) = proxy;
+                if (isAction) {
+                    statesToCreate.Add((LayerType.Action, newParam, proxyClip));
+                } else {
+                    statesToCreate.Add((LayerType.LeftHand, newParam, proxyClip));
+                    statesToCreate.Add((LayerType.RightHand, newParam, proxyClip));
+                }
             }
 
             return newParam;
@@ -144,8 +169,8 @@ namespace VF.Feature {
             bool ShouldTransferBinding(EditorCurveBinding binding) {
                 switch (type) {
                     case LayerType.Action: return binding.IsMuscle();
-                    case LayerType.LeftHand: return binding.IsLeftHand();
-                    default: return binding.IsRightHand();
+                    case LayerType.LeftHand: return binding.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.LeftHand;
+                    default: return binding.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.RightHand;
                 }
             }
 
@@ -162,22 +187,6 @@ namespace VF.Feature {
 
             state.motion = copyWithoutMuscles;
             statesToCreate.Add((type, param, copyOnlyMuscles));
-        }
-
-        private bool HasAction(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion)
-                .SelectMany(clip => clip.GetFloatBindings())
-                .Any(b => b.IsMuscle() && !b.IsLeftHand() && !b.IsRightHand());
-        }
-        private bool HasLeftHand(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion)
-                .SelectMany(clip => clip.GetFloatBindings())
-                .Any(b => b.IsLeftHand());
-        }
-        private bool HasRightHand(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion)
-                .SelectMany(clip => clip.GetFloatBindings())
-                .Any(b => b.IsRightHand());
         }
     }
 }

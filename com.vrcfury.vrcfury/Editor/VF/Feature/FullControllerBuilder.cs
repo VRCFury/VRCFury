@@ -30,7 +30,7 @@ namespace VF.Feature {
             foreach (var p in model.prms) {
                 VRCExpressionParameters prms = p.parameters;
                 if (!prms) continue;
-                var copy = mutableManager.CopyRecursive(prms, saveFilename: "tmp");
+                var copy = mutableManager.CopyRecursive(prms);
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -39,7 +39,6 @@ namespace VF.Feature {
                     }
                     manager.GetParams().addSyncedParam(param);
                 }
-                AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
             }
 
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
@@ -76,11 +75,10 @@ namespace VF.Feature {
             foreach (var m in model.menus) {
                 VRCExpressionsMenu menu = m.menu;
                 if (menu == null) continue;
-                var copy = mutableManager.CopyRecursive(menu, saveFilename: "tmp");
+                var copy = mutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
                 manager.GetMenu().MergeMenu(prefix, copy);
-                AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
             }
 
             foreach (var receiver in GetBaseObject().GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
