@@ -27,7 +27,7 @@ namespace VF.Feature {
         private void ApplyToLayer(AnimatorStateMachine layer) {
             var newParams = new Dictionary<AnimatorState, VFAParam>();
             foreach (var state in new AnimatorIterator.States().From(layer)) {
-                var newParam = AddToAltLayer(state.motion);
+                var newParam = AddToAltLayer(state);
                 if (newParam != null) {
                     newParams[state] = newParam;
                 }
@@ -118,27 +118,28 @@ namespace VF.Feature {
         private int actionNum = 0;
 
         [CanBeNull]
-        private VFAFloat AddToAltLayer(Motion motion) {
+        private VFAFloat AddToAltLayer(AnimatorState state) {
+            var motion = state.motion;
+            if (motion == null) return null;
+
             var hasAction = HasAction(motion);
             var hasLeftHand = HasLeftHand(motion);
             var hasRightHand = HasRightHand(motion);
-            if (!hasAction && !hasLeftHand && !hasRightHand) {
-                return null;
-            }
+            if (!hasAction && !hasLeftHand && !hasRightHand) return null;
 
             var newParam = GetFx().NewFloat("action_" + (actionNum++));
             if (hasAction) {
-                AddToAltLayer(motion, LayerType.Action, newParam);
+                AddToAltLayer(state, LayerType.Action, newParam);
             } else {
-                if (hasLeftHand) AddToAltLayer(motion, LayerType.LeftHand, newParam);
-                if (hasRightHand) AddToAltLayer(motion, LayerType.RightHand, newParam);
+                if (hasLeftHand) AddToAltLayer(state, LayerType.LeftHand, newParam);
+                if (hasRightHand) AddToAltLayer(state, LayerType.RightHand, newParam);
             }
 
             return newParam;
         }
 
-        private void AddToAltLayer(Motion motion, LayerType type, VFAFloat param) {
-            var copy = mutableManager.CopyRecursive(motion, $"Action from {motion.name}");
+        private void AddToAltLayer(AnimatorState state, LayerType type, VFAFloat param) {
+            var originalMotion = state.motion;
 
             bool ShouldTransferBinding(EditorCurveBinding binding) {
                 switch (type) {
@@ -148,15 +149,19 @@ namespace VF.Feature {
                 }
             }
 
-            foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
+            var copyWithoutMuscles = mutableManager.CopyRecursive(originalMotion, $"{originalMotion.name} (no muscles)");
+            foreach (var clip in new AnimatorIterator.Clips().From(copyWithoutMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(ShouldTransferBinding);
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             }
-            foreach (var clip in new AnimatorIterator.Clips().From(copy)) {
+            var copyOnlyMuscles = mutableManager.CopyRecursive(originalMotion, $"{originalMotion.name} (only muscles)");
+            foreach (var clip in new AnimatorIterator.Clips().From(copyOnlyMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(b => !ShouldTransferBinding(b));
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             }
-            statesToCreate.Add((type, param, copy));
+
+            state.motion = copyWithoutMuscles;
+            statesToCreate.Add((type, param, copyOnlyMuscles));
         }
 
         private bool HasAction(Motion motion) {
