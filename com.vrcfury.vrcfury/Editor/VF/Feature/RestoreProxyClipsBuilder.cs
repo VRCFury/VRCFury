@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -19,6 +20,8 @@ namespace VF.Feature {
             }
         }
 
+        private Dictionary<AnimationClip, AnimationClip> cache = new Dictionary<AnimationClip, AnimationClip>();
+
         private void ApplyToState(AnimatorState state) {
             if (state.motion is AnimationClip clip) {
                 state.motion = CheckClip(clip);
@@ -36,11 +39,18 @@ namespace VF.Feature {
         }
 
         private AnimationClip CheckClip(AnimationClip clip) {
+            if (cache.TryGetValue(clip, out var cached)) {
+                return cached;
+            }
+
+            var replacementClip = clip;
             var proxies = clip.CollapseProxyBindings();
             if (proxies.Count > 0) {
-                return proxies[0].Item1;
+                replacementClip = proxies[0].Item1;
             }
-            return clip;
+
+            cache[clip] = replacementClip;
+            return replacementClip;
         }
     }
 }

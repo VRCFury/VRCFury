@@ -23,10 +23,7 @@ namespace VF.Utils {
             } else {
                 return;
             }
-            clip.RewriteBindings(binding => {
-                if (binding.IsMuscle()) return null;
-                return binding;
-            });
+            clip.RewriteBindings(binding => null);
             clip.SetCurve(EditorCurveBinding.DiscreteCurve(
                 ProxyClipMagicString,
                 typeof(Transform),
