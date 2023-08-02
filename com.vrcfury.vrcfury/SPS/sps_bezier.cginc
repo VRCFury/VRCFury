@@ -1,4 +1,4 @@
-#include "sps_globals.cginc"
+#include "sps_utils.cginc"
 
 // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
 float3 sps_bezier(float3 p0, float3 p1, float3 p2, float3 p3, float t)
@@ -17,10 +17,6 @@ float3 sps_bezierDerivative(float3 p0, float3 p1, float3 p2, float3 p3, float t)
 		3 * minT * minT * (p1 - p0)
 		+ 6 * minT * t * (p2 - p1)
 		+ 3 * t * t * (p3 - p2);
-}
-
-float sps_map(float value, float min1, float max1, float min2, float max2) {
-	return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
 
 // https://gamedev.stackexchange.com/questions/105230/points-evenly-spaced-along-a-bezier-curve
