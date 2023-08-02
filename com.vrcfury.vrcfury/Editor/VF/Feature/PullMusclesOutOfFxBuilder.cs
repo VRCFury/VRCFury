@@ -19,7 +19,8 @@ namespace VF.Feature {
     public class PullMusclesOutOfFxBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.PullMusclesOutOfFx)]
         public void Apply() {
-            foreach (var layer in GetFx().GetLayers()) {
+            var fx = GetFx();
+            foreach (var layer in fx.GetManagedLayers()) {
                 ApplyToLayer(layer);
             }
             CreateAltLayers();
