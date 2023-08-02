@@ -255,9 +255,9 @@ namespace VF.Builder.Haptics {
             
             var newBody = new List<string>();
             if (keepImports) {
-                newBody.Add($"#include \"{GetPathToSps()}/sps_funcs.cginc\"");
+                newBody.Add($"#include \"{GetPathToSps()}/sps_main.cginc\"");
             } else {
-                newBody.Add(ReadAndFlattenPath($"{GetPathToSps()}/sps_funcs.cginc"));
+                newBody.Add(ReadAndFlattenPath($"{GetPathToSps()}/sps_main.cginc"));
             }
             var extends = useStructExtends ? $" : {oldStructType}" : "";
             newBody.Add($"struct SpsInputs{extends} {{");
