@@ -56,10 +56,10 @@ namespace VF.Utils {
         private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static void SetFloatCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
-            setFloatNoSync.Invoke(null, new object[] { clip, binding, null });
+            setFloatNoSync.Invoke(null, new object[] { clip, binding, curve });
         }
         private static void SetObjectCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
-            setObjNoSync.Invoke(null, new object[] { clip, binding, null });
+            setObjNoSync.Invoke(null, new object[] { clip, binding, curve });
         }
         private static void Sync(this AnimationClip clip) {
             triggerSync.Invoke(null, new object[] { clip });
