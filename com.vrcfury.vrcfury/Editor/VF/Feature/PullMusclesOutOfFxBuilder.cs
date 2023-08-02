@@ -19,7 +19,8 @@ namespace VF.Feature {
     public class PullMusclesOutOfFxBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.PullMusclesOutOfFx)]
         public void Apply() {
-            foreach (var layer in GetFx().GetLayers()) {
+            var fx = GetFx();
+            foreach (var layer in fx.GetManagedLayers()) {
                 ApplyToLayer(layer);
             }
             CreateAltLayers();
@@ -58,7 +59,7 @@ namespace VF.Feature {
             RightHand
         };
 
-        private List<(LayerType, VFAFloat, Motion, float)> statesToCreate = new List<(LayerType, VFAFloat, Motion, float)>();
+        private List<(LayerType, VFABool, Motion, float)> statesToCreate = new List<(LayerType, VFABool, Motion, float)>();
 
         private void CreateAltLayers() {
             foreach (var group in statesToCreate.GroupBy(state => state.Item1)) {
@@ -68,7 +69,7 @@ namespace VF.Feature {
             }
         }
 
-        private void CreateAltLayer(LayerType type, IEnumerable<(VFAFloat,Motion,float)> states) {
+        private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion,float)> states) {
             ControllerManager controller;
             VFALayer layer;
             if (type == LayerType.Action) {
@@ -92,8 +93,8 @@ namespace VF.Feature {
                 var newState = layer.NewState(motion.name);
                 newState.WithAnimation(motion);
                 // Because param came from another controller, we have to recreate it
-                var myParam = controller.NewFloat(param.Name(), usePrefix: false);
-                var myCond = myParam.IsGreaterThan(0);
+                var myParam = controller.NewBool(param.Name(), usePrefix: false);
+                var myCond = myParam.IsTrue();
 
                 var outState = layer.NewState($"{motion.name} - Out");
                 off.TransitionsToExit().When(myCond);
@@ -200,7 +201,7 @@ namespace VF.Feature {
         private int actionNum = 0;
 
         [CanBeNull]
-        private VFAFloat AddToAltLayer(AnimatorState state) {
+        private VFABool AddToAltLayer(AnimatorState state) {
             var motion = state.motion;
             if (motion == null) return null;
 
@@ -225,7 +226,8 @@ namespace VF.Feature {
                 }
             }
 
-            var newParam = GetFx().NewFloat("action_" + (actionNum++));
+            var newParam = GetFx().NewBool("action_" + (actionNum++));
+
             if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
                 AddToAltLayer(state, LayerType.Action, newParam, exitTime);
             } else {
@@ -247,7 +249,7 @@ namespace VF.Feature {
             return newParam;
         }
 
-        private void AddToAltLayer(AnimatorState state, LayerType type, VFAFloat param, float exitTime) {
+        private void AddToAltLayer(AnimatorState state, LayerType type, VFABool param,  float exitTime) {
             var originalMotion = state.motion;
 
             bool ShouldTransferBinding(EditorCurveBinding binding) {

@@ -101,7 +101,7 @@ namespace VF.Builder {
 
                 var copy = SafeInstantiate(original);
                 if (obj == original) rootCopy = copy as T;
-                if (saveFilename != null) {
+                if (saveParent == null && saveFilename != null) {
                     VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, saveFilename);
                     saveParent = copy;
                 } else if (saveParent != null) {
