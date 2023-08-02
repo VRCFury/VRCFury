@@ -126,13 +126,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return exclusiveParameterLayers[exclusiveTag];
     }
 
-    private VFAState GetStartState(string stateName, VFALayer layer) {
-        if (layer.GetRawStateMachine().defaultState != null) {
-            foreach (var s in layer.GetRawStateMachine().states) {
-                if (s.state == layer.GetRawStateMachine().defaultState) return new VFAState(s, layer.GetRawStateMachine());
-            }
+    private VFAState GetOffState(string stateName, VFALayer layer) {
+        if (layer.GetRawStateMachine().states.Count() > 0) {
+            return new VFAState(layer.GetRawStateMachine().states.First(), layer.GetRawStateMachine());
         }
         return layer.NewState(stateName);
+    }
+
+    private void SetStartState(VFALayer layer, AnimatorState state) {
+        layer.GetRawStateMachine().defaultState = state;
     }
 
     public string GetPrimaryExclusive() {
@@ -268,7 +270,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var fx = GetFx();
         var layer = GetLayer(layerName, fx);
-        var off = GetStartState("Off", layer);
+        var off = GetOffState("Off", layer);
 
         var (paramName, usePrefixOnParam) = GetParamName();
         if (useInt) {
@@ -289,7 +291,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
             Apply(fx, layer, off, onCase.And(isLocal.Not()), layerName + " On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), layerName + " On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter, true);
+            Apply(fx, layer, off, onCase.And(isLocal), layerName + " On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
         } else {
             Apply(fx, layer, off, onCase, layerName + " On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
@@ -322,17 +324,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State action,
         State inAction,
         State outAction,
-        VFABool physBoneResetter,
-        bool isLocal = false
+        VFABool physBoneResetter
     ) {
         var transitionTime = model.transitionTime;
         if (!model.hasTransitionTime)  transitionTime = 0;
 
         var clip = LoadState(onName, action);
-
-        if (restingClip == null && model.includeInRest) {
-            restingClip = clip;
-        }
 
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
@@ -361,6 +358,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
             } else {
                 onState = layer.NewState(onName).WithAnimation(transitionClipIn).MotionTime(controller.ConstantFloat(0.9999f));
+                clip = transitionClipIn;
                 var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
                 transition.When().WithTransitionExitTime(1);
             }
@@ -411,6 +409,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 inState.Drives(driveGlobal, true);
             }
         }
+
+        if (restingClip == null && model.includeInRest) {
+            restingClip = clip;
+
+            if (model.defaultOn) {
+                SetStartState(layer, onState.GetRaw());
+                if (!enableExclusiveTag) {
+                    off.TransitionsFromEntry().When(controller.Always());
+                }
+            }
+        }
     }
 
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
@@ -448,10 +457,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
+        if (model.includeInRest && model.defaultOn) {
+            var layer = GetLayer(layerName, controller);
+            var off = GetOffState("Off", layer);
+            off.TransitionsFromEntry().When(allOthersOff);
+        }
+
         if (paramsToTurnOff.Count + paramsToTurnToZero.Count > 0) {
 
             var exclusiveLayer = GetLayerForParameters(GetPrimaryExclusive());
-            var startState = GetStartState("Default", exclusiveLayer);
+            var startState = GetOffState("Default", exclusiveLayer);
             var triggerState = exclusiveLayer.NewState(layerName);
             var onParam = useInt ? (param as VFAInteger).IsEqualTo(intTarget) : (param as VFABool).IsTrue();
 
