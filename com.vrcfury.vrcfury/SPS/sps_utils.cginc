@@ -11,6 +11,8 @@ float sps_saturated_map(float value, float min, float max) {
 
 // https://keithmaggio.wordpress.com/2011/02/15/math-magician-lerp-slerp-and-nlerp/
 float3 sps_slerp(float3 start, float3 end, float percent) {
+    if (percent == 1) return end;
+    if (percent == 0) return start;
     if (length(start - end) < 0.001) return start;
     float dot_ = dot(start, end);
     dot_ = clamp(dot_, -1.0, 1.0);
