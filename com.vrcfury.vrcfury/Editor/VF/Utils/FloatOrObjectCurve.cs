@@ -35,6 +35,18 @@ namespace VF.Utils {
             }
         }
 
+        public FloatOrObject GetLast() {
+            if (isFloat) {
+                if (floatCurve == null || floatCurve.keys.Length == 0) return new FloatOrObject(0);
+                var length = floatCurve.keys.Length;
+                return new FloatOrObject(floatCurve.keys[length - 1].value);
+            } else {
+                var length = objectCurve.Length;
+                if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
+                return new FloatOrObject(objectCurve[length - 1].value);
+            }
+        }
+
         public int GetLengthInFrames() {
             float maxTime;
             if (isFloat) {

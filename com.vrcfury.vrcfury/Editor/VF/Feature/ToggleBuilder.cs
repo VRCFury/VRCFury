@@ -11,6 +11,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.StateAction;
+using VF.Utils;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -346,22 +347,25 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState outState;
 
         if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {
+            
             var transitionClipIn = LoadState(onName + " In", inAction);
+
+            // if clip is empty, copy last frame of transition
+            if (clip == controller.GetNoopClip()) {
+                clip = controller.NewClip(onName);
+                clip.CopyFromLast(transitionClipIn);
+            }
+            
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
-            if (action.actions.Count() != 0) {
-                onState = layer.NewState(onName).WithAnimation(clip);
-                var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
-                if (transitionClipIn.length <= 1f/transitionClipIn.frameRate) {
-                    transition.When(controller.Always());
-                } else {
-                    transition.When().WithTransitionExitTime(1);
-                }
+            onState = layer.NewState(onName).WithAnimation(clip);
+            var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
+            if (transitionClipIn.length <= 1f/transitionClipIn.frameRate) {
+                transition.When(controller.Always());
             } else {
-                onState = layer.NewState(onName).WithAnimation(transitionClipIn).MotionTime(controller.ConstantFloat(0.9999f));
-                clip = transitionClipIn;
-                var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
                 transition.When().WithTransitionExitTime(1);
             }
+
+
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
