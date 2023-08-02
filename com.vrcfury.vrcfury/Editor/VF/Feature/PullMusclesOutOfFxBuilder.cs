@@ -93,8 +93,8 @@ namespace VF.Feature {
                 var newState = layer.NewState(motion.name);
                 newState.WithAnimation(motion);
                 // Because param came from another controller, we have to recreate it
-                var myParam = controller.NewFloat(param.Name(), usePrefix: false);
-                var myCond = myParam.IsGreaterThan(0);
+                var myParam = controller.NewBool(param.Name(), usePrefix: false);
+                var myCond = myParam.IsTrue();
 
                 var outState = layer.NewState($"{motion.name} - Out");
                 off.TransitionsToExit().When(myCond);
