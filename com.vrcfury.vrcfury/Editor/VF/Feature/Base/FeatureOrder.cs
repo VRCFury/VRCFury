@@ -85,12 +85,13 @@ namespace VF.Feature.Base {
         // Needs to happen after everything is done adding / removing controller layers
         CleanupEmptyLayers = 10019,
         PullMusclesOutOfFx = 10020,
-        FixMasks = 10021,
-        FixMaterialSwapWithMask = 10022,
-        ControllerConflictCheck = 10023,
-        AnimatorLayerControlFix = 10024,
+        RestoreProxyClips = 10021, // needs to be after PullMusclesOutOfFx, which uses proxy clips
+        FixMasks = 10022,
+        FixMaterialSwapWithMask = 10023,
+        ControllerConflictCheck = 10024,
+        AnimatorLayerControlFix = 10025,
 
-        FixBadParameters = 10025,
+        FixBadParameters = 10026,
         
         FinalizeParams = 10030,
         FinalizeMenu = 10031,

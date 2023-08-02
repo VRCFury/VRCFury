@@ -71,16 +71,14 @@ namespace VF.Utils {
                 }
             }
 
-            // Motions
-            foreach (var motion in new AnimatorIterator.Motions().From(c)) {
-                if (motion is BlendTree tree) {
-                    tree.blendParameter = rewriteParamName(tree.blendParameter);
-                    tree.blendParameterY = rewriteParamName(tree.blendParameterY);
-                    tree.children = tree.children.Select(child => {
-                        child.directBlendParameter = rewriteParamName(child.directBlendParameter);
-                        return child;
-                    }).ToArray();
-                }
+            // Blend trees
+            foreach (var tree in new AnimatorIterator.Trees().From(c)) {
+                tree.blendParameter = rewriteParamName(tree.blendParameter);
+                tree.blendParameterY = rewriteParamName(tree.blendParameterY);
+                tree.children = tree.children.Select(child => {
+                    child.directBlendParameter = rewriteParamName(child.directBlendParameter);
+                    return child;
+                }).ToArray();
             }
 
             // Transitions
