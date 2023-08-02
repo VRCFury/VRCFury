@@ -41,8 +41,8 @@ namespace VF.Utils {
                 var length = floatCurve.keys.Length;
                 return new FloatOrObject(floatCurve.keys[length - 1].value);
             } else {
-                var length = objectCurve.Length;
                 if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
+                var length = objectCurve.Length;
                 return new FloatOrObject(objectCurve[length - 1].value);
             }
         }
