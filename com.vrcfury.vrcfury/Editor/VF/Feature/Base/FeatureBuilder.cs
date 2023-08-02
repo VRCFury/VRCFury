@@ -111,10 +111,11 @@ namespace VF.Feature.Base {
                 .Select(action => action.clip)
                 .FirstOrDefault();
             if (firstClip) {
+                var copy = mutableManager.CopyRecursive(firstClip);
+                RewriteClip(copy);
                 var nameBak = onClip.name;
-                EditorUtility.CopySerialized(firstClip, onClip);
+                EditorUtility.CopySerialized(copy, onClip);
                 onClip.name = nameBak;
-                RewriteClip(onClip);
             }
 
             foreach (var action in state.actions) {
@@ -150,10 +151,9 @@ namespace VF.Feature.Base {
                     case AnimationClipAction clipAction:
                         AnimationClip clipActionClip = clipAction.clip;
                         if (clipActionClip && clipActionClip != firstClip) {
-                            var copy = mutableManager.CopyRecursive(clipActionClip, "Copy of " + clipActionClip.name);
+                            var copy = mutableManager.CopyRecursive(clipActionClip);
                             RewriteClip(copy);
                             onClip.CopyFrom(copy);
-                            AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                         }
                         break;
                     case ObjectToggleAction toggle:

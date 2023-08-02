@@ -97,22 +97,24 @@ namespace VF.Builder {
                 if (originalToMutable.ContainsKey(original)) return false;
                 if (obj != original) {
                     if (!IsType(original, typesToMakeMutable)) return false;
-                    if (original is AnimationClip clip && clip.IsProxyAnimation())
-                        return false;
                 }
 
                 var copy = SafeInstantiate(original);
                 if (obj == original) rootCopy = copy as T;
-                if (saveParent == null) {
+                if (saveFilename != null) {
                     VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, saveFilename);
                     saveParent = copy;
-                } else {
+                } else if (saveParent != null) {
                     if (IsType(copy, hiddenTypes)) {
                         copy.hideFlags |= HideFlags.HideInHierarchy;
                     } else if (addPrefix) {
                         copy.name = $"{obj.name}/{original.name}";
                     }
                     AssetDatabase.AddObjectToAsset(copy, saveParent);
+                }
+
+                if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
+                    copyClip.WriteProxyBinding(originalClip);
                 }
 
                 originalToMutable[original] = copy;

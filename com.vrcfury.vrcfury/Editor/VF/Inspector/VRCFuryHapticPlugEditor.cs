@@ -318,6 +318,7 @@ namespace VF.Inspector {
                 }
 
                 renderers = renderers.Select(renderer => {
+                    var owner = renderer.owner();
                     try {
                         var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
 
@@ -359,7 +360,7 @@ namespace VF.Inspector {
                         VRCFuryEditorUtils.MarkDirty(skin);
                         return skin;
                     } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to configure renderer: {renderer.owner().GetPath()}", e);
+                        throw new ExceptionWithCause($"Failed to configure renderer: {owner.GetPath()}", e);
                     }
                 }).ToArray();
             }
