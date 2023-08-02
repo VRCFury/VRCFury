@@ -59,7 +59,7 @@ namespace VF.Feature {
             RightHand
         };
 
-        private List<(LayerType, VFAFloat, Motion)> statesToCreate = new List<(LayerType, VFAFloat, Motion)>();
+        private List<(LayerType, VFABool, Motion)> statesToCreate = new List<(LayerType, VFABool, Motion)>();
 
         private void CreateAltLayers() {
             foreach (var group in statesToCreate.GroupBy(state => state.Item1)) {
@@ -69,7 +69,7 @@ namespace VF.Feature {
             }
         }
 
-        private void CreateAltLayer(LayerType type, IEnumerable<(VFAFloat,Motion)> states) {
+        private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion)> states) {
             ControllerManager controller;
             VFALayer layer;
             if (type == LayerType.Action) {
@@ -124,7 +124,7 @@ namespace VF.Feature {
         private int actionNum = 0;
 
         [CanBeNull]
-        private VFAFloat AddToAltLayer(AnimatorState state) {
+        private VFABool AddToAltLayer(AnimatorState state) {
             var motion = state.motion;
             if (motion == null) return null;
 
@@ -141,7 +141,7 @@ namespace VF.Feature {
 
             if (muscleTypes.Count == 0 && proxies.Count == 0) return null;
 
-            var newParam = GetFx().NewFloat("action_" + (actionNum++));
+            var newParam = GetFx().NewBool("action_" + (actionNum++));
             if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
                 AddToAltLayer(state, LayerType.Action, newParam);
             } else {
@@ -164,7 +164,7 @@ namespace VF.Feature {
             return newParam;
         }
 
-        private void AddToAltLayer(AnimatorState state, LayerType type, VFAFloat param) {
+        private void AddToAltLayer(AnimatorState state, LayerType type, VFABool param) {
             var originalMotion = state.motion;
 
             bool ShouldTransferBinding(EditorCurveBinding binding) {

@@ -27,12 +27,7 @@ namespace VF.Utils {
                 .Concat(clip.GetFloatBindings().Select(b => (b, new FloatOrObjectCurve(clip.GetFloatCurve(b)))))
                 .ToArray();
         }
-        
-        // TODO: Replace this with calls to AnimationUtility.SetEditorCurves / SetObjectReferenceCurves once in unity 2020+
-        private static readonly Type animUtil = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationUtility");
-        private static readonly MethodInfo setFloatNoSync = animUtil.GetMethod("SetEditorCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
         public static void SetCurves(this AnimationClip clip, IEnumerable<(EditorCurveBinding,FloatOrObjectCurve)> curves) {
             var changedOne = false;
             foreach (var (binding, curve) in curves) {
@@ -40,19 +35,34 @@ namespace VF.Utils {
                     // If we don't check if it exists first, unity throws a "Can't assign curve because the
                     // type does not inherit from Component" if type is a GameObject
                     if (clip.GetFloatCurve(binding) != null)
-                        setFloatNoSync.Invoke(null, new object[] { clip, binding, null });
+                        clip.SetFloatCurveNoSync(binding, null);
                     if (clip.GetObjectCurve(binding) != null)
-                        setObjNoSync.Invoke(null, new object[] { clip, binding, null });
+                        clip.SetObjectCurveNoSync(binding, null);
                 } else if (curve.IsFloat) {
-                    setFloatNoSync.Invoke(null, new object[] { clip, binding, curve.FloatCurve });
+                    clip.SetFloatCurveNoSync(binding, curve.FloatCurve);
                 } else {
-                    setObjNoSync.Invoke(null, new object[] { clip, binding, curve.ObjectCurve });
+                    clip.SetObjectCurveNoSync(binding, curve.ObjectCurve);
                 }
                 changedOne = true;
             }
             if (changedOne) {
-                triggerSync.Invoke(null, new object[] { clip });
+                clip.Sync();
             }
+        }
+
+        // TODO: Replace this with calls to AnimationUtility.SetEditorCurves / SetObjectReferenceCurves once in unity 2020+
+        private static readonly Type animUtil = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationUtility");
+        private static readonly MethodInfo setFloatNoSync = animUtil.GetMethod("SetEditorCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static void SetFloatCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
+            setFloatNoSync.Invoke(null, new object[] { clip, binding, null });
+        }
+        private static void SetObjectCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
+            setObjNoSync.Invoke(null, new object[] { clip, binding, null });
+        }
+        private static void Sync(this AnimationClip clip) {
+            triggerSync.Invoke(null, new object[] { clip });
         }
 
         public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {

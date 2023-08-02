@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -39,11 +40,10 @@ namespace VF.Utils {
                 if (binding.path != ProxyClipMagicString) continue;
                 if (!curve.IsFloat) continue;
                 var proxyClipPath = binding.propertyName;
-                var proxyClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(proxyClipPath);
+                var proxyClip = AssetDatabase.LoadMainAssetAtPath(proxyClipPath) as AnimationClip;
+                if (proxyClip == null) throw new Exception($"Failed to find proxy clip: {proxyClipPath}");
                 var firstVal = curve.FloatCurve.keys[0].value;
-                if (proxyClip != null) {
-                    collectedProxies.Add((proxyClip, firstVal == 1));
-                }
+                collectedProxies.Add((proxyClip, firstVal == 1));
                 newBindings.Add((binding, null));
             }
             clip.SetCurves(newBindings);

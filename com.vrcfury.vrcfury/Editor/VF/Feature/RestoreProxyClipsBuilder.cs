@@ -12,15 +12,14 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.RestoreProxyClips)]
         public void Apply() {
             foreach (var controller in manager.GetAllUsedControllers()) {
-                foreach (var layer in controller.GetManagedLayers()) {
-                    foreach (var state in new AnimatorIterator.States().From(controller.GetRaw())) {
-                        ApplyToState(state);
-                    }
+                foreach (var state in new AnimatorIterator.States().From(controller.GetRaw())) {
+                    ApplyToState(state);
                 }
             }
         }
 
-        private Dictionary<AnimationClip, AnimationClip> cache = new Dictionary<AnimationClip, AnimationClip>();
+        private readonly Dictionary<AnimationClip, AnimationClip> cache
+            = new Dictionary<AnimationClip, AnimationClip>();
 
         private void ApplyToState(AnimatorState state) {
             if (state.motion is AnimationClip clip) {
