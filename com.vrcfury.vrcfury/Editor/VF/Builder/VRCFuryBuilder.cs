@@ -101,7 +101,7 @@ public class VRCFuryBuilder {
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
         var menuSortPositionByBuilder = new Dictionary<FeatureBuilder, int>();
-        var exclusiveAnimationLayers = new Dictionary<(string, VRCAvatarDescriptor.AnimLayerType, string), VFALayer>();
+        var exclusiveAnimationLayers = new Dictionary<string, VFALayer>();
         var exclusiveParameterLayers = new Dictionary<string, VFALayer>();
 
         void AddBuilder(FeatureBuilder builder, GameObject configObject, int menuSortPosition = -1) {

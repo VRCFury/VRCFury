@@ -107,14 +107,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return "none";
     }
 
-    private VFALayer GetLayer(string layerName, ControllerManager controller, string maskName = "") {
+    private VFALayer GetLayer(string layerName, ControllerManager controller) {
         if (enableExclusiveTag) {
-            var firstExclusiveTag = GetPrimaryExclusive();
-            if (firstExclusiveTag == "") return controller.NewLayer(layerName);
-            if (!exclusiveAnimationLayers.ContainsKey((firstExclusiveTag, controller.GetType(), maskName))) {
-                 exclusiveAnimationLayers[(firstExclusiveTag, controller.GetType(), maskName)] = controller.NewLayer((firstExclusiveTag + " Animations " + maskName).Trim());
+            var primaryExclusiveTag = GetPrimaryExclusive();
+            if (primaryExclusiveTag == "") return controller.NewLayer(layerName);
+            if (!exclusiveAnimationLayers.ContainsKey(primaryExclusiveTag)) {
+                 exclusiveAnimationLayers[primaryExclusiveTag] = controller.NewLayer((primaryExclusiveTag + " Animations").Trim());
             }
-            return exclusiveAnimationLayers[(firstExclusiveTag, controller.GetType(), maskName)];
+            return exclusiveAnimationLayers[primaryExclusiveTag];
         }
         return controller.NewLayer(layerName);
     }

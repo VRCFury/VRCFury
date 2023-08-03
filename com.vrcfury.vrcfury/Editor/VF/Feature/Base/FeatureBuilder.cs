@@ -29,7 +29,7 @@ namespace VF.Feature.Base {
         [NonSerialized] [JsonIgnore] public List<FeatureModel> allFeaturesInRun;
         [NonSerialized] [JsonIgnore] public List<FeatureBuilder> allBuildersInRun;
         [NonSerialized] [JsonIgnore] public MutableManager mutableManager;
-        [NonSerialized] [JsonIgnore] public Dictionary<(string, VRCAvatarDescriptor.AnimLayerType, string), VFALayer> exclusiveAnimationLayers;
+        [NonSerialized] [JsonIgnore] public Dictionary<string, VFALayer> exclusiveAnimationLayers;
         [NonSerialized] [JsonIgnore] public Dictionary<string, VFALayer> exclusiveParameterLayers;
 
         public virtual string GetEditorTitle() {
