@@ -105,14 +105,13 @@ namespace VF.Feature.Base {
                 clip.RewriteBindings(ClipRewriter.AnimatorBindingsAlwaysTargetRoot);
             }
 
-            var restingStateBuilder = GetBuilder<RestingStateBuilder>();
+            var offClip = new AnimationClip();
+            var onClip = GetFx().NewClip(name);
 
             AnimationClip firstClip = state.actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
                 .FirstOrDefault();
-            var offClip = new AnimationClip();
-            var onClip = GetFx().NewClip(name);
 
             if (firstClip) {
                 var copy = mutableManager.CopyRecursive(firstClip);
@@ -206,6 +205,7 @@ namespace VF.Feature.Base {
                 }
             }
 
+            var restingStateBuilder = GetBuilder<RestingStateBuilder>();
             restingStateBuilder.ApplyClipToRestingState(offClip);
 
             return onClip;
