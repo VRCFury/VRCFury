@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
@@ -61,9 +62,9 @@ namespace VF.Utils {
             if (binding.path == "" && binding.type == typeof(Animator)) return true;
             if (!typeof(UnityEngine.Component).IsAssignableFrom(binding.type))
                 throw new Exception($"Unknown binding type: {binding.type}");
-            var component = obj.GetComponent(binding.type);
-            if (component == null) return false;
-            return true;
+            if (obj.GetComponent(binding.type) != null) return true;
+            if (binding.type == typeof(BoxCollider) && obj.GetComponent<VRCStation>() != null) return true;
+            return false;
         }
 
         public static string PrettyString(this EditorCurveBinding binding) {

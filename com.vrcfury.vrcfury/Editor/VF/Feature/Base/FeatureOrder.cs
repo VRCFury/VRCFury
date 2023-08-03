@@ -75,6 +75,7 @@ namespace VF.Feature.Base {
         FixMaterialSwapWithMask,
         ControllerConflictCheck,
         FixWriteDefaults,
+        FixEmptyMotions,
         AnimatorLayerControlFix,
         FinalizeController,
 
