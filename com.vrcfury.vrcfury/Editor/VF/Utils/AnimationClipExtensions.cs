@@ -161,6 +161,7 @@ namespace VF.Utils {
         }
 
         public static void CopyFromLast(this AnimationClip clip, AnimationClip other) {
+            EditorUtility.CopySerialized(other, clip);
             foreach (var c in other.GetAllCurves() ) {
                 var val = c.Item2.GetLast();
                 clip.SetConstant(c.Item1, val);
