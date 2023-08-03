@@ -5,11 +5,31 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF.Component {
+    [DefaultExecutionOrder(-19999)] // run before av3emu and modular avatar
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver, IVrcfEditorOnly {
         [SerializeField]
         private int version = -1;
 
         [NonSerialized] public GameObject gameObjectOverride;
+
+        #region ApplyOnPlay
+#if UNITY_EDITOR
+        // parameter: (is awake, component)
+        /// this field is public to allow access from Editor module but this is not part of public API.
+        public static Action<bool, VRCFuryComponent> AwakeOrStart;
+        private void Awake()
+        {
+            if (!UnityEditor.EditorApplication.isPlaying || this == null) return;
+            AwakeOrStart?.Invoke(true, this);
+        }
+
+        private void Start()
+        {
+            if (!UnityEditor.EditorApplication.isPlaying || this == null) return;
+            AwakeOrStart?.Invoke(false, this);
+        }
+#endif
+        #endregion
 
         public new GameObject gameObject {
             get {
