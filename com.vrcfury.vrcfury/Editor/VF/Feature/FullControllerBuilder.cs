@@ -46,14 +46,14 @@ namespace VF.Feature {
                 var type = c.type;
                 RuntimeAnimatorController source = c.controller;
                 if (source == null) continue;
-                var copy = mutableManager.CopyRecursive(source);
+                var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
                 while (copy is AnimatorOverrideController ov) {
                     if (ov.runtimeAnimatorController is AnimatorController ac2) {
                         AnimatorIterator.ReplaceClips(ac2, clip => ov[clip]);
                     }
                     RuntimeAnimatorController newCopy = null;
                     if (ov.runtimeAnimatorController != null) {
-                        newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, addPrefix: false);
+                        newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, saveFilename: "tmp", addPrefix: false);
                     }
                     AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                     copy = newCopy;
