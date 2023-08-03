@@ -79,23 +79,22 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     private string GetHumanoidMaskName(params State[] states) {
-        
         var leftHand = false;
         var rightHand = false;
-
-        foreach(var state in states) {
-            if (state == null) continue;
+        foreach (var state in states) {
+            if (state == null || state.actions.Count() == 0) continue;
             foreach(var action in state.actions) {
-                if (action is AnimationClipAction clip) {
-                    var bones = AnimationUtility.GetCurveBindings(clip.clip);
-                    foreach (var b in bones) {
-                        if (!(HumanTrait.MuscleName.Contains(b.propertyName) || b.propertyName.EndsWith(" Stretched") || b.propertyName.EndsWith(".Spread"))) continue;
-                        if (b.propertyName.Contains("RightHand") || b.propertyName.Contains("Right Thumb") || b.propertyName.Contains("Right Index") ||
-                            b.propertyName.Contains("Right Middle") || b.propertyName.Contains("Right Ring") || b.propertyName.Contains("Right Little")) { rightHand = true; continue; }
-                        if (b.propertyName.Contains("LeftHand") || b.propertyName.Contains("Left Thumb") || b.propertyName.Contains("Left Index") || 
-                            b.propertyName.Contains("Left Middle") || b.propertyName.Contains("Left Ring") || b.propertyName.Contains("Left Little")) { leftHand = true; continue; }
+                if (action is AnimationClipAction actionClip) {
+                    var muscleTypes = new AnimatorIterator.Clips().From(actionClip.clip)
+                        .SelectMany(clip => clip.GetMuscleBindingTypes())
+                        .ToImmutableHashSet();
+
+                    if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other))
                         return "emote";
-                    }
+                    if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.LeftHand))
+                        leftHand = true;
+                    if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.RightHand))
+                        rightHand = true;
                 }
             }
         }
@@ -103,7 +102,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (leftHand && rightHand) return "hands";
         if (leftHand) return "leftHand";
         if (rightHand) return "rightHand";
-        
         return "none";
     }
 
