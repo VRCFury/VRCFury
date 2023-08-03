@@ -116,80 +116,24 @@ namespace VF.Feature {
                 }
 
                 // TODO: this better
-                var trackingOff = newState.GetTrackingControl();
-                var trackingOn = outState.GetTrackingControl();
+
+                var mask = "";
 
                 if (type == LayerType.Action) {
-                    trackingOn.trackingHead = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingHip = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-
-                    trackingOff.trackingHead = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingHip = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    mask = "emote";
                 }
 
                 if (type == LayerType.LeftHand) {
-                    trackingOn.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-
-                    trackingOff.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    mask = "leftHand";
                 }
 
                 if (type == LayerType.RightHand) {
-                    trackingOn.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Tracking;
-                    trackingOn.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOn.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-
-                    trackingOff.trackingHead = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingLeftHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingRightHand = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingHip = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingLeftFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingRightFoot = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingLeftFingers = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingRightFingers = VRC_AnimatorTrackingControl.TrackingType.Animation;
-                    trackingOff.trackingEyes = VRC_AnimatorTrackingControl.TrackingType.NoChange;
-                    trackingOff.trackingMouth = VRC_AnimatorTrackingControl.TrackingType.NoChange;
+                    mask = "rightHand";
                 }
+
+                newState.TrackingController(mask + "Animation");
+                outState.TrackingController(mask + "Tracking");
+
 
                 off.TransitionsTo(newState).When(myCond).WithTransitionExitTime(exitTime);
                 previousStates.Add((myCond, newState));
