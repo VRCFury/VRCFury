@@ -99,11 +99,11 @@ namespace VF.Feature {
                 var outState = layer.NewState($"{motion.name} - Out");
                 off.TransitionsToExit().When(myCond);
                 newState.TransitionsFromEntry().When(myCond);
-                newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not()).WithTransitionExitTime(exitTime);
-                newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
                 foreach (var (otherCond,other) in previousStates) {
                     newState.TransitionsToExit().When(otherCond).WithTransitionExitTime(exitTime);;
                 }
+                newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not()).WithTransitionExitTime(exitTime);
+                newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
                 outState.TransitionsToExit().When(controller.Always());
 
                 if (type == LayerType.Action) {
