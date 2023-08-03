@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace VF.Component {
@@ -10,5 +11,13 @@ namespace VF.Component {
         public Vector3 pos;
         public Quaternion rot;
         public bool show = true;
+    }
+
+    public class VRCFuryNoUpdateWhenOffscreen : VRCFuryPlayComponent {
+        private void Update() {
+            var skin = GetComponent<SkinnedMeshRenderer>();
+            if (skin == null) return;
+            skin.updateWhenOffscreen = false;
+        }
     }
 }
