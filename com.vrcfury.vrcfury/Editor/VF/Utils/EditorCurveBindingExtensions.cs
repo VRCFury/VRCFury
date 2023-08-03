@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     public static class EditorCurveBindingExtensions {
@@ -47,6 +49,32 @@ namespace VF.Utils {
             if (binding.propertyName.Contains("LeftHand")) return MuscleBindingType.LeftHand;
             if (binding.propertyName.Contains("RightHand")) return MuscleBindingType.RightHand;
             return MuscleBindingType.Other;
+        }
+
+        public static bool IsValid(this EditorCurveBinding binding, VFGameObject baseObject) {
+            if (binding.IsProxyBinding()) return true;
+            var obj = baseObject.Find(binding.path);
+            if (obj == null) return false;
+            if (binding.type == null) return false;
+            if (binding.type == typeof(GameObject)) return true;
+            // because we delete the animator during the build
+            if (binding.path == "" && binding.type == typeof(Animator)) return true;
+            if (!typeof(UnityEngine.Component).IsAssignableFrom(binding.type))
+                throw new Exception($"Unknown binding type: {binding.type}");
+            var component = obj.GetComponent(binding.type);
+            if (component == null) return false;
+            return true;
+        }
+
+        public static string PrettyString(this EditorCurveBinding binding) {
+            return $"({binding.path} {binding.type?.Name} {binding.propertyName})";
+        }
+
+        public static bool GetFloatFromGameObject(this EditorCurveBinding binding, GameObject root, out float data) {
+            return AnimationUtility.GetFloatValue(root, binding, out data);
+        }
+        public static bool GetObjectFromGameObject(this EditorCurveBinding binding, GameObject root, out Object data) {
+            return AnimationUtility.GetObjectReferenceValue(root, binding, out data);
         }
     }
 }

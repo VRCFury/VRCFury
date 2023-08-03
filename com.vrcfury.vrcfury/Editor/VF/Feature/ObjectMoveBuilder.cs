@@ -33,19 +33,19 @@ namespace VF.Feature {
             DirectRewrite(oldPath, newPath);
         }
         
-        public void DirectRewrite(string from, string to) {
-            string RewritePath(string path) {
+        private void DirectRewrite(string from, string to) {
+            var rewriter = AnimationRewriter.RewritePath(path => {
                 if (path.StartsWith(from + "/") || path == from) {
                     path = to + path.Substring(from.Length);
                 }
                 return path;
-            }
-            
+            });
+
             foreach (var controller in manager.GetAllUsedControllers()) {
-                controller.GetRaw().RewritePaths(RewritePath);
+                controller.GetRaw().Rewrite(rewriter);
             }
             foreach (var clip in additionalClips) {
-                clip.RewritePaths(RewritePath);
+                clip.Rewrite(rewriter);
             }
         }
 

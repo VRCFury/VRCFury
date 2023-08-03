@@ -20,15 +20,13 @@ namespace VF.Feature {
 
             if (isFloat) {
                 if (GetDefaultClip().GetFloatCurve(binding) != null) return;
-                var exists = AnimationUtility.GetFloatValue(avatarObject, binding, out var value);
-                if (exists) {
-                    GetDefaultClip().SetFloatCurve(binding, ClipBuilder.OneFrame(value));
+                if (binding.GetFloatFromGameObject(avatarObject, out var value)) {
+                    GetDefaultClip().SetConstant(binding, value);
                 }
             } else {
                 if (GetDefaultClip().GetObjectCurve(binding) != null) return;
-                var exists = AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out var value);
-                if (exists) {
-                    GetDefaultClip().SetObjectCurve(binding, ClipBuilder.OneFrame(value));
+                if (binding.GetObjectFromGameObject(avatarObject, out var value)) {
+                    GetDefaultClip().SetConstant(binding, value);
                 }
             }
         }
@@ -101,7 +99,8 @@ namespace VF.Feature {
         
         private void ApplyToAvatar(bool applyToUnmanagedLayers, bool useWriteDefaults) {
             foreach (var controller in applyToUnmanagedLayers ? manager.GetAllUsedControllers() : manager.GetAllTouchedControllers()) {
-                var noopClip = controller.GetNoopClip();
+                var noopClip = controller.NewClip("noop");
+                noopClip.SetConstant(EditorCurveBinding.FloatCurve("_vrcf_noop", typeof(GameObject), "m_IsActive"), 0);
                 var recordDefaults = !useWriteDefaults && controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX;
                 foreach (var layer in controller.GetManagedLayers()) {
                     ApplyToLayer(layer, noopClip, useWriteDefaults, recordDefaults);
@@ -134,10 +133,10 @@ namespace VF.Feature {
                 foreach (var state in new AnimatorIterator.States().From(layer)) {
                     if (!state.writeDefaultValues) continue;
                     foreach (var clip in new AnimatorIterator.Clips().From(state)) {
-                        foreach (var binding in AnimationUtility.GetCurveBindings(clip)) {
+                        foreach (var binding in clip.GetFloatBindings()) {
                             RecordDefaultNow(binding, true);
                         }
-                        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                        foreach (var binding in clip.GetObjectBindings()) {
                             RecordDefaultNow(binding, false);
                         }
                     }
@@ -153,11 +152,22 @@ namespace VF.Feature {
                 if (useWriteDefaults) { 
                     state.writeDefaultValues = true;
                 } else {
-                    if (state.motion == null) state.motion = noopClip;
-                    if (!state.writeDefaultValues) return;
+                    if (IsNoop(state.motion)) state.motion = noopClip;
+                    foreach (var tree in new AnimatorIterator.Trees().From(state)) {
+                        tree.children = tree.children.Select(child => {
+                            child.motion = IsNoop(child.motion) ? noopClip : child.motion;
+                            return child;
+                        }).ToArray();
+                    }
                     state.writeDefaultValues = false;
                 }
             }
+        }
+
+        private bool IsNoop(Motion motion) {
+            if (motion == null) return true;
+            if (ClipBuilder.IsEmptyMotion(motion, avatarObject)) return true;
+            return false;
         }
         
         private class ControllerInfo {
