@@ -245,7 +245,6 @@ namespace VF.Feature {
 
         private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(AnimatorStateMachine sm) {
             var usedBindings = new HashSet<EditorCurveBinding>();
-
             foreach (var clip in new AnimatorIterator.Clips().From(sm)) {
                 usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
                 usedBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));

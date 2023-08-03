@@ -59,7 +59,7 @@ namespace VF.Feature {
                             // In theory, this should probably work for all types of controllers, but for some reason it doesn't.
                             // (see Hailey avatar, Gesture Controller, SB_FX Weight layer)
                             // For now, only worry about things driving action
-                            if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action && drivesType != VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                            if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action) {
                                 return true;
                             }
 

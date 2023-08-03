@@ -231,9 +231,6 @@ namespace VF.Builder {
         public VFABool True() {
             return NewBool("VF_True", def: true, usePrefix: false);
         }
-        public VFAFloat ConstantFloat(float f) {
-            return NewFloat("FV_ConstantF-" + f, def: f, usePrefix: false);
-        }
         public VFACondition Always() {
             return True().IsTrue();
         }
@@ -308,7 +305,6 @@ namespace VF.Builder {
             "EyeHeightAsMeters",
             "EyeHeightAsPercent"
         };
-
         public IImmutableSet<AnimationClip> GetClips() {
             return new AnimatorIterator.Clips().From(GetRaw());
         }
