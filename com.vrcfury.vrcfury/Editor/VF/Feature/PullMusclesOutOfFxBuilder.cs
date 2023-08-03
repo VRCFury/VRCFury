@@ -119,17 +119,9 @@ namespace VF.Feature {
 
                 var mask = "";
 
-                if (type == LayerType.Action) {
-                    mask = "emote";
-                }
-
-                if (type == LayerType.LeftHand) {
-                    mask = "leftHand";
-                }
-
-                if (type == LayerType.RightHand) {
-                    mask = "rightHand";
-                }
+                if (type == LayerType.Action) mask = "emote";
+                if (type == LayerType.LeftHand) mask = "leftHand";
+                if (type == LayerType.RightHand) mask = "rightHand";
 
                 newState.TrackingController(mask + "Animation");
                 outState.TrackingController(mask + "Tracking");
