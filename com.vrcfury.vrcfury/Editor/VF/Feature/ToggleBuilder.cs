@@ -351,7 +351,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var transitionClipIn = LoadState(onName + " In", inAction);
 
             // if clip is empty, copy last frame of transition
-            if (clip == controller.GetNoopClip()) {
+            if (clip == controller.GetEmptyClip()) {
                 clip = controller.NewClip(onName);
                 clip.CopyFromLast(transitionClipIn);
             }
