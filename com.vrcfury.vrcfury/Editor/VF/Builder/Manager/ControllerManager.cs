@@ -85,10 +85,9 @@ namespace VF.Builder {
         }
         
         private AnimationClip _noopClip;
-        public AnimationClip GetNoopClip() {
+        public AnimationClip GetEmptyClip() {
             if (_noopClip == null) {
-                _noopClip = _NewClip("VFnoop");
-                _noopClip.SetCurve("_ignored", typeof(GameObject), "m_IsActive", AnimationCurve.Constant(0,0,0));
+                _noopClip = _NewClip("VFempty");
             }
             return _noopClip;
         }

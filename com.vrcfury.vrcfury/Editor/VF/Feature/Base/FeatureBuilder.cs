@@ -92,18 +92,17 @@ namespace VF.Feature.Base {
 
         protected AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
             if (state == null || state.actions.Count == 0) {
-                return GetFx().GetNoopClip();
+                return GetFx().GetEmptyClip();
             }
 
-            var pathRewriter = ClipRewriter.CreateNearestMatchPathRewriter(
-                animObject: animObjectOverride ?? featureBaseObject,
-                rootObject: avatarObject
+            var rewriter = AnimationRewriter.Combine(
+                ClipRewriter.CreateNearestMatchPathRewriter(
+                    animObject: animObjectOverride ?? featureBaseObject,
+                    rootObject: avatarObject
+                ),
+                ClipRewriter.AdjustRootScale(avatarObject),
+                ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
             );
-            void RewriteClip(AnimationClip clip) {
-                clip.RewritePaths(pathRewriter);
-                clip.AdjustRootScale(avatarObject);
-                clip.RewriteBindings(ClipRewriter.AnimatorBindingsAlwaysTargetRoot);
-            }
 
             var offClip = new AnimationClip();
             var onClip = GetFx().NewClip(name);
@@ -115,7 +114,7 @@ namespace VF.Feature.Base {
 
             if (firstClip) {
                 var copy = mutableManager.CopyRecursive(firstClip);
-                RewriteClip(copy);
+                copy.Rewrite(rewriter);
                 var nameBak = onClip.name;
                 EditorUtility.CopySerialized(copy, onClip);
                 onClip.name = nameBak;
@@ -155,7 +154,7 @@ namespace VF.Feature.Base {
                         AnimationClip clipActionClip = clipAction.clip;
                         if (clipActionClip && clipActionClip != firstClip) {
                             var copy = mutableManager.CopyRecursive(clipActionClip);
-                            RewriteClip(copy);
+                            copy.Rewrite(rewriter);
                             onClip.CopyFrom(copy);
                         }
                         break;

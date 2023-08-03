@@ -189,23 +189,17 @@ namespace VF.Feature {
                 }
             }
 
-            // Rewrite paths using component's "binding rewrites"
-            from.RewritePaths(RewritePath);
-
-            // Rewrite paths to nearest matching parent object
-            from.RewritePaths(ClipRewriter.CreateNearestMatchPathRewriter(
-                animObject: GetBaseObject(),
-                rootObject: avatarObject,
-                rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
+            // Rewrite clips
+            from.Rewrite(AnimationRewriter.Combine(
+                AnimationRewriter.RewritePath(RewritePath),
+                ClipRewriter.CreateNearestMatchPathRewriter(
+                    animObject: GetBaseObject(),
+                    rootObject: avatarObject,
+                    rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
+                ),
+                ClipRewriter.AdjustRootScale(avatarObject),
+                ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
             ));
-
-            foreach (var clip in new AnimatorIterator.Clips().From(from)) {
-                // Adjust root scale
-                clip.AdjustRootScale(avatarObject);
-
-                // Make sure all animator parameter triggers hit the root animator
-                clip.RewriteBindings(ClipRewriter.AnimatorBindingsAlwaysTargetRoot);
-            }
             
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")

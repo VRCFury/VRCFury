@@ -232,7 +232,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
             tree.blendParameter = x.Name();
-            tree.AddChild(fx.GetNoopClip(), 0);
+            tree.AddChild(fx.GetEmptyClip(), 0);
             tree.AddChild(clip, 1);
             on.WithAnimation(tree);
         } else {

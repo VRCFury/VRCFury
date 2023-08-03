@@ -22,6 +22,22 @@ namespace VF.Utils {
             return clip.GetFloatBindings().Concat(clip.GetObjectBindings()).ToArray();
         }
         
+        public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {
+            return AnimationUtility.GetEditorCurve(clip, binding);
+        }
+        
+        public static ObjectReferenceKeyframe[] GetObjectCurve(this AnimationClip clip, EditorCurveBinding binding) {
+            return AnimationUtility.GetObjectReferenceCurve(clip, binding);
+        }
+
+        public static (EditorCurveBinding, AnimationCurve)[] GetFloatCurves(this AnimationClip clip) {
+            return clip.GetFloatBindings().Select(b => (b, clip.GetFloatCurve(b))).ToArray();
+        }
+        
+        public static (EditorCurveBinding, ObjectReferenceKeyframe[])[] GetObjectCurves(this AnimationClip clip) {
+            return clip.GetObjectBindings().Select(b => (b, clip.GetObjectCurve(b))).ToArray();
+        }
+
         public static (EditorCurveBinding,FloatOrObjectCurve)[] GetAllCurves(this AnimationClip clip) {
             return clip.GetObjectBindings().Select(b => (b, new FloatOrObjectCurve(clip.GetObjectCurve(b))))
                 .Concat(clip.GetFloatBindings().Select(b => (b, new FloatOrObjectCurve(clip.GetFloatCurve(b)))))
@@ -51,26 +67,22 @@ namespace VF.Utils {
         }
 
         // TODO: Replace this with calls to AnimationUtility.SetEditorCurves / SetObjectReferenceCurves once in unity 2020+
-        private static readonly Type animUtil = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationUtility");
-        private static readonly MethodInfo setFloatNoSync = animUtil.GetMethod("SetEditorCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        // Warning: Using these previously resulted in some bindings just... not getting saved.
+        // This was apparent because the empty layer optimizer was removing unused bindings which should have been rewritten
+        //private static readonly Type animUtil = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationUtility");
+        //private static readonly MethodInfo setFloatNoSync = animUtil.GetMethod("SetEditorCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        //private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        //private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static void SetFloatCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
-            setFloatNoSync.Invoke(null, new object[] { clip, binding, curve });
+            //setFloatNoSync.Invoke(null, new object[] { clip, binding, curve });
+            clip.SetFloatCurve(binding, curve);
         }
         private static void SetObjectCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
-            setObjNoSync.Invoke(null, new object[] { clip, binding, curve });
+            //setObjNoSync.Invoke(null, new object[] { clip, binding, curve });
+            clip.SetObjectCurve(binding, curve);
         }
         private static void Sync(this AnimationClip clip) {
-            triggerSync.Invoke(null, new object[] { clip });
-        }
-
-        public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {
-            return AnimationUtility.GetEditorCurve(clip, binding);
-        }
-        
-        public static ObjectReferenceKeyframe[] GetObjectCurve(this AnimationClip clip, EditorCurveBinding binding) {
-            return AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            //triggerSync.Invoke(null, new object[] { clip });
         }
 
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
@@ -104,56 +116,12 @@ namespace VF.Utils {
             }
         }
 
-        public static void RewriteBindings(this AnimationClip clip, Func<EditorCurveBinding, EditorCurveBinding?> rewrite) {
-            var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (binding.IsProxyBinding()) continue;
-                var newBinding = rewrite(binding);
-                if (newBinding == null) {
-                    output.Add((binding, null));
-                } else if (binding != newBinding) {
-                    output.Add((binding, null));
-                    output.Add((newBinding.Value, curve));
-                }
-            }
-            clip.SetCurves(output);
-        }
-
-        public static void RewritePaths(this AnimationClip clip, Func<string,string> rewrite) {
-            clip.RewriteBindings(binding => {
-                var newPath = rewrite(binding.path);
-                if (newPath == null) return null;
-                if (newPath == binding.path) return binding;
-                var newBinding = binding;
-                newBinding.path = newPath;
-                return newBinding;
-            });
-        }
-
         public static int GetLengthInFrames(this AnimationClip clip) {
             return GetAllCurves(clip)
                 .Select(pair => pair.Item2)
                 .Select(curve => curve.GetLengthInFrames())
                 .DefaultIfEmpty(0)
                 .Max();
-        }
-
-        public static void AdjustRootScale(this AnimationClip clip, VFGameObject rootObject) {
-            foreach (var binding in clip.GetFloatBindings()) {
-                if (binding.path != "") continue;
-                if (binding.type != typeof(Transform)) continue;
-                if (!binding.propertyName.StartsWith("m_LocalScale.")) continue;
-                if (!ClipRewriter.GetFloatFromAvatar(rootObject, binding, out var rootScale)) continue;
-                if (rootScale == 1) continue;
-                var curve = clip.GetFloatCurve(binding);
-                curve.keys = curve.keys.Select(k => {
-                    k.value *= rootScale;
-                    k.inTangent *= rootScale;
-                    k.outTangent *= rootScale;
-                    return k;
-                }).ToArray();
-                clip.SetFloatCurve(binding, curve);
-            }
         }
 
         public static void CopyFrom(this AnimationClip clip, AnimationClip other) {

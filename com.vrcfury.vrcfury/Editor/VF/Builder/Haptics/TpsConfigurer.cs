@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Component;
 using VF.Feature;
 using VF.Inspector;
 using Object = UnityEngine.Object;
@@ -75,6 +77,10 @@ namespace VF.Builder.Haptics {
             bounds.Encapsulate(new Vector3(localLength * 1.5f,localLength * 1.5f,localLength * 2.5f));
             bounds.Encapsulate(new Vector3(localLength * -1.5f,localLength * -1.5f,localLength * 2.5f));
             skin.localBounds = bounds;
+
+            if (EditorApplication.isPlaying) {
+                skin.owner().AddComponent<VRCFuryNoUpdateWhenOffscreen>();
+            }
 
             return skin;
         }
