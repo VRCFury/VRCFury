@@ -301,7 +301,12 @@ namespace VF.Builder {
             "InStation",
             "AvatarVersion",
             "GroundProximity",
-            "VelocityMagnitude"
+            "VelocityMagnitude",
+            "ScaleModified",
+            "ScaleFactor",
+            "ScaleFactorInverse",
+            "EyeHeightAsMeters",
+            "EyeHeightAsPercent"
         };
 
         public IImmutableSet<AnimationClip> GetClips() {
