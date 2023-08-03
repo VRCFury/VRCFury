@@ -199,13 +199,6 @@ public class VFAState {
         var driver = node.state.VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
         return driver;
     }
-    public VRCPlayableLayerControl GetPlayableLayerControl(VRC_PlayableLayerControl.BlendableLayer layer) {
-         foreach (var b in node.state.behaviours) {
-            if (b is VRCPlayableLayerControl lc) return lc;
-        }
-        var driver = node.state.VAddStateMachineBehaviour<VRCPlayableLayerControl>();
-        return driver;
-    }
     private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
         var driver = GetDriver(local);
         var p = new VRC_AvatarParameterDriver.Parameter();
@@ -293,14 +286,6 @@ public class VFAState {
         throw new VRCFBuilderException("Unrecognized Tracking Controller Quick Choice: " + quickChoice);
     }
 
-    public VFAState PlayableLayerController(VRC_PlayableLayerControl.BlendableLayer layer, float goal, float duration) {
-        var controller = GetPlayableLayerControl(layer);
-        controller.layer = layer;
-        controller.goalWeight = goal;
-        controller.blendDuration = duration;
-        return this;
-    }
-
     public VFAEntryTransition TransitionsFromEntry() {
         return new VFAEntryTransition(() => stateMachine.AddEntryTransition(node.state));
     }
@@ -319,10 +304,6 @@ public class VFAState {
 
     public AnimatorState GetRaw() {
         return node.state;
-    }
-
-    public AnimatorStateMachine GetRawStateMachine() {
-        return stateMachine;
     }
 
     public static void FakeAnyState(params (VFAState,VFACondition)[] states) {
