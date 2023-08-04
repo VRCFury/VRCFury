@@ -115,7 +115,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		float keepForward = sps_saturated_map(abs(normalize(rootPos.xy).x), 1, 0);
 		// Keep forward only if targeting in near or behind the base
 		keepForward *= sps_saturated_map(rootPos.z, 0.3, 0.2);
-		bezierUp = sps_slerp(keepUprightUp, keepForwardUp, keepForward);
+		bezierUp = normalize(lerp(keepUprightUp, keepForwardUp, keepForward));
 		bezierRight = normalize(cross(bezierUp, bezierForward));
 	}
 
