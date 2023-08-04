@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
@@ -8,14 +9,35 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     public static class ClipRewriter {
+        public static AnimationRewriter AnimatorBindingsAlwaysTargetRoot() {
+            return AnimationRewriter.RewriteBinding(binding => {
+                if (binding.type == typeof(Animator)) {
+                    var newBinding = binding;
+                    newBinding.path = "";
+                    return newBinding;
+                }
+                return binding;
+            });
+        }
+        
+        public static AnimationRewriter AdjustRootScale(VFGameObject rootObject) {
+            return AnimationRewriter.RewriteCurve((binding, curve) => {
+                var noChange = (binding, curve, false);
+                if (!curve.IsFloat) return noChange;
+                if (binding.path != "") return noChange;
+                if (binding.type != typeof(Transform)) return noChange;
+                if (!binding.propertyName.StartsWith("m_LocalScale.")) return noChange;
+                if (!binding.GetFloatFromGameObject(rootObject, out var rootScale)) return noChange;
+                if (rootScale == 1) return noChange;
 
-        public static EditorCurveBinding? AnimatorBindingsAlwaysTargetRoot(EditorCurveBinding binding) {
-            if (binding.type == typeof(Animator)) {
-                var newBinding = binding;
-                newBinding.path = "";
-                return newBinding;
-            }
-            return binding;
+                curve.FloatCurve.keys = curve.FloatCurve.keys.Select(k => {
+                    k.value *= rootScale;
+                    k.inTangent *= rootScale;
+                    k.outTangent *= rootScale;
+                    return k;
+                }).ToArray();
+                return (binding, curve, true);
+            });
         }
 
         /**
@@ -25,7 +47,7 @@ namespace VF.Builder {
          *
          * If no match is ever found, it's returned with animObject as the prefix.
          */
-        public static Func<string,string> CreateNearestMatchPathRewriter(
+        public static AnimationRewriter CreateNearestMatchPathRewriter(
             VFGameObject animObject = null,
             VFGameObject rootObject = null,
             bool rootBindingsApplyToAvatar = false
@@ -40,32 +62,26 @@ namespace VF.Builder {
                 throw new VRCFBuilderException("animObject not child of rootObject");
             }
 
-            return (path) => {
-                if (path == "" && rootBindingsApplyToAvatar) {
-                    return "";
+            return AnimationRewriter.RewriteBinding(binding => {
+                if (binding.path == "" && rootBindingsApplyToAvatar) {
+                    return binding;
                 }
-                string foundPath = null;
+
                 VFGameObject current = animObject;
                 while (current != null) {
-                    var prefix = current.GetPath(rootObject);
-                    var testPath = Join(prefix, path);
-                    bool exists = rootObject.Find(testPath);
-                    if (exists || foundPath == null) foundPath = testPath;
-                    if (exists) break;
+                    var testBinding = binding;
+                    testBinding.path = Join(current.GetPath(rootObject), binding.path);
+                    if (testBinding.IsValid(rootObject)) {
+                        return testBinding;
+                    }
                     if (current == rootObject) break;
                     current = current.parent;
                 }
-                return foundPath;
-            };
+
+                return binding;
+            });
         }
 
-        public static bool GetFloatFromAvatar(VFGameObject avatar, EditorCurveBinding binding, out float output) {
-            return AnimationUtility.GetFloatValue(avatar, binding, out output);
-        }
-        public static bool GetObjectFromAvatar(VFGameObject avatar, EditorCurveBinding binding, out Object output) {
-            return AnimationUtility.GetObjectReferenceValue(avatar, binding, out output);
-        }
-        
         public static string Join(string a, string b, bool allowAdvancedOperators = true) {
             var paths = new [] { a, b };
             

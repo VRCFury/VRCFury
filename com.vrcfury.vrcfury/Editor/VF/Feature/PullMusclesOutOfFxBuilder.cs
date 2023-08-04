@@ -134,7 +134,7 @@ namespace VF.Feature {
 
             List<(AnimationClip,bool)> proxies;
             if (motion is AnimationClip rootClip) {
-                proxies = rootClip.CollapseProxyBindings();
+                proxies = rootClip.CollapseProxyBindings(true);
             } else {
                 proxies = new List<(AnimationClip, bool)>();
             }

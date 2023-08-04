@@ -24,27 +24,28 @@ namespace VF.Utils {
             } else {
                 return;
             }
-            clip.RewriteBindings(binding => null);
+            clip.Rewrite(AnimationRewriter.DeleteAllBindings());
             clip.SetCurve(EditorCurveBinding.DiscreteCurve(
                 ProxyClipMagicString,
-                typeof(Transform),
+                typeof(GameObject),
                 path
             ), new FloatOrObjectCurve(AnimationCurve.Constant(0,0,value)));
         }
 
-        public static List<(AnimationClip,bool)> CollapseProxyBindings(this AnimationClip clip) {
+        public static List<(AnimationClip,bool)> CollapseProxyBindings(this AnimationClip clip, bool removeProxyBindings = false) {
             var collectedProxies = new List<(AnimationClip, bool)>();
 
             var newBindings = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
+            foreach (var (binding,curve) in clip.GetFloatCurves()) {
                 if (binding.path != ProxyClipMagicString) continue;
-                if (!curve.IsFloat) continue;
                 var proxyClipPath = binding.propertyName;
                 var proxyClip = AssetDatabase.LoadMainAssetAtPath(proxyClipPath) as AnimationClip;
                 if (proxyClip == null) throw new Exception($"Failed to find proxy clip: {proxyClipPath}");
-                var firstVal = curve.FloatCurve.keys[0].value;
+                var firstVal = curve.keys[0].value;
                 collectedProxies.Add((proxyClip, firstVal == 1));
-                newBindings.Add((binding, null));
+                if (removeProxyBindings) {
+                    newBindings.Add((binding, null));
+                }
             }
             clip.SetCurves(newBindings);
 

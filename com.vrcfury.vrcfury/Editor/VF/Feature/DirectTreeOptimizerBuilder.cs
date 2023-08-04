@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -216,7 +217,7 @@ namespace VF.Feature {
                         subTree.blendType = BlendTreeType.Simple1D;
                         subTree.AddChild(toggle.offState, 0);
                         subTree.AddChild(
-                            !onEmpty ? toggle.onState : fx.GetNoopClip(), 1);
+                            !onEmpty ? toggle.onState : fx.GetEmptyClip(), 1);
                         subTree.blendParameter = toggle.param;
                         param = floatTrue.Name();
                         motion = subTree;
@@ -244,13 +245,10 @@ namespace VF.Feature {
         }
 
         private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(AnimatorStateMachine sm) {
-            var usedBindings = new HashSet<EditorCurveBinding>();
-            foreach (var clip in new AnimatorIterator.Clips().From(sm)) {
-                usedBindings.UnionWith(AnimationUtility.GetCurveBindings(clip));
-                usedBindings.UnionWith(AnimationUtility.GetObjectReferenceCurveBindings(clip));
-            }
-            usedBindings.RemoveWhere(binding => binding.path == "_ignored");
-            return usedBindings;
+            return new AnimatorIterator.Clips().From(sm)
+                .SelectMany(clip => clip.GetAllBindings())
+                .Where(binding => binding.IsValid(avatarObject))
+                .ToImmutableHashSet();
         }
 
         public enum EffectiveCondition {

@@ -102,13 +102,20 @@ bool sps_search(
 	 		}
 	 	}
 	}
-	
+
+	// This can happen if the socket was misconfigured, or if it's on a first person head bone that's been shrunk down
+	// Ignore the normal, since it'll be so close to the root that rounding error will cause problems
+	if (frontFound && length(lightLocalPos[frontIndex] - lightLocalPos[rootIndex]) < 0.00005) {
+		frontFound = false;
+	}
+
 	if (rootFound) {
 		rootLocal = lightLocalPos[rootIndex];
 		isRing = lightType[rootIndex] != 1;
 		rootNormal = frontFound
-			? normalize(lightLocalPos[frontIndex] - lightLocalPos[rootIndex])
-			: -1 * normalize(lightLocalPos[rootIndex]);
+			? lightLocalPos[frontIndex] - lightLocalPos[rootIndex]
+			: -1 * lightLocalPos[rootIndex];
+		rootNormal = sps_normalize(rootNormal);
 	} else {
 	 	rootLocal = float3(0,0,0);
 	 	isRing = false;

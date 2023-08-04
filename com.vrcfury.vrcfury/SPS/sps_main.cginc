@@ -106,17 +106,17 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 
 		bezierPos = sps_bezier(p0,p1,p2,p3,t);
 		const float3 bezierDerivative = sps_bezierDerivative(p0,p1,p2,p3,t);
-		bezierForward = normalize(bezierDerivative);
+		bezierForward = sps_normalize(bezierDerivative);
 
-		const float3 keepForwardUp = normalize(cross(bezierForward, float3(1,0,0)));
-		const float3 keepUprightUp = normalize(cross(bezierForward, cross(float3(0,1,0), bezierForward)));
+		const float3 keepForwardUp = sps_normalize(cross(bezierForward, float3(1,0,0)));
+		const float3 keepUprightUp = sps_normalize(cross(bezierForward, cross(float3(0,1,0), bezierForward)));
 
 		// Keep forward only if closer to the middle horizontally
-		float keepForward = sps_saturated_map(abs(normalize(rootPos.xy).x), 1, 0);
+		float keepForward = sps_saturated_map(abs(sps_normalize(rootPos.xy).x), 1, 0);
 		// Keep forward only if targeting in near or behind the base
 		keepForward *= sps_saturated_map(rootPos.z, 0.3, 0.2);
-		bezierUp = sps_slerp(keepUprightUp, keepForwardUp, keepForward);
-		bezierRight = normalize(cross(bezierUp, bezierForward));
+		bezierUp = sps_normalize(lerp(keepUprightUp, keepForwardUp, keepForward));
+		bezierRight = sps_normalize(cross(bezierUp, bezierForward));
 	}
 
 	// Handle holes and rings
@@ -149,7 +149,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float3 deformedNormal = bezierRight * restingNormal.x + bezierUp * restingNormal.y + bezierForward * restingNormal.z;
 
 	vertex = lerp(origVertex, deformedVertex, dumbLerp);
-	normal = sps_slerp(origNormal, deformedNormal, dumbLerp);
+	normal = sps_normalize(lerp(origNormal, deformedNormal, dumbLerp));
 }
 void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color) {
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk

@@ -319,7 +319,7 @@ namespace VF.Feature {
                             tree.blendType = BlendTreeType.Simple1D;
                             tree.useAutomaticThresholds = false;
                             tree.blendParameter = depthParam.Name();
-                            tree.AddChild(fx.GetNoopClip(), 0);
+                            tree.AddChild(fx.GetEmptyClip(), 0);
                             tree.AddChild(clip, 1);
                             on.WithAnimation(tree);
                         } else {

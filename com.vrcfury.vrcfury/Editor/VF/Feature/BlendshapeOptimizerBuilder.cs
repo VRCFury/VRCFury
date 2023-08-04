@@ -10,6 +10,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -212,14 +213,14 @@ namespace VF.Feature {
 
             var clipsInController = new AnimatorIterator.Clips().From(controller);
 
-            return clipsInController.SelectMany(clip => {
-                var clipBindings = AnimationUtility.GetCurveBindings(clip);
-                return clipBindings.Select(b => {
-                    var curve = AnimationUtility.GetEditorCurve(clip, b);
-                    b.path = ClipRewriter.Join(prefix, b.path, allowAdvancedOperators: false);
-                    return (b, curve);
-                });
-            }).ToList();
+            return clipsInController
+                .SelectMany(clip => clip.GetFloatCurves())
+                .Select(pair => {
+                    var (binding, curve) = pair;
+                    binding.path = ClipRewriter.Join(prefix, binding.path, allowAdvancedOperators: false);
+                    return (binding, curve);
+                })
+                .ToList();
         }
 
         private ICollection<string> CollectAnimatedBlendshapesForMesh(Mesh mesh) {
