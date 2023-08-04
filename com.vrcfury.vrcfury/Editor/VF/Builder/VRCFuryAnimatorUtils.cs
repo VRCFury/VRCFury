@@ -376,9 +376,6 @@ public class VFAInteger : VFAParam {
 
 public class VFACondition {
     internal IEnumerable<IEnumerable<AnimatorCondition>> transitions;
-    public VFACondition() {
-        transitions = new List<List<AnimatorCondition>>();
-    }
     public VFACondition(AnimatorCondition cond) {
         var transition = new List<AnimatorCondition> { cond };
         transitions = new List<List<AnimatorCondition>> { transition };
