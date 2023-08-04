@@ -115,7 +115,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		float keepForward = sps_saturated_map(abs(normalize(rootPos.xy).x), 1, 0);
 		// Keep forward only if targeting in near or behind the base
 		keepForward *= sps_saturated_map(rootPos.z, 0.3, 0.2);
-		bezierUp = sps_slerp(keepUprightUp, keepForwardUp, keepForward);
+		bezierUp = normalize(lerp(keepUprightUp, keepForwardUp, keepForward));
 		bezierRight = normalize(cross(bezierUp, bezierForward));
 	}
 
@@ -149,7 +149,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float3 deformedNormal = bezierRight * restingNormal.x + bezierUp * restingNormal.y + bezierForward * restingNormal.z;
 
 	vertex = lerp(origVertex, deformedVertex, dumbLerp);
-	normal = sps_slerp(origNormal, deformedNormal, dumbLerp);
+	normal = normalize(lerp(origNormal, deformedNormal, dumbLerp));
 }
 void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color) {
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
