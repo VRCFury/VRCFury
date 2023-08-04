@@ -67,17 +67,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return param;
     }
 
-    // this currently isn't used, but keeping it here for future proofing if hand layer starts getting included in toggles
-    private bool IsHuanoid(State state) {
-        if (state == null) return false;
-        var clips = state.actions.OfType<AnimationClipAction>();
-        foreach (AnimationClipAction clip in clips) {
-            AnimationClip c = clip.clip;
-            if (c.humanMotion) return true;
-        }
-        return false;
-    }
-
     private string GetHumanoidMaskName(params State[] states) {
         var leftHand = false;
         var rightHand = false;
