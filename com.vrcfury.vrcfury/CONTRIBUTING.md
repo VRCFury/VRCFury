@@ -57,3 +57,5 @@ For more information, please refer to <https://unlicense.org>
   * Added option for Toggles to use momentary push buttons
 * Ximmer-VR
   * Made Toggle sliders work with global parameters
+* anatawa12
+  * Rewrote Build in PlayMode for better & simpler compatibility with Av3Emu and GestureManager
