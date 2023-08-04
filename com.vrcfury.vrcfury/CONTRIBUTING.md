@@ -57,3 +57,5 @@ For more information, please refer to <https://unlicense.org>
   * Added option for Toggles to use momentary push buttons
 * Ximmer-VR
   * Made Toggle sliders work with global parameters
+* wholesomevr
+  * Made Armature Link work with Dynamic Bone Contacts

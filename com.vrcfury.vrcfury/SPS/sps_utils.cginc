@@ -9,6 +9,9 @@ float sps_saturated_map(float value, float min, float max) {
     return saturate(sps_map(value, min, max, 0, 1));
 }
 
-#define sps_angle_between(a,b) acos(dot(normalize(a),normalize(b)))
+// normalize fails fatally and discards the vert if length == 0
+#define sps_normalize(a) length(a) == 0 ? float3(0,0,1) : normalize(a)
+
+#define sps_angle_between(a,b) acos(dot(sps_normalize(a),sps_normalize(b)))
 
 #endif

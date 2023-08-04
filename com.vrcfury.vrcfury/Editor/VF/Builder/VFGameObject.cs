@@ -69,7 +69,18 @@ namespace VF.Builder {
             get => transform.rotation;
             set => transform.rotation = value;
         }
-        public Vector3 worldScale => transform.lossyScale;
+        public Vector3 worldScale {
+            get => transform.lossyScale;
+            set {
+                var parentScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
+                var newLocalScale = new Vector3(
+                    value.x / parentScale.x,
+                    value.y / parentScale.y,
+                    value.z / parentScale.z
+                );
+                transform.localScale = newLocalScale;
+            }
+        }
 
         public Scene scene => gameObject.scene;
 
