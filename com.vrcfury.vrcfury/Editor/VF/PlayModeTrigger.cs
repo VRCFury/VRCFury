@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
@@ -49,19 +51,40 @@ namespace VF {
                 {
                     case VRCFuryHapticSocket socket:
                         socket.Upgrade();
-                        VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                        VRCFExceptionUtils.ErrorDialogBoundary(() =>
+                        {
                             VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
                         });
                         Object.DestroyImmediate(socket);
                         break;
                     case VRCFuryHapticPlug plug:
                         plug.Upgrade();
-                        VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                        VRCFExceptionUtils.ErrorDialogBoundary(() =>
+                        {
                             var mutableManager = new MutableManager(TempDir);
                             VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
                         });
                         Object.DestroyImmediate(plug);
                         break;
+                }
+            }
+
+            if (!isAwake)
+            {
+                // we may need to restart AudioLink because `Shader.SetGlobalTexture`, which is called in AudioLink
+                // initialization, does not work well for newly created materials in VRCFury initialization.
+                RestartAudiolink();
+            }
+        }
+
+        private static void RestartAudiolink() {
+            var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
+            if (alComponentType == null) return;
+            foreach (var gm in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
+                Debug.Log("Restarting AudioLink ...");
+                if (gm.gameObject.activeSelf) {
+                    gm.gameObject.SetActive(false);
+                    gm.gameObject.SetActive(true);
                 }
             }
         }
