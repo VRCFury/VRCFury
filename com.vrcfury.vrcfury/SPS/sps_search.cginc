@@ -102,11 +102,11 @@ bool sps_search(
 	 		}
 	 	}
 	}
-	
+
 	if (rootFound) {
 		rootLocal = lightLocalPos[rootIndex];
 		isRing = lightType[rootIndex] != 1;
-		rootNormal = frontFound
+		rootNormal = (frontFound && length(lightLocalPos[frontIndex] - lightLocalPos[rootIndex]) != 0)
 			? normalize(lightLocalPos[frontIndex] - lightLocalPos[rootIndex])
 			: -1 * normalize(lightLocalPos[rootIndex]);
 	} else {
