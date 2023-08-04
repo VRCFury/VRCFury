@@ -85,53 +85,51 @@ namespace VF.Feature {
                 controller.GetRaw().GetLayer(layer.GetRawStateMachine()).mask = mask;
             }
 
-            var off = layer.NewState("Off");
+            var maskName = "";
 
-            var previousStates = new List<(VFACondition, VFAState)>();
+            if (type == LayerType.Action) maskName = "emote";
+            if (type == LayerType.LeftHand) maskName = "leftHand";
+            if (type == LayerType.RightHand) maskName = "rightHand";
+
+            var off = layer.NewState("Off");
+            var blendout = layer.NewState("Blendout");
+            blendout.TrackingController(maskName + "Tracking");
+            blendout.TransitionsToExit().When(controller.Always());
+
+            if (type == LayerType.Action) {
+                var weightOff = blendout.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
+                weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
+                weightOff.goalWeight = 0;
+            }
+
+            var toggleStates = new List<(VFACondition, VFAState, float)>();
             foreach (var s in states) {
                 var (param, motion, exitTime) = s;
                 var newState = layer.NewState(motion.name);
                 newState.WithAnimation(motion);
                 // Because param came from another controller, we have to recreate it
                 var myParam = controller.NewBool(param.Name(), usePrefix: false);
-                var myCond = myParam.IsTrue();
-
-                var outState = layer.NewState($"{motion.name} - Out");
-                off.TransitionsToExit().When(myCond);
-                newState.TransitionsFromEntry().When(myCond);
-                foreach (var (otherCond,other) in previousStates) {
-                    newState.TransitionsToExit().When(otherCond).WithTransitionExitTime(exitTime);;
-                }
-                newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not()).WithTransitionExitTime(exitTime);
-                newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
-                outState.TransitionsToExit().When(controller.Always());
-
-                if (type == LayerType.Action) {
-                    var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
-                    weightOn.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
-                    weightOn.goalWeight = 1;
-                    var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
-                    weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
-                    weightOff.goalWeight = 0;
-                }
-
-                // TODO: this better
-
-                var mask = "";
-
-                if (type == LayerType.Action) mask = "emote";
-                if (type == LayerType.LeftHand) mask = "leftHand";
-                if (type == LayerType.RightHand) mask = "rightHand";
-
-                newState.TrackingController(mask + "Animation");
-                outState.TrackingController(mask + "Tracking");
-
-
-                off.TransitionsTo(newState).When(myCond).WithTransitionExitTime(exitTime);
-                previousStates.Add((myCond, newState));
+                var myCond = myParam.IsTrue();                
+                toggleStates.Add((myCond, newState, exitTime));
             }
 
-            off.TransitionsFromEntry().When(controller.Always());
+            foreach(var (condition, state, exitTime) in toggleStates) {
+                var others = controller.Never();
+                foreach(var (otherCondition, otherState, dud) in toggleStates) {
+                    if (state == otherState) continue;
+                    others = others.Or(otherCondition);
+                }
+                off.TransitionsToExit().When(condition);
+                state.TransitionsFromEntry().When(condition);
+                state.TransitionsToExit().When(others).WithTransitionExitTime(exitTime);
+                state.TransitionsTo(blendout).WithTransitionDurationSeconds(1000).Interruptable().When(condition.Not()).WithTransitionExitTime(exitTime);
+                state.TrackingController(maskName + "Animation");
+                if (type == LayerType.Action) {
+                    var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
+                    weightOn.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
+                    weightOn.goalWeight = 1;
+                }
+            }
         }
 
         private int actionNum = 0;
