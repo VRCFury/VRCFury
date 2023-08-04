@@ -149,7 +149,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float3 deformedNormal = bezierRight * restingNormal.x + bezierUp * restingNormal.y + bezierForward * restingNormal.z;
 
 	vertex = lerp(origVertex, deformedVertex, dumbLerp);
-	normal = lerp(origNormal, deformedNormal, dumbLerp);
+	normal = normalize(lerp(origNormal, deformedNormal, dumbLerp));
 }
 void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color) {
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
