@@ -248,16 +248,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         layerName = model.name;
 
-        if (model.name == "" && model.useGlobalParam) {
-            layerName = model.globalParam;
-        }
-
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon != null;
 
-        if (!(hasTitle || hasIcon)) {
-            addMenuItem = false;
-        }
+        if (!hasTitle && model.useGlobalParam) layerName = model.globalParam;
+        if (!hasTitle && !hasIcon) addMenuItem = false;
 
         if (humanoidMask == "") CheckHumanoidMask();
         if (enableExclusiveTag) CheckExclusives();
