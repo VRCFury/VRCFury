@@ -246,6 +246,10 @@ namespace VF.Builder.Haptics {
             name = Regex.Replace(name, @"plug", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"\(\d+\)", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecifiro"), "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecafiro"), "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, VRCFuryEditorUtils.Rev("rotartenep"), "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, VRCFuryEditorUtils.Rev("retartenep"), "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, VRCFuryEditorUtils.Rev("eloh"), "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"[_\-.\[\]\(\)]+", " ");
             name = LowerCaseSequentialUpperCaseChars(name);
             name = Regex.Replace(name, @"(\B[A-Z])", " $1");
