@@ -120,7 +120,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
-        if (model.addMenuItem) {
+        var hasTitle = !string.IsNullOrEmpty(model.name);
+        var hasIcon = model.enableIcon && model.icon != null;
+        if (model.addMenuItem && (hasTitle || hasIcon)) {
             if (model.holdButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
