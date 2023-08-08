@@ -74,21 +74,32 @@ namespace VF.Inspector {
         }
 
         static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name) {
+            var orange = new Color(1f, 0.5f, 0);
+            var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
+
+            var discColor = orange;
+            
             var text = "Socket";
             if (!string.IsNullOrWhiteSpace(name)) text += $" '{name}'";
-            if (type == VRCFuryHapticSocket.AddLight.Hole) text += " (Hole)\nPlug follows orange arrow";
-            else if (type == VRCFuryHapticSocket.AddLight.Ring) text += " (Ring)\nPlug follows orange arrow";
-            else text += " (SPS disabled)";
-
-            var orange = new Color(1f, 0.5f, 0);
+            if (isAndroid) {
+                text += " (SPS Disabled)\nThis is an android project!";
+                discColor = Color.red;
+            } else if (type == VRCFuryHapticSocket.AddLight.Hole) {
+                text += " (Hole)\nPlug follows orange arrow";
+            } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
+                text += " (Ring)\nPlug follows orange arrow";
+            } else {
+                text += " (SPS disabled)";
+                discColor = Color.red;
+            }
 
             var worldForward = worldRot * Vector3.forward;
             VRCFuryGizmoUtils.WithHandles(() => {
-                Handles.color = orange;
+                Handles.color = discColor;
                 Handles.DrawWireDisc(worldPos, worldForward, 0.02f);
             });
             VRCFuryGizmoUtils.WithHandles(() => {
-                Handles.color = orange;
+                Handles.color = discColor;
                 Handles.DrawWireDisc(worldPos, worldForward, 0.04f);
             });
             if (type == VRCFuryHapticSocket.AddLight.Ring) {

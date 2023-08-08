@@ -8,8 +8,9 @@ using VF.Utils;
 
 namespace VF.Feature {
     /**
-     * "Empty" clips (those with no bindings) last 1 second for no reason, and also break WD off.
-     * We replace them all with a fake, short 1-binding clip.
+     * States/trees without a motion set, and "Empty" clips (those with no bindings), can break WD off.
+     * We replace them all with a fake, short 1-second-long clip.
+     * (1 second long because that's how long a state lasts in unity if no motion is set)
      */
     public class FixEmptyMotionBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixEmptyMotions)]
@@ -19,7 +20,7 @@ namespace VF.Feature {
                 // If this is 0 frames (1 second) instead of 1 frame (1/60th of a second), it breaks gogoloco float
                 noopClip.SetFloatCurve(
                     EditorCurveBinding.FloatCurve("_vrcf_noop", typeof(GameObject), "m_IsActive"),
-                    AnimationCurve.Constant(0, 1/noopClip.frameRate, 0)
+                    AnimationCurve.Constant(0, 0, 0) // 0 frames = 1 second long because unity
                 );
                 foreach (var state in new AnimatorIterator.States().From(controller.GetRaw())) {
                     CheckState(state, noopClip);
@@ -28,20 +29,16 @@ namespace VF.Feature {
         }
 
         private void CheckState(AnimatorState state, AnimationClip noopClip) {
-            if (IsNoop(state.motion)) {
+            if (state.motion == null) {
                 state.motion = noopClip;
                 return;
             }
             foreach (var tree in new AnimatorIterator.Trees().From(state)) {
                 tree.children = tree.children.Select(child => {
-                    child.motion = IsNoop(child.motion) ? noopClip : child.motion;
+                    child.motion = child.motion == null ? noopClip : child.motion;
                     return child;
                 }).ToArray();
             }
-        }
-        
-        private bool IsNoop(Motion motion) {
-            return motion == null || ClipBuilder.IsEmptyMotion(motion, avatarObject);
         }
     }
 }

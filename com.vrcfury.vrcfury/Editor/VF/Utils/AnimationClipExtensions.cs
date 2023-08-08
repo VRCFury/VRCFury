@@ -117,11 +117,7 @@ namespace VF.Utils {
         }
 
         public static int GetLengthInFrames(this AnimationClip clip) {
-            return GetAllCurves(clip)
-                .Select(pair => pair.Item2)
-                .Select(curve => curve.GetLengthInFrames())
-                .DefaultIfEmpty(0)
-                .Max();
+            return (int)Math.Round(clip.length * clip.frameRate);
         }
 
         public static void CopyFrom(this AnimationClip clip, AnimationClip other) {

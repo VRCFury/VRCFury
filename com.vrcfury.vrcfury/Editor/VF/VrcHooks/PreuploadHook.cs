@@ -14,6 +14,14 @@ namespace VF.VrcHooks {
         public int callbackOrder => -10000;
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
+            if (EditorApplication.isPlaying) {
+                Debug.LogWarning(
+                    "VRCFury detected something trying to trigger preprocess hooks in play mode." +
+                    " This is usually caused by Av3Emulator. Building certain VRCFury features within an Awake callback" +
+                    " is unsafe and will trigger unity to crash. To avoid this, VRCFury is ignoring this build request.");
+                return true;
+            }
+            
             VFGameObject vrcCloneObject = _vrcCloneObject;
 
             // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.

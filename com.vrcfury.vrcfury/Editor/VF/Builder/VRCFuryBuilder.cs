@@ -26,7 +26,11 @@ public class VRCFuryBuilder {
             });
         });
 
-        AssetDatabase.SaveAssets();
+        // Calling this method within play mode can cause crashes in some cases (such as within an Awake callback)
+        if (!EditorApplication.isPlaying) {
+            AssetDatabase.SaveAssets();
+        }
+
         return result;
     }
 

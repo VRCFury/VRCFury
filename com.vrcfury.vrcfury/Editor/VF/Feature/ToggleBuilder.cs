@@ -250,6 +250,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.name == "" && model.useGlobalParam) {
             layerName = model.globalParam;
+        }
+
+        var hasTitle = !string.IsNullOrEmpty(model.name);
+        var hasIcon = model.enableIcon && model.icon != null;
+
+        if (!(hasTitle || hasIcon)) {
             addMenuItem = false;
         }
 

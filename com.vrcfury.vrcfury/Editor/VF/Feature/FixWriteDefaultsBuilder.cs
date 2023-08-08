@@ -34,28 +34,81 @@ namespace VF.Feature {
         private AnimationClip _defaultClip = null;
         private AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
-                _defaultClip = GetFx().NewClip("Defaults");
-                GetBuilder<ObjectMoveBuilder>().AddAdditionalManagedClip(_defaultClip);
+                var fx = GetFx();
+                _defaultClip = fx.NewClip("Defaults");
+                var defaultLayer = fx.NewLayer("Defaults", 0);
+                defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             }
             return _defaultClip;
         }
 
-        [FeatureBuilderAction(FeatureOrder.FixWriteDefaults)]
-        public void Apply() {
-            var analysis = DetectExistingWriteDefaults();
-            var (broken, shouldBeOnIfWeAreInControl, shouldBeOnIfWeAreNotInControl, debugInfo, badStates) = analysis;
+        [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
+        public void RecordAllDefaults() {
+            var settings = GetBuildSettings();
+            if (settings.useWriteDefaults) return;
+
+            foreach (var layer in GetMaintainedLayers(GetFx())) {
+                foreach (var state in new AnimatorIterator.States().From(layer)) {
+                    if (!state.writeDefaultValues) continue;
+                    foreach (var clip in new AnimatorIterator.Clips().From(state)) {
+                        foreach (var binding in clip.GetFloatBindings()) {
+                            RecordDefaultNow(binding, true);
+                        }
+                        foreach (var binding in clip.GetObjectBindings()) {
+                            RecordDefaultNow(binding, false);
+                        }
+                    }
+                }
+            }
+        }
+
+        [FeatureBuilderAction(FeatureOrder.AdjustWriteDefaults)]
+        public void AdjustWriteDefaults() {
+            var settings = GetBuildSettings();
+
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                foreach (var layer in GetMaintainedLayers(controller)) {
+                    // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
+                    // absolutely must use wd on.
+                    var useWriteDefaultsForLayer = settings.useWriteDefaults;
+                    useWriteDefaultsForLayer |= new AnimatorIterator.Trees().From(layer)
+                        .Any(tree => tree.blendType == BlendTreeType.Direct);
+
+                    foreach (var state in new AnimatorIterator.States().From(layer)) {
+                        state.writeDefaultValues = useWriteDefaultsForLayer;
+                    }
+                }
+            }
+        }
+
+        private class BuildSettings {
+            public bool applyToUnmanagedLayers;
+            public bool useWriteDefaults;
+        }
+        private BuildSettings _buildSettings;
+        private BuildSettings GetBuildSettings() {
+            if (_buildSettings != null) {
+                return _buildSettings;
+            }
+            
+            var allManagedStateMachines = manager.GetAllTouchedControllers()
+                .SelectMany(controller => controller.GetManagedLayers())
+                .Select(l => l.stateMachine)
+                .ToImmutableHashSet();
+
+            var analysis = DetectExistingWriteDefaults(manager.GetAllUsedControllersRaw(), allManagedStateMachines);
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
             if (fixSetting != null) {
                 mode = fixSetting.mode;
-            } else if (broken) {
+            } else if (analysis.isBroken) {
                 var ask = EditorUtility.DisplayDialogComplex("VRCFury",
                     "VRCFury has detected a (likely) broken mix of Write Defaults on your avatar base." +
                     " This may cause weird issues to happen with your animations," +
                     " such as toggles or animations sticking on or off forever.\n\n" +
                     "VRCFury can try to fix this for you automatically. Should it try?\n\n" +
-                    $"(Debug info: {debugInfo}, VRCF will try to convert to {(shouldBeOnIfWeAreInControl ? "ON" : "OFF")})",
+                    $"(Debug info: {analysis.debugInfo}, VRCF will try to convert to {(analysis.shouldBeOnIfWeAreInControl ? "ON" : "OFF")})",
                     "Auto-Fix",
                     "Skip",
                     "Skip and stop asking");
@@ -74,7 +127,7 @@ namespace VF.Feature {
             bool useWriteDefaults;
             if (mode == FixWriteDefaults.FixWriteDefaultsMode.Auto) {
                 applyToUnmanagedLayers = true;
-                useWriteDefaults = shouldBeOnIfWeAreInControl;
+                useWriteDefaults = analysis.shouldBeOnIfWeAreInControl;
             } else if (mode == FixWriteDefaults.FixWriteDefaultsMode.ForceOff) {
                 applyToUnmanagedLayers = true;
                 useWriteDefaults = false;
@@ -83,70 +136,27 @@ namespace VF.Feature {
                 useWriteDefaults = true;
             } else {
                 applyToUnmanagedLayers = false;
-                useWriteDefaults = shouldBeOnIfWeAreNotInControl;
+                useWriteDefaults = analysis.shouldBeOnIfWeAreNotInControl;
             }
             
             Debug.Log("VRCFury is fixing write defaults "
                       + (applyToUnmanagedLayers ? "(ALL layers)" : "(Only managed layers)") + " -> "
                       + (useWriteDefaults ? "ON" : "OFF")
-                      + $" counts ({debugInfo})"
+                      + $" counts ({analysis.debugInfo})"
                       + $" mode ({mode})"
-                      + (badStates.Count > 0 ? ("\n\nWeird states: " + string.Join(",", badStates)) : "")
+                      + (analysis.weirdStates.Count > 0 ? ("\n\nWeird states: " + string.Join(",", analysis.weirdStates)) : "")
             );
-            
-            ApplyToAvatar(applyToUnmanagedLayers, useWriteDefaults);
-        }
-        
-        private void ApplyToAvatar(bool applyToUnmanagedLayers, bool useWriteDefaults) {
-            foreach (var controller in manager.GetAllUsedControllers()) {
-                var managedLayers = controller.GetManagedLayers().ToImmutableHashSet();
-                var recordDefaults = !useWriteDefaults && controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX;
-                foreach (var layer in controller.GetLayers()) {
-                    var handleLayer = applyToUnmanagedLayers || managedLayers.Contains(layer);
-                    if (!handleLayer) continue;
-                    ApplyToLayer(layer, useWriteDefaults, recordDefaults);
-                }
-            }
 
-            var defaultClip = GetDefaultClip();
-            if (defaultClip.GetAllBindings().Length > 0) {
-                var defaultLayer = GetFx().NewLayer("Defaults", 0);
-                defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
-                foreach (var state in new AnimatorIterator.States().From(defaultLayer.GetRawStateMachine())) {
-                    state.writeDefaultValues = useWriteDefaults;
-                }
-            }
+            _buildSettings = new BuildSettings {
+                applyToUnmanagedLayers = applyToUnmanagedLayers,
+                useWriteDefaults = useWriteDefaults
+            };
+            return _buildSettings;
         }
 
-        private void ApplyToLayer(
-            AnimatorStateMachine layer,
-            bool useWriteDefaults,
-            bool recordDefaults
-        ) {
-            // Record default values for things
-            if (recordDefaults) {
-                foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    if (!state.writeDefaultValues) continue;
-                    foreach (var clip in new AnimatorIterator.Clips().From(state)) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            RecordDefaultNow(binding, true);
-                        }
-
-                        foreach (var binding in clip.GetObjectBindings()) {
-                            RecordDefaultNow(binding, false);
-                        }
-                    }
-                }
-            }
-
-            // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
-            // absolutely must use wd on.
-            useWriteDefaults |= new AnimatorIterator.Trees().From(layer)
-                .Any(tree => tree.blendType == BlendTreeType.Direct);
-
-            foreach (var state in new AnimatorIterator.States().From(layer)) {
-                state.writeDefaultValues = useWriteDefaults;
-            }
+        private IEnumerable<MutableLayer> GetMaintainedLayers(ControllerManager controller) {
+            var settings = GetBuildSettings();
+            return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }
 
         private class ControllerInfo {
@@ -157,22 +167,27 @@ namespace VF.Feature {
             public List<string> directOffStates = new List<string>();
             public List<string> additiveLayers = new List<string>();
         }
+
+        public class DetectionResults {
+            public bool isBroken;
+            public bool shouldBeOnIfWeAreInControl;
+            public bool shouldBeOnIfWeAreNotInControl;
+            public string debugInfo;
+            public IList<string> weirdStates;
+        }
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
-        private Tuple<bool, bool, bool, string, IList<string>> DetectExistingWriteDefaults() {
-
-            var allManagedStateMachines = manager.GetAllTouchedControllers()
-                .SelectMany(controller => controller.GetManagedLayers())
-                .Select(l => l.stateMachine)
-                .ToImmutableHashSet();
-
-            var controllerInfos = manager.GetAllUsedControllersRaw().Select(tuple => {
+        public static DetectionResults DetectExistingWriteDefaults(
+            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> avatarControllers,
+            ISet<AnimatorStateMachine> stateMachinesToIgnore = null
+        ) {
+            var controllerInfos = avatarControllers.Select(tuple => {
                 var (type, controller) = tuple;
                 var info = new ControllerInfo();
                 info.type = type;
                 foreach (var layer in controller.layers) {
-                    var isManaged = allManagedStateMachines.Contains(layer.stateMachine);
-                    if (!isManaged) {
+                    var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
+                    if (!ignore) {
                         foreach (var state in new AnimatorIterator.States().From(layer)) {
                             var hasDirect = new AnimatorIterator.Trees().From(state)
                                 .Any(tree => tree.blendType == BlendTreeType.Direct);
@@ -180,7 +195,7 @@ namespace VF.Feature {
                             var list = hasDirect
                                 ? (state.writeDefaultValues ? info.directOnStates : info.directOffStates)
                                 : (state.writeDefaultValues ? info.onStates : info.offStates);
-                            list.Add(layer.name + "." + state.name);
+                            list.Add(layer.name + " | " + state.name);
                         }
                     }
                     
@@ -207,7 +222,7 @@ namespace VF.Feature {
             var debugInfo = string.Join(", ", debugList);
 
             IList<string> Collect(Func<ControllerInfo, IEnumerable<string>> fn) {
-                return controllerInfos.SelectMany(info => fn(info).Select(s => $"{info.type} {s}")).ToList();
+                return controllerInfos.SelectMany(info => fn(info).Select(s => $"{info.type} | {s}")).ToList();
             }
             var onStates = Collect(info => info.onStates);
             var offStates = Collect(info => info.offStates);
@@ -225,8 +240,14 @@ namespace VF.Feature {
             
             var weirdStates = (shouldBeOnIfWeAreNotInControl ? offStates : onStates).Concat(directOffStates).ToList();
             var broken = weirdStates.Count > 0;
-            
-            return Tuple.Create(broken, shouldBeOnIfWeAreInControl, shouldBeOnIfWeAreNotInControl, debugInfo, (IList<string>)weirdStates);
+
+            return new DetectionResults {
+                isBroken = broken,
+                shouldBeOnIfWeAreInControl = shouldBeOnIfWeAreInControl,
+                shouldBeOnIfWeAreNotInControl = shouldBeOnIfWeAreNotInControl,
+                debugInfo = debugInfo,
+                weirdStates = weirdStates
+            };
         }
     }
 }

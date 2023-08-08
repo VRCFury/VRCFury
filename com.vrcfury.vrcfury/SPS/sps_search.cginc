@@ -4,8 +4,8 @@
 #define SPS_PI float(3.14159265359)
 
 // Type: 0=invalid 1=hole 2=ring 3=front
-void sps_parse_light(float range, out int type, int myChannel) {
-	if (range >= 0.5) {
+void sps_parse_light(float range, half4 color, out int type, int myChannel) {
+	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
 		type = 0;
 		return;
 	}
@@ -55,7 +55,7 @@ bool sps_search(
 	{
 		for(int i = 0; i < 4; i++) {
 	 		const float range = sps_attenToRange(unity_4LightAtten0[i]);
-			sps_parse_light(range, lightType[i], myChannel);
+			sps_parse_light(range, unity_LightColor[i], lightType[i], myChannel);
 	 		lightWorldPos[i] = float3(unity_4LightPosX0[i], unity_4LightPosY0[i], unity_4LightPosZ0[i]);
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}
