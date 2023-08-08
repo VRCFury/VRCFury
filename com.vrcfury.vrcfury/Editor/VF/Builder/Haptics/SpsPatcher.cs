@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
@@ -10,11 +12,11 @@ using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public class SpsPatcher {
-        public static void patch(Material mat, MutableManager mutableManager, bool keepImports) {
+        public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
             try {
                 var renderQueue = mat.renderQueue;
-                patchUnsafe(mat, mutableManager, keepImports);
+                PatchUnsafe(mat, keepImports);
                 mat.renderQueue = renderQueue;
             } catch (Exception e) {
                 throw new Exception(
@@ -23,23 +25,19 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        public static Regex GetRegex(string pattern) {
+        private static Regex GetRegex(string pattern) {
             return new Regex(pattern, RegexOptions.Compiled);
         }
 
-        public static void patchUnsafe(Material mat, MutableManager mutableManager, bool keepImports) {
-            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(mat, out var guid, out long localId);
+        private static void PatchUnsafe(Material mat, bool keepImports) {
             var shader = mat.shader;
+            var newShader = PatchUnsafe(shader, keepImports);
+            mat.shader = newShader;
+            VRCFuryEditorUtils.MarkDirty(mat);
+        }
 
-            string newShaderName;
-            if (shader.name.StartsWith("Hidden/Locked/")) {
-                // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
-                newShaderName = $"Hidden/Locked/SPSPatched/{guid}";
-            } else {
-                newShaderName = $"Hidden/SPSPatched/{guid}";
-            }
+        private static Shader PatchUnsafe(Shader shader, bool keepImports) {
             var pathToSps = GetPathToSps();
-            var newPath = VRCFuryAssetDatabase.GetUniquePath(mutableManager.GetTmpDir(), "SPS Patched " + shader.name, "shader");
             var contents = ReadFile(shader);
 
             void Replace(string pattern, string replacement, int count) {
@@ -50,12 +48,6 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            Replace(
-                @"((?:^|\n)\s*Shader\s*"")([^""]*)",
-                $"$1{Regex.Escape(newShaderName)}",
-                1
-            );
-
             var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
             Replace(
                 @"((?:^|\n)\s*Properties\s*{)",
@@ -65,24 +57,59 @@ namespace VF.Builder.Haptics {
 
             contents = FlattenUsePass(contents);
 
+            string spsMain;
+            if (keepImports) {
+                spsMain = $"#include \"{pathToSps}/sps_main.cginc\"";
+            } else {
+                spsMain = ReadAndFlattenPath($"{pathToSps}/sps_main.cginc");
+            }
+            
+            var md5 = MD5.Create();
+            var hashContent = contents + spsMain;
+            var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
+            var hashBytes = md5.ComputeHash(hashContentBytes);
+            var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
+                .Select(i => hashBytes[i].ToString("x2")));
+
+            string newShaderName;
+            if (shader.name.StartsWith("Hidden/Locked/")) {
+                // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
+                newShaderName = $"Hidden/Locked/SPSPatched/{hash}";
+            } else {
+                newShaderName = $"Hidden/SPSPatched/{hash}";
+            }
+            var alreadyExists = Shader.Find(newShaderName);
+            if (alreadyExists != null) {
+                return alreadyExists;
+            }
+
+            Replace(
+                @"((?:^|\n)\s*Shader\s*"")([^""]*)",
+                $"$1{Regex.Escape(newShaderName)}",
+                1
+            );
+
             var passNum = 0;
             contents = WithEachPass(contents, (pass) => {
                 passNum++;
                 try {
-                    return PatchPass(pass, keepImports, false);
+                    return PatchPass(pass, spsMain, false);
                 } catch (Exception e) {
                     throw new Exception($"Failed to patch pass #{passNum}: " + e.Message, e);
                 }
             });
             if (passNum == 0) {
                 try {
-                    contents = PatchPass(contents, keepImports, true);
+                    contents = PatchPass(contents, spsMain, true);
                 } catch (Exception e) {
                     throw new Exception($"Failed to patch surface shader (or no passes found): " + e.Message, e);
                 }
             }
 
+            var newPathDir = $"{TmpFilePackage.GetPath()}/SPS";
+            var newPath = $"{newPathDir}/{hash}.shader";
             VRCFuryAssetDatabase.WithAssetEditing(() => {
+                Directory.CreateDirectory(newPathDir);
                 WriteFile(newPath, contents);
             });
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
@@ -94,8 +121,7 @@ namespace VF.Builder.Haptics {
                 throw new VRCFBuilderException("Patch succeeded, but shader failed to compile. Check the unity log for compile error.\n\n" + newPath);
             }
 
-            mat.shader = newShader;
-            VRCFuryEditorUtils.MarkDirty(mat);
+            return newShader;
         }
 
         private static string FlattenUsePass(string shader) {
@@ -123,7 +149,7 @@ namespace VF.Builder.Haptics {
             });
         }
 
-        private static string PatchPass(string pass, bool keepImports, bool isSurfaceShader) {
+        private static string PatchPass(string pass, string spsMain, bool isSurfaceShader) {
             var newVertFunction = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string oldVertFunction = null;
@@ -230,12 +256,10 @@ namespace VF.Builder.Haptics {
             var newStructBody = "";
             if (!useStructExtends) newStructBody += oldStructBody;
             string FindParam(string keyword, string defaultName, string defaultType) {
-                if (oldStructBody != null) {
-                    var match = GetRegex(@"([^ \t]+)[ \t]+([^ \t:]+)[ \t:]+" + Regex.Escape(keyword))
-                        .Match(oldStructBody);
-                    if (match.Success) {
-                        return match.Groups[2].ToString();
-                    }
+                var match = GetRegex(@"([^ \t]+)[ \t]+([^ \t:]+)[ \t:]+" + Regex.Escape(keyword))
+                    .Match(oldStructBody);
+                if (match.Success) {
+                    return match.Groups[2].ToString();
                 }
                 newStructBody += $"  {defaultType} {defaultName} : {keyword};\n";
                 return defaultName;
@@ -254,11 +278,7 @@ namespace VF.Builder.Haptics {
             newHeader.Add("#define LIL_APP_COLOR");
             
             var newBody = new List<string>();
-            if (keepImports) {
-                newBody.Add($"#include \"{GetPathToSps()}/sps_main.cginc\"");
-            } else {
-                newBody.Add(ReadAndFlattenPath($"{GetPathToSps()}/sps_main.cginc"));
-            }
+            newBody.Add(spsMain);
             var extends = useStructExtends ? $" : {oldStructType}" : "";
             newBody.Add($"struct SpsInputs{extends} {{");
             newBody.Add(newStructBody);
@@ -435,6 +455,8 @@ namespace VF.Builder.Haptics {
             if (path.StartsWith("Resources") || path.StartsWith("Library")) {
                 if (shader.name == "Standard") {
                     path = $"{GetPathToSps()}/Standard.shader.orig";
+                } else if (shader.name == "Standard (Specular setup)") {
+                    path = $"{GetPathToSps()}/StandardSpecular.shader.orig";
                 } else if (shader.name.Contains("Error")) {
                     throw new VRCFBuilderException(
                         "This is an error shader. Please verify that the base material actually loads.");
