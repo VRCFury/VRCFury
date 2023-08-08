@@ -2,37 +2,83 @@ using System;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Inspector;
 using VF.Menu;
+using VF.Model;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
 namespace VF {
     [InitializeOnLoad]
-    public class PlayModeTrigger : IVRCSDKPostprocessAvatarCallback {
+    public class PlayModeTrigger : IProcessSceneWithReport, IVRCSDKPostprocessAvatarCallback {
         static PlayModeTrigger()
         {
-            VRCFuryComponent.AwakeOrStart += AwakeOrStart;
+            VRCFuryComponent.StartCallback += StartCallback;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
-        // We want to apply VRCFury on Awake to perform before Av3Emu or GestureManager
-        // but when apply VRCFury for newly enabled avatars on Awake, editor may crashes.
-        // As a workaround, apply on Awake until scene load is finished and apply on Start
-        // for newly enabled avatars.
-        private static bool _applyOnAwake = true;
+        public void OnProcessScene(Scene scene, BuildReport report)
+        {
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                foreach (var avatar in root.GetComponentsInChildren<VRCAvatarDescriptor>(true))
+                {
+                    if (avatar.gameObject.activeInHierarchy)
+                    {
+                        VFGameObject avatarGameObject = avatar.owner();
+                        var builder = new VRCFuryBuilder();
+                        builder.SafeRun(avatarGameObject);
+                        VRCFuryBuilder.StripAllVrcfComponents(avatarGameObject);
+                    }
+                    else
+                    {
+                        // if disabled, add activator to ensure process when avatar is enabled
+                        avatar.gameObject.AddComponent<VRCFuryActivator>().hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+                    }
+                }
 
-        private static void AwakeOrStart(bool isAwake, VRCFuryComponent component)
+                foreach (var socket in root.GetComponentsInChildren<VRCFuryHapticSocket>(true))
+                {
+                    var obj = socket.owner();
+                    if (!obj.activeInHierarchy) continue;
+                    if (ContainsAnyPrefabs(obj)) continue;
+                    socket.Upgrade();
+                    VRCFExceptionUtils.ErrorDialogBoundary(() =>
+                    {
+                        VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
+                    });
+                    Object.DestroyImmediate(socket);
+                }
+
+                foreach (var plug in root.GetComponentsInChildren<VRCFuryHapticPlug>(true))
+                {
+                    var obj = plug.owner();
+                    if (!obj.activeInHierarchy) continue;
+                    if (ContainsAnyPrefabs(obj)) continue;
+                    plug.Upgrade();
+                    VRCFExceptionUtils.ErrorDialogBoundary(() =>
+                    {
+                        var mutableManager = new MutableManager(TempDir);
+                        VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
+                    });
+                    Object.DestroyImmediate(plug);
+                }
+            }
+        }
+
+        private static void StartCallback(VRCFuryComponent component)
         {
             if (!PlayModeMenuItem.Get()) return; // manually disabled
-            if (isAwake != _applyOnAwake) return;
 
-            var avatar = component.gameObject.GetComponentInParent<VRCAvatarDescriptor>();
+            var avatar = component.gameObject.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null)
             {
                 VFGameObject avatarGameObject = avatar.gameObject;
@@ -69,12 +115,9 @@ namespace VF {
                 }
             }
 
-            if (!isAwake)
-            {
-                // we may need to restart AudioLink because `Shader.SetGlobalTexture`, which is called in AudioLink
-                // initialization, does not work well for newly created materials in VRCFury initialization.
-                RestartAudiolink();
-            }
+            // we may need to restart AudioLink because `Shader.SetGlobalTexture`, which is called in AudioLink
+            // initialization, does not work well for newly created materials in VRCFury initialization.
+            RestartAudiolink();
         }
 
         private static void RestartAudiolink() {
@@ -94,7 +137,6 @@ namespace VF {
             switch (state)
             {
                 case PlayModeStateChange.EnteredEditMode:
-                    _applyOnAwake = true;
                     break;
                 case PlayModeStateChange.ExitingEditMode:
                     if (PlayModeMenuItem.Get()) {
@@ -106,7 +148,6 @@ namespace VF {
                     _probablyUploading = null;
                     break;
                 case PlayModeStateChange.EnteredPlayMode:
-                    _applyOnAwake = false;
                     // force compute ProbablyUploading before removing AboutToUploadKey
                     var _ = ProbablyUploading;
                     EditorPrefs.DeleteKey(AboutToUploadKey);

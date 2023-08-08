@@ -14,19 +14,13 @@ namespace VF.Component {
 
         #region ApplyOnPlay
 #if UNITY_EDITOR
-        // parameter: (is awake, component)
+        // parameter: (component)
         /// this field is public to allow access from Editor module but this is not part of public API.
-        public static Action<bool, VRCFuryComponent> AwakeOrStart;
-        private void Awake()
-        {
-            if (!UnityEditor.EditorApplication.isPlaying || this == null) return;
-            AwakeOrStart?.Invoke(true, this);
-        }
-
+        public static Action<VRCFuryComponent> StartCallback;
         private void Start()
         {
             if (!UnityEditor.EditorApplication.isPlaying || this == null) return;
-            AwakeOrStart?.Invoke(false, this);
+            StartCallback?.Invoke(this);
         }
 #endif
         #endregion
