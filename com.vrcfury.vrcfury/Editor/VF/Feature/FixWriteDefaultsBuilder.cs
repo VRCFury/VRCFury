@@ -34,14 +34,63 @@ namespace VF.Feature {
         private AnimationClip _defaultClip = null;
         private AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
-                _defaultClip = GetFx().NewClip("Defaults");
-                GetBuilder<ObjectMoveBuilder>().AddAdditionalManagedClip(_defaultClip);
+                var fx = GetFx();
+                _defaultClip = fx.NewClip("Defaults");
+                var defaultLayer = fx.NewLayer("Defaults", 0);
+                defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             }
             return _defaultClip;
         }
 
-        [FeatureBuilderAction(FeatureOrder.FixWriteDefaults)]
-        public void Apply() {
+        [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
+        public void RecordAllDefaults() {
+            var settings = GetBuildSettings();
+            if (settings.useWriteDefaults) return;
+
+            foreach (var layer in GetMaintainedLayers(GetFx())) {
+                foreach (var state in new AnimatorIterator.States().From(layer)) {
+                    if (!state.writeDefaultValues) continue;
+                    foreach (var clip in new AnimatorIterator.Clips().From(state)) {
+                        foreach (var binding in clip.GetFloatBindings()) {
+                            RecordDefaultNow(binding, true);
+                        }
+                        foreach (var binding in clip.GetObjectBindings()) {
+                            RecordDefaultNow(binding, false);
+                        }
+                    }
+                }
+            }
+        }
+
+        [FeatureBuilderAction(FeatureOrder.AdjustWriteDefaults)]
+        public void AdjustWriteDefaults() {
+            var settings = GetBuildSettings();
+
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                foreach (var layer in GetMaintainedLayers(controller)) {
+                    // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
+                    // absolutely must use wd on.
+                    var useWriteDefaultsForLayer = settings.useWriteDefaults;
+                    useWriteDefaultsForLayer |= new AnimatorIterator.Trees().From(layer)
+                        .Any(tree => tree.blendType == BlendTreeType.Direct);
+
+                    foreach (var state in new AnimatorIterator.States().From(layer)) {
+                        state.writeDefaultValues = useWriteDefaultsForLayer;
+                    }
+                }
+            }
+        }
+
+        private class BuildSettings {
+            public bool applyToUnmanagedLayers;
+            public bool useWriteDefaults;
+        }
+        private BuildSettings _buildSettings;
+        private BuildSettings GetBuildSettings() {
+            if (_buildSettings != null) {
+                return _buildSettings;
+            }
+
             var analysis = DetectExistingWriteDefaults();
             var (broken, shouldBeOnIfWeAreInControl, shouldBeOnIfWeAreNotInControl, debugInfo, badStates) = analysis;
 
@@ -93,60 +142,17 @@ namespace VF.Feature {
                       + $" mode ({mode})"
                       + (badStates.Count > 0 ? ("\n\nWeird states: " + string.Join(",", badStates)) : "")
             );
-            
-            ApplyToAvatar(applyToUnmanagedLayers, useWriteDefaults);
-        }
-        
-        private void ApplyToAvatar(bool applyToUnmanagedLayers, bool useWriteDefaults) {
-            foreach (var controller in manager.GetAllUsedControllers()) {
-                var managedLayers = controller.GetManagedLayers().ToImmutableHashSet();
-                var recordDefaults = !useWriteDefaults && controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX;
-                foreach (var layer in controller.GetLayers()) {
-                    var handleLayer = applyToUnmanagedLayers || managedLayers.Contains(layer);
-                    if (!handleLayer) continue;
-                    ApplyToLayer(layer, useWriteDefaults, recordDefaults);
-                }
-            }
 
-            var defaultClip = GetDefaultClip();
-            if (defaultClip.GetAllBindings().Length > 0) {
-                var defaultLayer = GetFx().NewLayer("Defaults", 0);
-                defaultLayer.NewState("Defaults").WithAnimation(defaultClip);
-                foreach (var state in new AnimatorIterator.States().From(defaultLayer.GetRawStateMachine())) {
-                    state.writeDefaultValues = useWriteDefaults;
-                }
-            }
+            _buildSettings = new BuildSettings {
+                applyToUnmanagedLayers = applyToUnmanagedLayers,
+                useWriteDefaults = useWriteDefaults
+            };
+            return _buildSettings;
         }
 
-        private void ApplyToLayer(
-            AnimatorStateMachine layer,
-            bool useWriteDefaults,
-            bool recordDefaults
-        ) {
-            // Record default values for things
-            if (recordDefaults) {
-                foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    if (!state.writeDefaultValues) continue;
-                    foreach (var clip in new AnimatorIterator.Clips().From(state)) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            RecordDefaultNow(binding, true);
-                        }
-
-                        foreach (var binding in clip.GetObjectBindings()) {
-                            RecordDefaultNow(binding, false);
-                        }
-                    }
-                }
-            }
-
-            // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
-            // absolutely must use wd on.
-            useWriteDefaults |= new AnimatorIterator.Trees().From(layer)
-                .Any(tree => tree.blendType == BlendTreeType.Direct);
-
-            foreach (var state in new AnimatorIterator.States().From(layer)) {
-                state.writeDefaultValues = useWriteDefaults;
-            }
+        private IEnumerable<MutableLayer> GetMaintainedLayers(ControllerManager controller) {
+            var settings = GetBuildSettings();
+            return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }
 
         private class ControllerInfo {

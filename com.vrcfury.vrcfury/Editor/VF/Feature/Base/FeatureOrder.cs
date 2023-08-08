@@ -66,15 +66,16 @@ namespace VF.Feature.Base {
 
         // Finalize Controllers
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
-        DirectTreeOptimizer, // Needs to run after animations are done, but before FixWriteDefaults
-        BlendshapeOptimizer,
+        DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
+        RecordAllDefaults,
+        BlendshapeOptimizer, // Needs to run after RecordDefaults
         Slot4Fix,
         CleanupEmptyLayers,
         PullMusclesOutOfFx,
         FixMasks,
         FixMaterialSwapWithMask,
         ControllerConflictCheck,
-        FixWriteDefaults,
+        AdjustWriteDefaults,
         FixEmptyMotions,
         AnimatorLayerControlFix,
         FinalizeController,
