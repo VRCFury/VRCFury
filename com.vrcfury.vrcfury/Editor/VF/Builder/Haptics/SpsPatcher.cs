@@ -207,8 +207,14 @@ namespace VF.Builder.Haptics {
                     })
                     .Where(t => t != null)
                     .ToArray();
-                if (foundOldVert.Length > 0) {
-                    foundOldVert = foundOldVert.Where(m => !m.Item2.ToString().Contains("Simple")).ToArray();
+                if (foundOldVert.Length > 1) {
+                    foundOldVert = foundOldVert.Where(m => !m.Item2.Contains("Simple")).ToArray();
+                }
+                if (foundOldVert.Length > 1) {
+                    if (flattenedPass.Contains("FUR_SKIN_LAYER")) {
+                        var skinLayerDefined = flattenedPass.Contains("#define FUR_SKIN_LAYER");
+                        foundOldVert = foundOldVert.Where(m => m.Item2 == (skinLayerDefined ? "fragInput" : "hullGeomInput")).ToArray();
+                    }
                 }
 
                 if (foundOldVert.Length == 0) {
