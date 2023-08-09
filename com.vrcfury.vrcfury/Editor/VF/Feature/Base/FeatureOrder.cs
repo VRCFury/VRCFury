@@ -14,8 +14,7 @@ namespace VF.Feature.Base {
         
         // Needs to happen before toggles begin getting processed
         ForceObjectState,
-        ApplyRestState1,
-        
+
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase,
         
@@ -28,6 +27,8 @@ namespace VF.Feature.Base {
         // Needs to run after all haptic components are in place
         // Needs to run before Toggles, because of its "After Bake" action
         BakeHaptics,
+        
+        ApplyRestState1,
 
         Default,
         
@@ -57,6 +58,7 @@ namespace VF.Feature.Base {
         // an object moved onto the fake head bone
         FakeHeadBuilder,
 
+        // Needs to happen after toggles
         HapticsAnimationRewrites,
 
         // Needs to run after everything else is done messing with rest state

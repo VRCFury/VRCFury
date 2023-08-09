@@ -27,9 +27,12 @@ namespace VF.Feature {
                 var pathToPlug = plugObj.GetPath(avatarObject);
                 var pathToRenderer = rendererObj.GetPath(avatarObject);
                 var pathToBake = bakeObj.GetPath(avatarObject);
+                var rendererType = rendererObj.GetComponent<SkinnedMeshRenderer>() != null
+                    ? typeof(SkinnedMeshRenderer)
+                    : typeof(MeshRenderer);
                 var spsEnabledBinding = EditorCurveBinding.FloatCurve(
                     pathToRenderer,
-                    typeof(SkinnedMeshRenderer),
+                    rendererType,
                     "material._SPS_Enabled"
                 );
                 var hapticsEnabledBinding = EditorCurveBinding.FloatCurve(
@@ -39,18 +42,26 @@ namespace VF.Feature {
                 );
                 foreach (var c in manager.GetAllUsedControllers()) {
                     foreach (var clip in c.GetClips()) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            if (binding.path == pathToRenderer) {
-                                if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                    clip.SetFloatCurve(spsEnabledBinding, clip.GetFloatCurve(binding));
-                                    clip.SetFloatCurve(hapticsEnabledBinding, clip.GetFloatCurve(binding));
+                        foreach (var (binding,curve) in clip.GetAllCurves()) {
+                            if (curve.IsFloat) {
+                                if (binding.path == pathToRenderer) {
+                                    if (binding.propertyName == "material._TPS_AnimatedToggle") {
+                                        clip.SetCurve(spsEnabledBinding, curve);
+                                        clip.SetCurve(hapticsEnabledBinding, curve);
+                                    }
+                                }
+                                if (binding.path == pathToPlug) {
+                                    if (binding.propertyName == "spsAnimatedEnabled") {
+                                        clip.SetCurve(spsEnabledBinding, curve);
+                                        clip.SetCurve(hapticsEnabledBinding, curve);
+                                    }
                                 }
                             }
-                            if (binding.path == pathToPlug) {
-                                if (binding.propertyName == "spsAnimatedEnabled") {
-                                    clip.SetFloatCurve(spsEnabledBinding, clip.GetFloatCurve(binding));
-                                    clip.SetFloatCurve(hapticsEnabledBinding, clip.GetFloatCurve(binding));
-                                }
+                            if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer) &&
+                                rendererType == typeof(SkinnedMeshRenderer)) {
+                                var b = binding;
+                                b.type = rendererType;
+                                clip.SetCurve(b, curve);
                             }
                         }
                     }
@@ -101,10 +112,8 @@ namespace VF.Feature {
                     var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
                     GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(postBakeClip);
 
-                    if (plug.enableSps) {
-                        foreach (var renderer in renderers) {
-                            spsRewritesToDo.Add((plug.owner(), renderer.owner(), bakeRoot));
-                        }
+                    foreach (var renderer in renderers) {
+                        spsRewritesToDo.Add((plug.owner(), renderer.owner(), bakeRoot));
                     }
 
                     if (plug.addDpsTipLight) {
