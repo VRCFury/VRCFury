@@ -80,7 +80,7 @@ namespace VF.Feature {
                                 layerControl.playable =
                                     VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
                                 layerControl.goalWeight = playableControl.goalWeight;
-                                layerControl.blendDuration = playableControl.blendDuration;
+                                layerControl.blendDuration = 0;
                                 layerControl.debugString = playableControl.debugString;
                                 var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
                                 offsetBuilder.Register(layerControl, drivesLayer);
