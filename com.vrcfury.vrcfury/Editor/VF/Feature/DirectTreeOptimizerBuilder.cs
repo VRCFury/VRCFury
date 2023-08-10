@@ -51,7 +51,7 @@ namespace VF.Feature {
 
                 var usedBindings = bindingsByLayer[layer];
                 var otherLayersAnimateTheSameThing = bindingsByLayer
-                    .Where(pair => pair.Key != layer && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
+                    .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
                     .Select(pair => pair.Key)
                     .ToArray();
                 if (otherLayersAnimateTheSameThing.Length > 0) {

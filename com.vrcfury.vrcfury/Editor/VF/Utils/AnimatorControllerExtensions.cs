@@ -99,7 +99,11 @@ namespace VF.Utils {
         public static IEnumerable<MutableLayer> GetLayers(this AnimatorController ctrl) {
             return ctrl.layers.Select(l => new MutableLayer(ctrl, l.stateMachine));
         }
-        
+
+        public static bool ContainsLayer(this AnimatorController ctrl, AnimatorStateMachine stateMachine) {
+            return ctrl.layers.Any(l => l.stateMachine == stateMachine);
+        }
+
         public static int GetLayerId(this AnimatorController ctrl, AnimatorStateMachine stateMachine) {
             return ctrl.layers
                 .Select((l, i) => (l, i))
@@ -127,6 +131,10 @@ namespace VF.Utils {
         public MutableLayer(AnimatorController ctrl, AnimatorStateMachine stateMachine) {
             this.ctrl = ctrl;
             this._stateMachine = stateMachine;
+        }
+
+        public bool Exists() {
+            return ctrl.ContainsLayer(_stateMachine);
         }
 
         public int GetLayerId() {
