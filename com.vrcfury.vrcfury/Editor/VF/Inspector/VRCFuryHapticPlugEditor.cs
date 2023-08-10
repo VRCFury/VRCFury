@@ -70,6 +70,20 @@ namespace VF.Inspector {
                 serializedObject.FindProperty("textureMask"),
                 "Optional additional texture mask (white = 'do not deform or use in length calculations')"
             ));
+            
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when socket is present"));
+            container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
+                var c = new VisualElement();
+                c.Add(VRCFuryEditorUtils.Info(
+                    "If you provide a non-static (moving) animation clip, the clip will run from start " +
+                    "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state"), "Penetrated state"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance to socket when animation starts (1 = plug tip)"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance to socket when animation finishes (0 = plug root)"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothing"), "Smoothing (0-1, 0 = no smoothing, 1 = extremely slow reaction)"));
+                return c;
+            }));
 
             container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader) (BETA)"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {

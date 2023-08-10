@@ -26,11 +26,22 @@ namespace VF.Component {
         public bool spsKeepImports = false;
         public State postBakeActions;
         public bool spsOverrun = true;
+        public List<PlugDepthAction> depthActions = new List<PlugDepthAction>();
 
         [Obsolete] public bool configureSps = false;
         [Obsolete] public bool spsBoneMask = true;
         [Obsolete] public GuidTexture2d spsTextureMask = null;
         [Obsolete] public GuidTexture2d configureTpsMask = null;
+        
+        [Serializable]
+        public class PlugDepthAction {
+            public State state;
+            public float startDistance = 1;
+            public float endDistance;
+            public bool enableSelf;
+            public float smoothing = 0.5f;
+            public bool ResetMePlease;
+        }
 
         protected override void Upgrade(int fromVersion) {
 #pragma warning disable 0612

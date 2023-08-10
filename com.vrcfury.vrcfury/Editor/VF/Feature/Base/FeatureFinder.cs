@@ -136,24 +136,24 @@ public static class FeatureFinder {
             return null;
         }
 
-        if (!GetAllFeatures().TryGetValue(modelType, out var implementationType)) {
+        if (!GetAllFeatures().TryGetValue(modelType, out var builderType)) {
             throw new VRCFBuilderException("Failed to find feature implementation for " + modelType.Name + " while building");
         }
 
-        var featureImpl = (FeatureBuilder)Activator.CreateInstance(implementationType);
+        var builder = (FeatureBuilder)Activator.CreateInstance(builderType);
         var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
-        if (!allowAvatarFeatures && !featureImpl.AvailableOnProps()) {
+        if (!allowAvatarFeatures && !builder.AvailableOnProps()) {
             Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");
             return null;
         }
-        if (allowAvatarFeatures && !featureImpl.AvailableOnAvatar()) {
+        if (allowAvatarFeatures && !builder.AvailableOnAvatar()) {
             Debug.LogError("Found " + modelType.Name + " feature on an avatar. Avatars are not allowed to have this feature.");
             return null;
         }
         
-        featureImpl.GetType().GetField("model").SetValue(featureImpl, model);
+        builder.GetType().GetField("model").SetValue(builder, model);
 
-        return featureImpl;
+        return builder;
     }
 }
 

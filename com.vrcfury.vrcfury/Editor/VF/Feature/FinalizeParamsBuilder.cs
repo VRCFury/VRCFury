@@ -1,6 +1,7 @@
 using System;
 using VF.Feature.Base;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     public class FinalizeParamsBuilder : FeatureBuilder {
@@ -17,6 +18,15 @@ namespace VF.Feature {
                     "Avatar is out of space for parameters! Used "
                     + p.GetRaw().CalcTotalCost() + "/" + maxParams
                     + ". Delete some params from your avatar's param file, or disable some VRCFury features.");
+            }
+
+            var contacts = avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>().Length;
+            contacts += avatarObject.GetComponentsInSelfAndChildren<VRCContactSender>().Length;
+            if (contacts > 256) {
+                throw new Exception(
+                    "Avatar is over allowed contact limit! Used "
+                    + contacts + "/256"
+                    + ". Delete some contacts from your avatar, or remove some VRCFury haptics.");
             }
         }
     }

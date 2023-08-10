@@ -37,6 +37,7 @@ namespace VF.Component {
             public float minDepth;
             public float maxDepth;
             public bool enableSelf;
+            public float smoothing = 0.5f;
             public bool ResetMePlease;
         }
         
@@ -47,11 +48,16 @@ namespace VF.Component {
                     name = "";
                 }
             }
+            if (fromVersion < 2) {
+                foreach (var a in depthActions) {
+                    a.smoothing = 0;
+                }
+            }
 #pragma warning restore 0612
         }
 
         protected override int GetLatestVersion() {
-            return 1;
+            return 2;
         }
     }
 }

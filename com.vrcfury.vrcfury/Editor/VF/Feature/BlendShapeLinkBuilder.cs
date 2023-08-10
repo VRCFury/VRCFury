@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -95,7 +97,14 @@ namespace VF.Feature {
                 }
 
                 var linkSkins = GetLinkSkins();
-                var mappings = GetMappings(baseSkin, linkSkins);
+                var mappingsWithSkin = linkSkins
+                    .SelectMany(s => GetMappings(baseSkin, s).Select(m => (s, (m.Key, m.Value))))
+                    .ToImmutableHashSet();
+                var allMappings = mappingsWithSkin
+                    .Select(tuple => tuple.Item2)
+                    .Distinct()
+                    .OrderBy(mapping => mapping)
+                    .ToArray();
 
                 var text = new List<string>();
                 text.Add("Base Skin: " + baseSkin.owner().name);
@@ -105,12 +114,21 @@ namespace VF.Feature {
                     text.Add("No valid linked skins found");
                 }
 
-                if (mappings.Count > 0) {
-                    string FormatMapping(KeyValuePair<string, string> mapping) {
-                        if (mapping.Key == mapping.Value) return mapping.Key;
-                        return mapping.Key + " > " + mapping.Value;
+                if (allMappings.Length > 0) {
+                    string FormatMapping((string,string) pair) {
+                        var (from, to) = pair;
+                        string skinListStr = "";
+                        if (linkSkins.Count > 1) {
+                            var skinList = linkSkins
+                                .Where(s => mappingsWithSkin.Contains((s, pair)))
+                                .Select(s => s.name);
+                            skinListStr = " (" + string.Join(",", skinList) + ")";
+                        }
+
+                        if (from == to) return from + skinListStr;
+                        return from + " > " + to + skinListStr;
                     }
-                    text.Add("Linked Blendshapes:\n" + string.Join("\n", mappings.Select(FormatMapping)));
+                    text.Add("Linked Blendshapes:\n" + string.Join("\n", allMappings.Select(FormatMapping)));
                 } else {
                     text.Add("No valid mappings found");
                 }
@@ -137,38 +155,87 @@ namespace VF.Feature {
                 .FirstOrDefault();
         }
 
-        private Dictionary<string, string> GetMappings(SkinnedMeshRenderer baseSkin, IList<SkinnedMeshRenderer> linkSkins) {
-            var baseToLinkedMapping = new Dictionary<string, string>();
-            if (model.includeAll) {
-                for (var i = 0; i < baseSkin.sharedMesh.blendShapeCount; i++) {
-                    var name = baseSkin.sharedMesh.GetBlendShapeName(i);
-                    baseToLinkedMapping[name] = name;
-                }
-                foreach (var exclude in model.excludes) {
-                    baseToLinkedMapping.Remove(exclude.name);
-                }
+        private ISet<String> GetBlendshapesInSkin(SkinnedMeshRenderer skin) {
+            return Enumerable.Range(0, skin.sharedMesh.blendShapeCount)
+                .Select(i => skin.sharedMesh.GetBlendShapeName(i))
+                .ToImmutableHashSet();
+        }
+        
+        delegate string Normalizer(string input);
+
+        private class FuzzyFinder {
+            private Normalizer[] normalizers;
+            private IDictionary<string, string>[] preNormalized;
+
+            public FuzzyFinder(ICollection<string> names, params Normalizer[] normalizers) {
+                this.normalizers = normalizers;
+                preNormalized = normalizers.Select(n => PreNormalize(names, n)).ToArray();
             }
+
+            private static IDictionary<string, string> PreNormalize(ICollection<string> names, Normalizer normalizer) {
+                return names
+                    .Select(name => (normalizer(name), name))
+                    .GroupBy(tuple => tuple.Item1)
+                    .Select(group => (group.Key, group.Select(i => i.Item2).ToArray()))
+                    .Where(pair => pair.Item2.Length == 1)
+                    .ToDictionary(pair => pair.Item1, pair => pair.Item2[0]);
+            }
+
+            public string Lookup(string name) {
+                for (var i = 0; i < normalizers.Length; i++) {
+                    var normalizer = normalizers[i];
+                    var preNorm = preNormalized[i];
+                    var normalized = normalizer(name);
+                    if (preNorm.TryGetValue(normalized, out var result)) {
+                        return result;
+                    }
+                }
+                return null;
+            }
+        }
+
+        private Dictionary<string, string> GetMappings(SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin) {
+            var normalizers = new Normalizer[] {
+                s => s,
+                s => Regex.Replace(s.ToLower(), @"\s", ""),
+                s => Regex.Replace(s.ToLower(), @"[^a-z0-9]", "")
+            };
+
+            var baseBlendshapes = GetBlendshapesInSkin(baseSkin);
+            var baseBlendshapesLookup = new FuzzyFinder(baseBlendshapes, normalizers);
+            var linkBlendshapes = GetBlendshapesInSkin(linkSkin);
+            var linkBlendshapesLookup = new FuzzyFinder(linkBlendshapes, normalizers);
+            var outputMap = new Dictionary<string, string>();
+
+            void Attempt(string from, string to) {
+                from = baseBlendshapesLookup.Lookup(from);
+                if (from == null) return;
+                if (outputMap.ContainsKey(from)) return;
+                to = linkBlendshapesLookup.Lookup(to);
+                if (to == null) return;
+                outputMap[from] = to;
+            }
+            
             foreach (var include in model.includes) {
                 if (string.IsNullOrWhiteSpace(include.nameOnBase)) {
                     if (string.IsNullOrWhiteSpace(include.nameOnLinked)) continue;
-                    baseToLinkedMapping[include.nameOnLinked] = include.nameOnLinked;
+                    Attempt(include.nameOnLinked, include.nameOnLinked);
                 } else if (string.IsNullOrWhiteSpace(include.nameOnLinked)) {
-                    baseToLinkedMapping[include.nameOnBase] = include.nameOnBase;
+                    Attempt(include.nameOnBase, include.nameOnBase);
                 } else {
-                    baseToLinkedMapping[include.nameOnBase] = include.nameOnLinked;
+                    Attempt(include.nameOnBase, include.nameOnLinked);
+                }
+            }
+            
+            if (model.includeAll) {
+                var excludes = model.excludes.Select(ex => ex.name).ToImmutableHashSet();
+                foreach (var name in baseBlendshapes) {
+                    if (excludes.Contains(name)) continue;
+                    Attempt(name, name);
                 }
             }
 
-            var inLinked = linkSkins
-                .SelectMany(skin =>
-                    Enumerable.Range(0, skin.sharedMesh.blendShapeCount)
-                        .Select(i => skin.sharedMesh.GetBlendShapeName(i)))
-                .ToImmutableHashSet();
-            baseToLinkedMapping = baseToLinkedMapping
-                .Where(pair => inLinked.Contains(pair.Value))
-                .ToDictionary(x => x.Key, x => x.Value);
-
-            return baseToLinkedMapping;
+            return outputMap;
         }
 
         [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations)]
@@ -180,9 +247,9 @@ namespace VF.Feature {
             }
             var baseSkinPath = AnimationUtility.CalculateTransformPath(baseSkin.transform, avatarObject.transform);
             var linkSkins = GetLinkSkins();
-            var baseToLinkedMapping = GetMappings(baseSkin, linkSkins);
 
             foreach (var linked in linkSkins) {
+                var baseToLinkedMapping = GetMappings(baseSkin, linked);
                 foreach (var (baseName,linkedName) in baseToLinkedMapping.Select(x => (x.Key, x.Value))) {
                     var baseI = baseSkin.sharedMesh.GetBlendShapeIndex(baseName);
                     var linkedI = linked.sharedMesh.GetBlendShapeIndex(linkedName);
@@ -190,17 +257,16 @@ namespace VF.Feature {
                     var baseWeight = baseSkin.GetBlendShapeWeight(baseI);
                     linked.SetBlendShapeWeight(linkedI, baseWeight);
                 }
-            }
 
-            foreach (var c in manager.GetAllUsedControllers()) {
-                c.ForEachClip(clip => {
-                    foreach (var binding in clip.GetFloatBindings()) {
-                        if (binding.type != typeof(SkinnedMeshRenderer)) continue;
-                        if (binding.path != baseSkinPath) continue;
-                        if (!binding.propertyName.StartsWith("blendShape.")) continue;
-                        var baseName = binding.propertyName.Substring(11);
-                        if (!baseToLinkedMapping.TryGetValue(baseName, out var linkedName)) continue;
-                        foreach (var linked in linkSkins) {
+                foreach (var c in manager.GetAllUsedControllers()) {
+                    c.ForEachClip(clip => {
+                        foreach (var binding in clip.GetFloatBindings()) {
+                            if (binding.type != typeof(SkinnedMeshRenderer)) continue;
+                            if (binding.path != baseSkinPath) continue;
+                            if (!binding.propertyName.StartsWith("blendShape.")) continue;
+                            var baseName = binding.propertyName.Substring(11);
+                            if (!baseToLinkedMapping.TryGetValue(baseName, out var linkedName)) continue;
+
                             var linkedI = linked.sharedMesh.GetBlendShapeIndex(linkedName);
                             if (linkedI < 0) continue;
                             var newBinding = binding;
@@ -210,8 +276,8 @@ namespace VF.Feature {
 
                             clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
                         }
-                    }
-                });
+                    });
+                }
             }
         }
     }
