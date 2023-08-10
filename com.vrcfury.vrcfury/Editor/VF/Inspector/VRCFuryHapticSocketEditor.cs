@@ -49,6 +49,7 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("minDepth"), "Depth of minimum penetration in meters (can be slightly negative to trigger outside!)"));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("maxDepth"), "Depth of maximum penetration in meters (0 for default)"));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothing"), "Smoothing (0-1, 0 = no smoothing, 1 = extremely slow reaction)"));
                 return c;
             }));
             

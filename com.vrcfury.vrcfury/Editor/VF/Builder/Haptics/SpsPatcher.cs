@@ -73,6 +73,7 @@ namespace VF.Builder.Haptics {
 
             string newShaderName;
             if (shader.name.StartsWith("Hidden/Locked/")) {
+                // Special case for Poiyomi
                 // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
                 newShaderName = $"Hidden/Locked/SPSPatched/{hash}";
             } else {
@@ -207,9 +208,11 @@ namespace VF.Builder.Haptics {
                     })
                     .Where(t => t != null)
                     .ToArray();
+                // Special case for Standard
                 if (foundOldVert.Length > 1) {
                     foundOldVert = foundOldVert.Where(m => !m.Item2.Contains("Simple")).ToArray();
                 }
+                // Special case for Fast Fur
                 if (foundOldVert.Length > 1) {
                     if (flattenedPass.Contains("FUR_SKIN_LAYER")) {
                         var skinLayerDefined = flattenedPass.Contains("#define FUR_SKIN_LAYER");
@@ -277,7 +280,7 @@ namespace VF.Builder.Haptics {
             var colorParam = FindParam("COLOR", "spsColor", "float4");
             
             var newHeader = new List<string>();
-            // liltoon
+            // Special case for liltoon
             newHeader.Add("#define LIL_APP_POSITION");
             newHeader.Add("#define LIL_APP_NORMAL");
             newHeader.Add("#define LIL_APP_VERTEXID");

@@ -15,7 +15,13 @@ namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
+            if (!IsFirst()) return;
+            var applyToUnmanaged = allFeaturesInRun
+                .OfType<DirectTreeOptimizer>()
+                .Any(m => !m.managedOnly);
+
             var fx = GetFx();
+            var applyToLayers = applyToUnmanaged ? fx.GetLayers() : fx.GetManagedLayers();
 
             var bindingsByLayer = fx.GetLayers()
                 .ToDictionary(layer => layer, layer => GetBindingsAnimatedInLayer(layer));
@@ -24,7 +30,7 @@ namespace VF.Feature {
             
             var eligibleLayers = new List<EligibleLayer>();
             var debugLog = new List<string>();
-            foreach (var layer in fx.GetLayers()) {
+            foreach (var layer in applyToLayers) {
                 void AddDebug(string msg) {
                     debugLog.Add($"{layer.name} - {msg}");
                 }

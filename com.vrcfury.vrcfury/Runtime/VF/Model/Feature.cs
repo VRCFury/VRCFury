@@ -630,11 +630,13 @@ namespace VF.Model.Feature {
         [Serializable]
         public class Exclude {
             public string name;
+            public bool ResetMePlease;
         }
         [Serializable]
         public class Include {
             public string nameOnBase;
             public string nameOnLinked;
+            public bool ResetMePlease;
         }
     }
     
@@ -682,6 +684,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class DirectTreeOptimizer : NewFeatureModel {
+        [NonSerialized] public bool managedOnly = false;
     }
     
     [Serializable]

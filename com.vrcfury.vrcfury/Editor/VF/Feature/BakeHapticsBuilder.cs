@@ -11,6 +11,7 @@ using VF.Component;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Plugin;
 using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -125,6 +126,7 @@ namespace VF.Feature {
                         light.range = 0.49f;
                         light.shadows = LightShadows.None;
                         light.renderMode = LightRenderMode.ForceVertex;
+                        light.intensity = worldLength;
 
                         if (tipLightOnClip == null) {
                             var fx = GetFx();
@@ -143,6 +145,70 @@ namespace VF.Feature {
                         }
 
                         clipBuilder.Enable(tipLightOnClip, tip);
+                    }
+                    
+                    var animRoot = GameObjects.Create("Animations", bakeRoot);
+                    if (plug.depthActions.Count > 0) {
+                        var fx = GetFx();
+                        var smoothing = GetPlugin<ParamSmoothingPlugin>();
+                        var maxDist = plug.depthActions.Max(a => Math.Max(a.startDistance, a.endDistance));
+                        var colliderWorldRadius = maxDist * worldLength;
+
+                        var cache = new Dictionary<bool, (VFAFloat, VFAFloat)>();
+                        (VFAFloat, VFAFloat) GetContacts(bool allowSelf) {
+                            if (cache.TryGetValue(allowSelf, out var cached)) return cached;
+                            var frontParam = fx.NewFloat(name + "/AnimFront" + (allowSelf ? "" : "Others"));
+                            HapticUtils.AddReceiver(animRoot, Vector3.zero, frontParam.Name(),
+                                "Front", colliderWorldRadius, new[] { HapticUtils.CONTACT_ORF_MAIN },
+                                allowSelf: allowSelf);
+                            var backParam = fx.NewFloat(name + "/AnimBack" + (allowSelf ? "" : "Others"));
+                            HapticUtils.AddReceiver(animRoot, Vector3.forward * -0.01f, backParam.Name(),
+                                "Back", colliderWorldRadius, new[] { HapticUtils.CONTACT_ORF_MAIN },
+                                allowSelf: allowSelf);
+                            var result = (frontParam, backParam);
+                            cache[allowSelf] = result;
+                            return result;
+                        }
+
+                        var actionNum = 0;
+                        foreach (var depthAction in plug.depthActions) {
+                            actionNum++;
+                            var prefix = name + actionNum;
+
+                            var (frontParam, backParam) = GetContacts(depthAction.enableSelf);
+                            var rawParam = smoothing.Map(
+                                frontParam,
+                                1 - depthAction.startDistance / maxDist, 1 - depthAction.endDistance / maxDist,
+                                0, 1
+                            );
+                            var smoothParam = smoothing.Smooth(
+                                rawParam,
+                                depthAction.smoothing,
+                                pauseWhen: smoothing.GreaterThan(backParam, frontParam, true).And(frontParam.IsLessThan(0.8f)),
+                                zeroWhenPaused: true
+                            );
+
+                            var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
+                            var off = layer.NewState("Off");
+                            var on = layer.NewState("On");
+
+                            var clip = LoadState(prefix, depthAction.state, plug.owner());
+                            if (ClipBuilder.IsStaticMotion(clip)) {
+                                var tree = fx.NewBlendTree(prefix + " tree");
+                                tree.blendType = BlendTreeType.Simple1D;
+                                tree.useAutomaticThresholds = false;
+                                tree.blendParameter = smoothParam.Name();
+                                tree.AddChild(fx.GetEmptyClip(), 0);
+                                tree.AddChild(clip, 1);
+                                on.WithAnimation(tree);
+                            } else {
+                                on.WithAnimation(clip).MotionTime(smoothParam);
+                            }
+
+                            var onWhen = smoothParam.IsGreaterThan(0);
+                            off.TransitionsTo(on).When(onWhen);
+                            on.TransitionsTo(off).When(onWhen.Not());
+                        }
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
@@ -322,20 +388,22 @@ namespace VF.Feature {
                         var off = layer.NewState("Off");
                         var on = layer.NewState("On");
 
+                        var smoothedParam = GetPlugin<ParamSmoothingPlugin>().Smooth(depthParam, depthAction.smoothing);
+
                         var clip = LoadState(prefix, depthAction.state, socket.owner());
                         if (ClipBuilder.IsStaticMotion(clip)) {
                             var tree = fx.NewBlendTree(prefix + " tree");
                             tree.blendType = BlendTreeType.Simple1D;
                             tree.useAutomaticThresholds = false;
-                            tree.blendParameter = depthParam.Name();
+                            tree.blendParameter = smoothedParam.Name();
                             tree.AddChild(fx.GetEmptyClip(), 0);
                             tree.AddChild(clip, 1);
                             on.WithAnimation(tree);
                         } else {
-                            on.WithAnimation(clip).MotionTime(depthParam);
+                            on.WithAnimation(clip).MotionTime(smoothedParam);
                         }
 
-                        var onWhen = depthParam.IsGreaterThan(0).And(contactingRootParam.IsTrue());
+                        var onWhen = smoothedParam.IsGreaterThan(0).And(contactingRootParam.IsTrue());
                         off.TransitionsTo(on).When(onWhen);
                         on.TransitionsTo(off).When(onWhen.Not());
                     }
@@ -370,10 +438,6 @@ namespace VF.Feature {
                 stop.TransitionsTo(stopped).When(fx.Always());
 
                 var vsParam = fx.NewFloat("comparison");
-                var vs1 = fx.NewClip("vs1");
-                vs1.SetCurve("", typeof(Animator), vsParam.Name(), AnimationCurve.Constant(0, 0, 1f));
-                var vs0 = fx.NewClip("vs0");
-                vs0.SetCurve("", typeof(Animator), vsParam.Name(), AnimationCurve.Constant(0, 0, 0f));
 
                 var states = new Dictionary<Tuple<int, int>, VFAState>();
                 for (var i = 0; i < autoSockets.Count; i++) {
@@ -389,13 +453,7 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = fx.NewBlendTree($"{aName} vs {bName}");
-                        tree.useAutomaticThresholds = false;
-                        tree.blendType = BlendTreeType.FreeformCartesian2D;
-                        tree.AddChild(vs0, new Vector2(1f, 0));
-                        tree.AddChild(vs1, new Vector2(0, 1f));
-                        tree.blendParameter = aDist.Name();
-                        tree.blendParameterY = bDist.Name();
+                        var tree = GetPlugin<ParamSmoothingPlugin>().IsBWinningTree(aDist, bDist, vsParam);
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }

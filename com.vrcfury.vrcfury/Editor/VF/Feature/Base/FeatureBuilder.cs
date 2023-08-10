@@ -25,6 +25,7 @@ namespace VF.Feature.Base {
         [NonSerialized] [JsonIgnore] public VFGameObject originalObject;
         [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
         [NonSerialized] [JsonIgnore] public Action<FeatureModel> addOtherFeature;
+        [NonSerialized] [JsonIgnore] public Action<FeatureBuilder> addOtherBuilder;
         [NonSerialized] [JsonIgnore] public int uniqueModelNum;
         [NonSerialized] [JsonIgnore] public List<FeatureModel> allFeaturesInRun;
         [NonSerialized] [JsonIgnore] public List<FeatureBuilder> allBuildersInRun;
@@ -221,12 +222,31 @@ namespace VF.Feature.Base {
             return null;
         }
 
-        public T GetBuilder<T>() {
+        protected T GetBuilder<T>() where T : FeatureBuilder {
+            if (typeof(FeaturePlugin).IsAssignableFrom(typeof(T)))
+                throw new Exception("Attempted to GetBuilder using a plugin");
             return allBuildersInRun.OfType<T>().First();
+        }
+
+        protected bool IsFirst() {
+            var first = allBuildersInRun.FirstOrDefault(b => b.GetType() == GetType());
+            return first != null && first == this;
+        }
+
+        protected T GetPlugin<T>() where T : FeaturePlugin {
+            var exists = allBuildersInRun.OfType<T>().FirstOrDefault();
+            if (exists != null) return exists;
+            var plugin = (T)Activator.CreateInstance(typeof(T));
+            addOtherBuilder(plugin);
+            return plugin;
         }
     }
 
     public abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
         [NonSerialized] [JsonIgnore] public ModelType model;
+    }
+
+    public abstract class FeaturePlugin : FeatureBuilder {
+        
     }
 }

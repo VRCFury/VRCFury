@@ -163,18 +163,18 @@ namespace VF.Builder {
             return managedLayers.Contains(layer);
         }
 
-        public VFABool NewTrigger(string name, bool usePrefix = true) {
-            if (usePrefix) name = NewParamName(name);
-            return GetController().NewTrigger(name);
-        }
-
         private ParamManager GetParamManager() {
             return paramManager.Invoke();
         }
 
         private static FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
-        public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true, bool defTrueInEditor = false) {
+        
+        public VFABool NewTrigger(string name, bool usePrefix = true) {
+            if (usePrefix) name = NewParamName(name);
+            return GetController().NewTrigger(name);
+        }
+        public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
@@ -185,7 +185,7 @@ namespace VF.Builder {
                 if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
                 GetParamManager().addSyncedParam(param);
             }
-            return GetController().NewBool(name, def || defTrueInEditor);
+            return GetController().NewBool(name, def);
         }
         public VFAInteger NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
@@ -220,7 +220,13 @@ namespace VF.Builder {
         }
         
         private string NewParamName(string name) {
-            return NewParamName(name, currentFeatureNumProvider.Invoke());
+            name = NewParamName(name, currentFeatureNumProvider.Invoke());
+            int offset = 1;
+            while (true) {
+                var attempt = name + ((offset == 1) ? "" : offset+"");
+                if (GetType(attempt) == 0) return attempt;
+                offset++;
+            }
         }
         public static string NewParamName(string name, int modelNum) {
             return "VF" + modelNum + "_" + name;

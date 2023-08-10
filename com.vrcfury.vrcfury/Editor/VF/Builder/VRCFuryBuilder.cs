@@ -112,6 +112,9 @@ public class VRCFuryBuilder {
             builder.addOtherFeature = m => {
                 AddModel(m, configObject, menuSortPosition);
             };
+            builder.addOtherBuilder = b => {
+                AddBuilder(b, configObject, menuSortPosition);
+            };
             builder.allFeaturesInRun = collectedModels;
             builder.allBuildersInRun = collectedBuilders;
             builder.manager = manager;
@@ -158,6 +161,7 @@ public class VRCFuryBuilder {
             }
         }
 
+        AddModel(new DirectTreeOptimizer { managedOnly = true }, avatarObject);
         AddBuilder(new RemoveJunkAnimatorsBuilder(), avatarObject);
         AddBuilder(new CleanupLegacyBuilder(), avatarObject);
         AddBuilder(new FixDoubleFxBuilder(), avatarObject);
