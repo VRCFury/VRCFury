@@ -72,6 +72,9 @@ namespace VF.Feature {
         private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion,float)> states) {
             ControllerManager controller;
             VFALayer layer;
+
+            var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
+
             if (type == LayerType.Action) {
                 controller = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                 layer = controller.NewLayer("VRCFury Actions");
@@ -83,6 +86,7 @@ namespace VF.Feature {
                 mask.SetHumanoidBodyPartActive(type == LayerType.RightHand ? AvatarMaskBodyPart.RightFingers : AvatarMaskBodyPart.LeftFingers, true);
                 VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "vrcfGestureMask");
                 controller.GetRaw().GetLayer(layer.GetRawStateMachine()).mask = mask;
+                controller.GetManagedLayers().First(l => l.stateMachine == layer.GetRawStateMachine()).weight = 0;
             }
 
             var maskName = "";
@@ -100,6 +104,10 @@ namespace VF.Feature {
                 var weightOff = blendout.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                 weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 weightOff.goalWeight = 0;
+            } else {
+                var weightOff = blendout.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                weightOff.goalWeight = 0;
+                offsetBuilder.Register(weightOff, layer.GetRawStateMachine());
             }
 
             var toggleStates = new List<(VFACondition, VFAState, float)>();
@@ -128,6 +136,10 @@ namespace VF.Feature {
                     var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                     weightOn.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOn.goalWeight = 1;
+                } else {
+                    var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                    weightOn.goalWeight = 1;
+                    offsetBuilder.Register(weightOn, layer.GetRawStateMachine());
                 }
             }
         }
