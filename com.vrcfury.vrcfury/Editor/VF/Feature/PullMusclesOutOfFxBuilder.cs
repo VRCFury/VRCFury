@@ -83,6 +83,7 @@ namespace VF.Feature {
                 mask.SetHumanoidBodyPartActive(type == LayerType.RightHand ? AvatarMaskBodyPart.RightFingers : AvatarMaskBodyPart.LeftFingers, true);
                 VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "vrcfGestureMask");
                 controller.GetRaw().GetLayer(layer.GetRawStateMachine()).mask = mask;
+                controller.GetManagedLayers().First(l => l.stateMachine == layer.GetRawStateMachine()).weight = 0;
             }
 
             var off = layer.NewState("Off");
@@ -113,6 +114,14 @@ namespace VF.Feature {
                     var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                     weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOff.goalWeight = 0;
+                } else {
+                    var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
+                    var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                    weightOn.goalWeight = 1;
+                    offsetBuilder.Register(weightOn, layer.GetRawStateMachine());
+                    var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                    weightOff.goalWeight = 0;
+                    offsetBuilder.Register(weightOff, layer.GetRawStateMachine());
                 }
 
                 previousStates.Add((myCond, newState));
