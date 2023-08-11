@@ -3,11 +3,11 @@ namespace VF.Feature.Base {
 
         CleanupLegacy,
         
-        // Needs to happen before ForceObjectState
-        FullControllerToggle,
-
         // Needs to happen before everything
         FixDoubleFx,
+        
+        // Needs to happen before ForceObjectState
+        FullControllerToggle,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,

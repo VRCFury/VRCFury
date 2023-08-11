@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Inspector;
-using VF.Model.Feature;
-using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -88,14 +85,14 @@ namespace VF.Builder {
         }
         public IEnumerable<ControllerManager> GetAllUsedControllers() {
             return VRCAvatarUtils.GetAllControllers(avatar)
-                .Where(c => c.Item1 != null)
-                .Select(c => GetController(c.Item3))
+                .Where(c => c.controller != null)
+                .Select(c => GetController(c.type))
                 .ToArray();
         }
         public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> GetAllUsedControllersRaw() {
             return VRCAvatarUtils.GetAllControllers(avatar)
-                .Where(c => c.Item1 != null)
-                .Select(c => Tuple.Create(c.Item3, c.Item1));
+                .Where(c => c.controller != null)
+                .Select(c => Tuple.Create(c.type, c.controller));
         }
 
         private ParamManager _params;
