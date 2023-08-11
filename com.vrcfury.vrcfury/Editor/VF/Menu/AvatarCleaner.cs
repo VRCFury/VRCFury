@@ -86,14 +86,15 @@ namespace VF.Menu {
 
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
-                foreach (var (controller, set, type) in VRCAvatarUtils.GetAllControllers(avatar)) {
+                foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
+                    var controller = c.controller;
                     if (controller == null) continue;
-                    var typeName = VRCFEnumUtils.GetName(type);
+                    var typeName = VRCFEnumUtils.GetName(c.type);
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {
                         removeItems.Add("Avatar Controller: " + typeName);
-                        if (perform) set(null);
+                        if (perform) c.setToDefault();
                     } else {
-                        var vfac = new VFAController(controller, type);
+                        var vfac = new VFAController(controller, c.type);
                         var removedLayers = new HashSet<AnimatorStateMachine>();
                         if (ShouldRemoveLayer != null) {
                             for (var i = 0; i < controller.layers.Length; i++) {

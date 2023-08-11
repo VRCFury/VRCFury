@@ -30,8 +30,8 @@ namespace VF.Feature {
                 var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
                 if (avatar == null) return "No avatar descriptor";
                 var avatarControllers = VRCAvatarUtils.GetAllControllers(avatar)
-                    .Where(c => c.Item1 != null)
-                    .Select(c => Tuple.Create(c.Item3, c.Item1));
+                    .Where(c => c.controller != null)
+                    .Select(c => Tuple.Create(c.type, c.controller));
                 var analysis = FixWriteDefaultsBuilder.DetectExistingWriteDefaults(avatarControllers);
 
                 var output = new List<string>();
