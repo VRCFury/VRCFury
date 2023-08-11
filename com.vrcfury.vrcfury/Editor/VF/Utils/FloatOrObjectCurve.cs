@@ -46,15 +46,5 @@ namespace VF.Utils {
                 return new FloatOrObject(objectCurve[length - 1].value);
             }
         }
-
-        public int GetLengthInFrames() {
-            float maxTime;
-            if (isFloat) {
-                maxTime = floatCurve.keys.Max(key => key.time);
-            } else {
-                maxTime = objectCurve.Max(key => key.time);
-            }
-            return (int)Math.Round(maxTime / 60f);
-        }
     }
 }
