@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using VF.Builder.Exceptions;
 using VF.Inspector;
@@ -20,9 +21,30 @@ namespace VF.Builder {
                 var layerNum = i;
                 var layer = layers[layerNum];
                 var type = layer.type;
+
+                AnimatorController GetDefaultController() {
+                    string guid = null;
+                    if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                        // vrc_AvatarV3HandsLayer2
+                        guid = "5ecf8b95a27552840aef66909bdf588f";
+                    } else if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
+                        // vrc_AvatarV3ActionLayer
+                        guid = "3e479eeb9db24704a828bffb15406520";
+                    }
+                    if (guid == null) return null;
+                    var path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (path == null) {
+                        throw new Exception($"Failed to find default {type} controller");
+                    }
+                    var c = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+                    if (c == null) {
+                        throw new Exception($"Failed to load default {type} controller");
+                    }
+                    return c;
+                }
                 var controller = (avatar.customizeAnimationLayers && !layer.isDefault)
                     ? layer.animatorController as AnimatorController
-                    : null;
+                    : GetDefaultController();
                 Action<AnimatorController> Set = c => {
                     avatar.customizeAnimationLayers = true;
                     layer.isDefault = c == null;
