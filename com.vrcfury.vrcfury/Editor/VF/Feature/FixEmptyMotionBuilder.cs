@@ -29,6 +29,13 @@ namespace VF.Feature {
         }
 
         private void CheckState(AnimatorState state, AnimationClip noopClip) {
+            if (state.writeDefaultValues) {
+                // Interestingly, inserting noop clips into WD on states HAS SIDE EFFECTS for some reason
+                // so... don't do that. (Doing so breaks the rex eye pupil animations, because it seemingly
+                // doesn't properly propegate higher layer states while transitioning from a noop clip into
+                // a clip with content)
+                return;
+            }
             if (state.motion == null) {
                 state.motion = noopClip;
                 return;
