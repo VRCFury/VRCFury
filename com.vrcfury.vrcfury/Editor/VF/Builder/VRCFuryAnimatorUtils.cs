@@ -423,8 +423,8 @@ public class VFATransition {
         };
     }
     public VFATransition When() {
-            _ = transitionProvider();
-            return this;
+        var transition = transitionProvider();
+        return this;
     }
     public VFATransition When(VFACondition cond) {
         foreach (var t in cond.transitions) {
