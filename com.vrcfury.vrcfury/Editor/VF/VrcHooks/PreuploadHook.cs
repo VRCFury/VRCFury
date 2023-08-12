@@ -15,11 +15,12 @@ namespace VF.VrcHooks {
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
             if (EditorApplication.isPlaying) {
-                Debug.LogWarning(
-                    "VRCFury detected something trying to trigger preprocess hooks in play mode." +
-                    " This is usually caused by Av3Emulator. Building certain VRCFury features within an Awake callback" +
-                    " is unsafe and will trigger unity to crash. To avoid this, VRCFury is ignoring this build request.");
-                return true;
+                EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    "Something is causing VRCFury to build while play mode is still initializing. This may cause unity to crash!!\n\n" +
+                    "If you use Av3Emulator, consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.",
+                    "Ok"
+                );
             }
             
             VFGameObject vrcCloneObject = _vrcCloneObject;
