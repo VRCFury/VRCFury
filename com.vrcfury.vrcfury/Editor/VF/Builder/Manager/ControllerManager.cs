@@ -33,7 +33,8 @@ namespace VF.Builder {
             Func<int> currentFeatureNumProvider,
             Func<string> currentFeatureNameProvider,
             Func<string> currentFeatureClipPrefixProvider,
-            string tmpDir
+            string tmpDir,
+            bool treatAsManaged = false
         ) {
             this.ctrl = ctrl;
             this.paramManager = paramManager;
@@ -52,6 +53,9 @@ namespace VF.Builder {
 
             foreach (var layer in ctrl.layers) {
                 layerOwners[layer.stateMachine] = "Base Avatar";
+                if (treatAsManaged) {
+                    managedLayers.Add(layer.stateMachine);
+                }
             }
         }
 

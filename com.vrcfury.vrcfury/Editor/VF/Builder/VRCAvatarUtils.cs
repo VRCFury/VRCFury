@@ -85,7 +85,7 @@ namespace VF.Builder {
             return c;
         }
 
-        public static AnimatorController GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
+        public static (bool,AnimatorController) GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
             var matching = GetAllControllers(avatar).Where(layer => layer.type == type).ToArray();
             if (matching.Length == 0) {
                 throw new VRCFBuilderException("Failed to find playable layer on avatar descriptor with type " + type);
@@ -99,11 +99,11 @@ namespace VF.Builder {
                 var def = GetDefaultController(type);
                 if (def != null) {
                     found.set(def);
-                    return def;
+                    return (true,def);
                 }
             }
 
-            return found.controller;
+            return (false,found.controller);
         }
         
         public static void SetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type, AnimatorController controller) {

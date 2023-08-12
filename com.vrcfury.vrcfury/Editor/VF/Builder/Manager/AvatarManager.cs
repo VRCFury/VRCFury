@@ -57,7 +57,7 @@ namespace VF.Builder {
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             if (!_controllers.TryGetValue(type, out var output)) {
-                var existingController = VRCAvatarUtils.GetAvatarController(avatar, type);
+                var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
                 var filename = "VRCFury " + type + " for " + avatarObject.name;
                 AnimatorController ctrl;
                 if (existingController != null) {
@@ -73,7 +73,8 @@ namespace VF.Builder {
                     currentFeatureNumProvider,
                     currentFeatureNameProvider,
                     currentFeatureClipPrefixProvider,
-                    tmpDir
+                    tmpDir,
+                    treatAsManaged: isDefault
                 );
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
