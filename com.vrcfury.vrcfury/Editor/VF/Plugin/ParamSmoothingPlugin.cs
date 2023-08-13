@@ -14,13 +14,16 @@ namespace VF.Plugin {
 
             var adjustmentExponent = 0.2f;
             smoothing = (float)Math.Pow(smoothing, adjustmentExponent);
+            
+            var fx = GetFx();
+            var speedParam = fx.NewFloat($"{name}/Speed", def: smoothing);
 
-            var output = Smooth_(name, target, smoothing);
-            if (useAcceleration) output = Smooth_(name, output, smoothing);
+            var output = Smooth_($"{name}/Pass1", target, smoothing, speedParam);
+            if (useAcceleration) output = Smooth_($"{name}/Pass2", output, smoothing, speedParam);
             return output;
         }
 
-        private VFAFloat Smooth_(string name, VFAFloat target, float smoothing) {
+        private VFAFloat Smooth_(string name, VFAFloat target, float smoothing, VFAFloat speedParam) {
             var fx = GetFx();
 
             var output = fx.NewFloat(name);
@@ -30,8 +33,6 @@ namespace VF.Plugin {
             minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, -1f));
             var maxClip = fx.NewClip($"{output.Name()}1");
             maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
-            
-            var speedParam = fx.NewFloat($"{output.Name()}_speed", def: (float)Math.Pow(smoothing, 0.1f));
 
             // Maintain tree - keeps the current value
             var maintainTree = fx.NewBlendTree($"{output.Name()}_do_not_change");
