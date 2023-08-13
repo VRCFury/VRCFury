@@ -240,6 +240,12 @@ namespace VF.Builder {
         public VFABool True() {
             return NewBool("VF_True", def: true, usePrefix: false);
         }
+        public VFAFloat One() {
+            return NewFloat("VF_One", def: 1f, usePrefix: false);
+        }
+        public VFAFloat Zero() {
+            return NewFloat("VF_Zero", def: 0f, usePrefix: false);
+        }
         public VFACondition Always() {
             return True().IsTrue();
         }

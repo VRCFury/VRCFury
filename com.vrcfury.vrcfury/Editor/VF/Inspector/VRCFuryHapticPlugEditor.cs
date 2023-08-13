@@ -78,8 +78,14 @@ namespace VF.Inspector {
                     "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state"), "Penetrated state"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance to socket when animation starts (1 = plug tip)"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance to socket when animation finishes (0 = plug root)"));
+                c.Add(VRCFuryEditorUtils.Info(
+                    "Distance = 0 : Plug is entirely inside socket\n" +
+                    "Distance = 1 : Tip of plug is touching socket\n" +
+                    "Distance > 1 : Plug is approaching socket\n" +
+                    "1 Unit is the length of the plug"
+                ));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothing"), "Smoothing (0-1, 0 = no smoothing, 1 = extremely slow reaction)"));
                 return c;
@@ -274,7 +280,11 @@ namespace VF.Inspector {
 
             var name = plug.name;
             if (string.IsNullOrWhiteSpace(name)) {
-                name = plug.owner().name;
+                if (renderers.Count > 0) {
+                    name = HapticUtils.GetName(renderers.First().gameObject);
+                } else {
+                    name = HapticUtils.GetName(plug.owner());
+                }
             }
             if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
             

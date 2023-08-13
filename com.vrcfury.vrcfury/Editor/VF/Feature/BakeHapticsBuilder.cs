@@ -72,6 +72,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BakeHaptics)]
         public void Apply() {
+            var fx = GetFx();
             var usedNames = new List<string>();
             var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
             var fakeHead = GetBuilder<FakeHeadBuilder>();
@@ -129,7 +130,6 @@ namespace VF.Feature {
                         light.intensity = worldLength;
 
                         if (tipLightOnClip == null) {
-                            var fx = GetFx();
                             var param = fx.NewBool("tipLight", synced: true);
                             manager.GetMenu()
                                 .NewMenuToggle(
@@ -148,68 +148,13 @@ namespace VF.Feature {
                     }
                     
                     var animRoot = GameObjects.Create("Animations", bakeRoot);
-                    if (plug.depthActions.Count > 0) {
-                        var fx = GetFx();
-                        var smoothing = GetPlugin<ParamSmoothingPlugin>();
-                        var maxDist = plug.depthActions.Max(a => Math.Max(a.startDistance, a.endDistance));
-                        var colliderWorldRadius = maxDist * worldLength;
-
-                        var cache = new Dictionary<bool, (VFAFloat, VFAFloat)>();
-                        (VFAFloat, VFAFloat) GetContacts(bool allowSelf) {
-                            if (cache.TryGetValue(allowSelf, out var cached)) return cached;
-                            var frontParam = fx.NewFloat(name + "/AnimFront" + (allowSelf ? "" : "Others"));
-                            HapticUtils.AddReceiver(animRoot, Vector3.zero, frontParam.Name(),
-                                "Front", colliderWorldRadius, new[] { HapticUtils.CONTACT_ORF_MAIN },
-                                allowSelf: allowSelf);
-                            var backParam = fx.NewFloat(name + "/AnimBack" + (allowSelf ? "" : "Others"));
-                            HapticUtils.AddReceiver(animRoot, Vector3.forward * -0.01f, backParam.Name(),
-                                "Back", colliderWorldRadius, new[] { HapticUtils.CONTACT_ORF_MAIN },
-                                allowSelf: allowSelf);
-                            var result = (frontParam, backParam);
-                            cache[allowSelf] = result;
-                            return result;
-                        }
-
-                        var actionNum = 0;
-                        foreach (var depthAction in plug.depthActions) {
-                            actionNum++;
-                            var prefix = name + actionNum;
-
-                            var (frontParam, backParam) = GetContacts(depthAction.enableSelf);
-                            var rawParam = smoothing.Map(
-                                frontParam,
-                                1 - depthAction.startDistance / maxDist, 1 - depthAction.endDistance / maxDist,
-                                0, 1
-                            );
-                            var smoothParam = smoothing.Smooth(
-                                rawParam,
-                                depthAction.smoothing,
-                                pauseWhen: smoothing.GreaterThan(backParam, frontParam, true).And(frontParam.IsLessThan(0.8f)),
-                                zeroWhenPaused: true
-                            );
-
-                            var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
-                            var off = layer.NewState("Off");
-                            var on = layer.NewState("On");
-
-                            var clip = LoadState(prefix, depthAction.state, plug.owner());
-                            if (ClipBuilder.IsStaticMotion(clip)) {
-                                var tree = fx.NewBlendTree(prefix + " tree");
-                                tree.blendType = BlendTreeType.Simple1D;
-                                tree.useAutomaticThresholds = false;
-                                tree.blendParameter = smoothParam.Name();
-                                tree.AddChild(fx.GetEmptyClip(), 0);
-                                tree.AddChild(clip, 1);
-                                on.WithAnimation(tree);
-                            } else {
-                                on.WithAnimation(clip).MotionTime(smoothParam);
-                            }
-
-                            var onWhen = smoothParam.IsGreaterThan(0);
-                            off.TransitionsTo(on).When(onWhen);
-                            on.TransitionsTo(off).When(onWhen.Not());
-                        }
-                    }
+                    GetPlugin<HapticAnimContactsPlugin>().CreatePlugAnims(
+                        plug.depthActions,
+                        plug.owner(),
+                        animRoot,
+                        name,
+                        worldLength
+                    );
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
                 }
@@ -222,7 +167,6 @@ namespace VF.Feature {
             VFABool autoOn = null;
             AnimationClip autoOnClip = null;
             if (enableAuto) {
-                var fx = GetFx();
                 autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false);
                 manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
@@ -240,7 +184,6 @@ namespace VF.Feature {
                 .Length >= 1;
             VFABool stealthOn = null;
             if (enableStealth) {
-                var fx = GetFx();
                 stealthOn = fx.NewBool("stealth", synced: true);
                 manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
@@ -251,7 +194,6 @@ namespace VF.Feature {
                 .Length >= 2;
             VFABool multiOn = null;
             if (enableMulti) {
-                var fx = GetFx();
                 multiOn = fx.NewBool("multi", synced: true, networkSynced: false);
                 var multiFolder = $"{optionsFolder}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active holes";
                 manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
@@ -279,8 +221,6 @@ namespace VF.Feature {
                     var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
 
                     if (socket.addMenuItem) {
-                        var fx = GetFx();
-
                         obj.active = true;
                         objectsToForceEnable.Add(obj);
 
@@ -358,55 +298,13 @@ namespace VF.Feature {
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                         }
                     }
-
-                    var actionNum = 0;
-                    foreach (var depthAction in socket.depthActions) {
-                        actionNum++;
-                        var prefix = name + actionNum;
-
-                        var minDepth = depthAction.minDepth;
-
-                        var maxDepth = depthAction.maxDepth;
-                        if (maxDepth <= minDepth) maxDepth = 0.25f;
-                        if (maxDepth <= minDepth) continue;
-
-                        var length = maxDepth - minDepth;
-
-                        var fx = GetFx();
-
-                        var contactingRootParam = fx.NewBool(prefix + "/AnimContacting");
-                        HapticUtils.AddReceiver(animRoot, Vector3.forward * -minDepth, contactingRootParam.Name(),
-                            "AnimRoot" + actionNum, 0.01f, new[] { HapticUtils.CONTACT_PEN_MAIN },
-                            allowSelf: depthAction.enableSelf, type: ContactReceiver.ReceiverType.Constant);
-
-                        var depthParam = fx.NewFloat(prefix + "/AnimDepth");
-                        HapticUtils.AddReceiver(animRoot, Vector3.forward * -(minDepth + length), depthParam.Name(),
-                            "AnimInside" + actionNum, length, new[] { HapticUtils.CONTACT_PEN_MAIN },
-                            allowSelf: depthAction.enableSelf);
-
-                        var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
-                        var off = layer.NewState("Off");
-                        var on = layer.NewState("On");
-
-                        var smoothedParam = GetPlugin<ParamSmoothingPlugin>().Smooth(depthParam, depthAction.smoothing);
-
-                        var clip = LoadState(prefix, depthAction.state, socket.owner());
-                        if (ClipBuilder.IsStaticMotion(clip)) {
-                            var tree = fx.NewBlendTree(prefix + " tree");
-                            tree.blendType = BlendTreeType.Simple1D;
-                            tree.useAutomaticThresholds = false;
-                            tree.blendParameter = smoothedParam.Name();
-                            tree.AddChild(fx.GetEmptyClip(), 0);
-                            tree.AddChild(clip, 1);
-                            on.WithAnimation(tree);
-                        } else {
-                            on.WithAnimation(clip).MotionTime(smoothedParam);
-                        }
-
-                        var onWhen = smoothedParam.IsGreaterThan(0).And(contactingRootParam.IsTrue());
-                        off.TransitionsTo(on).When(onWhen);
-                        on.TransitionsTo(off).When(onWhen.Not());
-                    }
+                    
+                    GetPlugin<HapticAnimContactsPlugin>().CreateSocketAnims(
+                        socket.depthActions,
+                        socket.owner(),
+                        animRoot,
+                        name
+                    );
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Socket: {socket.owner().GetPath()}", e);
                 }
@@ -422,7 +320,6 @@ namespace VF.Feature {
             }
 
             if (autoOn != null) {
-                var fx = GetFx();
                 var layer = fx.NewLayer("Auto Socket Mode");
                 var remoteTrap = layer.NewState("Remote trap");
                 var stopped = layer.NewState("Stopped");
@@ -494,7 +391,6 @@ namespace VF.Feature {
             }
 
             if (objectsToDisableTemporarily.Count > 0) {
-                var fx = GetFx();
                 var layer = fx.NewLayer("Haptics Off Temporarily Upon Load");
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");

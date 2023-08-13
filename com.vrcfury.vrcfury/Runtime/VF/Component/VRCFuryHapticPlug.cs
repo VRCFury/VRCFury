@@ -70,11 +70,16 @@ namespace VF.Component {
             if (fromVersion < 6) {
                 useLegacyRendererFinder = !enableSps;
             }
+            if (fromVersion < 7) {
+                foreach (var a in depthActions) {
+                    a.smoothing = (float)Math.Pow(a.smoothing, 0.2);
+                }
+            }
 #pragma warning restore 0612
         }
 
         protected override int GetLatestVersion() {
-            return 6;
+            return 7;
         }
 
         public enum Channel {
