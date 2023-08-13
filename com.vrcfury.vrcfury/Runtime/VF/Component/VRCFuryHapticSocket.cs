@@ -63,11 +63,16 @@ namespace VF.Component {
                     a.endDistance = -a.maxDepth;
                 }
             }
+            if (fromVersion < 4) {
+                foreach (var a in depthActions) {
+                    a.smoothing = (float)Math.Pow(a.smoothing, 0.2);
+                }
+            }
 #pragma warning restore 0612
         }
 
         protected override int GetLatestVersion() {
-            return 3;
+            return 4;
         }
     }
 }

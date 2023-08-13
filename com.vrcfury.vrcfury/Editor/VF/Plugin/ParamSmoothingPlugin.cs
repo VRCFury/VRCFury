@@ -12,18 +12,18 @@ namespace VF.Plugin {
             if (smoothing <= 0) return target;
             if (smoothing > 0.999) smoothing = 0.999f;
 
-            var adjustmentExponent = 0.2f;
+            var adjustmentExponent = 0.1f;
             smoothing = (float)Math.Pow(smoothing, adjustmentExponent);
             
             var fx = GetFx();
             var speedParam = fx.NewFloat($"{name}/Speed", def: smoothing);
 
-            var output = Smooth_($"{name}/Pass1", target, smoothing, speedParam);
-            if (useAcceleration) output = Smooth_($"{name}/Pass2", output, smoothing, speedParam);
+            var output = Smooth_($"{name}/Pass1", target, speedParam);
+            if (useAcceleration) output = Smooth_($"{name}/Pass2", output, speedParam);
             return output;
         }
 
-        private VFAFloat Smooth_(string name, VFAFloat target, float smoothing, VFAFloat speedParam) {
+        private VFAFloat Smooth_(string name, VFAFloat target, VFAFloat speedParam) {
             var fx = GetFx();
 
             var output = fx.NewFloat(name);
@@ -52,8 +52,6 @@ namespace VF.Plugin {
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
-            smoothing = Math.Min(smoothing, 0.99f);
-            smoothing = Math.Max(smoothing, 0);
             var smoothTree = fx.NewBlendTree($"{output.Name()}_smooth_to_{target.Name()}");
             smoothTree.blendType = BlendTreeType.Simple1D;
             smoothTree.useAutomaticThresholds = false;
