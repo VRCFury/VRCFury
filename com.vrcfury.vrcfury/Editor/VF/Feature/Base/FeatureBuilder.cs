@@ -148,6 +148,19 @@ namespace VF.Feature.Base {
                         }
                         break;
                     }
+                    case PoiyomiUVTileAction poiyomiUVTileAction: {
+                        var renderer = poiyomiUVTileAction.renderer;
+                        if (renderer != null) {
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(renderer.gameObject),
+                                renderer.GetType(),
+                                $"material._UDIMDiscardRow{poiyomiUVTileAction.slot1}_{poiyomiUVTileAction.slot2}"
+                            );
+                            offClip.SetConstant(binding, poiyomiUVTileAction.invert ? 1f: 0f); //Easier than If statement
+                            onClip.SetConstant(binding, poiyomiUVTileAction.invert ? 0f : 1f);
+                        }
+                        break;
+                    }
                     case AnimationClipAction clipAction:
                         AnimationClip clipActionClip = clipAction.clip;
                         if (clipActionClip && clipActionClip != firstClip) {
