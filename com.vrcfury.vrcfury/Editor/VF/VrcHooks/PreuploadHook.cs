@@ -17,7 +17,7 @@ namespace VF.VrcHooks {
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
             if (EditorApplication.isPlaying) {
                 VRCFuryComponent[] components = GameObject.FindObjectsOfType<VRCFuryComponent>();
-                if(components.Any(x => x.isActiveAndEnabled && !x.Initialized)) {
+                if(components.Any(x => !x.Initialized)) {
                     EditorUtility.DisplayDialog(
                         "VRCFury",
                         "Something is causing VRCFury to build while play mode is still initializing. This may cause unity to crash!!\n\n" +

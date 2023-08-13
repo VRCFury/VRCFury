@@ -7,7 +7,7 @@ using UnityEngine;
 namespace VF.Component {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver, IVrcfEditorOnly {
         public bool Initialized;
-        private void Start() {
+        private void Awake() {
             Initialized = true;
         }
 
