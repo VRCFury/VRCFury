@@ -553,7 +553,7 @@ public static class VRCFuryEditorUtils {
         return NextFloat(input, 1);
     }
     public static float NextFloatDown(float input) {
-        return NextFloat(input, 1);
+        return NextFloat(input, -1);
     }
 
     public static VisualElement Info(string message) {

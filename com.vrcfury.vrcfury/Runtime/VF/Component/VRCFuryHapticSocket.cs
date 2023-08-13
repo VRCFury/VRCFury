@@ -34,11 +34,14 @@ namespace VF.Component {
         [Serializable]
         public class DepthAction {
             public State state;
-            public float minDepth;
-            public float maxDepth;
+            public float startDistance = 0;
+            public float endDistance = -0.25f;
             public bool enableSelf;
             public float smoothing = 0.5f;
             public bool ResetMePlease;
+            
+            [Obsolete] public float minDepth;
+            [Obsolete] public float maxDepth;
         }
         
         protected override void Upgrade(int fromVersion) {
@@ -53,11 +56,18 @@ namespace VF.Component {
                     a.smoothing = 0;
                 }
             }
+            if (fromVersion < 3) {
+                foreach (var a in depthActions) {
+                    if (a.maxDepth <= a.minDepth) a.maxDepth = 0.25f;
+                    a.startDistance = -a.minDepth;
+                    a.endDistance = -a.maxDepth;
+                }
+            }
 #pragma warning restore 0612
         }
 
         protected override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
 }

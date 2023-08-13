@@ -388,8 +388,8 @@ namespace VF.Builder.Haptics {
                             }
                         }
                     },
-                    minDepth = minDepth,
-                    maxDepth = maxDepth
+                    startDistance = -minDepth,
+                    endDistance = -maxDepth
                 });
             }
         }

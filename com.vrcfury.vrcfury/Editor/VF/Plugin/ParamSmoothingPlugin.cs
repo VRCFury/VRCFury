@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -6,72 +8,97 @@ using VF.Feature.Base;
 
 namespace VF.Plugin {
     public class ParamSmoothingPlugin : FeaturePlugin {
-        public VFAFloat Smooth(VFAFloat input, float smoothing, VFACondition pauseWhen = null, bool zeroWhenPaused = false, bool useAcceleration = true) {
-            if (smoothing <= 0) return input;
+        public VFAFloat Smooth(string name, VFAFloat target, float smoothing, bool useAcceleration = true) {
+            if (smoothing <= 0) return target;
             if (smoothing > 0.999) smoothing = 0.999f;
 
             var adjustmentExponent = 0.2f;
             smoothing = (float)Math.Pow(smoothing, adjustmentExponent);
 
-            var output = Smooth_(input, smoothing, pauseWhen, zeroWhenPaused);
-            if (useAcceleration) output = Smooth_(output, smoothing);
+            var output = Smooth_(name, target, smoothing);
+            if (useAcceleration) output = Smooth_(name, output, smoothing);
             return output;
         }
 
-        private VFAFloat Smooth_(VFAFloat input, float smoothing, VFACondition pauseWhen = null, bool zeroWhenPaused = false) {
+        private VFAFloat Smooth_(string name, VFAFloat target, float smoothing) {
             var fx = GetFx();
 
-            var output = fx.NewFloat(input.Name() + "_smoothed");
+            var output = fx.NewFloat(name);
             
             // These clips drive the output param to certain values
-            var minClip = fx.NewClip(input.Name() + "-1");
+            var minClip = fx.NewClip($"{output.Name()}-1");
             minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, -1f));
-            var maxClip = fx.NewClip(input.Name() + "1");
+            var maxClip = fx.NewClip($"{output.Name()}1");
             maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
             
-            var speedParam = fx.NewFloat(input.Name() + "_speed", def: (float)Math.Pow(smoothing, 0.1f));
+            var speedParam = fx.NewFloat($"{output.Name()}_speed", def: (float)Math.Pow(smoothing, 0.1f));
 
             // Maintain tree - keeps the current value
-            var maintainTree = fx.NewBlendTree(input.Name() + "_maintain");
+            var maintainTree = fx.NewBlendTree($"{output.Name()}_do_not_change");
             maintainTree.blendType = BlendTreeType.Simple1D;
             maintainTree.useAutomaticThresholds = false;
             maintainTree.blendParameter = output.Name();
             maintainTree.AddChild(minClip, -1);
             maintainTree.AddChild(maxClip, 1);
 
-            Motion GenerateSmoothingTree(VFAFloat target) {
+            // Target tree - uses the target (input) value
+            var targetTree = fx.NewBlendTree($"{output.Name()}_lock_to_{target.Name()}");
+            targetTree.blendType = BlendTreeType.Simple1D;
+            targetTree.useAutomaticThresholds = false;
+            targetTree.blendParameter = target.Name();
+            targetTree.AddChild(minClip, -1);
+            targetTree.AddChild(maxClip, 1);
+
+            //The following two trees merge the update and the maintain tree together. The smoothParam controls 
+            //how much from either tree should be applied during each tick
+            smoothing = Math.Min(smoothing, 0.99f);
+            smoothing = Math.Max(smoothing, 0);
+            var smoothTree = fx.NewBlendTree($"{output.Name()}_smooth_to_{target.Name()}");
+            smoothTree.blendType = BlendTreeType.Simple1D;
+            smoothTree.useAutomaticThresholds = false;
+            smoothTree.blendParameter = speedParam.Name();
+            smoothTree.AddChild(targetTree, 0);
+            smoothTree.AddChild(maintainTree, 1);
+
+            var layer = fx.NewLayer("Smoothing " + name);
+            layer.NewState("Smooth").WithAnimation(smoothTree);
+            return output;
+        }
+
+        public VFAFloat SetValueWithConditions(
+            string name,
+            float minPossible, float maxPossible,
+            params (VFAFloat,VFACondition)[] targets
+        ) {
+            var fx = GetFx();
+
+            var output = fx.NewFloat(name);
+            
+            // These clips drive the output param to certain values
+            var minClip = fx.NewClip($"{output.Name()}Max");
+            minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, maxPossible));
+            var maxClip = fx.NewClip($"{output.Name()}Min");
+            maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, minPossible));
+
+            Motion GenerateTargetTree(VFAFloat target) {
                 // Target tree - uses the target (input) value
-                var targetTree = fx.NewBlendTree(input.Name() + "_target");
+                var targetTree = fx.NewBlendTree($"{output.Name()}_set_to_{target.Name()}");
                 targetTree.blendType = BlendTreeType.Simple1D;
                 targetTree.useAutomaticThresholds = false;
                 targetTree.blendParameter = target.Name();
-                targetTree.AddChild(minClip, -1);
-                targetTree.AddChild(maxClip, 1);
-
-                //The following two trees merge the update and the maintain tree together. The smoothParam controls 
-                //how much from either tree should be applied during each tick
-                smoothing = Math.Min(smoothing, 0.99f);
-                smoothing = Math.Max(smoothing, 0);
-                var smoothTree = fx.NewBlendTree(input.Name() + "_smooth");
-                smoothTree.blendType = BlendTreeType.Simple1D;
-                smoothTree.useAutomaticThresholds = false;
-                smoothTree.blendParameter = speedParam.Name();
-                smoothTree.AddChild(targetTree, 0);
-                smoothTree.AddChild(maintainTree, 1);
-
-                return smoothTree;
+                targetTree.AddChild(minClip, maxPossible);
+                targetTree.AddChild(maxClip, minPossible);
+                return targetTree;
             }
 
-            var layer = fx.NewLayer("Smoothing " + input.Name());
+            var layer = fx.NewLayer("SetConditional " + name);
 
-            if (pauseWhen != null) {
-                var off = layer.NewState("Maintain").WithAnimation(zeroWhenPaused ? GenerateSmoothingTree(fx.NewFloat("zero")) : maintainTree);
-                var smooth = layer.NewState("Smooth").WithAnimation(GenerateSmoothingTree(input));
-                smooth.TransitionsTo(off).When(pauseWhen);
-                off.TransitionsTo(smooth).When(pauseWhen.Not());
-            } else {
-                layer.NewState("Smooth").WithAnimation(GenerateSmoothingTree(input));
-            }
+            VFAState.FakeAnyState(targets.Select(target => {
+                if (target.Item1 == null) {
+                    return (layer.NewState("Maintain").WithAnimation(GenerateTargetTree(output)), target.Item2);
+                }
+                return (layer.NewState("Target " + target.Item1.Name()).WithAnimation(GenerateTargetTree(target.Item1)), target.Item2);
+            }).ToArray());
 
             return output;
         }
@@ -102,15 +129,15 @@ namespace VF.Plugin {
             return tree;
         }
 
-        public VFAFloat Map(VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
+        public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
             var fx = GetFx();
 
-            var output = fx.NewFloat(input.Name() + "_mapped");
+            var output = fx.NewFloat(name);
 
             // These clips drive the output param to certain values
-            var minClip = fx.NewClip(input.Name() + "Min");
+            var minClip = fx.NewClip(output.Name() + "Min");
             minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, outMin));
-            var maxClip = fx.NewClip(input.Name() + "Max");
+            var maxClip = fx.NewClip(output.Name() + "Max");
             maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, outMax));
 
             var tree = fx.NewBlendTree($"{input.Name()}_map_{inMin}_{inMax}_to_{outMin}_{outMax}");

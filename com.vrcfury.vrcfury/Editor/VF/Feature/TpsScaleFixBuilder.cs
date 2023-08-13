@@ -141,7 +141,7 @@ namespace VF.Feature {
                     state.WithAnimation(directTree);
 
                     zeroClip = GetFx().NewClip("zeroScale");
-                    var one = GetFx().NewFloat("one", def: 1);
+                    var one = GetFx().One();
                     directTree.AddDirectChild(one.Name(), zeroClip);
                 }
 
