@@ -108,6 +108,69 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 return row;
             }
+            case nameof(PoiyomiUVTileAction): {
+                var content = new VisualElement();
+                var row = new VisualElement {
+                    style = {
+                        alignItems = Align.FlexStart,
+                        flexDirection = FlexDirection.Row,
+                    }
+                };
+
+                var label = new Label("Poiyomi UV Tile Discard") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 140,
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+            
+                var propField2 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot1"),formatEnum : (input)=>{
+                    var num = int.Parse(input);
+                    num = num>4 ? 4 : num;
+                    num = num <0 ? 0 : num;
+                    return num.ToString();
+                }
+                );
+                propField2.style.flexGrow = 0;
+                propField2.style.flexBasis = 30;
+                row.Add(propField2);
+
+                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot2"),formatEnum : (input)=>{
+                    var num = int.Parse(input);
+                    num = num>4 ? 4 : num;
+                    num = num <0 ? 0 : num;
+                    return num.ToString();
+                }
+                );
+                propField3.style.flexGrow = 0;
+                propField3.style.flexBasis = 30;
+                row.Add(propField3);
+                content.Add(row);
+
+                var row2 = new VisualElement {
+                    style = {
+                        alignItems = Align.FlexStart,
+                        flexDirection = FlexDirection.Row,
+                    }
+                };
+
+                var adv = new Foldout {
+                    text = "Advance Options",
+                    style = {
+                        flexDirection = FlexDirection.Column,
+                    },
+                    value = false
+                };
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("invert"), "Invert the UV Tile Discarding."));
+                row2.Add(adv);
+                content.Add(row2);
+                return content;
+            }
             case nameof(ScaleAction): {
                 var row = new VisualElement {
                     style = {
