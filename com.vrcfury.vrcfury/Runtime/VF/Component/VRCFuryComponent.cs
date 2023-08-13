@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF.Component {
+    [DefaultExecutionOrder(10000)]
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver, IVrcfEditorOnly {
         public bool Initialized;
         private void Awake() {
