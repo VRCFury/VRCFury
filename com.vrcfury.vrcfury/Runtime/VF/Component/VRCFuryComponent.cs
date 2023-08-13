@@ -6,6 +6,11 @@ using UnityEngine;
 
 namespace VF.Component {
     public abstract class VRCFuryComponent : MonoBehaviour, ISerializationCallbackReceiver, IVrcfEditorOnly {
+        public bool Initialized;
+        private void Start() {
+            Initialized = true;
+        }
+
         [SerializeField]
         private int version = -1;
 

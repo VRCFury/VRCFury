@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Component;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
@@ -15,12 +16,15 @@ namespace VF.VrcHooks {
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
             if (EditorApplication.isPlaying) {
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "Something is causing VRCFury to build while play mode is still initializing. This may cause unity to crash!!\n\n" +
-                    "If you use Av3Emulator, consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.",
-                    "Ok"
-                );
+                VRCFuryComponent[] components = GameObject.FindObjectsOfType<VRCFuryComponent>();
+                if(components.Any(x => x.isActiveAndEnabled && !x.Initialized)) {
+                    EditorUtility.DisplayDialog(
+                        "VRCFury",
+                        "Something is causing VRCFury to build while play mode is still initializing. This may cause unity to crash!!\n\n" +
+                        "If you use Av3Emulator, consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.",
+                        "Ok"
+                    );
+                }
             }
             
             VFGameObject vrcCloneObject = _vrcCloneObject;
