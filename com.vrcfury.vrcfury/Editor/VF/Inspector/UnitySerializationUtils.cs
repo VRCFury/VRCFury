@@ -8,6 +8,7 @@ using Object = UnityEngine.Object;
 namespace VF.Inspector {
     public class UnitySerializationUtils {
         public static bool FindAndResetMarkedFields(object obj) {
+            if (!SerializionEnters(obj)) return false;
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
                 if (value is IList) {
@@ -26,7 +27,7 @@ namespace VF.Inspector {
                         if ((bool)value) {
                             return true;
                         }
-                    } else if (SerializionEnters(value)) {
+                    } else {
                         FindAndResetMarkedFields(value);
                     }
                 }
@@ -46,6 +47,9 @@ namespace VF.Inspector {
         }
 
         private static object CloneValue(object value, FieldInfo field) {
+            if (!SerializionEnters(value)) {
+                return value;
+            }
             if (value is IList list) {
                 var listType = typeof(List<>);
                 var genericArgs = field.FieldType.GetGenericArguments();
@@ -55,9 +59,6 @@ namespace VF.Inspector {
                     listItemCopy.Add(CloneValue(listItem, field));
                 }
                 return listItemCopy;
-            }
-            if (!SerializionEnters(value)) {
-                return value;
             }
             var copy = Activator.CreateInstance(value.GetType());
             CloneSerializable(value, copy);
@@ -86,6 +87,27 @@ namespace VF.Inspector {
                 }
             }
             return output;
+        }
+        
+        public static bool ContainsNullsInList(object obj) {
+            if (!SerializionEnters(obj)) return false;
+            foreach (var field in GetAllSerializableFields(obj.GetType())) {
+                var isRef = field.GetCustomAttribute<SerializeReference>() != null;
+                var value = field.GetValue(obj);
+                if (value is IList) {
+                    var list = value as IList;
+                    foreach (var t in list) {
+                        if ((t == null && isRef) || ContainsNullsInList(t)) {
+                            return true;
+                        }
+                    }
+                } else {
+                    if ((value == null && isRef) || ContainsNullsInList(value)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }
