@@ -193,7 +193,7 @@ public static class VRCFuryEditorUtils {
         if (resetFlag != null) {
             resetFlag.boolValue = true;
             list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            FindAndResetMarkedFields(list.serializedObject.targetObject);
+            UnitySerializationUtils.FindAndResetMarkedFields(list.serializedObject.targetObject);
             list.serializedObject.Update();
         }
 
@@ -487,82 +487,6 @@ public static class VRCFuryEditorUtils {
             }
         }
         return container;
-    }
-
-    public static bool FindAndResetMarkedFields(object obj) {
-        if (obj == null) return false;
-        var objType = obj.GetType();
-        if (!objType.FullName.StartsWith("VF")) return false;
-        var fields = objType.GetFields();
-        foreach (var field in fields) {
-            var value = field.GetValue(obj);
-            if (value is IList) {
-                var list = value as IList;
-                for (var i = 0; i < list.Count; i++) {
-                    var remove = FindAndResetMarkedFields(list[i]);
-                    if (remove) {
-                        var elemType = list[i].GetType();
-                        var newInst = Activator.CreateInstance(elemType);
-                        list.RemoveAt(i);
-                        list.Insert(i, newInst);
-                    }
-                }
-            } else {
-                if (field.Name == "ResetMePlease") {
-                    if ((bool)value) {
-                        return true;
-                    }
-                } else {
-                    var type = field.FieldType;
-                    if (type.IsClass) {
-                        FindAndResetMarkedFields(value);
-                    }
-                }
-            }
-        }
-        return false;
-    }
-    
-    public static void CloneSerializable(object from, object to) {
-        if (from == null) throw new Exception("From cannot be null");
-        if (to == null) throw new Exception("To cannot be null");
-        var objType = from.GetType();
-        if (objType != to.GetType()) throw new Exception($"Types do not match: {objType.Name} {to.GetType().Name}");
-
-        var fields = objType.GetFields();
-        foreach (var field in fields) {
-            if (field.IsInitOnly) continue;
-            field.SetValue(to, CloneValue(field.GetValue(from), field));
-        }
-        for (var current = objType; current != null; current = current.BaseType) {
-            var privateFields = current.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
-            foreach (var field in privateFields) {
-                if (field.IsInitOnly) continue;
-                if (field.GetCustomAttribute<SerializeField>() == null) continue;
-                field.SetValue(to, CloneValue(field.GetValue(from), field));
-            }
-        }
-    }
-    
-    private static object CloneValue(object value, FieldInfo field) {
-        if (value == null || value is Object || value is string || value.GetType().IsValueType) {
-            return value;
-        }
-        if (value is IList list) {
-            var listType = typeof(List<>);
-            var genericArgs = field.FieldType.GetGenericArguments();
-            var concreteType = listType.MakeGenericType(genericArgs);
-            var copy = Activator.CreateInstance(concreteType) as IList;
-            foreach (var listItem in list) {
-                copy.Add(CloneValue(listItem, field));
-            }
-            return copy;
-        }
-        {
-            var copy = Activator.CreateInstance(value.GetType());
-            CloneSerializable(value, copy);
-            return copy;
-        }
     }
 
     private static float NextFloat(float input, int offset) {

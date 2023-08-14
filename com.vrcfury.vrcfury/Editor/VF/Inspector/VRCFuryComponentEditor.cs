@@ -237,7 +237,7 @@ namespace VF.Inspector {
             dummyObject.SetActive(false);
             dummyObject.hideFlags |= HideFlags.HideAndDontSave;
             var copy = dummyObject.AddComponent<C>();
-            VRCFuryEditorUtils.CloneSerializable(original, copy);
+            UnitySerializationUtils.CloneSerializable(original, copy);
             return copy;
         }
 
