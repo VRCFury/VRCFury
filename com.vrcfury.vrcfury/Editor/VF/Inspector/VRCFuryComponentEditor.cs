@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -205,8 +206,11 @@ namespace VF.Inspector {
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy);
                 body.SetEnabled(false);
-                // TODO: This doesn't seem to work and it binds back to the original all the time
-                //body.Bind(copySo);
+                // We have to delay this by a frame, because unity automatically calls Bind on this visualelement
+                // right after we return from this function
+                EditorApplication.delayCall += () => {
+                    body.Bind(copySo);
+                };
             } else {
                 v.Upgrade();
                 serializedObject.Update();
@@ -229,24 +233,11 @@ namespace VF.Inspector {
 
         private C CopyComponent<C>(C original) where C : UnityEngine.Component {
             OnDestroy();
-            var originalObject = original.gameObject;
-            var id = originalObject
-                .GetComponents(original.GetType())
-                .Select((el, i) => (el, i))
-                .First(x => x.el == original)
-                .i;
-            dummyObject = Instantiate(originalObject);
+            dummyObject = new GameObject();
             dummyObject.SetActive(false);
             dummyObject.hideFlags |= HideFlags.HideAndDontSave;
-            foreach (Transform child in dummyObject.transform) {
-                DestroyImmediate(child.gameObject);
-            }
-            var copy = (C)dummyObject.GetComponents(original.GetType())
-                .ElementAt(id);
-            foreach (var other in dummyObject.GetComponents(typeof(UnityEngine.Component))) {
-                if (other is Transform || other == copy) continue;
-                DestroyImmediate(other);
-            }
+            var copy = dummyObject.AddComponent<C>();
+            VRCFuryEditorUtils.CloneSerializable(original, copy);
             return copy;
         }
 

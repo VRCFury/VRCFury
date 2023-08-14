@@ -3,10 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
+using UnityEditorInternal.VersionControl;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -520,13 +522,46 @@ public static class VRCFuryEditorUtils {
         }
         return false;
     }
+    
+    public static void CloneSerializable(object from, object to) {
+        if (from == null) throw new Exception("From cannot be null");
+        if (to == null) throw new Exception("To cannot be null");
+        var objType = from.GetType();
+        if (objType != to.GetType()) throw new Exception($"Types do not match: {objType.Name} {to.GetType().Name}");
 
-    public static T DeepCloneSerializable<T>(T obj) {
-        using (var ms = new MemoryStream()) {
-            var formatter = new BinaryFormatter();
-            formatter.Serialize(ms, obj);
-            ms.Position = 0;
-            return (T) formatter.Deserialize(ms);
+        var fields = objType.GetFields();
+        foreach (var field in fields) {
+            if (field.IsInitOnly) continue;
+            field.SetValue(to, CloneValue(field.GetValue(from), field));
+        }
+        for (var current = objType; current != null; current = current.BaseType) {
+            var privateFields = current.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            foreach (var field in privateFields) {
+                if (field.IsInitOnly) continue;
+                if (field.GetCustomAttribute<SerializeField>() == null) continue;
+                field.SetValue(to, CloneValue(field.GetValue(from), field));
+            }
+        }
+    }
+    
+    private static object CloneValue(object value, FieldInfo field) {
+        if (value == null || value is Object || value is string || value.GetType().IsValueType) {
+            return value;
+        }
+        if (value is IList list) {
+            var listType = typeof(List<>);
+            var genericArgs = field.FieldType.GetGenericArguments();
+            var concreteType = listType.MakeGenericType(genericArgs);
+            var copy = Activator.CreateInstance(concreteType) as IList;
+            foreach (var listItem in list) {
+                copy.Add(CloneValue(listItem, field));
+            }
+            return copy;
+        }
+        {
+            var copy = Activator.CreateInstance(value.GetType());
+            CloneSerializable(value, copy);
+            return copy;
         }
     }
 
