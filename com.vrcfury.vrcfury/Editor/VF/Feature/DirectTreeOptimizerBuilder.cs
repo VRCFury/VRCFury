@@ -26,7 +26,7 @@ namespace VF.Feature {
             var bindingsByLayer = fx.GetLayers()
                 .ToDictionary(layer => layer, layer => GetBindingsAnimatedInLayer(layer));
 
-            var floatTrue = fx.NewFloat("floatTrue", def: 1);
+            var floatTrue = fx.One();
             
             var eligibleLayers = new List<EligibleLayer>();
             var debugLog = new List<string>();

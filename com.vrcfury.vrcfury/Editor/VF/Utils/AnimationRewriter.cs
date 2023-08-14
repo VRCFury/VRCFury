@@ -16,12 +16,14 @@ namespace VF.Utils {
                 return newBinding;
             });
         }
-        public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite) {
-            return RewriteCurve((binding, curve) => {
+        public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite, bool skipProxyBindings = true) {
+            var output = RewriteCurve((binding, curve) => {
                 var newBinding = rewrite(binding);
                 if (newBinding == null) return (binding, null, false);
                 return (newBinding.Value, curve, false);
             });
+            output.skipProxyBindings = skipProxyBindings;
+            return output;
         }
         public static AnimationRewriter RewriteCurve(CurveRewriter rewrite) {
             return new AnimationRewriter(rewrite);
@@ -31,29 +33,35 @@ namespace VF.Utils {
         }
         public static AnimationRewriter Combine(params AnimationRewriter[] rewriters) {
             if (rewriters.Length == 1) return rewriters[0];
-            return RewriteCurve((b, c) => {
+            var output = RewriteCurve((b, c) => {
                 var binding = b;
                 var curve = c;
                 var curveUpdated = false;
                 foreach (var rewriter in rewriters) {
                     if (curve == null) break;
                     bool u;
-                    (binding,curve,u) = rewriter.curveRewriter(binding, curve);
+                    (binding,curve,u) = rewriter.RewriteOne(binding, curve);
                     curveUpdated |= u;
                 }
                 return (binding,curve,curveUpdated);
             });
+            output.skipProxyBindings = false;
+            return output;
         }
         private CurveRewriter curveRewriter;
+        private bool skipProxyBindings = true;
         private AnimationRewriter(CurveRewriter curveRewriter) {
             this.curveRewriter = curveRewriter;
         }
-        
+
+        private (EditorCurveBinding, FloatOrObjectCurve, bool) RewriteOne(EditorCurveBinding binding, FloatOrObjectCurve curve) {
+            if (skipProxyBindings && binding.IsProxyBinding()) return (binding,curve,false);
+            return curveRewriter(binding, curve);
+        }
         public void Rewrite(AnimationClip clip) {
             var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
             foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (binding.IsProxyBinding()) continue;
-                var (newBinding,newCurve,curveUpdated) = curveRewriter(binding, curve);
+                var (newBinding, newCurve, curveUpdated) = RewriteOne(binding, curve);
                 if (newCurve == null) {
                     output.Add((binding, null));
                 } else if (binding != newBinding || curve != newCurve || curveUpdated) {
@@ -65,7 +73,7 @@ namespace VF.Utils {
         }
 
         public string RewritePath(string input) {
-            var rewritten = curveRewriter(
+            var rewritten = RewriteOne(
                 EditorCurveBinding.DiscreteCurve(input, typeof(Transform), "test"),
                 new FloatOrObjectCurve(AnimationCurve.Constant(0,0,0))
             );

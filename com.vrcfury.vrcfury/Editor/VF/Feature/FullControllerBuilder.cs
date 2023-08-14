@@ -206,7 +206,7 @@ namespace VF.Feature {
                         }
                     }
                     return binding;
-                })
+                }, false)
             ));
             
             // Rewrite params

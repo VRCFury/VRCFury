@@ -3,10 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
+using UnityEditorInternal.VersionControl;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -191,7 +193,7 @@ public static class VRCFuryEditorUtils {
         if (resetFlag != null) {
             resetFlag.boolValue = true;
             list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            FindAndResetMarkedFields(list.serializedObject.targetObject);
+            UnitySerializationUtils.FindAndResetMarkedFields(list.serializedObject.targetObject);
             list.serializedObject.Update();
         }
 
@@ -487,49 +489,6 @@ public static class VRCFuryEditorUtils {
         return container;
     }
 
-    public static bool FindAndResetMarkedFields(object obj) {
-        if (obj == null) return false;
-        var objType = obj.GetType();
-        if (!objType.FullName.StartsWith("VF")) return false;
-        var fields = objType.GetFields();
-        foreach (var field in fields) {
-            var value = field.GetValue(obj);
-            if (value is IList) {
-                var list = value as IList;
-                for (var i = 0; i < list.Count; i++) {
-                    var remove = FindAndResetMarkedFields(list[i]);
-                    if (remove) {
-                        var elemType = list[i].GetType();
-                        var newInst = Activator.CreateInstance(elemType);
-                        list.RemoveAt(i);
-                        list.Insert(i, newInst);
-                    }
-                }
-            } else {
-                if (field.Name == "ResetMePlease") {
-                    if ((bool)value) {
-                        return true;
-                    }
-                } else {
-                    var type = field.FieldType;
-                    if (type.IsClass) {
-                        FindAndResetMarkedFields(value);
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    public static T DeepCloneSerializable<T>(T obj) {
-        using (var ms = new MemoryStream()) {
-            var formatter = new BinaryFormatter();
-            formatter.Serialize(ms, obj);
-            ms.Position = 0;
-            return (T) formatter.Deserialize(ms);
-        }
-    }
-
     private static float NextFloat(float input, int offset) {
         if (float.IsNaN(input) || float.IsPositiveInfinity(input) || float.IsNegativeInfinity(input))
             return input;
@@ -553,7 +512,7 @@ public static class VRCFuryEditorUtils {
         return NextFloat(input, 1);
     }
     public static float NextFloatDown(float input) {
-        return NextFloat(input, 1);
+        return NextFloat(input, -1);
     }
 
     public static VisualElement Info(string message) {

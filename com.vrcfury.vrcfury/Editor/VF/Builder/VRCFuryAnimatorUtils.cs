@@ -255,11 +255,12 @@ public class VFAState {
     }
 
     public static void FakeAnyState(params (VFAState,VFACondition)[] states) {
+        if (states.Length <= 1) return;
+        
         VFACondition above = null;
         foreach (var (state, when) in states) {
             VFACondition myWhen;
             if (state == states[states.Length - 1].Item1) {
-                if (above == null) throw new VRCFBuilderException("Cannot use FakeAnyState with 1 state.");
                 myWhen = above.Not();
             } else if (above == null) {
                 above = myWhen = when;
@@ -302,6 +303,12 @@ public class VFAFloat : VFAParam {
     }
     public VFACondition IsLessThan(float num) {
         return new VFACondition(new AnimatorCondition { mode = AnimatorConditionMode.Less, parameter = Name(), threshold = num });
+    }
+    public VFACondition IsGreaterThanOrEquals(float num) {
+        return IsLessThan(num).Not();
+    }
+    public VFACondition IsLessThanOrEquals(float num) {
+        return IsGreaterThan(num).Not();
     }
 }
 

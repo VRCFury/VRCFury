@@ -129,11 +129,19 @@ namespace VF.Feature {
             var GestureRightWeight = fx.GestureRightWeight();
             var GestureLeftCondition = fx.GestureLeft().IsEqualTo(1);
             var GestureRightCondition = fx.GestureRight().IsEqualTo(1);
-            leftWeightParam = MakeWeightLayer("left", GestureLeftWeight, GestureLeftCondition);
-            rightWeightParam = MakeWeightLayer("right", GestureRightWeight, GestureRightCondition);
+            leftWeightParam = MakeWeightLayer(GestureLeftWeight, GestureLeftCondition);
+            rightWeightParam = MakeWeightLayer(GestureRightWeight, GestureRightCondition);
         }
-        private VFAFloat MakeWeightLayer(string name, VFAFloat input, VFACondition whenEnabled) {
-            return GetPlugin<ParamSmoothingPlugin>().Smooth(input, 0.2f, whenEnabled.Not());
+        private VFAFloat MakeWeightLayer(VFAFloat input, VFACondition whenEnabled) {
+            var smoothing = GetPlugin<ParamSmoothingPlugin>();
+            var maintained =
+                smoothing.SetValueWithConditions(
+                    $"{input.Name()}Maintained",
+                    0, 1,
+                    (input, whenEnabled),
+                    (null, null)
+                );
+            return smoothing.Smooth($"{input.Name()}Smoothed", maintained, 0.2f);
         }
 
         public override string GetEditorTitle() {

@@ -46,8 +46,14 @@ namespace VF.Inspector {
                     "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state"), "Penetrated state"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("minDepth"), "Depth of minimum penetration in meters (can be slightly negative to trigger outside!)"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("maxDepth"), "Depth of maximum penetration in meters (0 for default)"));
+                c.Add(VRCFuryEditorUtils.Info(
+                    "Distance = 0 : Tip of plug is touching socket\n" +
+                    "Distance > 0 : Tip of plug is outside socket\n" +
+                    "Distance < 0 = Tip of plug is inside socket\n" +
+                    "1 Unit is 1 Meter (~3 feet)"
+                ));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothing"), "Smoothing (0-1, 0 = no smoothing, 1 = extremely slow reaction)"));
                 return c;
