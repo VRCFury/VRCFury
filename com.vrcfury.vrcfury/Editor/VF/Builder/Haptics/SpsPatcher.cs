@@ -32,11 +32,15 @@ namespace VF.Builder.Haptics {
         private static void PatchUnsafe(Material mat, bool keepImports) {
             var shader = mat.shader;
             var newShader = PatchUnsafe(shader, keepImports);
-            mat.shader = newShader;
+            mat.shader = newShader.shader;
             VRCFuryEditorUtils.MarkDirty(mat);
         }
 
-        private static Shader PatchUnsafe(Shader shader, bool keepImports) {
+        public class PatchResult {
+            public Shader shader;
+            public int patchedPasses;
+        }
+        private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
             var pathToSps = GetPathToSps();
             var contents = ReadFile(shader);
 
@@ -55,8 +59,6 @@ namespace VF.Builder.Haptics {
                 1
             );
 
-            contents = FlattenUsePass(contents);
-
             string spsMain;
             if (keepImports) {
                 spsMain = $"#include \"{pathToSps}/sps_main.cginc\"";
@@ -71,6 +73,10 @@ namespace VF.Builder.Haptics {
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
                 .Select(i => hashBytes[i].ToString("x2")));
 
+            if (parentHash != null) {
+                hash = $"{parentHash}-{hash}";
+            }
+
             string newShaderName;
             if (shader.name.StartsWith("Hidden/Locked/")) {
                 // Special case for Poiyomi
@@ -81,7 +87,10 @@ namespace VF.Builder.Haptics {
             }
             var alreadyExists = Shader.Find(newShaderName);
             if (alreadyExists != null) {
-                return alreadyExists;
+                return new PatchResult {
+                    shader = alreadyExists,
+                    patchedPasses = 0
+                };
             }
 
             Replace(
@@ -90,16 +99,34 @@ namespace VF.Builder.Haptics {
                 1
             );
 
-            var passNum = 0;
+            var patchedPasses = 0;
             contents = WithEachPass(contents, (pass) => {
-                passNum++;
+                patchedPasses++;
                 try {
                     return PatchPass(pass, spsMain, false);
                 } catch (Exception e) {
-                    throw new Exception($"Failed to patch pass #{passNum}: " + e.Message, e);
+                    throw new Exception($"Failed to patch pass #{patchedPasses}: " + e.Message, e);
                 }
             });
-            if (passNum == 0) {
+            var childShaders = new Dictionary<Shader, Shader>();
+            contents = GetRegex(@"\n[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(contents, match => {
+                var shaderName = match.Groups[1].ToString();
+                var passName = match.Groups[2].ToString();
+                var includedShader = Shader.Find(shaderName);
+                if (!includedShader) {
+                    throw new Exception("Failed to find included shader: " + shaderName);
+                }
+
+                if (!childShaders.TryGetValue(includedShader, out var rewrittenIncludedShader)) {
+                    var output = PatchUnsafe(includedShader, keepImports, hash);
+                    patchedPasses += output.patchedPasses;
+                    rewrittenIncludedShader = output.shader;
+                    childShaders[includedShader] = rewrittenIncludedShader;
+                }
+                
+                return $"\nUsePass \"{rewrittenIncludedShader.name}/{passName}\"\n";
+            });
+            if (patchedPasses == 0) {
                 try {
                     contents = PatchPass(contents, spsMain, true);
                 } catch (Exception e) {
@@ -122,32 +149,10 @@ namespace VF.Builder.Haptics {
                 throw new VRCFBuilderException("Patch succeeded, but shader failed to compile. Check the unity log for compile error.\n\n" + newPath);
             }
 
-            return newShader;
-        }
-
-        private static string FlattenUsePass(string shader) {
-            return GetRegex(@"\n[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(shader, match => {
-                var shaderName = match.Groups[1].ToString();
-                var passName = match.Groups[2].ToString();
-                var includedShader = Shader.Find(shaderName);
-                if (!includedShader) {
-                    throw new Exception("Failed to find included shader: " + shaderName);
-                }
-                var includedShaderBody = ReadFile(includedShader);
-                string foundPass = null;
-                WithEachPass(includedShaderBody, pass => {
-                    if (new Regex(@"\n[ \t]*Name[ \t]+""(?i:" + Regex.Escape(passName) + @")""").Match(pass).Success) {
-                        foundPass = pass;
-                    }
-
-                    return "";
-                });
-                if (foundPass == null) {
-                    throw new Exception($"Failed to find pass named {passName} in shader {shaderName}");
-                }
-
-                return "\n" + foundPass + "\n";
-            });
+            return new PatchResult {
+                shader = newShader,
+                patchedPasses = patchedPasses
+            };
         }
 
         private static string PatchPass(string pass, string spsMain, bool isSurfaceShader) {
