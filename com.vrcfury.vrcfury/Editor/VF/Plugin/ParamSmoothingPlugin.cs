@@ -42,7 +42,7 @@ namespace VF.Plugin {
         private VFAFloat Smooth_(string name, VFAFloat target, VFAFloat speedParam) {
             var fx = GetFx();
 
-            var output = fx.NewFloat(name);
+            var output = fx.NewFloat(name, def: target.GetDefault());
             
             // These clips drive the output param to certain values
             var minClip = fx.NewClip($"{output.Name()}-1");
@@ -83,11 +83,12 @@ namespace VF.Plugin {
         public VFAFloat SetValueWithConditions(
             string name,
             float minPossible, float maxPossible,
+            float defaultValue,
             params (VFAFloat,VFACondition)[] targets
         ) {
             var fx = GetFx();
 
-            var output = fx.NewFloat(name);
+            var output = fx.NewFloat(name, def: defaultValue);
             
             // These clips drive the output param to certain values
             var minClip = fx.NewClip($"{output.Name()}Max");
@@ -146,8 +147,10 @@ namespace VF.Plugin {
 
         public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
             var fx = GetFx();
-
-            var output = fx.NewFloat(name);
+            var outputDefault = outMin + (input.GetDefault() - inMin) * (outMax - outMin) / (inMax - inMin);
+            outputDefault = Math.Max(outputDefault, outMin);
+            outputDefault = Math.Min(outputDefault, outMax);
+            var output = fx.NewFloat(name, def: outputDefault);
 
             // These clips drive the output param to certain values
             var minClip = fx.NewClip(output.Name() + "Min");

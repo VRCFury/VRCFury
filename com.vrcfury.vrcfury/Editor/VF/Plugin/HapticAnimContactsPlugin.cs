@@ -43,8 +43,9 @@ namespace VF.Plugin {
                 var distanceWithoutBehind = smoothing.SetValueWithConditions(
                     $"{prefix}/DistanceWithoutBehind",
                     0, colliderWorldRadius,
+                    distance.GetDefault(),
                     (distance, activeWhen),
-                    (fx.NewFloat($"{prefix}/MaxDist", def: maxDist), null)
+                    (fx.NewFloat($"{prefix}/MaxDist", def: distance.GetDefault()), null)
                 );
                 cache[allowSelf] = distanceWithoutBehind;
                 return distanceWithoutBehind;
@@ -85,7 +86,7 @@ namespace VF.Plugin {
                     on.WithAnimation(clip).MotionTime(smoothParam);
                 }
 
-                var onWhen = smoothParam.IsGreaterThan(0);
+                var onWhen = smoothParam.IsGreaterThan(0.01f);
                 off.TransitionsTo(on).When(onWhen);
                 on.TransitionsTo(off).When(onWhen.Not());
             }
@@ -125,7 +126,7 @@ namespace VF.Plugin {
                     // Some of the animations have an outside depth (positive distance)
                     targets.Add((
                         smoothing.Map($"{prefix}/Outer/Distance", outer.front, 1, 0, 0, outerRadius),
-                        smoothing.GreaterThan(outer.front, outer.back, true)
+                        outer.front.IsGreaterThan(0).And(smoothing.GreaterThan(outer.front, outer.back, true))
                     ));
                 }
                 // If plug isn't in either region, set to 0
@@ -133,6 +134,7 @@ namespace VF.Plugin {
                 var unsmoothed = smoothing.SetValueWithConditions(
                     $"{prefix}/Distance",
                     minDist, outerRadius,
+                    outerRadius,
                     targets.ToArray()
                 );
 
@@ -176,7 +178,7 @@ namespace VF.Plugin {
                     on.WithAnimation(clip).MotionTime(smoothed);
                 }
 
-                var onWhen = smoothed.IsGreaterThan(0);
+                var onWhen = smoothed.IsGreaterThan(0.01f);
                 off.TransitionsTo(on).When(onWhen);
                 on.TransitionsTo(off).When(onWhen.Not());
             }
