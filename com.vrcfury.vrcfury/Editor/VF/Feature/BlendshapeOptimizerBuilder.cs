@@ -4,24 +4,138 @@ using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using Object = UnityEngine.Object;
 
 namespace VF.Feature {
+    [Serializable]
     public class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
+        public bool keepMmdShapes;
+        public Texture2DWrapper test;
+        public GameObject test2;
+        
         public override string GetEditorTitle() {
             return "Blendshape Optimizer";
+        }
+
+        private VisualElement FindEditor(VisualElement el) {
+            if (el == null) return null;
+            if (el is InspectorElement) return el.parent;
+            return FindEditor(el.parent);
+        }
+
+        private void CreateHeaderOverlay(VisualElement body) {
+            var inspectorRoot = FindEditor(body);
+            if (inspectorRoot == null) return;
+            
+            var headerArea = new VisualElement {
+                style = {
+                    height = 20,
+                    width = Length.Percent(100),
+                    marginTop = 1,
+                    position = Position.Absolute,
+                },
+                pickingMode = PickingMode.Ignore
+            };
+            
+            Color backgroundColor = EditorGUIUtility.isProSkin
+                ? new Color32(61, 61, 61, 255)
+                : new Color32(194, 194, 194, 255);
+            var row = new VisualElement {
+                style = {
+                    flexDirection = FlexDirection.Row,
+                    height = 20,
+                    backgroundColor = backgroundColor,
+                    marginLeft = 18,
+                    marginRight = 60,
+                },
+                pickingMode = PickingMode.Ignore
+            };
+            VRCFuryEditorUtils.HoverHighlight(row);
+            headerArea.Add(row);
+
+            var normalLabelColor = new Color(0.05f, 0.05f, 0.05f);
+             
+            var triangleLeft = new VisualElement {
+                style = {
+                    borderRightColor = normalLabelColor,
+                    borderBottomColor = normalLabelColor,
+                    borderLeftWidth = 5,
+                    borderTopWidth = 10,
+                    borderRightWidth = 5,
+                    borderBottomWidth = 10,
+                },
+                pickingMode = PickingMode.Ignore
+            };
+            row.Add(triangleLeft);
+            
+            var label = new Label("VRCFury") {
+                style = {
+                    color = new Color(0.8f, 0.4f, 0f),
+                    borderTopRightRadius = 0,
+                    borderBottomRightRadius = 0,
+                    paddingLeft = 3,
+                    paddingRight = 3,
+                    backgroundColor = normalLabelColor,
+                    unityTextAlign = TextAnchor.MiddleCenter,
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    flexShrink = 1,
+                },
+                pickingMode = PickingMode.Ignore
+            };
+            row.Add(label);
+
+            var triangleRight = new VisualElement {
+                style = {
+                    borderLeftColor = normalLabelColor,
+                    borderTopColor = normalLabelColor,
+                    borderLeftWidth = 5,
+                    borderTopWidth = 10,
+                    borderRightWidth = 5,
+                    borderBottomWidth = 10,
+                },
+                pickingMode = PickingMode.Ignore
+            };
+            row.Add(triangleRight);
+
+            var name = new Label("Blendshape Optimizer") {
+                style = {
+                    //color = Color.white,
+                    flexGrow = 1,
+                    unityTextAlign = TextAnchor.MiddleLeft,
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    paddingLeft = 3
+                },
+                pickingMode = PickingMode.Ignore
+            };
+            row.Add(name);
+
+            foreach (var oldHeader in inspectorRoot.Children()
+                         .ToList()
+                         .Where(child => child.ClassListContains("vrcfHeader"))) {
+                oldHeader.parent?.Remove(oldHeader);
+            }
+            headerArea.AddToClassList("vrcfHeader");
+            inspectorRoot.Insert(1, headerArea);
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
+
+            content.RegisterCallback<AttachToPanelEvent>(e => {
+                CreateHeaderOverlay(content);
+            });
+            
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will automatically bake all non-animated blendshapes into the mesh," +
                 " saving VRAM for free!"
@@ -34,6 +148,8 @@ namespace VF.Feature {
             content.Add(adv);
             
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepMmdShapes"), "Keep MMD Blendshapes"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("test"), "Test"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("test2"), "Test 2"));
             
             return content;
         }

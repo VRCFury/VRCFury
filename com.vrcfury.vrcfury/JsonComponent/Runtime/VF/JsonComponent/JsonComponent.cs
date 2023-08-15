@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VF.Component {
     /**
@@ -9,6 +11,7 @@ namespace VF.Component {
     [ExecuteInEditMode]
     public abstract class JsonComponent : MonoBehaviour {
         public string json;
+        public List<Object> objects;
 
         [NonSerialized] public static Action<JsonComponent> onValidate;
         public void OnValidate() { onValidate?.Invoke(this); }

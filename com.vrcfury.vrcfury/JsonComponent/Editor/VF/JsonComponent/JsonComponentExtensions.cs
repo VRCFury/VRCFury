@@ -63,7 +63,7 @@ namespace VF.Component {
                 test.Debug("Json destroyed");
                 var holder = test.GetHolder();
                 if (holder) {
-                    Object.DestroyImmediate(holder);
+                    holder.TryDestroy();
                 }
             };
             
@@ -108,6 +108,7 @@ namespace VF.Component {
             component.Debug("json -> parsed");
             try {
                 var loader = component.GetLoader();
+                JsonSerializerState.SetObjects(component.objects);
                 holder.heldObject = JsonConvert.DeserializeObject(component.json, loader.parseType, loader.jsonSettings);
                 if (holder.heldObject == null) throw new Exception("Json content was empty");
                 holder.error = null; 
@@ -129,7 +130,17 @@ namespace VF.Component {
                 var so = new SerializedObject(component);
                 try {
                     var loader = component.GetLoader();
-                    so.FindProperty("json").stringValue = JsonConvert.SerializeObject(holder.heldObject, loader.jsonSettings);
+                    JsonSerializerState.Clear();
+                    var json = JsonConvert.SerializeObject(holder.heldObject, loader.jsonSettings);
+                    component.Debug(json);
+                    so.FindProperty("json").stringValue = json;
+                    var objs = so.FindProperty("objects");
+                    objs.ClearArray();
+                    foreach (var obj in JsonSerializerState.GetObjects()) {
+                        objs.InsertArrayElementAtIndex(objs.arraySize);
+                        var el = objs.GetArrayElementAtIndex(objs.arraySize - 1);
+                        el.objectReferenceValue = obj;
+                    }
                 } catch (Exception e) {
                     UnityEngine.Debug.LogException(new Exception("Failed to serialize JsonProperty", e));
                 }
@@ -140,7 +151,7 @@ namespace VF.Component {
         }
          
         public static void Debug(this JsonComponent component, string msg) {
-            UnityEngine.Debug.Log("JsonComponent: " + component + " " + msg);
+            UnityEngine.Debug.Log("JsonComponent: " + component + " " + msg + " (" + component.objects.Count + ")");
         }
         
         public static Loader GetLoader(this JsonComponent component) {
@@ -164,6 +175,14 @@ namespace VF.Component {
                     original.Debug("parsed changed");
                     original.Serialize(this);
                 }
+            }
+
+            private bool destroyed = false;
+            public void OnDestroy() {
+                destroyed = true;
+            }
+            public void TryDestroy() {
+                if (!destroyed) DestroyImmediate(this);
             }
         }
 

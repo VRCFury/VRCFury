@@ -32,6 +32,7 @@ namespace VF.Component {
             }
 
             var c = new VisualElement();
+            c.Add(new PropertyField(serializedObject.FindProperty("json")));
             var body = loader.createEditor(parsed, parsedSo.FindProperty("heldObject"));
             body.Bind(parsedSo);
             c.Add(body);

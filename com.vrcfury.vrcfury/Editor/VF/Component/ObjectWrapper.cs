@@ -14,7 +14,6 @@ namespace VF.Component {
     [Serializable] public class VrcControllerWrapper : ObjectWrapperWrapper<RuntimeAnimatorController, VrcControllerWrapper> {}
     [Serializable] public class VrcMenuWrapper : ObjectWrapperWrapper<VRCExpressionsMenu, VrcMenuWrapper> {}
     [Serializable] public class VrcParamsWrapper : ObjectWrapperWrapper<VRCExpressionParameters, VrcParamsWrapper> {}
-    [Serializable] public class GameObjectWrapper : ObjectWrapperWrapper<GameObject, GameObjectWrapper> {}
 
     public abstract class ObjectWrapperWrapper<T, W> : ObjectWrapper<T>
         where T : Object
@@ -33,7 +32,10 @@ namespace VF.Component {
     [JsonConverter(typeof(ObjectWrapperJsonConverter))]
     public abstract class ObjectWrapper<T> : ISerializationCallbackReceiver where T : Object {
         [SerializeField]
-        private string backupId;
+        private string backupGuid;
+        
+        [SerializeField]
+        private long backupFileId;
         
         [SerializeField]
         private string backupName;
@@ -89,40 +91,27 @@ namespace VF.Component {
         }
 
         public void OnBeforeSerialize() {
-            Refresh();
+            Refresh(true);
         }
 
         public void OnAfterDeserialize() {
-            EditorApplication.delayCall += Refresh;
+            EditorApplication.delayCall += () => Refresh();
         }
 
-        [NonSerialized] private Object lastSelected;
-
-        private void Refresh() {
-            if (obj == null && lastSelected != null) {
-                // The last selection still exists, assume the user actually cleared this pointer on purpose
-                // (probably by removing it in the inspector)
-                backupId = "";
-                backupName = "";
-                backupFile = "";
-            }
-
-            if (obj == null && !string.IsNullOrEmpty(backupId)) {
+        private void Refresh(bool serializing = false) {
+            if (obj == null && !string.IsNullOrEmpty(backupGuid) && !serializing) {
                 // Try and find the Object using our stored guid info
-                if (GlobalObjectId.TryParse(backupId, out var id)) {
-                    var asset = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(id) as T;
-                    if (asset) {
-                        obj = asset;
-                    }
+                var idStr = $"GlobalObjectId_V1-1-{backupGuid}-{backupFileId}-0";
+                if (GlobalObjectId.TryParse(idStr, out var id)) {
+                    obj = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(id) as T;
                 }
             }
 
             if (obj != null) {
                 // The selected object is valid, so update our stored ID
-                var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(obj);
-                backupId = globalObjectId.ToString();
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out backupGuid, out backupFileId);
                 backupName = obj.name;
-                backupFile = AssetDatabase.GUIDToAssetPath(globalObjectId.assetGUID.ToString()) ?? "";
+                backupFile = AssetDatabase.GUIDToAssetPath(backupGuid) ?? "";
             }
         }
 
@@ -130,8 +119,8 @@ namespace VF.Component {
             Refresh();
 
             var output = "";
-            if (string.IsNullOrWhiteSpace(backupId)) return output;
-            output += backupId;
+            if (string.IsNullOrWhiteSpace(backupGuid)) return output;
+            output += backupGuid + ":" + backupFileId;
             if (string.IsNullOrWhiteSpace(backupName)) return output;
             output += ":" + backupName.Replace(":", "");
             if (string.IsNullOrWhiteSpace(backupFile)) return output;
@@ -140,10 +129,18 @@ namespace VF.Component {
         }
 
         public void LoadString(string input) {
+            backupGuid = "";
+            backupFileId = 0;
+            backupFile = "";
+            backupName = "";
+
             var split = input.Split(':');
-            backupId = split[0];
-            if (split.Length > 1) backupName = split[1];
-            if (split.Length > 2) backupFile = split[2];
+            if (split.Length >= 2) {
+                backupGuid = split[0];
+                backupFileId = long.TryParse(split[1], out var parsed) ? parsed : 0;
+            }
+            if (split.Length >= 3) backupName = split[2];
+            if (split.Length >= 4) backupFile = split[3];
             Refresh();
         }
     }

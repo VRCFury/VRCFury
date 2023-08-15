@@ -20,7 +20,7 @@ namespace VF.Component {
                 .RegisterSubtype(typeof(BlendshapeOptimizerBuilder), "blendshapeOptimizer")
                 .Build());
             
-            jsonSettings.Converters.Add(new NoBadTypesConverter());
+            jsonSettings.Converters.Add(new ObjectConverter());
 
             Func<FeatureBuilder, SerializedProperty, VisualElement> CreateEditor = (builder, prop) => {
                 var c = new VisualElement();
@@ -39,22 +39,20 @@ namespace VF.Component {
         public class VRCFuryJsonHolder : JsonComponentExtensions.ParsedJsonHolder, IVrcfEditorOnly {
         }
 
-        private class NoBadTypesConverter : JsonConverter {
-            public override bool CanConvert(Type objectType) {
-                if (typeof(Object).IsAssignableFrom(objectType))
-                    throw new NotImplementedException();
-                return false;
+        private class ObjectConverter : JsonConverter<Object> {
+            public override void WriteJson(JsonWriter writer, Object value, JsonSerializer serializer) {
+                writer.WriteValue(JsonSerializerState.GetId(value));
             }
 
-            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-                throw new NotImplementedException();
-            }
-
-            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-                throw new NotImplementedException();
+            public override Object ReadJson(JsonReader reader, Type objectType, Object existingValue, bool hasExistingValue,
+                JsonSerializer serializer) {
+                if (reader.Value is int i) {
+                    return JsonSerializerState.GetObject(i);
+                }
+                return null;
             }
         }
-        
+
         [Serializable] 
         public class UnknownFeature : FeatureBuilder {
             public override VisualElement CreateEditor(SerializedProperty prop) {
