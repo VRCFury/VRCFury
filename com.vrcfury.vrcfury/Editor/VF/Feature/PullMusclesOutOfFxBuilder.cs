@@ -127,7 +127,7 @@ namespace VF.Feature {
                     if (state == otherState) continue;
                     others = others.Or(otherCondition);
                 }
-                off.TransitionsTo(state).When(condition);
+                off.TransitionsToExit().When(condition);
                 state.TransitionsFromEntry().When(condition);
                 state.TransitionsToExit().When(others).WithTransitionExitTime(exitTime);
                 state.TransitionsTo(blendout).WithTransitionDurationSeconds(1000).Interruptable().When(condition.Not()).WithTransitionExitTime(exitTime);

@@ -358,7 +358,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
 
-        off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(transitionTime);
+        off.TransitionsToExit().When(onCase).WithTransitionDurationSeconds(transitionTime);
         inState.TransitionsFromEntry().When(onCase);
 
         if (model.simpleOutTransition) outAction = inAction;
