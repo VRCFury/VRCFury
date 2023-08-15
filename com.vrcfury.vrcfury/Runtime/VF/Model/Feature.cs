@@ -151,20 +151,20 @@ namespace VF.Model.Feature {
         public class ControllerEntry {
             public GuidController controller;
             public VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.FX;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
 
         [Serializable]
         public class MenuEntry {
             public GuidMenu menu;
             public string prefix;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
 
         [Serializable]
         public class ParamsEntry {
             public GuidParams parameters;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
         
         [Serializable]
@@ -172,7 +172,7 @@ namespace VF.Model.Feature {
             public string from;
             public string to;
             public bool delete = false;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
 
         public override void Upgrade(int fromVersion) {
@@ -246,7 +246,7 @@ namespace VF.Model.Feature {
                 this.state = state;
             }
             
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
     }
 
@@ -572,7 +572,7 @@ namespace VF.Model.Feature {
             public string exclusiveTag;
             public bool enableWeight;
             
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
 
         public enum Hand {
@@ -610,7 +610,7 @@ namespace VF.Model.Feature {
         public class ObjState {
             public GameObject obj;
             public Action action = Action.DEACTIVATE;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
         public enum Action {
             DEACTIVATE,
@@ -630,13 +630,13 @@ namespace VF.Model.Feature {
         [Serializable]
         public class Exclude {
             public string name;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
         [Serializable]
         public class Include {
             public string nameOnBase;
             public string nameOnLinked;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
     }
     

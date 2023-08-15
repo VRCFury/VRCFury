@@ -8,32 +8,52 @@ using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
     public class UnitySerializationUtils {
-        public static bool FindAndResetMarkedFields(object obj) {
-            if (!SerializionEnters(obj)) return false;
+        public static void FindAndResetMarkedFields(object root) {
+            Iterate(root, visit => {
+                var value = visit.value;
+                if (value == null) return;
+                var resetField = visit.value.GetType().GetField("ResetMePlease2", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (resetField != null && resetField.GetValue(value) is bool b && b) {
+                    visit.set(Activator.CreateInstance(value.GetType()));
+                }
+            });
+        }
+
+        public class IterateVisit {
+            public string fieldName;
+            public bool isArrayElement = false;
+            public object value;
+            public Action<object> set;
+        }
+        public static void Iterate(object obj, Action<IterateVisit> forEach) {
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
-                if (value is IList) {
-                    var list = value as IList;
+                forEach(new IterateVisit {
+                    fieldName = field.Name,
+                    value = value,
+                    set = v => {
+                        value = v;
+                        field.SetValue(obj, v);
+                    },
+                });
+                if (value is IList list) {
                     for (var i = 0; i < list.Count; i++) {
-                        var remove = FindAndResetMarkedFields(list[i]);
-                        if (remove) {
-                            var elemType = list[i].GetType();
-                            var newInst = Activator.CreateInstance(elemType);
-                            list.RemoveAt(i);
-                            list.Insert(i, newInst);
+                        forEach(new IterateVisit {
+                            fieldName = field.Name,
+                            isArrayElement = true,
+                            value = list[i],
+                            set = v => {
+                                list[i] = v;
+                            }
+                        });
+                        if (SerializionEnters(list[i])) {
+                            Iterate(list[i], forEach);
                         }
                     }
-                } else {
-                    if (field.Name == "ResetMePlease") {
-                        if ((bool)value) {
-                            return true;
-                        }
-                    } else {
-                        FindAndResetMarkedFields(value);
-                    }
+                } else if (SerializionEnters(value)) {
+                    Iterate(value, forEach);
                 }
             }
-            return false;
         }
 
         public static void CloneSerializable(object from, object to) {
@@ -88,27 +108,6 @@ namespace VF.Inspector {
                 }
             }
             return output;
-        }
-        
-        public static bool ContainsNullsInList(object obj) {
-            if (!SerializionEnters(obj)) return false;
-            foreach (var field in GetAllSerializableFields(obj.GetType())) {
-                var isRef = field.GetCustomAttribute<SerializeReference>() != null;
-                var value = field.GetValue(obj);
-                if (value is IList) {
-                    var list = value as IList;
-                    foreach (var t in list) {
-                        if ((t == null && isRef) || ContainsNullsInList(t)) {
-                            return true;
-                        }
-                    }
-                } else {
-                    if ((value == null && isRef) || ContainsNullsInList(value)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
         }
 
         public static Type GetPropertyType(SerializedProperty prop) {

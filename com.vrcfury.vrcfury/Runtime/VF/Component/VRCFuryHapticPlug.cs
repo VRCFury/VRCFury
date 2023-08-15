@@ -41,7 +41,7 @@ namespace VF.Component {
             public bool enableSelf;
             public float smoothingSeconds = 1f;
             [Obsolete] public float smoothing;
-            public bool ResetMePlease;
+            public bool ResetMePlease2;
         }
 
         protected override void Upgrade(int fromVersion) {
