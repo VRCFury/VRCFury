@@ -65,7 +65,7 @@ namespace VF.Plugin {
                 var smoothParam = smoothing.Smooth(
                     $"{prefix}/Smoothed",
                     mapped,
-                    depthAction.smoothing
+                    depthAction.smoothingSeconds
                 );
 
                 var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
@@ -156,7 +156,7 @@ namespace VF.Plugin {
                 var smoothed = smoothing.Smooth(
                     $"{prefix}/Smoothed",
                     mapped,
-                    depthAction.smoothing
+                    depthAction.smoothingSeconds
                 );
 
                 var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);

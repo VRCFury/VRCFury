@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -108,6 +109,15 @@ namespace VF.Inspector {
                 }
             }
             return false;
+        }
+
+        public static Type GetPropertyType(SerializedProperty prop) {
+            var util = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");
+            var method = util.GetMethod("GetFieldInfoFromProperty",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var prms = new object[] { prop, null };
+            method.Invoke(null, prms);
+            return prms[1] as Type;
         }
     }
 }

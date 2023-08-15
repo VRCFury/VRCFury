@@ -39,7 +39,8 @@ namespace VF.Component {
             public float startDistance = 1;
             public float endDistance;
             public bool enableSelf;
-            public float smoothing = 0.5f;
+            public float smoothingSeconds = 1f;
+            [Obsolete] public float smoothing;
             public bool ResetMePlease;
         }
 
@@ -75,11 +76,16 @@ namespace VF.Component {
                     a.smoothing = (float)Math.Pow(a.smoothing, 0.2);
                 }
             }
+            if (fromVersion < 8) {
+                foreach (var a in depthActions) {
+                    a.smoothingSeconds = VRCFuryHapticSocket.UpgradeFromLegacySmoothing(a.smoothing);
+                }
+            }
 #pragma warning restore 0612
         }
 
         protected override int GetLatestVersion() {
-            return 7;
+            return 8;
         }
 
         public enum Channel {
