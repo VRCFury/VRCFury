@@ -189,7 +189,7 @@ public static class VRCFuryEditorUtils {
         var newEntry = list.GetArrayElementAtIndex(list.arraySize-1);
         list.serializedObject.ApplyModifiedProperties();
 
-        var resetFlag = newEntry.FindPropertyRelative("ResetMePlease");
+        var resetFlag = newEntry.FindPropertyRelative("ResetMePlease2");
         if (resetFlag != null) {
             resetFlag.boolValue = true;
             list.serializedObject.ApplyModifiedPropertiesWithoutUndo();

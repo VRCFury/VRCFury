@@ -52,6 +52,22 @@ namespace VF.Feature {
                     continue;
                 }
 
+                var hasExitTime = new AnimatorIterator.Transitions()
+                    .From(layer)
+                    .Any(b => b is AnimatorStateTransition t && t.hasExitTime);
+                if (hasExitTime) {
+                    AddDebug($"Not optimizing (contains a transition using exit time)");
+                    continue;
+                }
+                
+                var hasNonZeroTransitonTime = new AnimatorIterator.Transitions()
+                    .From(layer)
+                    .Any(b => b is AnimatorStateTransition t && t.duration != 0);
+                if (hasNonZeroTransitonTime) {
+                    AddDebug($"Not optimizing (contains a transition with a non-0 duration)");
+                    continue;
+                }
+
                 var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
                     .Any(clip => !ClipBuilder.IsStaticMotion(clip));
 
