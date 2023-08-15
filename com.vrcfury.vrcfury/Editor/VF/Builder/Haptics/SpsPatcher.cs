@@ -390,8 +390,22 @@ namespace VF.Builder.Haptics {
             var bracketLevel = 0;
             var inString = false;
             var inStringEscape = false;
+            var inLineComment = false;
+            var inBlockComment = false;
             for (var i = start; i < str.Length; i++) {
                 var c = str[i];
+                if (inLineComment) {
+                    if (c == '\n') {
+                        inLineComment = false;
+                    }
+                    continue;
+                }
+                if (inBlockComment) {
+                    if (c == '*' && i != str.Length - 1 && str[i + 1] == '/') {
+                        inBlockComment = false;
+                    }
+                    continue;
+                }
                 if (inString) {
                     if (inStringEscape) {
                         inStringEscape = false;
@@ -403,7 +417,14 @@ namespace VF.Builder.Haptics {
                     }
                     continue;
                 }
-                if (c == '{') {
+
+                if (c == '/' && i != str.Length - 1 && str[i + 1] == '*') {
+                    inBlockComment = true;
+                    i++;
+                } else if (c == '/' && i != str.Length - 1 && str[i + 1] == '/') {
+                    inLineComment = true;
+                    i++;
+                } else if (c == '{') {
                     bracketLevel++;
                 } else if (c == '}') {
                     bracketLevel--;
