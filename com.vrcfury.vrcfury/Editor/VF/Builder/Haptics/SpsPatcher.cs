@@ -213,6 +213,9 @@ namespace VF.Builder.Haptics {
                     })
                     .Where(t => t != null)
                     .ToArray();
+                if (foundOldVert.Length > 1) {
+                    foundOldVert = foundOldVert.Distinct().ToArray();
+                }
                 // Special case for Standard
                 if (foundOldVert.Length > 1) {
                     foundOldVert = foundOldVert.Where(m => !m.Item2.Contains("Simple")).ToArray();
@@ -230,7 +233,10 @@ namespace VF.Builder.Haptics {
                 }
 
                 if (foundOldVert.Length > 1) {
-                    throw new Exception("Found vertex method multiple times: " + oldVertFunction);
+                    throw new Exception("Found vertex method multiple times: "
+                                        + oldVertFunction
+                                        + "\n"
+                                        + string.Join("\n", foundOldVert.Select(f => f.Item2 + " " + f.Item1)));
                 }
 
                 var paramList = foundOldVert[0].Item1;
