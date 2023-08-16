@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 
@@ -44,8 +45,8 @@ namespace VF.Builder.Haptics {
                 var closestBoneId = (int)boneNum + boneOffset;
                 var otherBoneId = (boneNum % 0.5) > 0.5 ? closestBoneId + 1 : closestBoneId - 1;
                 var distanceToOther = (boneNum % 0.5) > 0.5 ? (1 - boneNum % 1) : boneNum % 1;
-                closestBoneId = Math.Max(0, Math.Min(boneCount + boneOffset - 1, closestBoneId));
-                otherBoneId = Math.Max(0, Math.Min(boneCount + boneOffset - 1, otherBoneId));
+                closestBoneId = VrcfMath.Clamp(closestBoneId, 0, boneCount + boneOffset - 1);
+                otherBoneId = VrcfMath.Clamp(otherBoneId, 0, boneCount + boneOffset - 1);
 
                 weights[i] = CalculateWeight(closestBoneId, otherBoneId, distanceToOther);
             }
