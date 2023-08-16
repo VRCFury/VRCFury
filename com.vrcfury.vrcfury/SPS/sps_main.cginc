@@ -47,7 +47,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		applyLerp = min(applyLerp, 1-exitAngleTooSharp);
 
 		// Cancel if the entrance angle is too sharp
-		const float allowedEntranceAngle = isRing ? 0.5 : 0.6;
+		const float allowedEntranceAngle = isRing ? 0.5 : 0.8;
 		const float entranceAngleTooSharp = sps_saturated_map(
 			entranceAngle,
 			SPS_PI*(allowedEntranceAngle*0.8), SPS_PI*allowedEntranceAngle
@@ -63,7 +63,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 				worldLength*hiltedSphereRadius, worldLength*(hiltedSphereRadius*0.8)
 			);
 			const float hilted = min(isBehind, inSphere);
-			shrinkLerp = hilted;
+			//shrinkLerp = hilted;
 			applyLerp = max(applyLerp, hilted);
 		} else {
 			// Cancel if ring is near or behind base
