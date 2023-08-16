@@ -38,11 +38,11 @@ namespace VF.Plugin {
                     $"{prefix}/Distance",
                     contact.front,
                     0, 1,
-                    colliderWorldRadius, 0
+                    maxDist, 0
                 );
                 var distanceWithoutBehind = smoothing.SetValueWithConditions(
                     $"{prefix}/DistanceWithoutBehind",
-                    0, colliderWorldRadius,
+                    0, maxDist,
                     distance.GetDefault(),
                     (distance, activeWhen),
                     (fx.NewFloat($"{prefix}/MaxDist", def: distance.GetDefault()), null)
