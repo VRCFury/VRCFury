@@ -53,8 +53,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 			SPS_PI*(allowedEntranceAngle*0.8), SPS_PI*allowedEntranceAngle
 		);
 		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
-
-		const float isBehind = sps_saturated_map(rootPos.z, worldLength*0.05, 0);
+		
 		if (!isRing) {
 			// Uncancel if hilted in a hole
 			const float hiltedSphereRadius = 0.6;
@@ -62,11 +61,13 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 				orfDistance,
 				worldLength*hiltedSphereRadius, worldLength*(hiltedSphereRadius*0.8)
 			);
-			const float hilted = min(isBehind, inSphere);
+			//const float hilted = min(isBehind, inSphere);
 			//shrinkLerp = hilted;
+			const float hilted = inSphere;
 			applyLerp = max(applyLerp, hilted);
 		} else {
 			// Cancel if ring is near or behind base
+			const float isBehind = sps_saturated_map(rootPos.z, worldLength*0.05, 0);
 			applyLerp = min(applyLerp, 1-isBehind);
 		}
 
