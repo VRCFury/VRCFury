@@ -150,11 +150,17 @@ namespace VF.Feature.Base {
                     }
                     case PoiyomiUVTileAction poiyomiUVTileAction: {
                         var renderer = poiyomiUVTileAction.renderer;
+                        if (poiyomiUVTileAction.slot1 > 3 || poiyomiUVTileAction.slot1 < 0) {
+                            Debug.LogWarning("Poiyomi UV tile Discard only has 4 slots in the UV X axis.");
+                        }
+                        if (poiyomiUVTileAction.slot2 > 3 || poiyomiUVTileAction.slot2 < 0) {
+                            Debug.LogWarning("Poiyomi UV tile Discard only has 4 slots in the UV Y axis.");
+                        }
                         if (renderer != null) {
                             var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(renderer.gameObject),
                                 renderer.GetType(),
-                                $"material._UDIMDiscardRow{poiyomiUVTileAction.slot1}_{poiyomiUVTileAction.slot2}"
+                                $"material._UDIMDiscardRow{(poiyomiUVTileAction.slot1 < 3 ? (poiyomiUVTileAction.slot1 > 0 ? poiyomiUVTileAction.slot1 : 0) : 0)}_{(poiyomiUVTileAction.slot2 < 3 ? (poiyomiUVTileAction.slot2 > 0 ? poiyomiUVTileAction.slot2 : 0) : 0)}"
                             );
                             offClip.SetConstant(binding, poiyomiUVTileAction.invert ? 1f: 0f); //Easier than If statement
                             onClip.SetConstant(binding, poiyomiUVTileAction.invert ? 0f : 1f);
