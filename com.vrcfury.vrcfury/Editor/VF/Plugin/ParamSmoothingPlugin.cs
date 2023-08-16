@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Utils;
 
 namespace VF.Plugin {
     public class ParamSmoothingPlugin : FeaturePlugin {
@@ -147,9 +148,8 @@ namespace VF.Plugin {
 
         public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
             var fx = GetFx();
-            var outputDefault = outMin + (input.GetDefault() - inMin) * (outMax - outMin) / (inMax - inMin);
-            outputDefault = Math.Max(outputDefault, outMin);
-            outputDefault = Math.Min(outputDefault, outMax);
+            var outputDefault = VrcfMath.Map(input.GetDefault(), inMin, inMax, outMin, outMax);
+            outputDefault = VrcfMath.Clamp(outputDefault, outMin, outMax);
             var output = fx.NewFloat(name, def: outputDefault);
 
             // These clips drive the output param to certain values
