@@ -129,24 +129,12 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 propField.style.flexGrow = 1;
                 row.Add(propField);
             
-                var propField2 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot1"),formatEnum : (input)=>{
-                    var num = int.Parse(input);
-                    num = num>4 ? 4 : num;
-                    num = num <0 ? 0 : num;
-                    return num.ToString();
-                }
-                );
+                var propField2 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot1"), tooltip= "UV X Axis, Val 0-3");
                 propField2.style.flexGrow = 0;
                 propField2.style.flexBasis = 30;
                 row.Add(propField2);
 
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot2"),formatEnum : (input)=>{
-                    var num = int.Parse(input);
-                    num = num>4 ? 4 : num;
-                    num = num <0 ? 0 : num;
-                    return num.ToString();
-                }
-                );
+                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot2"),tooltip= "UV Y Axis, Val 0-3");
                 propField3.style.flexGrow = 0;
                 propField3.style.flexBasis = 30;
                 row.Add(propField3);
