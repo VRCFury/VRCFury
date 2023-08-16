@@ -137,7 +137,7 @@ namespace VF.Feature {
             var maintained =
                 smoothing.SetValueWithConditions(
                     $"{input.Name()}Maintained",
-                    0, 1,
+                    0, 1, 0,
                     (input, whenEnabled),
                     (null, null)
                 );

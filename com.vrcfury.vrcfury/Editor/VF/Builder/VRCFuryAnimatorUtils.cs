@@ -277,7 +277,7 @@ public class VFAState {
 }
 
 public class VFAParam {
-    private readonly AnimatorControllerParameter param;
+    protected readonly AnimatorControllerParameter param;
     public VFAParam(AnimatorControllerParameter param) {
         this.param = param;
     }
@@ -309,6 +309,10 @@ public class VFAFloat : VFAParam {
     }
     public VFACondition IsLessThanOrEquals(float num) {
         return IsGreaterThan(num).Not();
+    }
+
+    public float GetDefault() {
+        return param.defaultFloat;
     }
 }
 

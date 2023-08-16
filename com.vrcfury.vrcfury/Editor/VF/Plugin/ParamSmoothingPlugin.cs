@@ -4,29 +4,45 @@ using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Component;
 using VF.Feature.Base;
 
 namespace VF.Plugin {
     public class ParamSmoothingPlugin : FeaturePlugin {
-        public VFAFloat Smooth(string name, VFAFloat target, float smoothing, bool useAcceleration = true) {
-            if (smoothing <= 0) return target;
-            if (smoothing > 0.999) smoothing = 0.999f;
+        public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
+            if (smoothingSeconds <= 0) return target;
+            if (smoothingSeconds > 10) smoothingSeconds = 10;
+            var fractionPerFrame = GetFractionPerFrame(smoothingSeconds, useAcceleration);
 
-            var adjustmentExponent = 0.1f;
-            smoothing = (float)Math.Pow(smoothing, adjustmentExponent);
-            
             var fx = GetFx();
-            var speedParam = fx.NewFloat($"{name}/Speed", def: smoothing);
+            var speedParam = fx.NewFloat($"{name}/FractionPerFrame", def: fractionPerFrame);
 
             var output = Smooth_($"{name}/Pass1", target, speedParam);
             if (useAcceleration) output = Smooth_($"{name}/Pass2", output, speedParam);
             return output;
         }
 
+        private float GetFractionPerFrame(float seconds, bool useAcceleration) {
+            var framerate = 60;
+            var targetFrames = seconds * framerate;
+            var currentSpeed = 0.5f;
+            var nextStep = 0.25f;
+            for (var i = 0; i < 20; i++) {
+                var currentFrames = VRCFuryHapticSocket.GetFramesRequired(currentSpeed, useAcceleration);
+                if (currentFrames > targetFrames) {
+                    currentSpeed += nextStep;
+                } else {
+                    currentSpeed -= nextStep;
+                }
+                nextStep *= 0.5f;
+            }
+            return currentSpeed;
+        }
+
         private VFAFloat Smooth_(string name, VFAFloat target, VFAFloat speedParam) {
             var fx = GetFx();
 
-            var output = fx.NewFloat(name);
+            var output = fx.NewFloat(name, def: target.GetDefault());
             
             // These clips drive the output param to certain values
             var minClip = fx.NewClip($"{output.Name()}-1");
@@ -56,8 +72,8 @@ namespace VF.Plugin {
             smoothTree.blendType = BlendTreeType.Simple1D;
             smoothTree.useAutomaticThresholds = false;
             smoothTree.blendParameter = speedParam.Name();
-            smoothTree.AddChild(targetTree, 0);
-            smoothTree.AddChild(maintainTree, 1);
+            smoothTree.AddChild(maintainTree, 0);
+            smoothTree.AddChild(targetTree, 1);
 
             var layer = fx.NewLayer("Smoothing " + name);
             layer.NewState("Smooth").WithAnimation(smoothTree);
@@ -67,11 +83,12 @@ namespace VF.Plugin {
         public VFAFloat SetValueWithConditions(
             string name,
             float minPossible, float maxPossible,
+            float defaultValue,
             params (VFAFloat,VFACondition)[] targets
         ) {
             var fx = GetFx();
 
-            var output = fx.NewFloat(name);
+            var output = fx.NewFloat(name, def: defaultValue);
             
             // These clips drive the output param to certain values
             var minClip = fx.NewClip($"{output.Name()}Max");
@@ -130,8 +147,10 @@ namespace VF.Plugin {
 
         public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
             var fx = GetFx();
-
-            var output = fx.NewFloat(name);
+            var outputDefault = outMin + (input.GetDefault() - inMin) * (outMax - outMin) / (inMax - inMin);
+            outputDefault = Math.Max(outputDefault, outMin);
+            outputDefault = Math.Min(outputDefault, outMax);
+            var output = fx.NewFloat(name, def: outputDefault);
 
             // These clips drive the output param to certain values
             var minClip = fx.NewClip(output.Name() + "Min");
