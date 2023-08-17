@@ -106,10 +106,11 @@ namespace VF.Feature.Base {
             var offClip = new AnimationClip();
             var onClip = GetFx().NewClip(name);
 
-            AnimationClip firstClip = state.actions
+            var firstClip = state.actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                .Get();
             if (firstClip) {
                 var copy = mutableManager.CopyRecursive(firstClip);
                 copy.Rewrite(rewriter);
@@ -149,7 +150,7 @@ namespace VF.Feature.Base {
                         break;
                     }
                     case AnimationClipAction clipAction:
-                        AnimationClip clipActionClip = clipAction.clip;
+                        var clipActionClip = clipAction.clip.Get();
                         if (clipActionClip && clipActionClip != firstClip) {
                             var copy = mutableManager.CopyRecursive(clipActionClip);
                             copy.Rewrite(rewriter);
@@ -197,7 +198,7 @@ namespace VF.Feature.Base {
                             Debug.LogWarning("Missing material in action: " + name);
                             break;
                         }
-                        clipBuilder.Material(onClip, matAction.obj, matAction.materialIndex, matAction.mat);
+                        clipBuilder.Material(onClip, matAction.obj, matAction.materialIndex, matAction.mat.Get());
                         break;
                 }
             }

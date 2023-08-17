@@ -19,7 +19,7 @@ namespace VF.Feature {
         }
         
         public void Apply() {
-            var result = manager.GetMenu().SetIcon(model.path, model.icon);
+            var result = manager.GetMenu().SetIcon(model.path, model.icon.Get());
             if (!result) {
                 Debug.LogWarning("Failed to find menu item to set icon");
             }

@@ -326,8 +326,8 @@ namespace VF.Builder.Haptics {
                 parts.Add("Plug component will be added to:\n" + string.Join("\n", addedPlug.Select(GetPath)));
 
             string GetSocketLine(VFGameObject t) {
-                if (addedSocketNames.ContainsKey(t)) {
-                    return GetPath(t) + " (" + addedSocketNames[t] + ")";
+                if (addedSocketNames.TryGetValue(t, out var name)) {
+                    return GetPath(t) + " (" + name + ")";
                 }
                 return GetPath(t);
             }

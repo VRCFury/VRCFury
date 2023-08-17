@@ -479,6 +479,8 @@ public static class VRCFuryEditorUtils {
 
     public static VisualElement RefreshOnChange(Func<VisualElement> content, params SerializedProperty[] props) {
         var container = new VisualElement();
+        if (props.Length == 0 || props.Any(p => p == null))
+            throw new Exception("RefreshOnChange received null prop");
         container.Add(RefreshOnTrigger(content, props[0].serializedObject, out var triggerRefresh));
         foreach (var prop in props) {
             if (prop != null) {
@@ -704,6 +706,15 @@ public static class VRCFuryEditorUtils {
     public static T GetResource<T>(string path) where T : Object {
         var resourcesPath = AssetDatabase.GUIDToAssetPath("c4e4fa889bc2bc54abfc219a5424b763");
         return AssetDatabase.LoadAssetAtPath<T>($"{resourcesPath}/{path}");
+    }
+    
+    public static Type GetPropertyType(SerializedProperty prop) {
+        var util = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");
+        var method = util.GetMethod("GetFieldInfoFromProperty",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        var prms = new object[] { prop, null };
+        method.Invoke(null, prms);
+        return prms[1] as Type;
     }
 }
     

@@ -28,7 +28,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
             foreach (var p in model.prms) {
-                VRCExpressionParameters prms = p.parameters;
+                var prms = p.parameters.Get();
                 if (!prms) continue;
                 var copy = mutableManager.CopyRecursive(prms);
                 copy.RewriteParameters(RewriteParamName);
@@ -44,7 +44,7 @@ namespace VF.Feature {
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
             foreach (var c in model.controllers) {
                 var type = c.type;
-                RuntimeAnimatorController source = c.controller;
+                var source = c.controller.Get();
                 if (source == null) continue;
                 var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
                 while (copy is AnimatorOverrideController ov) {
@@ -73,7 +73,7 @@ namespace VF.Feature {
             }
 
             foreach (var m in model.menus) {
-                VRCExpressionsMenu menu = m.menu;
+                var menu = m.menu.Get();
                 if (menu == null) continue;
                 var copy = mutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
@@ -105,7 +105,7 @@ namespace VF.Feature {
             }
             
             var toggleIsInt = model.prms
-                .Select(entry => (VRCExpressionParameters)entry.parameters)
+                .Select(entry => entry.parameters.Get())
                 .Where(paramFile => paramFile != null)
                 .SelectMany(file => file.parameters)
                 .Where(param => param.valueType == VRCExpressionParameters.ValueType.Int)
@@ -139,7 +139,7 @@ namespace VF.Feature {
             if (VRChatGlobalParams.Contains(name)) return name;
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
-                    VRCExpressionParameters prms = p.parameters;
+                    var prms = p.parameters.Get();
                     return prms && prms.parameters.Any(param => param.name == name);
                 });
                 if (!synced) return name;
@@ -356,7 +356,7 @@ namespace VF.Feature {
                     var missingPaths = new HashSet<string>();
                     var usesWdOff = false;
                     foreach (var c in model.controllers) {
-                        RuntimeAnimatorController rc = c.controller;
+                        var rc = c.controller.Get();
                         var controller = rc as AnimatorController;
                         if (controller == null) continue;
                         foreach (var state in new AnimatorIterator.States().From(controller)) {

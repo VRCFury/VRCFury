@@ -66,7 +66,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         manager.GetMenu().NewMenuSlider(
             model.name,
             x,
-            icon: model.enableIcon ? model.icon : null
+            icon: model.enableIcon ? model.icon.Get() : null
         );
 
         var clip = LoadState("On", model.state);
@@ -127,13 +127,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 manager.GetMenu().NewMenuButton(
                     model.name,
                     param,
-                    icon: model.enableIcon ? model.icon : null
+                    icon: model.enableIcon ? model.icon.Get() : null
                 );
             } else {
                 manager.GetMenu().NewMenuToggle(
                     model.name,
                     param,
-                    icon: model.enableIcon ? model.icon : null
+                    icon: model.enableIcon ? model.icon.Get() : null
                 );
             }
         }

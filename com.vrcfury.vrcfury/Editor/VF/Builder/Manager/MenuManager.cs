@@ -242,9 +242,9 @@ namespace VF.Builder {
             foreach (var fromControl in from.controls) {
                 if (fromControl.type == VRCExpressionsMenu.Control.ControlType.SubMenu && fromControl.subMenu != null) {
                     // Properly handle loops
-                    if (seen.ContainsKey(fromControl.subMenu)) {
+                    if (seen.TryGetValue(fromControl.subMenu, out var value)) {
                         var toControl = CloneControl(fromControl);
-                        toControl.subMenu = seen[fromControl.subMenu];
+                        toControl.subMenu = value;
                         to.controls.Add(toControl);
                     } else {
                         var submenuDupId = GetNextSubmenuDupId(fromControl.name);

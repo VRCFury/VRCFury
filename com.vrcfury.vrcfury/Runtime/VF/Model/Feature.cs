@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using VF.Component;
 using VF.Model.StateAction;
+using VF.Upgradeable;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -21,46 +22,21 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public abstract class NewFeatureModel : FeatureModel, ISerializationCallbackReceiver {
-        public int version = -1;
+    public abstract class NewFeatureModel : FeatureModel, IUpgradeable {
+        [SerializeField] private int version = -1;
+        public int Version { get => version; set => version = value; }
+        void ISerializationCallbackReceiver.OnAfterDeserialize() { this.IUpgradeableOnAfterDeserialize(); }
+        void ISerializationCallbackReceiver.OnBeforeSerialize() { this.IUpgradeableOnBeforeSerialize(); }
 
-        private int GetVersion() {
-            return version < 0 ? GetLatestVersion() : version;
-        }
-
-        public bool Upgrade() {
-            var fromVersion = GetVersion();
-            var latestVersion = GetLatestVersion();
-            if (fromVersion < latestVersion) {
-                Upgrade(fromVersion);
-                version = latestVersion;
-                return true;
-            }
+        public virtual bool Upgrade(int fromVersion) {
             return false;
-        }
-
-        public virtual void Upgrade(int fromVersion) {
         }
 
         public virtual int GetLatestVersion() {
             return 0;
         }
-        
-        public void OnAfterDeserialize() {
-            if (version < 0) {
-                // Object was deserialized, but had no version. Default to version 0.
-                version = 0;
-            }
-        }
-
-        public void OnBeforeSerialize() {
-            if (version < 0) {
-                // Object was created fresh (not deserialized), so it's automatically the newest
-                version = GetLatestVersion();
-            }
-        }
     }
-    
+
     /**
      * This class exists because of an annoying unity bug. If a class is serialized with no fields (an empty class),
      * then if you try to deserialize it into a class with fields, unity blows up and fails. This means we can never
@@ -99,7 +75,7 @@ namespace VF.Model.Feature {
         public State inState;
         public State outState;
 
-        public override void Upgrade(int fromVersion) {
+        public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
                 if (obj != null) {
                     inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
@@ -113,6 +89,7 @@ namespace VF.Model.Feature {
                     blendshape = null;
                 }
             }
+            return false;
         }
         public override int GetLatestVersion() {
             return 1;
@@ -139,13 +116,12 @@ namespace VF.Model.Feature {
         public bool rootBindingsApplyToAvatar;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
 
-        // obsolete
-        public RuntimeAnimatorController controller;
-        public VRCExpressionsMenu menu;
-        public VRCExpressionParameters parameters;
-        public string submenu;
-        public List<string> removePrefixes = new List<string>();
-        public string addPrefix = "";
+        [Obsolete] public GuidController controller;
+        [Obsolete] public GuidMenu menu;
+        [Obsolete] public GuidParams parameters;
+        [Obsolete] public string submenu;
+        [Obsolete] public List<string> removePrefixes = new List<string>();
+        [Obsolete] public string addPrefix = "";
 
         [Serializable]
         public class ControllerEntry {
@@ -175,7 +151,8 @@ namespace VF.Model.Feature {
             public bool ResetMePlease2;
         }
 
-        public override void Upgrade(int fromVersion) {
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
             if (fromVersion < 1) {
                 allNonsyncedAreGlobal = true;
             }
@@ -193,7 +170,6 @@ namespace VF.Model.Feature {
                     parameters = null;
                 }
             }
-
             if (fromVersion < 3) {
                 if (removePrefixes != null) {
                     foreach (var s in removePrefixes) {
@@ -206,6 +182,8 @@ namespace VF.Model.Feature {
                     rewriteBindings.Add(new BindingRewrite { from = "", to = addPrefix });
                 }
             }
+            return false;
+#pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
@@ -401,7 +379,7 @@ namespace VF.Model.Feature {
         public bool useBoneMerging;
         public bool keepBoneOffsets;
         
-        public override void Upgrade(int fromVersion) {
+        public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
                 if (useBoneMerging) {
                     linkMode = ArmatureLinkMode.SkinRewrite;
@@ -425,6 +403,7 @@ namespace VF.Model.Feature {
                     scalingFactorPowersOf10Only = false;
                 }
             }
+            return false;
         }
         public override int GetLatestVersion() {
             return 5;
@@ -540,12 +519,13 @@ namespace VF.Model.Feature {
         public string fromPath;
         public string toPath;
         
-        public override void Upgrade(int fromVersion) {
+        public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
                 if (fromPath.StartsWith("Holes/") || fromPath == "Holes") {
                     fromPath = "Sockets" + fromPath.Substring(5);
                 }
             }
+            return false;
         }
 
         public override int GetLatestVersion() {
