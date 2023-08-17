@@ -91,9 +91,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -110,6 +111,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000002:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -129,9 +133,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -148,6 +153,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000003:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -167,9 +175,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -186,6 +195,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000004:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -193,19 +205,19 @@ MonoBehaviour:
         states:
         - obj: {fileID: 3111606710519745158}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 359734156991430266}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 6580397410190573811}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 3931882213566838297}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 1044722069731625619}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
     00000005:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:

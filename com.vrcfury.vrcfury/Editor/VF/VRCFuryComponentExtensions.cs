@@ -6,6 +6,7 @@ namespace VF {
     public static class VRCFuryComponentExtensions {
         public static void Upgrade(this VRCFuryComponent c) {
             if (c.IsBroken()) return;
+            if (PrefabUtility.IsPartOfPrefabInstance(c)) return;
             if (IUpgradeableUtility.UpgradeRecursive(c)) {
                 EditorUtility.SetDirty(c);
             }

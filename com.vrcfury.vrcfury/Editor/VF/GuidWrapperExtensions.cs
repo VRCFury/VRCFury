@@ -13,11 +13,17 @@ namespace VF {
         }
 
         static GuidWrapperExtensions() {
-            GuidWrapper.TryToAddNames = wrapper => {
+            GuidWrapper.UpdateIdIfPossible = wrapper => {
                 var obj = VrcfObjectId.IdToObject<Object>(wrapper.id);
                 if (obj != null) {
-                    wrapper.id = VrcfObjectId.ObjectToId(obj);
+                    var newId = VrcfObjectId.ObjectToId(obj);
+                    if (wrapper.id != newId) {
+                        wrapper.id = newId;
+                        return true;
+                    }
                 }
+
+                return false;
             };
         }
     }

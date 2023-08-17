@@ -1,9 +1,13 @@
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
+using VF.Component;
+using VF.Model;
+using VF.Model.Feature;
 
 namespace VF.Menu {
     public class MenuItems {
@@ -33,6 +37,8 @@ namespace VF.Menu {
         public const int listComponentsPriority = 1313;
         public const string detectDuplicatePhysbones = prefix + "Utilites/Detect Duplicate Physbones";
         public const int detectDuplicatePhysbonesPriority = 1314;
+        public const string reserialize = prefix + "Utilites/Reserialize All VRCFury Assets";
+        public const int reserializePriority = 1315;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
@@ -102,6 +108,36 @@ namespace VF.Menu {
                 EditorUtility.DisplayDialog(
                     "Debug",
                     $"Found {list.Count} components in {obj.name} and logged them to the console",
+                    "Ok"
+                );
+            });
+        }
+
+        [MenuItem(reserialize, priority = reserializePriority)]
+        private static void Reserialize() {
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                var doIt = EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    "This is intended for VRCFury developers only, in order to quickly" +
+                    " refresh serialization of all VRCF components in a project." +
+                    "\n\n" +
+                    "THIS WILL LOAD ALL SCENES AND TAKE A LONG TIME!" +
+                    "\n\n" +
+                    "Continue?",
+                    "Ok",
+                    "Cancel"
+                );
+                if (!doIt) return;
+
+                BulkUpgradeUtils.WithAllScenesOpen(() => {
+                    foreach (var vrcf in BulkUpgradeUtils.FindAll<VRCFuryComponent>()) {
+                        vrcf.Upgrade();
+                    }
+                });
+
+                EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    $"Done",
                     "Ok"
                 );
             });

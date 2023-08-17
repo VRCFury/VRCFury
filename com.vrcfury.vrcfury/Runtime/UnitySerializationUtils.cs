@@ -24,8 +24,13 @@ namespace VF {
             public object value;
             public Action<object> set;
         }
-        public static void Iterate(object obj, Action<IterateVisit> forEach) {
+        public static void Iterate(object obj, Action<IterateVisit> forEach, bool isRoot = true) {
             if (obj == null) return;
+            if (isRoot) {
+                forEach(new IterateVisit {
+                    value = obj,
+                });
+            }
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
                 forEach(new IterateVisit {
@@ -47,11 +52,11 @@ namespace VF {
                             }
                         });
                         if (SerializionEnters(list[i])) {
-                            Iterate(list[i], forEach);
+                            Iterate(list[i], forEach, false);
                         }
                     }
                 } else if (SerializionEnters(value)) {
-                    Iterate(value, forEach);
+                    Iterate(value, forEach, false);
                 }
             }
         }

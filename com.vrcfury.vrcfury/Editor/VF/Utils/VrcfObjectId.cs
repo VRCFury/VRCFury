@@ -82,5 +82,18 @@ namespace VF.Utils {
             // in the file is the right type, just assume it's the one we're looking for.
             return AssetDatabase.LoadMainAssetAtPath(path) as T;
         }
+
+        public string Pretty() {
+            if (!string.IsNullOrWhiteSpace(objectName)) {
+                return $"{objectName} from {fileName}";
+            }
+            if (!string.IsNullOrWhiteSpace(fileName)) {
+                return fileName;
+            }
+            if (!string.IsNullOrWhiteSpace(guid)) {
+                return $"GUID {guid}";
+            }
+            return "Unset";
+        }
     }
 }

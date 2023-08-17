@@ -25,8 +25,8 @@ namespace VF.Menu {
                 "Cancel"
             );
             if (!start) return;
-            
-            WithAllScenesOpen(() => {
+
+            BulkUpgradeUtils.WithAllScenesOpen(() => {
                 var bad = new List<string>();
                 FindDupes<VRCPhysBone>(c => c.GetRootTransform(), bad);
 
@@ -62,72 +62,6 @@ namespace VF.Menu {
             });
         }
 
-        private static void WithAllScenesOpen(Action fn) {
-            var unloadScenes = new HashSet<Scene>();
-            var removeScenes = new HashSet<Scene>();
-
-            try {
-                var scenePaths = AssetDatabase.GetAllAssetPaths()
-                    .Where(path => typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path))
-                    .ToList();
-                foreach (var path in scenePaths) {
-                    var handled = false;
-                    foreach (var scene in Enumerable.Range(0, SceneManager.sceneCount)
-                                 .Select(SceneManager.GetSceneAt)) {
-                        if (scene.path == path) {
-                            handled = true;
-                            if (!scene.isLoaded) {
-                                unloadScenes.Add(EditorSceneManager.OpenScene(path, OpenSceneMode.Additive));
-                            }
-                        }
-                    }
-                    if (!handled) {
-                        removeScenes.Add(EditorSceneManager.OpenScene(path, OpenSceneMode.Additive));
-                    }
-                }
-
-                fn();
-            } finally {
-                foreach (var s in unloadScenes) {
-                    EditorSceneManager.CloseScene(s, false);
-                }
-                foreach (var s in removeScenes) {
-                    EditorSceneManager.CloseScene(s, true);
-                }
-            }
-        }
-        
-        private static (Dictionary<(Transform,Transform), List<T>>, Dictionary<T, string>) FindAll<T>(Func<T, Transform> GetTarget) where T : UnityEngine.Component {
-            var map = new Dictionary<(Transform,Transform), List<T>>();
-            var sources = new Dictionary<T, string>();
-
-            void AddOne(T c) {
-                if (c == null) return;
-                var target = GetTarget(c);
-                var key = (c.transform, target);
-                if (!map.ContainsKey(key)) map[key] = new List<T>();
-                if (map[key].Contains(c)) return;
-                map[key].Add(c);
-            }
-
-            foreach (var c in VFGameObject.GetRoots().SelectMany(obj => obj.GetComponentsInSelfAndChildren<T>())) {
-                AddOne(c);
-                sources[c] = c.gameObject.scene.path;
-            }
-
-            foreach (var path in AssetDatabase.GetAllAssetPaths()) {
-                if (typeof(SceneAsset) != AssetDatabase.GetMainAssetTypeAtPath(path)) {
-                    foreach (var c in AssetDatabase.LoadAllAssetsAtPath(path)) {
-                        if (c is T t) {
-                            AddOne(t);
-                            sources[t] = path;
-                        }
-                    }
-                }
-            }
-            return (map, sources);
-        }
-
         private static string GetName(VFGameObject t) {
             return t.GetPath()
                    + " (" + AssetDatabase.GetAssetPath(t) + ")";
@@ -139,7 +73,7 @@ namespace VF.Menu {
         }
 
         private static void FindDupes<T>(Func<T, Transform> GetTarget, List<string> badList) where T : UnityEngine.Component {
-            var (map, sources) = FindAll(GetTarget);
+            var (map, sources) = BulkUpgradeUtils.FindAll(GetTarget);
             foreach (var ((transform,target),components) in map.Select(x => (x.Key, x.Value))) {
                 if (components.Count == 1) continue;
                 var mutable = components.Where(IsMutable).ToList();
@@ -155,7 +89,7 @@ namespace VF.Menu {
         }
         
         private static void FixDupes<T>(Func<T, Transform> GetTarget) where T : UnityEngine.Component {
-            var (map, sources) = FindAll(GetTarget);
+            var (map, sources) = BulkUpgradeUtils.FindAll(GetTarget);
             foreach (var ((transform,target),components) in map.Select(x => (x.Key, x.Value))) {
                 if (components.Count == 1) continue;
                 var mutable = components.Where(IsMutable).ToList();
@@ -169,7 +103,6 @@ namespace VF.Menu {
                     EditorUtility.SetDirty(obj);
                 }
             }
-            AssetDatabase.SaveAssets();
         }
     }
 }

@@ -53,39 +53,44 @@ MonoBehaviour:
     00000000:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 3
+        version: 4
         controllers:
         - controller:
+            version: 1
             fileID: 9100000
             guid: 4485bd5c6aea29e48bf1428a18876fcc
-            obj: {fileID: 9100000, guid: 4485bd5c6aea29e48bf1428a18876fcc, type: 2}
+            id: 4485bd5c6aea29e48bf1428a18876fcc|Assets/GoGo/GoLoco/ControllersWD/GoLocoActionWD.controller
           type: 4
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - controller:
+            version: 1
             fileID: 9100000
             guid: bde5983a4f3eaa149ba18853e5bf4c4c
-            obj: {fileID: 9100000, guid: bde5983a4f3eaa149ba18853e5bf4c4c, type: 2}
+            id: bde5983a4f3eaa149ba18853e5bf4c4c|Assets/GoGo/GoLoco/ControllersWD/GoLocoBaseWD.controller
           type: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - controller:
+            version: 1
             fileID: 9100000
             guid: 22aa2a9fb13faf540afa2a5c86efd0c4
-            obj: {fileID: 9100000, guid: 22aa2a9fb13faf540afa2a5c86efd0c4, type: 2}
+            id: 22aa2a9fb13faf540afa2a5c86efd0c4|Assets/GoGo/GoLoco/ControllersWD/GoLocoSittingWD.controller
           type: 6
-          ResetMePlease: 0
+          ResetMePlease2: 0
         menus:
         - menu:
+            version: 1
             fileID: 11400000
             guid: f8b5ce0378996b342b99e5a40691d855
-            obj: {fileID: 11400000, guid: f8b5ce0378996b342b99e5a40691d855, type: 2}
+            id: f8b5ce0378996b342b99e5a40691d855|Assets/GoGo/GoLoco/Menus/GoAllMainMenu.asset
           prefix: 
-          ResetMePlease: 0
+          ResetMePlease2: 0
         prms:
         - parameters:
+            version: 1
             fileID: 11400000
             guid: 839214bfcc622254eba684fa5faa1d12
-            obj: {fileID: 11400000, guid: 839214bfcc622254eba684fa5faa1d12, type: 2}
-          ResetMePlease: 0
+            id: 839214bfcc622254eba684fa5faa1d12|Assets/GoGo/GoLoco/Menus/GoAllParameters.asset
+          ResetMePlease2: 0
         globalParams:
         - Go/Float
         - Go/Stationary
@@ -96,9 +101,22 @@ MonoBehaviour:
         rootObjOverride: {fileID: 0}
         rootBindingsApplyToAvatar: 1
         rewriteBindings: []
-        controller: {fileID: 0}
-        menu: {fileID: 0}
-        parameters: {fileID: 0}
+        allowMissingAssets: 0
+        controller:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        menu:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        parameters:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
         submenu: 
         removePrefixes: []
         addPrefix: 

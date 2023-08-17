@@ -61,21 +61,23 @@ namespace VF.Model {
         [Obsolete] [SerializeField] private string guid;
         [SerializeField] public string id;
         
-        public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
+        public override bool Upgrade(int fromVersion) {
+            var changed = false;
+            
             if (fromVersion < 1) {
                 if (guid != "") id = guid + ":" + fileID;
             }
-            if (id != null && !id.Contains("|")) {
-                // Old ID where we didn't save the filename
-                // Try to upgrade it, just in case
-                TryToAddNames?.Invoke(this);
-            }
-#pragma warning restore 0612
-            return false;
-        }
 
-        public static Action<GuidWrapper> TryToAddNames;
+            if (UpdateIdIfPossible != null) {
+                changed |= UpdateIdIfPossible(this);
+            }
+
+            return changed;
+        }
+#pragma warning restore 0612
+
+        public static Func<GuidWrapper,bool> UpdateIdIfPossible;
 
         public override int GetLatestVersion() {
             return 1;

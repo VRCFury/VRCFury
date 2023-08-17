@@ -115,6 +115,7 @@ namespace VF.Model.Feature {
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
+        public bool allowMissingAssets = false;
 
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;
@@ -182,12 +183,15 @@ namespace VF.Model.Feature {
                     rewriteBindings.Add(new BindingRewrite { from = "", to = addPrefix });
                 }
             }
+            if (fromVersion < 4) {
+                allowMissingAssets = true;
+            }
             return false;
 #pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
-            return 3;
+            return 4;
         }
     }
     
