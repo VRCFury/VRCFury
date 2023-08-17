@@ -66,7 +66,7 @@ namespace VF.Model {
             if (fromVersion < 1) {
                 if (guid != "") id = guid + ":" + fileID;
             }
-            if (!id.Contains("|")) {
+            if (id != null && !id.Contains("|")) {
                 // Old ID where we didn't save the filename
                 // Try to upgrade it, just in case
                 TryToAddNames?.Invoke(this);
