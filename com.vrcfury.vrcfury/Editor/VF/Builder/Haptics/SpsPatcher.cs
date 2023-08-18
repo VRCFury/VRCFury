@@ -67,7 +67,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain;
+            var hashContent = contents + spsMain + "2";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -100,14 +100,27 @@ namespace VF.Builder.Haptics {
             );
 
             var patchedPasses = 0;
-            contents = WithEachPass(contents, (pass) => {
-                patchedPasses++;
-                try {
-                    return PatchPass(pass, spsMain, false);
-                } catch (Exception e) {
-                    throw new Exception($"Failed to patch pass #{patchedPasses}: " + e.Message, e);
+            contents = WithEachPass(contents,
+                pass => {
+                    patchedPasses++;
+                    try {
+                        return PatchPass(pass, spsMain, false);
+                    } catch (Exception e) {
+                        throw new Exception($"Failed to patch pass #{patchedPasses}: " + e.Message, e);
+                    }
+                },
+                rest => {
+                    if (GetRegex(@"\n[ \t]*#pragma[ \t]+surface").IsMatch(rest)) {
+                        patchedPasses++;
+                        try {
+                            return PatchPass(rest, spsMain, true);
+                        } catch (Exception e) {
+                            throw new Exception($"Failed to patch surface shader: " + e.Message, e);
+                        }
+                    }
+                    return rest;
                 }
-            });
+            );
             var childShaders = new Dictionary<Shader, Shader>();
             contents = GetRegex(@"\n[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(contents, match => {
                 var shaderName = match.Groups[1].ToString();
@@ -127,11 +140,7 @@ namespace VF.Builder.Haptics {
                 return $"\nUsePass \"{rewrittenIncludedShader.name}/{passName}\"\n";
             });
             if (patchedPasses == 0) {
-                try {
-                    contents = PatchPass(contents, spsMain, true);
-                } catch (Exception e) {
-                    throw new Exception($"Failed to patch surface shader (or no passes found): " + e.Message, e);
-                }
+                throw new Exception($"No passes found");
             }
 
             var newPathDir = $"{TmpFilePackage.GetPath()}/SPS";
@@ -371,24 +380,32 @@ namespace VF.Builder.Haptics {
             };
         }
 
-        private static string WithEachPass(string content, Func<string, string> with) {
+        private static string WithEachPass(string content, Func<string, string> withPass, Func<string, string> withRest) {
             var output = "";
-            var i = 0;
+            var lastPassEnd = 0;
+            var processedPasses = new List<string>();
             while (true) {
-                var nextPassStart = GetRegex(@"\n\s*Pass[\s{]*\s*\n").Match(content, i);
+                var nextPassStart = GetRegex(@"\n\s*Pass[\s{]*\s*\n").Match(content, lastPassEnd);
                 if (nextPassStart.Success) {
                     var start = nextPassStart.Index;
-                    output += content.Substring(i, start - i);
+                    output += content.Substring(lastPassEnd, start - lastPassEnd);
                     var end = IndexOfEndOfNextContext(content, start);
                     var oldPass = content.Substring(start, end - start);
-                    var newPass = with(oldPass);
-                    output += newPass;
-                    i = end;
+                    var newPass = withPass(oldPass);
+                    output += $"__PASS_{processedPasses.Count}__";
+                    processedPasses.Add(newPass);
+                    lastPassEnd = end;
                 } else {
-                    output += content.Substring(i);
+                    output += content.Substring(lastPassEnd);
                     break;
                 }
             }
+
+            output = withRest(output);
+            for (var i = 0; i < processedPasses.Count; i++) {
+                output = output.Replace($"__PASS_{i}__", processedPasses[i]);
+            }
+
             return output;
         }
 
