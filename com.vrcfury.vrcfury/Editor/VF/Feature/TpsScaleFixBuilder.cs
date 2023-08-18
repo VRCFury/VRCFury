@@ -102,6 +102,7 @@ namespace VF.Feature {
 
                 var animatedParentPaths = parentPaths
                     .Where(path => animatedPaths.Contains(path))
+                    .Where(path => path != "") // VRChat ignores animations of the root scale now, so we need to as well
                     .ToList();
 
                 objectNumber++;
