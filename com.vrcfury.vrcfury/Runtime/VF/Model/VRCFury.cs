@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using VF.Component;
 using VF.Model.Feature;
+using VF.Upgradeable;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
@@ -15,16 +15,9 @@ namespace VF.Model {
         [Header("VRCFury failed to load")]
         public bool somethingIsBroken;
         
-        protected override void UpgradeAlways() {
-#if UNITY_EDITOR
+        public override bool Upgrade(int fromVersion) {
             var features = config.features;
-            foreach (var f in features) {
-                if (f is NewFeatureModel newf) {
-                    if (newf.Upgrade()) {
-                        EditorUtility.SetDirty(this);
-                    }
-                }
-            }
+            var didSomething = false;
             for (var i = 0; i < features.Count; i++) {
                 if (features[i] is Modes modes) {
                     features.RemoveAt(i--);
@@ -41,22 +34,18 @@ namespace VF.Model {
                         toggle.exclusiveTag = tag;
                         features.Insert(++i, toggle);
                     }
-                    EditorUtility.SetDirty(this);
+                    didSomething = true;
                 } else if (features[i] is LegacyFeatureModel legacy) {
                     features.RemoveAt(i--);
                     features.Insert(++i, legacy.CreateNewInstance());
-                    EditorUtility.SetDirty(this);
-                } /*else if (features[i] is LegacyFeatureModel2 legacy2) {
-                    features.RemoveAt(i--);
-                    legacy2.CreateNewInstance(gameObject);
-                    EditorUtility.SetDirty(this);
-                    EditorUtility.SetDirty(gameObject);
-                }*/
+                    didSomething = true;
+                }
             }
-#endif
+
+            return didSomething;
         }
 
-        protected override int GetLatestVersion() {
+        public override int GetLatestVersion() {
             return 2;
         }
     }

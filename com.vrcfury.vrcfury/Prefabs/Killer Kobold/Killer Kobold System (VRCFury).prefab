@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -71,7 +71,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -85,45 +85,54 @@ MonoBehaviour:
     00000000:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 5
         linkMode: 3
         propBone: {fileID: 5477670289642340153}
         boneOnAvatar: 7
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 0
+        scalingFactorPowersOf10Only: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000001:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 5
         linkMode: 3
         propBone: {fileID: 751582935064500187}
         boneOnAvatar: 10
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 0
+        scalingFactorPowersOf10Only: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000002:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 5
         linkMode: 3
         propBone: {fileID: 4734856233210183209}
         boneOnAvatar: 18
         bonePathOnAvatar: 
-        keepBoneOffsets: 1
+        keepBoneOffsets2: 1
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
         fallbackBones: 
+        skinRewriteScalingFactor: 0
+        scalingFactorPowersOf10Only: 1
         useOptimizedUpload: 0
         useBoneMerging: 0
+        keepBoneOffsets: 1
     00000003:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -131,41 +140,67 @@ MonoBehaviour:
         states:
         - obj: {fileID: 1332116794369599453}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 1847832853386650455}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 5553836580620044099}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
     00000004:
       type: {class: FullController, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 2
+        version: 4
         controllers:
-        - controller: {fileID: 9100000, guid: cf9362b41548fe24f91115c24c2cb522, type: 2}
+        - controller:
+            version: 1
+            fileID: 9100000
+            guid: cf9362b41548fe24f91115c24c2cb522
+            id: cf9362b41548fe24f91115c24c2cb522|Assets/VoreSystem/VoreFX.controller
           type: 5
-          ResetMePlease: 0
+          ResetMePlease2: 0
         menus:
-        - menu: {fileID: 11400000, guid: 2c51f03ee109e214384a8faff65ff477, type: 2}
+        - menu:
+            version: 1
+            fileID: 11400000
+            guid: 2c51f03ee109e214384a8faff65ff477
+            id: 2c51f03ee109e214384a8faff65ff477|Assets/VoreSystem/VoreMenu.asset
           prefix: Killer Kobold
-          ResetMePlease: 0
+          ResetMePlease2: 0
         prms:
-        - parameters: {fileID: 11400000, guid: 299f44c78a57ca74abcda8a694489792, type: 2}
-          ResetMePlease: 0
+        - parameters:
+            version: 1
+            fileID: 11400000
+            guid: 299f44c78a57ca74abcda8a694489792
+            id: 299f44c78a57ca74abcda8a694489792|Assets/VoreSystem/VoreParams.asset
+          ResetMePlease2: 0
         globalParams: []
-        removePrefixes: []
-        addPrefix: 
         allNonsyncedAreGlobal: 0
         ignoreSaved: 0
         toggleParam: 
         useSecurityForToggle: 0
         rootObjOverride: {fileID: 0}
         rootBindingsApplyToAvatar: 0
-        controller: {fileID: 0}
-        menu: {fileID: 0}
-        parameters: {fileID: 0}
+        rewriteBindings: []
+        allowMissingAssets: 0
+        controller:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        menu:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        parameters:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
         submenu: 
+        removePrefixes: []
+        addPrefix: 
 --- !u!114 &4210671646414957088
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -178,7 +213,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -245,7 +280,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -272,7 +307,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -330,7 +365,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0

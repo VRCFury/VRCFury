@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
+using UnityEditor.Experimental.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -309,7 +311,16 @@ namespace VF.Inspector {
         }
         
         private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component parent) {
-            var label = new Button(() => AssetDatabase.OpenAsset(parent)) {
+            void Open() {
+                var open = typeof(PrefabStageUtility).GetMethod("OpenPrefab",
+                    BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
+                    null,
+                    new[] { typeof(string), typeof(GameObject) },
+                    null
+                );
+                open.Invoke(null, new object[] { AssetDatabase.GetAssetPath(parent), parent.gameObject });
+            }
+            var label = new Button(Open) {
                 text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
                 style = {
                     paddingTop = 5,

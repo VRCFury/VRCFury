@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9e94e501a2d4c95bff3d5601013d923, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vrcfSerVersion: 7
+  version: 2
   config:
     features:
     - id: 0
@@ -60,16 +60,20 @@ MonoBehaviour:
     00000000:
       type: {class: ArmatureLink, ns: VF.Model.Feature, asm: VRCFury}
       data:
-        version: 1
+        version: 5
         linkMode: 0
         propBone: {fileID: 8755245303744887131}
         boneOnAvatar: 0
         bonePathOnAvatar: 
-        keepBoneOffsets: 0
+        keepBoneOffsets2: 2
         removeBoneSuffix: 
         physbonesOnAvatarBones: 0
+        fallbackBones: 
+        skinRewriteScalingFactor: 1
+        scalingFactorPowersOf10Only: 1
         useOptimizedUpload: 0
         useBoneMerging: 1
+        keepBoneOffsets: 0
     00000001:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -87,6 +91,31 @@ MonoBehaviour:
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000002:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -104,6 +133,31 @@ MonoBehaviour:
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000003:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -121,6 +175,31 @@ MonoBehaviour:
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000004:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -138,6 +217,31 @@ MonoBehaviour:
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000005:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -155,6 +259,31 @@ MonoBehaviour:
         enableExclusiveTag: 0
         exclusiveTag: 
         resetPhysbones: []
+        enableIcon: 0
+        icon:
+          version: 1
+          fileID: 0
+          guid: 
+          id: 
+        enableDriveGlobalParam: 0
+        driveGlobalParam: 
+        separateLocal: 0
+        localState:
+          actions: []
+        hasTransition: 0
+        transitionStateIn:
+          actions: []
+        transitionStateOut:
+          actions: []
+        localTransitionStateIn:
+          actions: []
+        localTransitionStateOut:
+          actions: []
+        simpleOutTransition: 1
+        defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000006:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -162,28 +291,28 @@ MonoBehaviour:
         states:
         - obj: {fileID: 8285141173757989591}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 9096098970301760246}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 7372284091997178128}
           action: 2
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 7099246610430395301}
           action: 2
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 3974520271539212491}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 5909072173055379424}
           action: 2
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 1501267043710245672}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 6018032992931505445}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
     00000007:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
@@ -199,11 +328,21 @@ MonoBehaviour:
     0000000A:
       type: {class: AnimationClipAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
-        clip: {fileID: 7400000, guid: af1de31c4edb5094f97cc563565b1572, type: 2}
+        clip:
+          version: 1
+          fileID: 7400000
+          guid: af1de31c4edb5094f97cc563565b1572
+          id: af1de31c4edb5094f97cc563565b1572|Packages/com.vrcfury.vrcfury/Prefabs/Zawoo/Internal/Rascal
+            Rabbit DLC3 Latex Suit.anim
     0000000B:
       type: {class: AnimationClipAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:
-        clip: {fileID: 7400000, guid: 06486b83eb9d1124d8ac1dce02709035, type: 2}
+        clip:
+          version: 1
+          fileID: 7400000
+          guid: 06486b83eb9d1124d8ac1dce02709035
+          id: 06486b83eb9d1124d8ac1dce02709035|Packages/com.vrcfury.vrcfury/Prefabs/Zawoo/Internal/Rascal
+            Rabbit DLC3 Toy Suit.anim
 --- !u!1001 &8285141173135163303
 PrefabInstance:
   m_ObjectHideFlags: 0

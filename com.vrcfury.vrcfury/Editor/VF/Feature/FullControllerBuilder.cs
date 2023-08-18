@@ -27,9 +27,14 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
+            var missingAssets = new List<GuidWrapper>();
+            
             foreach (var p in model.prms) {
-                VRCExpressionParameters prms = p.parameters;
-                if (!prms) continue;
+                var prms = p.parameters.Get();
+                if (!prms) {
+                    missingAssets.Add(p.parameters);
+                    continue;
+                }
                 var copy = mutableManager.CopyRecursive(prms);
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
@@ -44,8 +49,11 @@ namespace VF.Feature {
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
             foreach (var c in model.controllers) {
                 var type = c.type;
-                RuntimeAnimatorController source = c.controller;
-                if (source == null) continue;
+                var source = c.controller.Get();
+                if (source == null) {
+                    missingAssets.Add(c.controller);
+                    continue;
+                }
                 var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
                 while (copy is AnimatorOverrideController ov) {
                     if (ov.runtimeAnimatorController is AnimatorController ac2) {
@@ -73,8 +81,11 @@ namespace VF.Feature {
             }
 
             foreach (var m in model.menus) {
-                VRCExpressionsMenu menu = m.menu;
-                if (menu == null) continue;
+                var menu = m.menu.Get();
+                if (menu == null) {
+                    missingAssets.Add(m.menu);
+                    continue;
+                }
                 var copy = mutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
@@ -96,6 +107,19 @@ namespace VF.Feature {
                     physbone.parameter = RewriteParamName(physbone.parameter);
                 }
             }
+
+            if (missingAssets.Count > 0) {
+                if (model.allowMissingAssets) {
+                    var list = string.Join(", ", missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()));
+                    Debug.LogWarning($"Missing Assets: {list}");
+                } else {
+                    var list = string.Join("\n", missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()));
+                    throw new Exception(
+                        "You're missing some files needed for this VRCFury asset. " +
+                        "Are you sure you've imported all the packages needed? Here are the files that are missing:\n\n" +
+                        list);
+                }
+            }
         }
 
         [FeatureBuilderAction(FeatureOrder.FullControllerToggle)]
@@ -105,7 +129,7 @@ namespace VF.Feature {
             }
             
             var toggleIsInt = model.prms
-                .Select(entry => (VRCExpressionParameters)entry.parameters)
+                .Select(entry => entry.parameters.Get())
                 .Where(paramFile => paramFile != null)
                 .SelectMany(file => file.parameters)
                 .Where(param => param.valueType == VRCExpressionParameters.ValueType.Int)
@@ -139,7 +163,7 @@ namespace VF.Feature {
             if (ControllerManager.VRChatGlobalParams.Contains(name)) return name;
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
-                    VRCExpressionParameters prms = p.parameters;
+                    var prms = p.parameters.Get();
                     return prms && prms.parameters.Any(param => param.name == name);
                 });
                 if (!synced) return name;
@@ -335,15 +359,13 @@ namespace VF.Feature {
                 value = false
             };
             
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "Make all unsynced params global (Legacy mode)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "Root object override"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel(
-                "Parameter name for prop toggling. If set, this entire prop will be de-activated whenever" +
-                " this boolean parameter within the Full Controller is false."));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam")));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useSecurityForToggle"), "Use security for toggle"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useSecurityForToggle"), "(Deprecated) Use security for toggle"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
 
             content.Add(adv);
             
@@ -356,7 +378,7 @@ namespace VF.Feature {
                     var missingPaths = new HashSet<string>();
                     var usesWdOff = false;
                     foreach (var c in model.controllers) {
-                        RuntimeAnimatorController rc = c.controller;
+                        var rc = c.controller.Get();
                         var controller = rc as AnimatorController;
                         if (controller == null) continue;
                         foreach (var state in new AnimatorIterator.States().From(controller)) {

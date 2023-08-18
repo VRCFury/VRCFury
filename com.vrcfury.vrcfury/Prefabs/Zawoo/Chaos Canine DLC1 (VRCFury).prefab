@@ -95,9 +95,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -114,6 +115,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000002:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -133,9 +137,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -152,6 +157,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000003:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -171,9 +179,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -190,6 +199,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000004:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -209,9 +221,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -228,6 +241,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000005:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -247,9 +263,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -266,6 +283,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000006:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -285,9 +305,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -304,6 +325,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000007:
       type: {class: Toggle, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -324,9 +348,10 @@ MonoBehaviour:
         resetPhysbones: []
         enableIcon: 0
         icon:
+          version: 1
           fileID: 0
           guid: 
-          obj: {fileID: 0}
+          id: 
         enableDriveGlobalParam: 0
         driveGlobalParam: 
         separateLocal: 0
@@ -343,6 +368,9 @@ MonoBehaviour:
           actions: []
         simpleOutTransition: 1
         defaultSliderValue: 1
+        useGlobalParam: 0
+        globalParam: 
+        holdButton: 0
     00000008:
       type: {class: ObjectState, ns: VF.Model.Feature, asm: VRCFury}
       data:
@@ -350,31 +378,31 @@ MonoBehaviour:
         states:
         - obj: {fileID: 5336518606103434084}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 5102145944059048177}
           action: 1
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 7943762549164159254}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 556973191268872845}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 1638235677583281402}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 8995110481931812500}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 663692081000692448}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 1654274140622547601}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
         - obj: {fileID: 6548976861997957624}
           action: 0
-          ResetMePlease: 0
+          ResetMePlease2: 0
     00000009:
       type: {class: ObjectToggleAction, ns: VF.Model.StateAction, asm: VRCFury}
       data:

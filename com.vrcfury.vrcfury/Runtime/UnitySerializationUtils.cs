@@ -2,12 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace VF.Inspector {
-    public class UnitySerializationUtils {
+namespace VF {
+    public static class UnitySerializationUtils {
         public static void FindAndResetMarkedFields(object root) {
             Iterate(root, visit => {
                 var value = visit.value;
@@ -20,16 +19,22 @@ namespace VF.Inspector {
         }
 
         public class IterateVisit {
-            public string fieldName;
+            public FieldInfo field;
             public bool isArrayElement = false;
             public object value;
             public Action<object> set;
         }
-        public static void Iterate(object obj, Action<IterateVisit> forEach) {
+        public static void Iterate(object obj, Action<IterateVisit> forEach, bool isRoot = true) {
+            if (obj == null) return;
+            if (isRoot) {
+                forEach(new IterateVisit {
+                    value = obj,
+                });
+            }
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
                 forEach(new IterateVisit {
-                    fieldName = field.Name,
+                    field = field,
                     value = value,
                     set = v => {
                         value = v;
@@ -39,7 +44,7 @@ namespace VF.Inspector {
                 if (value is IList list) {
                     for (var i = 0; i < list.Count; i++) {
                         forEach(new IterateVisit {
-                            fieldName = field.Name,
+                            field = field,
                             isArrayElement = true,
                             value = list[i],
                             set = v => {
@@ -47,11 +52,11 @@ namespace VF.Inspector {
                             }
                         });
                         if (SerializionEnters(list[i])) {
-                            Iterate(list[i], forEach);
+                            Iterate(list[i], forEach, false);
                         }
                     }
                 } else if (SerializionEnters(value)) {
-                    Iterate(value, forEach);
+                    Iterate(value, forEach, false);
                 }
             }
         }
@@ -109,14 +114,16 @@ namespace VF.Inspector {
             }
             return output;
         }
-
-        public static Type GetPropertyType(SerializedProperty prop) {
-            var util = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");
-            var method = util.GetMethod("GetFieldInfoFromProperty",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            var prms = new object[] { prop, null };
-            method.Invoke(null, prms);
-            return prms[1] as Type;
+        
+        public static bool ContainsNullsInList(object obj) {
+            var containsNull = false;
+            Iterate(obj, visit => {
+                containsNull |=
+                    visit.isArrayElement
+                    && visit.field.GetCustomAttribute<SerializeReference>() != null
+                    && visit.value == null;
+            });
+            return containsNull;
         }
     }
 }

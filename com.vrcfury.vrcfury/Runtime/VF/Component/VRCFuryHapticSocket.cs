@@ -45,7 +45,7 @@ namespace VF.Component {
             [Obsolete] public float smoothing;
         }
         
-        protected override void Upgrade(int fromVersion) {
+        public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
             if (fromVersion < 1) {
                 if (name.Contains("D P S")) {
@@ -75,6 +75,7 @@ namespace VF.Component {
                 }
             }
 #pragma warning restore 0612
+            return false;
         }
 
         public static float UpgradeFromLegacySmoothing(float oldSmoothingVal) {
@@ -93,7 +94,7 @@ namespace VF.Component {
             return 1000;
         }
 
-        protected override int GetLatestVersion() {
+        public override int GetLatestVersion() {
             return 5;
         }
     }

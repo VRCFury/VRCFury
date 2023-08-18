@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Model;
 using Object = UnityEngine.Object;
 
 namespace VF.Component {
@@ -20,6 +21,7 @@ namespace VF.Component {
                 .RegisterSubtype(typeof(BlendshapeOptimizerBuilder), "blendshapeOptimizer")
                 .Build());
             
+            jsonSettings.Converters.Add(new GuidWrapperJsonConverter());
             jsonSettings.Converters.Add(new NoBadTypesConverter());
 
             Func<FeatureBuilder, SerializedProperty, VisualElement> CreateEditor = (builder, prop) => {
@@ -52,6 +54,20 @@ namespace VF.Component {
 
             public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
                 throw new NotImplementedException();
+            }
+        }
+        
+        public class GuidWrapperJsonConverter : JsonConverter<GuidWrapper> {
+            public override void WriteJson(JsonWriter writer, GuidWrapper value, JsonSerializer serializer) {
+                writer.WriteValue(value.id);
+            }
+
+            public override GuidWrapper ReadJson(JsonReader reader, Type objectType, GuidWrapper existingValue, bool hasExistingValue,
+                JsonSerializer serializer) {
+                var s = reader.Value as string;
+                var inst = Activator.CreateInstance(objectType) as GuidWrapper;
+                inst.id = s;
+                return inst;
             }
         }
         

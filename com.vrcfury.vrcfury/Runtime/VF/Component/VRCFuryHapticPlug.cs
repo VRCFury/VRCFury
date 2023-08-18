@@ -44,7 +44,7 @@ namespace VF.Component {
             public bool ResetMePlease2;
         }
 
-        protected override void Upgrade(int fromVersion) {
+        public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
             if (fromVersion < 1) { 
                 unitsInMeters = true;
@@ -82,9 +82,10 @@ namespace VF.Component {
                 }
             }
 #pragma warning restore 0612
+            return false;
         }
 
-        protected override int GetLatestVersion() {
+        public override int GetLatestVersion() {
             return 8;
         }
 

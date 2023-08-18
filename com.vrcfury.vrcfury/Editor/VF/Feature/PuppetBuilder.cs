@@ -32,14 +32,14 @@ public class PuppetBuilder : FeatureBuilder<Puppet> {
             if (usesX) manager.GetMenu().NewMenuSlider(
                 model.name,
                 x,
-                icon: model.enableIcon ? model.icon : null
+                icon: model.enableIcon ? model.icon.Get() : null
             );
         } else {
             manager.GetMenu().NewMenuPuppet(
                 model.name,
                 x: usesX ? x : null,
                 y: usesY ? y : null,
-                icon: model.enableIcon ? model.icon : null
+                icon: model.enableIcon ? model.icon.Get() : null
             );
         }
     }
