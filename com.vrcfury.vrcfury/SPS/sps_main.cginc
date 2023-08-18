@@ -103,18 +103,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		const float3 p1 = float3(0,0,p1DistWithPullout);
 		const float3 p2 = rootPos + frontNormal * p1Dist;
 		const float3 p3 = rootPos;
-		const float t = sps_bezierFindT(p0, p1, p2, p3, bakedVertex.z, curveLength);
-
-		bezierPos = sps_bezier(p0,p1,p2,p3,t);
-		const float3 bezierDerivative = sps_bezierDerivative(p0,p1,p2,p3,t);
-		bezierForward = sps_normalize(bezierDerivative);
-
-		// Allow plug to roll if it's turning left or right, otherwise keep it upright if going forward and upside down if going backward
-		const float3 keepForwardUp = sps_normalize(cross(bezierForward, float3(1,0,0)));
-		const float3 keepUprightUp = sps_normalize(cross(bezierForward, cross(float3(0,1,0), bezierForward)));
-		float keepForward = sps_saturated_map(abs(sps_normalize(rootPos.xy).x), 1, 0);
-
-		bezierUp = sps_normalize(lerp(keepUprightUp, keepForwardUp, keepForward));
+		sps_bezierSolve(p0, p1, p2, p3, bakedVertex.z, curveLength, bezierPos, bezierForward, bezierUp);
 		bezierRight = sps_normalize(cross(bezierUp, bezierForward));
 	}
 

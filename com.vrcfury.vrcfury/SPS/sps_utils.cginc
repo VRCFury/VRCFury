@@ -10,8 +10,14 @@ float sps_saturated_map(float value, float min, float max) {
 }
 
 // normalize fails fatally and discards the vert if length == 0
-#define sps_normalize(a) length(a) == 0 ? float3(0,0,1) : normalize(a)
+float3 sps_normalize(float3 a) {
+    return length(a) == 0 ? float3(0,0,1) : normalize(a);
+}
 
 #define sps_angle_between(a,b) acos(dot(sps_normalize(a),sps_normalize(b)))
+
+float3 sps_nearest_normal(float3 forward, float3 approximate) {
+    return sps_normalize(cross(forward, cross(approximate, forward)));
+}
 
 #endif
