@@ -41,31 +41,38 @@ namespace VF.Feature {
                     typeof(GameObject),
                     "m_IsActive"
                 );
-                foreach (var c in manager.GetAllUsedControllers()) {
-                    foreach (var clip in c.GetClips()) {
-                        foreach (var (binding,curve) in clip.GetAllCurves()) {
-                            if (curve.IsFloat) {
-                                if (binding.path == pathToRenderer) {
-                                    if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                        clip.SetCurve(spsEnabledBinding, curve);
-                                        clip.SetCurve(hapticsEnabledBinding, curve);
-                                    }
-                                }
-                                if (binding.path == pathToPlug) {
-                                    if (binding.propertyName == "spsAnimatedEnabled") {
-                                        clip.SetCurve(spsEnabledBinding, curve);
-                                        clip.SetCurve(hapticsEnabledBinding, curve);
-                                    }
+
+                void RewriteClip(AnimationClip clip) {
+                    foreach (var (binding,curve) in clip.GetAllCurves()) {
+                        if (curve.IsFloat) {
+                            if (binding.path == pathToRenderer) {
+                                if (binding.propertyName == "material._TPS_AnimatedToggle") {
+                                    clip.SetCurve(spsEnabledBinding, curve);
+                                    clip.SetCurve(hapticsEnabledBinding, curve);
                                 }
                             }
-                            if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer) &&
-                                rendererType == typeof(SkinnedMeshRenderer)) {
-                                var b = binding;
-                                b.type = rendererType;
-                                clip.SetCurve(b, curve);
+                            if (binding.path == pathToPlug) {
+                                if (binding.propertyName == "spsAnimatedEnabled") {
+                                    clip.SetCurve(spsEnabledBinding, curve);
+                                    clip.SetCurve(hapticsEnabledBinding, curve);
+                                }
                             }
                         }
+                        if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer) &&
+                            rendererType == typeof(SkinnedMeshRenderer)) {
+                            var b = binding;
+                            b.type = rendererType;
+                            clip.SetCurve(b, curve);
+                        }
                     }
+                }
+                foreach (var c in manager.GetAllUsedControllers()) {
+                    foreach (var clip in c.GetClips()) {
+                        RewriteClip(clip);
+                    }
+                }
+                foreach (var clip in GetBuilder<RestingStateBuilder>().GetPendingClips()) {
+                    RewriteClip(clip);
                 }
             }
         }
@@ -211,6 +218,10 @@ namespace VF.Feature {
                     VFGameObject obj = socket.gameObject;
                     PhysboneUtils.RemoveFromPhysbones(socket.transform);
                     fakeHead.MarkEligible(socket.gameObject);
+                    if (VRCFuryHapticSocketEditor.IsChildOfHead(socket)) {
+                        var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
+                        GetBuilder<ObjectMoveBuilder>().Move(socket.gameObject, head);
+                    }
                     var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
 
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {

@@ -33,6 +33,8 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ScaleAction()); });
             menu.AddItem(new GUIContent("Material"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialAction()); });
+            menu.AddItem(new GUIContent("Enable SPS"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SpsOnAction()); });
             menu.ShowAsContext();
         }
 

@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
@@ -203,6 +204,21 @@ namespace VF.Feature.Base {
                         }
                         clipBuilder.Material(onClip, matAction.obj, matAction.materialIndex, matAction.mat.Get());
                         break;
+                    case SpsOnAction spsAction: {
+                        if (spsAction.target == null) {
+                            Debug.LogWarning("Missing target in action: " + name);
+                            break;
+                        }
+
+                        var binding = EditorCurveBinding.FloatCurve(
+                            clipBuilder.GetPath(spsAction.target.gameObject),
+                            typeof(VRCFuryHapticPlug),
+                            "spsAnimatedEnabled"
+                        );
+                        offClip.SetConstant(binding, 0);
+                        onClip.SetConstant(binding, 1);
+                        break;
+                    }
                 }
             }
 
