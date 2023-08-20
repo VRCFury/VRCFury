@@ -391,6 +391,10 @@ namespace VF.Inspector {
             return false;
         }
         
+        public static bool IsChildOfHead(VRCFuryHapticSocket socket) {
+            return IsChildOfBone(socket, HumanBodyBones.Head);
+        }
+        
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
             if (IsChildOfBone(socket, HumanBodyBones.Head)) return true;
             return ShouldProbablyHaveTouchZone(socket);
