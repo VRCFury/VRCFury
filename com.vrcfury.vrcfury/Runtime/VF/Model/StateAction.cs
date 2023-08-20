@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
+using VF.Component;
 
 namespace VF.Model.StateAction {
     [Serializable]
@@ -22,6 +24,11 @@ namespace VF.Model.StateAction {
         public GameObject obj;
         public int materialIndex = 0;
         public GuidMaterial mat = null;
+    }
+
+    [Serializable]
+    public class SpsOnAction : Action {
+        public VRCFuryHapticPlug target;
     }
     
     [Serializable]
