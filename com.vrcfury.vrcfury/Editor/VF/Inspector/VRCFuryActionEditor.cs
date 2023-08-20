@@ -157,6 +157,28 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 return row;
             }
+            case nameof(SpsOnAction): {
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+
+                var label = new Label("Enable SPS") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("target"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+
+                return row;
+            }
             case nameof(BlendShapeAction): {
                 var row = new VisualElement {
                     style = {

@@ -57,6 +57,10 @@ namespace VF.Feature {
             ApplyPendingClips();
         }
 
+        public IEnumerable<AnimationClip> GetPendingClips() {
+            return pendingClips;
+        }
+
         private readonly Dictionary<EditorCurveBinding, StoredEntry> stored =
             new Dictionary<EditorCurveBinding, StoredEntry>();
 
