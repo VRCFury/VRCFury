@@ -27,7 +27,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private int intTarget = -1;
     private bool enableExclusiveTag;
 
-    private string humanoidMask = "";
+    private string humanoidMask = null;
+    private string primaryExclusive = null;
 
     private AnimationClip restingClip;
 
@@ -44,7 +45,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 	
     public ISet<string> GetExclusiveTags() {
-        if (humanoidMask == "") CheckHumanoidMask();
+        CheckHumanoidMask();
         var tags = model.enableExclusiveTag ? model.exclusiveTag : "";
         if (humanoidMask == "emote") {
             tags += ",VF_EMOTE";
@@ -126,35 +127,41 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     public string GetPrimaryExclusive() {
-        string targetTag = "";
-        int targetMax = -1;
+        if (primaryExclusive == null) {
+            string targetTag = "";
+            int targetMax = -1;
 
-        foreach (var exclusiveTag in GetExclusiveTags()) {
-            int tagCount = 1;
-            foreach (var toggle in allBuildersInRun
-                        .OfType<ToggleBuilder>()) {
+            foreach (var exclusiveTag in GetExclusiveTags()) {
+                int tagCount = 1;
+                foreach (var toggle in allBuildersInRun
+                            .OfType<ToggleBuilder>()) {
 
-                if (!toggle.model.exclusiveOffState && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
-                    tagCount++;
+                    if (!toggle.model.exclusiveOffState && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
+                        tagCount++;
+                    }
                 }
 
+                if (tagCount > targetMax) {
+                    targetTag = exclusiveTag;
+                    targetMax = tagCount;
+                }
             }
 
-            if (tagCount > targetMax) {
-                targetTag = exclusiveTag;
-                targetMax = tagCount;
-            }
+            primaryExclusive = targetTag;
         }
-
-        return targetTag;
+        return primaryExclusive;
     }
 
     private void CheckHumanoidMask() {
+        if (humanoidMask != null) return;
+
         humanoidMask = GetHumanoidMaskName(model.state, model.localState, model.transitionStateIn, model.localTransitionStateIn, model.transitionStateOut, model.localTransitionStateOut);
         if (humanoidMask != "none") enableExclusiveTag = true;
     }
 
     private void CheckExclusives() {
+        if (!enableExclusiveTag) return;
+
         string targetTag = GetPrimaryExclusive();
         int tagCount = 1;
         int tagIndex = 0;
@@ -254,8 +261,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (!hasTitle && model.useGlobalParam) layerName = model.globalParam;
         if (!hasTitle && !hasIcon) addMenuItem = false;
 
-        if (humanoidMask == "") CheckHumanoidMask();
-        if (enableExclusiveTag) CheckExclusives();
+        CheckHumanoidMask();
+        CheckExclusives();
 
         var fx = GetFx();
         var layer = GetLayer(layerName, fx);
