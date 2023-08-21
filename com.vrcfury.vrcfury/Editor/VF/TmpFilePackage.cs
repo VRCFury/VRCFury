@@ -8,9 +8,21 @@ using UnityEditor.PackageManager;
 namespace VF {
     [InitializeOnLoad]
     public class TmpFilePackage {
+        private const string TmpDirPath = "Packages/com.vrcfury.temp";
+        private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
+        private const string LegacyTmpDirPath = "Assets/_VRCFury";
+        private const string LegacyPrefabsImportedMarker = TmpDirPath + "/LegacyPrefabsImported";
+        
         public static string GetPath() {
+            var importLegacyPrefabs = false;
+            if ((Directory.Exists(LegacyTmpDirPath) || Directory.Exists(TmpDirPath)) &&
+                !File.Exists(LegacyPrefabsImportedMarker)) {
+                importLegacyPrefabs = true;
+            }
+
             if (!Directory.Exists(TmpDirPath)) {
                 Directory.CreateDirectory(TmpDirPath);
+                File.Create(LegacyPrefabsImportedMarker);
             }
 
             if (!File.Exists(TmpPackagePath) ||
@@ -18,6 +30,11 @@ namespace VF {
                 File.WriteAllBytes(TmpPackagePath, Encoding.UTF8.GetBytes(PackageJson));
 
                 EditorApplication.delayCall += ReresolvePackages;
+            }
+
+            if (importLegacyPrefabs) {
+                LegacyPrefabUnpacker.Scan();
+                File.Create(LegacyPrefabsImportedMarker);
             }
 
             EditorApplication.delayCall += () => {
@@ -42,9 +59,6 @@ namespace VF {
         static TmpFilePackage() {
             GetPath();
         }
-         
-        private const string TmpDirPath = "Packages/com.vrcfury.temp";
-        private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
 
         private static readonly string PackageJson =
             "{\n" +
