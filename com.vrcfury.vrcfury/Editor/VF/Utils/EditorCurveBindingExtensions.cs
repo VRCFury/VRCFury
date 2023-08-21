@@ -60,8 +60,11 @@ namespace VF.Utils {
             if (binding.type == typeof(GameObject)) return true;
             // because we delete the animator during the build
             if (binding.path == "" && binding.type == typeof(Animator)) return true;
-            if (!typeof(UnityEngine.Component).IsAssignableFrom(binding.type))
-                throw new Exception($"Unknown binding type: {binding.type}");
+            if (!typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) {
+                // This can happen if the component type they were animating is no longer available, such as
+                // if the script no longer exists in the project.
+                return false;
+            }
             if (obj.GetComponent(binding.type) != null) return true;
             if (binding.type == typeof(BoxCollider) && obj.GetComponent<VRCStation>() != null) return true;
             return false;
