@@ -291,7 +291,7 @@ namespace VF.Builder {
             }
         }
 
-        public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
+        private static HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
             "Voice",
@@ -303,6 +303,7 @@ namespace VF.Builder {
             "VelocityX",
             "VelocityY",
             "VelocityZ",
+            "VelocityMagnitude",
             "Upright",
             "Grounded",
             "Seated",
@@ -311,15 +312,20 @@ namespace VF.Builder {
             "VRMode",
             "MuteSelf",
             "InStation",
+            "Earmuffs",
+
             "AvatarVersion",
+
+            "Supine",
             "GroundProximity",
-            "VelocityMagnitude",
+
             "ScaleModified",
             "ScaleFactor",
             "ScaleFactorInverse",
             "EyeHeightAsMeters",
             "EyeHeightAsPercent"
         };
+		
         public IImmutableSet<AnimationClip> GetClips() {
             return new AnimatorIterator.Clips().From(GetRaw());
         }
