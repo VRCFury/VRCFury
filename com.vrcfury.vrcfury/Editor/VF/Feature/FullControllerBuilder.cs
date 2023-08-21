@@ -429,6 +429,7 @@ namespace VF.Feature {
             "VelocityX",
             "VelocityY",
             "VelocityZ",
+            "VelocityMagnitude",
             "Upright",
             "Grounded",
             "Seated",
@@ -437,9 +438,18 @@ namespace VF.Feature {
             "VRMode",
             "MuteSelf",
             "InStation",
+            "Earmuffs",
+
             "AvatarVersion",
+
+            "Supine",
             "GroundProximity",
-            "VelocityMagnitude"
+
+            "ScaleModified",
+            "ScaleFactor",
+            "ScaleFactorInverse",
+            "EyeHeightAsMeters",
+            "EyeHeightAsPercent",
         };
     }
 
