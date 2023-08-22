@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.UIElements;
@@ -11,6 +12,7 @@ using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Menu;
+using VF.Model;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -22,42 +24,102 @@ namespace VF.Inspector {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
-            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addLight"), "Add DPS Light"));
-            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addMenuItem"), "Add Toggle to Menu?"));
-            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?"));
-            container.Add(VRCFuryEditorUtils.BetterProp(
-                serializedObject.FindProperty("enableHandTouchZone2"),
-                "Enable hand touch zone? (Auto will add only if child of Hips)"
-            ));
-            container.Add(VRCFuryEditorUtils.BetterProp(
-                serializedObject.FindProperty("length"),
-                "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not penetration"
-            ));
             
-            container.Add(VRCFuryEditorUtils.BetterProp(
-                serializedObject.FindProperty("activeActions"),
-                "Additional animation when socket is active"
-            ));
+            var addLightProp = serializedObject.FindProperty("addLight");
+            var spsEnabledCheckbox = new Toggle();
+            var noneIndex = (int)VRCFuryHapticSocket.AddLight.None;
+            var autoIndex = (int)VRCFuryHapticSocket.AddLight.Auto;
+            spsEnabledCheckbox.SetValueWithoutNotify(addLightProp.enumValueIndex != noneIndex);
+            spsEnabledCheckbox.RegisterValueChangedCallback(cb => {
+                if (cb.newValue) addLightProp.enumValueIndex = autoIndex;
+                else addLightProp.enumValueIndex = noneIndex;
+                addLightProp.serializedObject.ApplyModifiedProperties();
+            });
+            container.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Enable SPS (Super Plug Shader)", fieldOverride: spsEnabledCheckbox));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
+                var section = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
+                var modeField = new PopupField<string>(
+                    new List<string>() { "Auto", "Hole", "Ring" },
+                    addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
+                );
+                modeField.RegisterValueChangedCallback(cb => {
+                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : 3;
+                    addLightProp.serializedObject.ApplyModifiedProperties();
+                });
+                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField, tooltip: "'Auto' will set to Hole if attached to hips or head bone."));
+                return section;
+            }, addLightProp));
 
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when plug is present"));
-            container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
-                var c = new VisualElement();
-                c.Add(VRCFuryEditorUtils.Info(
+            var addMenuItemProp = serializedObject.FindProperty("addMenuItem");
+            container.Add(VRCFuryEditorUtils.BetterProp(addMenuItemProp, "Enable Menu Toggle"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (!addMenuItemProp.boolValue) return new VisualElement();
+                var toggles = VRCFuryEditorUtils.Section("Menu Toggle", "A menu item will be created for this socket");
+                toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?", tooltip: "If checked, this socket will be eligible to be chosen during 'Auto Mode', which is an option in your menu which will automatically enable the socket nearest to a plug."));
+                return toggles;
+            }, addMenuItemProp));
+
+            var enableDepthAnimationsProp = serializedObject.FindProperty("enableDepthAnimations");
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                enableDepthAnimationsProp,
+                "Enable Depth Animations",
+                tooltip: "Allows you to animate anything based on the proximity of a plug near this socket"
+            ));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (!enableDepthAnimationsProp.boolValue) return new VisualElement();
+                var da = VRCFuryEditorUtils.Section("Depth Animations");
+                
+                da.Add(VRCFuryEditorUtils.Info(
                     "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state"), "Penetrated state"));
-                c.Add(VRCFuryEditorUtils.Info(
+                
+                da.Add(VRCFuryEditorUtils.Info(
                     "Distance = 0 : Tip of plug is touching socket\n" +
                     "Distance > 0 : Tip of plug is outside socket\n" +
                     "Distance < 0 = Tip of plug is inside socket\n" +
                     "1 Unit is 1 Meter (~3 feet)"
                 ));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                return c;
-            }));
+
+                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
+                    var c = new VisualElement();
+
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
+                    return c;
+                }));
+                return da;
+            }, enableDepthAnimationsProp));
+            
+            var enableActiveAnimationProp = serializedObject.FindProperty("enableActiveAnimation");
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                enableActiveAnimationProp,
+                "Enable Active Animation",
+                tooltip: "This animation will be active whenever the socket is enabled in the menu"
+            ));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (!enableActiveAnimationProp.boolValue) return new VisualElement();
+                var activeBox = VRCFuryEditorUtils.Section("Active Animation",
+                    "This animation will be active whenever the socket is enabled in the menu");
+                activeBox.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("activeActions")
+                ));
+                return activeBox;
+            }, enableActiveAnimationProp));
+
+            var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this plug by default");
+            container.Add(haptics);
+            haptics.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("enableHandTouchZone2"),
+                "Enable hand touch zone? (Auto will add only if child of Hips)"
+            ));
+            haptics.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("length"),
+                "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not plug interaction."
+            ));
             
             var adv = new Foldout {
                 text = "Advanced",

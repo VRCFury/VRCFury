@@ -195,15 +195,17 @@ namespace VF.Feature {
 
                         clipBuilder.Enable(tipLightOnClip, tip);
                     }
-                    
-                    var animRoot = GameObjects.Create("Animations", bakeRoot);
-                    GetPlugin<HapticAnimContactsPlugin>().CreatePlugAnims(
-                        plug.depthActions,
-                        plug.owner(),
-                        animRoot,
-                        name,
-                        worldLength
-                    );
+
+                    if (plug.enableDepthAnimations && plug.depthActions.Count > 0) {
+                        var animRoot = GameObjects.Create("Animations", bakeRoot);
+                        GetPlugin<HapticAnimContactsPlugin>().CreatePlugAnims(
+                            plug.depthActions,
+                            plug.owner(),
+                            animRoot,
+                            name,
+                            worldLength
+                        );
+                    }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
                 }
@@ -283,24 +285,26 @@ namespace VF.Feature {
                                 .ToArray();
                         }
 
-                        var additionalActiveClip = LoadState("socketActive", socket.activeActions);
-
                         foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal",
                                      "VersionBeacon", "Animations")) {
                             child.active = false;
                         }
 
                         var onLocalClip = fx.NewClip($"{name} (Local)");
-                        onLocalClip.CopyFrom(additionalActiveClip);
                         foreach (var child in FindChildren("Senders", "Receivers", "Lights", "VersionLocal",
                                      "Animations")) {
                             clipBuilder.Enable(onLocalClip, child.gameObject);
                         }
 
                         var onRemoteClip = fx.NewClip($"{name} (Remote)");
-                        onRemoteClip.CopyFrom(additionalActiveClip);
                         foreach (var child in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
                             clipBuilder.Enable(onRemoteClip, child.gameObject);
+                        }
+
+                        if (socket.enableActiveAnimation) {
+                            var additionalActiveClip = LoadState("socketActive", socket.activeActions);
+                            onLocalClip.CopyFrom(additionalActiveClip);
+                            onRemoteClip.CopyFrom(additionalActiveClip);
                         }
 
                         var onStealthClip = fx.NewClip($"{name} (Stealth)");
@@ -351,13 +355,15 @@ namespace VF.Feature {
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                         }
                     }
-                    
-                    GetPlugin<HapticAnimContactsPlugin>().CreateSocketAnims(
-                        socket.depthActions,
-                        socket.owner(),
-                        animRoot,
-                        name
-                    );
+
+                    if (socket.enableDepthAnimations && socket.depthActions.Count > 0) {
+                        GetPlugin<HapticAnimContactsPlugin>().CreateSocketAnims(
+                            socket.depthActions,
+                            socket.owner(),
+                            animRoot,
+                            name
+                        );
+                    }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Socket: {socket.owner().GetPath()}", e);
                 }

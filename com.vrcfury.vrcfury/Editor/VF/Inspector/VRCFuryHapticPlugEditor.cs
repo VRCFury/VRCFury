@@ -23,10 +23,13 @@ namespace VF.Inspector {
             var enableSps = serializedObject.FindProperty("enableSps");
             
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in connected apps"));
+
+            var sizeSection = VRCFuryEditorUtils.Section("Size and Masking");
+            container.Add(sizeSection);
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
-            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoMesh, "Automatically find mesh"));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(autoMesh, "Automatically find mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoMesh.boolValue) {
                     c.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("configureTpsMesh")));
@@ -34,7 +37,7 @@ namespace VF.Inspector {
                 return c;
             }, autoMesh));
 
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!configureTps.boolValue && !enableSps.boolValue) {
                     c.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("autoPosition"),
@@ -44,8 +47,8 @@ namespace VF.Inspector {
             }, configureTps, enableSps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
-            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoLength, "Detect length from mesh"));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(autoLength, "Detect length from mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoLength.boolValue) {
                     c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("length"), "Length"));
@@ -54,8 +57,8 @@ namespace VF.Inspector {
             }, autoLength));
 
             var autoRadius = serializedObject.FindProperty("autoRadius");
-            container.Add(VRCFuryEditorUtils.BetterCheckbox(autoRadius, "Detect radius from mesh"));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(autoRadius, "Detect radius from mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoRadius.boolValue) {
                     c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));
@@ -63,58 +66,31 @@ namespace VF.Inspector {
                 return c;
             }, autoRadius));
             
-            container.Add(VRCFuryEditorUtils.BetterCheckbox(
+            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(
                 serializedObject.FindProperty("useBoneMask"),
                 "Automatically mask using bone weights"
             ));
 
-            container.Add(VRCFuryEditorUtils.BetterProp(
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(
                 serializedObject.FindProperty("textureMask"),
                 "Optional additional texture mask (white = 'do not deform or use in length calculations')"
             ));
             
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Animations when socket is present"));
-            container.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
-                var c = new VisualElement();
-                c.Add(VRCFuryEditorUtils.Info(
-                    "If you provide a non-static (moving) animation clip, the clip will run from start " +
-                    "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state"), "Penetrated state"));
-                c.Add(VRCFuryEditorUtils.Info(
-                    "Distance = 0 : Plug is entirely inside socket\n" +
-                    "Distance = 1 : Tip of plug is touching socket\n" +
-                    "Distance > 1 : Plug is approaching socket\n" +
-                    "1 Unit is the length of the plug"
-                ));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                return c;
+            sizeSection.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                var size = PlugSizeDetector.GetWorldSize(target);
+                var text = new List<string>();
+                text.Add("Attached renderers: " + string.Join(", ", size.renderers.Select(r => r.owner().name)));
+                text.Add($"Detected Length: {size.worldLength}m");
+                text.Add($"Detected Radius: {size.worldRadius}m");
+                return string.Join("\n", text);
             }));
-
-            container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader) (BETA)"));
+            
+            container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader)"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableSps.boolValue) {
-                    var spsBox = new VisualElement() {
-                        style = {
-                            backgroundColor = new Color(0,0,0,0.1f),
-                            marginTop = 5,
-                            marginBottom = 10
-                        }
-                    };
-                    VRCFuryEditorUtils.Padding(spsBox, 5);
-                    VRCFuryEditorUtils.BorderRadius(spsBox, 5);
+                    var spsBox = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
                     c.Add(spsBox);
-                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("SPS (Super Plug Shader)", style => {
-                        style.unityFontStyleAndWeight = FontStyle.Bold;
-                        style.unityTextAlign = TextAnchor.MiddleCenter;
-                    }));
-                    spsBox.Add(VRCFuryEditorUtils.WrappedLabel("Check out vrcfury.com/sps for details", style => {
-                        style.unityTextAlign = TextAnchor.MiddleCenter;
-                        style.paddingBottom = 5;
-                    }));
                     spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
                         serializedObject.FindProperty("spsAutorig"),
                         "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
@@ -160,6 +136,42 @@ namespace VF.Inspector {
                 return c;
             }, enableSps));
 
+            var enableDepthAnimationsProp = serializedObject.FindProperty("enableDepthAnimations");
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                enableDepthAnimationsProp,
+                "Enable Depth Animations",
+                tooltip: "Allows you to animate anything based on the proximity of a socket near this plug"
+            ));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (!enableDepthAnimationsProp.boolValue) return new VisualElement();
+                var da = VRCFuryEditorUtils.Section("Depth Animations");
+                
+                da.Add(VRCFuryEditorUtils.Info(
+                    "If you provide a non-static (moving) animation clip, the clip will run from start " +
+                    "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
+                da.Add(VRCFuryEditorUtils.Info(
+                    "Distance = 0 : Plug is entirely inside socket\n" +
+                    "Distance = 1 : Tip of plug is touching socket\n" +
+                    "Distance > 1 : Plug is approaching socket\n" +
+                    "1 Unit is the length of the plug"
+                ));
+                
+                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
+                    var c = new VisualElement();
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
+                    return c;
+                }));
+
+                return da;
+            }, enableDepthAnimationsProp));
+
+            var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this plug by default");
+            container.Add(haptics);
+
             var adv = new Foldout {
                 text = "Advanced Plug Options",
                 value = false
@@ -171,16 +183,6 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
             //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
-
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                var size = PlugSizeDetector.GetWorldSize(target);
-                var text = new List<string>();
-                text.Add("Attached renderers: " + string.Join(", ", size.renderers.Select(r => r.owner().name)));
-                text.Add($"Detected Length: {size.worldLength}m");
-                text.Add($"Detected Radius: {size.worldRadius}m");
-                return string.Join("\n", text);
-            }));
 
             return container;
         }
