@@ -150,13 +150,13 @@ namespace VF.Builder {
                 if (rule.parameter != other.parameter) continue;
                 switch (rule.mode) {
                     case AnimatorConditionMode.Greater:
-                        if (other.mode == AnimatorConditionMode.Greater && other.threshold < rule.threshold)
+                        if (other.mode == AnimatorConditionMode.Greater && other.threshold > rule.threshold)
                             return true;
                         if (other.mode == AnimatorConditionMode.Equals && other.threshold > rule.threshold)
                             return true;
                         break;
                     case AnimatorConditionMode.Less:
-                        if (other.mode == AnimatorConditionMode.Less && other.threshold > rule.threshold)
+                        if (other.mode == AnimatorConditionMode.Less && other.threshold < rule.threshold)
                             return true;
                         if (other.mode == AnimatorConditionMode.Equals && other.threshold < rule.threshold)
                             return true;

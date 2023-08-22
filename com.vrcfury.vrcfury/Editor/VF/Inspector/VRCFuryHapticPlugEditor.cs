@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -10,6 +11,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Utils;
 using VRC.Dynamics;
 
 namespace VF.Inspector {
@@ -127,25 +129,33 @@ namespace VF.Inspector {
                                  " which will be applied to the avatar after the calculations are finished."
                     ));
 
-                    var shaderAdv = new Foldout {
-                        text = "Advanced SPS Options",
-                        value = false,
-                        style = { paddingLeft = 13 }
-                    };
-                    shaderAdv.Add(VRCFuryEditorUtils.BetterProp(
+                    var animatedProp = serializedObject.FindProperty("spsAnimatedEnabled");
+                    var animatedField = new Toggle();
+                    animatedField.SetValueWithoutNotify(animatedProp.floatValue > 0);
+                    animatedField.RegisterValueChangedCallback(cb => {
+                        animatedProp.floatValue = cb.newValue ? 1 : 0;
+                        animatedProp.serializedObject.ApplyModifiedProperties();
+                    });
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsAnimatedEnabled"),
-                        "Deformation Enabled",
-                        tooltip: "This field can range from 0 (SPS fully disabled) to 1 (SPS fully enabled)." +
-                                 " You can ANIMATE this field to disable deformation during animations when plug should not be attracted toward sockets." +
-                                 " You can smoothly animate from 0 to 1 to smoothly activate deformation, just in case plug is near a socket while activated."
+                        "Animated Toggle",
+                        fieldOverride: animatedField,
+                        tooltip: "You can ANIMATE this box on and off with an animation clip, in order to" +
+                                 " turn SPS off during certain situations."
                     ));
-                    shaderAdv.Add(VRCFuryEditorUtils.BetterProp(
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsBlendshapes"),
+                        "Animated blendshapes to keep while deforming",
+                        fieldOverride: VRCFuryEditorUtils.List(serializedObject.FindProperty("spsBlendshapes")),
+                        tooltip: "Usually, SPS penetrators revert blendshapes back to exactly the way they look in the editor while deforming toward a socket." +
+                                 " You can specify up to 16 blendshapes in this list which can still be animated while deforming."
+                    ));
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsOverrun"),
                         "Allow Hole Overrun",
                         tooltip: "This allows the plug to extend very slightly past holes to improve collapse visuals." +
                                  " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
                     ));
-                    spsBox.Add(shaderAdv);
                 }
                 return c;
             }, enableSps));
@@ -164,11 +174,11 @@ namespace VF.Inspector {
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                var (renderers, worldLength, worldRadius, localRotation, localPosition) = PlugSizeDetector.GetWorldSize(target);
+                var size = PlugSizeDetector.GetWorldSize(target);
                 var text = new List<string>();
-                text.Add("Attached renderers: " + string.Join(", ", renderers.Select(r => r.owner().name)));
-                text.Add($"Detected Length: {worldLength}m");
-                text.Add($"Detected Radius: {worldRadius}m");
+                text.Add("Attached renderers: " + string.Join(", ", size.renderers.Select(r => r.owner().name)));
+                text.Add($"Detected Length: {size.worldLength}m");
+                text.Add($"Detected Radius: {size.worldRadius}m");
                 return string.Join("\n", text);
             }));
 
@@ -177,7 +187,7 @@ namespace VF.Inspector {
         
         public class GizmoCache {
             public double time = 0;
-            public (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
+            public PlugSizeDetector.SizeResult size;
             public string error;
             public Vector3 position;
             public Quaternion rotation;
@@ -208,16 +218,16 @@ namespace VF.Inspector {
                 return;
             }
 
-            var (renderers, worldLength, worldRadius, localRotation, localPosition) = cache.size;
-            var localLength = worldLength / transform.lossyScale.x;
-            var localRadius = worldRadius / transform.lossyScale.x;
-            var localForward = localRotation * Vector3.forward;
+            var size = cache.size;
+            var localLength = size.worldLength / transform.lossyScale.x;
+            var localRadius = size.worldRadius / transform.lossyScale.x;
+            var localForward = size.localRotation * Vector3.forward;
             var localHalfway = localForward * (localLength / 2);
-            var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
+            var localCapsuleRotation = size.localRotation * Quaternion.Euler(90,0,0);
 
-            var worldPosTip = transform.TransformPoint(localPosition + localForward * localLength);
+            var worldPosTip = transform.TransformPoint(size.localPosition + localForward * localLength);
 
-            DrawCapsule(transform, localPosition + localHalfway, localCapsuleRotation, worldLength, worldRadius);
+            DrawCapsule(transform, size.localPosition + localHalfway, localCapsuleRotation, size.worldLength, size.worldRadius);
             VRCFuryGizmoUtils.DrawText(worldPosTip, "Tip", Color.white, true);
         }
 
@@ -243,25 +253,31 @@ namespace VF.Inspector {
             return renderers;
         }
 
-        public static Tuple<string, VFGameObject, ICollection<Renderer>, float, float> Bake(
+        [CanBeNull]
+        public static BakeResult Bake(
             VRCFuryHapticPlug plug,
             List<string> usedNames = null,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool onlySenders = false,
-            MutableManager mutableManager = null
+            MutableManager mutableManager = null,
+            bool deferMaterialConfig = false
         ) {
             var transform = plug.transform;
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "plug");
 
-            (ICollection<Renderer>, float, float, Quaternion, Vector3) size;
+            PlugSizeDetector.SizeResult size;
             try {
                 size = PlugSizeDetector.GetWorldSize(plug);
             } catch (Exception) {
                 return null;
             }
 
-            var (renderers, worldLength, worldRadius, localRotation, localPosition) = size;
+            var renderers = size.renderers;
+            var worldLength = size.worldLength;
+            var worldRadius = size.worldRadius;
+            var localRotation = size.localRotation;
+            var localPosition = size.localPosition;
 
             if (usedRenderers != null) {
                 foreach (var r in renderers) {
@@ -334,14 +350,19 @@ namespace VF.Inspector {
                 HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, allowSelf:false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
             }
             
-            if ((plug.configureTps || plug.enableSps) && mutableManager != null) {
+            // TODO: Check if there are 0 renderers,
+            // or if there are 0 materials on any of the renderers
+
+            RendererResult[] rendererResults;
+
+            if (mutableManager != null && (plug.configureTps || plug.enableSps)) {
                 var checkboxName = plug.enableSps ? "Enable SPS" : "Auto-Configure TPS";
                 if (renderers.Count == 0) {
                     throw new Exception(
                         $"VRCFury Haptic Plug has '{checkboxName}' checked, but no renderer was found.");
                 }
 
-                renderers = renderers.Select(renderer => {
+                rendererResults = renderers.Select(renderer => {
                     var owner = renderer.owner();
                     try {
                         var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
@@ -349,43 +370,59 @@ namespace VF.Inspector {
                         if (plug.enableSps && plug.spsAutorig) {
                             SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
                         }
-
-                        var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
-
-                        var configuredOne = false;
-                        skin.sharedMaterials = skin.sharedMaterials
-                            .Select(mat => {
-                                try {
-                                    if (mat == null) return null;
-                                    if (plug.enableSps) {
-                                        configuredOne = true;
-                                        return SpsConfigurer.ConfigureSpsMaterial(skin, mat, worldLength,
-                                            activeFromMask,
-                                            mutableManager, plug, bakeRoot);
-                                    } else if (TpsConfigurer.IsTps(mat)) {
-                                        configuredOne = true;
-                                        return TpsConfigurer.ConfigureTpsMaterial(skin, mat, worldLength,
-                                            activeFromMask,
-                                            mutableManager);
-                                    }
-
-                                    return mat;
-                                } catch (Exception e) {
-                                    throw new ExceptionWithCause($"Failed to configure material: {mat.name}", e);
-                                }
-                            })
+                        
+                        var spsBlendshapes = plug.spsBlendshapes
+                            .Where(b => skin.sharedMesh.HasBlendshape(b))
+                            .Distinct()
+                            .Take(16)
                             .ToArray();
 
-                        if (!configuredOne) {
-                            throw new Exception(
-                                $"VRCFury Haptic Plug has '{checkboxName}' checked, but no valid material was on the linked renderer.");
+                        var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
+                        var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false, spsBlendshapes) : null;
+
+                        var finishedCopies = new HashSet<Material>();
+                        Material ConfigureMaterial(Material mat) {
+                            try {
+                                if (mat == null) return null;
+
+                                if (plug.enableSps) {
+                                    var copy = mutableManager.MakeMutable(mat, skin.owner());
+                                    if (finishedCopies.Contains(copy)) return copy;
+                                    finishedCopies.Add(copy);
+                                    SpsConfigurer.ConfigureSpsMaterial(skin, copy, worldLength,
+                                        spsBaked,
+                                        mutableManager, plug, bakeRoot, spsBlendshapes);
+                                    return copy;
+                                }
+                                if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
+                                    var copy = mutableManager.MakeMutable(mat, skin.owner());
+                                    if (finishedCopies.Contains(copy)) return copy;
+                                    finishedCopies.Add(copy);
+                                    TpsConfigurer.ConfigureTpsMaterial(skin, copy, worldLength,
+                                        activeFromMask,
+                                        mutableManager);
+                                    return copy;
+                                }
+
+                                return mat;
+                            } catch (Exception e) {
+                                throw new ExceptionWithCause($"Failed to configure material: {mat.name}", e);
+                            }
                         }
 
-                        VRCFuryEditorUtils.MarkDirty(skin);
-                        return skin;
+                        return new RendererResult {
+                            renderer = skin,
+                            configureMaterial = ConfigureMaterial,
+                            spsBlendshapes = spsBlendshapes
+                        };
                     } catch (Exception e) {
                         throw new ExceptionWithCause($"Failed to configure renderer: {owner.GetPath()}", e);
                     }
+                }).ToArray();
+            } else {
+                rendererResults = renderers.Select(r => new RendererResult {
+                    renderer = r,
+                    configureMaterial = m => m
                 }).ToArray();
             }
 
@@ -400,7 +437,33 @@ namespace VF.Inspector {
                 }
             }
 
-            return Tuple.Create(name, bakeRoot, renderers, worldLength, worldRadius);
+            if (!deferMaterialConfig) {
+                foreach (var r in rendererResults) {
+                    r.renderer.sharedMaterials = r.renderer.sharedMaterials.Select(r.configureMaterial).ToArray();
+                }
+            }
+
+            return new BakeResult {
+                name = name,
+                bakeRoot = bakeRoot,
+                renderers = rendererResults,
+                worldLength = worldLength,
+                worldRadius = worldRadius,
+            };
+        }
+
+        public class BakeResult {
+            public string name;
+            public VFGameObject bakeRoot;
+            public ICollection<RendererResult> renderers;
+            public float worldLength;
+            public float worldRadius;
+        }
+
+        public class RendererResult {
+            public Renderer renderer;
+            public Func<Material, Material> configureMaterial;
+            public IList<string> spsBlendshapes;
         }
     }
 }

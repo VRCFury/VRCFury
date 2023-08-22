@@ -14,7 +14,7 @@ namespace VF.Builder.Haptics {
             }
 
             var mesh = skin.sharedMesh;
-            mesh = mutableManager.MakeMutable(mesh, false);
+            mesh = mutableManager.MakeMutable(mesh, skin.owner());
             skin.sharedMesh = mesh;
 
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);

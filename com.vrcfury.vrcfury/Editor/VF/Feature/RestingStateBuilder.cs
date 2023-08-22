@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Utils;
@@ -99,7 +100,7 @@ namespace VF.Feature {
             if (!renderer) return;
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                 if (!mat.HasProperty(propName)) return mat;
-                mat = mutableManager.MakeMutable(mat, false);
+                mat = mutableManager.MakeMutable(mat, renderer.owner());
                 mat.SetFloat(propName, val.GetFloat());
                 return mat;
             }).ToArray();

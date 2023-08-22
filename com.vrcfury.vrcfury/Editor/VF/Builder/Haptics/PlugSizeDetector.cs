@@ -7,8 +7,16 @@ using VF.Component;
 using VF.Inspector;
 
 namespace VF.Builder.Haptics {
-    internal static class PlugSizeDetector {
-        public static (ICollection<Renderer>, float, float, Quaternion, Vector3) GetWorldSize(VRCFuryHapticPlug plug) {
+    public static class PlugSizeDetector {
+        public class SizeResult {
+            public ICollection<Renderer> renderers;
+            public float worldLength;
+            public float worldRadius;
+            public Quaternion localRotation;
+            public Vector3 localPosition;
+        }
+        
+        public static SizeResult GetWorldSize(VRCFuryHapticPlug plug) {
             var transform = plug.transform;
             var renderers = VRCFuryHapticPlugEditor.GetRenderers(plug);
 
@@ -52,7 +60,13 @@ namespace VF.Builder.Haptics {
             if (worldRadius > worldLength / 2) worldRadius = worldLength / 2;
             var localRotation = Quaternion.Inverse(transform.rotation) * worldRotation;
             var localPosition = transform.InverseTransformPoint(worldPosition);
-            return (renderers, worldLength, worldRadius, localRotation, localPosition);
+            return new SizeResult {
+                renderers = renderers,
+                worldLength = worldLength,
+                worldRadius = worldRadius,
+                localRotation = localRotation,
+                localPosition = localPosition
+            };
         }
 
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {

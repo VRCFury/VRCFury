@@ -54,7 +54,7 @@ namespace VF.Builder.Haptics {
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
             if (skin.sharedMesh.boneWeights.Length == 0) {
                 var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.transform);
-                var meshCopy = mutableManager.MakeMutable(skin.sharedMesh, false);
+                var meshCopy = mutableManager.MakeMutable(skin.sharedMesh, skin.owner());
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 
@@ -85,21 +85,19 @@ namespace VF.Builder.Haptics {
             return skin;
         }
 
-        public static Material ConfigureTpsMaterial(
+        public static void ConfigureTpsMaterial(
             SkinnedMeshRenderer skin,
-            Material original,
+            Material mat,
             float worldLength,
             float[] activeFromMask,
             MutableManager mutableManager
         ) {
-            var mat = mutableManager.MakeMutable(original, false);
-            
             var shaderRotation = Quaternion.identity;
             if (IsLocked(mat)) {
                 throw new VRCFBuilderException(
                     "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
             }
-            if (DpsConfigurer.IsDps(original)) {
+            if (DpsConfigurer.IsDps(mat)) {
                 throw new VRCFBuilderException(
                     "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material has both TPS and Raliv DPS enabled in the Poiyomi settings. Disable DPS to continue.");
             }
@@ -117,8 +115,6 @@ namespace VF.Builder.Haptics {
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
             mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, true));
             VRCFuryEditorUtils.MarkDirty(mat);
-
-            return mat;
         }
         
         private static Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);

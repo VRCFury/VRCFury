@@ -19,21 +19,26 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Feature {
     public class BakeHapticsBuilder : FeatureBuilder {
 
-        private List<(VFGameObject, VFGameObject, VFGameObject)> spsRewritesToDo
-            = new List<(VFGameObject, VFGameObject, VFGameObject)>();
+        private List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
+
+        public class SpsRewriteToDo {
+            public VFGameObject plugObject;
+            public SkinnedMeshRenderer skin;
+            public VFGameObject bakeRoot;
+            public Func<Material, Material> configureMaterial;
+            public IList<string> spsBlendshapes;
+        }
 
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
-            foreach (var (plugObj, rendererObj, bakeObj) in spsRewritesToDo) {
-                var pathToPlug = plugObj.GetPath(avatarObject);
-                var pathToRenderer = rendererObj.GetPath(avatarObject);
-                var pathToBake = bakeObj.GetPath(avatarObject);
-                var rendererType = rendererObj.GetComponent<SkinnedMeshRenderer>() != null
-                    ? typeof(SkinnedMeshRenderer)
-                    : typeof(MeshRenderer);
+            foreach (var rewrite in spsRewritesToDo) {
+                var pathToPlug = rewrite.plugObject.GetPath(avatarObject);
+                var pathToRenderer = rewrite.skin.owner().GetPath(avatarObject);
+                var pathToBake = rewrite.bakeRoot.GetPath(avatarObject);
+                var mesh = rewrite.skin.sharedMesh;
                 var spsEnabledBinding = EditorCurveBinding.FloatCurve(
                     pathToRenderer,
-                    rendererType,
+                    typeof(SkinnedMeshRenderer),
                     "material._SPS_Enabled"
                 );
                 var hapticsEnabledBinding = EditorCurveBinding.FloatCurve(
@@ -58,11 +63,29 @@ namespace VF.Feature {
                                 }
                             }
                         }
-                        if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer) &&
-                            rendererType == typeof(SkinnedMeshRenderer)) {
+                        if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer)) {
                             var b = binding;
-                            b.type = rendererType;
+                            b.type = typeof(SkinnedMeshRenderer);
                             clip.SetCurve(b, curve);
+                        }
+
+                        if (curve.IsFloat && binding.path == pathToRenderer && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.")) {
+                            var blendshapeName = binding.propertyName.Substring(11);
+                            var blendshapeMeshIndex = rewrite.spsBlendshapes.IndexOf(blendshapeName);
+                            if (blendshapeMeshIndex >= 0) {
+                                clip.SetCurve(
+                                    EditorCurveBinding.FloatCurve(pathToRenderer, typeof(SkinnedMeshRenderer), $"material._SPS_Blendshape{blendshapeMeshIndex}"),
+                                    curve
+                                );
+                            }
+                        }
+
+                        if (!curve.IsFloat && binding.path == pathToRenderer && binding.propertyName.StartsWith("m_Materials")) {
+                            var newKeys = curve.ObjectCurve.Select(frame => {
+                                if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
+                                return frame;
+                            }).ToArray();
+                            clip.SetCurve(binding, new FloatOrObjectCurve(newKeys));
                         }
                     }
                 }
@@ -74,6 +97,8 @@ namespace VF.Feature {
                 foreach (var clip in GetBuilder<RestingStateBuilder>().GetPendingClips()) {
                     RewriteClip(clip);
                 }
+
+                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials.Select(rewrite.configureMaterial).ToArray();
             }
         }
 
@@ -99,18 +124,27 @@ namespace VF.Feature {
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.transform);
-                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(plug, usedNames, plugRenderers,
-                        mutableManager: mutableManager);
+                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(
+                        plug,
+                        usedNames,
+                        plugRenderers,
+                        mutableManager: mutableManager,
+                        deferMaterialConfig: true
+                    );
 
                     if (bakeInfo == null) continue;
 
-                    var (name, bakeRoot, renderers, worldLength, worldRadius) = bakeInfo;
+                    var name = bakeInfo.name;
+                    var bakeRoot = bakeInfo.bakeRoot;
+                    var renderers = bakeInfo.renderers;
+                    var worldLength = bakeInfo.worldLength;
                     foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                         objectsToDisableTemporarily.Add(r.transform);
                     }
 
                     if (plug.configureTps || plug.enableSps) {
-                        foreach (var renderer in renderers) {
+                        foreach (var r in renderers) {
+                            var renderer = r.renderer;
                             addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
                             if (renderer is SkinnedMeshRenderer skin) {
                                 addOtherFeature(new BoundingBoxFix2() { skipRenderer = skin });
@@ -121,8 +155,16 @@ namespace VF.Feature {
                     var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
                     GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(postBakeClip);
 
-                    foreach (var renderer in renderers) {
-                        spsRewritesToDo.Add((plug.owner(), renderer.owner(), bakeRoot));
+                    if (plug.enableSps) {
+                        foreach (var r in renderers) {
+                            spsRewritesToDo.Add(new SpsRewriteToDo {
+                                plugObject = plug.owner(),
+                                skin = (SkinnedMeshRenderer)r.renderer,
+                                bakeRoot = bakeRoot,
+                                configureMaterial = r.configureMaterial,
+                                spsBlendshapes = r.spsBlendshapes
+                            });
+                        }
                     }
 
                     if (plug.addDpsTipLight) {
