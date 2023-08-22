@@ -110,7 +110,7 @@ namespace VF.Inspector {
                 return activeBox;
             }, enableActiveAnimationProp));
 
-            var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this plug by default");
+            var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this socket by default");
             container.Add(haptics);
             haptics.Add(VRCFuryEditorUtils.BetterProp(
                 serializedObject.FindProperty("enableHandTouchZone2"),
