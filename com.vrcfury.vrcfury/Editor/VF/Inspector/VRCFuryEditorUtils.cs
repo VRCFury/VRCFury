@@ -269,9 +269,10 @@ public static class VRCFuryEditorUtils {
         SerializedProperty prop,
         string label = null,
         Action<IStyle> style = null,
-        string tooltip = null
+        string tooltip = null,
+        VisualElement fieldOverride = null
     ) {
-        return Prop(prop, label, tooltip: tooltip, style: s => {
+        return Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride, style: s => {
             s.paddingBottom = 5;
             style?.Invoke(s);
         });
@@ -314,10 +315,15 @@ public static class VRCFuryEditorUtils {
         int labelWidth = 100,
         Func<string,string> formatEnum = null,
         Action<IStyle> style = null,
-        string tooltip = null
+        string tooltip = null,
+        VisualElement fieldOverride = null
     ) {
         VisualElement field = null;
-        if (prop == null) {
+        bool isCheckbox = false;
+        if (fieldOverride != null) {
+            field = fieldOverride;
+            isCheckbox = field is Toggle;
+        } else if (prop == null) {
             field = WrappedLabel("Prop is null");
         } else {
             switch (prop.propertyType) {
@@ -341,6 +347,7 @@ public static class VRCFuryEditorUtils {
             if (field == null) {
                 field = new PropertyField(prop);
             }
+            isCheckbox = prop.propertyType == SerializedPropertyType.Boolean;
         }
 
         field.AddToClassList("VrcFuryEditorProp");
@@ -349,7 +356,7 @@ public static class VRCFuryEditorUtils {
             label,
             tooltip,
             field,
-            prop != null && prop.propertyType == SerializedPropertyType.Boolean,
+            isCheckbox,
             false,
             labelWidth
         );

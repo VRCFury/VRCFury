@@ -69,16 +69,16 @@ namespace VF.Feature {
             }
 
             foreach (var oldMesh in meshesToPatch) {
-                var newMesh = mutableManager.MakeMutable(oldMesh, false);
-                var submesh = newMesh.GetSubMesh(4);
-                newMesh.SetSubMesh(4, new SubMeshDescriptor());
-                newMesh.subMeshCount++;
-                newMesh.SetSubMesh(newMesh.subMeshCount - 1, submesh);
-                VRCFuryEditorUtils.MarkDirty(newMesh);
-
-                foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
-                    var (renderer, mesh, setMesh) = tuple;
+                foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                     if (mesh != oldMesh) continue;
+                    
+                    var newMesh = mutableManager.MakeMutable(oldMesh, renderer.gameObject);
+                    var submesh = newMesh.GetSubMesh(4);
+                    newMesh.SetSubMesh(4, new SubMeshDescriptor());
+                    newMesh.subMeshCount++;
+                    newMesh.SetSubMesh(newMesh.subMeshCount - 1, submesh);
+                    VRCFuryEditorUtils.MarkDirty(newMesh);
+                    
                     setMesh(newMesh);
                     var mats = renderer.sharedMaterials.ToList();
                     while (mats.Count < newMesh.subMeshCount) mats.Add(null);

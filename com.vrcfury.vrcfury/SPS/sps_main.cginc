@@ -9,10 +9,10 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	const float worldLength = _SPS_Length;
 	const float3 origVertex = vertex;
 	const float3 origNormal = normal;
-	const float3 bakeIndex = 1 + vertexId * 7;
-	const float3 bakedVertex = SpsBakedVertex(bakeIndex) * (_SPS_Length / _SPS_BakedLength);
-	const float3 bakedNormal = sps_normalize(SpsBakedVertex(bakeIndex+3));
-	const float active = SpsBakedFloat(bakeIndex + 6);
+	float3 bakedVertex;
+	float3 bakedNormal;
+	float active;
+	SpsGetBakedPosition(vertexId, bakedVertex, bakedNormal, active);
 
 	if (vertex.z < 0 || active == 0) return;
 

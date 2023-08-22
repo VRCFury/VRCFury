@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Component;
+using VF.Utils;
 
 namespace VF.Builder.Haptics {
     public static class SpsConfigurer {
@@ -11,14 +14,15 @@ namespace VF.Builder.Haptics {
         private const string SpsBake = "_SPS_Bake";
         //private const string SpsChannel = "_SPS_Channel";
 
-        public static Material ConfigureSpsMaterial(
+        public static void ConfigureSpsMaterial(
             SkinnedMeshRenderer skin,
             Material original,
             float worldLength,
-            float[] activeFromMask,
+            Texture2D spsBaked,
             MutableManager mutableManager,
             VRCFuryHapticPlug plug,
-            VFGameObject bakeRoot
+            VFGameObject bakeRoot,
+            IList<string> spsBlendshapes
         ) {
             if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
                 throw new Exception(
@@ -27,7 +31,7 @@ namespace VF.Builder.Haptics {
                     $" on the mesh instead.");
             }
 
-            var m = mutableManager.MakeMutable(original, false);
+            var m = mutableManager.MakeMutable(original, skin.owner());
             SpsPatcher.Patch(m, plug.spsKeepImports);
             m.SetOverrideTag(SpsEnabled + "Animated", "1");
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
@@ -35,10 +39,17 @@ namespace VF.Builder.Haptics {
             m.SetFloat(SpsLength, worldLength);
             m.SetFloat(SpsBakedLength, worldLength);
             m.SetFloat(SpsOverrun, plug.spsOverrun ? 1 : 0);
-            var bake = SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false);
-            m.SetTexture(SpsBake, bake);
+            m.SetTexture(SpsBake, spsBaked);
+            m.SetFloat("_SPS_BlendshapeCount", spsBlendshapes.Count);
+            m.SetFloat("_SPS_BlendshapeVertCount", skin.sharedMesh.vertexCount);
+            for (var i = 0; i < spsBlendshapes.Count; i++) {
+                var name = spsBlendshapes[i];
+                if (skin.sharedMesh.HasBlendshape(name)) {
+                    m.SetFloat("_SPS_Blendshape" + i, skin.GetBlendShapeWeight(name));
+                }
+                m.SetOverrideTag("_SPS_Blendshape" + i + "Animated", "1");
+            }
             //m.SetFloat(SpsChannel, (int)channel);
-            return m;
         }
 
         public static bool IsSps(Material mat) {

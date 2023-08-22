@@ -285,13 +285,30 @@ namespace VF.Builder {
             types.Any(type => type.IsInstanceOfType(obj));
         
         
-        private readonly HashSet<Object> mutableObjects = new HashSet<Object>();
-        public T MakeMutable<T>(T original, bool useCache) where T : Object {
-            if (useCache && mutableObjects.Contains(original)) return original;
+        private readonly Dictionary<Object, GameObject> mutableOwners = new Dictionary<Object, GameObject>();
+        private readonly Dictionary<(Object, GameObject), Object> originalToMutable =
+            new Dictionary<(Object, GameObject), Object>();
+        public T MakeMutable<T>(T original, VFGameObject owner) where T : Object {
+            if (mutableOwners.TryGetValue(original, out var existingOwner)) {
+                // The original is already mutable
+                if (owner == existingOwner) {
+                    return original;
+                } else {
+                    throw new Exception(
+                        $"Mutable object attempted to take ownership of object that belonged to another owner, {original} {owner} {existingOwner}");
+                }
+            }
+
+            if (originalToMutable.TryGetValue((original, owner), out var existingMutable)) {
+                // A mutable copy already exists
+                return existingMutable as T;
+            }
+            
             var copy = SafeInstantiate(original);
             copy.name = original.name;
-            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, "vrcf_" + copy.name);
-            mutableObjects.Add(copy);
+            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, $"{copy.name} for {owner.name}");
+            mutableOwners[copy] = owner;
+            originalToMutable[(original, owner)] = copy;
             return copy;
         }
 

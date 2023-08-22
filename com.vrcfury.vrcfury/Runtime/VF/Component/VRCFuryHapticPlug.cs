@@ -18,6 +18,7 @@ namespace VF.Component {
         public bool configureTps = false;
         public bool enableSps = true;
         public bool spsAutorig = true;
+        public List<string> spsBlendshapes = new List<string>();
         //public Channel channel = Channel.Default;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
         public float spsAnimatedEnabled = 1;
