@@ -11,8 +11,9 @@ namespace VF.Builder {
          */
         public static  ICollection<Tuple<Renderer, Mesh, Action<Mesh>>> GetRenderersWithMeshes(VFGameObject obj) {
             var output = new List<Tuple<Renderer, Mesh, Action<Mesh>>>();
-            foreach (var renderer in obj.GetComponentsInSelfAndChildren<Renderer>()) {
+            foreach (var renderer in obj.GetComponentsInSelfAndChildren<Renderer>()) {)
                 if (renderer is SkinnedMeshRenderer skin) {
+                    if (skin.sharedMesh == null) continue;
                     output.Add(Tuple.Create(
                         renderer,
                         skin.sharedMesh,
@@ -22,9 +23,11 @@ namespace VF.Builder {
                         })
                     ));
                 } else if (renderer is MeshRenderer) {
+                    var mesh = renderer.gameObject.GetComponent<MeshFilter>()?.sharedMesh;
+                    if (mesh == null) continue;
                     output.Add(Tuple.Create(
                         renderer,
-                        renderer.gameObject.GetComponent<MeshFilter>()?.sharedMesh,
+                        mesh,
                         (Action<Mesh>)(m => {
                             var filter = renderer.gameObject.GetComponent<MeshFilter>();
                             if (!filter) filter = renderer.gameObject.AddComponent<MeshFilter>();
