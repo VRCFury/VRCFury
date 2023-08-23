@@ -77,8 +77,14 @@ namespace VF {
                         continue;
                     }
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
-                    builder.SafeRun(obj);
-                    VRCFuryBuilder.StripAllVrcfComponents(obj);
+                    if (builder.SafeRun(obj)) {
+                        VRCFuryBuilder.StripAllVrcfComponents(obj);
+                    } else {
+                        var name = obj.name;
+                        var failMarker = new GameObject(name + " (VRCFury Failed)");
+                        SceneManager.MoveGameObjectToScene(failMarker, obj.scene);
+                        Object.DestroyImmediate(obj);
+                    }
                     restartAudioLink = true;
                     if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
                         restartAv3Emulator = true;
