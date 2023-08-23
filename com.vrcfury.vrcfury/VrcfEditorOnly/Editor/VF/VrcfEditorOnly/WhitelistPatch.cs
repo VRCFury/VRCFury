@@ -12,7 +12,7 @@ namespace VF.VrcHooks {
     public class WhitelistPatch {
         static WhitelistPatch() {
 #if VRC_NEW_HOOK_API
-            Debug.Log("New VRC hook api is available, skipping whitelist patch.");
+            // Debug.Log("New VRC hook api is available, skipping whitelist patch.");
 #else
             PerformPatch();
 #endif

@@ -46,18 +46,5 @@ namespace VF {
             
             return paths;
         }
-        
-        public static bool IsImmutableVrcf(string path) {
-            // We verify if File.Exists, so that prefabs can still be edited in dev mode (when package is a file system folder)
-            if (string.IsNullOrWhiteSpace(path)
-                || !File.Exists(path)
-                || !Path.GetFullPath(path).StartsWith(Path.GetFullPath("Packages"))
-            ) {
-                return false; 
-            }
-
-            return path.StartsWith("Packages/com.vrcfury.vrcfury/")
-                   || path.StartsWith("Packages/com.vrcfury.prefabs/");
-        }
     }
 }
