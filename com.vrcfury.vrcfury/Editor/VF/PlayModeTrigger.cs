@@ -11,64 +11,35 @@ using VF.Component;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
+using VF.PlayMode;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
 namespace VF {
     [InitializeOnLoad]
-    public class PlayModeTrigger : IVRCSDKPostprocessAvatarCallback {
-        private static double lastRescan = 0;
-        private static string AboutToUploadKey = "vrcf_vrcAboutToUpload";
+    public class PlayModeTrigger {
         private static string tmpDir;
-        public int callbackOrder => int.MaxValue;
-        public void OnPostprocessAvatar() {
-            EditorPrefs.SetFloat(AboutToUploadKey, Now());
-        }
 
-        private static float Now() {
-            return (float)EditorApplication.timeSinceStartup;
-        }
-
-        private static bool activeNow = false;
         static PlayModeTrigger() {
             SceneManager.sceneLoaded += OnSceneLoaded;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-            EditorApplication.update += () => {
-                var now = Now();
-                if (now > lastRescan + 0.5) {
-                    lastRescan = now;
-                    Rescan();
-                }
-            };
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
-            var aboutToUploadTime = EditorPrefs.GetFloat(AboutToUploadKey, 0);
-            var now = Now();
-            activeNow = false;
-            var problyUploading = aboutToUploadTime <= now && aboutToUploadTime > Now() - 10;
             if (state == PlayModeStateChange.ExitingEditMode) {
-                if (!problyUploading && PlayModeMenuItem.Get()) {
+                if (PlayModeMenuItem.Get()) {
                     var rootObjects = VFGameObject.GetRoots();
                     VRCFPrefabFixer.Fix(rootObjects);
                 }
-
                 tmpDir = null;
-            } else if (state == PlayModeStateChange.EnteredPlayMode) {
-                if (problyUploading) {
-                    EditorPrefs.DeleteKey(AboutToUploadKey);
-                    return;
-                }
-                EditorPrefs.DeleteKey(AboutToUploadKey);
-                activeNow = true;
-                Rescan();
             }
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
-            Rescan();
+            if (VrcIsUploadingDetector.IsProbablyUploading()) return;
+            if (!EditorApplication.isPlaying) return;
+            Rescan(scene);
         }
 
         // This should absolutely always be false in play mode, but we check just in case
@@ -81,10 +52,9 @@ namespace VF {
             return false;
         }
 
-        private static void Rescan() {
+        private static void Rescan(Scene scene) {
             if (!Application.isPlaying) return;
             if (!PlayModeMenuItem.Get()) return;
-            if (!activeNow) return;
 
             if (tmpDir == null) {
                 var tmpDirParent = TmpFilePackage.GetPath() + "/PlayMode";
@@ -94,9 +64,11 @@ namespace VF {
             }
 
             var builder = new VRCFuryBuilder();
-            var oneChanged = false;
-            foreach (var root in VFGameObject.GetRoots()) {
+            var restartAudioLink = false;
+            var restartAv3Emulator = false;
+            foreach (var root in VFGameObject.GetRoots(scene)) {
                 foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
+                    RescanOnStartComponent.AddToObject(avatar.gameObject);
                     var obj = avatar.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
@@ -107,10 +79,13 @@ namespace VF {
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
                     builder.SafeRun(obj);
                     VRCFuryBuilder.StripAllVrcfComponents(obj);
-                    oneChanged = true;
-                    RestartPhysbones(obj);
+                    restartAudioLink = true;
+                    if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
+                        restartAv3Emulator = true;
+                    }
                 }
                 foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
+                    RescanOnStartComponent.AddToObject(socket.gameObject);
                     var obj = socket.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
@@ -120,9 +95,9 @@ namespace VF {
                         VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
                     });
                     Object.DestroyImmediate(socket);
-                    RestartPhysbones(obj);
                 }
                 foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
+                    RescanOnStartComponent.AddToObject(plug.gameObject);
                     var obj = plug.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
@@ -133,14 +108,13 @@ namespace VF {
                         VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
                     });
                     Object.DestroyImmediate(plug);
-                    RestartPhysbones(obj);
                 }
             }
 
-            if (oneChanged) {
-                RestartVrcsdk();
+            if (restartAv3Emulator) {
                 RestartAv3Emulator();
-                RestartGestureManager();
+            }
+            if (restartAudioLink) {
                 RestartAudiolink();
             }
         }
@@ -172,41 +146,11 @@ namespace VF {
             clear.Invoke(value, new object[]{});
         }
 
-        private static void RestartVrcsdk() {
-            try {
-                var initClass = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Avatars.AvatarDynamicsSetup");
-                if (initClass == null) return;
-                var initTrigger = initClass.GetMethod("Trigger_OnInitialize",
-                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-                if (initTrigger == null) return;
-                var initPhysBone = initClass.GetMethod("PhysBone_OnInitialize",
-                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-                if (initPhysBone == null) return;
-                
-                Debug.Log($"Restarting VRCSDK components ...");
-
-                foreach (var receiver in Object.FindObjectsOfType<ContactReceiver>()) {
-                    receiver.paramAccess = null;
-                    initTrigger.Invoke(null, new object[] { receiver });
-                }
-                foreach (var physbone in Object.FindObjectsOfType<VRCPhysBoneBase>()) {
-                    physbone.param_Angle = null;
-                    physbone.param_Stretch = null;
-                    physbone.param_IsGrabbed = null;
-                    initPhysBone.Invoke(null, new object[] { physbone });
-                }
-            } catch (Exception e) {
-                Debug.LogException(e);
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "VRCFury was unable to reload the VRCSDK after making changes to the avatar." +
-                    " Because of this, testing in play mode may not be 100% correct." +
-                    " Report this on https://vrcfury.com/discord\n\n" + e.Message,
-                    "Ok"
-                );
-            }
-        }
-
+        /**
+         * This is needed because (at least at this time), Av3Emulator hooks during Awake, which is before we have a chance to build.
+         * If some day Av3Emulator moves to Start(), this will automatically stop being used, since we only call it if LyumaAv3Runtime
+         * exists on the avatar when we build.
+         */
         private static void RestartAv3Emulator() {
             try {
                 var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator");
@@ -247,34 +191,10 @@ namespace VF {
             }
         }
 
-        private static void RestartGestureManager() {
-            try {
-                var gmType = ReflectionUtils.GetTypeFromAnyAssembly("BlackStartX.GestureManager.GestureManager");
-                if (gmType == null) return;
-                Debug.Log("Restarting gesture manager ...");
-                foreach (var gm in Object.FindObjectsOfType(gmType).OfType<UnityEngine.Component>()) {
-                    if (gm.gameObject.activeSelf) {
-                        gm.gameObject.SetActive(false);
-                        gm.gameObject.SetActive(true);
-                    }
-
-                    if (Selection.activeGameObject == gm.gameObject) {
-                        Selection.activeGameObject = null;
-                        EditorApplication.delayCall += () => Selection.activeGameObject = gm.gameObject;
-                    }
-                }
-            } catch (Exception e) {
-                Debug.LogException(e);
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "VRCFury detected GestureManager, but was unable to reload it after making changes to the avatar." +
-                    " Because of this, testing with the emulator may not be correct." +
-                    " Report this on https://vrcfury.com/discord\n\n" + e.Message,
-                    "Ok"
-                );
-            }
-        }
-        
+        /**
+         * This is needed because AudioLink sets a texture on all materials globally. If we introduce a new material, we need
+         * it to set that texture again.
+         */
         private static void RestartAudiolink() {
             var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
             if (alComponentType == null) return;
@@ -287,9 +207,17 @@ namespace VF {
             }
         }
 
-        private static void RestartPhysbones(VFGameObject obj) {
-            foreach (var physbone in obj.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
-                physbone.InitTransforms(true);
+        [DefaultExecutionOrder(-10000)]
+        public class RescanOnStartComponent : MonoBehaviour {
+            private void Start() {
+                Rescan(gameObject.scene);
+            }
+
+            public static void AddToObject(GameObject obj) {
+                if (obj.GetComponent<RescanOnStartComponent>()) {
+                    return;
+                }
+                obj.AddComponent<RescanOnStartComponent>();
             }
         }
     }
