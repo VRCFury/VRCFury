@@ -2,7 +2,7 @@
   "name": "com.vrcfury.vrcfury",
   "displayName": "VRCFury",
   "version": "0.0.0",
-  "description": "Non-Destructive Editing Tools for VRChat Avatars.",
+  "description": "Non-Destructive Tools for VRChat Avatars",
   "legacyFolders" : {
     "Assets\\VRCFury" : "00b990f230095454f82c345d433841ae"
   },
