@@ -61,3 +61,5 @@ For more information, please refer to <https://unlicense.org>
   * Made Armature Link work with Dynamic Bone Contacts
 * anatawa12, lyuma, anatawa12
   * Special thanks for continuing efforts to make VRCFury and Av3Emu more compatible with each other
+* CobaltSpace
+  * Ensured that gogoloco params are always global
