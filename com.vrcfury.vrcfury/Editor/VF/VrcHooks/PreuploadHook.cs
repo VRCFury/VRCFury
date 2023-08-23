@@ -4,17 +4,41 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Component;
+using VF.Model;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
 namespace VF.VrcHooks {
+    [InitializeOnLoad]
     public class PreuploadHook : IVRCSDKPreprocessAvatarCallback {
+    
+        static PreuploadHook() {
+            EditorApplication.playModeStateChanged += OnPlayModeStateChange;
+        }
+
+        static void OnPlayModeStateChange(UnityEditor.PlayModeStateChange pmsc) {
+            if (pmsc == PlayModeStateChange.ExitingEditMode) {
+                VRCFuryInitializedTester.initialized = false;
+                GameObject existing = GameObject.Find("VRCFuryPreUploadHookTest");
+                if (existing == null) {
+                    existing = new GameObject("VRCFuryPreUploadHookTest");
+                }
+
+                existing.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector; 
+                
+                if (existing.GetComponent<VRCFuryInitializedTester>() == null) {
+                    existing.AddComponent<VRCFuryInitializedTester>();
+                }
+            }
+        }
+
         // This has to be before -1024 when VRCSDK deletes our components
         public int callbackOrder => -10000;
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
-            if (EditorApplication.isPlaying) {
+            if (EditorApplication.isPlaying && !VRCFuryInitializedTester.initialized) {
                 EditorUtility.DisplayDialog(
                     "VRCFury",
                     "Something is causing VRCFury to build while play mode is still initializing. This may cause unity to crash!!\n\n" +
