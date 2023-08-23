@@ -11,7 +11,7 @@ namespace VF.Builder {
          */
         public static  ICollection<Tuple<Renderer, Mesh, Action<Mesh>>> GetRenderersWithMeshes(VFGameObject obj) {
             var output = new List<Tuple<Renderer, Mesh, Action<Mesh>>>();
-            foreach (var renderer in obj.GetComponentsInSelfAndChildren<Renderer>()) {)
+            foreach (var renderer in obj.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (renderer is SkinnedMeshRenderer skin) {
                     if (skin.sharedMesh == null) continue;
                     output.Add(Tuple.Create(
