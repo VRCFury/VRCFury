@@ -464,6 +464,7 @@ namespace VF.Builder.Haptics {
                 var before = match.Groups[1].ToString();
                 var path = match.Groups[2].ToString();
                 var after = match.Groups[3].ToString();
+                if (path.StartsWith("/")) path = path.Substring(1);
                 string fullPath;
                 if (filePath == null) {
                     fullPath = path;
