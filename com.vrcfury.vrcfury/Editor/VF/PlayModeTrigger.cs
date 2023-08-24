@@ -86,7 +86,7 @@ namespace VF {
                         Object.DestroyImmediate(obj);
                     }
                     restartAudioLink = true;
-                    if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
+                    if (obj != null && obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
                         restartAv3Emulator = true;
                     }
                 }
