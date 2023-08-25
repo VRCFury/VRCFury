@@ -272,10 +272,7 @@ public static class VRCFuryEditorUtils {
         string tooltip = null,
         VisualElement fieldOverride = null
     ) {
-        return Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride, style: s => {
-            s.paddingBottom = 5;
-            style?.Invoke(s);
-        });
+        return Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride, style: style, better: true);
     }
 
     public static (VisualElement, VisualElement) CreateTooltip(string label, string content) {
@@ -316,7 +313,8 @@ public static class VRCFuryEditorUtils {
         Func<string,string> formatEnum = null,
         Action<IStyle> style = null,
         string tooltip = null,
-        VisualElement fieldOverride = null
+        VisualElement fieldOverride = null,
+        bool better = false
     ) {
         VisualElement field = null;
         bool isCheckbox = false;
@@ -360,6 +358,9 @@ public static class VRCFuryEditorUtils {
             false,
             labelWidth
         );
+        if (better) {
+            output.style.paddingBottom = 5;
+        }
         style?.Invoke(output.style);
         return output;
     }
@@ -522,6 +523,34 @@ public static class VRCFuryEditorUtils {
     }
     public static float NextFloatDown(float input) {
         return NextFloat(input, -1);
+    }
+
+    public static VisualElement Section(string title = null, string subtitle = null) {
+        var section = new VisualElement() {
+            style = {
+                backgroundColor = new Color(0,0,0,0.1f),
+                marginTop = 5,
+                marginBottom = 10
+            }
+        };
+        VRCFuryEditorUtils.Padding(section, 5);
+        VRCFuryEditorUtils.BorderRadius(section, 5);
+
+        if (title != null) {
+            section.Add(VRCFuryEditorUtils.WrappedLabel(title, style => {
+                style.unityFontStyleAndWeight = FontStyle.Bold;
+                style.unityTextAlign = TextAnchor.MiddleCenter;
+            }));
+        }
+
+        if (subtitle != null) {
+            section.Add(VRCFuryEditorUtils.WrappedLabel(subtitle, style => {
+                style.unityTextAlign = TextAnchor.MiddleCenter;
+                style.paddingBottom = 5;
+            }));
+        }
+
+        return section;
     }
 
     public static VisualElement Info(string message) {

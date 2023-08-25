@@ -21,8 +21,8 @@ namespace VF {
             }
 
             if (!Directory.Exists(TmpDirPath)) {
-                Directory.CreateDirectory(TmpDirPath);
-                File.Create(LegacyPrefabsImportedMarker);
+                Directory.CreateDirectory(TmpDirPath); 
+                File.Create(LegacyPrefabsImportedMarker).Close();
             }
 
             if (!File.Exists(TmpPackagePath) ||
@@ -34,7 +34,7 @@ namespace VF {
 
             if (importLegacyPrefabs) {
                 LegacyPrefabUnpacker.Scan();
-                File.Create(LegacyPrefabsImportedMarker);
+                File.Create(LegacyPrefabsImportedMarker).Close();
             }
 
             EditorApplication.delayCall += () => {

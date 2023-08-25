@@ -181,9 +181,6 @@ namespace VF.Inspector {
             }
             
             var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);
-            var assetPath = AssetDatabase.GetAssetPath(v);
-            if (assetPath == null) assetPath = ImmutablePrefabFixer.GetEditingPrefabPath();
-            var isImmutable = assetPath != null && PreSaveVerifier.IsImmutableVrcf(assetPath);
 
             var container = new VisualElement();
             container.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
@@ -196,12 +193,10 @@ namespace VF.Inspector {
                 // will just be thrown out randomly, and unity will dump a bunch of errors.
                 var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(v);
                 container.Add(CreatePrefabInstanceLabel(baseFury));
-            } else if (isImmutable) {
-                container.Add(CreateImmutableLabel());
             }
 
             VisualElement body;
-            if (isImmutable || isInstance) {
+            if (isInstance) {
                 var copy = CopyComponent(v);
                 copy.Upgrade();
                 copy.gameObjectOverride = v.gameObject;
@@ -279,37 +274,7 @@ namespace VF.Inspector {
 
             return overrideLabel;
         }
-        
-        private VisualElement CreateImmutableLabel() {
-            var text = "Changes are not allowed to this file, because they would be lost when you upgrade VRCFury.\n\n" +
-                "If you want to change where menu items go, add a VRCFury Move Menu Item component to your avatar root instead.\n\n" +
-                "If you want to change other things, create your own copy of the file somewhere else in your project.";
-            var label = new Label {
-                text = text,
-                style = {
-                    paddingTop = 5,
-                    paddingBottom = 5,
-                    unityTextAlign = TextAnchor.MiddleCenter,
-                    whiteSpace = WhiteSpace.Normal,
-                    borderTopLeftRadius = 5,
-                    borderTopRightRadius = 5,
-                    borderBottomLeftRadius = 0,
-                    borderBottomRightRadius = 0,
-                    marginTop = 5,
-                    marginLeft = 20,
-                    marginRight = 20,
-                    marginBottom = 0,
-                    borderTopWidth = 1,
-                    borderLeftWidth = 1,
-                    borderRightWidth = 1,
-                    borderBottomWidth = 0
-                }
-            };
-            VRCFuryEditorUtils.Padding(label, 5);
-            VRCFuryEditorUtils.BorderColor(label, Color.black);
-            return label;
-        }
-        
+
         private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component parent) {
             void Open() {
                 var open = typeof(PrefabStageUtility).GetMethod("OpenPrefab",

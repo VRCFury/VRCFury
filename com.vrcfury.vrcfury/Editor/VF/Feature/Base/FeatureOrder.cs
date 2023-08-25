@@ -49,10 +49,6 @@ namespace VF.Feature.Base {
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix,
         AnchorOverrideFix,
-        
-        // Needs to run after all TPS materials are done
-        // Needs to run after toggles are in place
-        TpsScaleFix,
 
         // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
         // an object moved onto the fake head bone
@@ -60,6 +56,11 @@ namespace VF.Feature.Base {
 
         // Needs to happen after toggles
         HapticsAnimationRewrites,
+        
+        // Needs to run after all TPS materials are done
+        // Needs to run after toggles are in place
+        // Needs to run after HapticsAnimationRewrites
+        TpsScaleFix,
 
         // Needs to run after everything else is done messing with rest state
         ApplyRestState2,

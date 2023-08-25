@@ -27,6 +27,7 @@ namespace VF.Component {
         public bool spsKeepImports = false;
         public State postBakeActions;
         public bool spsOverrun = true;
+        public bool enableDepthAnimations = false;
         public List<PlugDepthAction> depthActions = new List<PlugDepthAction>();
 
         [Obsolete] public bool configureSps = false;
@@ -82,12 +83,15 @@ namespace VF.Component {
                     a.smoothingSeconds = VRCFuryHapticSocket.UpgradeFromLegacySmoothing(a.smoothing);
                 }
             }
+            if (fromVersion < 9) {
+                enableDepthAnimations = depthActions.Count > 0;
+            }
 #pragma warning restore 0612
             return false;
         }
 
         public override int GetLatestVersion() {
-            return 8;
+            return 9;
         }
 
         public enum Channel {

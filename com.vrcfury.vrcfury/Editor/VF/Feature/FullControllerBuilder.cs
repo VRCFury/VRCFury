@@ -168,6 +168,21 @@ namespace VF.Feature {
                 });
                 if (!synced) return name;
             }
+            
+            var hasGogoParam = model.prms
+                .Select(p => p?.parameters?.Get())
+                .Where(p => p != null)
+                .SelectMany(p => p.parameters)
+                .Any(p => p.name == "Go/Locomotion");
+            var hasBase = model.controllers
+                .Where(c => c != null)
+                .Any(c => c.type == VRCAvatarDescriptor.AnimLayerType.Base);
+            var isGogo = hasGogoParam && hasBase;
+            if (isGogo) {
+                if (name.StartsWith("Go/")) return name;
+                return "Go/" + name;
+            }
+            
             if (model.globalParams.Contains(name)) return name;
             if (model.globalParams.Contains("*")) return name;
             rewrittenParams.Add(name);

@@ -28,7 +28,9 @@ namespace VF.Component {
         public Vector3 rotation;
         //public VRCFuryHapticPlug.Channel channel;
 
+        public bool enableDepthAnimations = false;
         public List<DepthAction> depthActions = new List<DepthAction>();
+        public bool enableActiveAnimation = false;
         public State activeActions;
 
         [Serializable]
@@ -74,6 +76,12 @@ namespace VF.Component {
                     a.smoothingSeconds = UpgradeFromLegacySmoothing(a.smoothing);
                 }
             }
+            if (fromVersion < 6) {
+                enableDepthAnimations = depthActions.Count > 0;
+            }
+            if (fromVersion < 7) {
+                enableActiveAnimation = activeActions.actions.Count > 0;
+            }
 #pragma warning restore 0612
             return false;
         }
@@ -95,7 +103,7 @@ namespace VF.Component {
         }
 
         public override int GetLatestVersion() {
-            return 5;
+            return 7;
         }
     }
 }
