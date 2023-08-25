@@ -14,6 +14,12 @@ namespace VF.VrcHooks {
         public int callbackOrder => -10000;
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
+            VFGameObject vrcCloneObject = _vrcCloneObject;
+
+            if (!VRCFuryBuilder.ShouldRun(vrcCloneObject)) {
+                return true;
+            }
+            
             if (EditorApplication.isPlaying) {
                 EditorUtility.DisplayDialog(
                     "VRCFury",
@@ -22,8 +28,6 @@ namespace VF.VrcHooks {
                     "Ok"
                 );
             }
-            
-            VFGameObject vrcCloneObject = _vrcCloneObject;
 
             // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
             // Let's get a reference to the original avatar, so we can apply our changes to it as well.
