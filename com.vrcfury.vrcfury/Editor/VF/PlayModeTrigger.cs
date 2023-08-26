@@ -118,7 +118,7 @@ namespace VF {
             }
 
             if (restartAv3Emulator) {
-                RestartAv3Emulator();
+                EditorApplication.delayCall += RestartAv3Emulator;
             }
             if (restartAudioLink) {
                 RestartAudiolink();
