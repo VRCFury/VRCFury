@@ -12,6 +12,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
     public class ControllerManager {
+        private const string BaseAvatarOwner = "Base Avatar";
         private readonly AnimatorController ctrl;
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;
@@ -52,7 +53,7 @@ namespace VF.Builder {
             }
 
             foreach (var layer in ctrl.layers) {
-                layerOwners[layer.stateMachine] = "Base Avatar";
+                layerOwners[layer.stateMachine] = BaseAvatarOwner;
                 if (treatAsManaged) {
                     managedLayers.Add(layer.stateMachine);
                 }
@@ -282,6 +283,10 @@ namespace VF.Builder {
                 return null;
             }
             return layerOwner;
+        }
+
+        public bool IsOwnerBaseAvatar(AnimatorStateMachine stateMachine) {
+            return GetLayerOwner(stateMachine) == BaseAvatarOwner;
         }
 
         public void ForEachClip(Action<AnimationClip> action) {
