@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
@@ -126,7 +127,7 @@ public static class FeatureFinder {
         return wrapper;
     }
 
-    public static FeatureBuilder GetBuilder(FeatureModel model, GameObject gameObject) {
+    public static FeatureBuilder GetBuilder(FeatureModel model, GameObject gameObject, VRCFuryInjector injector) {
         if (model == null) {
             throw new VRCFBuilderException(
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date? If you are still receiving this after updating, you may need to re-import the prop package which caused this issue.");
@@ -140,7 +141,7 @@ public static class FeatureFinder {
             throw new VRCFBuilderException("Failed to find feature implementation for " + modelType.Name + " while building");
         }
 
-        var builder = (FeatureBuilder)Activator.CreateInstance(builderType);
+        var builder = (FeatureBuilder)injector.CreateAndInject(builderType);
         var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
         if (!allowAvatarFeatures && !builder.AvailableOnProps()) {
             Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");

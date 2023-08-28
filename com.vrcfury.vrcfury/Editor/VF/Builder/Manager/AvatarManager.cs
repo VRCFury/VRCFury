@@ -15,6 +15,7 @@ namespace VF.Builder {
         private readonly Func<string> currentFeatureNameProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly Func<int> currentMenuSortPosition;
+        private readonly Func<VFGameObject> currentComponentObject;
         private readonly MutableManager mutableManager;
 
         public AvatarManager(
@@ -24,6 +25,7 @@ namespace VF.Builder {
             Func<string> currentFeatureNameProvider,
             Func<string> currentFeatureClipPrefixProvider,
             Func<int> currentMenuSortPosition,
+            Func<VFGameObject> currentComponentObject,
             MutableManager mutableManager
         ) {
             this.avatarObject = avatarObject;
@@ -33,6 +35,7 @@ namespace VF.Builder {
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.currentMenuSortPosition = currentMenuSortPosition;
+            this.currentComponentObject = currentComponentObject;
             this.mutableManager = mutableManager;
         }
 
@@ -81,6 +84,9 @@ namespace VF.Builder {
             }
             return output;
         }
+        public ControllerManager GetFx() {
+            return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
+        }
         public IEnumerable<ControllerManager> GetAllTouchedControllers() {
             return _controllers.Values;
         }
@@ -118,5 +124,8 @@ namespace VF.Builder {
         public string GetCurrentlyExecutingFeatureName() {
             return currentFeatureNameProvider();
         }
+
+        public VFGameObject AvatarObject => avatarObject;
+        public VFGameObject CurrentComponentObject => currentComponentObject();
     }
 }

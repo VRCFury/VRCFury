@@ -5,12 +5,15 @@ using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
+        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        
         [FeatureBuilderAction]
         public void Apply() {
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
@@ -34,8 +37,7 @@ namespace VF.Feature {
             var fakeEye = GameObjects.Create(baseName + ".Fake", originalEye.parent, useTransformFrom: originalEye);
 
             var fakeEyeUp = GameObjects.Create(baseName + ".Fake.Up", fakeEye, useTransformFrom: realEyeUp);
-            
-            var mover = GetBuilder<ObjectMoveBuilder>();
+
             mover.Move(originalEye.gameObject, realEyeUp.gameObject);
 
             var constraint = realEyeUp.AddComponent<RotationConstraint>();

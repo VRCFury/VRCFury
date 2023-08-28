@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
 
@@ -15,21 +16,22 @@ namespace VF.Feature {
      */
     public class RestingStateBuilder : FeatureBuilder {
 
+        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
         private readonly List<AnimationClip> pendingClips = new List<AnimationClip>();
 
         public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
             if (recordDefaultStateFirst) {
-                var defaultsManager = GetBuilder<FixWriteDefaultsBuilder>();
                 foreach (var b in clip.GetFloatBindings())
-                    defaultsManager.RecordDefaultNow(b, true);
+                    writeDefaultsManager.RecordDefaultNow(b, true);
                 foreach (var b in clip.GetObjectBindings())
-                    defaultsManager.RecordDefaultNow(b, false);
+                    writeDefaultsManager.RecordDefaultNow(b, false);
             }
 
             var copy = new AnimationClip();
             copy.CopyFrom(clip);
             pendingClips.Add(copy);
-            GetBuilder<ObjectMoveBuilder>().AddAdditionalManagedClip(copy);
+            mover.AddAdditionalManagedClip(copy);
         }
 
         /**

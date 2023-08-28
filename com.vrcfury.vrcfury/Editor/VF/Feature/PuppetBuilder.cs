@@ -1,11 +1,15 @@
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Model.Feature;
+using VF.Service;
 
 namespace VF.Feature {
 
 public class PuppetBuilder : FeatureBuilder<Puppet> {
+    [VFAutowired] private readonly ActionClipService actionClipService;
+
     [FeatureBuilderAction]
     public void Apply() {
         var fx = GetFx();
@@ -20,7 +24,7 @@ public class PuppetBuilder : FeatureBuilder<Puppet> {
         foreach (var stop in model.stops) {
             if (stop.x != 0) usesX = true;
             if (stop.y != 0) usesY = true;
-            tree.AddChild(LoadState(model.name + "_" + i++, stop.state), new Vector2(stop.x,stop.y));
+            tree.AddChild(actionClipService.LoadState(model.name + "_" + i++, stop.state), new Vector2(stop.x,stop.y));
         }
         var on = layer.NewState("Blend").WithAnimation(tree);
 

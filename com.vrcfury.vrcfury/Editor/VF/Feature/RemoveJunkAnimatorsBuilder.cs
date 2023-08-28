@@ -1,5 +1,6 @@
 using UnityEngine;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Model;
 
 namespace VF.Feature {

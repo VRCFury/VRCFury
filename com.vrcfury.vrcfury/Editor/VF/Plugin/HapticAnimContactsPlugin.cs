@@ -7,12 +7,18 @@ using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Injector;
+using VF.Service;
 
 namespace VF.Plugin {
     /**
      * This can build the contacts needed for haptic component depth animations
      */
+    [VFService]
     public class HapticAnimContactsPlugin : FeaturePlugin {
+        [VFAutowired] private readonly ParamSmoothingPlugin smoothing;
+        [VFAutowired] private readonly ActionClipService actionClipService;
+        
         public void CreatePlugAnims(
             ICollection<VRCFuryHapticPlug.PlugDepthAction> actions,
             VFGameObject plugOwner,
@@ -23,7 +29,6 @@ namespace VF.Plugin {
             if (actions.Count == 0) return;
 
             var fx = GetFx();
-            var smoothing = GetPlugin<ParamSmoothingPlugin>();
 
             var cache = new Dictionary<bool, VFAFloat>();
             VFAFloat GetDistance(bool allowSelf) {
@@ -73,8 +78,8 @@ namespace VF.Plugin {
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");
 
-                var clip = LoadState(prefix, depthAction.state, plugOwner);
-                if (ClipBuilder.IsStaticMotion(clip)) {
+                var clip = actionClipService.LoadState(prefix, depthAction.state, plugOwner);
+                if (ClipBuilderService.IsStaticMotion(clip)) {
                     var tree = fx.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
@@ -99,7 +104,6 @@ namespace VF.Plugin {
             string name
         ) {
             var fx = GetFx();
-            var smoothing = GetPlugin<ParamSmoothingPlugin>();
 
             var cache = new Dictionary<bool, VFAFloat>();
             VFAFloat GetDistance(bool allowSelf) {
@@ -115,7 +119,6 @@ namespace VF.Plugin {
                 if (minDist < 0) {
                     var inner = CreateFrontBack($"{prefix}/Inner", animRoot, -minDist, allowSelf, HapticUtils.CONTACT_PEN_MAIN, Vector3.forward * minDist);
                     // Some of the animations have an inside depth (negative distance)
-                    var test = outer.front.IsGreaterThanOrEquals(1);
                     targets.Add((
                         smoothing.Map($"{prefix}/Inner/Distance", inner.front, 1, 0, minDist, 0),
                         outer.front.IsGreaterThanOrEquals(1)
@@ -165,8 +168,8 @@ namespace VF.Plugin {
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");
 
-                var clip = LoadState(prefix, depthAction.state, socketOwner);
-                if (ClipBuilder.IsStaticMotion(clip)) {
+                var clip = actionClipService.LoadState(prefix, depthAction.state, socketOwner);
+                if (ClipBuilderService.IsStaticMotion(clip)) {
                     var tree = fx.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;

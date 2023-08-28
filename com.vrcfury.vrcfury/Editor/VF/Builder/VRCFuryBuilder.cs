@@ -1,16 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Service;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -84,6 +87,7 @@ public class VRCFuryBuilder {
         var currentModelName = "";
         var currentModelClipPrefix = "?";
         var currentMenuSortPosition = 0;
+        var currentComponentObject = avatarObject;
         var manager = new AvatarManager(
             avatarObject,
             tmpDir,
@@ -91,50 +95,98 @@ public class VRCFuryBuilder {
             () => currentModelName,
             () => currentModelClipPrefix,
             () => currentMenuSortPosition,
+            () => currentComponentObject,
             mutableManager
         );
-        var clipBuilder = new ClipBuilder(avatarObject);
 
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
         var totalModelCount = 0;
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
-        var menuSortPositionByBuilder = new Dictionary<FeatureBuilder, int>();
 
-        void AddBuilder(FeatureBuilder builder, GameObject configObject, int menuSortPosition = -1) {
-            builder.featureBaseObject = configObject;
-            builder.tmpDirParent = tmpDirParent;
-            builder.tmpDir = tmpDir;
-            builder.uniqueModelNum = ++totalModelCount;
-            if (menuSortPosition < 0) menuSortPosition = builder.uniqueModelNum;
-            menuSortPositionByBuilder[builder] = menuSortPosition;
-            builder.addOtherFeature = m => {
-                AddModel(m, configObject, menuSortPosition);
-            };
-            builder.addOtherBuilder = b => {
-                AddBuilder(b, configObject, menuSortPosition);
-            };
-            builder.allFeaturesInRun = collectedModels;
-            builder.allBuildersInRun = collectedBuilders;
-            builder.manager = manager;
-            builder.clipBuilder = clipBuilder;
-            builder.avatarObject = avatarObject;
-            builder.originalObject = originalObject;
-            builder.mutableManager = mutableManager;
-
-            collectedBuilders.Add(builder);
-            var builderActions = builder.GetActions();
-            actions.AddRange(builderActions);
-            totalActionCount += builderActions.Count;
+        var injector = new VRCFuryInjector();
+        injector.RegisterService(mutableManager);
+        injector.RegisterService(manager);
+        foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
+            injector.RegisterService(serviceType);
         }
 
-        void AddModel(FeatureModel model, GameObject configObject, int menuSortPosition = -1) {
+        void AddBuilder(Type t) {
+            injector.RegisterService(t);
+        }
+        AddBuilder(typeof(CleanupLegacyBuilder));
+        AddBuilder(typeof(RemoveJunkAnimatorsBuilder));
+        AddBuilder(typeof(FixDoubleFxBuilder));
+        AddBuilder(typeof(FixWriteDefaultsBuilder));
+        AddBuilder(typeof(BakeHapticsBuilder));
+        AddBuilder(typeof(BakeGlobalCollidersBuilder));
+        AddBuilder(typeof(ControllerConflictBuilder));
+        AddBuilder(typeof(FakeHeadBuilder));
+        AddBuilder(typeof(ObjectMoveBuilder));
+        AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
+        AddBuilder(typeof(FixMasksBuilder));
+        AddBuilder(typeof(CleanupEmptyLayersBuilder));
+        AddBuilder(typeof(ResetAnimatorBuilder));
+        AddBuilder(typeof(FixBadVrcParameterNamesBuilder));
+        AddBuilder(typeof(FinalizeMenuBuilder));
+        AddBuilder(typeof(FinalizeParamsBuilder));
+        AddBuilder(typeof(FinalizeControllerBuilder));
+        AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
+        AddBuilder(typeof(FixMaterialSwapWithMaskBuilder));
+        AddBuilder(typeof(RestingStateBuilder));
+        AddBuilder(typeof(PullMusclesOutOfFxBuilder));
+        AddBuilder(typeof(RestoreProxyClipsBuilder));
+        AddBuilder(typeof(FixEmptyMotionBuilder));
+
+        foreach (var service in injector.GetAllServices()) {
+            AddActionsFromObject(service, avatarObject);
+        }
+
+        void AddModel(FeatureModel model, GameObject configObject) {
             collectedModels.Add(model);
 
-            var builder = FeatureFinder.GetBuilder(model, configObject);
+            var builder = FeatureFinder.GetBuilder(model, configObject, injector);
             if (builder == null) return;
-            AddBuilder(builder, configObject, menuSortPosition);
+            AddActionsFromObject(builder, configObject);
+        }
+
+        void AddActionsFromObject(object obj, VFGameObject configObject) {
+            var serviceNum = ++totalModelCount;
+            if (obj is FeatureBuilder builder) {
+                builder.uniqueModelNum = serviceNum;
+                builder.tmpDirParent = tmpDirParent;
+                builder.tmpDir = tmpDir;
+                builder.addOtherFeature = m => {
+                    AddModel(m, configObject);
+                };
+                builder.featureBaseObject = configObject;
+                builder.allFeaturesInRun = collectedModels;
+                builder.allBuildersInRun = collectedBuilders;
+                builder.manager = manager;
+                builder.avatarObject = avatarObject;
+                builder.originalObject = originalObject;
+                builder.mutableManager = mutableManager;
+
+                collectedBuilders.Add(builder);
+            }
+
+            var actionMethods = obj.GetType().GetMethods()
+                .Select(m => (m, m.GetCustomAttribute<FeatureBuilderActionAttribute>()))
+                .Where(tuple => tuple.Item2 != null)
+                .ToArray();
+            if (actionMethods.Length == 0) return;
+
+            // If we're in the middle of processing a service action, the newly added service should
+            // inherit the menu sort position from the current one
+            var menuSortPosition = currentMenuSortPosition > 0 ? currentMenuSortPosition : serviceNum;
+
+            var list = new List<FeatureBuilderAction>();
+            foreach (var (method, attr) in actionMethods) {
+                list.Add(new FeatureBuilderAction(attr, method, obj, serviceNum, menuSortPosition, configObject));
+            }
+            actions.AddRange(list);
+            totalActionCount += list.Count;
         }
 
         progress.Progress(0, "Collecting features");
@@ -162,42 +214,20 @@ public class VRCFuryBuilder {
         }
 
         AddModel(new DirectTreeOptimizer { managedOnly = true }, avatarObject);
-        AddBuilder(new RemoveJunkAnimatorsBuilder(), avatarObject);
-        AddBuilder(new CleanupLegacyBuilder(), avatarObject);
-        AddBuilder(new FixDoubleFxBuilder(), avatarObject);
-        AddBuilder(new FixWriteDefaultsBuilder(), avatarObject);
-        AddBuilder(new BakeHapticsBuilder(), avatarObject);
-        AddBuilder(new BakeGlobalCollidersBuilder(), avatarObject);
-        AddBuilder(new ControllerConflictBuilder(), avatarObject);
-        AddBuilder(new FakeHeadBuilder(), avatarObject);
-        AddBuilder(new ObjectMoveBuilder(), avatarObject);
-        AddBuilder(new AnimatorLayerControlOffsetBuilder(), avatarObject);
-        AddBuilder(new FixMasksBuilder(), avatarObject);
-        AddBuilder(new CleanupEmptyLayersBuilder(), avatarObject);
-        AddBuilder(new ResetAnimatorBuilder(), avatarObject);
-        AddBuilder(new FixBadVrcParameterNamesBuilder(), avatarObject);
-        AddBuilder(new FinalizeMenuBuilder(), avatarObject);
-        AddBuilder(new FinalizeParamsBuilder(), avatarObject);
-        AddBuilder(new FinalizeControllerBuilder(), avatarObject);
-        AddBuilder(new MarkThingsAsDirtyJustInCaseBuilder(), avatarObject);
-        AddBuilder(new FixMaterialSwapWithMaskBuilder(), avatarObject);
-        AddBuilder(new RestingStateBuilder(), avatarObject);
-        AddBuilder(new PullMusclesOutOfFxBuilder(), avatarObject);
-        AddBuilder(new RestoreProxyClipsBuilder(), avatarObject);
-        AddBuilder(new FixEmptyMotionBuilder(), avatarObject);
-        
+
         while (actions.Count > 0) {
             var action = actions.Min();
             actions.Remove(action);
-            var builder = action.GetBuilder();
-            
-            currentModelNumber = builder.uniqueModelNum;
-            var objectName = builder.featureBaseObject.GetPath(avatarObject);
-            currentModelName = $"{builder.GetType().Name}.{action.GetName()} on {objectName}";
-            currentModelClipPrefix = $"VF{currentModelNumber} {builder.GetClipPrefix() ?? builder.GetType().Name}";
-            currentMenuSortPosition = menuSortPositionByBuilder[builder];
+            var service = action.GetService();
 
-            var statusMessage = $"{objectName}\n{builder.GetType().Name} ({currentModelNumber})\n{action.GetName()}";
+            currentModelNumber = action.serviceNum;
+            var objectName = action.configObject.GetPath(avatarObject);
+            currentModelName = $"{service.GetType().Name}.{action.GetName()} on {objectName}";
+            currentModelClipPrefix = $"VF{currentModelNumber} {(service as FeatureBuilder)?.GetClipPrefix() ?? service.GetType().Name}";
+            currentMenuSortPosition = action.menuSortOrder;
+            currentComponentObject = action.configObject;
+
+            var statusMessage = $"{objectName}\n{service.GetType().Name} ({currentModelNumber})\n{action.GetName()}";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {

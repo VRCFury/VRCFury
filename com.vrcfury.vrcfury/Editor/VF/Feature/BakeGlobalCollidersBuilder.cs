@@ -6,14 +6,16 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Injector;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class BakeGlobalCollidersBuilder : FeatureBuilder {
+        [VFAutowired] private readonly FakeHeadBuilder fakeHead;
+        
         [FeatureBuilderAction]
         public void Apply() {
 
-            var fakeHead = GetBuilder<FakeHeadBuilder>();
             var globalContacts = avatarObject.GetComponentsInSelfAndChildren<VRCFuryGlobalCollider>();
             if (globalContacts.Length == 0) return;
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();

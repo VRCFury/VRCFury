@@ -8,13 +8,17 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model;
+using VF.Service;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
+    [VFAutowired] private readonly ActionClipService actionClipService;
+
     private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
     private AnimationClip restingClip;
@@ -69,8 +73,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             icon: model.enableIcon ? model.icon.Get() : null
         );
 
-        var clip = LoadState("On", model.state);
-        if (ClipBuilder.IsStaticMotion(clip)) {
+        var clip = actionClipService.LoadState("On", model.state);
+        if (ClipBuilderService.IsStaticMotion(clip)) {
             var tree = fx.NewBlendTree("On Tree");
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
@@ -150,7 +154,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State outAction,
         VFABool physBoneResetter
     ) {
-        var clip = LoadState(onName, action);
+        var clip = actionClipService.LoadState(onName, action);
 
         if (restingClip == null && model.includeInRest) {
             restingClip = clip;
@@ -169,7 +173,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFAState inState;
         VFAState onState;
         if (model.hasTransition) {
-            var transitionClipIn = LoadState(onName + " In", inAction);
+            var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
             inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
@@ -181,7 +185,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition) {
-            var transitionClipOut = LoadState(onName + " Out", outAction);
+            var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
             var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not());
             outState.TransitionsToExit().When().WithTransitionExitTime(1);

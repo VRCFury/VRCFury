@@ -6,9 +6,11 @@ using UnityEngine;
 using VF.Builder;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Utils;
 
 namespace VF.Plugin {
+    [VFService]
     public class ParamSmoothingPlugin : FeaturePlugin {
         public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
             if (smoothingSeconds <= 0) return target;

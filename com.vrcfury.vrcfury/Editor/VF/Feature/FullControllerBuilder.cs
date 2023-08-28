@@ -10,6 +10,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
@@ -24,6 +25,7 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
+        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -72,8 +74,7 @@ namespace VF.Feature {
             }
 
             // Record the offsets so we can fix them later
-            var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
-            offsetBuilder.RegisterControllerSet(toMerge);
+            animatorLayerControlManager.RegisterControllerSet(toMerge);
 
             foreach (var (type, from) in toMerge) {
                 var targetController = manager.GetController(type);

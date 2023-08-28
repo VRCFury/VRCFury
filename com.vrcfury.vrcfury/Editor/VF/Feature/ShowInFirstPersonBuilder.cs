@@ -4,16 +4,20 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
     public class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
+        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        [VFAutowired] private readonly FakeHeadBuilder fakeHead;
+        
         [FeatureBuilderAction]
         public void Apply() {
             var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
-            GetBuilder<ObjectMoveBuilder>().Move(featureBaseObject, head);
-            GetBuilder<FakeHeadBuilder>().MarkEligible(featureBaseObject);
+            mover.Move(featureBaseObject, head);
+            fakeHead.MarkEligible(featureBaseObject);
         }
 
         public override string GetEditorTitle() {

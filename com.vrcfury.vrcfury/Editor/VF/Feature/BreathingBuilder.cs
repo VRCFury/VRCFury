@@ -2,21 +2,25 @@ using System;
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VF.Service;
 using VF.Utils;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
 public class BreathingBuilder : FeatureBuilder<Breathing> {
+    [VFAutowired] private readonly ActionClipService actionClipService;
+    
     [FeatureBuilderAction]
     public void Apply() {
 
-        var inClip = LoadState("breatheIn", model.inState);
-        var outClip = LoadState("breatheOut", model.outState);
+        var inClip = actionClipService.LoadState("breatheIn", model.inState);
+        var outClip = actionClipService.LoadState("breatheOut", model.outState);
 
         var fx = GetFx();
         var clip = fx.NewClip("Breathing");

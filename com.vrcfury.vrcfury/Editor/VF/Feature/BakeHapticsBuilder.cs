@@ -9,15 +9,24 @@ using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Plugin;
+using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     public class BakeHapticsBuilder : FeatureBuilder {
+
+        [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly RestingStateBuilder restingState;
+        [VFAutowired] private readonly HapticAnimContactsPlugin hapticAnimContactsPlugin;
+        [VFAutowired] private readonly ParamSmoothingPlugin paramSmoothing;
+        [VFAutowired] private readonly FakeHeadBuilder fakeHead;
+        [VFAutowired] private readonly ObjectMoveBuilder mover;
 
         private List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
 
@@ -94,7 +103,7 @@ namespace VF.Feature {
                         RewriteClip(clip);
                     }
                 }
-                foreach (var clip in GetBuilder<RestingStateBuilder>().GetPendingClips()) {
+                foreach (var clip in restingState.GetPendingClips()) {
                     RewriteClip(clip);
                 }
 
@@ -107,7 +116,6 @@ namespace VF.Feature {
             var fx = GetFx();
             var usedNames = new List<string>();
             var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
-            var fakeHead = GetBuilder<FakeHeadBuilder>();
 
             // When you first load into a world, contact receivers already touching a sender register as 0 proximity
             // until they are removed and then reintroduced to each other.
@@ -152,8 +160,8 @@ namespace VF.Feature {
                         }
                     }
 
-                    var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                    GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(postBakeClip);
+                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                    restingState.ApplyClipToRestingState(postBakeClip);
 
                     if (plug.enableSps) {
                         foreach (var r in renderers) {
@@ -198,7 +206,7 @@ namespace VF.Feature {
 
                     if (plug.enableDepthAnimations && plug.depthActions.Count > 0) {
                         var animRoot = GameObjects.Create("Animations", bakeRoot);
-                        GetPlugin<HapticAnimContactsPlugin>().CreatePlugAnims(
+                        hapticAnimContactsPlugin.CreatePlugAnims(
                             plug.depthActions,
                             plug.owner(),
                             animRoot,
@@ -264,7 +272,7 @@ namespace VF.Feature {
                     fakeHead.MarkEligible(socket.gameObject);
                     if (VRCFuryHapticSocketEditor.IsChildOfHead(socket)) {
                         var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
-                        GetBuilder<ObjectMoveBuilder>().Move(socket.gameObject, head);
+                        mover.Move(socket.gameObject, head);
                     }
                     var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
 
@@ -302,7 +310,7 @@ namespace VF.Feature {
                         }
 
                         if (socket.enableActiveAnimation) {
-                            var additionalActiveClip = LoadState("socketActive", socket.activeActions);
+                            var additionalActiveClip = actionClipService.LoadState("socketActive", socket.activeActions);
                             onLocalClip.CopyFrom(additionalActiveClip);
                             onRemoteClip.CopyFrom(additionalActiveClip);
                         }
@@ -357,7 +365,7 @@ namespace VF.Feature {
                     }
 
                     if (socket.enableDepthAnimations && socket.depthActions.Count > 0) {
-                        GetPlugin<HapticAnimContactsPlugin>().CreateSocketAnims(
+                        hapticAnimContactsPlugin.CreateSocketAnims(
                             socket.depthActions,
                             socket.owner(),
                             animRoot,
@@ -409,7 +417,7 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = GetPlugin<ParamSmoothingPlugin>().IsBWinningTree(aDist, bDist, vsParam);
+                        var tree = paramSmoothing.IsBWinningTree(aDist, bDist, vsParam);
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }
