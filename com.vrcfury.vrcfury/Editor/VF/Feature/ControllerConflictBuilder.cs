@@ -25,6 +25,32 @@ namespace VF.Feature {
                 VRCAvatarDescriptor.AnimLayerType.IKPose,
                 VRCAvatarDescriptor.AnimLayerType.Sitting
             };
+            
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                var type = controller.GetType();
+                if (!singleOwnerTypes.Contains(type)) continue;
+                var uniqueOwners = new HashSet<string>();
+                foreach (var layer in controller.GetLayers()) {
+                    if (!controller.IsOwnerBaseAvatar(layer)) {
+                        uniqueOwners.Add(controller.GetLayerOwner(layer));
+                    }
+                }
+                if (uniqueOwners.Count > 1) {
+                    throw new VRCFBuilderException(
+                        "Your avatar contains multiple locomotion implementations." +
+                        " You can only use one of these:\n\n" +
+                        "Layer type: " + VRCFEnumUtils.GetName(type) + "\n" +
+                        "Sources:\n" + string.Join("\n", uniqueOwners)
+                    );
+                }
+                if (uniqueOwners.Count > 0) {
+                    foreach (var layer in controller.GetLayers()) {
+                        if (controller.IsOwnerBaseAvatar(layer)) {
+                            controller.RemoveLayer(layer);
+                        }
+                    }
+                }
+            }
 
             var ownersByController = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ISet<string>>();
             foreach (var controller in manager.GetAllUsedControllers()) {
@@ -36,16 +62,6 @@ namespace VF.Feature {
                     uniqueOwners.Add(controller.GetLayerOwner(layer));
                 }
                 ownersByController[type] = uniqueOwners;
-                
-                if (uniqueOwners.Count > 1 && singleOwnerTypes.Contains(type)) {
-                    throw new VRCFBuilderException(
-                        "Your avatar contains multiple implementations for a base playable layer." +
-                        " Usually, this means you are trying to add GogoLoco, but your avatar already has a Base controller." +
-                        " The fix is usually to remove the custom Base controller that came with your avatar on the VRC Avatar Descriptor.\n\n" +
-                        "Layer type: " + VRCFEnumUtils.GetName(type) + "\n" +
-                        "Sources:\n" + string.Join("\n", uniqueOwners)
-                    );
-                }
             }
 
             foreach (var controller in manager.GetAllUsedControllers()) {
