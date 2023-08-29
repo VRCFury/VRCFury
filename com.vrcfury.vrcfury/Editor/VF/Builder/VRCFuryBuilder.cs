@@ -130,7 +130,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(RemoveJunkAnimatorsBuilder));
         AddBuilder(typeof(FixDoubleFxBuilder));
         AddBuilder(typeof(FixWriteDefaultsBuilder));
-        AddBuilder(typeof(BakeHapticsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
         AddBuilder(typeof(ControllerConflictBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));

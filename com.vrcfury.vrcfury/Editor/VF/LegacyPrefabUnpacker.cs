@@ -3,7 +3,12 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF {
+    [InitializeOnLoad]
     public static class LegacyPrefabUnpacker {
+        static LegacyPrefabUnpacker() {
+            ScanAlways();
+        }
+
         public class PostProcessor : AssetPostprocessor {
             static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths) {
                 ScanAlways();

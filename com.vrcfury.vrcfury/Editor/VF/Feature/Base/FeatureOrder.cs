@@ -26,7 +26,8 @@ namespace VF.Feature.Base {
         
         // Needs to run after all haptic components are in place
         // Needs to run before Toggles, because of its "After Bake" action
-        BakeHaptics,
+        BakeHapticPlugs,
+        BakeHapticSockets,
         
         ApplyRestState1,
 
@@ -61,6 +62,8 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
+        
+        FixTouchingContacts,
 
         // Needs to run after everything else is done messing with rest state
         ApplyRestState2,
