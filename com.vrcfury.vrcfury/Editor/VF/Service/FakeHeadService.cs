@@ -7,13 +7,16 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 
-namespace VF.Feature {
+namespace VF.Service {
     /** This builder is responsible for creating a fake head bone, and moving
      * objects onto it, if those objects should be visible in first person.
      */
-    public class FakeHeadBuilder : FeatureBuilder {
+    [VFService]
+    public class FakeHeadService {
 
-        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly AvatarManager manager;
+
         private HashSet<GameObject> objectsEligibleForFakeHead = new HashSet<GameObject>();
 
         public void MarkEligible(GameObject obj) {
@@ -26,7 +29,7 @@ namespace VF.Feature {
                 return;
             }
 
-            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
+            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.Head);
             if (!head) return;
             
             var objectsForFakeHead = objectsEligibleForFakeHead

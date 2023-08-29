@@ -20,7 +20,7 @@ using Object = UnityEngine.Object;
 namespace VF.Feature {
 
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
-        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ActionClipService actionClipService;
 
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]

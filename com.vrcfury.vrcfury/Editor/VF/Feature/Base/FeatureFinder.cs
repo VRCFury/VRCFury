@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -83,7 +84,7 @@ public static class FeatureFinder {
                 );
             }
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
-            featureInstance.avatarObject = gameObject.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.gameObject;
+            featureInstance.avatarObjectOverride = gameObject.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.gameObject;
             featureInstance.featureBaseObject = gameObject;
             featureInstance.GetType().GetField("model").SetValue(featureInstance, model);
 
@@ -127,6 +128,7 @@ public static class FeatureFinder {
         return wrapper;
     }
 
+    [CanBeNull]
     public static FeatureBuilder GetBuilder(FeatureModel model, GameObject gameObject, VRCFuryInjector injector) {
         if (model == null) {
             throw new VRCFBuilderException(

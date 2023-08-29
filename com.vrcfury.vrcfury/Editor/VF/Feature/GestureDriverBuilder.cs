@@ -9,7 +9,6 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
-using VF.Plugin;
 using VF.Service;
 
 namespace VF.Feature {
@@ -17,7 +16,7 @@ namespace VF.Feature {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
-        [VFAutowired] private readonly ParamSmoothingPlugin smoothing;
+        [VFAutowired] private readonly ParamSmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         
         [FeatureBuilderAction]

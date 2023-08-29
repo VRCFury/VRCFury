@@ -111,6 +111,17 @@ public class VRCFuryBuilder {
         foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
             injector.RegisterService(serviceType);
         }
+        
+        var globals = new GlobalsService {
+            tmpDirParent = tmpDirParent,
+            tmpDir = tmpDir,
+            addOtherFeature = AddModel,
+            allFeaturesInRun = collectedModels,
+            allBuildersInRun = collectedBuilders,
+            avatarObject = avatarObject,
+            originalObject = originalObject,
+        };
+        injector.RegisterService(globals);
 
         void AddBuilder(Type t) {
             injector.RegisterService(t);
@@ -122,8 +133,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(BakeHapticsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
         AddBuilder(typeof(ControllerConflictBuilder));
-        AddBuilder(typeof(FakeHeadBuilder));
-        AddBuilder(typeof(ObjectMoveBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
         AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
@@ -143,7 +152,7 @@ public class VRCFuryBuilder {
             AddActionsFromObject(service, avatarObject);
         }
 
-        void AddModel(FeatureModel model, GameObject configObject) {
+        void AddModel(FeatureModel model, VFGameObject configObject) {
             collectedModels.Add(model);
 
             var builder = FeatureFinder.GetBuilder(model, configObject, injector);
@@ -155,19 +164,7 @@ public class VRCFuryBuilder {
             var serviceNum = ++totalModelCount;
             if (obj is FeatureBuilder builder) {
                 builder.uniqueModelNum = serviceNum;
-                builder.tmpDirParent = tmpDirParent;
-                builder.tmpDir = tmpDir;
-                builder.addOtherFeature = m => {
-                    AddModel(m, configObject);
-                };
                 builder.featureBaseObject = configObject;
-                builder.allFeaturesInRun = collectedModels;
-                builder.allBuildersInRun = collectedBuilders;
-                builder.manager = manager;
-                builder.avatarObject = avatarObject;
-                builder.originalObject = originalObject;
-                builder.mutableManager = mutableManager;
-
                 collectedBuilders.Add(builder);
             }
 

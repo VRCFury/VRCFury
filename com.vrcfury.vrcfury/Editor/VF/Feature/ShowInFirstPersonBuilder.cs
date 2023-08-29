@@ -7,11 +7,12 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 
 namespace VF.Feature {
     public class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
-        [VFAutowired] private readonly ObjectMoveBuilder mover;
-        [VFAutowired] private readonly FakeHeadBuilder fakeHead;
+        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly FakeHeadService fakeHead;
         
         [FeatureBuilderAction]
         public void Apply() {

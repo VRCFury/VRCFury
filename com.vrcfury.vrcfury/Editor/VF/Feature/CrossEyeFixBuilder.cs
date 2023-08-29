@@ -8,11 +8,12 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
-        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        [VFAutowired] private readonly ObjectMoveService mover;
         
         [FeatureBuilderAction]
         public void Apply() {

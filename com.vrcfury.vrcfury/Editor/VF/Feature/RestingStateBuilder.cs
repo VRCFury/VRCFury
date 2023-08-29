@@ -7,6 +7,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
@@ -16,7 +17,7 @@ namespace VF.Feature {
      */
     public class RestingStateBuilder : FeatureBuilder {
 
-        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
         private readonly List<AnimationClip> pendingClips = new List<AnimationClip>();
 

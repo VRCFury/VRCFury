@@ -12,7 +12,6 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
-using VF.Plugin;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
@@ -23,10 +22,10 @@ namespace VF.Feature {
 
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateBuilder restingState;
-        [VFAutowired] private readonly HapticAnimContactsPlugin hapticAnimContactsPlugin;
-        [VFAutowired] private readonly ParamSmoothingPlugin paramSmoothing;
-        [VFAutowired] private readonly FakeHeadBuilder fakeHead;
-        [VFAutowired] private readonly ObjectMoveBuilder mover;
+        [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
+        [VFAutowired] private readonly ParamSmoothingService paramSmoothing;
+        [VFAutowired] private readonly FakeHeadService fakeHead;
+        [VFAutowired] private readonly ObjectMoveService mover;
 
         private List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
 
@@ -206,7 +205,7 @@ namespace VF.Feature {
 
                     if (plug.enableDepthAnimations && plug.depthActions.Count > 0) {
                         var animRoot = GameObjects.Create("Animations", bakeRoot);
-                        hapticAnimContactsPlugin.CreatePlugAnims(
+                        _hapticAnimContactsService.CreatePlugAnims(
                             plug.depthActions,
                             plug.owner(),
                             animRoot,
@@ -365,7 +364,7 @@ namespace VF.Feature {
                     }
 
                     if (socket.enableDepthAnimations && socket.depthActions.Count > 0) {
-                        hapticAnimContactsPlugin.CreateSocketAnims(
+                        _hapticAnimContactsService.CreateSocketAnims(
                             socket.depthActions,
                             socket.owner(),
                             animRoot,

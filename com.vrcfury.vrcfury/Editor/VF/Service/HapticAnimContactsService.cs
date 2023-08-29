@@ -8,17 +8,17 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
-using VF.Service;
 
-namespace VF.Plugin {
+namespace VF.Service {
     /**
      * This can build the contacts needed for haptic component depth animations
      */
     [VFService]
-    public class HapticAnimContactsPlugin : FeaturePlugin {
-        [VFAutowired] private readonly ParamSmoothingPlugin smoothing;
+    public class HapticAnimContactsService {
+        [VFAutowired] private readonly ParamSmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        
+        [VFAutowired] private readonly AvatarManager avatarManager;
+
         public void CreatePlugAnims(
             ICollection<VRCFuryHapticPlug.PlugDepthAction> actions,
             VFGameObject plugOwner,
@@ -28,7 +28,7 @@ namespace VF.Plugin {
         ) {
             if (actions.Count == 0) return;
 
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
 
             var cache = new Dictionary<bool, VFAFloat>();
             VFAFloat GetDistance(bool allowSelf) {
@@ -103,7 +103,7 @@ namespace VF.Plugin {
             VFGameObject animRoot,
             string name
         ) {
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
 
             var cache = new Dictionary<bool, VFAFloat>();
             VFAFloat GetDistance(bool allowSelf) {
@@ -193,7 +193,7 @@ namespace VF.Plugin {
         }
         private FrontBack CreateFrontBack(string paramName, VFGameObject parent, float radius, bool allowSelf, string contactTag, Vector3? _posOffset = null) {
             var posOffset = _posOffset.GetValueOrDefault(Vector3.zero);
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
             var frontParam = fx.NewFloat($"{paramName}/Front");
             HapticUtils.AddReceiver(parent, posOffset, frontParam.Name(),
                 "Front", radius, new[] { contactTag },

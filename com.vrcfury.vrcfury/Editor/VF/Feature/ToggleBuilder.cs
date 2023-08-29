@@ -18,6 +18,7 @@ namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
+    [VFAutowired] private readonly PhysboneResetService physboneResetService;
 
     private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private VFABool param;
@@ -98,7 +99,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return;
         }
 
-        var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
+        var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         var layerName = model.name;
         var fx = GetFx();
