@@ -28,6 +28,7 @@ namespace VF.Feature.Base {
         // Needs to run before Toggles, because of its "After Bake" action
         BakeHapticPlugs,
         BakeHapticSockets,
+        BakeHapticVersions,
         
         ApplyRestState1,
 

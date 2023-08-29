@@ -21,7 +21,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
-        [VFAutowired] private readonly FixTouchingContactsService fixTouchingContactsService;
+        [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticPlugs)]
         public void Apply() {
@@ -49,7 +49,7 @@ namespace VF.Feature {
                     var renderers = bakeInfo.renderers;
                     var worldLength = bakeInfo.worldLength;
                     foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        fixTouchingContactsService.Add(r);
+                        _forceStateInAnimatorService.DisableDuringLoad(r.transform);
                     }
 
                     if (plug.configureTps || plug.enableSps) {

@@ -27,7 +27,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ParamSmoothingService paramSmoothing;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         [VFAutowired] private readonly ObjectMoveService mover;
-        [VFAutowired] private readonly FixTouchingContactsService fixTouchingContactsService;
+        [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         
         public const string socketsMenu = "Sockets";
         public const string optionsFolder = socketsMenu + "/<b>Options";
@@ -95,7 +95,7 @@ namespace VF.Feature {
                     var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
 
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        fixTouchingContactsService.Add(receiver);
+                        _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
                     }
 
                     // This needs to be created before we make the menu item, because it turns this off.
@@ -103,7 +103,7 @@ namespace VF.Feature {
 
                     if (socket.addMenuItem) {
                         obj.active = true;
-                        fixTouchingContactsService.ForceEnable(obj);
+                        _forceStateInAnimatorService.ForceEnable(obj);
 
                         ICollection<VFGameObject> FindChildren(params string[] names) {
                             return names.Select(n => bakeRoot.Find(n))
