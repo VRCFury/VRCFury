@@ -146,7 +146,6 @@ namespace VF.Feature {
                             continue;
                         }
                     } else {
-                        FailIfComponents(propBone);
                         UpdatePhysbones(propBone, avatarBone);
                     }
 
