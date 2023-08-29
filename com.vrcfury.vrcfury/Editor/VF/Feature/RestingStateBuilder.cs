@@ -19,7 +19,12 @@ namespace VF.Feature {
 
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
-        private readonly List<AnimationClip> pendingClips = new List<AnimationClip>();
+        private readonly List<PendingClip> pendingClips = new List<PendingClip>();
+
+        public class PendingClip {
+            public AnimationClip clip;
+            public string owner;
+        }
 
         public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
             if (recordDefaultStateFirst) {
@@ -31,7 +36,7 @@ namespace VF.Feature {
 
             var copy = new AnimationClip();
             copy.CopyFrom(clip);
-            pendingClips.Add(copy);
+            pendingClips.Add(new PendingClip { clip = copy, owner = manager.GetCurrentlyExecutingFeatureName() });
             mover.AddAdditionalManagedClip(copy);
         }
 
@@ -42,11 +47,11 @@ namespace VF.Feature {
          */
         [FeatureBuilderAction(FeatureOrder.ApplyRestState1)]
         public void ApplyPendingClips() {
-            foreach (var clip in pendingClips) {
-                clip.SampleAnimation(avatarObject, 0);
-                foreach (var (binding,curve) in clip.GetAllCurves()) {
+            foreach (var pending in pendingClips) {
+                pending.clip.SampleAnimation(avatarObject, 0);
+                foreach (var (binding,curve) in pending.clip.GetAllCurves()) {
                     HandleMaterialProperties(binding, curve);
-                    StoreBinding(binding, curve.GetFirst());
+                    StoreBinding(binding, curve.GetFirst(), pending.owner);
                 }
             }
             pendingClips.Clear();
@@ -62,7 +67,7 @@ namespace VF.Feature {
         }
 
         public IEnumerable<AnimationClip> GetPendingClips() {
-            return pendingClips;
+            return pendingClips.Select(pending => pending.clip);
         }
 
         private readonly Dictionary<EditorCurveBinding, StoredEntry> stored =
@@ -73,8 +78,7 @@ namespace VF.Feature {
             public FloatOrObject value;
         }
 
-        public void StoreBinding(EditorCurveBinding binding, FloatOrObject value) {
-            var owner = manager.GetCurrentlyExecutingFeatureName();
+        public void StoreBinding(EditorCurveBinding binding, FloatOrObject value, string owner) {
             binding = binding.Normalize();
             if (stored.TryGetValue(binding, out var otherStored)) {
                 if (value != otherStored.value) {
