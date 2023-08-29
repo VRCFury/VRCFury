@@ -4,7 +4,7 @@
 #define SPS_PI float(3.14159265359)
 
 // Type: 0=invalid 1=hole 2=ring 3=front
-void sps_parse_light(float range, half4 color, out int type, int myChannel) {
+void sps_parse_light(float range, half4 color, out int type, int channel) {
 	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
 		type = 0;
 		return;
@@ -12,7 +12,6 @@ void sps_parse_light(float range, half4 color, out int type, int myChannel) {
 
 	int legacyRange = round((range % 0.1) * 100);
 
-	int channel = 0;
 	// if (((alpha >> 6) & 3) == 2) {
 	// 	if (0.451 < range && range < 0.485) {
 	// 		channel = round((range - 0.452) / 0.002) + 1;
@@ -24,12 +23,22 @@ void sps_parse_light(float range, half4 color, out int type, int myChannel) {
 	// 		type = 0;
 	// 	}
 	// } else {
-		if (legacyRange == 1) type = 1;
-		if (legacyRange == 2) type = 2;
-		if (legacyRange == 5) type = 3;
+		if (channel == -1) { // legacy DPS channel 1
+			if (legacyRange == 3) type = 1;
+			if (legacyRange == 4) type = 2;
+			if (legacyRange == 6) type = 3;
+		} else { // Default Channel
+			if (legacyRange == 1) type = 1;
+			if (legacyRange == 2) type = 2;
+			if (legacyRange == 5) type = 3;
+		}
 	// }
 
-	if (channel != myChannel) {
+	//			  0 = Default Channel
+	//			 -1 = DPS Channel 1
+	// 1 through 15 = not implemented plug standard channels - see commented-out code above
+	if (channel != 0 && channel != -1) {
+		// Light didn't match any valid Channels, return "invalid" Type
 		type = 0;
 		return;
 	}
@@ -49,13 +58,12 @@ bool sps_search(
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];
-	const int myChannel = 0; // _SPS_Channel;
 	float3 lightWorldPos[4];
 	float3 lightLocalPos[4];
 	{
 		for(int i = 0; i < 4; i++) {
 	 		const float range = sps_attenToRange(unity_4LightAtten0[i]);
-			sps_parse_light(range, unity_LightColor[i], lightType[i], myChannel);
+			sps_parse_light(range, unity_LightColor[i], lightType[i], _SPS_Channel);
 	 		lightWorldPos[i] = float3(unity_4LightPosX0[i], unity_4LightPosY0[i], unity_4LightPosZ0[i]);
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}

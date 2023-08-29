@@ -148,6 +148,11 @@ namespace VF.Feature {
                     typeof(GameObject),
                     "m_IsActive"
                 );
+                var spsChannelBinding = EditorCurveBinding.FloatCurve( 
+                    pathToRenderer, 
+                    typeof(SkinnedMeshRenderer), 
+                    "material._SPS_Channel" 
+                ); 
 
                 void RewriteClip(AnimationClip clip) {
                     foreach (var (binding,curve) in clip.GetAllCurves()) {
@@ -163,6 +168,10 @@ namespace VF.Feature {
                                     clip.SetCurve(spsEnabledBinding, curve);
                                     clip.SetCurve(hapticsEnabledBinding, curve);
                                 }
+ 
+                                if (binding.propertyName == "channel") { 
+                                    clip.SetCurve(spsChannelBinding, curve); 
+                                } 
                             }
                         }
                         if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer)) {

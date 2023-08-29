@@ -37,7 +37,7 @@ float _SPS_Blendshape15;
 float _SPS_BlendshapeCount;
 
 float _SPS_Enabled;
-//float _SPS_Channel;
+float _SPS_Channel;
 float _SPS_Overrun;
 
 #endif

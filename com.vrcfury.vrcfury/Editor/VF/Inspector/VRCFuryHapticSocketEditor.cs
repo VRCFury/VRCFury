@@ -128,7 +128,12 @@ namespace VF.Inspector {
             container.Add(adv);
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
-            //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("channel"),
+                "Channel",
+                tooltip: "Plugs and Sockets with the same channel can find each other, similarly if they have different channels they will ignore each other." +
+                         " You can ANIMATE this field to change the channel, which SPS is targeting."
+            ));
 
             return container;
         }
@@ -230,6 +235,31 @@ namespace VF.Inspector {
 
             DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
+        
+        /// <summary>
+        /// Returns the light range for sockets given the conditions.
+        /// </summary>
+        /// <param name="isFront">front lights are either at 0.45 or 0.46 depending on DPS channel</param>
+        /// <param name="spsChannel">Channel to use (Currently only supports DPS Channels 0 and 1)</param>
+        /// <param name="addLight">rings are 0.42 or 0.44 depending on DPS channel, holes are 0.41 and 0.43</param>
+        /// <returns></returns>
+        public static float GetLightRange(bool isFront, VRCFuryHapticPlug.Channel spsChannel, VRCFuryHapticSocket.AddLight addLight = VRCFuryHapticSocket.AddLight.Hole) {
+            if (spsChannel != VRCFuryHapticPlug.Channel.Default && spsChannel != VRCFuryHapticPlug.Channel.LegacyDPSChannel1)
+                throw new NotImplementedException(); // remove this if when implementing other channels
+            float lightRange;
+
+            if (isFront) {
+                lightRange = spsChannel == VRCFuryHapticPlug.Channel.Default ? 0.45f : 0.46f;
+            } else {
+                if (spsChannel == VRCFuryHapticPlug.Channel.Default) {
+                    lightRange = addLight == VRCFuryHapticSocket.AddLight.Ring ? 0.42f : 0.41f;
+                } else {
+                    lightRange = addLight == VRCFuryHapticSocket.AddLight.Ring ? 0.44f : 0.43f;
+                }
+            }
+                    
+            return lightRange;
+        }
 
         public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
             var transform = socket.transform;
@@ -310,7 +340,7 @@ namespace VF.Inspector {
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
-                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.42f : 0.41f;
+                    mainLight.range = GetLightRange(false, socket.channel, lightType);
                     mainLight.shadows = LightShadows.None;
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -319,7 +349,7 @@ namespace VF.Inspector {
                     var frontLight = front.AddComponent<Light>();
                     frontLight.type = LightType.Point;
                     frontLight.color = Color.black;
-                    frontLight.range = 0.45f;
+                    frontLight.range = GetLightRange(true, socket.channel);
                     frontLight.shadows = LightShadows.None;
                     frontLight.renderMode = LightRenderMode.ForceVertex;
                 }

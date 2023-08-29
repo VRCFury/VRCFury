@@ -98,6 +98,8 @@ namespace VF.Feature {
                         _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
                     }
 
+                    socketRewritesToDo.Add(new SocketRewriteToDo{plugObject = socket.owner(), bakeRoot = bakeRoot, addLight = socket.addLight}); 
+
                     // This needs to be created before we make the menu item, because it turns this off.
                     var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
 
@@ -279,6 +281,58 @@ namespace VF.Feature {
                 start.TransitionsTo(states[Tuple.Create(0, -1)])
                     .When(firstSocket.Item2.IsFalse().And(firstSocket.Item3.IsGreaterThan(0)));
                 start.TransitionsTo(states[Tuple.Create(0, 1)]).When(fx.Always());
+            }
+        }
+        
+        public class SocketRewriteToDo {
+            public VFGameObject plugObject;
+            public VFGameObject bakeRoot;
+            public VRCFuryHapticSocket.AddLight addLight;
+        }
+        private List<SocketRewriteToDo> socketRewritesToDo = new List<SocketRewriteToDo>();
+
+        [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
+        public void ApplySpsRewrites() {
+            foreach (var socketRewrites in socketRewritesToDo) {
+                var pathToSocket = socketRewrites.plugObject.GetPath(avatarObject);
+                var pathToBake = socketRewrites.bakeRoot.GetPath(avatarObject);
+                var lightsObj = socketRewrites.bakeRoot.Children().First(child => child.name == "Lights");
+                var frontLightObj = lightsObj.Children().First(child => child.name == "Front");
+                var rootLightObj = lightsObj.Children().First(child => child.name == "Root");
+                var rootLightRangeBinding = EditorCurveBinding.FloatCurve(
+                    rootLightObj.GetPath(avatarObject),
+                    typeof(Light),
+                    "m_Range"
+                );
+                var frontLightRangeBinding = EditorCurveBinding.FloatCurve(
+                    frontLightObj.GetPath(avatarObject),
+                    typeof(Light),
+                    "m_Range"
+                );
+                foreach (var c in manager.GetAllUsedControllers()) {
+                    foreach (var clip in c.GetClips()) {
+                        foreach (var binding in clip.GetFloatBindings()) {
+                            if (binding.path == pathToSocket &&
+                                binding.propertyName == "channel") {
+
+                                AnimationCurve curveFront = clip.GetFloatCurve(binding);
+                                AnimationCurve curveRoot = clip.GetFloatCurve(binding);
+                                curveFront.keys = curveFront.keys.Select(keyframe => {
+                                    keyframe.value = VRCFuryHapticSocketEditor.GetLightRange(true,
+                                        (VRCFuryHapticPlug.Channel) keyframe.value);
+                                    return keyframe;
+                                }).ToArray();
+                                curveRoot.keys = curveRoot.keys.Select(keyframe => {
+                                    keyframe.value = VRCFuryHapticSocketEditor.GetLightRange(false,
+                                        (VRCFuryHapticPlug.Channel) keyframe.value, socketRewrites.addLight);
+                                    return keyframe;
+                                }).ToArray();
+                                clip.SetFloatCurve(rootLightRangeBinding, curveRoot);
+                                clip.SetFloatCurve(frontLightRangeBinding, curveFront);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
