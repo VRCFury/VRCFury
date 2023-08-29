@@ -134,6 +134,11 @@ namespace VF.Inspector {
                 tooltip: "Plugs and Sockets with the same channel can find each other, similarly if they have different channels they will ignore each other." +
                          " You can ANIMATE this field to change the channel, which SPS is targeting."
             ));
+            adv.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("addChannelToggle"), 
+                "Auto Generate DPS Channel Toggle",
+                tooltip: "Automatically generates a toggle to switch between the legacy DPS channel 1 and default."
+            ));
 
             return container;
         }

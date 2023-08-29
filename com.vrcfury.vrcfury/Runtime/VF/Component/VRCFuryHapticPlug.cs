@@ -21,6 +21,7 @@ namespace VF.Component {
         public bool spsAutorig = true;
         public List<string> spsBlendshapes = new List<string>();
         public Channel channel = Channel.Default;
+        public bool addChannelToggle = false;
         public List<Renderer> configureTpsMesh = new List<Renderer>();
         public float spsAnimatedEnabled = 1;
         public bool useLegacyRendererFinder = false;
