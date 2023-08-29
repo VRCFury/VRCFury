@@ -155,6 +155,8 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     value = false
                 };
                 adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("invert"), "Invert the UV Tile Discarding."));
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggled"), "Only Add Toggled On clip."));
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolveAlpha"), "Use Dissolve UV Dissolve."));
                 row2.Add(adv);
                 content.Add(row2);
                 return content;

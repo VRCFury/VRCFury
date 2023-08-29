@@ -48,6 +48,8 @@ namespace VF.Model.StateAction {
         public int slot1 = 0;
         public int slot2 = 0;
         public bool invert = false;
+        public bool toggled = false;
+        public bool dissolveAlpha = false;
     }
     
     [Serializable]
