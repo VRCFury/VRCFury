@@ -3,6 +3,7 @@ using System.Linq;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
@@ -16,6 +17,8 @@ namespace VF.Feature {
      * the layers from the controller that triggered it.
      */
     public class ControllerConflictBuilder : FeatureBuilder {
+        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        
         [FeatureBuilderAction(FeatureOrder.ControllerConflictCheck)]
         public void Apply() {
 
@@ -98,8 +101,7 @@ namespace VF.Feature {
                                 layerControl.goalWeight = playableControl.goalWeight;
                                 layerControl.blendDuration = 0;
                                 layerControl.debugString = playableControl.debugString;
-                                var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
-                                offsetBuilder.Register(layerControl, drivesLayer);
+                                animatorLayerControlManager.Register(layerControl, drivesLayer);
                             }
                             return false;
                         }

@@ -79,17 +79,18 @@ namespace VF {
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
                     if (builder.SafeRun(obj)) {
                         VRCFuryBuilder.StripAllVrcfComponents(obj);
+                        restartAudioLink = true;
+                        if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
+                            restartAv3Emulator = true;
+                        }
                     } else {
                         var name = obj.name;
                         var failMarker = new GameObject(name + " (VRCFury Failed)");
                         SceneManager.MoveGameObjectToScene(failMarker, obj.scene);
                         Object.DestroyImmediate(obj);
                     }
-                    restartAudioLink = true;
-                    if (obj != null && obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
-                        restartAv3Emulator = true;
-                    }
                 }
+                if (root.gameObject == null) continue; // it was deleted
                 foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                     RescanOnStartComponent.AddToObject(socket.gameObject);
                     var obj = socket.owner();

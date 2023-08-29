@@ -1,15 +1,19 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Service;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
 
 public class VisemesBuilder : FeatureBuilder<Visemes> {
+    [VFAutowired] private readonly ActionClipService actionClipService;
+
     private string[] visemeNames = {
         "sil", "PP", "FF", "TH", "DD", "kk", "CH", "SS", "nn", "RR", "aa", "E", "I", "O", "U"
     };
@@ -25,7 +29,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
         var visemes = fx.NewLayer("Visemes");
         var VisemeParam = fx.Viseme();
         void addViseme(int index, string text, State clipState) {
-            var clip = LoadState(text, clipState);
+            var clip = actionClipService.LoadState(text, clipState);
             var state = visemes.NewState(text).WithAnimation(clip);
             if (text == "sil") state.Move(0, -8);
             state.TransitionsFromEntry().When(VisemeParam.IsEqualTo(index));

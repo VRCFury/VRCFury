@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
@@ -69,7 +70,7 @@ namespace VF.Feature {
                 }
 
                 var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
-                    .Any(clip => !ClipBuilder.IsStaticMotion(clip));
+                    .Any(clip => !ClipBuilderService.IsStaticMotion(clip));
 
                 var usedBindings = bindingsByLayer[layer];
                 var otherLayersAnimateTheSameThing = bindingsByLayer
@@ -92,7 +93,7 @@ namespace VF.Feature {
                     if (hasNonstaticClips) {
                         // TODO: This could also break if the animation tangents are not linear
 
-                        var dualState = ClipBuilder.SplitRangeClip(state.motion);
+                        var dualState = ClipBuilderService.SplitRangeClip(state.motion);
                         if (dualState == null) {
                             AddDebug($"Not optimizing (contains single clip that is not static and not a single time range)");
                             continue;
@@ -176,7 +177,7 @@ namespace VF.Feature {
                             if (s.timeParameterActive) return null;
                             if (clip.isLooping) return null;
                             if (clip.GetLengthInFrames() > 5) return null;
-                            var dualState = ClipBuilder.SplitRangeClip(clip);
+                            var dualState = ClipBuilderService.SplitRangeClip(clip);
                             if (dualState == null) return null;
                             AnimationClip single;
                             if (s.speed >= 0.9) single = dualState.Item2;
@@ -228,8 +229,8 @@ namespace VF.Feature {
                 var tree = fx.NewBlendTree("Optimized Toggles");
                 tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
-                    var offEmpty = ClipBuilder.IsEmptyMotion(toggle.offState, avatarObject);
-                    var onEmpty = ClipBuilder.IsEmptyMotion(toggle.onState, avatarObject);
+                    var offEmpty = ClipBuilderService.IsEmptyMotion(toggle.offState, avatarObject);
+                    var onEmpty = ClipBuilderService.IsEmptyMotion(toggle.onState, avatarObject);
                     if (offEmpty && onEmpty) continue;
                     string param;
                     Motion motion;

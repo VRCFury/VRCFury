@@ -1,17 +1,21 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 
 namespace VF.Feature {
 
 public class TalkingBuilder : FeatureBuilder<Talking> {
+    [VFAutowired] private readonly ActionClipService actionClipService;
+
     [FeatureBuilderAction]
     public void Apply() {
         var fx = GetFx();
         var layer = fx.NewLayer("Talk Glow");
-        var clip = LoadState("TalkGlow", model.state);
+        var clip = actionClipService.LoadState("TalkGlow", model.state);
         var off = layer.NewState("Off");
         var on = layer.NewState("On").WithAnimation(clip);
 

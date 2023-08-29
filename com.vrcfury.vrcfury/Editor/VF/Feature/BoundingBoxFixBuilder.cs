@@ -16,7 +16,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BoundingBoxFix)]
         public void Apply() {
-            if (this != GetBuilder<BoundingBoxFixBuilder>()) {
+            if (!IsFirst()) {
                 return;
             }
 

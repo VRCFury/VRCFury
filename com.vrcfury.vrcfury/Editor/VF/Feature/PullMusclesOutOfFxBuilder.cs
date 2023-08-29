@@ -7,6 +7,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
@@ -17,6 +18,8 @@ namespace VF.Feature {
      * Gesture / Action where applicable.
      */
     public class PullMusclesOutOfFxBuilder : FeatureBuilder {
+        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        
         [FeatureBuilderAction(FeatureOrder.PullMusclesOutOfFx)]
         public void Apply() {
             var fx = GetFx();
@@ -115,13 +118,12 @@ namespace VF.Feature {
                     weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOff.goalWeight = 0;
                 } else {
-                    var offsetBuilder = GetBuilder<AnimatorLayerControlOffsetBuilder>();
                     var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
                     weightOn.goalWeight = 1;
-                    offsetBuilder.Register(weightOn, layer.GetRawStateMachine());
+                    animatorLayerControlManager.Register(weightOn, layer.GetRawStateMachine());
                     var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
                     weightOff.goalWeight = 0;
-                    offsetBuilder.Register(weightOff, layer.GetRawStateMachine());
+                    animatorLayerControlManager.Register(weightOff, layer.GetRawStateMachine());
                 }
 
                 previousStates.Add((myCond, newState));
