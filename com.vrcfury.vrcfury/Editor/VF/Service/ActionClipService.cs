@@ -83,6 +83,32 @@ namespace VF.Service {
                         }
                         break;
                     }
+                    case PoiyomiUVTileAction poiyomiUVTileAction: {
+                        var renderer = poiyomiUVTileAction.renderer;
+                        if (poiyomiUVTileAction.slot1 > 3 || poiyomiUVTileAction.slot1 < 0) {
+                            throw new ArgumentException("Poiyomi UV Tiles are ranges between 0-3, check if slots are within these ranges.");
+                        }
+                        if (poiyomiUVTileAction.slot2 > 3 || poiyomiUVTileAction.slot2 < 0) {
+                            throw new ArgumentException("Poiyomi UV Tiles are ranges between 0-3, check if slots are within these ranges.");
+                        }
+                        if (renderer != null) {
+                            var propertyName = poiyomiUVTileAction.dissolveAlpha ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(renderer.gameObject),
+                                renderer.GetType(),
+                                $"material.{propertyName+(poiyomiUVTileAction.slot1}_{(poiyomiUVTileAction.slot2)}"
+                            );
+                            if (!poiyomiUVTileAction.toggled)
+                                offClip.SetConstant(binding, poiyomiUVTileAction.invert ? 1f: 0f); //Ternary Operator easier to than If statement
+                            onClip.SetConstant(binding, poiyomiUVTileAction.invert ? 0f : 1f);
+                        }
+                        if (onClip != firstClip) {
+                            var copy = mutableManager.CopyRecursive(onClip);
+                            copy.Rewrite(rewriter);
+                            onClip.CopyFrom(copy);
+                        }
+                        break;
+                    }
                     case AnimationClipAction clipAction:
                         var clipActionClip = clipAction.clip.Get();
                         if (clipActionClip && clipActionClip != firstClip) {
