@@ -96,7 +96,7 @@ namespace VF.Service {
                             var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(renderer.gameObject),
                                 renderer.GetType(),
-                                $"material.{propertyName+(poiyomiUVTileAction.slot1}_{(poiyomiUVTileAction.slot2)}"
+                                $"material.{propertyName+poiyomiUVTileAction.slot1}_{(poiyomiUVTileAction.slot2)}"
                             );
                             if (!poiyomiUVTileAction.toggled)
                                 offClip.SetConstant(binding, poiyomiUVTileAction.invert ? 1f: 0f); //Ternary Operator easier to than If statement
