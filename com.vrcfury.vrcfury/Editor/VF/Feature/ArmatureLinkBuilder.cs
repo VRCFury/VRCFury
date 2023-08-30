@@ -10,14 +10,19 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
 
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
+        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly ActionClipService actionClipService;
+
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
             if (model.propBone == null) {
@@ -25,8 +30,6 @@ namespace VF.Feature {
                 return;
             }
 
-            var mover = GetBuilder<ObjectMoveBuilder>();
-            
             var links = GetLinks();
             if (links == null) {
                 return;
@@ -143,7 +146,6 @@ namespace VF.Feature {
                             continue;
                         }
                     } else {
-                        FailIfComponents(propBone);
                         UpdatePhysbones(propBone, avatarBone);
                     }
 

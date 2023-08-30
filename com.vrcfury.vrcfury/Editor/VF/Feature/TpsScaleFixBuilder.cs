@@ -12,13 +12,14 @@ using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
     public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {
-            if (this != GetBuilder<TpsScaleFixBuilder>()) {
+            if (!IsFirst()) {
                 return;
             }
 
@@ -151,16 +152,16 @@ namespace VF.Feature {
                     var propertyName = scaledProp.Key;
                     if (scaledProp.Value is float f) {
                         var lengthOffset = f / handledScale;
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilder.OneFrame(lengthOffset));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilder.OneFrame(0));
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilderService.OneFrame(lengthOffset));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilderService.OneFrame(0));
                     } else if (scaledProp.Value is Vector4 vec) {
                         var scaleOffset = vec.z / handledScale;
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilder.OneFrame(scaleOffset));
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilder.OneFrame(scaleOffset));
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilder.OneFrame(scaleOffset));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilder.OneFrame(0));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilder.OneFrame(0));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilder.OneFrame(0));
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilderService.OneFrame(scaleOffset));
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilderService.OneFrame(scaleOffset));
+                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilderService.OneFrame(scaleOffset));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilderService.OneFrame(0));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilderService.OneFrame(0));
+                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilderService.OneFrame(0));
                     }
                 }
 

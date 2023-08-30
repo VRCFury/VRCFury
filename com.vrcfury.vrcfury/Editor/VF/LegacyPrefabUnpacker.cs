@@ -5,8 +5,29 @@ using UnityEngine;
 namespace VF {
     [InitializeOnLoad]
     public static class LegacyPrefabUnpacker {
-        public static void Scan() {
+        static LegacyPrefabUnpacker() {
+            ScanAlways();
+        }
+
+        public class PostProcessor : AssetPostprocessor {
+            static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths) {
+                ScanAlways();
+            }
+        }
+
+        private static void ScanAlways() {
+            // GogoLoco
+            if (
+                Exists("4485bd5c6aea29e48bf1428a18876fcc") // controller from the artist
+                && !Exists("c8ff110e1741d344195bdc3174fa507f") // vrcfury prefab from this package
+            ) {
+                Import("3");
+            }
+        }
+        
+        public static void ScanOnce() {
             Debug.Log("VRCFury is scanning for needed legacy prefabs");
+            ScanAlways();
             
             // Czarwolf Hybrid
             if (
@@ -24,15 +45,7 @@ namespace VF {
             ) {
                 Import("2");
             }
-            
-            // GogoLoco
-            if (
-                Exists("4485bd5c6aea29e48bf1428a18876fcc") // controller from the artist
-                && !Exists("c8ff110e1741d344195bdc3174fa507f") // vrcfury prefab from this package
-            ) {
-                Import("3");
-            }
-            
+
             // HeftyBits
             if (
                 Exists("da0f7a25615533849a9c7c165e046df9") // controller from the artist

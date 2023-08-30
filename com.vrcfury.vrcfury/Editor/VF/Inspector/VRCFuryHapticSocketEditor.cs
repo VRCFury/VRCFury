@@ -288,8 +288,6 @@ namespace VF.Inspector {
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
             }
-            
-            HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, false);
 
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
                 var lights = GameObjects.Create("Lights", bakeRoot);

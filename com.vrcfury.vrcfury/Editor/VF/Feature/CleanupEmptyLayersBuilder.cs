@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
@@ -50,7 +51,7 @@ namespace VF.Feature {
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     if (i == 0) continue;
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
-                        .Any(clip => !ClipBuilder.IsEmptyMotion(clip, avatarObject));
+                        .Any(clip => !ClipBuilderService.IsEmptyMotion(clip, avatarObject));
                     var hasBehaviour = new AnimatorIterator.Behaviours().From(layer)
                         .Any();
 

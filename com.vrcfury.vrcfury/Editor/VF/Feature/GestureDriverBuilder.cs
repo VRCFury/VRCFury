@@ -6,15 +6,18 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
-using VF.Plugin;
+using VF.Service;
 
 namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
+        [VFAutowired] private readonly ParamSmoothingService smoothing;
+        [VFAutowired] private readonly ActionClipService actionClipService;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -100,7 +103,7 @@ namespace VF.Feature {
                 addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
             }
             
-            var clip = LoadState(uid, gesture.state);
+            var clip = actionClipService.LoadState(uid, gesture.state);
             if (gesture.enableWeight && weightHand > 0) {
                 MakeWeightParams();
                 var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
@@ -133,7 +136,6 @@ namespace VF.Feature {
             rightWeightParam = MakeWeightLayer(GestureRightWeight, GestureRightCondition);
         }
         private VFAFloat MakeWeightLayer(VFAFloat input, VFACondition whenEnabled) {
-            var smoothing = GetPlugin<ParamSmoothingPlugin>();
             var maintained =
                 smoothing.SetValueWithConditions(
                     $"{input.Name()}Maintained",

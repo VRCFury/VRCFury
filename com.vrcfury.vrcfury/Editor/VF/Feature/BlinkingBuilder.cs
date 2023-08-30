@@ -3,13 +3,17 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
 
 public class BlinkingBuilder : FeatureBuilder<Blinking> {
+    [VFAutowired] private readonly ActionClipService actionClipService;
+    
     /** Adding this feature to the build will disable blinking when the param is true */
     [NoBuilder]
     public class BlinkingPrevention : FeatureModel {
@@ -59,7 +63,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
         // Receiver / Animator
         {
-            var blinkClip = LoadState("blink", model.state);
+            var blinkClip = actionClipService.LoadState("blink", model.state);
             var blinkDuration = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
             var holdDuration = model.holdTime >= 0 ? model.holdTime : 0;
             var layer = fx.NewLayer("Blink - Receiver");

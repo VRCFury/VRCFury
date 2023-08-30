@@ -8,15 +8,18 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Service;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
+
     private VFAParam param;
     private string layerName;
     private VFACondition onCase;
@@ -30,6 +33,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private string humanoidMask = null;
     private string primaryExclusive = null;
 
+    [VFAutowired] private readonly ActionClipService actionClipService;
+    [VFAutowired] private readonly PhysboneResetService physboneResetService;
+
+    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
     private AnimationClip restingClip;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
@@ -220,8 +227,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             icon: model.enableIcon ? model.icon.Get() : null
         );
 
-        var clip = LoadState("On", model.state);
-        if (ClipBuilder.IsStaticMotion(clip)) {
+        var clip = actionClipService.LoadState("On", model.state);
+        if (ClipBuilderService.IsStaticMotion(clip)) {
             var tree = fx.NewBlendTree("On Tree");
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
@@ -251,7 +258,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return;
         }
 
-        var physBoneResetter = CreatePhysBoneResetter(model.resetPhysbones, model.name);
+        var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         layerName = model.name;
 
@@ -322,10 +329,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State outAction,
         VFABool physBoneResetter
     ) {
+
         var transitionTime = model.transitionTime;
         if (!model.hasTransitionTime)  transitionTime = 0;
 
-        var clip = LoadState(onName, action);
+        var clip = actionClipService.LoadState(onName, action);
 
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
@@ -343,14 +351,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {
             
-            var transitionClipIn = LoadState(onName + " In", inAction);
+            var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
 
             // if clip is empty, copy last frame of transition
             if (clip == controller.GetEmptyClip()) {
                 clip = controller.NewClip(onName);
                 clip.CopyFromLast(transitionClipIn);
             }
-            
+
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
             var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
@@ -359,7 +367,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             } else {
                 transition.When().WithTransitionExitTime(1);
             }
-
 
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
@@ -370,9 +377,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.simpleOutTransition) outAction = inAction;
 
+
        
         if (model.hasTransition && outAction != null && outAction.actions.Count() != 0) {
-            var transitionClipOut = LoadState(onName + " Out", outAction);
+            var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : 0);
         } else {

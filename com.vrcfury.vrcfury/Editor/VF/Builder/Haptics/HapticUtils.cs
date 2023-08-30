@@ -11,16 +11,6 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
     public class HapticUtils {
-        
-        // Bump when plug senders or receivers are changed
-        public static int plugVersion = 8;
-        
-        // Bump when socket senders or receivers are changed
-        public static int socketVersion = 9;
-        
-        // Bump when any senders are changed
-        public static int beaconVersion = 6;
-        
         public static string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
         public static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
         public static string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
@@ -70,25 +60,6 @@ namespace VF.Builder.Haptics {
                 sender.position /= child.worldScale.x;
                 sender.radius /= child.worldScale.x;
                 sender.height /= child.worldScale.x;
-            }
-        }
-
-        public static void AddVersionContacts(Transform obj, string paramPrefix, bool baked, bool isPen) {
-            var versionLocal = GameObjects.Create("VersionLocal", obj);
-            // Version Local
-            var varName = baked ? "BakedVersion" : "Version";
-            var versionLocalTag = RandomTag();
-            AddSender(versionLocal, Vector3.zero, "Sender", 0.01f, versionLocalTag);
-            // The "TPS_" + versionTag one is there so that the TPS wizard will delete this version flag if someone runs it
-            var versionLocalNum = isPen ? plugVersion : socketVersion;
-            AddReceiver(versionLocal, Vector3.one * 0.01f, paramPrefix + "/" + varName + "/" + versionLocalNum, "Receiver", 0.01f, new []{versionLocalTag, "TPS_" + RandomTag()}, allowOthers:false, localOnly:true);
-
-            // Version Remote
-            var versionBeaconTag = "OGB_VERSION_" + beaconVersion;
-            AddSender(obj, Vector3.zero, "VersionBeacon", 1f, versionBeaconTag);
-            if (!baked) {
-                AddReceiver(versionLocal, Vector3.zero, paramPrefix + "/VersionMatch", "BeaconReceiver", 1f,
-                    new[] { versionBeaconTag, "TPS_" + RandomTag() }, allowSelf: false, localOnly: true);
             }
         }
 

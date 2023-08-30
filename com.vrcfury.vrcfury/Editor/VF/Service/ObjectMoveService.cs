@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Utils;
 
-namespace VF.Feature {
+namespace VF.Service {
     /** This builder is responsible for moving objects for other builders,
      * then fixing any animations that referenced those objects.
      *
@@ -13,7 +14,11 @@ namespace VF.Feature {
      * is because some animations may not be present on the avatar yet. Specifically, FullController
      * may add more animations to the avatar later on, and those may use the pre-moved paths.
      */
-    public class ObjectMoveBuilder : FeatureBuilder {
+    [VFService]
+    public class ObjectMoveService {
+        [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly AvatarManager manager;
+
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
         public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {

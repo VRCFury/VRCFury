@@ -428,8 +428,6 @@ namespace VF.Inspector {
                 }).ToArray();
             }
 
-            HapticUtils.AddVersionContacts(bakeRoot, paramPrefix, onlySenders, true);
-            
             if (EditorApplication.isPlaying) {
                 foreach (var light in bakeRoot.GetComponentsInSelfAndChildren<Light>()) {
                     light.hideFlags |= HideFlags.HideInHierarchy;

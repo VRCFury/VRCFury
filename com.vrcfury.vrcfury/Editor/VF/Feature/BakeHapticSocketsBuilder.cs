@@ -9,207 +9,33 @@ using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
-using VF.Plugin;
+using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
-    public class BakeHapticsBuilder : FeatureBuilder {
+    [VFService]
+    public class BakeHapticSocketsBuilder : FeatureBuilder {
 
-        private List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
+        [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly RestingStateBuilder restingState;
+        [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
+        [VFAutowired] private readonly ParamSmoothingService paramSmoothing;
+        [VFAutowired] private readonly FakeHeadService fakeHead;
+        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
+        
+        public const string socketsMenu = "Sockets";
+        public const string optionsFolder = socketsMenu + "/<b>Options";
 
-        public class SpsRewriteToDo {
-            public VFGameObject plugObject;
-            public SkinnedMeshRenderer skin;
-            public VFGameObject bakeRoot;
-            public Func<Material, Material> configureMaterial;
-            public IList<string> spsBlendshapes;
-        }
-
-        [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
-        public void ApplySpsRewrites() {
-            foreach (var rewrite in spsRewritesToDo) {
-                var pathToPlug = rewrite.plugObject.GetPath(avatarObject);
-                var pathToRenderer = rewrite.skin.owner().GetPath(avatarObject);
-                var pathToBake = rewrite.bakeRoot.GetPath(avatarObject);
-                var mesh = rewrite.skin.sharedMesh;
-                var spsEnabledBinding = EditorCurveBinding.FloatCurve(
-                    pathToRenderer,
-                    typeof(SkinnedMeshRenderer),
-                    "material._SPS_Enabled"
-                );
-                var hapticsEnabledBinding = EditorCurveBinding.FloatCurve(
-                    pathToBake,
-                    typeof(GameObject),
-                    "m_IsActive"
-                );
-
-                void RewriteClip(AnimationClip clip) {
-                    foreach (var (binding,curve) in clip.GetAllCurves()) {
-                        if (curve.IsFloat) {
-                            if (binding.path == pathToRenderer) {
-                                if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                    clip.SetCurve(spsEnabledBinding, curve);
-                                    clip.SetCurve(hapticsEnabledBinding, curve);
-                                }
-                            }
-                            if (binding.path == pathToPlug) {
-                                if (binding.propertyName == "spsAnimatedEnabled") {
-                                    clip.SetCurve(spsEnabledBinding, curve);
-                                    clip.SetCurve(hapticsEnabledBinding, curve);
-                                }
-                            }
-                        }
-                        if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer)) {
-                            var b = binding;
-                            b.type = typeof(SkinnedMeshRenderer);
-                            clip.SetCurve(b, curve);
-                        }
-
-                        if (curve.IsFloat && binding.path == pathToRenderer && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.")) {
-                            var blendshapeName = binding.propertyName.Substring(11);
-                            var blendshapeMeshIndex = rewrite.spsBlendshapes.IndexOf(blendshapeName);
-                            if (blendshapeMeshIndex >= 0) {
-                                clip.SetCurve(
-                                    EditorCurveBinding.FloatCurve(pathToRenderer, typeof(SkinnedMeshRenderer), $"material._SPS_Blendshape{blendshapeMeshIndex}"),
-                                    curve
-                                );
-                            }
-                        }
-
-                        if (!curve.IsFloat && binding.path == pathToRenderer && binding.propertyName.StartsWith("m_Materials")) {
-                            var newKeys = curve.ObjectCurve.Select(frame => {
-                                if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
-                                return frame;
-                            }).ToArray();
-                            clip.SetCurve(binding, new FloatOrObjectCurve(newKeys));
-                        }
-                    }
-                }
-                foreach (var c in manager.GetAllUsedControllers()) {
-                    foreach (var clip in c.GetClips()) {
-                        RewriteClip(clip);
-                    }
-                }
-                foreach (var clip in GetBuilder<RestingStateBuilder>().GetPendingClips()) {
-                    RewriteClip(clip);
-                }
-
-                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials.Select(rewrite.configureMaterial).ToArray();
-            }
-        }
-
-        [FeatureBuilderAction(FeatureOrder.BakeHaptics)]
+        [FeatureBuilderAction(FeatureOrder.BakeHapticSockets)]
         public void Apply() {
             var fx = GetFx();
             var usedNames = new List<string>();
-            var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
-            var fakeHead = GetBuilder<FakeHeadBuilder>();
-
-            // When you first load into a world, contact receivers already touching a sender register as 0 proximity
-            // until they are removed and then reintroduced to each other.
-            var objectsToDisableTemporarily = new HashSet<VFGameObject>();
-            // This is here so if users have an existing toggle that turns off sockets, we forcefully turn it back
-            // on if it's managed by our new menu system.
-            var objectsToForceEnable = new HashSet<VFGameObject>();
-            
-            var socketsMenu = "Sockets";
-            var optionsFolder = $"{socketsMenu}/<b>Options";
-
-            AnimationClip tipLightOnClip = null;
-            
-            foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                try {
-                    PhysboneUtils.RemoveFromPhysbones(plug.transform);
-                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(
-                        plug,
-                        usedNames,
-                        plugRenderers,
-                        mutableManager: mutableManager,
-                        deferMaterialConfig: true
-                    );
-
-                    if (bakeInfo == null) continue;
-
-                    var name = bakeInfo.name;
-                    var bakeRoot = bakeInfo.bakeRoot;
-                    var renderers = bakeInfo.renderers;
-                    var worldLength = bakeInfo.worldLength;
-                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        objectsToDisableTemporarily.Add(r.transform);
-                    }
-
-                    if (plug.configureTps || plug.enableSps) {
-                        foreach (var r in renderers) {
-                            var renderer = r.renderer;
-                            addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
-                            if (renderer is SkinnedMeshRenderer skin) {
-                                addOtherFeature(new BoundingBoxFix2() { skipRenderer = skin });
-                            }
-                        }
-                    }
-
-                    var postBakeClip = LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                    GetBuilder<RestingStateBuilder>().ApplyClipToRestingState(postBakeClip);
-
-                    if (plug.enableSps) {
-                        foreach (var r in renderers) {
-                            spsRewritesToDo.Add(new SpsRewriteToDo {
-                                plugObject = plug.owner(),
-                                skin = (SkinnedMeshRenderer)r.renderer,
-                                bakeRoot = bakeRoot,
-                                configureMaterial = r.configureMaterial,
-                                spsBlendshapes = r.spsBlendshapes
-                            });
-                        }
-                    }
-
-                    if (plug.addDpsTipLight) {
-                        var tip = GameObjects.Create("LegacyDpsTip", bakeRoot);
-                        tip.active = false;
-                        var light = tip.AddComponent<Light>();
-                        light.type = LightType.Point;
-                        light.color = Color.black;
-                        light.range = 0.49f;
-                        light.shadows = LightShadows.None;
-                        light.renderMode = LightRenderMode.ForceVertex;
-                        light.intensity = worldLength;
-
-                        if (tipLightOnClip == null) {
-                            var param = fx.NewBool("tipLight", synced: true);
-                            manager.GetMenu()
-                                .NewMenuToggle(
-                                    $"{optionsFolder}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
-                                    param);
-                            tipLightOnClip = fx.NewClip("EnableAutoReceivers");
-                            var layer = fx.NewLayer("Tip Light");
-                            var off = layer.NewState("Off");
-                            var on = layer.NewState("On").WithAnimation(tipLightOnClip);
-                            var whenOn = param.IsTrue();
-                            off.TransitionsTo(on).When(whenOn);
-                            on.TransitionsTo(off).When(whenOn.Not());
-                        }
-
-                        clipBuilder.Enable(tipLightOnClip, tip);
-                    }
-
-                    if (plug.enableDepthAnimations && plug.depthActions.Count > 0) {
-                        var animRoot = GameObjects.Create("Animations", bakeRoot);
-                        GetPlugin<HapticAnimContactsPlugin>().CreatePlugAnims(
-                            plug.depthActions,
-                            plug.owner(),
-                            animRoot,
-                            name,
-                            worldLength
-                        );
-                    }
-                } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
-                }
-            }
 
             var enableAuto = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
                 .Where(o => o.addMenuItem && o.enableAuto)
@@ -264,12 +90,12 @@ namespace VF.Feature {
                     fakeHead.MarkEligible(socket.gameObject);
                     if (VRCFuryHapticSocketEditor.IsChildOfHead(socket)) {
                         var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
-                        GetBuilder<ObjectMoveBuilder>().Move(socket.gameObject, head);
+                        mover.Move(socket.gameObject, head);
                     }
                     var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
 
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        objectsToDisableTemporarily.Add(receiver.transform);
+                        _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
                     }
 
                     // This needs to be created before we make the menu item, because it turns this off.
@@ -277,7 +103,7 @@ namespace VF.Feature {
 
                     if (socket.addMenuItem) {
                         obj.active = true;
-                        objectsToForceEnable.Add(obj);
+                        _forceStateInAnimatorService.ForceEnable(obj);
 
                         ICollection<VFGameObject> FindChildren(params string[] names) {
                             return names.Select(n => bakeRoot.Find(n))
@@ -302,7 +128,7 @@ namespace VF.Feature {
                         }
 
                         if (socket.enableActiveAnimation) {
-                            var additionalActiveClip = LoadState("socketActive", socket.activeActions);
+                            var additionalActiveClip = actionClipService.LoadState("socketActive", socket.activeActions);
                             onLocalClip.CopyFrom(additionalActiveClip);
                             onRemoteClip.CopyFrom(additionalActiveClip);
                         }
@@ -357,7 +183,7 @@ namespace VF.Feature {
                     }
 
                     if (socket.enableDepthAnimations && socket.depthActions.Count > 0) {
-                        GetPlugin<HapticAnimContactsPlugin>().CreateSocketAnims(
+                        _hapticAnimContactsService.CreateSocketAnims(
                             socket.depthActions,
                             socket.owner(),
                             animRoot,
@@ -409,7 +235,7 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = GetPlugin<ParamSmoothingPlugin>().IsBWinningTree(aDist, bDist, vsParam);
+                        var tree = paramSmoothing.IsBWinningTree(aDist, bDist, vsParam);
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }
@@ -447,25 +273,6 @@ namespace VF.Feature {
                 start.TransitionsTo(states[Tuple.Create(0, -1)])
                     .When(firstSocket.Item2.IsFalse().And(firstSocket.Item3.IsGreaterThan(0)));
                 start.TransitionsTo(states[Tuple.Create(0, 1)]).When(fx.Always());
-            }
-
-            if (objectsToDisableTemporarily.Count > 0) {
-                var layer = fx.NewLayer("Haptics Off Temporarily Upon Load");
-                var off = layer.NewState("Off");
-                var on = layer.NewState("On");
-                off.TransitionsTo(on).When().WithTransitionExitTime(1);
-                
-                var firstFrameClip = fx.NewClip("Load (First Frame)");
-                foreach (var obj in objectsToDisableTemporarily) {
-                    clipBuilder.Enable(firstFrameClip, obj.gameObject, false);
-                }
-                off.WithAnimation(firstFrameClip);
-                
-                var onClip = fx.NewClip("Load (On)");
-                foreach (var obj in objectsToForceEnable) {
-                    clipBuilder.Enable(onClip, obj.gameObject);
-                }
-                on.WithAnimation(onClip);
             }
         }
     }

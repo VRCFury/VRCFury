@@ -6,16 +6,21 @@ using UnityEngine;
 using VF.Builder;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Utils;
 
-namespace VF.Plugin {
-    public class ParamSmoothingPlugin : FeaturePlugin {
+namespace VF.Service {
+
+    [VFService]
+    public class ParamSmoothingService {
+        [VFAutowired] private readonly AvatarManager avatarManager;
+        
         public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
             if (smoothingSeconds <= 0) return target;
             if (smoothingSeconds > 10) smoothingSeconds = 10;
             var fractionPerFrame = GetFractionPerFrame(smoothingSeconds, useAcceleration);
 
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
             var speedParam = fx.NewFloat($"{name}/FractionPerFrame", def: fractionPerFrame);
 
             var output = Smooth_($"{name}/Pass1", target, speedParam);
@@ -41,7 +46,7 @@ namespace VF.Plugin {
         }
 
         private VFAFloat Smooth_(string name, VFAFloat target, VFAFloat speedParam) {
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
 
             var output = fx.NewFloat(name, def: target.GetDefault());
             
@@ -87,7 +92,7 @@ namespace VF.Plugin {
             float defaultValue,
             params (VFAFloat,VFACondition)[] targets
         ) {
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
 
             var output = fx.NewFloat(name, def: defaultValue);
             
@@ -121,7 +126,7 @@ namespace VF.Plugin {
         }
 
         public VFACondition GreaterThan(VFAFloat a, VFAFloat b, bool orEqualTo = false) {
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
             var bIsWinning = fx.NewFloat("comparison");
             var layer = fx.NewLayer($"{a.Name()} vs {b.Name()}");
             var tree = IsBWinningTree(a, b, bIsWinning);
@@ -131,7 +136,7 @@ namespace VF.Plugin {
         }
 
         public Motion IsBWinningTree(VFAFloat a, VFAFloat b, VFAFloat bWinning) {
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
             var bWinningClip = fx.NewClip("vs1");
             bWinningClip.SetCurve("", typeof(Animator), bWinning.Name(), AnimationCurve.Constant(0, 0, 1f));
             var aWinningClip = fx.NewClip("vs0");
@@ -147,7 +152,7 @@ namespace VF.Plugin {
         }
 
         public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
-            var fx = GetFx();
+            var fx = avatarManager.GetFx();
             var outputDefault = VrcfMath.Map(input.GetDefault(), inMin, inMax, outMin, outMax);
             outputDefault = VrcfMath.Clamp(outputDefault, outMin, outMax);
             var output = fx.NewFloat(name, def: outputDefault);

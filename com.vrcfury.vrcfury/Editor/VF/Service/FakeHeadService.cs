@@ -5,12 +5,17 @@ using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 
-namespace VF.Feature {
+namespace VF.Service {
     /** This builder is responsible for creating a fake head bone, and moving
      * objects onto it, if those objects should be visible in first person.
      */
-    public class FakeHeadBuilder : FeatureBuilder {
+    [VFService]
+    public class FakeHeadService {
+
+        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly AvatarManager manager;
 
         private HashSet<GameObject> objectsEligibleForFakeHead = new HashSet<GameObject>();
 
@@ -24,15 +29,14 @@ namespace VF.Feature {
                 return;
             }
 
-            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
+            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.Head);
             if (!head) return;
             
             var objectsForFakeHead = objectsEligibleForFakeHead
                 .Where(obj => obj.transform.parent == head.transform)
                 .ToList();
             if (objectsForFakeHead.Count == 0) return;
-            
-            var mover = GetBuilder<ObjectMoveBuilder>();
+
             var vrcfAlwaysVisibleHead = GameObjects.Create("vrcfAlwaysVisibleHead", head.transform.parent, useTransformFrom: head.transform);
             
             var p = vrcfAlwaysVisibleHead.AddComponent<ParentConstraint>();

@@ -3,7 +3,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 
 namespace VF.Builder {
-    static internal class AnimatorStateExtensions {
+    public static class AnimatorStateExtensions {
         public static StateMachineBehaviour VAddStateMachineBehaviour(this AnimatorState state, Type type) {
             var added = state.AddStateMachineBehaviour(type);
             if (added == null) {

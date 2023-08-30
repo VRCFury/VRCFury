@@ -33,7 +33,7 @@ namespace VF {
             }
 
             if (importLegacyPrefabs) {
-                LegacyPrefabUnpacker.Scan();
+                LegacyPrefabUnpacker.ScanOnce();
                 File.Create(LegacyPrefabsImportedMarker).Close();
             }
 

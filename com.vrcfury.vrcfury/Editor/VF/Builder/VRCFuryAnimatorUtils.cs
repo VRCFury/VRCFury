@@ -387,6 +387,9 @@ public class VFAInteger : VFAParam {
 
 public class VFACondition {
     internal IEnumerable<IEnumerable<AnimatorCondition>> transitions;
+    private VFACondition() {
+        transitions = new List<List<AnimatorCondition>>();
+    }
     public VFACondition(AnimatorCondition cond) {
         var transition = new List<AnimatorCondition> { cond };
         transitions = new List<List<AnimatorCondition>> { transition };
@@ -404,6 +407,9 @@ public class VFACondition {
         return new VFACondition(AnimatorConditionLogic.Not(transitions));
     }
 
+    public static VFACondition Never() {
+        return new VFACondition();
+    }
 }
 
 public class VFAEntryTransition {
