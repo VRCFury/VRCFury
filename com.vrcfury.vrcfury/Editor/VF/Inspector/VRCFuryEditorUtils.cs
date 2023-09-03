@@ -628,7 +628,7 @@ public static class VRCFuryEditorUtils {
         return el;
     }
 
-    public static Label Error(string message) {
+    public static VisualElement Error(string message) {
         var i = Section();
         i.Add(WrappedLabel(message));
         BorderColor(i, Color.red);

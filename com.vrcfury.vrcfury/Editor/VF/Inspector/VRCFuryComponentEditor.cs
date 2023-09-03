@@ -265,7 +265,8 @@ namespace VF.Inspector {
                     var isModified = mods.Count > 0;
                     overrideLabel.style.display = isModified ? DisplayStyle.Flex : DisplayStyle.None;
                     if (isModified) {
-                        overrideLabel.text = baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath));
+                        overrideLabel.Clear();
+                        overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath))));
                     }
                 }
                 EditorApplication.delayCall += CheckOverride;
