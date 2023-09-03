@@ -390,41 +390,46 @@ namespace VF.Feature {
                 var text = new List<string>();
 
                 var baseObject = GetBaseObject();
-                if (avatarObject == null || avatarObject != baseObject) {
-                    var missingPaths = new HashSet<string>();
-                    var usesWdOff = false;
-                    foreach (var c in model.controllers) {
-                        var rc = c.controller.Get();
-                        var controller = rc as AnimatorController;
-                        if (controller == null) continue;
-                        foreach (var state in new AnimatorIterator.States().From(controller)) {
-                            if (!state.writeDefaultValues) {
-                                usesWdOff = true;
-                            }
-                            missingPaths.UnionWith(new AnimatorIterator.Clips().From(state)
-                                .SelectMany(clip => clip.GetAllBindings())
-                                .Select(binding => RewritePath(binding.path))
-                                .Where(path => path != null)
-                                .Where(path => baseObject.transform.Find(path) == null));
-                        }
-                    }
 
-                    if (usesWdOff) {
-                        text.Add(
-                            "These controllers use WD off!" +
-                            " If you want this prop to be reusable, you should use WD on." +
-                            " VRCFury will automatically convert the WD on or off to match the client's avatar," +
-                            " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
-                        text.Add("");
+                var missingPaths = new HashSet<string>();
+                var usesWdOff = false;
+                foreach (var c in model.controllers) {
+                    var rc = c.controller.Get();
+                    var controller = rc as AnimatorController;
+                    if (controller == null) continue;
+                    foreach (var state in new AnimatorIterator.States().From(controller)) {
+                        if (!state.writeDefaultValues) {
+                            usesWdOff = true;
+                        }
+                        missingPaths.UnionWith(new AnimatorIterator.Clips().From(state)
+                            .SelectMany(clip => clip.GetAllBindings())
+                            .Select(binding => RewritePath(binding.path))
+                            .Where(path => path != null)
+                            .Where(path => baseObject.transform.Find(path) == null));
                     }
-                    if (missingPaths.Count > 0) {
+                }
+
+                if (usesWdOff) {
+                    text.Add(
+                        "These controllers use WD off!" +
+                        " If you want this prop to be reusable, you should use WD on." +
+                        " VRCFury will automatically convert the WD on or off to match the client's avatar," +
+                        " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
+                    text.Add("");
+                }
+                if (missingPaths.Count > 0) {
+                    if (avatarObject == baseObject) {
+                        text.Add(
+                            "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything. " +
+                            "You may need to use 'Rewrite bindings' to fix them if your avatar's objects are in a different location.");
+                    } else {
                         text.Add(
                             "These paths are animated in the controller, but not found as children of this object. " +
                             "If you want this prop to be reusable, you should use 'Rewrite bindings' above to rewrite " +
                             "these paths so they work with how the objects are located within this object.");
-                        text.Add("");
-                        text.AddRange(missingPaths.OrderBy(path => path));
                     }
+                    text.Add("");
+                    text.AddRange(missingPaths.OrderBy(path => path));
                 }
 
                 return string.Join("\n", text);
