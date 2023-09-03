@@ -143,8 +143,18 @@ namespace VF.Feature {
                     typeof(SkinnedMeshRenderer),
                     "material._SPS_Enabled"
                 );
-                var hapticsEnabledBinding = EditorCurveBinding.FloatCurve(
-                    pathToBake,
+                var hapticsSendersEnabledBinding = EditorCurveBinding.FloatCurve(
+                    pathToBake + "/Senders",
+                    typeof(GameObject),
+                    "m_IsActive"
+                );
+                var hapticsReceiversEnabledBinding = EditorCurveBinding.FloatCurve(
+                    pathToBake + "/Receivers",
+                    typeof(GameObject),
+                    "m_IsActive"
+                );
+                var legacyTipLightEnabledBinding = EditorCurveBinding.FloatCurve(
+                    pathToBake + "/LegacyDpsTip",
                     typeof(GameObject),
                     "m_IsActive"
                 );
@@ -155,13 +165,17 @@ namespace VF.Feature {
                             if (binding.path == pathToRenderer) {
                                 if (binding.propertyName == "material._TPS_AnimatedToggle") {
                                     clip.SetCurve(spsEnabledBinding, curve);
-                                    clip.SetCurve(hapticsEnabledBinding, curve);
+                                    clip.SetCurve(hapticsSendersEnabledBinding, curve);
+                                    clip.SetCurve(hapticsReceiversEnabledBinding, curve);
+                                    clip.SetCurve(legacyTipLightEnabledBinding, curve);
                                 }
                             }
                             if (binding.path == pathToPlug) {
                                 if (binding.propertyName == "spsAnimatedEnabled") {
                                     clip.SetCurve(spsEnabledBinding, curve);
-                                    clip.SetCurve(hapticsEnabledBinding, curve);
+                                    clip.SetCurve(hapticsSendersEnabledBinding, curve);
+                                    clip.SetCurve(hapticsReceiversEnabledBinding, curve);
+                                    clip.SetCurve(legacyTipLightEnabledBinding, curve);
                                 }
                             }
                         }
