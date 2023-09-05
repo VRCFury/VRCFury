@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
@@ -22,6 +23,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
+        [VFAutowired] private readonly TriangulationService _triangulationService;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticPlugs)]
         public void Apply() {
@@ -30,6 +32,7 @@ namespace VF.Feature {
             var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
 
             AnimationClip tipLightOnClip = null;
+            var i = 0;
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
@@ -66,6 +69,12 @@ namespace VF.Feature {
                     restingState.ApplyClipToRestingState(postBakeClip);
 
                     if (plug.enableSps) {
+                        var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
+                        var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
+                            new[] { HapticUtils.CONTACT_ORF_MAIN });
+                        var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
+                            new[] { HapticUtils.CONTACT_ORF_NORM });
+                        
                         foreach (var r in renderers) {
                             spsRewritesToDo.Add(new SpsRewriteToDo {
                                 plugObject = plug.owner(),
@@ -74,6 +83,14 @@ namespace VF.Feature {
                                 configureMaterial = r.configureMaterial,
                                 spsBlendshapes = r.spsBlendshapes
                             });
+                            _triangulationService.SendParamToShader(tri.center, "_SPS_Target_Center", r.renderer);
+                            _triangulationService.SendParamToShader(tri.up, "_SPS_Target_Up", r.renderer);
+                            _triangulationService.SendParamToShader(tri.right, "_SPS_Target_Right", r.renderer);
+                            _triangulationService.SendParamToShader(tri.forward, "_SPS_Target_Forward", r.renderer);
+                            _triangulationService.SendParamToShader(triFront.center, "_SPS_Front_Center", r.renderer);
+                            _triangulationService.SendParamToShader(triFront.up, "_SPS_Front_Up", r.renderer);
+                            _triangulationService.SendParamToShader(triFront.right, "_SPS_Front_Right", r.renderer);
+                            _triangulationService.SendParamToShader(triFront.forward, "_SPS_Front_Forward", r.renderer);
                         }
                     }
 

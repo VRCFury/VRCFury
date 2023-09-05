@@ -39,6 +39,16 @@ float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)); }
 // https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-3250460
 float sps_attenToRange(float atten) { return (0.005 * sqrt(1000000.0 - atten)) / sqrt(atten); }
 
+float triangulate(float centerRange,float offsetRange,float distBetweenStations) {
+	centerRange = (1-centerRange) * 3;
+	offsetRange = (1-offsetRange) * 3;
+	float inner = (distBetweenStations*distBetweenStations + centerRange*centerRange - offsetRange*offsetRange) / (2*distBetweenStations*centerRange);
+	inner = clamp(inner, -1, 1);
+	float ang = acos(inner);
+	float offset = centerRange * sin(ang - SPS_PI/2);
+	return -offset;
+}
+
 // Find nearby socket lights
 bool sps_search(
 	out float3 rootLocal,
@@ -46,6 +56,38 @@ bool sps_search(
 	out float3 rootNormal,
 	inout float4 color
 ) {
+	if (_SPS_Target_Center == 1 || _SPS_Target_Forward == 1 || _SPS_Target_Right == 1 || _SPS_Target_Up == 1
+		|| _SPS_Front_Center == 1 || _SPS_Front_Forward == 1 || _SPS_Front_Right == 1 || _SPS_Front_Up == 1)
+	{
+		rootLocal = float3(0,0,0);
+		isRing = false;
+		rootNormal = float3(0,0,1);
+		return true;
+	}
+
+	if (_SPS_Target_Center == 0 || _SPS_Target_Forward == 0 || _SPS_Target_Right == 0 || _SPS_Target_Up == 0
+		|| _SPS_Front_Center == 0 || _SPS_Front_Forward == 0 || _SPS_Front_Right == 0 || _SPS_Front_Up == 0)
+	{
+		rootLocal = float3(0,0,0);
+		isRing = false;
+		rootNormal = float3(0,0,0);
+		return false;
+	}
+
+	rootLocal = float3(
+		triangulate(_SPS_Target_Center, _SPS_Target_Right, 0.01),
+		triangulate(_SPS_Target_Center, _SPS_Target_Up, 0.01),
+		triangulate(_SPS_Target_Center, _SPS_Target_Forward, 0.01)
+	);
+	isRing = false;
+	float3 front = float3(
+		triangulate(_SPS_Front_Center, _SPS_Front_Right, 0.01),
+		triangulate(_SPS_Front_Center, _SPS_Front_Up, 0.01),
+		triangulate(_SPS_Front_Center, _SPS_Front_Forward, 0.01)
+	);
+	rootNormal = sps_normalize(front - rootLocal);
+	return true;
+	
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];

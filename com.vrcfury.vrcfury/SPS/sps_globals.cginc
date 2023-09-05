@@ -40,4 +40,13 @@ float _SPS_Enabled;
 //float _SPS_Channel;
 float _SPS_Overrun;
 
+float _SPS_Target_Center;
+float _SPS_Target_Forward;
+float _SPS_Target_Up;
+float _SPS_Target_Right;
+float _SPS_Front_Center;
+float _SPS_Front_Forward;
+float _SPS_Front_Up;
+float _SPS_Front_Right;
+
 #endif
