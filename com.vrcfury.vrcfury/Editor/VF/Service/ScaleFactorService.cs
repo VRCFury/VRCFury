@@ -20,10 +20,10 @@ namespace VF.Service {
         [VFAutowired] private readonly ParamSmoothingService smoothingService;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         
-        private VFAFloat output;
+        private VFAFloat cached;
 
         public VFAFloat Get() {
-            if (output != null) return output;
+            if (cached != null) return cached;
             
             var fx = manager.GetFx();
 
@@ -69,6 +69,7 @@ namespace VF.Service {
             tree.AddDirectChild(fx.NewFloat("ScaleFactor", usePrefix: false, def: 1).Name(), maxClip);
 
             var scaleFactor = smoothingService.Map("ScaleFactor_Remapped", scaleFactorReceived, 0, 1, 0, 100);
+            cached = scaleFactor;
             return scaleFactor;
         }
     }
