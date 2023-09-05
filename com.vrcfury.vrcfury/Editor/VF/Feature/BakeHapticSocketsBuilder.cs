@@ -173,9 +173,15 @@ namespace VF.Feature {
 
                         if (socket.enableAuto && autoOnClip) {
                             var distParam = fx.NewFloat(name + "/AutoDistance");
-                            var distReceiver = HapticUtils.AddReceiver(bakeRoot, Vector3.zero, distParam.Name(),
-                                "AutoDistance", 0.3f,
-                                new[] { HapticUtils.CONTACT_PEN_MAIN });
+                            var distReceiver = HapticUtils.AddReceiver(
+                                bakeRoot,
+                                Vector3.zero,
+                                distParam.Name(),
+                                "AutoDistance",
+                                0.3f,
+                                new[] { HapticUtils.CONTACT_PEN_MAIN },
+                                allowSelf: false
+                            );
                             distReceiver.SetActive(false);
                             clipBuilder.Enable(autoOnClip, distReceiver);
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
