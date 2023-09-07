@@ -10,6 +10,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
@@ -17,6 +18,8 @@ using VF.Utils;
 
 namespace VF.Feature {
     public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
+        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
+        
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {
             if (!IsFirst()) {
@@ -165,7 +168,7 @@ namespace VF.Feature {
                     }
                 }
 
-                pathToParam["nativeScale"] = GetFx().NewFloat("ScaleFactor", def: 1, usePrefix: false);
+                pathToParam["nativeScale"] = scaleFactorService.Get();
                 
                 var tree = directTree;
                 foreach (var (param,index) in pathToParam.Values.Select((p,index) => (p,index))) {
