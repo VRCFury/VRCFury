@@ -2,12 +2,16 @@ using System;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VF.Feature;
 using VF.Injector;
+using VF.Inspector;
 using VF.Utils;
 using VRC.Dynamics;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDKBase;
 
 namespace VF.Service {
     /**
@@ -19,58 +23,88 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ParamSmoothingService smoothingService;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
+        [VFAutowired] private readonly ClipBuilderService clipBuilder;
         
         private VFAFloat cached;
-
         public VFAFloat Get() {
-            if (cached != null) return cached;
-            
+            if (cached == null) cached = Generate();
+            return cached;
+        }
+
+        private VFAFloat Generate() {
             var fx = manager.GetFx();
 
-            var holder = GameObjects.Create("vrcfScaleFactor", manager.AvatarObject);
-            holder.active = false;
-            forceStateInAnimatorService.ForceEnableLocal(holder);
-            var scale = holder.localScale;
-            scale.x = scale.y = scale.z = 0.01f / holder.worldScale.z;
-            holder.localScale = scale;
-            
-            var rand = new System.Random();
-            var tag = $"VRCF_SF_{rand.Next(100_000_000, 999_999_999)}";
-
+            var holder = GameObjects.Create("vrcf_ScaleFactorFix", manager.AvatarObject);
             var senderObj = GameObjects.Create("Sender", holder);
-            var receiverObj = GameObjects.Create("Receiver", holder);
-
             var sender = senderObj.AddComponent<VRCContactSender>();
-            sender.radius = 1;
+            sender.radius = 0.001f / senderObj.worldScale.x;
+            var tag = "VRCF_SCALEFACTORFIX_AA";
             sender.collisionTags.Add(tag);
-            senderObj.localPosition = new Vector3(0, 0, 0);
 
-            var scaleFactorReceived = fx.NewFloat("ScaleFactorReceived", synced: true);
+            var receiverObj = GameObjects.Create("Receiver", holder);
             var receiver = receiverObj.AddComponent<VRCContactReceiver>();
-            receiver.radius = 1;
-            receiver.collisionTags.Add(tag);
-            receiver.localOnly = true;
             receiver.allowOthers = false;
-            receiver.parameter = scaleFactorReceived.Name();
             receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
-            receiverObj.localPosition = new Vector3(2, 0, 0);
+            receiver.collisionTags.Add(tag);
+            receiver.radius = 0.1f;
+            receiver.position = new Vector3(0.1f, 0, 0);
+            var receiverParam = fx.NewFloat("SFFix_Rcv");
+            receiver.parameter = receiverParam.Name();
+            var p = receiverObj.AddComponent<ScaleConstraint>();
+            p.AddSource(new ConstraintSource() {
+                sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
+                weight = 1
+            });
+            p.weight = 1;
+            p.constraintActive = true;
+            p.locked = true;
 
-            var zeroClip = fx.NewClip($"ScaleFactor_zero");
-            var maxClip = fx.NewClip($"ScaleFactor_max");
-            var path = senderObj.GetPath(manager.AvatarObject);
-            var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), $"m_LocalPosition.x");
-            zeroClip.SetConstant(binding, 0);
-            maxClip.SetConstant(binding, 0.01f); // When ScaleFactor is 100, it'll max out the receiver
-            var layer = fx.NewLayer($"Move ScaleFactor contact");
-            var tree = fx.NewBlendTree($"Move ScaleFactor contact");
-            tree.blendType = BlendTreeType.Direct;
-            layer.NewState("Drive").WithAnimation(tree);
-            tree.AddDirectChild(fx.One().Name(), zeroClip);
-            tree.AddDirectChild(fx.NewFloat("ScaleFactor", usePrefix: false, def: 1).Name(), maxClip);
+            var layer = fx.NewLayer("ScaleFactorFix");
 
-            var scaleFactor = smoothingService.Map("ScaleFactor_Remapped", scaleFactorReceived, 0, 1, 0, 100);
-            cached = scaleFactor;
-            return scaleFactor;
+            var off = layer.NewState("Off");
+            var offClip = fx.NewClip("ScaleFactorFix Off");
+            clipBuilder.Enable(offClip, receiverObj, false);
+            off.WithAnimation(offClip);
+            
+            var off2 = layer.NewState("Off2");
+            off.TransitionsTo(off2).When(fx.Always()).WithTransitionDurationSeconds(0.5f);
+            off2.WithAnimation(offClip);
+            
+            var on = layer.NewState("On");
+            off2.TransitionsTo(on).When(fx.Always());
+
+            var on2 = layer.NewState("On2");
+            on.TransitionsTo(on2).When(fx.Always()).WithTransitionDurationSeconds(0.5f);
+
+            var read = layer.NewState("Read");
+            on2.TransitionsTo(read).When(fx.Always());
+            var readParam = fx.NewFloat("SFFix_Read");
+            var readDriver = read.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            readDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                type = VRC_AvatarParameterDriver.ChangeType.Copy,
+                name = readParam.Name(),
+                source = receiverParam.Name(),
+                convertRange = true,
+                sourceMin = 0,
+                sourceMax = 1,
+                destMin = 0,
+                destMax = 100
+            });
+
+            var copy = layer.NewState("Copy");
+            // Because sometimes vrc doesn't turn on the receiver fast enough and it still reads 0
+            read.TransitionsTo(copy).When(readParam.IsGreaterThan(0.001f));
+            read.TransitionsTo(off).When(fx.Always());
+            copy.TransitionsTo(off).When(fx.Always());
+            var finalParam = fx.NewFloat("SFFix_Final");
+            var finalDriver = copy.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            finalDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                type = VRC_AvatarParameterDriver.ChangeType.Copy,
+                name = finalParam.Name(),
+                source = readParam.Name(),
+            });
+
+            return finalParam;
         }
     }
 }
