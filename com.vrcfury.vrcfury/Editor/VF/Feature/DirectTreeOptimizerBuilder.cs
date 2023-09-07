@@ -42,6 +42,11 @@ namespace VF.Feature {
                     continue;
                 }
 
+                if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
+                    AddDebug($"Not optimizing (layer is additive)");
+                    continue;
+                }
+
                 if (layer.stateMachine.stateMachines.Length > 0) {
                     AddDebug("Not optimizing (contains submachine)");
                     continue;
