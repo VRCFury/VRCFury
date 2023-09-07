@@ -686,6 +686,11 @@ namespace VF.Model.Feature {
     public class BlendshapeOptimizer : NewFeatureModel {
         public bool keepMmdShapes;
     }
+
+    [Serializable]
+    public class CombineMeshes : NewFeatureModel {
+        public bool keepMmdShapes;
+    }
     
     [Serializable]
     public class Slot4Fix : NewFeatureModel {
