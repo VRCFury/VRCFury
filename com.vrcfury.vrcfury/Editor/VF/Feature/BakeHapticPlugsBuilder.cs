@@ -83,14 +83,8 @@ namespace VF.Feature {
                                 configureMaterial = r.configureMaterial,
                                 spsBlendshapes = r.spsBlendshapes
                             });
-                            _triangulationService.SendParamToShader(tri.center, "_SPS_Target_Center", r.renderer);
-                            _triangulationService.SendParamToShader(tri.up, "_SPS_Target_Up", r.renderer);
-                            _triangulationService.SendParamToShader(tri.right, "_SPS_Target_Right", r.renderer);
-                            _triangulationService.SendParamToShader(tri.forward, "_SPS_Target_Forward", r.renderer);
-                            _triangulationService.SendParamToShader(triFront.center, "_SPS_Front_Center", r.renderer);
-                            _triangulationService.SendParamToShader(triFront.up, "_SPS_Front_Up", r.renderer);
-                            _triangulationService.SendParamToShader(triFront.right, "_SPS_Front_Right", r.renderer);
-                            _triangulationService.SendParamToShader(triFront.forward, "_SPS_Front_Forward", r.renderer);
+                            _triangulationService.SendToShader(tri, "_SPS_Target", r.renderer);
+                            _triangulationService.SendToShader(triFront, "_SPS_Front", r.renderer);
                         }
                     }
 

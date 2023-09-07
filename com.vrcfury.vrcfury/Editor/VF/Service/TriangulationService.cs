@@ -10,6 +10,7 @@ namespace VF.Service {
     [VFService]
     public class TriangulationService {
         [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly DirectTreeService directTree;
 
         public class Triangulator {
             public VFAFloat center;
@@ -37,18 +38,18 @@ namespace VF.Service {
 
         public void SendParamToShader(VFAFloat param, string shaderParam, Renderer renderer) {
             var fx = manager.GetFx();
-            var zeroClip = fx.NewClip($"{shaderParam}_zero");
             var maxClip = fx.NewClip($"{shaderParam}_max");
             var path = renderer.owner().GetPath(manager.AvatarObject);
             var binding = EditorCurveBinding.FloatCurve(path, renderer.GetType(), $"material.{shaderParam}");
-            zeroClip.SetConstant(binding, 0);
             maxClip.SetConstant(binding, 1);
-            var layer = fx.NewLayer($"Drive shader {shaderParam}");
-            var tree = fx.NewBlendTree($"Drive shader {shaderParam}");
-            tree.blendType = BlendTreeType.Direct;
-            layer.NewState("Drive").WithAnimation(tree);
-            tree.AddDirectChild(fx.One().Name(), zeroClip);
-            tree.AddDirectChild(param.Name(), maxClip);
+            directTree.Add(param, maxClip);
+        }
+
+        public void SendToShader(Triangulator tri, string shaderParamPrefix, Renderer renderer) {
+            SendParamToShader(tri.center, $"{shaderParamPrefix}_Center", renderer);
+            SendParamToShader(tri.up, $"{shaderParamPrefix}_Up", renderer);
+            SendParamToShader(tri.right, $"{shaderParamPrefix}_Right", renderer);
+            SendParamToShader(tri.forward, $"{shaderParamPrefix}_Forward", renderer);
         }
     }
 }
