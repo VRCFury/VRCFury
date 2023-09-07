@@ -666,6 +666,7 @@ public static class VRCFuryEditorUtils {
     public static bool IsInRagdollSystem(VFGameObject obj) {
         while (obj != null) {
             if (obj.name == "Ragdoll System") return true;
+            if (obj.name == "CarbonCopy Container") return true;
             obj = obj.parent;
         }
         return false;
