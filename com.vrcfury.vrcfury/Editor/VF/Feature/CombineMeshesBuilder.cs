@@ -98,10 +98,13 @@ namespace VF.Feature
                 return false;
             }
 
-            bool IsObjectDisabledPermanently(GameObject obj) {
+            bool IsObjectDisabledPermanently(GameObject obj)
+            {
                 var current = obj;
-                while (current != null && current != avatarObject) {
-                    if (current.activeSelf || IsObjectToggled(obj)) {
+                while (current != null && current != avatarObject)
+                {
+                    if (current.activeSelf || IsObjectToggled(obj))
+                    {
                         return false;
                     }
                     current = current.transform.parent?.gameObject;
@@ -177,6 +180,8 @@ namespace VF.Feature
             List<Color> colors;
             List<BoneWeight> boneWeights;
             List<Transform> bones;
+            List<Matrix4x4> bindposes;
+
             Dictionary<string, int> blendshapeMapping;
             List<(string, List<(float, List<Vector3>, List<Vector3>, List<Vector3>)>)> blendshapes;
 
@@ -207,6 +212,8 @@ namespace VF.Feature
                 boneWeights = new List<BoneWeight>();
                 mesh.GetBoneWeights(boneWeights);
                 bones = new List<Transform>(this.skin.bones);
+                bindposes = new List<Matrix4x4>();
+                mesh.GetBindposes(bindposes);
 
                 blendshapeMapping = new Dictionary<string, int>();
                 blendshapes = new List<(string, List<(float, List<Vector3>, List<Vector3>, List<Vector3>)>)>();
@@ -286,27 +293,29 @@ namespace VF.Feature
 
                 // Merge bones
                 var boneMapping = new Dictionary<int, int>();
-                var nextBones = add.bones;
-                foreach (var i in Range(0, nextBones.Length))
+                var addBones = add.bones;
+                foreach (var i in Range(0, addBones.Length))
                 {
-                    var bone = nextBones[i];
+                    var bone = addBones[i];
                     var j = bones.IndexOf(bone);
                     if (j == -1)
                     {
                         bones.Add(bone);
+                        bindposes.Add(addMesh.bindposes[i]);
                         j = bones.Count - 1;
                     }
                     boneMapping.Add(i, j);
                 }
 
+
                 BoneWeight MapBoneWeight(BoneWeight weight)
                 {
-                    (int, float) Choose(int i, float w) => i >= boneMapping.Count ? (0, 0.0f) : (boneMapping[i], w);
-                    (weight.boneIndex0, weight.weight0) = Choose(weight.boneIndex0, weight.weight0);
-                    (weight.boneIndex1, weight.weight1) = Choose(weight.boneIndex1, weight.weight1);
-                    (weight.boneIndex2, weight.weight2) = Choose(weight.boneIndex2, weight.weight2);
-                    (weight.boneIndex3, weight.weight3) = Choose(weight.boneIndex3, weight.weight3);
-                    return weight;
+                    var newWeight = new BoneWeight();
+                    (newWeight.boneIndex0, newWeight.weight0) = (boneMapping[weight.boneIndex0], weight.weight0);
+                    (newWeight.boneIndex1, newWeight.weight1) = (boneMapping[weight.boneIndex1], weight.weight1);
+                    (newWeight.boneIndex2, newWeight.weight2) = (boneMapping[weight.boneIndex2], weight.weight2);
+                    (newWeight.boneIndex3, newWeight.weight3) = (boneMapping[weight.boneIndex3], weight.weight3);
+                    return newWeight;
                 }
                 boneWeights.AddRange(addMesh.boneWeights.Select(w => MapBoneWeight(w)));
 
@@ -437,8 +446,9 @@ namespace VF.Feature
                 {
                     mesh.SetTriangles(indices[i], i);
                 }
-                mesh.boneWeights = boneWeights.ToArray();
                 skin.bones = bones.ToArray();
+                mesh.boneWeights = boneWeights.ToArray();
+                mesh.bindposes = bindposes.ToArray();
                 skin.sharedMaterials = materials.ToArray();
                 foreach (var (name, frames) in blendshapes)
                 {
