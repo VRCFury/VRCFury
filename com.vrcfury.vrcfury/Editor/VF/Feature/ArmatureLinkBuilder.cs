@@ -92,7 +92,8 @@ namespace VF.Feature {
                     mover.Move(
                         objectToMove,
                         newParent,
-                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name
+                        "vrcf_" + uniqueModelNum + "_" + objectToMove.name,
+                        removeFromPhysbones: !model.physbonesForNewBones
                     );
                 }
 
@@ -493,6 +494,10 @@ namespace VF.Feature {
                                                     "to point to the corresponding bone on the base armature. This is extremely unusual. Don't use this " +
                                                     "unless you know what you are doing."));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physbonesOnAvatarBones")));
+            adv.Add(new VisualElement { style = { paddingTop = 10 } });
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("Allow avatar physbones to affect new merged bones (Skin Rewrite only):"));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("If checked, physbones in the avatar will affect the new bones merged into the armature."));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physbonesForNewBones")));
             
             adv.Add(new VisualElement { style = { paddingTop = 10 } });
             

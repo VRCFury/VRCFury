@@ -22,14 +22,16 @@ namespace VF.Service {
 
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
-        public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {
+        public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true, bool removeFromPhysbones = true) {
             var oldPath = clipBuilder.GetPath(obj);
             if (newParent != null)
                 obj.transform.SetParent(newParent.transform, worldPositionStays);
             if (newName != null)
                 obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);
-            PhysboneUtils.RemoveFromPhysbones(obj, true);
+            if (removeFromPhysbones) {
+                PhysboneUtils.RemoveFromPhysbones(obj, true);
+            }
             DirectRewrite(oldPath, newPath);
         }
 

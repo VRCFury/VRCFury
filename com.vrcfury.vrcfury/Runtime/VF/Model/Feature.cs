@@ -374,6 +374,7 @@ namespace VF.Model.Feature {
         public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public string removeBoneSuffix;
         public bool physbonesOnAvatarBones;
+        public bool physbonesForNewBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
