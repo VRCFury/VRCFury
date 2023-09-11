@@ -66,10 +66,12 @@ namespace VF.Menu {
             });
         }
 
+        /*
         [MenuItem(bakeHaptic, priority = bakeHapticPriority)]
         public static void RunBake() {
             HapticsMenuItem.RunBake();
         }
+        */
 
         [MenuItem(nukeZawoo, priority = nukeZawooPriority)]
         private static void NukeZawooParts() {
