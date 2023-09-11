@@ -690,7 +690,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class CombineMeshes : NewFeatureModel {
-        public bool keepMmdShapes;
+        public bool keepFaceMeshSeparate;
     }
     
     [Serializable]

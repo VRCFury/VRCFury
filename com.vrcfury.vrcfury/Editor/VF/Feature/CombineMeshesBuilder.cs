@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -13,7 +11,8 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
+using VF.Injector;
+using VF.Service;
 using VRC.SDKBase;
 using static System.Linq.Enumerable;
 
@@ -21,6 +20,8 @@ namespace VF.Feature
 {
     public class CombineMeshesBuilder : FeatureBuilder<CombineMeshes>
     {
+        [VFAutowired] private readonly ObjectMoveService mover;
+
         private static string[] preferredBaseMeshNames = new string[] { "body", "main" };
 
         public override string GetEditorTitle()
@@ -32,10 +33,12 @@ namespace VF.Feature
         {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
-                "This feature will combine all meshes that are not animated to be toggled into one, " +
+                "This feature will combine all similar meshes that are not animated to be toggled into one, " +
                 " saving extra draw calls!"
             ));
-
+            content.Add(new VisualElement { style = { paddingTop = 10 } });
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepFaceMeshSeparate"), "Keep Face Mesh separate"));
+            content.Add(new VisualElement { style = { paddingTop = 10 } });
             return content;
         }
 
@@ -47,29 +50,51 @@ namespace VF.Feature
         [FeatureBuilderAction(FeatureOrder.BlendshapeOptimizer)]
         public void Apply()
         {
-
-            var skinGroups = new Dictionary<SkinnedMeshRendererGroup, List<SkinnedMeshRenderer>>();
-
-            foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject))
+            var changes = CalculateMeshChanges();
+            foreach (var group in changes.Groups)
             {
-                if (!(renderer is SkinnedMeshRenderer skin)) continue;
+                var skins = group.Value;
+                var basis = skins[0];
+                VFGameObject basisObject = basis.gameObject;
+                var meshesToAdd = skins.Skip(1).ToList();
+                basis.sharedMesh = mutableManager.MakeMutable(basis.sharedMesh, basis.owner()); ;
+                VRCFuryEditorUtils.MarkDirty(basis);
 
-                var group = new SkinnedMeshRendererGroup(skin);
-                if (!skinGroups.ContainsKey(group))
+                var combinable = new CombinableMesh(basis);
+                foreach (var mesh in meshesToAdd)
                 {
-                    skinGroups.Add(group, new List<SkinnedMeshRenderer>());
+                    combinable.AddMesh(mesh);
+                    VFGameObject obj = mesh.gameObject;
+                    mover.DirectRewrite(obj, basisObject);
+                    obj.Destroy();
                 }
-                var entries = skinGroups[group];
-
-                if (Array.IndexOf(preferredBaseMeshNames, skin.name.ToLower()) != -1)
-                {
-                    entries.Insert(0, skin);
-                }
-                else
-                {
-                    entries.Add(skin);
-                }
+                combinable.Combine();
             }
+            foreach (var skin in changes.Removed)
+            {
+                VFGameObject obj = skin.gameObject;
+                obj.Destroy();
+            }
+        }
+
+        private struct MeshChanges
+        {
+            public Dictionary<SkinnedMeshRendererGroup, List<SkinnedMeshRenderer>> Groups { get; set; }
+            public List<SkinnedMeshRenderer> Toggled { get; set; }
+            public List<SkinnedMeshRenderer> Removed { get; set; }
+            public List<SkinnedMeshRenderer> NotCombinable { get; set; }
+        }
+
+        private MeshChanges CalculateMeshChanges()
+        {
+            var task = new MeshChanges();
+            task.Groups = new Dictionary<SkinnedMeshRendererGroup, List<SkinnedMeshRenderer>>();
+            task.Removed = new List<SkinnedMeshRenderer>();
+            task.Toggled = new List<SkinnedMeshRenderer>();
+            task.NotCombinable = new List<SkinnedMeshRenderer>();
+
+            var descriptor = avatarObject.GetComponent<VRC_AvatarDescriptor>();
+            var faceMesh = descriptor.VisemeSkinnedMesh;
 
             var animatedBindings = manager.GetAllUsedControllersRaw()
                       .Select(tuple => tuple.Item2)
@@ -112,43 +137,56 @@ namespace VF.Feature
                 return true;
             }
 
-            foreach (var entry in skinGroups)
+            foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject))
             {
-                var skins = entry.Value
-                    .Where(skin => !IsObjectToggled(skin.gameObject))
-                    .Where(skin =>
-                    {
-                        if (IsObjectDisabledPermanently(skin.gameObject))
-                        {
-                            VFGameObject gameObject = skin.gameObject;
-                            gameObject.Destroy();
-                            return false;
-                        }
-                        return true;
-                    })
-                    .ToList();
+                if (!(renderer is SkinnedMeshRenderer skin)) continue;
 
-
-                if (skins.Count < 2)
+                if (IsObjectToggled(skin.gameObject))
                 {
-                    // Need at lest 2 meshes to combine
+                    task.Toggled.Add(skin);
+                    continue;
+                }
+                if (IsObjectDisabledPermanently(skin.gameObject))
+                {
+                    task.Removed.Add(skin);
+                    continue;
+                }
+                var isFaceMesh = skin == faceMesh;
+                if (model.keepFaceMeshSeparate && isFaceMesh)
+                {
+                    task.NotCombinable.Add(skin);
                     continue;
                 }
 
-                var basis = skins[0];
-                var meshesToAdd = skins.Skip(1).ToList();
-                basis.sharedMesh = mutableManager.MakeMutable(basis.sharedMesh, basis.owner()); ;
-                VRCFuryEditorUtils.MarkDirty(basis);
-
-                var combinable = new CombinableMesh(basis);
-                foreach (var mesh in meshesToAdd)
+                var group = new SkinnedMeshRendererGroup(skin);
+                if (!task.Groups.ContainsKey(group))
                 {
-                    combinable.AddMesh(mesh);
-                    VFGameObject obj = mesh.gameObject;
-                    obj.Destroy();
+                    task.Groups.Add(group, new List<SkinnedMeshRenderer>());
                 }
-                combinable.Combine();
+                var entries = task.Groups[group];
+
+                var isPreferredBase = Array.IndexOf(preferredBaseMeshNames, skin.name.ToLower()) != -1;
+                var hasFaceMesh = !isFaceMesh && entries.Count > 0 && entries[0] == faceMesh;
+                if (isFaceMesh || (isPreferredBase && !hasFaceMesh))
+                {
+                    entries.Insert(0, skin);
+                }
+                else
+                {
+                    entries.Add(skin);
+                }
             }
+
+            foreach (var entry in task.Groups.ToList())
+            {
+                if (entry.Value.Count < 2)
+                {
+                    task.Groups.Remove(entry.Key);
+                    task.NotCombinable.AddRange(entry.Value);
+                }
+            }
+
+            return task;
         }
 
         private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, AnimatorController controller)
@@ -176,12 +214,11 @@ namespace VF.Feature
             List<Vector3> vertices;
             List<Vector4> tangents;
             List<Vector3> normals;
-            List<Vector2> uvs;
+            List<List<Vector2>> uvs;
             List<Color> colors;
             List<BoneWeight> boneWeights;
             List<Transform> bones;
             List<Matrix4x4> bindposes;
-
             Dictionary<string, int> blendshapeMapping;
             List<(string, List<(float, List<Vector3>, List<Vector3>, List<Vector3>)>)> blendshapes;
 
@@ -204,9 +241,12 @@ namespace VF.Feature
                 mesh.GetTangents(tangents);
                 normals = new List<Vector3>();
                 mesh.GetNormals(normals);
-                // TODO there are 8 UV channels
-                uvs = new List<Vector2>();
-                mesh.GetUVs(0, uvs);
+                uvs = new List<List<Vector2>>();
+                foreach (var i in Range(0, 8))
+                {
+                    uvs.Add(new List<Vector2>());
+                    mesh.GetUVs(i, uvs[i]);
+                }
                 colors = new List<Color>();
                 mesh.GetColors(colors);
                 boneWeights = new List<BoneWeight>();
@@ -288,7 +328,17 @@ namespace VF.Feature
                     return new Vector4(pos.x, pos.y, pos.z, v.w);
                 }));
                 normals.AddRange(addMesh.normals.Select(v => rotationMatrix.MultiplyPoint3x4(v)));
-                uvs.AddRange(addMesh.uv);
+                foreach (var i in Range(0, 8))
+                {
+                    var addUvs = new List<Vector2>();
+                    addMesh.GetUVs(i, addUvs);
+                    // Add missing UVs for a channel that had no data yet
+                    if (addUvs.Count > 0 && uvs[i].Count < shiftBy)
+                    {
+                        uvs[i].AddRange(new Vector2[shiftBy - uvs[i].Count]);
+                    }
+                    uvs[i].AddRange(addUvs);
+                }
                 colors.AddRange(addMesh.colors);
 
                 // Merge bones
@@ -306,7 +356,6 @@ namespace VF.Feature
                     }
                     boneMapping.Add(i, j);
                 }
-
 
                 BoneWeight MapBoneWeight(BoneWeight weight)
                 {
@@ -439,7 +488,15 @@ namespace VF.Feature
                 mesh.SetVertices(vertices);
                 mesh.SetTangents(tangents);
                 mesh.SetNormals(normals);
-                mesh.SetUVs(0, uvs);
+                foreach (var i in Range(0, 8))
+                {
+                    if (uvs[i].Count > 0 && uvs[i].Count < vertices.Count)
+                    {
+                        //Fill up to the correct amount of vertices
+                        uvs[i].AddRange(new Vector2[vertices.Count - uvs[i].Count]);
+                    }
+                    mesh.SetUVs(i, uvs[i]);
+                }
                 mesh.SetColors(colors);
                 mesh.subMeshCount = indices.Count;
                 foreach (var i in Enumerable.Range(0, indices.Count))
