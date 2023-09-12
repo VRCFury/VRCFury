@@ -50,6 +50,7 @@ namespace VF.Model.StateAction {
         public bool invert = false;
         public bool toggled = false;
         public bool dissolveAlpha = false;
+        public string renamedMaterial = "";
     }
     
     [Serializable]

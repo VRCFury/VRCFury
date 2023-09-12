@@ -157,6 +157,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("invert"), "Invert the UV Tile Discarding."));
                 adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggled"), "Only Add Toggled On clip."));
                 adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolveAlpha"), "Use Dissolve UV Dissolve."));
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renamedMaterial"), "Only required if using renamed properties."));
                 row2.Add(adv);
                 content.Add(row2);
                 return content;

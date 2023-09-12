@@ -93,6 +93,8 @@ namespace VF.Service {
                         }
                         if (renderer != null) {
                             var propertyName = poiyomiUVTileAction.dissolveAlpha ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
+                            if (poiyomiUVTileAction.renamedMaterial != "")
+                                propertyName += $"_{poiyomiUVTileAction.renamedMaterial}"; //Able to add renamed material if added.
                             var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(renderer.gameObject),
                                 renderer.GetType(),
