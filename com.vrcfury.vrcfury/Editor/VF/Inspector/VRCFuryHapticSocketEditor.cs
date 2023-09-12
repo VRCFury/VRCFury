@@ -255,6 +255,15 @@ namespace VF.Inspector {
             // Senders
             HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, HapticUtils.CONTACT_ORF_MAIN);
             HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.01f, HapticUtils.CONTACT_ORF_NORM);
+            if (lightType != VRCFuryHapticSocket.AddLight.None) {
+                HapticUtils.AddSender(
+                    senders,
+                    Vector3.zero,
+                    "Type",
+                    0.01f,
+                    lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.CONTACT_ORF_IsRing : HapticUtils.CONTACT_ORF_IsHole
+                );
+            }
             
             var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
 

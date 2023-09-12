@@ -628,27 +628,19 @@ public static class VRCFuryEditorUtils {
         return el;
     }
 
-    public static Label Error(string message) {
-        var label = new Label(message) {
-            style = {
-                backgroundColor = new Color(0.5f, 0, 0),
-                paddingTop = 5,
-                paddingBottom = 5,
-                unityTextAlign = TextAnchor.MiddleCenter,
-                whiteSpace = WhiteSpace.Normal,
-                marginTop = 5
-            }
-        };
-        Padding(label, 5);
-        BorderColor(label, Color.black);
-        BorderRadius(label, 5);
-        Border(label, 1);
-        return label;
+    public static VisualElement Error(string message) {
+        var i = Section();
+        i.Add(WrappedLabel(message));
+        BorderColor(i, Color.red);
+        Border(i, 2);
+        return i;
     }
 
     public static VisualElement Warn(string message) {
-        var i = Error(message);
-        i.style.backgroundColor = new Color(0.5f, 0.25f, 0);
+        var i = Section();
+        i.Add(WrappedLabel(message));
+        BorderColor(i, Color.yellow);
+        Border(i, 2);
         return i;
     }
     
@@ -674,6 +666,7 @@ public static class VRCFuryEditorUtils {
     public static bool IsInRagdollSystem(VFGameObject obj) {
         while (obj != null) {
             if (obj.name == "Ragdoll System") return true;
+            if (obj.name == "CarbonCopy Container") return true;
             obj = obj.parent;
         }
         return false;

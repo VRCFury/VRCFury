@@ -158,6 +158,11 @@ namespace VF.Utils {
             set { WithLayer(l => l.name = value); }
         }
         
+        public AnimatorLayerBlendingMode blendingMode {
+            get => ctrl.layers[GetLayerId()].blendingMode;
+            set { WithLayer(l => l.blendingMode = value); }
+        }
+        
         public AvatarMask mask {
             get => ctrl.layers[GetLayerId()].avatarMask;
             set { WithLayer(l => l.avatarMask = value); }

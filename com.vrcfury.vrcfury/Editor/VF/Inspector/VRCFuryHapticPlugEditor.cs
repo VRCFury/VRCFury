@@ -22,6 +22,12 @@ namespace VF.Inspector {
             var configureTps = serializedObject.FindProperty("configureTps");
             var enableSps = serializedObject.FindProperty("enableSps");
             
+            var boneWarning = VRCFuryEditorUtils.Warn(
+                "WARNING: This renderer is rigged with bones, but you didn't put the Haptic Plug inside a bone! When SPS is used" +
+                " with rigged meshes, you should put the Haptic Plug inside the bone nearest the 'base'!");
+            boneWarning.style.display = DisplayStyle.None;
+            container.Add(boneWarning);
+
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in connected apps"));
 
             var sizeSection = VRCFuryEditorUtils.Section("Size and Masking");
@@ -82,6 +88,15 @@ namespace VF.Inspector {
                 text.Add("Attached renderers: " + string.Join(", ", size.renderers.Select(r => r.owner().name)));
                 text.Add($"Detected Length: {size.worldLength}m");
                 text.Add($"Detected Radius: {size.worldRadius}m");
+
+                var bones = size.renderers.OfType<SkinnedMeshRenderer>()
+                    .SelectMany(skin => skin.bones)
+                    .Where(bone => bone != null)
+                    .ToArray();
+                var isInsideBone = bones.Any(bone => target.transform.IsChildOf(bone));
+                var displayWarning = bones.Length > 0 && !isInsideBone;
+                boneWarning.style.display = displayWarning ? DisplayStyle.Flex : DisplayStyle.None;
+                
                 return string.Join("\n", text);
             }));
             

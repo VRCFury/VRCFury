@@ -54,7 +54,7 @@ namespace VF.Builder.Haptics {
                     baked.WriteFloat(weight);
                     for (var v = 0; v < bsBakedMesh.vertices.Length; v++) {
                         baked.WriteVector3(bsBakedMesh.vertices[v] - vertices[v]);
-                        baked.WriteVector3(bsBakedMesh.normals[v] - normals[v]);
+                        baked.WriteVector3(bsBakedMesh.normals[v].normalized - normals[v].normalized);
                     }
                 }
             }

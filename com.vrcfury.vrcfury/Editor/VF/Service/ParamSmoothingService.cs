@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -177,6 +178,31 @@ namespace VF.Service {
 
             var layer = fx.NewLayer($"Map {input.Name()} from {inMin}-{inMax} to {outMin}-{outMax}");
             layer.NewState($"Run").WithAnimation(tree);
+
+            return output;
+        }
+        
+        public VFAFloat Add(string name, VFAFloat a, VFAFloat b, bool subtract = false) {
+            var fx = avatarManager.GetFx();
+            var output = fx.NewFloat(name, def: a.GetDefault() + b.GetDefault());
+            var text = $"{output.Name()} = {a.Name()} + {b.Name()}";
+            var directLayer = fx.NewLayer(text);
+            var tree = fx.NewBlendTree(text);
+            tree.blendType = BlendTreeType.Direct;
+            directLayer.NewState("Drive").WithAnimation(tree);
+            var zeroClip = fx.NewClip($"{output.Name()} = 0");
+            zeroClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), output.Name()), 0f);
+            var oneClip = fx.NewClip($"{output.Name()} = 1");
+            oneClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), output.Name()), 1f);
+            tree.AddDirectChild(fx.One().Name(), zeroClip);
+            tree.AddDirectChild(a.Name(), oneClip);
+            if (!subtract) {
+                tree.AddDirectChild(b.Name(), oneClip);
+            } else {
+                var negClip = fx.NewClip($"{output.Name()} = -1");
+                negClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), output.Name()), -1f);
+                tree.AddDirectChild(b.Name(), negClip);
+            }
 
             return output;
         }

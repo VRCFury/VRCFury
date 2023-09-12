@@ -17,7 +17,9 @@ namespace VF.Builder.Haptics {
         public static string CONTACT_PEN_ROOT = "TPS_Pen_Root";
         public static string CONTACT_ORF_MAIN = "TPS_Orf_Root";
         public static string CONTACT_ORF_NORM = "TPS_Orf_Norm";
-        
+        public static string CONTACT_ORF_IsRing = "SPS_Socket_Ring";
+        public static string CONTACT_ORF_IsHole = "SPS_Socket_Hole";
+
         public static readonly string[] SelfContacts = {
             "Hand",
             "Finger",
