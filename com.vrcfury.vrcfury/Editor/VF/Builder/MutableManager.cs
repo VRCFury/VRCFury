@@ -117,6 +117,8 @@ namespace VF.Builder {
                     copyClip.WriteProxyBinding(originalClip);
                 }
 
+                VRCFuryAssetDatabase.CopyAssetLabelsFromOriginal(original, copy);
+
                 originalToMutable[original] = copy;
                 mutableToOriginal[copy] = original;
                 return true;
@@ -307,6 +309,7 @@ namespace VF.Builder {
             var copy = SafeInstantiate(original);
             copy.name = original.name;
             VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, $"{copy.name} for {owner.name}");
+            VRCFuryAssetDatabase.CopyAssetLabelsFromOriginal(original, copy);
             mutableOwners[copy] = owner;
             originalToMutable[(original, owner)] = copy;
             return copy;

@@ -66,6 +66,11 @@ namespace VF.Builder {
             AssetDatabase.CreateAsset(obj, fullPath);
         }
 
+        public static void CopyAssetLabelsFromOriginal(Object original, Object copy) {
+            var originalLabels = AssetDatabase.GetLabels(original);
+            AssetDatabase.SetLabels(copy, originalLabels);
+        }
+
         private static bool assetEditing = false;
         public static void WithAssetEditing(Action go) {
             if (!assetEditing) {
