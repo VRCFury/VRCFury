@@ -14,7 +14,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float active;
 	SpsGetBakedPosition(vertexId, bakedVertex, bakedNormal, active);
 
-	if (vertex.z < 0 || active == 0) return;
+	if (active == 0) return;
 
 	float3 rootPos;
 	bool isRing;
