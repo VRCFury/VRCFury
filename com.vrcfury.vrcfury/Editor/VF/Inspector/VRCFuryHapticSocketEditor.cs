@@ -461,7 +461,7 @@ namespace VF.Inspector {
         }
         
         public static bool IsChildOfHead(VRCFuryHapticSocket socket) {
-            return IsChildOfBone(socket, HumanBodyBones.Head);
+            return IsChildOfBone(socket, HumanBodyBones.Head, false);
         }
         
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
@@ -469,13 +469,13 @@ namespace VF.Inspector {
             return ShouldProbablyHaveTouchZone(socket);
         }
 
-        private static bool IsChildOfBone(VRCFuryHapticSocket socket, HumanBodyBones bone) {
+        private static bool IsChildOfBone(VRCFuryHapticSocket socket, HumanBodyBones bone, bool followConstraints = true) {
             try {
                 VFGameObject obj = socket.owner();
                 VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
-                return boneObj && IsChildOf(boneObj.transform, socket.transform);
+                return boneObj && IsChildOf(boneObj.transform, socket.transform, followConstraints);
             } catch (Exception) {
                 return false;
             }
@@ -487,18 +487,20 @@ namespace VF.Inspector {
             return HapticUtils.GetName(socket.owner());
         }
 
-        private static bool IsChildOf(Transform parent, Transform child) {
+        private static bool IsChildOf(Transform parent, Transform child, bool followConstraints) {
             var alreadyChecked = new HashSet<Transform>();
             var current = child;
             while (current != null) {
                 alreadyChecked.Add(current);
                 if (current == parent) return true;
-                var constraint = current.GetComponent<IConstraint>();
-                if (constraint != null && constraint.sourceCount > 0) {
-                    var source = constraint.GetSource(0).sourceTransform;
-                    if (source != null && !alreadyChecked.Contains(source)) {
-                        current = source;
-                        continue;
+                if (followConstraints) {
+                    var constraint = current.GetComponent<IConstraint>();
+                    if (constraint != null && constraint.sourceCount > 0) {
+                        var source = constraint.GetSource(0).sourceTransform;
+                        if (source != null && !alreadyChecked.Contains(source)) {
+                            current = source;
+                            continue;
+                        }
                     }
                 }
                 current = current.parent;
