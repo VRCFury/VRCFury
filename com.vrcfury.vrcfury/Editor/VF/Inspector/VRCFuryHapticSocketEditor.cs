@@ -253,14 +253,14 @@ namespace VF.Inspector {
             var senders = GameObjects.Create("Senders", bakeRoot);
 
             // Senders
-            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, HapticUtils.CONTACT_ORF_MAIN);
-            HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.01f, HapticUtils.CONTACT_ORF_NORM);
+            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, HapticUtils.CONTACT_ORF_MAIN);
+            HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f, HapticUtils.CONTACT_ORF_NORM);
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
                 HapticUtils.AddSender(
                     senders,
                     Vector3.zero,
                     "Type",
-                    0.01f,
+                    0.001f,
                     lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.CONTACT_ORF_IsRing : HapticUtils.CONTACT_ORF_IsHole
                 );
             }
