@@ -15,7 +15,7 @@ void SpsApplyBlendshape(uint vertexId, inout float3 position, inout float3 norma
 }
 void SpsGetBakedPosition(uint vertexId, out float3 position, out float3 normal, out float active) {
     const uint bakeIndex = 1 + vertexId * 7;
-    position = SPS_TEX_FLOAT3(_SPS_Bake, bakeIndex) * (_SPS_Length / _SPS_BakedLength);
+    position = SPS_TEX_FLOAT3(_SPS_Bake, bakeIndex);
     normal = sps_normalize(SPS_TEX_FLOAT3(_SPS_Bake, bakeIndex+3));
     active = SPS_TEX_FLOAT(_SPS_Bake, bakeIndex + 6);
     if (position.z < 0) active = 0;
@@ -36,4 +36,6 @@ void SpsGetBakedPosition(uint vertexId, out float3 position, out float3 normal, 
     SpsApplyBlendshape(vertexId, position, normal, _SPS_Blendshape13, 13);
     SpsApplyBlendshape(vertexId, position, normal, _SPS_Blendshape14, 14);
     SpsApplyBlendshape(vertexId, position, normal, _SPS_Blendshape15, 15);
+
+    position *= (_SPS_Length / _SPS_BakedLength);
 }
