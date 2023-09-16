@@ -153,6 +153,11 @@ namespace VF.Feature {
                     typeof(GameObject),
                     "m_IsActive"
                 );
+                var depthAnimationsEnabledBinding = EditorCurveBinding.FloatCurve(
+                    pathToBake + "/Animations",
+                    typeof(GameObject),
+                    "m_IsActive"
+                );
                 var legacyTipLightEnabledBinding = EditorCurveBinding.FloatCurve(
                     pathToBake + "/LegacyDpsTip",
                     typeof(GameObject),
@@ -167,6 +172,7 @@ namespace VF.Feature {
                                     clip.SetCurve(spsEnabledBinding, curve);
                                     clip.SetCurve(hapticsSendersEnabledBinding, curve);
                                     clip.SetCurve(hapticsReceiversEnabledBinding, curve);
+                                    clip.SetCurve(depthAnimationsEnabledBinding, curve);
                                     clip.SetCurve(legacyTipLightEnabledBinding, curve);
                                 }
                             }
@@ -175,6 +181,7 @@ namespace VF.Feature {
                                     clip.SetCurve(spsEnabledBinding, curve);
                                     clip.SetCurve(hapticsSendersEnabledBinding, curve);
                                     clip.SetCurve(hapticsReceiversEnabledBinding, curve);
+                                    clip.SetCurve(depthAnimationsEnabledBinding, curve);
                                     clip.SetCurve(legacyTipLightEnabledBinding, curve);
                                 }
                             }
