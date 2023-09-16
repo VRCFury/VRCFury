@@ -63,3 +63,5 @@ For more information, please refer to <https://unlicense.org>
   * Special thanks for continuing efforts to make VRCFury and Av3Emu more compatible with each other
 * CobaltSpace
   * Ensured that gogoloco params are always global
+* TayouVR
+  * added Logging to Blendshape Optimizer
