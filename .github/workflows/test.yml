@@ -6,7 +6,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Unity - Test runner
-        uses: game-ci/unity-test-runner@v3.1.0
+        uses: game-ci/unity-test-runner@v2.0.3
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
