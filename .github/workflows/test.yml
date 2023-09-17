@@ -3,7 +3,7 @@ on: push
 
 jobs:
   deploy:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
       - name: Unity - Test runner
         uses: game-ci/unity-test-runner@v2.0.3
