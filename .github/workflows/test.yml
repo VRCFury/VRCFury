@@ -26,8 +26,8 @@ jobs:
 
       - name: Download VRCSDK
         run: |
-          curl -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.avatars-3.0.9.zip"
-          curl -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.base-3.0.9.zip"
+          curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.avatars-3.0.9.zip"
+          curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.base-3.0.9.zip"
           mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
           mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.base"
           unzip avatars.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
