@@ -1,0 +1,15 @@
+name: Test
+on: push
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+    steps:
+      - name: Unity - Test runner
+        uses: game-ci/unity-test-runner@v3.1.0
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          unityVersion: 2019.4.31f1
+          projectPath: .github/workflows/test_project
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
