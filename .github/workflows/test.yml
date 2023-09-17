@@ -11,5 +11,5 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
           unityVersion: 2019.4.31f1
-          projectPath: .github/workflows/test_project
+          projectPath: ./.github/workflows/test_project
           githubToken: ${{ secrets.GITHUB_TOKEN }}
