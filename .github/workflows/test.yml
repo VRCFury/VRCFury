@@ -16,13 +16,24 @@ jobs:
           - 2019.4.31f1
     steps:
       - uses: actions/checkout@v2
+
       - uses: actions/cache@v2
         with:
           path: ${{ matrix.projectPath }}/Library
           key: Library-${{ matrix.projectPath }}
           restore-keys: |
             Library-
-      - name: Unity - Test runner
+
+      - name: Download VRCSDK
+        run: |
+          curl -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.avatars-3.0.9.zip"
+          curl -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.base-3.0.9.zip"
+          mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
+          mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.base"
+          unzip avatars.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
+          unzip base.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.base"
+
+      - name: Unity Test
         uses: game-ci/unity-test-runner@v3
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
