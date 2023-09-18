@@ -15,6 +15,9 @@ jobs:
           - 2022
           - 3.0.9
           - 3.3.0
+        testMode:
+          - playmode
+          - editmode
     steps:
       - uses: actions/checkout@v2
 
@@ -58,3 +61,4 @@ jobs:
           unityVersion: ${{ matrix.unityVersion }}
           projectPath: ${{ env.PROJECT_PATH }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
+          testMode: ${{ matrix.testMode }}
