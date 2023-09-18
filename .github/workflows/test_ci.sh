@@ -23,5 +23,6 @@ for platform in "${platforms[@]}"; do
         -enableCodeCoverage \
         -testPlatform $platform \
         -coverageResultsPath /opt/project/CodeCoverage \
-        -coverageOptions $COVERAGE_OPTIONS
+        -coverageOptions $COVERAGE_OPTIONS \
+        -runSynchronously
 done
