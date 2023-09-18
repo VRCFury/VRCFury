@@ -63,6 +63,7 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
+        DpsTipScaleFix,
         
         FixTouchingContacts,
 
