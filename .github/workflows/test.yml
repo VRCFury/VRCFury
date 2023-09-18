@@ -9,12 +9,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image:
-          - unityci/editor:2019.4.31f1-windows-mono-2.0.0
-          - unityci/editor:2019.4.31f1-android-2.0.0
+        unityVersion:
+          - 2019.4.31f1
         vrcsdkVersion:
           - 2022
           - 3.0.9
+          - 3.3.0
     steps:
       - uses: actions/checkout@v2
 
@@ -38,6 +38,13 @@ jobs:
             mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
             unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
             unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
+          elif [[ "${{ matrix.vrcsdkVersion }}" == "3.3.0" ]]; then
+            curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.3.0/com.vrchat.avatars-3.3.0.zip"
+            curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.3.0/com.vrchat.base-3.3.0.zip"
+            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
+            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
+            unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
+            unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
           else
             echo "What"
             exit 1
@@ -48,7 +55,6 @@ jobs:
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
-          unityVersion: 2019.4.31f1
-          customImage: ${{ matrix.image }}
+          unityVersion: ${{ matrix.unityVersion }}
           projectPath: ${{ env.PROJECT_PATH }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
