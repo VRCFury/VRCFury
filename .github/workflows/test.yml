@@ -59,7 +59,8 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         run: |
           chmod +x .github/workflows/test_ci.sh
-          docker run --gpus all --rm \
+          docker run --rm \
               --env UNITY_LICENSE \
               --volume="${PWD}:/opt/project" \
-              ${{ matrix.unityImage }} bash -c /opt/project/.github/workflows/test_ci.sh
+              ${{ matrix.unityImage }} \
+              /opt/project/.github/workflows/test_ci.sh
