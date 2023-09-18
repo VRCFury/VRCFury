@@ -50,5 +50,5 @@ jobs:
         with:
           unityVersion: 2019.4.31f1
           customImage: ${{ matrix.image }}
-          projectPath: $PROJECT_PATH
+          projectPath: ${{ env.PROJECT_PATH }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
