@@ -10,8 +10,8 @@ jobs:
         projectPath:
           - .github/workflows/test_project
         image:
-          - unity-ci/editor:2019.4.31f1-windows-mono-2.0.0
-          - unity-ci/editor:2019.4.31f1-android-2.0.0
+          - unityci/editor:2019.4.31f1-windows-mono-2.0.0
+          - unityci/editor:2019.4.31f1-android-2.0.0
         vrcsdkVersion:
           - 2022
           - 3.0.9
