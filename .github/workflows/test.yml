@@ -21,9 +21,9 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: $PROJECT_PATH/Library
-          key: Library-${{ matrix.image }}-${{ matrix.vrcsdkVersion }}
+          key: Library-${{ matrix.unityVersion }}-${{ matrix.vrcsdkVersion }}
           restore-keys: |
-            Library-${{ matrix.image }}
+            Library-${{ matrix.unityVersion }}
             Library-
 
       - name: Download VRCSDK
