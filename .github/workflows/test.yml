@@ -9,36 +9,45 @@ jobs:
       matrix:
         projectPath:
           - .github/workflows/test_project
-        testMode:
-          - playmode
-          - editmode
-        unityVersion:
-          - 2019.4.31f1
+        image:
+          - unity-ci/editor:2019.4.31f1-windows-mono-2.0.0
+          - unity-ci/editor:2019.4.31f1-android-2.0.0
+        vrcsdkVersion:
+          - 2022
+          - 3.0.9
     steps:
       - uses: actions/checkout@v2
 
       - uses: actions/cache@v2
         with:
           path: ${{ matrix.projectPath }}/Library
-          key: Library-${{ matrix.projectPath }}
+          key: Library-${{ matrix.image }}-${{ matrix.vrcsdkVersion }}
           restore-keys: |
+            Library-${{ matrix.image }}
             Library-
 
       - name: Download VRCSDK
         run: |
-          curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.avatars-3.0.9.zip"
-          curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.base-3.0.9.zip"
-          mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
-          mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.base"
-          unzip avatars.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
-          unzip base.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.base"
+          if [[ "${{ matrix.vrcsdkVersion }}" == "2022" ]]; then
+            curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
+            unzip "vrcsdk.zip" -d "${{ matrix.projectPath }}/Assets"
+          elif [[ "${{ matrix.vrcsdkVersion }}" == "3.0.9" ]]; then
+            curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.avatars-3.0.9.zip"
+            curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.base-3.0.9.zip"
+            mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
+            mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.base"
+            unzip avatars.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
+            unzip base.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.base"
+          else
+            echo "What"
+            exit 1
+          fi
 
       - name: Unity Test
         uses: game-ci/unity-test-runner@v3
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
-          unityVersion: ${{ matrix.unityVersion }}
+          customImage: ${{ matrix.image }}
           projectPath: ${{ matrix.projectPath }}
-          testMode: ${{ matrix.testMode }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
