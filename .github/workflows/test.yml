@@ -9,8 +9,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        unityVersion:
-          - 2019.4.31f1
+        unityImage:
+          - unityci/editor:ubuntu-2019.4.31f1-linux-il2cpp-2.0.0
+          - unityci/editor:ubuntu-2019.4.31f1-android-2.0.0
+          - unityci/editor:ubuntu-2019.4.31f1-windows-mono-2.0.0
         vrcsdkVersion:
           - 2022
           - 3.0.9
@@ -24,9 +26,9 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ${{ env.PROJECT_PATH }}/Library
-          key: Library-${{ matrix.unityVersion }}-${{ matrix.vrcsdkVersion }}
+          key: Library-${{ matrix.unityImage }}-${{ matrix.vrcsdkVersion }}
           restore-keys: |
-            Library-${{ matrix.unityVersion }}
+            Library-${{ matrix.unityImage }}
             Library-
 
       - name: Download VRCSDK
@@ -53,12 +55,13 @@ jobs:
             exit 1
           fi
 
-      - name: Unity Test
-        uses: game-ci/unity-test-runner@v3
+      - name: Run Tests
+        id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-        with:
-          unityVersion: ${{ matrix.unityVersion }}
-          projectPath: ${{ env.PROJECT_PATH }}
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          testMode: ${{ matrix.testMode }}
+        run: |
+          chmod +x /opt/project/.github/workflows/test_ci.sh
+          docker run --gpus all --rm \
+              --env UNITY_LICENSE \
+              --volume="${PWD}:/opt/project" \
+              ${{ matrix.unityImage }} bash -c /opt/project/.github/workflows/test_ci.sh
