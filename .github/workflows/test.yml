@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/cache@v2
         with:
-          path: $PROJECT_PATH/Library
+          path: ${{ env.PROJECT_PATH }}/Library
           key: Library-${{ matrix.unityVersion }}-${{ matrix.vrcsdkVersion }}
           restore-keys: |
             Library-${{ matrix.unityVersion }}
