@@ -18,9 +18,6 @@ jobs:
           - 2022
           - 3.0.9
           - 3.3.0
-        testMode:
-          - playmode
-          - editmode
     steps:
       - uses: actions/checkout@v2
 
@@ -61,7 +58,7 @@ jobs:
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         run: |
-          chmod +x /opt/project/.github/workflows/test_ci.sh
+          chmod +x .github/workflows/test_ci.sh
           docker run --gpus all --rm \
               --env UNITY_LICENSE \
               --volume="${PWD}:/opt/project" \
