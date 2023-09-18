@@ -4,11 +4,11 @@ on: push
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_PATH: .github/workflows/test_project
     strategy:
       fail-fast: false
       matrix:
-        projectPath:
-          - .github/workflows/test_project
         image:
           - unityci/editor:2019.4.31f1-windows-mono-2.0.0
           - unityci/editor:2019.4.31f1-android-2.0.0
@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/cache@v2
         with:
-          path: ${{ matrix.projectPath }}/Library
+          path: $PROJECT_PATH/Library
           key: Library-${{ matrix.image }}-${{ matrix.vrcsdkVersion }}
           restore-keys: |
             Library-${{ matrix.image }}
@@ -30,14 +30,14 @@ jobs:
         run: |
           if [[ "${{ matrix.vrcsdkVersion }}" == "2022" ]]; then
             curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
-            unzip "vrcsdk.zip" -d "${{ matrix.projectPath }}/Assets"
+            unzip "vrcsdk.zip" -d "$PROJECT_PATH/Assets"
           elif [[ "${{ matrix.vrcsdkVersion }}" == "3.0.9" ]]; then
             curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.avatars-3.0.9.zip"
             curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.base-3.0.9.zip"
-            mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
-            mkdir -p "${{ matrix.projectPath }}/Packages/com.vrchat.base"
-            unzip avatars.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.avatars"
-            unzip base.zip -d "${{ matrix.projectPath }}/Packages/com.vrchat.base"
+            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
+            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
+            unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
+            unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
           else
             echo "What"
             exit 1
@@ -50,5 +50,5 @@ jobs:
         with:
           unityVersion: 2019.4.31f1
           customImage: ${{ matrix.image }}
-          projectPath: ${{ matrix.projectPath }}
+          projectPath: $PROJECT_PATH
           githubToken: ${{ secrets.GITHUB_TOKEN }}
