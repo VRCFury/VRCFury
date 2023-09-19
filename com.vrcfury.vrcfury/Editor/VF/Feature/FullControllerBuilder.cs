@@ -261,17 +261,13 @@ namespace VF.Feature {
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             ((AnimatorController)from).RewriteParameters(RewriteParamName);
 
-            var smoothedParams = model.smoothedPrms.ToDictionary(
-                x => x.name == "*" ? x.name : RewriteParamName(x.name), 
-                x => x);
+            var smoothedParams = model.smoothedPrms.ToDictionary(x => RewriteParamName(x.name), x => x);
             var fromParams = from.parameters.ToDictionary(x => x.name, x => x);
             from.RewriteParameters(param => 
             {
                 if (string.IsNullOrWhiteSpace(param)) return param;
                 if (fromParams[param].type != AnimatorControllerParameterType.Float) return param;
-                FullController.SmoothParamEntry smoothParam;
-                if (smoothedParams.TryGetValue(param, out smoothParam) || 
-                        smoothedParams.TryGetValue("*", out smoothParam))
+                if (smoothedParams.TryGetValue(param, out var smoothParam))
                 {
                     var result = smoothing.Smooth(
                         param, 
@@ -384,27 +380,48 @@ namespace VF.Feature {
 
                     System.Action selectButtonPress = () =>
                     {
-                        var prms = prop.FindPropertyRelative("prms");
                         var menu = new GenericMenu();
-                        foreach (SerializedProperty paramEntry in prms)
+                        var paramNames = new SortedSet<string>();
+                        var alreadySmoothedParams = new HashSet<string>();
+                        foreach (SerializedProperty alreadySmoothedParam in prop.FindPropertyRelative("smoothedPrms")) 
                         {
-                            var guid = paramEntry.FindPropertyRelative("parameters.id");
-                            var value = VrcfObjectId.IdToObject<VRCExpressionParameters>(guid.stringValue);
+                            alreadySmoothedParams.Add(alreadySmoothedParam.FindPropertyRelative("name").stringValue);
+                        }
+
+                        var controllers = prop.FindPropertyRelative("controllers");
+                        foreach (SerializedProperty paramEntry in controllers)
+                        {
+                            var guid = paramEntry.FindPropertyRelative("controller.id");
+                            var value = (UnityEditor.Animations.AnimatorController) 
+                                    VrcfObjectId.IdToObject<RuntimeAnimatorController>(guid.stringValue);
 
                             foreach (var param in value.parameters)
                             {
-                                if (param.valueType == VRCExpressionParameters.ValueType.Float)
+                                if (param.type ==  AnimatorControllerParameterType.Float)
                                 {
-                                    menu.AddItem(new GUIContent(param.name.Replace("/", "\u2215")), false, () =>
-                                    {
-                                        nameProp.stringValue = param.name;
-                                        nameProp.serializedObject.ApplyModifiedProperties();
-                                    });
+                                   paramNames.Add(param.name);
                                 }
                             }
                         }
+                        paramNames.ExceptWith(alreadySmoothedParams);
+                        if (paramNames.Count > 0)
+                        {
+                            foreach (var paramName in paramNames)
+                            {
+                                menu.AddItem(new GUIContent(paramName.Replace("/", "\u2215")), false, () =>
+                                {
+                                    nameProp.stringValue = paramName;
+                                    nameProp.serializedObject.ApplyModifiedProperties();
+                                });
+                            }
+                        } 
+                        else
+                        {
+                            menu.AddDisabledItem(new GUIContent("No more parameters found"));
+                        }
                         menu.ShowAsContext();
                     };
+
                     var selectButton = new Button(selectButtonPress) { text = "Select" };
                     wrapper.Add(selectButton);
 
