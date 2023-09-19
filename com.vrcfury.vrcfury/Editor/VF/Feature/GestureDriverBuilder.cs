@@ -143,7 +143,7 @@ namespace VF.Feature {
                     (input, whenEnabled),
                     (null, null)
                 );
-            return smoothing.Smooth($"{input.Name()}Smoothed", maintained, 0.2f);
+            return smoothing.Smooth($"{input.Name()}Smoothed", maintained, model.smoothingDuration);
         }
 
         public override string GetEditorTitle() {
@@ -151,8 +151,23 @@ namespace VF.Feature {
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"),
-                (i,el) => RenderGestureEditor(el));
+            var content = new VisualElement();
+            SerializedProperty gestures = prop.FindPropertyRelative("gestures");
+            content.Add(VRCFuryEditorUtils.List(gestures, (i,el) => RenderGestureEditor(el)));
+            foreach (SerializedProperty gesture in gestures) 
+            {
+                if (gesture.FindPropertyRelative("enableWeight").boolValue) 
+                {
+                    var smoothingDuration = prop.FindPropertyRelative("smoothingDuration");
+                    var section = VRCFuryEditorUtils.Section("Parameter smoothing");
+                    section.Add(VRCFuryEditorUtils.WrappedLabel("Gesture weight parameter smoothing in seconds, set to 0 to disable smoothing."));
+                    section.Add(new VisualElement { style = { paddingTop = 10 } });
+                    section.Add(VRCFuryEditorUtils.Prop(smoothingDuration, "Duration"));
+                    content.Add(section);
+                    break;    
+                }
+            }
+            return content;
         }
 
         private VisualElement RenderGestureEditor(SerializedProperty gesture) {

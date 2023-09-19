@@ -540,6 +540,8 @@ namespace VF.Model.Feature {
     [Serializable]
     public class GestureDriver : NewFeatureModel {
         public List<Gesture> gestures = new List<Gesture>();
+
+        public float smoothingDuration = 0.2f;
         
         [Serializable]
         public class Gesture {
