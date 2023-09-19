@@ -83,7 +83,10 @@ namespace VF.Feature {
                         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                             var light = tip.AddComponent<Light>();
                             light.type = LightType.Point;
-                            light.color = Color.black;
+                            // Unity prioritises coloured over black when sorting unity_LightColor
+                            // Use a slight colour to have unity sort the tip light ahead of
+                            // other orifice lights to avoid the light 4 bug
+                            light.color = new Color(1f/255f, 1f/255f, 1f/255f);
                             light.range = 0.49f;
                             light.shadows = LightShadows.None;
                             light.renderMode = LightRenderMode.ForceVertex;
