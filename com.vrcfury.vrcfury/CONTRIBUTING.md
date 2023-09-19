@@ -47,6 +47,8 @@ For more information, please refer to <https://unlicense.org>
 
 ## Special Thanks to the contributors!
 
+* AirGamer
+  * Added scaling of legacy DPS tip light intensity
 * anatawa12
   * Improvements to VRCFury/Av3Emu compatibility
 * CobaltSpace
