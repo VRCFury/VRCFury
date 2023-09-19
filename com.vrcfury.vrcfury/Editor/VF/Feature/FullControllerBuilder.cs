@@ -266,7 +266,7 @@ namespace VF.Feature {
             from.RewriteParameters(param => 
             {
                 if (string.IsNullOrWhiteSpace(param)) return param;
-                if (fromParams[param].type != AnimatorControllerParameterType.Float) return param;
+                if (!fromParams.ContainsKey(param) || fromParams[param].type != AnimatorControllerParameterType.Float) return param;
                 if (smoothedParams.TryGetValue(param, out var smoothParam))
                 {
                     var result = smoothing.Smooth(
