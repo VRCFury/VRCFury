@@ -42,14 +42,14 @@ namespace VF.Inspector {
                 if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
                 var section = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
                 var modeField = new PopupField<string>(
-                    new List<string>() { "Auto", "Hole", "Ring" },
-                    addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
+                    new List<string>() { "Auto", "Hole", "Ring", "Ring Bidirectional" },
+                    addLightProp.enumValueIndex == 3 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
                 );
                 modeField.RegisterValueChangedCallback(cb => {
-                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : 3;
+                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : cb.newValue == "Ring Bidirectional" ? 3 : 4;
                     addLightProp.serializedObject.ApplyModifiedProperties();
                 });
-                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField, tooltip: "'Auto' will set to Hole if attached to hips or head bone."));
+                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField, tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n'Bidirectional' will allow entry from either side using SPS. DPS & TPS will treat these as single sided"));
                 return section;
             }, addLightProp));
 
@@ -177,6 +177,8 @@ namespace VF.Inspector {
                 text += " (Hole)\nPlug follows orange arrow";
             } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
                 text += " (Ring)\nPlug follows orange arrow";
+            } else if (type == VRCFuryHapticSocket.AddLight.RingBidirectional) {
+                text += " (Ring Bidirectional)\nPlug normally follows orange arrow";
             } else {
                 text += " (SPS disabled)";
                 discColor = Color.red;
@@ -191,7 +193,7 @@ namespace VF.Inspector {
                 Handles.color = discColor;
                 Handles.DrawWireDisc(worldPos, worldForward, 0.04f);
             });
-            if (type == VRCFuryHapticSocket.AddLight.Ring) {
+            if (type == VRCFuryHapticSocket.AddLight.Ring || type == VRCFuryHapticSocket.AddLight.RingBidirectional) {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos + worldForward * 0.05f,
                     worldPos + worldForward * -0.05f,
@@ -270,7 +272,18 @@ namespace VF.Inspector {
                 rootTags.Add(HapticUtils.TagTpsOrfRoot);
                 rootTags.Add(HapticUtils.TagSpsSocketRoot);
                 if (lightType != VRCFuryHapticSocket.AddLight.None) {
-                    rootTags.Add(lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole);
+                    switch (lightType) {
+                        case VRCFuryHapticSocket.AddLight.Ring:
+                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
+                            break;
+                        case VRCFuryHapticSocket.AddLight.RingBidirectional:
+                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
+                            rootTags.Add(HapticUtils.TagSpsSocketIsBidirectional);
+                            break;
+                        default:
+                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
+                            break;
+                    }
                 }
                 HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
                 HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
@@ -289,7 +302,8 @@ namespace VF.Inspector {
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
-                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.4202f : 0.4102f;
+                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.4202f :
+                        lightType == VRCFuryHapticSocket.AddLight.RingBidirectional ? 0.4203f : 0.4102f;
                     mainLight.shadows = LightShadows.None;
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -353,7 +367,9 @@ namespace VF.Inspector {
         public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(VRCFuryHapticSocket socket) {
             if (socket.addLight != VRCFuryHapticSocket.AddLight.None) {
                 var type = socket.addLight;
-                if (type == VRCFuryHapticSocket.AddLight.Auto) type = ShouldProbablyBeHole(socket) ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring;
+                if (type == VRCFuryHapticSocket.AddLight.Auto)
+                    type = ShouldProbablyBeHole(socket) ? VRCFuryHapticSocket.AddLight.Hole :
+                        ShouldProbablyBeReversible(socket) ? VRCFuryHapticSocket.AddLight.RingBidirectional : VRCFuryHapticSocket.AddLight.Ring;
                 var position = socket.position;
                 var rotation = Quaternion.Euler(socket.rotation);
                 return Tuple.Create(type, position, rotation);
@@ -432,6 +448,12 @@ namespace VF.Inspector {
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
             if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.Head)) return true;
             return ShouldProbablyHaveTouchZone(socket);
+        }
+
+        public static bool ShouldProbablyBeReversible(VRCFuryHapticSocket socket) {
+            if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.LeftHand)) return true;
+            if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.RightHand)) return true;
+            return false;
         }
 
         public static string GetName(VRCFuryHapticSocket socket) {
