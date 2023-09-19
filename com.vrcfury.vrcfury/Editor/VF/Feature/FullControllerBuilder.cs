@@ -15,6 +15,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -27,6 +28,7 @@ namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        [VFAutowired] private readonly ParamSmoothingService smoothing;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -259,6 +261,27 @@ namespace VF.Feature {
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             ((AnimatorController)from).RewriteParameters(RewriteParamName);
 
+            var smoothedParams = model.smoothedPrms.ToDictionary(
+                x => x.name == "*" ? x.name : RewriteParamName(x.name), 
+                x => x);
+            var fromParams = from.parameters.ToDictionary(x => x.name, x => x);
+            from.RewriteParameters(param => 
+            {
+                if (string.IsNullOrWhiteSpace(param)) return param;
+                if (fromParams[param].type != AnimatorControllerParameterType.Float) return param;
+                FullController.SmoothParamEntry smoothParam;
+                if (smoothedParams.TryGetValue(param, out smoothParam) || 
+                        smoothedParams.TryGetValue("*", out smoothParam))
+                {
+                    var result = smoothing.Smooth(
+                        param, 
+                        new VFAFloat(fromParams[param]), 
+                        smoothParam.smoothingDuration);
+                    return result.Name();
+                }
+                return param;
+            }, includeWrites: false);
+
             // Merge base mask
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
                 var mask = from.layers[0].avatarMask;
@@ -343,6 +366,52 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms"),
                 (i, el) => VRCFuryEditorUtils.Prop(el.FindPropertyRelative("parameters"))));
             
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Smoothed Parameters:"));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms"),
+                (i, el) =>
+                {
+                    var wrapper = new VisualElement();
+                    wrapper.style.flexDirection = FlexDirection.Row;
+                    SerializedProperty nameProp = el.FindPropertyRelative("name");
+                    var a = VRCFuryEditorUtils.Prop(nameProp);
+                    a.style.flexBasis = 0;
+                    a.style.flexGrow = 2;
+                    wrapper.Add(a);
+                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("smoothingDuration"));
+                    b.style.flexBasis = 0;
+                    b.style.flexGrow = 1;
+                    wrapper.Add(b);
+
+                    System.Action selectButtonPress = () =>
+                    {
+                        var prms = prop.FindPropertyRelative("prms");
+                        var menu = new GenericMenu();
+                        foreach (SerializedProperty paramEntry in prms)
+                        {
+                            var guid = paramEntry.FindPropertyRelative("parameters.id");
+                            var value = VrcfObjectId.IdToObject<VRCExpressionParameters>(guid.stringValue);
+
+                            foreach (var param in value.parameters)
+                            {
+                                if (param.valueType == VRCExpressionParameters.ValueType.Float)
+                                {
+                                    menu.AddItem(new GUIContent(param.name.Replace("/", "\u2215")), false, () =>
+                                    {
+                                        nameProp.stringValue = param.name;
+                                        nameProp.serializedObject.ApplyModifiedProperties();
+                                    });
+                                }
+                            }
+                        }
+                        menu.ShowAsContext();
+                    };
+                    var selectButton = new Button(selectButtonPress) { text = "Select" };
+                    wrapper.Add(selectButton);
+
+                    return wrapper;
+                }));
+
+
             content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameters in this list will have their name kept as is, allowing you to interact with " +
