@@ -19,6 +19,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 
 	float3 rootPos;
 	bool isRing;
+	bool isReversible;
 	float3 frontNormal;
 	bool found = false;
 	{
@@ -26,7 +27,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		sps_tri_search(selfData, found, rootPos, isRing, frontNormal, color);
 		sps_tri_GetData(Other, otherData)
 		sps_tri_search(otherData, found, rootPos, isRing, frontNormal, color);
-		sps_light_search(found, rootPos, isRing, frontNormal, color);
+		sps_light_search(found, rootPos, isRing, isReversible, frontNormal, color);
 	}
 	if (!found) return;
 
@@ -34,8 +35,8 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float exitAngle = sps_angle_between(rootPos, float3(0,0,1));
 	float entranceAngle = SPS_PI - sps_angle_between(frontNormal, rootPos);
 
-	// Flip backward rings
-	if (isRing && entranceAngle > SPS_PI/2) {
+	// Flip backward reversible rings
+	if (isReversible && entranceAngle > SPS_PI/2) {
 		frontNormal *= -1;
 		entranceAngle = SPS_PI - entranceAngle;
 	}
@@ -52,13 +53,13 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		applyLerp = min(applyLerp, 1-exitAngleTooSharp);
 
 		// Cancel if the entrance angle is too sharp
-		if (!isRing) {
+		if (!isReversible) {
 			const float allowedEntranceAngle = isRing ? 0.5 : 0.8;
 			const float entranceAngleTooSharp = entranceAngle > SPS_PI*allowedEntranceAngle ? 1 : 0;
 			applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
 		}
 		
-		if (!isRing) {
+		if (!isReversible) {
 			// Uncancel if hilted in a hole
 			const float hiltedSphereRadius = 0.3;
 			const float inSphere = orfDistance > worldLength*hiltedSphereRadius ? 0 : 1;

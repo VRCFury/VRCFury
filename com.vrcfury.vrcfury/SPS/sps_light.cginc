@@ -3,7 +3,8 @@
 #include "sps_utils.cginc"
 
 // Type: 0=invalid 1=hole 2=ring 3=front
-void sps_light_parse(float range, half4 color, out int type) {
+// Root Subtype: 0=normal, 1=reversible (only valid when Type is non-zero)
+void sps_light_parse(float range, half4 color, out int type, out int subtype) {
 	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
 		type = 0;
 		return;
@@ -22,6 +23,8 @@ void sps_light_parse(float range, half4 color, out int type) {
 	if (legacyRange == 1) type = 1;
 	if (legacyRange == 2) type = 2;
 	if (legacyRange == 5) type = 3;
+	
+	subtype = round((range % 0.001) * 10000);
 }
 
 // Find nearby socket lights
@@ -29,18 +32,20 @@ void sps_light_search(
 	inout bool ioFound,
 	inout float3 ioRootLocal,
 	inout bool ioIsRing,
+	inout bool ioIsReversible,
 	inout float3 ioRootNormal,
 	inout float4 ioColor
 ) {
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];
+	int lightSubType[4];
 	float3 lightWorldPos[4];
 	float3 lightLocalPos[4];
 	{
 		for(int i = 0; i < 4; i++) {
 	 		const float range = sps_attenToRange(unity_4LightAtten0[i]);
-			sps_light_parse(range, unity_LightColor[i], lightType[i]);
+			sps_light_parse(range, unity_LightColor[i], lightType[i], lightSubType[i]);
 	 		lightWorldPos[i] = float3(unity_4LightPosX0[i], unity_4LightPosY0[i], unity_4LightPosZ0[i]);
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}
@@ -100,6 +105,7 @@ void sps_light_search(
 	ioFound = true;
 	ioRootLocal = lightLocalPos[rootIndex];
 	ioIsRing = lightType[rootIndex] != 1;
+	ioIsReversible = lightSubType[rootIndex] & 1;
 	ioRootNormal = frontFound
 		? lightLocalPos[frontIndex] - lightLocalPos[rootIndex]
 		: -1 * lightLocalPos[rootIndex];
