@@ -16,6 +16,9 @@ using VRC.SDKBase;
 
 namespace VF.Feature {
     public class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
+        
+        static string logOutput = "";
+        
         public override string GetEditorTitle() {
             return "Blendshape Optimizer";
         }
@@ -50,6 +53,9 @@ namespace VF.Feature {
                 var blendshapeCount = mesh.blendShapeCount;
                 if (blendshapeCount == 0) continue;
 
+                // will print with ┬─ at the start, for nicer viewing in the console
+                logOutput += $"\n\u252c\u2500 Optimizing {renderer.transform.name}\n";
+
                 var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(skin, mesh);
 
                 bool ShouldKeepName(string name) {
@@ -82,11 +88,14 @@ namespace VF.Feature {
                     var savedBlendshape = savedBlendshapes[id];
                     var keep = blendshapeIdsToKeep.Contains(id);
 
+                    string logOutputDetail;
                     if (keep) {
-                        savedBlendshape.SaveTo(meshCopy);
+                        savedBlendshape.SaveTo(meshCopy, out logOutputDetail);
                     } else {
-                        savedBlendshape.BakeTo(meshCopy, savedWeights[id]);
+                        savedBlendshape.BakeTo(meshCopy, savedWeights[id], out logOutputDetail);
                     }
+                    // add ├ and └ for nicer looking log output
+                    logOutput += (id != blendshapeCount-1 ? "\u251c" : "\u2514") + logOutputDetail;
                 }
                 VRCFuryEditorUtils.MarkDirty(meshCopy);
 
@@ -111,6 +120,7 @@ namespace VF.Feature {
                     }
                 }
             }
+            Debug.Log($"Blendshape Optimizer Actions:\n{logOutput}");
         }
 
         private class SavedBlendshape {
@@ -129,13 +139,15 @@ namespace VF.Feature {
                 }
             }
 
-            public void SaveTo(Mesh mesh) {
+            public void SaveTo(Mesh mesh, out string logOutputDetail) {
+                logOutputDetail = $"Keeping BlendShape \"{name}\"\n";
                 foreach (var (w, v, n, t) in frames) {
                     mesh.AddBlendShapeFrame(name, w, v, n, t);
                 }
             }
 
-            public void BakeTo(Mesh mesh, float weight100) {
+            public void BakeTo(Mesh mesh, float weight100, out string logOutputDetail) {
+                logOutputDetail = $"Baking BlendShape \"{name}\" into mesh at weight {weight100}, as weight is not animated\n";
                 // TODO: Is this how multiple frames work?
                 var lastFrame = frames[frames.Count - 1];
                 if (frames.Count == 0 || weight100 == 0) {
