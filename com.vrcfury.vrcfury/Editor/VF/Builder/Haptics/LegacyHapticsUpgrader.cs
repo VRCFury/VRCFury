@@ -242,7 +242,7 @@ namespace VF.Builder.Haptics {
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
                     var o = AddSocket(t);
-                    if (o) o.addLight = VRCFuryHapticSocket.AddLight.Ring;
+                    if (o) o.addLight = VRCFuryHapticSocketEditor.ShouldProbablyBeReversible(o) ? VRCFuryHapticSocket.AddLight.RingBidirectional : VRCFuryHapticSocket.AddLight.Ring;
                     objectsToDelete.Add(ringMarker);
                 }
             }
@@ -257,7 +257,10 @@ namespace VF.Builder.Haptics {
                                 var type = info.Item1;
                                 var position = info.Item2;
                                 var rotation = info.Item3;
-                                socket.addLight = type;
+                                if (type == VRCFuryHapticSocket.AddLight.Ring)
+                                    socket.addLight = VRCFuryHapticSocketEditor.ShouldProbablyBeReversible(socket) ? VRCFuryHapticSocket.AddLight.RingBidirectional : VRCFuryHapticSocket.AddLight.Ring;
+                                else
+                                    socket.addLight = type;
                                 socket.position = position;
                                 socket.rotation = rotation.eulerAngles;
                             }
