@@ -5,6 +5,7 @@ namespace VF.Feature.Base {
         
         // Needs to happen before everything
         FixDoubleFx,
+        RemoveDefaultedAdditiveLayer,
         
         // Needs to happen before ForceObjectState
         FullControllerToggle,
