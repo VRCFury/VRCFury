@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -74,7 +75,7 @@ namespace VF.Feature {
 
         private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion,float)> states) {
             ControllerManager controller;
-            VFALayer layer;
+            VFLayer layer;
 
             if (type == LayerType.Action) {
                 controller = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
@@ -111,7 +112,7 @@ namespace VF.Feature {
                 animatorLayerControlManager.Register(weightOff, layer.GetRawStateMachine());
             }
 
-            var toggleStates = new List<(VFACondition, VFAState, float)>();
+            var toggleStates = new List<(VFCondition, VFState, float)>(); 
             foreach (var s in states) {
                 var (param, motion, exitTime) = s;
                 var newState = layer.NewState(motion.name);

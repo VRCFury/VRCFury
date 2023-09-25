@@ -4,6 +4,8 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -64,7 +66,7 @@ namespace VF.Feature {
             }
         }
 
-        public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)> set) {
+        public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> set) {
             foreach (var (type, controller) in set) {
                 foreach (var layer in controller.layers) {
                     AnimatorIterator.ForEachBehaviourRW(layer.stateMachine, (b, add) => {

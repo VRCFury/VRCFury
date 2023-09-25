@@ -5,6 +5,8 @@ using UnityEditor;
 using UnityEditor.Animations;
 using VF.Builder.Exceptions;
 using VF.Inspector;
+using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -13,8 +15,8 @@ namespace VF.Builder {
         public class FoundController {
             public VRCAvatarDescriptor.AnimLayerType type;
             public bool isDefault;
-            public AnimatorController controller;
-            public Action<AnimatorController> set;
+            public VFController controller;
+            public Action<VFController> set;
             public Action setToDefault;
         }
         

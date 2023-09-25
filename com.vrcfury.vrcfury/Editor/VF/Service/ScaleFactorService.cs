@@ -8,6 +8,7 @@ using VF.Feature;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;

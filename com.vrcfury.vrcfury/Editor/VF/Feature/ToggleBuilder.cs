@@ -14,6 +14,7 @@ using VF.Model;
 using VF.Model.StateAction;
 using VF.Utils;
 using VF.Service;
+using VF.Utils.Controller;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -22,7 +23,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     private VFAParam param;
     private string layerName;
-    private VFACondition onCase;
+    private VFCondition onCase;
     private bool onEqualsOut;
 
     private bool addMenuItem;
@@ -36,7 +37,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly PhysboneResetService physboneResetService;
 
-    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
+    private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
+
     private AnimationClip restingClip;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
@@ -102,7 +104,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return "none";
     }
 
-    private VFALayer GetLayer(string layerName, ControllerManager controller) {
+    private VFLayer GetLayer(string layerName, ControllerManager controller) {
         if (enableExclusiveTag) {
             var primaryExclusiveTag = GetPrimaryExclusive();
             if (primaryExclusiveTag == "") return controller.NewLayer(layerName);
@@ -114,7 +116,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return controller.NewLayer(layerName);
     }
 
-    private VFALayer GetLayerForParameters(string exclusiveTag) {
+    private VFLayer GetLayerForParameters(string exclusiveTag) {
         if (!exclusiveParameterLayers.ContainsKey(exclusiveTag)) {
             exclusiveParameterLayers[exclusiveTag] = GetFx().NewLayer(exclusiveTag + " Parameters");
             exclusiveParameterLayers[exclusiveTag].NewState("Default");
@@ -122,14 +124,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return exclusiveParameterLayers[exclusiveTag];
     }
 
-    private VFAState GetOffState(string stateName, VFALayer layer) {
+    private VFState GetOffState(string stateName, VFLayer layer) {
         if (layer.GetRawStateMachine().states.Count() > 0) {
-            return new VFAState(layer.GetRawStateMachine().states.First(), layer.GetRawStateMachine());
+            return new VFState(layer.GetRawStateMachine().states.First(), layer.GetRawStateMachine());
         }
         return layer.NewState(stateName);
     }
 
-    private void SetStartState(VFALayer layer, AnimatorState state) {
+    private void SetStartState(VFLayer layer, AnimatorState state) {
         layer.GetRawStateMachine().defaultState = state;
     }
 
@@ -320,9 +322,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     private void Apply(
         ControllerManager controller,
-        VFALayer layer,
-        VFAState off,
-        VFACondition onCase,
+        VFLayer layer,
+        VFState off,
+        VFCondition onCase,
         string onName,
         State action,
         State inAction,
@@ -345,12 +347,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        VFAState inState;
-        VFAState onState;
-        VFAState outState;
+        VFState inState;
+        VFState onState;
+        VFState outState;
 
         if (model.hasTransition && inAction != null && inAction.actions.Count() != 0) {
-            
             var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
 
             // if clip is empty, copy last frame of transition
@@ -477,7 +478,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var triggerState = exclusiveLayer.NewState(layerName);
             var onParam = useInt ? (param as VFAInteger).IsEqualTo(intTarget) : (param as VFABool).IsTrue();
 
-            var intStates = new HashSet<(VFACondition, VFAState)>();
+            var intStates = new HashSet<(VFCondition, VFState)>();
 
             triggerState.TransitionsToExit().When(onParam.Not());
 

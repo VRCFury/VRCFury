@@ -14,6 +14,7 @@ using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils.Controller;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -104,8 +105,8 @@ public class VRCFuryBuilder {
         var totalModelCount = 0;
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
-        var exclusiveAnimationLayers = new Dictionary<string, VFALayer>();
-        var exclusiveParameterLayers = new Dictionary<string, VFALayer>();
+        var exclusiveAnimationLayers = new Dictionary<string, VFLayer>();
+        var exclusiveParameterLayers = new Dictionary<string, VFLayer>();
 
 
         var injector = new VRCFuryInjector();

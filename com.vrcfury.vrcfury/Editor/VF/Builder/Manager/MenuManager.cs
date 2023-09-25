@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {

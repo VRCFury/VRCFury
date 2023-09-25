@@ -7,13 +7,14 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
     public class ControllerManager {
         private const string BaseAvatarOwner = "Base Avatar";
-        private readonly AnimatorController ctrl;
+        private readonly VFController ctrl;
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
@@ -24,11 +25,10 @@ namespace VF.Builder {
         private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
-        private readonly VFAController _controller;
         private readonly List<AvatarMask> unionedBaseMasks = new List<AvatarMask>();
     
         public ControllerManager(
-            AnimatorController ctrl,
+            VFController ctrl,
             Func<ParamManager> paramManager,
             VRCAvatarDescriptor.AnimLayerType type,
             Func<int> currentFeatureNumProvider,
@@ -44,10 +44,9 @@ namespace VF.Builder {
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.tmpDir = tmpDir;
-            this._controller = new VFAController(ctrl, type);
 
-            if (ctrl.layers.Length > 0) {
-                var layer0 = ctrl.GetLayer(0);
+            var layer0 = ctrl.GetLayer(0);
+            if (layer0 != null) {
                 unionedBaseMasks.Add(layer0.mask);
                 layer0.weight = 1;
             }
@@ -60,16 +59,12 @@ namespace VF.Builder {
             }
         }
 
-        public AnimatorController GetRaw() {
+        public VFController GetRaw() {
             return ctrl;
         }
 
         public new VRCAvatarDescriptor.AnimLayerType GetType() {
             return type;
-        }
-        
-        private VFAController GetController() {
-            return _controller;
         }
 
         public void EnsureEmptyBaseLayer() {
@@ -80,8 +75,8 @@ namespace VF.Builder {
             }
         }
 
-        public VFALayer NewLayer(string name, int insertAt = -1, bool hasOwner = true) {
-            var newLayer = GetController().NewLayer(NewLayerName(name), insertAt);
+        public VFLayer NewLayer(string name, int insertAt = -1, bool hasOwner = true) {
+            var newLayer = ctrl.NewLayer(NewLayerName(name), insertAt);
             managedLayers.Add(newLayer.GetRawStateMachine());
             if (hasOwner) {
                 layerOwners[newLayer.GetRawStateMachine()] = currentFeatureNameProvider();
@@ -121,7 +116,7 @@ namespace VF.Builder {
             var id = layer.GetLayerId();
             managedLayers.Remove(sm);
             layerOwners.Remove(sm);
-            GetController().RemoveLayer(id);
+            ctrl.RemoveLayer(id);
         }
 
         /**
@@ -154,13 +149,13 @@ namespace VF.Builder {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
-        public IEnumerable<MutableLayer> GetLayers() {
+        public IEnumerable<VFLayer> GetLayers() {
             return ctrl.GetLayers();
         }
-        public IEnumerable<MutableLayer> GetManagedLayers() {
+        public IEnumerable<VFLayer> GetManagedLayers() {
             return GetLayers().Where(l => IsManaged(l));
         }
-        public IEnumerable<MutableLayer> GetUnmanagedLayers() {
+        public IEnumerable<VFLayer> GetUnmanagedLayers() {
             return GetLayers().Where(l => !IsManaged(l));
         }
 
@@ -177,7 +172,7 @@ namespace VF.Builder {
         
         public VFABool NewTrigger(string name, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
-            return GetController().NewTrigger(name);
+            return ctrl.NewTrigger(name);
         }
         public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
@@ -191,7 +186,7 @@ namespace VF.Builder {
                 if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
                 GetParamManager().addSyncedParam(param);
             }
-            return GetController().NewBool(name, def);
+            return ctrl.NewBool(name, def);
         }
         public VFAInteger NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
@@ -204,7 +199,7 @@ namespace VF.Builder {
                 if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
                 GetParamManager().addSyncedParam(param);
             }
-            return GetController().NewInt(name, def);
+            return ctrl.NewInt(name, def);
         }
         public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = NewParamName(name);
@@ -216,13 +211,13 @@ namespace VF.Builder {
                 param.defaultValue = def;
                 GetParamManager().addSyncedParam(param);
             }
-            return GetController().NewFloat(name, def);
+            return ctrl.NewFloat(name, def);
         }
 
-        public AnimatorControllerParameterType GetType(string name) {
+        public AnimatorControllerParameterType? GetType(string name) {
             var exists = Array.Find(ctrl.parameters, other => other.name == name);
             if (exists != null) return exists.type;
-            return 0;
+            return null;
         }
         
         private string NewParamName(string name) {
@@ -230,7 +225,7 @@ namespace VF.Builder {
             int offset = 1;
             while (true) {
                 var attempt = name + ((offset == 1) ? "" : offset+"");
-                if (GetType(attempt) == 0) return attempt;
+                if (!GetType(attempt).HasValue) return attempt;
                 offset++;
             }
         }
@@ -247,10 +242,10 @@ namespace VF.Builder {
         public VFAFloat Zero() {
             return NewFloat("VF_Zero", def: 0f, usePrefix: false);
         }
-        public VFACondition Always() {
+        public VFCondition Always() {
             return True().IsTrue();
         }
-        public VFACondition Never() {
+        public VFCondition Never() {
             return True().IsFalse();
         }
         public VFAInteger GestureLeft() {

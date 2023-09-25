@@ -5,6 +5,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDKBase;
@@ -54,9 +55,9 @@ namespace VF.Feature {
             var onRemote = layer.NewState("On (Remote)");
             
             load.TransitionsTo(on).When().WithTransitionExitTime(1);
-            VFAState.FakeAnyState(
+            VFState.FakeAnyState(
                 (onLocal, fx.IsLocal().IsTrue()),
-                (on, VFACondition.Never()),
+                (on, VFCondition.Never()),
                 (onRemote, null)
             );
 

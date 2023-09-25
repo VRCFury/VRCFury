@@ -10,6 +10,7 @@ using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
@@ -154,7 +155,7 @@ namespace VF.Feature {
             return _buildSettings;
         }
 
-        private IEnumerable<MutableLayer> GetMaintainedLayers(ControllerManager controller) {
+        private IEnumerable<VFLayer> GetMaintainedLayers(ControllerManager controller) {
             var settings = GetBuildSettings();
             return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }
@@ -178,7 +179,7 @@ namespace VF.Feature {
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
         public static DetectionResults DetectExistingWriteDefaults(
-            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> avatarControllers,
+            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> avatarControllers,
             ISet<AnimatorStateMachine> stateMachinesToIgnore = null
         ) {
             var controllerInfos = avatarControllers.Select(tuple => {

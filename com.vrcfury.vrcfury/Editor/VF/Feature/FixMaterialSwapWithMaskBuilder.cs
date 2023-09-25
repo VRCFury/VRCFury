@@ -7,6 +7,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
     /**
@@ -26,7 +27,7 @@ namespace VF.Feature {
             }
         }
 
-        private void CheckLayer(ControllerManager c, MutableLayer layer, ref int nextInt) {
+        private void CheckLayer(ControllerManager c, VFLayer layer, ref int nextInt) {
             var mask = layer.mask;
             if (mask == null) return;
             if (mask.AllowsAllTransforms()) return;

@@ -7,6 +7,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {

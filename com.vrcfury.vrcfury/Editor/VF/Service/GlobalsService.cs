@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Model.Feature;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -16,7 +17,7 @@ namespace VF.Service {
         public Action<FeatureModel,VFGameObject> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
-        public Dictionary<string, VFALayer> exclusiveAnimationLayers;
-        public Dictionary<string, VFALayer> exclusiveParameterLayers;
+        public Dictionary<string, VFLayer> exclusiveAnimationLayers;
+        public Dictionary<string, VFLayer> exclusiveParameterLayers;
     }
 }

@@ -15,6 +15,7 @@ using VF.Model.Feature;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
@@ -31,8 +32,8 @@ namespace VF.Feature.Base {
         protected VFGameObject originalObject => globals.originalObject;
         protected List<FeatureModel> allFeaturesInRun => globals.allFeaturesInRun;
         protected List<FeatureBuilder> allBuildersInRun => globals.allBuildersInRun;
-        protected Dictionary<string, VFALayer> exclusiveAnimationLayers => globals.exclusiveAnimationLayers;
-        protected Dictionary<string, VFALayer> exclusiveParameterLayers => globals.exclusiveParameterLayers;
+        protected Dictionary<string, VFLayer> exclusiveAnimationLayers => globals.exclusiveAnimationLayers;
+        protected Dictionary<string, VFLayer> exclusiveParameterLayers => globals.exclusiveParameterLayers;
         public VFGameObject avatarObjectOverride = null;
         public void addOtherFeature(FeatureModel model) {
             globals.addOtherFeature(model, featureBaseObject);
