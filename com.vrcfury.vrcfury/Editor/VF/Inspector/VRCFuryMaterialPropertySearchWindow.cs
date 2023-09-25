@@ -16,26 +16,24 @@ namespace VF.Inspector
         {
             var entries = new List<SearchTreeEntry>();
             entries.Add(new SearchTreeGroupEntry(new GUIContent("Material Properties")));
-            var nest = 1;
             if (_renderers != null) {
                 var singleRenderer = _renderers.Length == 1;
                 foreach (var renderer in _renderers) {
-                    nest = 1;
+                    var nest = 1;
                     var sharedMaterials = renderer.sharedMaterials;
                     if (sharedMaterials.Length == 0) return entries;
                     var singleMaterial = sharedMaterials.Length == 1;
                     if (!singleRenderer) {
                         entries.Add(new SearchTreeGroupEntry(new GUIContent("Mesh: " + renderer.name), nest));
-                        nest = 2;
                     }
                     foreach (var material in sharedMaterials)
                     {
                         if (material != null)
                         {
+                            nest = singleRenderer ? 1 : 2;
                             if (!singleMaterial) {
-                                nest = 2;
                                 entries.Add(new SearchTreeGroupEntry(new GUIContent("Material: " + material.name),  nest));
-                                nest = 3;
+                                nest++;
                             }
                             var shader = material.shader;
                             if (shader != null)
