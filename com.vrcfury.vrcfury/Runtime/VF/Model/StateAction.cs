@@ -41,6 +41,15 @@ namespace VF.Model.StateAction {
         public Renderer renderer;
         public int slot = 1;
     }
+
+    [Serializable]
+    public class MaterialPropertyAction : Action
+    {
+        public Renderer renderer;
+        public bool affectAllMeshes;
+        public string propertyName;
+        public float value;
+    }
     
     [Serializable]
     public class FlipbookAction : Action {

@@ -83,6 +83,29 @@ namespace VF.Service {
                         }
                         break;
                     }
+                    case MaterialPropertyAction materialPropertyAction: {
+                        if (materialPropertyAction.renderer == null && !materialPropertyAction.affectAllMeshes) break;
+                        var renderers = new[] { materialPropertyAction.renderer };
+                        if (materialPropertyAction.affectAllMeshes) {
+                            renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
+                        }
+
+                        foreach (var renderer in renderers) {
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(renderer.gameObject),
+                                renderer.GetType(),
+                                $"material.{materialPropertyAction.propertyName}"
+                            );
+                            var defaultSource = renderer.sharedMaterials.Where(mat =>
+                                mat.HasProperty(materialPropertyAction.propertyName)).ToArray();
+                            if (defaultSource.Length != 0) {
+                                offClip.SetConstant(binding, defaultSource[0].GetFloat(materialPropertyAction.propertyName));
+                                onClip.SetConstant(binding, materialPropertyAction.value);
+                            }
+                            
+                        }
+                        break;
+                    }
                     case AnimationClipAction clipAction:
                         var clipActionClip = clipAction.clip.Get();
                         if (clipActionClip && clipActionClip != firstClip) {
