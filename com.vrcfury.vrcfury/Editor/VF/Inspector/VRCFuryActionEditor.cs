@@ -146,7 +146,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 
                 var rendererProp = prop.FindPropertyRelative("renderer");
                 var propField = VRCFuryEditorUtils.Prop(rendererProp);
-                propField.style.flexGrow = 0;
+                propField.style.flexGrow = 1;
                 propField.style.flexShrink = 1;
                 propField.SetEnabled(!affectAllMeshesProp.boolValue);
                 rendererRow.Add(propField);
@@ -154,17 +154,20 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 rendererRow.Add(new Label("All Meshes") {
                     style = {
                         marginLeft = 2,
-                        marginRight = 2
+                        marginRight = 2,
+                        flexGrow = 1,
+                        flexBasis = 100,
+                        unityTextAlign = TextAnchor.MiddleRight
                     }
                 });
                 
                 var propField4 = VRCFuryEditorUtils.Prop(affectAllMeshesProp);
                 propField4.style.flexGrow = 0;
                 propField4.style.flexShrink = 0;
-                propField4.style.flexBasis = 20;
+                propField4.style.flexBasis = 16;
                 propField4.schedule.Execute(() => {
                     propField.SetEnabled(!affectAllMeshesProp.boolValue);
-                }).Every(100);
+                }).Every(1000);
                 rendererRow.Add(propField4);
                 
                 col.Add(rendererRow);
