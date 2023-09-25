@@ -76,7 +76,6 @@ namespace VF.Inspector
 
         public bool OnSelectEntry(SearchTreeEntry entry, SearchWindowContext context)
         {
-            Debug.Log($"Selected {entry.userData}");
             _targetProperty.stringValue = (string) entry.userData;
             _targetProperty.serializedObject.ApplyModifiedProperties();
             return true;
