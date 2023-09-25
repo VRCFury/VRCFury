@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -96,7 +98,7 @@ namespace VF.Builder {
                 .Select(c => GetController(c.type))
                 .ToArray();
         }
-        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> GetAllUsedControllersRaw() {
+        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> GetAllUsedControllersRaw() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => Tuple.Create(c.type, c.controller));

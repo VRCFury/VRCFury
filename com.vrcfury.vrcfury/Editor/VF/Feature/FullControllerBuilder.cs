@@ -16,6 +16,7 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -48,7 +49,7 @@ namespace VF.Feature {
                 }
             }
 
-            var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)>();
+            var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, VFController)>();
             foreach (var c in model.controllers) {
                 var type = c.type;
                 var source = c.controller.Get();
@@ -215,7 +216,7 @@ namespace VF.Feature {
             return path;
         }
 
-        private void Merge(AnimatorController from, ControllerManager toMain) {
+        private void Merge(VFController from, ControllerManager toMain) {
             var to = toMain.GetRaw();
             var type = toMain.GetType();
 
@@ -230,7 +231,7 @@ namespace VF.Feature {
             }
 
             // Rewrite clips
-            from.Rewrite(AnimationRewriter.Combine(
+            ((AnimatorController)from).Rewrite(AnimationRewriter.Combine(
                 AnimationRewriter.RewritePath(RewritePath),
                 ClipRewriter.CreateNearestMatchPathRewriter(
                     animObject: GetBaseObject(),
@@ -251,7 +252,7 @@ namespace VF.Feature {
             
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
-            from.RewriteParameters(RewriteParamName);
+            ((AnimatorController)from).RewriteParameters(RewriteParamName);
 
             // Merge base mask
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
@@ -274,8 +275,9 @@ namespace VF.Feature {
                 }
             }
 
-            if (from.layers.Length > 0) {
-                from.GetLayer(0).weight = 1;
+            var layer0 = from.GetLayer(0);
+            if (layer0 != null) {
+                layer0.weight = 1;
             }
 
             // Merge Layers

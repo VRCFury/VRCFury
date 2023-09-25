@@ -9,6 +9,7 @@ using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
 
@@ -91,7 +92,7 @@ namespace VF.Service {
             string name,
             float minPossible, float maxPossible,
             float defaultValue,
-            params (VFAFloat,VFACondition)[] targets
+            params (VFAFloat,VFCondition)[] targets
         ) {
             var fx = avatarManager.GetFx();
 
@@ -116,7 +117,7 @@ namespace VF.Service {
 
             var layer = fx.NewLayer("SetConditional " + name);
 
-            VFAState.FakeAnyState(targets.Select(target => {
+            VFState.FakeAnyState(targets.Select(target => {
                 if (target.Item1 == null) {
                     return (layer.NewState("Maintain").WithAnimation(GenerateTargetTree(output)), target.Item2);
                 }
@@ -126,7 +127,7 @@ namespace VF.Service {
             return output;
         }
 
-        public VFACondition GreaterThan(VFAFloat a, VFAFloat b, bool orEqualTo = false) {
+        public VFCondition GreaterThan(VFAFloat a, VFAFloat b, bool orEqualTo = false) {
             var fx = avatarManager.GetFx();
             var bIsWinning = fx.NewFloat("comparison");
             var layer = fx.NewLayer($"{a.Name()} vs {b.Name()}");

@@ -7,6 +7,7 @@ using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
 
@@ -16,7 +17,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         if (_unlockedParam == null) _unlockedParam = GetFx().NewBool("SecurityLockSync", synced: true);
         return _unlockedParam;
     }
-    public VFACondition GetEnabled() {
+    public VFCondition GetEnabled() {
         return GetUnlockedParam().IsTrue();
     }
     
@@ -72,7 +73,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
             clear.Drives(savedDigit, 0);
         }
 
-        var saveStates = new List<VFAState>();
+        var saveStates = new List<VFState>();
         for (var i = numDigitSlots - 1; i >= 0; i--) {
             var saveState = layer.NewState("Save " + i);
             if (saveStates.Count == 0) saveState.Move(entry, -1, 1);
