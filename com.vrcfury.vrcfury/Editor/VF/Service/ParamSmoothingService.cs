@@ -16,8 +16,12 @@ namespace VF.Service {
     [VFService]
     public class ParamSmoothingService {
         [VFAutowired] private readonly AvatarManager avatarManager;
-        
+
         public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
+            return Smooth(avatarManager.GetFx(), name, target, smoothingSeconds, useAcceleration);
+        }
+        
+        public VFAFloat Smooth(ControllerManager controller, string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
             if (smoothingSeconds <= 0) return target;
             if (smoothingSeconds > 10) smoothingSeconds = 10;
             var fractionPerFrame = GetFractionPerFrame(smoothingSeconds, useAcceleration);

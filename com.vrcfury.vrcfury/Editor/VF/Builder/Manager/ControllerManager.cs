@@ -27,6 +27,7 @@ namespace VF.Builder {
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
         private readonly List<AvatarMask> unionedBaseMasks = new List<AvatarMask>();
+        private readonly List<SmoothParam> smoothedParams = new List<SmoothParam>();
     
         public ControllerManager(
             VFController ctrl,
@@ -220,6 +221,10 @@ namespace VF.Builder {
             return ctrl.NewFloat(name, def);
         }
 
+        public void Smooth(string name, float smoothingSeconds, bool useAcceleration = true) {
+            smoothedParams.Add(new SmoothParam{name = name, smoothingDuration = smoothingSeconds, useAcceleration = useAcceleration});
+        }
+
         public VFABool True() {
             return NewBool("VF_True", def: true, usePrefix: false);
         }
@@ -261,6 +266,10 @@ namespace VF.Builder {
             return unionedBaseMasks;
         }
 
+        public List<SmoothParam> GetSmoothedParams() {
+            return smoothedParams;
+        }
+
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
             if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
                 return null;
@@ -280,6 +289,12 @@ namespace VF.Builder {
 
         public IImmutableSet<AnimationClip> GetClips() {
             return new AnimatorIterator.Clips().From(GetRaw());
+        }
+
+        public class SmoothParam {
+            public string name;
+            public float smoothingDuration;
+            public bool useAcceleration;
         }
     }
 }

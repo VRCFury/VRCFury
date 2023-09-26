@@ -137,6 +137,7 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
         AddBuilder(typeof(ResetAnimatorBuilder));
+        AddBuilder(typeof(ParameterSmoothingBuilder));
         AddBuilder(typeof(FixBadVrcParameterNamesBuilder));
         AddBuilder(typeof(FinalizeMenuBuilder));
         AddBuilder(typeof(FinalizeParamsBuilder));

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -28,7 +29,6 @@ namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
-        [VFAutowired] private readonly ParamSmoothingService smoothing;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -256,27 +256,18 @@ namespace VF.Feature {
                     return binding;
                 }, false)
             ));
-            
+
+            // Parameter smoothing
+            var paramsBeforeRewrite = from.parameters.ToDictionary(x => x.name, x => x);
+            var smoothedParams = model.smoothedPrms.Where(param => paramsBeforeRewrite.ContainsKey(param.name));
+            foreach (var smoothedParam in smoothedParams) {
+                toMain.Smooth(RewriteParamName(smoothedParam.name),
+                    smoothedParam.smoothingDuration);
+            }
+
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             ((AnimatorController)from).RewriteParameters(RewriteParamName);
-
-            var smoothedParams = model.smoothedPrms.ToDictionary(x => RewriteParamName(x.name), x => x);
-            var fromParams = from.parameters.ToDictionary(x => x.name, x => x);
-            from.RewriteParameters(param => 
-            {
-                if (string.IsNullOrWhiteSpace(param)) return param;
-                if (!fromParams.ContainsKey(param) || fromParams[param].type != AnimatorControllerParameterType.Float) return param;
-                if (smoothedParams.TryGetValue(param, out var smoothParam))
-                {
-                    var result = smoothing.Smooth(
-                        param, 
-                        new VFAFloat(fromParams[param]), 
-                        smoothParam.smoothingDuration);
-                    return result.Name();
-                }
-                return param;
-            }, includeWrites: false);
 
             // Merge base mask
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {

@@ -75,6 +75,7 @@ namespace VF.Feature.Base {
 
         // Finalize Controllers
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
+        ParameterSmoothing, // Needs to run before DirectTreeOptimizer so smoothing gets optmized by it
         DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
