@@ -258,9 +258,7 @@ namespace VF.Feature {
             ));
 
             // Parameter smoothing
-            var paramsBeforeRewrite = from.parameters.ToDictionary(x => x.name, x => x);
-            var smoothedParams = model.smoothedPrms.Where(param => paramsBeforeRewrite.ContainsKey(param.name));
-            foreach (var smoothedParam in smoothedParams) {
+            foreach (var smoothedParam in model.smoothedPrms) {
                 toMain.Smooth(RewriteParamName(smoothedParam.name),
                     smoothedParam.smoothingDuration);
             }
