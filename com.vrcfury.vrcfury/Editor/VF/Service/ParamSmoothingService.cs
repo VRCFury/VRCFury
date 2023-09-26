@@ -1,37 +1,35 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Component;
-using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
 
-namespace VF.Service {
+namespace VF.Service
+{
 
     [VFService]
     public class ParamSmoothingService {
         [VFAutowired] private readonly AvatarManager avatarManager;
-
-        public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
-            return Smooth(avatarManager.GetFx(), name, target, smoothingSeconds, useAcceleration);
-        }
         
         public VFAFloat Smooth(ControllerManager controller, string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
             if (smoothingSeconds <= 0) return target;
             if (smoothingSeconds > 10) smoothingSeconds = 10;
             var fractionPerFrame = GetFractionPerFrame(smoothingSeconds, useAcceleration);
 
-            var fx = avatarManager.GetFx();
-            var speedParam = fx.NewFloat($"{name}/FractionPerFrame", def: fractionPerFrame);
+            var speedParam = controller.NewFloat($"{name}/FractionPerFrame", def: fractionPerFrame);
 
-            var output = Smooth_($"{name}/Pass1", target, speedParam);
-            if (useAcceleration) output = Smooth_($"{name}/Pass2", output, speedParam);
+            var output = Smooth_(controller, $"{name}/Pass1", target, speedParam);
+            if (useAcceleration) output = Smooth_(controller, "{name}/Pass2", output, speedParam);
+            
             return output;
+        }
+        
+        public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
+            return Smooth(avatarManager.GetFx(), name, target, smoothingSeconds, useAcceleration);
         }
 
         private float GetFractionPerFrame(float seconds, bool useAcceleration) {
@@ -51,19 +49,17 @@ namespace VF.Service {
             return currentSpeed;
         }
 
-        private VFAFloat Smooth_(string name, VFAFloat target, VFAFloat speedParam) {
-            var fx = avatarManager.GetFx();
-
-            var output = fx.NewFloat(name, def: target.GetDefault());
+        private VFAFloat Smooth_(ControllerManager controller, string name, VFAFloat target, VFAFloat speedParam) {
+            var output = controller.NewFloat(name, def: target.GetDefault());
             
             // These clips drive the output param to certain values
-            var minClip = fx.NewClip($"{output.Name()}-1");
+            var minClip = controller.NewClip($"{output.Name()}-1");
             minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, -1f));
-            var maxClip = fx.NewClip($"{output.Name()}1");
+            var maxClip = controller.NewClip($"{output.Name()}1");
             maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
 
             // Maintain tree - keeps the current value
-            var maintainTree = fx.NewBlendTree($"{output.Name()}_do_not_change");
+            var maintainTree = controller.NewBlendTree($"{output.Name()}_do_not_change");
             maintainTree.blendType = BlendTreeType.Simple1D;
             maintainTree.useAutomaticThresholds = false;
             maintainTree.blendParameter = output.Name();
@@ -71,7 +67,7 @@ namespace VF.Service {
             maintainTree.AddChild(maxClip, 1);
 
             // Target tree - uses the target (input) value
-            var targetTree = fx.NewBlendTree($"{output.Name()}_lock_to_{target.Name()}");
+            var targetTree = controller.NewBlendTree($"{output.Name()}_lock_to_{target.Name()}");
             targetTree.blendType = BlendTreeType.Simple1D;
             targetTree.useAutomaticThresholds = false;
             targetTree.blendParameter = target.Name();
@@ -80,14 +76,14 @@ namespace VF.Service {
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
-            var smoothTree = fx.NewBlendTree($"{output.Name()}_smooth_to_{target.Name()}");
+            var smoothTree = controller.NewBlendTree($"{output.Name()}_smooth_to_{target.Name()}");
             smoothTree.blendType = BlendTreeType.Simple1D;
             smoothTree.useAutomaticThresholds = false;
             smoothTree.blendParameter = speedParam.Name();
             smoothTree.AddChild(maintainTree, 0);
             smoothTree.AddChild(targetTree, 1);
 
-            var layer = fx.NewLayer("Smoothing " + name);
+            var layer = controller.NewLayer("Smoothing " + name);
             layer.NewState("Smooth").WithAnimation(smoothTree);
             return output;
         }

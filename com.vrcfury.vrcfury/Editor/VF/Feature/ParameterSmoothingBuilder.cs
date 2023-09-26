@@ -1,13 +1,13 @@
+using System.Collections.Concurrent;
 using System.Linq;
+using UnityEditor.Animations;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Service;
 using VF.Utils;
-using VF.Builder;
-using VRC.SDK3.Avatars.Components;
-using System.Collections.Concurrent;
-using UnityEditor.Animations;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature
 {
@@ -26,7 +26,7 @@ namespace VF.Feature
             }
         }
 
-         private void ReplaceUsagesOfSmoothedParameters(ControllerManager c)
+        private void ReplaceUsagesOfSmoothedParameters(ControllerManager c)
         {
             var smoothedParams = c.GetSmoothedParams().ToDictionary(v => v.name, v => v);
             if (smoothedParams.Count == 0) {
