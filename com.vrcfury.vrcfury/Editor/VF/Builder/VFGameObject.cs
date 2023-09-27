@@ -23,7 +23,7 @@ namespace VF.Builder {
         public static implicit operator UnityEngine.Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
         public static implicit operator bool(VFGameObject d) => d?.gameObject;
-        public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? ReferenceEquals(b, null);
         public static bool operator !=(VFGameObject a, VFGameObject b) => !(a == b);
         public override bool Equals(object other) {
             return (other is VFGameObject a && _gameObject == a._gameObject)
