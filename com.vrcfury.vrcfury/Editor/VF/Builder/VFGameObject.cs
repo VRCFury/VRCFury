@@ -23,26 +23,16 @@ namespace VF.Builder {
         public static implicit operator UnityEngine.Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
         public static implicit operator bool(VFGameObject d) => d?.gameObject;
-        public static bool operator ==(VFGameObject a, VFGameObject b) {
-            return a?._gameObject == b?._gameObject;
-        }
-        public static bool operator !=(VFGameObject a, VFGameObject b) {
-            return a?._gameObject != b?._gameObject;
-        }
+        public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? ReferenceEquals(b, null);
+        public static bool operator !=(VFGameObject a, VFGameObject b) => !(a == b);
         public override bool Equals(object other) {
-            if (other is VFGameObject vo) {
-                return vo._gameObject == _gameObject;
-            } else if (other is Transform t) {
-                return t == transform;
-            } else if (other is GameObject o) {
-                return o == gameObject;
-            } else if (other == null) {
-                return _gameObject == null;
-            }
-            return false;
+            return (other is VFGameObject a && _gameObject == a._gameObject)
+                   || (other is Transform b && transform == b)
+                   || (other is GameObject c && gameObject == c)
+                   || (other == null && gameObject == null);
         }
         public override int GetHashCode() {
-            return gameObject == null ? 0 : gameObject.GetHashCode();
+            return Tuple.Create(gameObject).GetHashCode();
         }
 
         public Matrix4x4 worldToLocalMatrix => transform.worldToLocalMatrix;

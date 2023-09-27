@@ -67,12 +67,16 @@ namespace VF.Builder {
             return type;
         }
 
-        public void EnsureEmptyBaseLayer() {
-            if (ctrl.layers.Length > 0 && ctrl.layers[0].stateMachine.defaultState == null) return;
-            NewLayer("Base Mask", insertAt: 0, hasOwner: false);
-            if (ctrl.layers.Length >= 2) {
-                ctrl.GetLayer(0).mask = ctrl.GetLayer(1).mask;
+        public VFLayer EnsureEmptyBaseLayer() {
+            var oldLayer0 = ctrl.GetLayer(0);
+            if (oldLayer0 != null && oldLayer0.stateMachine.defaultState == null) {
+                return oldLayer0;
             }
+            var newLayer0 = NewLayer("Base Mask", insertAt: 0, hasOwner: false);
+            if (oldLayer0 != null) {
+                newLayer0.mask = oldLayer0.mask;
+            }
+            return newLayer0;
         }
 
         public VFLayer NewLayer(string name, int insertAt = -1, bool hasOwner = true) {
