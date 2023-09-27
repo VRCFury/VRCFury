@@ -27,8 +27,8 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlFix)]
         public void Fix() {
             foreach (var c in manager.GetAllUsedControllers()) {
-                var layers = c.GetLayers().ToList();
-                if (layers.Count > 0 && mapping.ContainsValue(layers[0])) {
+                var layer0 = c.GetRaw().GetLayer(0);
+                if (layer0 != null && mapping.ContainsValue(layer0)) {
                     // Something is trying to drive the base layer!
                     // Since this is impossible, we have to insert another layer above it to take its place
                     c.EnsureEmptyBaseLayer();
