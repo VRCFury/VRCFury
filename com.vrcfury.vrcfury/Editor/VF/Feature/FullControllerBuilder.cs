@@ -45,7 +45,7 @@ namespace VF.Feature {
                     if (model.ignoreSaved) {
                         param.saved = false;
                     }
-                    manager.GetParams().addSyncedParam(param);
+                    manager.GetParams().AddSyncedParam(param);
                 }
             }
 
@@ -95,16 +95,16 @@ namespace VF.Feature {
             }
 
             foreach (var receiver in GetBaseObject().GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                if (rewrittenParams.Contains(receiver.parameter)) {
+                if (rewrittenParams.ContainsKey(receiver.parameter)) {
                     receiver.parameter = RewriteParamName(receiver.parameter);
                 }
             }
             foreach (var physbone in GetBaseObject().GetComponentsInSelfAndChildren<VRCPhysBone>()) {
-                if (rewrittenParams.Contains(physbone.parameter + "_IsGrabbed")
-                    || rewrittenParams.Contains(physbone.parameter + "_Angle")
-                    || rewrittenParams.Contains(physbone.parameter + "_Stretch")
-                    || rewrittenParams.Contains(physbone.parameter + "_Squish")
-                    || rewrittenParams.Contains(physbone.parameter + "_IsPosed")
+                if (rewrittenParams.ContainsKey(physbone.parameter + "_IsGrabbed")
+                    || rewrittenParams.ContainsKey(physbone.parameter + "_Angle")
+                    || rewrittenParams.ContainsKey(physbone.parameter + "_Stretch")
+                    || rewrittenParams.ContainsKey(physbone.parameter + "_Squish")
+                    || rewrittenParams.ContainsKey(physbone.parameter + "_IsPosed")
                 ) {
                     physbone.parameter = RewriteParamName(physbone.parameter);
                 }
@@ -158,9 +158,15 @@ namespace VF.Feature {
             });
         }
         
-        private readonly HashSet<string> rewrittenParams = new HashSet<string>();
-        
+        private readonly Dictionary<string, string> rewrittenParams = new Dictionary<string, string>();
+
         string RewriteParamName(string name) {
+            if (!rewrittenParams.TryGetValue(name, out var cached)) {
+                cached = rewrittenParams[name] = RewriteParamNameUncached(name);
+            }
+            return cached;
+        }
+        private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
             if (model.allNonsyncedAreGlobal) {
@@ -187,8 +193,7 @@ namespace VF.Feature {
             
             if (model.globalParams.Contains(name)) return name;
             if (model.globalParams.Contains("*")) return name;
-            rewrittenParams.Add(name);
-            return ControllerManager.NewParamName(name, uniqueModelNum);
+            return manager.MakeUniqueParamName(name);
         }
 
         private string RewritePath(string path) {
@@ -269,10 +274,11 @@ namespace VF.Feature {
 
             // Merge Params
             foreach (var p in from.parameters) {
-                var exists = to.parameters.Any(existing => existing.name == p.name);
-                if (!exists) {
-                    to.parameters = to.parameters.Concat(new [] { p }).ToArray();
-                }
+                to.NewParam(p.name, p.type, n => {
+                    n.defaultBool = p.defaultBool;
+                    n.defaultFloat = p.defaultFloat;
+                    n.defaultInt = p.defaultInt;
+                });
             }
 
             var layer0 = from.GetLayer(0);

@@ -92,7 +92,7 @@ namespace VF.Feature {
                 return _buildSettings;
             }
             
-            var allManagedStateMachines = manager.GetAllTouchedControllers()
+            var allManagedStateMachines = manager.GetAllUsedControllers()
                 .SelectMany(controller => controller.GetManagedLayers())
                 .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
