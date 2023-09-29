@@ -63,6 +63,7 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
+        DpsTipScaleFix,
         
         FixTouchingContacts,
 
@@ -85,6 +86,7 @@ namespace VF.Feature.Base {
         AdjustWriteDefaults,
         FixEmptyMotions,
         AnimatorLayerControlFix,
+        RemoveNonQuestMaterials,
         FinalizeController,
 
         // Finalize Menus
@@ -100,6 +102,7 @@ namespace VF.Feature.Base {
         MarkThingsAsDirtyJustInCase,
         
         RemoveJunkAnimators,
+        RemoveDefaultedAdditiveLayer,
         
         // Needs to be at the very end, because it places immutable clips into the avatar
         RestoreProxyClips,

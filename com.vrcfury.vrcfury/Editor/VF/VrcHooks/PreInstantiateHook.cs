@@ -3,8 +3,9 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
-using VRC.Dynamics;
+#if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
+#endif
 
 namespace VF.VrcHooks {
     /**

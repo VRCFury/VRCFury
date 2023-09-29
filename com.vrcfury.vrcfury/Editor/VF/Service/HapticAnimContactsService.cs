@@ -8,6 +8,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -115,7 +116,7 @@ namespace VF.Service {
                 var outerRadius = Math.Max(0.01f, maxDist);
                 var outer = CreateFrontBack($"{prefix}/Outer", animRoot, outerRadius, allowSelf, HapticUtils.CONTACT_PEN_MAIN);
 
-                var targets = new List<(VFAFloat, VFACondition)>();
+                var targets = new List<(VFAFloat, VFCondition)>();
                 if (minDist < 0) {
                     var inner = CreateFrontBack($"{prefix}/Inner", animRoot, -minDist, allowSelf, HapticUtils.CONTACT_PEN_MAIN, Vector3.forward * minDist);
                     // Some of the animations have an inside depth (negative distance)

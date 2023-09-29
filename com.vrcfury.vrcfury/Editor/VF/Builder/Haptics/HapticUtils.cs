@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using UnityEditor;
 using UnityEngine;
 using VF.Inspector;
 using VF.Menu;
@@ -49,6 +50,7 @@ namespace VF.Builder.Haptics {
             bool worldScale = true
         ) {
             var child = GameObjects.Create(objName, obj);
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return;
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
@@ -81,6 +83,7 @@ namespace VF.Builder.Haptics {
             bool worldScale = true
         ) {
             var child = GameObjects.Create(objName, obj);
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return child;
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
             receiver.parameter = param;
@@ -100,7 +103,7 @@ namespace VF.Builder.Haptics {
                 receiver.radius /= child.worldScale.x;
                 receiver.height /= child.worldScale.x;
             }
-            return child.gameObject;
+            return child;
         }
 
         public static void RemoveTPSSenders(Transform obj) {
