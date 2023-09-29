@@ -203,10 +203,12 @@ public class VRCFuryBuilder {
             }
             var config = vrcFury.config;
             if (config.features != null) {
-                Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
+                var debugLogString = $"Importing {config.features.Count} features from {configObject.name}";
                 foreach (var feature in config.features) {
                     AddModel(feature, configObject);
+                    debugLogString += $"\n{feature.GetType()}";
                 }
+                Debug.Log(debugLogString);
             }
         }
 

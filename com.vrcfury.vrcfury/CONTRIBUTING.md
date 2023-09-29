@@ -68,6 +68,7 @@ For more information, please refer to <https://unlicense.org>
   * Added global parameters for Toggles
 * TayouVR
   * Added Logging to Blendshape Optimizer
+  * Improved log outputs from exception handling
 * wholesomevr
   * Made Armature Link work with Dynamic Bone Contacts
 * Ximmer-VR
