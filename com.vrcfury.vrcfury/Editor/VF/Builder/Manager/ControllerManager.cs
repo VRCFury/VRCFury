@@ -182,7 +182,6 @@ namespace VF.Builder {
             return ctrl.NewTrigger(name);
         }
         public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
-
             if (usePrefix) name = makeUniqueParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
@@ -278,7 +277,7 @@ namespace VF.Builder {
                 action(clip);
             }
         }
-		
+
         public IImmutableSet<AnimationClip> GetClips() {
             return new AnimatorIterator.Clips().From(GetRaw());
         }
