@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -15,11 +13,10 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
-using VF.Utils.Controller;
 
 namespace VF.Feature {
     public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
-        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
+        [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {
@@ -37,10 +34,6 @@ namespace VF.Feature {
                     renderers.UnionWith(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
                 }
             }
-            
-            var objectNumber = 0;
-            BlendTree directTree = null;
-            AnimationClip zeroClip = null;
 
             if (allRenderers) {
                 // Remove old fix attempts
@@ -54,12 +47,6 @@ namespace VF.Feature {
                 }
             }
 
-            var animatedPaths = GetFx().GetClips()
-                .SelectMany(clip => clip.GetFloatBindings())
-                .Where(IsScaleBinding)
-                .Select(b => b.path)
-                .ToImmutableHashSet();
-            
             foreach (var renderer in renderers) {
                 var pathToRenderer =
                     AnimationUtility.CalculateTransformPath(renderer.transform, avatarObject.transform);
@@ -100,89 +87,8 @@ namespace VF.Feature {
                     rootBone = skin.rootBone;
                 }
 
-                var parentPaths =
-                    rootBone.GetComponentsInSelfAndParents<Transform>()
-                        .Select(t => AnimationUtility.CalculateTransformPath(t, avatarObject.transform))
-                        .ToList();
-
-                var animatedParentPaths = parentPaths
-                    .Where(path => animatedPaths.Contains(path))
-                    .Where(path => path != "") // VRChat ignores animations of the root scale now, so we need to as well
-                    .ToList();
-
-                objectNumber++;
-                Debug.Log("Processing " + pathToRenderer);
-
-                var pathToParam = new Dictionary<string, VFAFloat>();
-                var pathNumber = 0;
-                foreach (var path in animatedParentPaths) {
-                    pathNumber++;
-                    var param = GetFx().NewFloat("shaderScale_" + objectNumber + "_" + pathNumber, def: avatarObject.transform.Find(path).localScale.z);
-                    pathToParam[path] = param;
-                    Debug.Log(path + " " + param.Name());
-                }
-                foreach (var clip in GetFx().GetClips()) {
-                    foreach (var binding in clip.GetFloatBindings()) {
-                        if (!IsScaleBinding(binding)) continue;
-                        if (!pathToParam.TryGetValue(binding.path, out var param)) continue;
-                        var newBinding = new EditorCurveBinding();
-                        newBinding.type = typeof(Animator);
-                        newBinding.path = "";
-                        newBinding.propertyName = param.Name();
-                        clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
-                    }
-                }
-
-                float handledScale = 1;
-                foreach (var path in animatedParentPaths) {
-                    handledScale *= avatarObject.transform.Find(path).localScale.z;
-                }
-
-                if (directTree == null) {
-                    Debug.Log("Creating direct layer");
-                    var layer = GetFx().NewLayer("shaderScale");
-                    var state = layer.NewState("Scale");
-                    directTree = GetFx().NewBlendTree("shaderScale");
-                    directTree.blendType = BlendTreeType.Direct;
-                    state.WithAnimation(directTree);
-
-                    zeroClip = GetFx().NewClip("zeroScale");
-                    var one = GetFx().One();
-                    directTree.AddDirectChild(one.Name(), zeroClip);
-                }
-
-                var scaleClip = GetFx().NewClip("tpsScale_" + objectNumber);
-                foreach (var scaledProp in scaledProps) {
-                    var propertyName = scaledProp.Key;
-                    if (scaledProp.Value is float f) {
-                        var lengthOffset = f / handledScale;
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilderService.OneFrame(lengthOffset));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}", ClipBuilderService.OneFrame(0));
-                    } else if (scaledProp.Value is Vector4 vec) {
-                        var scaleOffset = vec.z / handledScale;
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilderService.OneFrame(scaleOffset));
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilderService.OneFrame(scaleOffset));
-                        scaleClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilderService.OneFrame(scaleOffset));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.x", ClipBuilderService.OneFrame(0));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.y", ClipBuilderService.OneFrame(0));
-                        zeroClip.SetCurve(pathToRenderer, renderer.GetType(), $"material.{propertyName}.z", ClipBuilderService.OneFrame(0));
-                    }
-                }
-
-                pathToParam["nativeScale"] = scaleFactorService.Get();
-                
-                var tree = directTree;
-                foreach (var (param,index) in pathToParam.Values.Select((p,index) => (p,index))) {
-                    var isLast = index == pathToParam.Count - 1;
-                    if (isLast) {
-                        tree.AddDirectChild(param.Name(), scaleClip);
-                    } else {
-                        var subTree = GetFx().NewBlendTree("shaderScaleSub");
-                        subTree.blendType = BlendTreeType.Direct;
-                        tree.AddDirectChild(param.Name(), subTree);
-                        tree = subTree;
-                    }
-                }
+                var props = scaledProps.Select(p => (pathToRenderer, renderer.GetType(), $"material.{p.Key}", p.Value));
+                scaleCompensationService.AddScaledPorperties(rootBone, props);
             }
         }
 
@@ -216,10 +122,6 @@ namespace VF.Feature {
                 }
             }
             return scaledProps;
-        }
-
-        private static bool IsScaleBinding(EditorCurveBinding binding) {
-            return binding.type == typeof(Transform) && binding.propertyName == "m_LocalScale.z";
         }
 
         public override string GetEditorTitle() {
