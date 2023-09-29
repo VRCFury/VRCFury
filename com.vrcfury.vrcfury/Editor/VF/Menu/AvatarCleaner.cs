@@ -94,7 +94,6 @@ namespace VF.Menu {
                         removeItems.Add("Avatar Controller: " + typeName);
                         if (perform) c.setToDefault();
                     } else {
-                        var vfac = new VFAController(controller, c.type);
                         var removedLayers = new HashSet<AnimatorStateMachine>();
                         if (ShouldRemoveLayer != null) {
                             for (var i = 0; i < controller.layers.Length; i++) {
@@ -103,7 +102,7 @@ namespace VF.Menu {
                                 removeItems.Add(typeName + " Layer: " + layer.name);
                                 removedLayers.Add(layer.stateMachine);
                                 if (perform) {
-                                    vfac.RemoveLayer(i);
+                                    controller.RemoveLayer(i);
                                     i--;
                                 }
                             }

@@ -4,7 +4,9 @@
         "VRCFury",
         "VrcfEditorOnly",
         "VRC.SDKBase.Editor.BuildPipeline",
-        "JsonComponent-Editor"
+        "JsonComponent-Editor",
+        "VRC.SDKBase.Editor",
+        "VRC.SDK3A.Editor"
     ],
     "includePlatforms": [
         "Editor"
@@ -29,6 +31,11 @@
             "name": "com.vrchat.base",
             "expression": "3.1.12",
             "define": "VRC_NEW_HOOK_API"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.3.0",
+            "define": "VRC_NEW_PUBLIC_SDK"
         }
     ],
     "noEngineReferences": false

@@ -25,13 +25,11 @@ namespace VF.Feature {
                     expectedMask = null;
                 }
 
-                if (ctrl.layers.Length == 0) {
-                    // don't need to worry about masks when there are no layers
-                } else if (ctrl.GetLayer(0).mask == expectedMask) {
-                    // base mask is already good
-                } else {
-                    c.EnsureEmptyBaseLayer();
-                    ctrl.GetLayer(0).mask = expectedMask;
+                var layer0 = ctrl.GetLayer(0);
+                // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a
+                // controller with no layers
+                if (layer0 == null || layer0.mask != expectedMask) {
+                    c.EnsureEmptyBaseLayer().mask = expectedMask;
                 }
             }
         }

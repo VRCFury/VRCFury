@@ -14,7 +14,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float active;
 	SpsGetBakedPosition(vertexId, bakedVertex, bakedNormal, active);
 
-	if (vertex.z < 0 || active == 0) return;
+	if (active == 0) return;
 
 	float3 rootPos;
 	bool isRing;
@@ -72,7 +72,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		}
 
 		// Cancel if too far away
-		const float tooFar = sps_saturated_map(orfDistance, worldLength*1.5, worldLength*2.5);
+		const float tooFar = sps_saturated_map(orfDistance, worldLength*1.3, worldLength*2);
 		applyLerp = min(applyLerp, 1-tooFar);
 
 		applyLerp = applyLerp * saturate(_SPS_Enabled);

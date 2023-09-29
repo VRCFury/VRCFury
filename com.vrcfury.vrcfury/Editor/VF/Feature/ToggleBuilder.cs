@@ -12,6 +12,8 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Service;
+using VF.Utils;
+using VF.Utils.Controller;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -20,7 +22,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly PhysboneResetService physboneResetService;
 
-    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
+    private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFABool param;
     private AnimationClip restingClip;
 
@@ -107,7 +109,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var off = layer.NewState("Off");
 
         var (paramName, usePrefixOnParam) = GetParamName();
-        VFACondition onCase;
+        VFCondition onCase;
         if (model.useInt) {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
@@ -146,9 +148,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     private void Apply(
         ControllerManager fx,
-        VFALayer layer,
-        VFAState off,
-        VFACondition onCase,
+        VFLayer layer,
+        VFState off,
+        VFCondition onCase,
         string onName,
         State action,
         State inAction,
@@ -171,8 +173,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        VFAState inState;
-        VFAState onState;
+        VFState inState;
+        VFState onState;
         if (model.hasTransition) {
             var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);

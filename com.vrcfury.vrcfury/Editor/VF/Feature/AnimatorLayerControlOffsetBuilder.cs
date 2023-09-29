@@ -4,6 +4,8 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -25,8 +27,8 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlFix)]
         public void Fix() {
             foreach (var c in manager.GetAllUsedControllers()) {
-                var layers = c.GetLayers().ToList();
-                if (layers.Count > 0 && mapping.ContainsValue(layers[0])) {
+                var layer0 = c.GetRaw().GetLayer(0);
+                if (layer0 != null && mapping.ContainsValue(layer0)) {
                     // Something is trying to drive the base layer!
                     // Since this is impossible, we have to insert another layer above it to take its place
                     c.EnsureEmptyBaseLayer();
@@ -64,7 +66,7 @@ namespace VF.Feature {
             }
         }
 
-        public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, AnimatorController)> set) {
+        public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> set) {
             foreach (var (type, controller) in set) {
                 foreach (var layer in controller.layers) {
                     AnimatorIterator.ForEachBehaviourRW(layer.stateMachine, (b, add) => {

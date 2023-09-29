@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -47,7 +48,7 @@ namespace VF.Service {
             });
 
             foreach (var controller in manager.GetAllUsedControllers()) {
-                controller.GetRaw().Rewrite(rewriter);
+                ((AnimatorController)controller.GetRaw()).Rewrite(rewriter);
             }
             foreach (var clip in additionalClips) {
                 clip.Rewrite(rewriter);
