@@ -13,7 +13,7 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.RemoveNonQuestMaterials)]
         public void Apply() {
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                 return;
             }
 
