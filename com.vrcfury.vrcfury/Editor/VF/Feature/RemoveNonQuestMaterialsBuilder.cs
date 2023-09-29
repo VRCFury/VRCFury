@@ -42,6 +42,10 @@ namespace VF.Feature {
                     return m;
                 }).ToArray();
             }
+
+            foreach (var light in avatarManager.AvatarObject.GetComponentsInSelfAndChildren<Light>()) {
+                Object.DestroyImmediate(light);
+            }
         }
 
         private bool IsMobileMat(Material m) {
