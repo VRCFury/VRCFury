@@ -63,6 +63,7 @@ For more information, please refer to <https://unlicense.org>
   * Created numerous setup prefabs
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
+  * Prevented SPS toggle from disabling SPS autorig physbone
 * Raphiiko
   * Added global parameters for Toggles
 * TayouVR
