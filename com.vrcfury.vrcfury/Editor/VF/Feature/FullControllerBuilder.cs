@@ -445,7 +445,7 @@ namespace VF.Feature {
 
             return content;
         }
-
+        
         private static HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
@@ -481,4 +481,5 @@ namespace VF.Feature {
             "EyeHeightAsPercent",
         };
     }
+
 }
