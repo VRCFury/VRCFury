@@ -1,24 +1,23 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    /**
+     * The default additive playable layer is a major contributor to the "3x unity blendshape" bug.
+     * Simply removing it whenever it's set to the default goes a long way to resolving the issue.
+     */
     public class DefaultAdditiveLayerFixBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.RemoveDefaultedAdditiveLayer)]
         public void Apply() {
-            var descriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
-
-            for (int i=0; i<descriptor.baseAnimationLayers.Length; i++) {
-                var layer = descriptor.baseAnimationLayers[i];
-                if (
-                    layer.type == VRCAvatarDescriptor.AnimLayerType.Additive && 
-                    layer.isDefault &&
-                    layer.animatorController == null
-                ) {
-                    descriptor.baseAnimationLayers[i].isDefault = false;
+            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
+                if (c.type == VRCAvatarDescriptor.AnimLayerType.Additive && c.isDefault) {
+                    c.set(null);
                 }
             }
         }
