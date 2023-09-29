@@ -19,11 +19,11 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
 
-        private int objectNumber = 0;
+        private int referenceNumber = 0;
         private BlendTree directTree = null;
         private AnimationClip zeroClip = null;
 
-        public void AddScaledPorperties(VFGameObject scaleReference, IEnumerable<(string ObjectPath, Type ComponentType, string PropertyName, object InitialValue)> properties) {
+        public void AddScaledProp(VFGameObject scaleReference, IEnumerable<(VFGameObject obj, Type ComponentType, string PropertyName, float InitialValue)> properties) {
             var animatedPaths = manager.GetFx().GetClips()
                 .SelectMany(clip => clip.GetFloatBindings())
                 .Where(IsScaleBinding)
@@ -39,11 +39,14 @@ namespace VF.Service {
                 .Where(path => path != "") // VRChat ignores animations of the root scale now, so we need to as well
                 .ToList();
 
+            referenceNumber++;
+            Debug.Log($"Processing reference #{referenceNumber} path={scaleReference.GetPath(manager.AvatarObject)}");
+
             var pathToParam = new Dictionary<string, VFAFloat>();
             var pathNumber = 0;
             foreach (var path in animatedParentPaths) {
                 pathNumber++;
-                var param = manager.GetFx().NewFloat("shaderScale_" + objectNumber + "_" + pathNumber, def: manager.AvatarObject.transform.Find(path).localScale.z);
+                var param = manager.GetFx().NewFloat("scaleComp_" + referenceNumber + "_" + pathNumber, def: manager.AvatarObject.transform.Find(path).localScale.z);
                 pathToParam[path] = param;
                 Debug.Log(path + " " + param.Name());
             }
@@ -66,35 +69,23 @@ namespace VF.Service {
 
             if (directTree == null) {
                 Debug.Log("Creating direct layer");
-                var layer = manager.GetFx().NewLayer("shaderScale");
+                var layer = manager.GetFx().NewLayer("Scale Compensation");
                 var state = layer.NewState("Scale");
-                directTree = manager.GetFx().NewBlendTree("shaderScale");
+                directTree = manager.GetFx().NewBlendTree("scaleComp");
                 directTree.blendType = BlendTreeType.Direct;
                 state.WithAnimation(directTree);
 
-                zeroClip = manager.GetFx().NewClip("zeroScale");
+                zeroClip = manager.GetFx().NewClip("scaleComp_zero");
                 var one = manager.GetFx().One();
                 directTree.AddDirectChild(one.Name(), zeroClip);
             }
 
-            var scaleClip = manager.GetFx().NewClip("tpsScale_" + objectNumber);
+            var scaleClip = manager.GetFx().NewClip("scaleComp_" + referenceNumber);
             foreach (var prop in properties) {
-                objectNumber++;
-                Debug.Log("Processing " + prop.ObjectPath);
-
-                if (prop.InitialValue is float f) {
-                    var lengthOffset = f / handledScale;
-                    scaleClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(lengthOffset));
-                    zeroClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(0));
-                } else if (prop.InitialValue is Vector4 vec) {
-                    var scaleOffset = vec.z / handledScale;
-                    scaleClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(scaleOffset));
-                    scaleClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(scaleOffset));
-                    scaleClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(scaleOffset));
-                    zeroClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(0));
-                    zeroClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(0));
-                    zeroClip.SetCurve(prop.ObjectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(0));
-                }
+                var objectPath = prop.obj.GetPath(manager.AvatarObject);
+                var lengthOffset = prop.InitialValue / handledScale;
+                scaleClip.SetCurve(objectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(lengthOffset));
+                zeroClip.SetCurve(objectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(0));
             }
 
             pathToParam["nativeScale"] = scaleFactorService.Get();
@@ -105,7 +96,7 @@ namespace VF.Service {
                 if (isLast) {
                     tree.AddDirectChild(param.Name(), scaleClip);
                 } else {
-                    var subTree = manager.GetFx().NewBlendTree("shaderScaleSub");
+                    var subTree = manager.GetFx().NewBlendTree("scaleCompSub");
                     subTree.blendType = BlendTreeType.Direct;
                     tree.AddDirectChild(param.Name(), subTree);
                     tree = subTree;

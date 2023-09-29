@@ -48,9 +48,6 @@ namespace VF.Feature {
             }
 
             foreach (var renderer in renderers) {
-                var pathToRenderer =
-                    AnimationUtility.CalculateTransformPath(renderer.transform, avatarObject.transform);
-
                 var scaledProps = GetScaledProps(renderer.sharedMaterials);
                 if (scaledProps.Count == 0) {
                     continue;
@@ -67,8 +64,7 @@ namespace VF.Feature {
                         if (TpsConfigurer.IsLocked(mat)) {
                             throw new VRCFBuilderException(
                                 "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                                "Please unlock the material on " +
-                                pathToRenderer);
+                                $"Please unlock the material on {renderer.owner().GetPath()}");
                         }
                         mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                         mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
@@ -87,38 +83,39 @@ namespace VF.Feature {
                     rootBone = skin.rootBone;
                 }
 
-                var props = scaledProps.Select(p => (pathToRenderer, renderer.GetType(), $"material.{p.Key}", p.Value));
-                scaleCompensationService.AddScaledPorperties(rootBone, props);
+                var props = scaledProps.Select(p => (renderer.owner(), renderer.GetType(), $"material.{p.Key}", p.Value));
+                scaleCompensationService.AddScaledProp(rootBone, props);
             }
         }
 
-        private static Dictionary<string, object> GetScaledProps(IEnumerable<Material> materials) {
-            var scaledProps = new Dictionary<string, object>();
+        private static Dictionary<string, float> GetScaledProps(IEnumerable<Material> materials) {
+            var scaledProps = new Dictionary<string, float>();
             foreach (var mat in materials) {
-                void AddProp(string propName, bool isVector) {
-                    if (!mat.HasProperty(propName)) return;
-                    if (!isVector) {
-                        var newVal = mat.GetFloat(propName);
-                        if (scaledProps.TryGetValue(propName, out var oldVal) && newVal != (float)oldVal) {
-                            throw new Exception(
-                                "This renderer contains multiple materials with different scale values");
-                        }
-                        scaledProps[propName] = newVal;
-                    } else {
-                        var newVal = mat.GetVector(propName);
-                        if (scaledProps.TryGetValue(propName, out var oldVal) && newVal != (Vector4)oldVal) {
-                            throw new Exception(
-                                "This renderer contains multiple materials with different scale values");
-                        }
-                        scaledProps[propName] = newVal;
+                void Add(string propName, float val) {
+                    if (scaledProps.TryGetValue(propName, out var oldVal) && val != oldVal) {
+                        throw new Exception(
+                            "This renderer contains multiple materials with different scale values");
                     }
+                    scaledProps[propName] = val;
+                }
+                void AddVector(string propName) {
+                    if (!mat.HasProperty(propName)) return;
+                    var val = mat.GetVector(propName);
+                    Add(propName + ".x", val.x);
+                    Add(propName + ".y", val.y);
+                    Add(propName + ".z", val.z);
+                }
+                void AddFloat(string propName) {
+                    if (!mat.HasProperty(propName)) return;
+                    var val = mat.GetFloat(propName);
+                    Add(propName, val);
                 }
                 
                 if (TpsConfigurer.IsTps(mat)) {
-                    AddProp("_TPS_PenetratorLength", false);
-                    AddProp("_TPS_PenetratorScale", true);
+                    AddFloat("_TPS_PenetratorLength");
+                    AddVector("_TPS_PenetratorScale");
                 } else if (SpsConfigurer.IsSps(mat)) {
-                    AddProp("_SPS_Length", false);
+                    AddFloat("_SPS_Length");
                 }
             }
             return scaledProps;

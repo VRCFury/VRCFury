@@ -213,8 +213,8 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.DpsTipScaleFix)]
         public void ApplyDpsTipScale() {
             foreach (var light in dpsTipToDo)
-                scaleCompensationService.AddScaledPorperties(light.gameObject,
-                    new[] { (AnimationUtility.CalculateTransformPath(light.transform, avatarObject.transform), typeof(Light), "m_Intensity", (object)light.intensity) });
+                scaleCompensationService.AddScaledProp(light.gameObject,
+                    new[] { (light.owner(), typeof(Light), "m_Intensity", light.intensity) });
         }
     }
 }
