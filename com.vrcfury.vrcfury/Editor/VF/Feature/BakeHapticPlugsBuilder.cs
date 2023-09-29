@@ -80,13 +80,15 @@ namespace VF.Feature {
                     if (plug.addDpsTipLight) {
                         var tip = GameObjects.Create("LegacyDpsTip", bakeRoot);
                         tip.active = false;
-                        var light = tip.AddComponent<Light>();
-                        light.type = LightType.Point;
-                        light.color = Color.black;
-                        light.range = 0.49f;
-                        light.shadows = LightShadows.None;
-                        light.renderMode = LightRenderMode.ForceVertex;
-                        light.intensity = worldLength;
+                        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                            var light = tip.AddComponent<Light>();
+                            light.type = LightType.Point;
+                            light.color = Color.black;
+                            light.range = 0.49f;
+                            light.shadows = LightShadows.None;
+                            light.renderMode = LightRenderMode.ForceVertex;
+                            light.intensity = worldLength;
+                        }
 
                         if (tipLightOnClip == null) {
                             var param = fx.NewBool("tipLight", synced: true);

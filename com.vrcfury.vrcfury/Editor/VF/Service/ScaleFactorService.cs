@@ -34,6 +34,9 @@ namespace VF.Service {
 
         private VFAFloat Generate() {
             var fx = manager.GetFx();
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+                return fx.NewFloat("ScaleFactor", usePrefix: false, def: 1.0f);
+            }
 
             var holder = GameObjects.Create("vrcf_ScaleFactorFix", manager.AvatarObject);
             var senderObj = GameObjects.Create("Sender", holder);

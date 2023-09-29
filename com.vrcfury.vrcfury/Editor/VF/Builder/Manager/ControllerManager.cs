@@ -20,6 +20,7 @@ namespace VF.Builder {
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureNameProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
+        private readonly Func<string, string> makeUniqueParamName;
         private readonly string tmpDir;
         // These can't use AnimatorControllerLayer, because AnimatorControllerLayer is generated on request, not consistent
         private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
@@ -34,6 +35,7 @@ namespace VF.Builder {
             Func<int> currentFeatureNumProvider,
             Func<string> currentFeatureNameProvider,
             Func<string> currentFeatureClipPrefixProvider,
+            Func<string, string> makeUniqueParamName,
             string tmpDir,
             bool treatAsManaged = false
         ) {
@@ -43,6 +45,7 @@ namespace VF.Builder {
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
+            this.makeUniqueParamName = makeUniqueParamName;
             this.tmpDir = tmpDir;
 
             var layer0 = ctrl.GetLayer(0);
@@ -175,12 +178,12 @@ namespace VF.Builder {
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
         
         public VFABool NewTrigger(string name, bool usePrefix = true) {
-            if (usePrefix) name = NewParamName(name);
+            if (usePrefix) name = makeUniqueParamName(name);
             return ctrl.NewTrigger(name);
         }
         public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
-            if (usePrefix) name = NewParamName(name);
-            if (VRChatGlobalParams.Contains(name)) synced = false;
+
+            if (usePrefix) name = makeUniqueParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
                 param.name = name;
@@ -188,12 +191,12 @@ namespace VF.Builder {
                 param.saved = saved;
                 param.defaultValue = def ? 1 : 0;
                 if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
-                GetParamManager().addSyncedParam(param);
+                GetParamManager().AddSyncedParam(param);
             }
             return ctrl.NewBool(name, def);
         }
         public VFAInteger NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
-            if (usePrefix) name = NewParamName(name);
+            if (usePrefix) name = makeUniqueParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
                 param.name = name;
@@ -201,40 +204,21 @@ namespace VF.Builder {
                 param.saved = saved;
                 param.defaultValue = def;
                 if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
-                GetParamManager().addSyncedParam(param);
+                GetParamManager().AddSyncedParam(param);
             }
             return ctrl.NewInt(name, def);
         }
         public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
-            if (usePrefix) name = NewParamName(name);
+            if (usePrefix) name = makeUniqueParamName(name);
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
                 param.name = name;
                 param.valueType = VRCExpressionParameters.ValueType.Float;
                 param.saved = saved;
                 param.defaultValue = def;
-                GetParamManager().addSyncedParam(param);
+                GetParamManager().AddSyncedParam(param);
             }
             return ctrl.NewFloat(name, def);
-        }
-
-        public AnimatorControllerParameterType? GetType(string name) {
-            var exists = Array.Find(ctrl.parameters, other => other.name == name);
-            if (exists != null) return exists.type;
-            return null;
-        }
-        
-        private string NewParamName(string name) {
-            name = NewParamName(name, currentFeatureNumProvider.Invoke());
-            int offset = 1;
-            while (true) {
-                var attempt = name + ((offset == 1) ? "" : offset+"");
-                if (!GetType(attempt).HasValue) return attempt;
-                offset++;
-            }
-        }
-        public static string NewParamName(string name, int modelNum) {
-            return "VF" + modelNum + "_" + name;
         }
 
         public VFABool True() {
@@ -294,41 +278,6 @@ namespace VF.Builder {
                 action(clip);
             }
         }
-
-        public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
-            "IsLocal",
-            "Viseme",
-            "Voice",
-            "GestureLeft",
-            "GestureRight",
-            "GestureLeftWeight",
-            "GestureRightWeight",
-            "AngularY",
-            "VelocityX",
-            "VelocityY",
-            "VelocityZ",
-            "VelocityMagnitude",
-            "Upright",
-            "Grounded",
-            "Seated",
-            "AFK",
-            "TrackingType",
-            "VRMode",
-            "MuteSelf",
-            "InStation",
-            "Earmuffs",
-
-            "AvatarVersion",
-
-            "Supine",
-            "GroundProximity",
-
-            "ScaleModified",
-            "ScaleFactor",
-            "ScaleFactorInverse",
-            "EyeHeightAsMeters",
-            "EyeHeightAsPercent"
-        };
 		
         public IImmutableSet<AnimationClip> GetClips() {
             return new AnimatorIterator.Clips().From(GetRaw());

@@ -85,6 +85,7 @@ namespace VF.Feature.Base {
         AdjustWriteDefaults,
         FixEmptyMotions,
         AnimatorLayerControlFix,
+        RemoveNonQuestMaterials,
         FinalizeController,
 
         // Finalize Menus

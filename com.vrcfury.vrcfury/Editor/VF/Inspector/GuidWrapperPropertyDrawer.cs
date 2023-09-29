@@ -11,6 +11,7 @@ namespace VF.Inspector {
     public class GuidWrapperPropertyDrawer : PropertyDrawer {
         public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
             var id = prop.FindPropertyRelative("id");
+            var objRef = prop.FindPropertyRelative("objRef");
             var output = new VisualElement();
 
             var objField = new ObjectField();
@@ -21,6 +22,7 @@ namespace VF.Inspector {
 
             objField.RegisterValueChangedCallback(change => {
                 id.stringValue = VrcfObjectId.ObjectToId(change.newValue);
+                objRef.objectReferenceValue = change.newValue;
                 id.serializedObject.ApplyModifiedProperties();
             });
 

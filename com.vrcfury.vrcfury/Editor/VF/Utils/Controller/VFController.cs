@@ -17,7 +17,7 @@ namespace VF.Utils.Controller {
         public static implicit operator VFController(AnimatorController d) => new VFController(d);
         public static implicit operator AnimatorController(VFController d) => d?.ctrl;
         public static implicit operator bool(VFController d) => d?.ctrl;
-        public static bool operator ==(VFController a, VFController b) => a?.Equals(b) ?? ReferenceEquals(b, null);
+        public static bool operator ==(VFController a, VFController b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
         public static bool operator !=(VFController a, VFController b) => !(a == b);
         public override bool Equals(object other) {
             return (other is VFController a && ctrl == a.ctrl)
@@ -74,15 +74,26 @@ namespace VF.Utils.Controller {
         public VFAInteger NewInt(string name, int def = 0) {
             return new VFAInteger(NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def));
         }
-        private AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
-            var exists = Array.Find(ctrl.parameters, other => other.name == name);
-            if (exists != null) return exists;
+        public AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
+            var exists = GetParam(name);
+            if (exists != null) {
+                if (exists.type != type) {
+                    throw new Exception(
+                        $"VRCF tried to create parameter {name} with type {type} in controller {ctrl.name}," +
+                        $" but parameter already exists with type {exists.type}");
+                }
+                return exists;
+            }
             ctrl.AddParameter(name, type);
-            var parameters = ctrl.parameters;
-            var param = parameters[parameters.Length-1];
-            if (with != null) with(param);
-            ctrl.parameters = parameters;
+            var ps = ctrl.parameters;
+            var param = ps[ps.Length-1];
+            with?.Invoke(param);
+            ctrl.parameters = ps;
             return param;
+        }
+
+        public AnimatorControllerParameter GetParam(string name) {
+            return Array.Find(ctrl.parameters, other => other.name == name);
         }
     
         public IEnumerable<VFLayer> GetLayers() {
