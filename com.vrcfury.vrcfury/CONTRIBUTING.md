@@ -69,6 +69,8 @@ For more information, please refer to <https://unlicense.org>
 * TayouVR
   * Added Logging to Blendshape Optimizer
   * Improved log outputs from exception handling
+* Toys0125
+  * Added Poiyomi UV Tile action type
 * wholesomevr
   * Made Armature Link work with Dynamic Bone Contacts
 * Ximmer-VR

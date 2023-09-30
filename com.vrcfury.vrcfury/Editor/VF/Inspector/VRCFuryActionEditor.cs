@@ -117,10 +117,10 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     }
                 };
 
-                var label = new Label("Poiyomi UV Tile Discard") {
+                var label = new Label("Poiyomi UV Tile") {
                     style = {
                         flexGrow = 0,
-                        flexBasis = 140,
+                        flexBasis = 100,
                     }
                 };
                 row.Add(label);
@@ -128,38 +128,47 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
                 propField.style.flexGrow = 1;
                 row.Add(propField);
-            
-                var propField2 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot1"), tooltip: "UV X Axis, Val 0-3");
-                propField2.style.flexGrow = 0;
-                propField2.style.flexBasis = 30;
-                row.Add(propField2);
 
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot2"),tooltip: "UV Y Axis, Val 0-3");
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 30;
-                row.Add(propField3);
+                row.Add(new Label("Row") {
+                    style = {
+                        flexGrow = 0,
+                        flexShrink = 0,
+                        flexBasis = 30,
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                    }
+                });
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("row"), style: s => {
+                    s.flexGrow = 0;
+                    s.flexShrink = 0;
+                    s.flexBasis = 20;
+                }));
+
+                row.Add(new Label("Col") {
+                    style = {
+                        flexGrow = 0,
+                        flexShrink = 0,
+                        flexBasis = 30,
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                    }
+                });
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("column"), style: s => {
+                    s.flexGrow = 0;
+                    s.flexShrink = 0;
+                    s.flexBasis = 20;
+                }));
+
                 content.Add(row);
 
-                var row2 = new VisualElement {
-                    style = {
-                        alignItems = Align.FlexStart,
-                        flexDirection = FlexDirection.Row,
-                    }
-                };
-
                 var adv = new Foldout {
-                    text = "Advance Options",
+                    text = "Advanced UV Tile Options",
                     style = {
                         flexDirection = FlexDirection.Column,
                     },
                     value = false
                 };
-                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("invert"), "Invert the UV Tile Discarding."));
-                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggled"), "Only Add Toggled On clip."));
-                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolveAlpha"), "Use Dissolve UV Dissolve."));
-                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renamedMaterial"), "Only required if using renamed properties."));
-                row2.Add(adv);
-                content.Add(row2);
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolve"), "Use UV Tile Dissolve"));
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renamedMaterial"), "Renamed Material", tooltip: "Material suffix when using poiyomi renamed properties"));
+                content.Add(adv);
                 return content;
             }
             case nameof(ScaleAction): {

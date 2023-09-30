@@ -85,29 +85,20 @@ namespace VF.Service {
                     }
                     case PoiyomiUVTileAction poiyomiUVTileAction: {
                         var renderer = poiyomiUVTileAction.renderer;
-                        if (poiyomiUVTileAction.slot1 > 3 || poiyomiUVTileAction.slot1 < 0) {
-                            throw new ArgumentException("Poiyomi UV Tiles are ranges between 0-3, check if slots are within these ranges.");
-                        }
-                        if (poiyomiUVTileAction.slot2 > 3 || poiyomiUVTileAction.slot2 < 0) {
+                        if (poiyomiUVTileAction.row > 3 || poiyomiUVTileAction.row < 0 || poiyomiUVTileAction.column > 3 || poiyomiUVTileAction.column < 0) {
                             throw new ArgumentException("Poiyomi UV Tiles are ranges between 0-3, check if slots are within these ranges.");
                         }
                         if (renderer != null) {
-                            var propertyName = poiyomiUVTileAction.dissolveAlpha ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
+                            var propertyName = poiyomiUVTileAction.dissolve ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
                             if (poiyomiUVTileAction.renamedMaterial != "")
-                                propertyName += $"_{poiyomiUVTileAction.renamedMaterial}"; //Able to add renamed material if added.
+                                propertyName += $"_{poiyomiUVTileAction.renamedMaterial}";
                             var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(renderer.gameObject),
                                 renderer.GetType(),
-                                $"material.{propertyName+poiyomiUVTileAction.slot1}_{(poiyomiUVTileAction.slot2)}"
+                                $"material.{propertyName}{poiyomiUVTileAction.row}_{(poiyomiUVTileAction.column)}"
                             );
-                            if (!poiyomiUVTileAction.toggled)
-                                offClip.SetConstant(binding, poiyomiUVTileAction.invert ? 1f: 0f); //Ternary Operator easier to than If statement
-                            onClip.SetConstant(binding, poiyomiUVTileAction.invert ? 0f : 1f);
-                        }
-                        if (onClip != firstClip) {
-                            var copy = mutableManager.CopyRecursive(onClip);
-                            copy.Rewrite(rewriter);
-                            onClip.CopyFrom(copy);
+                            offClip.SetConstant(binding, 1f);
+                            onClip.SetConstant(binding, 0f);
                         }
                         break;
                     }
