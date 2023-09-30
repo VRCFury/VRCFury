@@ -362,12 +362,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
-            var transition = inState.TransitionsTo(onState).WithTransitionDurationSeconds(transitionTime);
-            if (transitionClipIn.length <= 1f/transitionClipIn.frameRate) {
-                transition.When(controller.Always());
-            } else {
-                transition.When().WithTransitionExitTime(1);
-            }
+            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
 
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
@@ -393,7 +388,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var exitTransition = outState.TransitionsToExit();
 
         if (onEqualsOut) {
-            exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(transitionTime);
+            exitTransition.When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
         } else {
             exitTransition.When().WithTransitionExitTime(1);
         }
