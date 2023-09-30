@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor.Animations;
 using VF.Feature.Base;
 using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -58,7 +59,7 @@ namespace VF.Builder {
 
         private void RewriteInAll(Func<string, string> each) {
             foreach (var c in manager.GetAllUsedControllersRaw()) {
-                c.Item2.RewriteParameters(each);
+                ((AnimatorController)c.Item2).RewriteParameters(each);
             }
             manager.GetMenu().GetRaw().RewriteParameters(each);
             manager.GetParams().GetRaw().RewriteParameters(each);

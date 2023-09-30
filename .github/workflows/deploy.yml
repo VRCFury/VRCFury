@@ -1,15 +1,18 @@
 name: 'Deploy'
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [Test]
+    branches: [main]
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment: prod
     steps:

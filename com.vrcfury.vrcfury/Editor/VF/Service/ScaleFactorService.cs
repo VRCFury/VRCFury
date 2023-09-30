@@ -8,6 +8,7 @@ using VF.Feature;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -33,6 +34,9 @@ namespace VF.Service {
 
         private VFAFloat Generate() {
             var fx = manager.GetFx();
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+                return fx.NewFloat("ScaleFactor", usePrefix: false, def: 1.0f);
+            }
 
             var holder = GameObjects.Create("vrcf_ScaleFactorFix", manager.AvatarObject);
             var senderObj = GameObjects.Create("Sender", holder);

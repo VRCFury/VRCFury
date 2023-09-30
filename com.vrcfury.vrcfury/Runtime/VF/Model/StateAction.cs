@@ -41,6 +41,15 @@ namespace VF.Model.StateAction {
         public Renderer renderer;
         public int slot = 1;
     }
+
+    [Serializable]
+    public class PoiyomiUVTileAction : Action {
+        public Renderer renderer;
+        public int row = 0;
+        public int column = 0;
+        public bool dissolve = false;
+        public string renamedMaterial = "";
+    }
     
     [Serializable]
     public class FlipbookAction : Action {

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -76,6 +78,7 @@ namespace VF.Builder {
                     currentFeatureNumProvider,
                     currentFeatureNameProvider,
                     currentFeatureClipPrefixProvider,
+                    MakeUniqueParamName,
                     tmpDir,
                     treatAsManaged: isDefault
                 );
@@ -87,16 +90,13 @@ namespace VF.Builder {
         public ControllerManager GetFx() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
-        public IEnumerable<ControllerManager> GetAllTouchedControllers() {
-            return _controllers.Values;
-        }
         public IEnumerable<ControllerManager> GetAllUsedControllers() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => GetController(c.type))
                 .ToArray();
         }
-        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> GetAllUsedControllersRaw() {
+        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> GetAllUsedControllersRaw() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => Tuple.Create(c.type, c.controller));
@@ -127,5 +127,23 @@ namespace VF.Builder {
 
         public VFGameObject AvatarObject => avatarObject;
         public VFGameObject CurrentComponentObject => currentComponentObject();
+
+        public bool IsParamUsed(string name) {
+            if (GetParams().GetRaw().FindParameter(name) != null) return true;
+            foreach (var c in GetAllUsedControllers()) {
+                if (c.GetRaw().GetParam(name) != null) return true;
+            }
+            return false;
+        }
+        public string MakeUniqueParamName(string name) {
+            name = "VF" + currentFeatureNumProvider() + "_" + name;
+
+            int offset = 1;
+            while (true) {
+                var attempt = name + ((offset == 1) ? "" : offset+"");
+                if (!IsParamUsed(attempt)) return attempt;
+                offset++;
+            }
+        }
     }
 }

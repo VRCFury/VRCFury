@@ -108,6 +108,69 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 return row;
             }
+            case nameof(PoiyomiUVTileAction): {
+                var content = new VisualElement();
+                var row = new VisualElement {
+                    style = {
+                        alignItems = Align.FlexStart,
+                        flexDirection = FlexDirection.Row,
+                    }
+                };
+
+                var label = new Label("Poiyomi UV Tile") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100,
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+
+                row.Add(new Label("Row") {
+                    style = {
+                        flexGrow = 0,
+                        flexShrink = 0,
+                        flexBasis = 30,
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                    }
+                });
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("row"), style: s => {
+                    s.flexGrow = 0;
+                    s.flexShrink = 0;
+                    s.flexBasis = 20;
+                }));
+
+                row.Add(new Label("Col") {
+                    style = {
+                        flexGrow = 0,
+                        flexShrink = 0,
+                        flexBasis = 30,
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                    }
+                });
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("column"), style: s => {
+                    s.flexGrow = 0;
+                    s.flexShrink = 0;
+                    s.flexBasis = 20;
+                }));
+
+                content.Add(row);
+
+                var adv = new Foldout {
+                    text = "Advanced UV Tile Options",
+                    style = {
+                        flexDirection = FlexDirection.Column,
+                    },
+                    value = false
+                };
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolve"), "Use UV Tile Dissolve"));
+                adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renamedMaterial"), "Renamed Material", tooltip: "Material suffix when using poiyomi renamed properties"));
+                content.Add(adv);
+                return content;
+            }
             case nameof(ScaleAction): {
                 var row = new VisualElement {
                     style = {

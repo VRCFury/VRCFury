@@ -667,6 +667,9 @@ public static class VRCFuryEditorUtils {
         while (obj != null) {
             if (obj.name == "Ragdoll System") return true;
             if (obj.name == "CarbonCopy Container") return true;
+            // DexClone_worldSpace/CloneContainer0?
+            if (obj.name.StartsWith("CloneContainer")) return true;
+            if (obj.name == "DexClone_worldSpace") return true;
             obj = obj.parent;
         }
         return false;
