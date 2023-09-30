@@ -218,6 +218,11 @@ public class VRCFuryBuilder {
             var action = actions.Min();
             actions.Remove(action);
             var service = action.GetService();
+            if (action.configObject == null) {
+                var statusSkipMessage = $"\n{service.GetType().Name} ({currentModelNumber}) Skipped\nObject does not exist (probably got deleted by previous stages)";
+                progress.Progress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
+                continue;
+            }
 
             currentModelNumber = action.serviceNum;
             var objectName = action.configObject.GetPath(avatarObject);

@@ -14,6 +14,7 @@ namespace VF.Feature.Base {
         
         // Needs to happen before toggles begin getting processed
         ForceObjectState,
+        RemoveEditorOnly,
 
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase,
