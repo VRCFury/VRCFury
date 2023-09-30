@@ -53,7 +53,7 @@ namespace VF.Utils.Controller {
             return this;
         }
         public VFTransition WithTransitionDurationSeconds(float time) {
-            if (time <= 0f) return this; // don't even bother
+            if (time < 0f) return this; // don't even bother
             foreach (var t in createdTransitions) {
                 t.duration = time;
             }
@@ -66,7 +66,7 @@ namespace VF.Utils.Controller {
             return this;
         }
         public VFTransition WithTransitionExitTime(float time) {
-            if (time <= 0f) return this; // don't even bother
+            if (time < 0f) return this; // don't even bother
             foreach (var t in createdTransitions) {
                 t.hasExitTime = true;
                 t.exitTime = time;

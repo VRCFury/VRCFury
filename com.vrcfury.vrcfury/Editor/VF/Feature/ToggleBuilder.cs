@@ -333,7 +333,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     ) {
 
         var transitionTime = model.transitionTime;
-        if (!model.hasTransitionTime)  transitionTime = 0;
+        if (!model.hasTransitionTime)  transitionTime = -1;
 
         var clip = actionClipService.LoadState(onName, action);
 
@@ -383,7 +383,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.hasTransition && outAction != null && outAction.actions.Count() != 0) {
             var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : 0);
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
         } else {
             outState = onState;
         }
@@ -393,7 +393,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var exitTransition = outState.TransitionsToExit();
 
         if (onEqualsOut) {
-            exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : 0).WithTransitionDurationSeconds(transitionTime);
+            exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(transitionTime);
         } else {
             exitTransition.When().WithTransitionExitTime(1);
         }
