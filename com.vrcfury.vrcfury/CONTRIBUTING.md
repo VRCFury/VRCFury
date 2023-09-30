@@ -47,21 +47,35 @@ For more information, please refer to <https://unlicense.org>
 
 ## Special Thanks to the contributors!
 
-* Morghus
-  * Created numerous setup prefabs
-* GameGeek720
-  * Added Toggle enhancements for transitions and the local player
-* Raphiiko
-  * Added global parameters for Toggles
-* nullstalgia
-  * Added option for Toggles to use momentary push buttons
-* Ximmer-VR
-  * Made Toggle sliders work with global parameters
-* wholesomevr
-  * Made Armature Link work with Dynamic Bone Contacts
-* anatawa12, lyuma, anatawa12
-  * Special thanks for continuing efforts to make VRCFury and Av3Emu more compatible with each other
+* AirGamer
+  * Added scaling of legacy DPS tip light intensity
+* anatawa12
+  * Improvements to VRCFury/Av3Emu compatibility
 * CobaltSpace
   * Ensured that gogoloco params are always global
+* GameGeek720
+  * Added Toggle enhancements for transitions and the local player
+* KaelanDuck
+  * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
+* lyuma
+  * Improvements to VRCFury/Av3Emu compatibility
+* Morghus
+  * Created numerous setup prefabs
+* nullstalgia
+  * Added option for Toggles to use momentary push buttons
+  * Prevented SPS toggle from disabling SPS autorig physbone
+* Raphiiko
+  * Added global parameters for Toggles
 * TayouVR
-  * added Logging to Blendshape Optimizer
+  * Added Logging to Blendshape Optimizer
+  * Improved log outputs from exception handling
+  * Contributed SPS support for legacy DPS channel 1 (unused)
+  * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
+* TheLastRar
+  * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
+* Toys0125
+  * Added Poiyomi UV Tile action type
+* wholesomevr
+  * Made Armature Link work with Dynamic Bone Contacts
+* Ximmer-VR
+  * Made Toggle sliders work with global parameters
