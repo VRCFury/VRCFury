@@ -69,8 +69,9 @@ For more information, please refer to <https://unlicense.org>
 * TayouVR
   * Added Logging to Blendshape Optimizer
   * Improved log outputs from exception handling
+  * Contributed SPS support for legacy DPS channel 1 (unused)
 * TheLastRar
-  * Contributed attempts to fix light slot 4 breakage for DPS tip lights
+  * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
 * Toys0125
   * Added Poiyomi UV Tile action type
 * wholesomevr
