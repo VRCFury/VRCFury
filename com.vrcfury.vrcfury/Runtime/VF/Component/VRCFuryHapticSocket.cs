@@ -22,6 +22,7 @@ namespace VF.Component {
         public new string name;
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
         public float length;
+        public bool unitsInMeters = true;
         public bool addMenuItem = true;
         public bool enableAuto = true;
         public Vector3 position;
