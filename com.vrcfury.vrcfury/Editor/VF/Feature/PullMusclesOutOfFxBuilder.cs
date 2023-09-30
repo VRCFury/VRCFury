@@ -141,7 +141,7 @@ namespace VF.Feature {
 
                 var outState = layer.NewState($"{motion.name} - Out");
                 off.TransitionsToExit().When(myCond);
-                newState.TransitionsFromEntry().When(myCond);
+                newState.TransitionsFromAny().When(myCond);
                 newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not());
                 newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
                 foreach (var (otherCond,other) in previousStates) {
