@@ -281,7 +281,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var numParam = fx.NewInt(paramName, synced: addMenuItem, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 onCase = numParam.IsNotEqualTo(0);
             } else {
-                var numParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                var numParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: addMenuItem, saved: model.saved, def: model.defaultOn ? intTarget : 0, usePrefix: false);
                 onCase = numParam.IsEqualTo(intTarget);
                 param = numParam;
             }
