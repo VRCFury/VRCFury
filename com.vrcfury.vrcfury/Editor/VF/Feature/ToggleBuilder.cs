@@ -104,16 +104,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return "none";
     }
 
-    private VFLayer GetLayer(string layerName, ControllerManager controller) {
+    private VFLayer GetLayer(string layerName) {
         if (enableExclusiveTag) {
             var primaryExclusiveTag = GetPrimaryExclusive();
-            if (primaryExclusiveTag == "") return controller.NewLayer(layerName);
+            if (primaryExclusiveTag == "") return GetFx().NewLayer(layerName);
             if (!exclusiveAnimationLayers.ContainsKey(primaryExclusiveTag)) {
-                 exclusiveAnimationLayers[primaryExclusiveTag] = controller.NewLayer((primaryExclusiveTag + " Animations").Trim());
+                 exclusiveAnimationLayers[primaryExclusiveTag] = GetFx().NewLayer((primaryExclusiveTag + " Animations").Trim());
             }
             return exclusiveAnimationLayers[primaryExclusiveTag];
         }
-        return controller.NewLayer(layerName);
+        return GetFx().NewLayer(layerName);
     }
 
     private VFLayer GetLayerForParameters(string exclusiveTag) {
@@ -274,7 +274,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         CheckExclusives();
 
         var fx = GetFx();
-        var layer = GetLayer(layerName, fx);
+        var layer = GetLayer(layerName);
         var off = GetOffState("Off", layer);
 
         var (paramName, usePrefixOnParam) = GetParamName();
@@ -321,7 +321,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     private void Apply(
-        ControllerManager controller,
+        ControllerManager fx,
         VFLayer layer,
         VFState off,
         VFCondition onCase,
@@ -355,8 +355,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
 
             // if clip is empty, copy last frame of transition
-            if (clip == controller.GetEmptyClip()) {
-                clip = controller.NewClip(onName);
+            if (clip == fx.GetEmptyClip()) {
+                clip = fx.NewClip(onName);
                 clip.CopyFromLast(transitionClipIn);
             }
 
@@ -399,7 +399,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.enableDriveGlobalParam && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
             foreach(var p in GetGlobalParams()) {
                 if (string.IsNullOrWhiteSpace(p)) continue;
-                var driveGlobal = controller.NewBool(
+                var driveGlobal = fx.NewBool(
                     p,
                     synced: false,
                     saved: false,
@@ -417,7 +417,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (model.defaultOn) {
                 SetStartState(layer, onState.GetRaw());
                 if (!enableExclusiveTag) {
-                    off.TransitionsFromEntry().When(controller.Always());
+                    off.TransitionsFromEntry().When(fx.Always());
                 }
             }
         }
@@ -428,11 +428,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         if (!enableExclusiveTag) return;
 
-        var controller = GetFx();
+        var fx = GetFx();
         var paramsToTurnOff = new HashSet<VFABool>();
         var paramsToTurnToZero = new Dictionary<string, HashSet<(VFAInteger, int)>>();
-        var allOthersOff = controller.Always();
-        var isLocal = controller.IsLocal().IsTrue();
+        var allOthersOff = fx.Always();
+        var isLocal = fx.IsLocal().IsTrue();
             
         foreach (var exclusiveTag in GetExclusiveTags()) {
             foreach (var other in allBuildersInRun
@@ -459,7 +459,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (model.includeInRest && model.defaultOn) {
-            var layer = GetLayer(layerName, controller);
+            var layer = GetLayer(layerName);
             var off = GetOffState("Off", layer);
             off.TransitionsFromEntry().When(allOthersOff);
         }
@@ -475,10 +475,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             triggerState.TransitionsToExit().When(onParam.Not());
 
-            var allOrParam = controller.Never();
+            var allOrParam = fx.Never();
 
             foreach (var tag in paramsToTurnToZero.Keys) {
-                var orParam = controller.Never();
+                var orParam = fx.Never();
                 VFAInteger tagParam = paramsToTurnToZero[tag].First().Item1;
                 foreach (var (p, i) in paramsToTurnToZero[tag]) {
                     orParam = orParam.Or(p.IsEqualTo(i));
