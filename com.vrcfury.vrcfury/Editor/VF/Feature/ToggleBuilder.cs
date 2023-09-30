@@ -12,8 +12,8 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.StateAction;
-using VF.Utils;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 using Toggle = VF.Model.Feature.Toggle;
 
@@ -36,8 +36,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly PhysboneResetService physboneResetService;
-
-    private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
 
     private AnimationClip restingClip;
 
