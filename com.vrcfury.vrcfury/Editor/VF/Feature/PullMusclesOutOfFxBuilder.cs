@@ -20,6 +20,9 @@ namespace VF.Feature {
      */
     public class PullMusclesOutOfFxBuilder : FeatureBuilder {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        private VFABool rightHandParam;
+        private VFABool leftHandParam;
+        private VFABool emoteParam;
         
         [FeatureBuilderAction(FeatureOrder.PullMusclesOutOfFx)]
         public void Apply() {
@@ -63,20 +66,54 @@ namespace VF.Feature {
             RightHand
         };
 
-        private List<(LayerType, VFABool, Motion, float)> statesToCreate = new List<(LayerType, VFABool, Motion, float)>();
+        private List<(LayerType, VFABool, Motion)> statesToCreate = new List<(LayerType, VFABool, Motion)>();
 
         private void CreateAltLayers() {
+            if (statesToCreate.Count() > 0){
+                CreateTrackingLayer();
+            }
             foreach (var group in statesToCreate.GroupBy(state => state.Item1)) {
                 var type = group.Key;
-                var states = group.Select(tuple => (tuple.Item2, tuple.Item3, tuple.Item4)).ToArray();
+                var states = group.Select(tuple => (tuple.Item2, tuple.Item3)).ToArray();
                 CreateAltLayer(type, states);
             }
         }
 
-        private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion,float)> states) {
+        private void CreateTrackingLayer(){
+            var controller = manager.GetFx();
+            var layer = controller.NewLayer("Tracking Control");
+            rightHandParam = controller.NewBool("Right Hand Track", def: true);
+            leftHandParam = controller.NewBool("Left Hand Track", def: true);
+            emoteParam = controller.NewBool("Emote Track", def: true);
+
+            var trackAll = layer.NewState("Track All");
+            trackAll.TrackingController("allTracking");
+
+            var animateRight = layer.NewState("Animate Right");
+            animateRight.TrackingController("rightHandAnimation");
+
+            var animateLeft = layer.NewState("Animate Left");
+            animateLeft.TrackingController("leftHandAnimation");
+
+            var animateEmote = layer.NewState("Animate Emote");
+            animateEmote.TrackingController("emoteAnimation");
+
+            trackAll.TransitionsTo(animateRight).When(rightHandParam.IsFalse());
+            trackAll.TransitionsTo(animateLeft).When(leftHandParam.IsFalse());
+            
+            animateRight.TransitionsTo(animateLeft).When(leftHandParam.IsFalse().And(rightHandParam.IsFalse()));
+            animateLeft.TransitionsTo(animateRight).When(leftHandParam.IsFalse().And(rightHandParam.IsFalse()));
+
+            animateEmote.TransitionsFromAny().When(emoteParam.IsFalse());
+
+            animateRight.TransitionsToExit().When(rightHandParam.IsTrue());
+            animateLeft.TransitionsToExit().When(leftHandParam.IsTrue());
+            animateEmote.TransitionsToExit().When(emoteParam.IsTrue());
+        }
+
+        private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion)> states) {
             ControllerManager controller;
             VFLayer layer;
-
             if (type == LayerType.Action) {
                 controller = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                 layer = controller.NewLayer("VRCFury Actions");
@@ -91,59 +128,57 @@ namespace VF.Feature {
                 controller.GetManagedLayers().First(l => l.stateMachine == layer.GetRawStateMachine()).weight = 0;
             }
 
-            var maskName = "";
-
-            if (type == LayerType.Action) maskName = "emote";
-            if (type == LayerType.LeftHand) maskName = "leftHand";
-            if (type == LayerType.RightHand) maskName = "rightHand";
-
             var off = layer.NewState("Off");
-            var blendout = layer.NewState("Blendout");
-            blendout.TrackingController(maskName + "Tracking");
-            blendout.TransitionsToExit().When(controller.Always());
 
-            if (type == LayerType.Action) {
-                var weightOff = blendout.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
-                weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
-                weightOff.goalWeight = 0;
-            } else {
-                var weightOff = blendout.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
-                weightOff.goalWeight = 0;
-                animatorLayerControlManager.Register(weightOff, layer.GetRawStateMachine());
-            }
-
-            var toggleStates = new List<(VFCondition, VFState, float)>(); 
+            var previousStates = new List<(VFCondition, VFState)>();
             foreach (var s in states) {
-                var (param, motion, exitTime) = s;
+                var (param, motion) = s;
                 var newState = layer.NewState(motion.name);
                 newState.WithAnimation(motion);
                 // Because param came from another controller, we have to recreate it
                 var myParam = controller.NewBool(param.Name(), usePrefix: false);
-                var myCond = myParam.IsTrue();                
-                toggleStates.Add((myCond, newState, exitTime));
-            }
+                var myCond = myParam.IsTrue();
 
-            foreach(var (condition, state, exitTime) in toggleStates) {
-                var others = controller.Never();
-                foreach(var (otherCondition, otherState, dud) in toggleStates) {
-                    if (state == otherState) continue;
-                    others = others.Or(otherCondition);
+                var outState = layer.NewState($"{motion.name} - Out");
+                off.TransitionsToExit().When(myCond);
+                newState.TransitionsFromEntry().When(myCond);
+                newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not());
+                newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
+                foreach (var (otherCond,other) in previousStates) {
+                    newState.TransitionsToExit().When(otherCond);
                 }
-                off.TransitionsToExit().When(condition);
-                state.TransitionsFromEntry().When(condition);
-                state.TransitionsToExit().When(others).WithTransitionExitTime(exitTime);
-                state.TransitionsTo(blendout).WithTransitionDurationSeconds(1000).Interruptable().When(condition.Not()).WithTransitionExitTime(exitTime);
-                state.TrackingController(maskName + "Animation");
+                outState.TransitionsToExit().When(controller.Always());
+
                 if (type == LayerType.Action) {
-                    var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
+                    newState.Drives(emoteParam, false);
+                    outState.Drives(emoteParam, true);
+
+                    var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                     weightOn.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOn.goalWeight = 1;
+                    var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
+                    weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
+                    weightOff.goalWeight = 0;
                 } else {
-                    var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                    if (type == LayerType.RightHand) {
+                        newState.Drives(rightHandParam, false);
+                        outState.Drives(rightHandParam, true);
+                    } else {
+                        newState.Drives(leftHandParam, false);
+                        outState.Drives(leftHandParam, true);
+                    }
+                    var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
                     weightOn.goalWeight = 1;
                     animatorLayerControlManager.Register(weightOn, layer.GetRawStateMachine());
+                    var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                    weightOff.goalWeight = 0;
+                    animatorLayerControlManager.Register(weightOff, layer.GetRawStateMachine());
                 }
+
+                previousStates.Add((myCond, newState));
             }
+
+            off.TransitionsFromEntry().When(controller.Always());
         }
 
         private int actionNum = 0;
@@ -166,38 +201,30 @@ namespace VF.Feature {
 
             if (muscleTypes.Count == 0 && proxies.Count == 0) return null;
 
-            var exitTime = -1f;
-
-            foreach (var transition in state.transitions) {
-                if (transition.hasExitTime && transition.exitTime > exitTime) {
-                    exitTime = transition.exitTime;
-                }
-            }
-
             var newParam = GetFx().NewBool("action_" + (actionNum++));
-
             if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
-                AddToAltLayer(state, LayerType.Action, newParam, exitTime);
+                AddToAltLayer(state, LayerType.Action, newParam);
             } else {
                 if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.LeftHand))
-                    AddToAltLayer(state, LayerType.LeftHand, newParam, exitTime);
+                    AddToAltLayer(state, LayerType.LeftHand, newParam);
                 if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.RightHand))
-                    AddToAltLayer(state, LayerType.RightHand, newParam, exitTime);
+                    AddToAltLayer(state, LayerType.RightHand, newParam);
             }
 
             foreach (var proxy in proxies) {
                 var (proxyClip, isAction) = proxy;
                 if (isAction) {
-                    statesToCreate.Add((LayerType.Action, newParam, proxyClip, exitTime));
+                    statesToCreate.Add((LayerType.Action, newParam, proxyClip));
                 } else {
-                    statesToCreate.Add((LayerType.LeftHand, newParam, proxyClip, exitTime));
-                    statesToCreate.Add((LayerType.RightHand, newParam, proxyClip, exitTime));
+                    statesToCreate.Add((LayerType.LeftHand, newParam, proxyClip));
+                    statesToCreate.Add((LayerType.RightHand, newParam, proxyClip));
                 }
             }
+
             return newParam;
         }
 
-        private void AddToAltLayer(AnimatorState state, LayerType type, VFABool param,  float exitTime) {
+        private void AddToAltLayer(AnimatorState state, LayerType type, VFABool param) {
             var originalMotion = state.motion;
 
             bool ShouldTransferBinding(EditorCurveBinding binding) {
@@ -220,7 +247,7 @@ namespace VF.Feature {
             }
 
             state.motion = copyWithoutMuscles;
-            statesToCreate.Add((type, param, copyOnlyMuscles, exitTime));
+            statesToCreate.Add((type, param, copyOnlyMuscles));
         }
     }
 }
