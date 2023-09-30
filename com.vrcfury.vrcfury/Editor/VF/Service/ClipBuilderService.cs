@@ -168,12 +168,22 @@ namespace VF.Service {
             
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 if (curve.IsFloat) {
+                    var first = true;
                     foreach (var key in curve.FloatCurve.keys) {
-                        (key.time == 0 ? startClip : endClip).SetConstant(binding, key.value);
+                        if (first) {
+                            startClip.SetConstant(binding, key.value);
+                            first = false;
+                        }
+                        endClip.SetConstant(binding, key.value);
                     }
                 } else {
+                    var first = true;
                     foreach (var key in curve.ObjectCurve) {
-                        (key.time == 0 ? startClip : endClip).SetConstant(binding, key.value);
+                        if (first) {
+                            startClip.SetConstant(binding, key.value);
+                            first = false;
+                        }
+                        endClip.SetConstant(binding, key.value);
                     }
                 }
             }

@@ -135,6 +135,7 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(CleanupLegacyBuilder));
         AddBuilder(typeof(RemoveJunkAnimatorsBuilder));
         AddBuilder(typeof(FixDoubleFxBuilder));
+        AddBuilder(typeof(DefaultAdditiveLayerFixBuilder));
         AddBuilder(typeof(FixWriteDefaultsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
         AddBuilder(typeof(ControllerConflictBuilder));
@@ -208,10 +209,12 @@ public class VRCFuryBuilder {
             }
             var config = vrcFury.config;
             if (config.features != null) {
-                Debug.Log("Importing " + config.features.Count + " features from " + configObject.name);
+                var debugLogString = $"Importing {config.features.Count} features from {configObject.name}";
                 foreach (var feature in config.features) {
                     AddModel(feature, configObject);
+                    debugLogString += $"\n{feature.GetType()}";
                 }
+                Debug.Log(debugLogString);
             }
         }
 
@@ -221,6 +224,11 @@ public class VRCFuryBuilder {
             var action = actions.Min();
             actions.Remove(action);
             var service = action.GetService();
+            if (action.configObject == null) {
+                var statusSkipMessage = $"\n{service.GetType().Name} ({currentModelNumber}) Skipped\nObject does not exist (probably got deleted by previous stages)";
+                progress.Progress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
+                continue;
+            }
 
             currentModelNumber = action.serviceNum;
             var objectName = action.configObject.GetPath(avatarObject);
