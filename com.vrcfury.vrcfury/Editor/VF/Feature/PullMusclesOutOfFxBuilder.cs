@@ -160,13 +160,9 @@ namespace VF.Feature {
                     weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOff.goalWeight = 0;
                 } else {
-                    if (type == LayerType.RightHand) {
-                        newState.Drives(rightHandParam, false);
-                        outState.Drives(rightHandParam, true);
-                    } else {
-                        newState.Drives(leftHandParam, false);
-                        outState.Drives(leftHandParam, true);
-                    }
+                    newState.Drives(type == LayerType.RightHand ? rightHandParam : leftHandParam, false);
+                    outState.Drives(type == LayerType.RightHand ? rightHandParam : leftHandParam, true);
+
                     var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
                     weightOn.goalWeight = 1;
                     animatorLayerControlManager.Register(weightOn, layer.GetRawStateMachine());
