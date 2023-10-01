@@ -224,13 +224,14 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     }
                 });
                 
-                var propField4 = VRCFuryEditorUtils.Prop(affectAllMeshesProp);
+                var propField4 = VRCFuryEditorUtils.RefreshOnChange(() => {
+                    propField.SetEnabled(!affectAllMeshesProp.boolValue);
+                    var field = VRCFuryEditorUtils.Prop(affectAllMeshesProp);
+                    return field;
+                }, affectAllMeshesProp);
                 propField4.style.flexGrow = 0;
                 propField4.style.flexShrink = 0;
                 propField4.style.flexBasis = 16;
-                propField4.schedule.Execute(() => {
-                    propField.SetEnabled(!affectAllMeshesProp.boolValue);
-                }).Every(1000);
                 rendererRow.Add(propField4);
                 
                 col.Add(rendererRow);
