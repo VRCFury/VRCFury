@@ -115,10 +115,8 @@ namespace VF.Service {
                                 renderer.GetType(),
                                 $"material.{materialPropertyAction.propertyName}"
                             );
-                            var defaultSource = renderer.sharedMaterials.Where(mat =>
-                                mat.HasProperty(materialPropertyAction.propertyName)).ToArray();
-                            if (defaultSource.Length != 0) {
-                                offClip.SetConstant(binding, defaultSource[0].GetFloat(materialPropertyAction.propertyName));
+                            if (renderer.sharedMaterials.Any(mat =>
+                                    mat.HasProperty(materialPropertyAction.propertyName))) {
                                 onClip.SetConstant(binding, materialPropertyAction.value);
                             }
                             
