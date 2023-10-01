@@ -14,16 +14,22 @@ namespace VF {
 
         static GuidWrapperExtensions() {
             GuidWrapper.UpdateIdIfPossible = wrapper => {
+                var changed = false;
+                
                 var obj = VrcfObjectId.IdToObject<Object>(wrapper.id);
                 if (obj != null) {
+                    if (obj != wrapper.objRef) {
+                        wrapper.objRef = obj;
+                        changed = true;
+                    }
                     var newId = VrcfObjectId.ObjectToId(obj);
                     if (wrapper.id != newId) {
                         wrapper.id = newId;
-                        return true;
+                        changed = true;
                     }
                 }
 
-                return false;
+                return changed;
             };
         }
     }

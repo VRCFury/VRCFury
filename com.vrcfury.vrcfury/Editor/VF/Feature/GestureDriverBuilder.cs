@@ -10,12 +10,13 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
-        private readonly Dictionary<string, VFACondition> excludeConditions = new Dictionary<string, VFACondition>();
+        private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();
         [VFAutowired] private readonly ParamSmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         
@@ -60,7 +61,7 @@ namespace VF.Feature {
             var GestureLeft = fx.GestureLeft();
             var GestureRight = fx.GestureRight();
 
-            VFACondition onCondition;
+            VFCondition onCondition;
             int weightHand = 0;
             if (hand == GestureDriver.Hand.LEFT) {
                 onCondition = GestureLeft.IsEqualTo((int)gesture.sign);
@@ -135,7 +136,7 @@ namespace VF.Feature {
             leftWeightParam = MakeWeightLayer(GestureLeftWeight, GestureLeftCondition);
             rightWeightParam = MakeWeightLayer(GestureRightWeight, GestureRightCondition);
         }
-        private VFAFloat MakeWeightLayer(VFAFloat input, VFACondition whenEnabled) {
+        private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition whenEnabled) {
             var maintained =
                 smoothing.SetValueWithConditions(
                     $"{input.Name()}Maintained",

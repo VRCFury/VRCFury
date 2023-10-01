@@ -83,6 +83,25 @@ namespace VF.Service {
                         }
                         break;
                     }
+                    case PoiyomiUVTileAction poiyomiUVTileAction: {
+                        var renderer = poiyomiUVTileAction.renderer;
+                        if (poiyomiUVTileAction.row > 3 || poiyomiUVTileAction.row < 0 || poiyomiUVTileAction.column > 3 || poiyomiUVTileAction.column < 0) {
+                            throw new ArgumentException("Poiyomi UV Tiles are ranges between 0-3, check if slots are within these ranges.");
+                        }
+                        if (renderer != null) {
+                            var propertyName = poiyomiUVTileAction.dissolve ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
+                            if (poiyomiUVTileAction.renamedMaterial != "")
+                                propertyName += $"_{poiyomiUVTileAction.renamedMaterial}";
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(renderer.gameObject),
+                                renderer.GetType(),
+                                $"material.{propertyName}{poiyomiUVTileAction.row}_{(poiyomiUVTileAction.column)}"
+                            );
+                            offClip.SetConstant(binding, 1f);
+                            onClip.SetConstant(binding, 0f);
+                        }
+                        break;
+                    }
                     case MaterialPropertyAction materialPropertyAction: {
                         if (materialPropertyAction.renderer == null && !materialPropertyAction.affectAllMeshes) break;
                         var renderers = new[] { materialPropertyAction.renderer };

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using VF.Upgradeable;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using Object = UnityEngine.Object;
 
 namespace VF.Model {
     // These are here because you can't use Serializable with generics until unity 2020
@@ -60,6 +61,7 @@ namespace VF.Model {
         [Obsolete] [SerializeField] private long fileID;
         [Obsolete] [SerializeField] private string guid;
         [SerializeField] public string id;
+        [SerializeField] public Object objRef; // This is only here so that unity will export dependencies properly
         
 #pragma warning disable 0612
         public override bool Upgrade(int fromVersion) {

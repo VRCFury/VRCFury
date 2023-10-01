@@ -401,6 +401,7 @@ namespace VF.Inspector {
                         Material ConfigureMaterial(Material mat) {
                             try {
                                 if (mat == null) return null;
+                                if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return mat;
 
                                 if (plug.enableSps) {
                                     var copy = mutableManager.MakeMutable(mat, skin.owner());

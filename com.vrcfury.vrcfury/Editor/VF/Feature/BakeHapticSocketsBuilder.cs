@@ -14,6 +14,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
@@ -82,7 +83,7 @@ namespace VF.Feature {
             manager.GetMenu().SetIconGuid(optionsFolder, "16e0846165acaa1429417e757c53ef9b");
 
             var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
-            var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
+            var exclusiveTriggers = new List<Tuple<VFABool, VFState>>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                 try {
                     VFGameObject obj = socket.gameObject;
@@ -161,7 +162,7 @@ namespace VF.Feature {
                         var whenStealthEnabled = stealthOn?.IsTrue() ?? fx.Never();
                         var whenMultiEnabled = multiOn?.IsTrue() ?? fx.Never();
 
-                        VFAState.FakeAnyState(
+                        VFState.FakeAnyState(
                             (stealthState, whenOn.And(whenLocal.And(whenStealthEnabled))),
                             (onLocalMultiState, whenOn.And(whenLocal.And(whenMultiEnabled))),
                             (onLocalState, whenOn.And(whenLocal)),
@@ -227,7 +228,7 @@ namespace VF.Feature {
 
                 var vsParam = fx.NewFloat("comparison");
 
-                var states = new Dictionary<Tuple<int, int>, VFAState>();
+                var states = new Dictionary<Tuple<int, int>, VFState>();
                 for (var i = 0; i < autoSockets.Count; i++) {
                     var (aName, aEnabled, aDist) = autoSockets[i];
                     var triggerOn = layer.NewState($"Start {aName}").Move(start, i, 2);
