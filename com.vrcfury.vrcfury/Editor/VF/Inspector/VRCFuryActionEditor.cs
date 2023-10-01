@@ -277,19 +277,89 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     var targetWidth = row.GetFirstAncestorOfType<UnityEditor.UIElements.InspectorElement>().worldBound
                         .width;
                     var searchContext = new UnityEditor.Experimental.GraphView.SearchWindowContext(GUIUtility.GUIToScreenPoint(Event.current.mousePosition), targetWidth, 300);
-                    var provider = ScriptableObject.CreateInstance<VRCFuryMaterialPropertySearchWindow>();
-                    var editorObject = prop.serializedObject.targetObject;
+                    var provider = ScriptableObject.CreateInstance<VRCFurySearchWindowProvider>();
+                    provider.InitProvider(GetTreeEntries, (entry, userData) => {
+                        propertyNameProp.stringValue = (string) entry.userData;
+                        prop.serializedObject.ApplyModifiedProperties();
+                        return true;
+                    });
+                    UnityEditor.Experimental.GraphView.SearchWindow.Open(searchContext, provider);
+                }
+
+                List<UnityEditor.Experimental.GraphView.SearchTreeEntry> GetTreeEntries() {
+                    var entries = new List<UnityEditor.Experimental.GraphView.SearchTreeEntry> {
+                        new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Material Properties"))
+                    };
+                    var renderers = new List<Renderer>();
                     if (affectAllMeshesProp.boolValue) {
+                        var editorObject = prop.serializedObject.targetObject;
                         if (editorObject is UnityEngine.Component c) {
-                            VFGameObject avatarObject = c.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
+                            var avatarObject = c.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
                             if (avatarObject != null) {
-                                provider.InitProperties(avatarObject.GetComponentsInSelfAndChildren<Renderer>(), propertyNameProp);
+                                renderers.AddRange(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
                             }
                         }
                     } else {
-                        provider.InitProperties(rendererProp.objectReferenceValue as Renderer, propertyNameProp);
+                        renderers.Add(rendererProp.objectReferenceValue as Renderer);
                     }
-                    UnityEditor.Experimental.GraphView.SearchWindow.Open(searchContext, provider);
+
+                    if (renderers.Count == 0) return entries;
+                    
+                    var singleRenderer = renderers.Count == 1;
+                    foreach (var renderer in renderers) {
+                        if (renderer == null) continue;
+                        var nest = 1;
+                        var sharedMaterials = renderer.sharedMaterials;
+                        if (sharedMaterials.Length == 0) return entries;
+                        var singleMaterial = sharedMaterials.Length == 1;
+                        if (!singleRenderer) {
+                            entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Mesh: " + renderer.name), nest));
+                        }
+                        foreach (var material in sharedMaterials) {
+                            if (material == null) continue;
+                            
+                            nest = singleRenderer ? 1 : 2;
+                            if (!singleMaterial) {
+                                entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Material: " + material.name),  nest));
+                                nest++;
+                            }
+                            var shader = material.shader;
+                            
+                            if (shader == null) continue;
+                            
+                            var count = ShaderUtil.GetPropertyCount(shader);
+                            var materialProperties = MaterialEditor.GetMaterialProperties(new Object[]{ material });
+                            for (var i = 0; i < count; i++)
+                            {
+                                var propertyName = ShaderUtil.GetPropertyName(shader, i);
+                                var readableName = ShaderUtil.GetPropertyDescription(shader, i);
+                                var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
+                                if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
+                                            
+                                var propType = ShaderUtil.GetPropertyType(shader, i);
+                                
+                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
+                                    propType != ShaderUtil.ShaderPropertyType.Range) continue;
+                                
+                                var prioritizePropName = readableName.Length > 25f;
+                                var entryName = prioritizePropName ? propertyName : readableName;
+                                if (!singleRenderer) {
+                                    entryName += $" (Mesh: {renderer.name})";
+                                }
+                                if (!singleMaterial) {
+                                    entryName += $" (Mat: {material.name})";
+                                }
+
+                                entryName += prioritizePropName ? $" ({readableName})" : $" ({propertyName})";
+                                entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeEntry(new GUIContent(entryName))
+                                {
+                                    level = nest,
+                                    userData = propertyName
+                                });
+                            }
+                        }    
+                    }
+                    return entries;
                 }
             }
             case nameof(ScaleAction): {
