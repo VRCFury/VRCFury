@@ -73,6 +73,7 @@ For more information, please refer to <https://unlicense.org>
 * TheLastRar
   * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
   * Added scaling of legacy DPS tip light intensity
+  * Add option for exact matching in BlendShapeLink
 * Toys0125
   * Added Poiyomi UV Tile action type
 * wholesomevr
