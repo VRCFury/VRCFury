@@ -221,11 +221,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             def: model.defaultOn ? model.defaultSliderValue : 0,
             usePrefix: usePrefixOnParam
         );
-        manager.GetMenu().NewMenuSlider(
-            model.name,
-            x,
-            icon: model.enableIcon ? model.icon.Get() : null
-        );
+
+        var hasTitle = !string.IsNullOrEmpty(model.name);
+        var hasIcon = model.enableIcon && model.icon != null;
+        if (model.addMenuItem && (hasTitle || hasIcon)) {
+            manager.GetMenu().NewMenuSlider(
+                model.name,
+                x,
+                icon: model.enableIcon ? model.icon.Get() : null
+            );
+        }
 
         var clip = actionClipService.LoadState("On", model.state);
         if (ClipBuilderService.IsStaticMotion(clip)) {
