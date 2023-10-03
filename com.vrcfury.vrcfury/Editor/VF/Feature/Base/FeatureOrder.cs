@@ -81,6 +81,8 @@ namespace VF.Feature.Base {
         Slot4Fix,
         CleanupEmptyLayers,
         PullMusclesOutOfFx,
+        RemoveDefaultedAdditiveLayer,
+        FixUnsetPlayableLayers,
         FixMasks,
         FixMaterialSwapWithMask,
         ControllerConflictCheck,
@@ -88,8 +90,6 @@ namespace VF.Feature.Base {
         FixEmptyMotions,
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
-        RemoveDefaultedAdditiveLayer,
-        FixUnsetPlayableLayers,
         FinalizeController,
 
         // Finalize Menus
