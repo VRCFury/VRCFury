@@ -47,8 +47,6 @@ For more information, please refer to <https://unlicense.org>
 
 ## Special Thanks to the contributors!
 
-* AirGamer
-  * Added scaling of legacy DPS tip light intensity
 * anatawa12
   * Improvements to VRCFury/Av3Emu compatibility
 * CobaltSpace
@@ -74,6 +72,7 @@ For more information, please refer to <https://unlicense.org>
   * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
 * TheLastRar
   * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
+  * Added scaling of legacy DPS tip light intensity
 * Toys0125
   * Added Poiyomi UV Tile action type
 * wholesomevr
