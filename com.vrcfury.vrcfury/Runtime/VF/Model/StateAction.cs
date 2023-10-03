@@ -32,6 +32,12 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
+    public class FxFloatAction : Action {
+        public string name;
+        public float value = 1;
+    }
+    
+    [Serializable]
     public class AnimationClipAction : Action {
         public GuidAnimationClip clip;
     }

@@ -168,6 +168,23 @@ namespace VF.Service {
                         onClip.SetConstant(binding, 1);
                         break;
                     }
+                    case FxFloatAction fxFloatAction: {
+                        if (string.IsNullOrWhiteSpace(fxFloatAction.name)) {
+                            break;
+                        }
+
+                        if (FullControllerBuilder.VRChatGlobalParams.Contains(fxFloatAction.name)) {
+                            throw new Exception("Set an FX Float cannot set built-in vrchat parameters");
+                        }
+
+                        var binding = EditorCurveBinding.FloatCurve(
+                            "",
+                            typeof(Animator),
+                            fxFloatAction.name
+                        );
+                        onClip.SetConstant(binding, fxFloatAction.value);
+                        break;
+                    }
                 }
             }
 
