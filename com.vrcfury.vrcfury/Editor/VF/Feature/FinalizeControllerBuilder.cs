@@ -9,6 +9,7 @@ namespace VF.Feature {
     public class FinalizeControllerBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FinalizeController)]
         public void Apply() {
+#if ! VRC_NEW_PUBLIC_SDK
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
@@ -57,6 +58,7 @@ namespace VF.Feature {
                 }
             }
             VRCFuryEditorUtils.MarkDirty(avatar);
+#endif
         }
     }
 }
