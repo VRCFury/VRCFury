@@ -88,6 +88,8 @@ namespace VF.Feature.Base {
         FixEmptyMotions,
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
+        RemoveDefaultedAdditiveLayer,
+        FixUnsetPlayableLayers,
         FinalizeController,
 
         // Finalize Menus
@@ -103,8 +105,7 @@ namespace VF.Feature.Base {
         MarkThingsAsDirtyJustInCase,
         
         RemoveJunkAnimators,
-        RemoveDefaultedAdditiveLayer,
-        
+
         // Needs to be at the very end, because it places immutable clips into the avatar
         RestoreProxyClips,
         // Needs to happen after everything is done using the animator
