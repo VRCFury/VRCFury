@@ -611,6 +611,7 @@ namespace VF.Model.Feature {
         public List<GameObject> objs;
         public string baseObj;
         public bool includeAll = true;
+        public bool exactMatch = false;
         public List<Exclude> excludes = new List<Exclude>();
         public List<Include> includes = new List<Include>();
         

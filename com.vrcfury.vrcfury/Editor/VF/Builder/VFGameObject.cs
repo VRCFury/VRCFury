@@ -124,7 +124,11 @@ namespace VF.Builder {
         }
         
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponentInParent<T>();
+            // GetComponentInParent<T> randomly returns null sometimes, even if the component actually exists :|
+            // This is especially common in editors (where the reference is gotten through prop.serializedObject)
+            // GetComponentsInParent works fine though? It's almost as if some hidden destroyed component is present.
+            //return gameObject.GetComponentInParent<T>();
+            return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
