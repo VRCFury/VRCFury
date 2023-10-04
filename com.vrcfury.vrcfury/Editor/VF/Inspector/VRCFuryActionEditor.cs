@@ -21,6 +21,15 @@ public class VRCFuryActionDrawer : PropertyDrawer {
     private static VisualElement Render(SerializedProperty prop) {
 
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
+        
+        var avatarObject = (prop.serializedObject.targetObject as UnityEngine.Component)?
+            .owner()
+            .GetComponentInSelfOrParent<VRCAvatarDescriptor>()?
+            .owner();
+
+        string GetPath(VFGameObject obj) {
+            return avatarObject == null ? obj.name : obj.GetPath(avatarObject);
+        }
 
         switch (type) {
             case nameof(MaterialAction): {
@@ -292,12 +301,8 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     };
                     var renderers = new List<Renderer>();
                     if (affectAllMeshesProp.boolValue) {
-                        var editorObject = prop.serializedObject.targetObject;
-                        if (editorObject is UnityEngine.Component c) {
-                            var avatarObject = c.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
-                            if (avatarObject != null) {
-                                renderers.AddRange(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
-                            }
+                        if (avatarObject != null) {
+                            renderers.AddRange(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
                         }
                     } else {
                         renderers.Add(rendererProp.objectReferenceValue as Renderer);
@@ -313,7 +318,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                         if (sharedMaterials.Length == 0) return entries;
                         var singleMaterial = sharedMaterials.Length == 1;
                         if (!singleRenderer) {
-                            entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Mesh: " + renderer.name), nest));
+                            entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Mesh: " + GetPath(renderer.owner())), nest));
                         }
                         foreach (var material in sharedMaterials) {
                             if (material == null) continue;
@@ -344,7 +349,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                                 var prioritizePropName = readableName.Length > 25f;
                                 var entryName = prioritizePropName ? propertyName : readableName;
                                 if (!singleRenderer) {
-                                    entryName += $" (Mesh: {renderer.name})";
+                                    entryName += $" (Mesh: {GetPath(renderer.owner())})";
                                 }
                                 if (!singleMaterial) {
                                     entryName += $" (Mat: {material.name})";
@@ -493,20 +498,16 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 row.Add(valueField);
 
                 System.Action selectButtonPress = () => {
-                    var editorObject = prop.serializedObject.targetObject;
                     var shapes = new Dictionary<string,string>();
-                    if (editorObject is UnityEngine.Component c) {
-                        VFGameObject avatarObject = c.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
-                        if (avatarObject) {
-                            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                                if (!skin.sharedMesh) continue;
-                                for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
-                                    var bs = skin.sharedMesh.GetBlendShapeName(i);
-                                    if (shapes.ContainsKey(bs)) {
-                                        shapes[bs] += ", " + skin.owner().name;
-                                    } else {
-                                        shapes[bs] = skin.owner().name;
-                                    }
+                    if (avatarObject != null) {
+                        foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                            if (!skin.sharedMesh) continue;
+                            for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
+                                var bs = skin.sharedMesh.GetBlendShapeName(i);
+                                if (shapes.ContainsKey(bs)) {
+                                    shapes[bs] += ", " + skin.owner().name;
+                                } else {
+                                    shapes[bs] = skin.owner().name;
                                 }
                             }
                         }

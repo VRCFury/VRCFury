@@ -58,8 +58,7 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
-    public class MaterialPropertyAction : Action
-    {
+    public class MaterialPropertyAction : Action {
         public Renderer renderer;
         public bool affectAllMeshes;
         public string propertyName;
