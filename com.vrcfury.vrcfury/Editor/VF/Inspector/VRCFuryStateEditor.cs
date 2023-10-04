@@ -31,6 +31,8 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ShaderInventoryAction()); });
             menu.AddItem(new GUIContent("Poiyomi UV Tile"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new PoiyomiUVTileAction()); });
+            menu.AddItem(new GUIContent("Material Property"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialPropertyAction()); });
             menu.AddItem(new GUIContent("Scale"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ScaleAction()); });
             menu.AddItem(new GUIContent("Material"), false,

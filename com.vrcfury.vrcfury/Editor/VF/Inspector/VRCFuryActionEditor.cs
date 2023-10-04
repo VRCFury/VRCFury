@@ -21,6 +21,15 @@ public class VRCFuryActionDrawer : PropertyDrawer {
     private static VisualElement Render(SerializedProperty prop) {
 
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
+        
+        var avatarObject = (prop.serializedObject.targetObject as UnityEngine.Component)?
+            .owner()
+            .GetComponentInSelfOrParent<VRCAvatarDescriptor>()?
+            .owner();
+
+        string GetPath(VFGameObject obj) {
+            return avatarObject == null ? obj.name : obj.GetPath(avatarObject);
+        }
 
         switch (type) {
             case nameof(MaterialAction): {
@@ -171,6 +180,193 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(adv);
                 return content;
             }
+            case nameof(MaterialPropertyAction): {
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+
+                var label = new Label("Material Property") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100
+                    }
+                };
+
+                var col = new VisualElement
+                {
+                    style =
+                    {
+                        flexDirection = FlexDirection.Column,
+                        flexGrow = 1
+                    }
+                };
+                
+                row.Add(label);
+
+                var rendererRow = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.Center,
+                        marginBottom = 1
+                    }
+                };
+
+                var affectAllMeshesProp = prop.FindPropertyRelative("affectAllMeshes");
+                
+                var rendererProp = prop.FindPropertyRelative("renderer");
+                var propField = VRCFuryEditorUtils.Prop(rendererProp);
+                propField.style.flexGrow = 1;
+                propField.style.flexShrink = 1;
+                propField.SetEnabled(!affectAllMeshesProp.boolValue);
+                rendererRow.Add(propField);
+                
+                rendererRow.Add(new Label("All Meshes") {
+                    style = {
+                        marginLeft = 2,
+                        marginRight = 2,
+                        flexGrow = 1,
+                        flexBasis = 100,
+                        unityTextAlign = TextAnchor.MiddleRight
+                    }
+                });
+                
+                var propField4 = VRCFuryEditorUtils.RefreshOnChange(() => {
+                    propField.SetEnabled(!affectAllMeshesProp.boolValue);
+                    var field = VRCFuryEditorUtils.Prop(affectAllMeshesProp);
+                    return field;
+                }, affectAllMeshesProp);
+                propField4.style.flexGrow = 0;
+                propField4.style.flexShrink = 0;
+                propField4.style.flexBasis = 16;
+                rendererRow.Add(propField4);
+                
+                col.Add(rendererRow);
+                
+                var materialRow = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+            
+                var propertyNameProp = prop.FindPropertyRelative("propertyName");
+                var propField2 = VRCFuryEditorUtils.Prop(propertyNameProp);
+                propField2.style.flexGrow = 1;
+                propField2.tooltip = "Property Name";
+                materialRow.Add(propField2);
+                
+                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"));
+                propField3.style.flexGrow = 0;
+                propField3.style.flexBasis = 60;
+                propField3.tooltip = "Property Value";
+                materialRow.Add(propField3);
+
+                var searchButton = new Button(SearchClick)
+                {
+                    text = "Search",
+                    style =
+                    {
+                        marginTop = 0,
+                        marginLeft = 0,
+                        marginRight = 0,
+                        marginBottom = 0
+                    }
+                };
+                materialRow.Add(searchButton);
+                col.Add(materialRow);
+                
+                row.Add(col);
+
+                return row;
+
+                void SearchClick() {
+                    var targetWidth = row.GetFirstAncestorOfType<UnityEditor.UIElements.InspectorElement>().worldBound
+                        .width;
+                    var searchContext = new UnityEditor.Experimental.GraphView.SearchWindowContext(GUIUtility.GUIToScreenPoint(Event.current.mousePosition), targetWidth, 300);
+                    var provider = ScriptableObject.CreateInstance<VRCFurySearchWindowProvider>();
+                    provider.InitProvider(GetTreeEntries, (entry, userData) => {
+                        propertyNameProp.stringValue = (string) entry.userData;
+                        prop.serializedObject.ApplyModifiedProperties();
+                        return true;
+                    });
+                    UnityEditor.Experimental.GraphView.SearchWindow.Open(searchContext, provider);
+                }
+
+                List<UnityEditor.Experimental.GraphView.SearchTreeEntry> GetTreeEntries() {
+                    var entries = new List<UnityEditor.Experimental.GraphView.SearchTreeEntry> {
+                        new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Material Properties"))
+                    };
+                    var renderers = new List<Renderer>();
+                    if (affectAllMeshesProp.boolValue) {
+                        if (avatarObject != null) {
+                            renderers.AddRange(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
+                        }
+                    } else {
+                        renderers.Add(rendererProp.objectReferenceValue as Renderer);
+                    }
+
+                    if (renderers.Count == 0) return entries;
+                    
+                    var singleRenderer = renderers.Count == 1;
+                    foreach (var renderer in renderers) {
+                        if (renderer == null) continue;
+                        var nest = 1;
+                        var sharedMaterials = renderer.sharedMaterials;
+                        if (sharedMaterials.Length == 0) return entries;
+                        var singleMaterial = sharedMaterials.Length == 1;
+                        if (!singleRenderer) {
+                            entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Mesh: " + GetPath(renderer.owner())), nest));
+                        }
+                        foreach (var material in sharedMaterials) {
+                            if (material == null) continue;
+                            
+                            nest = singleRenderer ? 1 : 2;
+                            if (!singleMaterial) {
+                                entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Material: " + material.name),  nest));
+                                nest++;
+                            }
+                            var shader = material.shader;
+                            
+                            if (shader == null) continue;
+                            
+                            var count = ShaderUtil.GetPropertyCount(shader);
+                            var materialProperties = MaterialEditor.GetMaterialProperties(new Object[]{ material });
+                            for (var i = 0; i < count; i++)
+                            {
+                                var propertyName = ShaderUtil.GetPropertyName(shader, i);
+                                var readableName = ShaderUtil.GetPropertyDescription(shader, i);
+                                var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
+                                if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
+                                            
+                                var propType = ShaderUtil.GetPropertyType(shader, i);
+                                
+                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
+                                    propType != ShaderUtil.ShaderPropertyType.Range) continue;
+                                
+                                var prioritizePropName = readableName.Length > 25f;
+                                var entryName = prioritizePropName ? propertyName : readableName;
+                                if (!singleRenderer) {
+                                    entryName += $" (Mesh: {GetPath(renderer.owner())})";
+                                }
+                                if (!singleMaterial) {
+                                    entryName += $" (Mat: {material.name})";
+                                }
+
+                                entryName += prioritizePropName ? $" ({readableName})" : $" ({propertyName})";
+                                entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeEntry(new GUIContent(entryName))
+                                {
+                                    level = nest,
+                                    userData = propertyName
+                                });
+                            }
+                        }    
+                    }
+                    return entries;
+                }
+            }
             case nameof(ScaleAction): {
                 var row = new VisualElement {
                     style = {
@@ -302,20 +498,16 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 row.Add(valueField);
 
                 System.Action selectButtonPress = () => {
-                    var editorObject = prop.serializedObject.targetObject;
                     var shapes = new Dictionary<string,string>();
-                    if (editorObject is UnityEngine.Component c) {
-                        VFGameObject avatarObject = c.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
-                        if (avatarObject) {
-                            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                                if (!skin.sharedMesh) continue;
-                                for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
-                                    var bs = skin.sharedMesh.GetBlendShapeName(i);
-                                    if (shapes.ContainsKey(bs)) {
-                                        shapes[bs] += ", " + skin.owner().name;
-                                    } else {
-                                        shapes[bs] = skin.owner().name;
-                                    }
+                    if (avatarObject != null) {
+                        foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                            if (!skin.sharedMesh) continue;
+                            for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
+                                var bs = skin.sharedMesh.GetBlendShapeName(i);
+                                if (shapes.ContainsKey(bs)) {
+                                    shapes[bs] += ", " + skin.owner().name;
+                                } else {
+                                    shapes[bs] = skin.owner().name;
                                 }
                             }
                         }
