@@ -90,12 +90,13 @@ namespace VF.Service {
                         }
                         if (renderer != null) {
                             var propertyName = poiyomiUVTileAction.dissolve ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
+                            propertyName += $"{poiyomiUVTileAction.row}_{(poiyomiUVTileAction.column)}";
                             if (poiyomiUVTileAction.renamedMaterial != "")
                                 propertyName += $"_{poiyomiUVTileAction.renamedMaterial}";
                             var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(renderer.gameObject),
                                 renderer.GetType(),
-                                $"material.{propertyName}{poiyomiUVTileAction.row}_{(poiyomiUVTileAction.column)}"
+                                $"material.{propertyName}"
                             );
                             offClip.SetConstant(binding, 1f);
                             onClip.SetConstant(binding, 0f);
