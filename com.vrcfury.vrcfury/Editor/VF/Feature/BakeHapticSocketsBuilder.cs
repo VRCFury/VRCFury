@@ -194,7 +194,8 @@ namespace VF.Feature {
                             socket.depthActions,
                             socket.owner(),
                             animRoot,
-                            name
+                            name,
+                            socket.unitsInMeters
                         );
                     }
                 } catch (Exception e) {

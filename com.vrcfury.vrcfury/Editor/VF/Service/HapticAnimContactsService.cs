@@ -102,7 +102,8 @@ namespace VF.Service {
             ICollection<VRCFuryHapticSocket.DepthAction> actions,
             VFGameObject socketOwner,
             VFGameObject animRoot,
-            string name
+            string name,
+            bool worldScale
         ) {
             var fx = avatarManager.GetFx();
 
@@ -111,8 +112,8 @@ namespace VF.Service {
                 if (cache.TryGetValue(allowSelf, out var cached)) return cached;
 
                 var prefix = $"{name}/Anim{(allowSelf ? "" : "Others")}";
-                var maxDist = Math.Max(0, actions.Max(a => Math.Max(a.startDistance, a.endDistance)));
-                var minDist = Math.Min(0, actions.Min(a => Math.Min(a.startDistance, a.endDistance)));
+                var maxDist = Math.Max(0, actions.Max(a => Math.Max(a.startDistance, a.endDistance))) * (worldScale ? 1f : animRoot.transform.lossyScale.z);
+                var minDist = Math.Min(0, actions.Min(a => Math.Min(a.startDistance, a.endDistance))) * (worldScale ? 1f : animRoot.transform.lossyScale.z);
                 var outerRadius = Math.Max(0.01f, maxDist);
                 var outer = CreateFrontBack($"{prefix}/Outer", animRoot, outerRadius, allowSelf, HapticUtils.CONTACT_PEN_MAIN);
 
@@ -156,7 +157,8 @@ namespace VF.Service {
                 var mapped = smoothing.Map(
                     $"{prefix}/Mapped",
                     unsmoothed,
-                    depthAction.startDistance, depthAction.endDistance,
+                    depthAction.startDistance * (worldScale ? 1f : animRoot.transform.lossyScale.z),
+                    depthAction.endDistance * (worldScale ? 1f : animRoot.transform.lossyScale.z),
                     0, 1
                 );
                 var smoothed = smoothing.Smooth(

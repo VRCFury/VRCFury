@@ -433,6 +433,38 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 return row;
             }
+            case nameof(FxFloatAction): {
+                var col = new VisualElement();
+
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+
+                var label = new Label("Set an FX Float") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+                
+                var valueField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"));
+                valueField.style.flexBasis = 30;
+                row.Add(valueField);
+
+                col.Add(row);
+                
+                col.Add(VRCFuryEditorUtils.Warn("Warning: This will cause the FX parameter to be 'animated', which means it cannot be used in a menu or otherwise controlled by VRChat."));
+
+                return col;
+            }
             case nameof(BlendShapeAction): {
                 var row = new VisualElement {
                     style = {

@@ -74,12 +74,13 @@ namespace VF.Inspector {
                     "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
                 
-                da.Add(VRCFuryEditorUtils.Info(
+                var unscaledUnitsProp = serializedObject.FindProperty("unitsInMeters");
+                da.Add(VRCFuryEditorUtils.RefreshOnChange(() => VRCFuryEditorUtils.Info(
                     "Distance = 0 : Tip of plug is touching socket\n" +
                     "Distance > 0 : Tip of plug is outside socket\n" +
                     "Distance < 0 = Tip of plug is inside socket\n" +
-                    "1 Unit is 1 Meter (~3 feet)"
-                ));
+                    (unscaledUnitsProp.boolValue ? "1 Unit is 1 Meter (~3.28 feet)" : $"1 Unit is {target.transform.lossyScale.z} Meter(s) (~{Math.Round(target.transform.lossyScale.z * 3.28, 2)} feet)")
+                ), unscaledUnitsProp));
 
                 da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
                     var c = new VisualElement();
@@ -126,6 +127,7 @@ namespace VF.Inspector {
                 value = false,
             };
             container.Add(adv);
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
             //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
@@ -352,7 +354,7 @@ namespace VF.Inspector {
             if (!enableHandTouchZone) {
                 return null;
             }
-            var length = socket.length;
+            var length = socket.length * (socket.unitsInMeters ? 1f : socket.transform.lossyScale.z); ;
             if (length <= 0) length = 0.25f;
             var radius = length / 2.5f;
             return Tuple.Create(length, radius);

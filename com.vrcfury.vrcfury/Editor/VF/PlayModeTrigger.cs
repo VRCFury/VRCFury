@@ -204,6 +204,7 @@ namespace VF {
          */
         private static void RestartAudiolink() {
             var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
+            if (alComponentType == null) alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
             if (alComponentType == null) return;
             foreach (var gm in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
                 Debug.Log("Restarting AudioLink ...");

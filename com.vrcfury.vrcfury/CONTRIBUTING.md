@@ -47,14 +47,13 @@ For more information, please refer to <https://unlicense.org>
 
 ## Special Thanks to the contributors!
 
-* AirGamer
-  * Added scaling of legacy DPS tip light intensity
 * anatawa12
   * Improvements to VRCFury/Av3Emu compatibility
 * CobaltSpace
   * Ensured that gogoloco params are always global
 * GameGeek720
   * Added Toggle enhancements for transitions and the local player
+  * Fixed Toggle sliders always adding a menu option, even if the menu path was empty
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
 * lyuma
@@ -74,6 +73,9 @@ For more information, please refer to <https://unlicense.org>
   * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
 * TheLastRar
   * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
+  * Added scaling of legacy DPS tip light intensity
+  * Add option for using local space for socket units
+  * Add option for exact matching in BlendShapeLink
 * Toys0125
   * Added Poiyomi UV Tile action type
 * wholesomevr
