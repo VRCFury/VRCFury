@@ -198,7 +198,7 @@ namespace VF.Feature {
             var normalizers = new Normalizer[] {
                 s => s,
                 s => Regex.Replace(s.ToLower(), @"\s", ""),
-                s => Regex.Replace(s.ToLower(), @"[^a-z0-9]", "")
+                s => Regex.Replace(s.ToLower(), @"[^a-z0-9+-]", "")
             };
 
             var baseBlendshapes = GetBlendshapesInSkin(baseSkin);
