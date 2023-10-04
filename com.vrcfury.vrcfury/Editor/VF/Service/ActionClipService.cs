@@ -117,7 +117,7 @@ namespace VF.Service {
                                 $"material.{materialPropertyAction.propertyName}"
                             );
                             if (renderer.sharedMaterials.Any(mat =>
-                                    mat.HasProperty(materialPropertyAction.propertyName))) {
+                                    mat != null && mat.HasProperty(materialPropertyAction.propertyName))) {
                                 onClip.SetConstant(binding, materialPropertyAction.value);
                             }
                             
