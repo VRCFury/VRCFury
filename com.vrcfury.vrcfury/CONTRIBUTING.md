@@ -53,6 +53,7 @@ For more information, please refer to <https://unlicense.org>
   * Ensured that gogoloco params are always global
 * GameGeek720
   * Added Toggle enhancements for transitions and the local player
+  * Fixed Toggle sliders always adding a menu option, even if the menu path was empty
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
 * lyuma
