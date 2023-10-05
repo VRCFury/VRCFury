@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -52,12 +53,14 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
-            Replace(
-                @"((?:^|\n)\s*Properties\s*{)",
-                $"$1\n{propertiesContent}\n",
-                1
-            );
+            if (parentHash == null) {
+                var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
+                Replace(
+                    @"((?:^|\n)\s*Properties\s*{)",
+                    $"$1\n{propertiesContent}\n",
+                    1
+                );
+            }
 
             string spsMain;
             if (keepImports) {
@@ -528,13 +531,22 @@ namespace VF.Builder.Haptics {
             return ReadFile(path);
         }
         private static string ReadFile(string path) {
-            StreamReader sr = new StreamReader(path);
             string content;
-            try {
-                content = sr.ReadToEnd();
-            } finally {
-                sr.Close();
+            if (path.EndsWith("lilcontainer")) {
+                var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
+                var unpackMethod = lilShaderContainer.GetMethods().First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
+                content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
+                var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                content = content.Replace("\"Includes", "\"" + shaderLibsPath);
+            } else {
+                StreamReader sr = new StreamReader(path);
+                try {
+                    content = sr.ReadToEnd();
+                } finally {
+                    sr.Close();
+                }
             }
+
             content = WithEachInclude(content, path, includePath => {
                 return $"#include \"{includePath}\"";
             });
