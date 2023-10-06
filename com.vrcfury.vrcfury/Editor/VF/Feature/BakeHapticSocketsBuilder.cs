@@ -89,7 +89,7 @@ namespace VF.Feature {
                     VFGameObject obj = socket.gameObject;
                     PhysboneUtils.RemoveFromPhysbones(socket.transform);
                     fakeHead.MarkEligible(socket.gameObject);
-                    if (VRCFuryHapticSocketEditor.IsChildOfHead(socket)) {
+                    if (HapticUtils.IsChildOfHead(socket.owner())) {
                         var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
                         mover.Move(socket.gameObject, head);
                     }
@@ -181,7 +181,7 @@ namespace VF.Feature {
                                 "AutoDistance",
                                 0.3f,
                                 new[] { HapticUtils.CONTACT_PEN_MAIN },
-                                allowSelf: false
+                                party: HapticUtils.ReceiverParty.Others
                             );
                             distReceiver.SetActive(false);
                             clipBuilder.Enable(autoOnClip, distReceiver);
@@ -243,12 +243,14 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = paramSmoothing.IsBWinningTree(aDist, bDist, vsParam);
+                        var tree = paramSmoothing.MakeDirect($"{aName} vs {bName}");
+                        tree.AddDirectChild(bDist.Name(), paramSmoothing.MakeSetter(vsParam, 1));
+                        tree.AddDirectChild(aDist.Name(), paramSmoothing.MakeSetter(vsParam, -1));
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }
                 }
-                
+
                 for (var i = 0; i < autoSockets.Count; i++) {
                     var (name, enabled, dist) = autoSockets[i];
                     var triggerOn = states[Tuple.Create(i, -1)];
@@ -262,7 +264,7 @@ namespace VF.Feature {
                         var current = states[Tuple.Create(i, j)];
                         var otherActivate = states[Tuple.Create(j, -1)];
 
-                        current.TransitionsTo(otherActivate).When(vsParam.IsGreaterThan(0.51f));
+                        current.TransitionsTo(otherActivate).When(vsParam.IsGreaterThan(0));
                         
                         var nextI = j + 1;
                         if (nextI == i) nextI++;
