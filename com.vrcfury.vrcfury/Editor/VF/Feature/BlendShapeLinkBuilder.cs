@@ -204,7 +204,6 @@ namespace VF.Feature {
                 normalizers = new Normalizer[] {
                     s => s,
                     s => Regex.Replace(s.ToLower(), @"\s", ""),
-                    s => Regex.Replace(s.ToLower(), @"[^a-z0-9+-]", "")
                 };
             }
 
