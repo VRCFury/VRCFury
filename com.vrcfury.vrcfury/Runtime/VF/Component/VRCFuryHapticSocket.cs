@@ -27,7 +27,6 @@ namespace VF.Component {
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;
-        //public VRCFuryHapticPlug.Channel channel;
 
         public bool enableDepthAnimations = false;
         public List<DepthAction> depthActions = new List<DepthAction>();
