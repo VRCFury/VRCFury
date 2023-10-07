@@ -1,8 +1,10 @@
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Model;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Menu {
     public static class VRCFuryTestCopyMenuItem {
@@ -38,6 +40,14 @@ namespace VF.Menu {
             if (result) {
                 VRCFuryBuilder.StripAllVrcfComponents(clone);
                 clone.AddComponent<VRCFuryTest>();
+                // Set the clone's Animator's controller to our generated FX layer
+                // It can be retrieved from the resulting object's VRC avatar descriptor
+                var avatar = clone.GetComponent<VRCAvatarDescriptor>();
+                var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
+                var animator = clone.GetComponent<Animator>();
+                if (animator && !isDefault && existingController != null) {
+                    animator.runtimeAnimatorController = existingController;
+                }
                 Selection.SetActiveObjectWithContext(clone, clone);
             } else {
                 clone.Destroy();

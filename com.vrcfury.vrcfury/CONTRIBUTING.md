@@ -64,6 +64,7 @@ For more information, please refer to <https://unlicense.org>
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
   * Prevented SPS toggle from disabling SPS autorig physbone
+  * Set the Editor Test Copy's Animator controller to the generated FX layer
 * Raphiiko
   * Added global parameters for Toggles
 * TayouVR
