@@ -24,6 +24,7 @@ namespace VF.Component {
         public float length;
         public bool unitsInMeters = true;
         public bool addMenuItem = true;
+        public GuidTexture2d menuIcon;
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;

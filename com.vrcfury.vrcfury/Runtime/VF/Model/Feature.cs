@@ -529,11 +529,16 @@ namespace VF.Model.Feature {
                     fromPath = "Sockets" + fromPath.Substring(5);
                 }
             }
+            if (fromVersion < 2) {
+                if (fromPath.StartsWith("Sockets/") || fromPath == "Sockets") {
+                    fromPath = "SPS" + fromPath.Substring(7);
+                }
+            }
             return false;
         }
 
         public override int GetLatestVersion() {
-            return 1;
+            return 2;
         }
     }
     
@@ -679,6 +684,12 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class ShowInFirstPerson : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class SpsOptions : NewFeatureModel {
+        public GuidTexture2d menuIcon;
+        public string menuPath;
     }
 
 }
