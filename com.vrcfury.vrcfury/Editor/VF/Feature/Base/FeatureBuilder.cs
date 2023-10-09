@@ -49,6 +49,10 @@ namespace VF.Feature.Base {
         public virtual VisualElement CreateEditor(SerializedProperty prop) {
             return VRCFuryEditorUtils.WrappedLabel("No body");
         }
+
+        public virtual bool OnlyOneAllowed() {
+            return false;
+        }
     
         public virtual bool AvailableOnAvatar() {
             return true;

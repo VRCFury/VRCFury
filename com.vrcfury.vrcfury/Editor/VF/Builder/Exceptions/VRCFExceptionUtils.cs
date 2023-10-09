@@ -19,7 +19,7 @@ namespace VF.Builder.Exceptions {
                 await go();
             } catch(Exception e) {
                 Debug.LogException(e);
-                await AsyncUtils.DisplayDialog($"VRCFury encountered an error.\n\nException: {GetGoodCause(e).Message}\nSee console for Stack Trace.");
+                await AsyncUtils.DisplayDialog($"VRCFury encountered an error.\n\n{GetGoodCause(e).Message}");
             }
         }
 
@@ -30,7 +30,7 @@ namespace VF.Builder.Exceptions {
                 Debug.LogException(e);
                 EditorUtility.DisplayDialog(
                     "VRCFury Error",
-                    $"VRCFury encountered an error.\n\nException: {GetGoodCause(e).Message}\nSee console for Stack Trace.",
+                    $"VRCFury encountered an error.\n\n{GetGoodCause(e).Message}",
                     "Ok"
                 );
                 return false;
