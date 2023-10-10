@@ -7,14 +7,6 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
-        [FeatureBuilderAction(FeatureOrder.MoveMenuItems)]
-        public void Apply() {
-            var result = manager.GetMenu().Move(model.fromPath, model.toPath);
-            if (!result) {
-                Debug.LogWarning("Failed to find items in menu to move");
-            }
-        }
-
         public override string GetEditorTitle() {
             return "Move Menu Item";
         }

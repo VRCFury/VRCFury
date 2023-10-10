@@ -123,6 +123,10 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
     public override bool AvailableOnProps() {
         return false;
     }
+    
+    public override bool OnlyOneAllowed() {
+        return true;
+    }
 }
 
 }

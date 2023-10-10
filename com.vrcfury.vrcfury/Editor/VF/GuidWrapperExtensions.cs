@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Model;
@@ -6,6 +7,7 @@ using VF.Utils;
 namespace VF {
     [InitializeOnLoad]
     public static class GuidWrapperExtensions {
+        [CanBeNull]
         public static T Get<T>(this GuidWrapper<T> wrapper) where T : Object {
             if (wrapper == null) return null;
             if (wrapper.objOverride != null) return wrapper.objOverride;

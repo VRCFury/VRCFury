@@ -29,9 +29,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly FakeHeadService fakeHead;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
-        
-        public const string socketsMenu = "Sockets";
-        public const string optionsFolder = socketsMenu + "/<b>Options";
+        [VFAutowired] private readonly SpsOptionsService spsOptions;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticSockets)]
         public void Apply() {
@@ -46,7 +44,7 @@ namespace VF.Feature {
             AnimationClip autoOnClip = null;
             if (enableAuto) {
                 autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false);
-                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
+                manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
                 var off = autoReceiverLayer.NewState("Off");
@@ -63,7 +61,7 @@ namespace VF.Feature {
             VFABool stealthOn = null;
             if (enableStealth) {
                 stealthOn = fx.NewBool("stealth", synced: true);
-                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
+                manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
             var enableMulti = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
@@ -73,14 +71,12 @@ namespace VF.Feature {
             VFABool multiOn = null;
             if (enableMulti) {
                 multiOn = fx.NewBool("multi", synced: true, networkSynced: false);
-                var multiFolder = $"{optionsFolder}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active holes";
+                var multiFolder = $"{spsOptions.GetOptionsPath()}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active sockets";
                 manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use SPS or TPS - NO DPS!");
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Nobody else can use a hole at the same time");
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>DO NOT ENABLE MORE THAN 2");
             }
-
-            manager.GetMenu().SetIconGuid(optionsFolder, "16e0846165acaa1429417e757c53ef9b");
 
             var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
             var exclusiveTriggers = new List<Tuple<VFABool, VFState>>();
@@ -147,7 +143,8 @@ namespace VF.Feature {
                         }
 
                         var holeOn = fx.NewBool(name, synced: true);
-                        manager.GetMenu().NewMenuToggle($"{socketsMenu}/{name}", holeOn);
+                        var icon = socket.menuIcon?.Get();
+                        manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", holeOn, icon: icon);
 
                         var layer = fx.NewLayer(name);
                         var offState = layer.NewState("Off");

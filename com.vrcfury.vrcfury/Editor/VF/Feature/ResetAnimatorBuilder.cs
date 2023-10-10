@@ -55,7 +55,7 @@ namespace VF.Feature {
             animator.applyRootMotion = applyRootMotion;
             animator.updateMode = updateMode;
             animator.cullingMode = cullingMode;
-            animator.runtimeAnimatorController = controller;
+            animator.runtimeAnimatorController = GetFx().GetRaw();
             animator.avatar = avatar;
         }
     }
