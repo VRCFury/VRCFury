@@ -56,9 +56,7 @@ namespace VF.Builder.Haptics {
             var isOnHips = IsDirectChildOfHips(obj);
             var suffixes = new List<string>();
             suffixes.Add("");
-            if (isOnHips) {
-                suffixes.Add("_SelfOnHips");
-            } else {
+            if (!isOnHips) {
                 suffixes.Add("_SelfNotOnHips");
             }
             tags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToArray();
@@ -108,8 +106,7 @@ namespace VF.Builder.Haptics {
                 if (isOnHips) {
                     suffixes.Add("_SelfNotOnHips");
                 } else {
-                    suffixes.Add("_SelfNotOnHips");
-                    suffixes.Add("_SelfOnHips");
+                    suffixes.Add("");
                 }
             }
             tags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToArray();
