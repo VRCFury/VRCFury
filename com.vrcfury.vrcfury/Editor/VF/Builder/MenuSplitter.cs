@@ -20,7 +20,7 @@ namespace VF.Builder {
             Texture2D nextIcon = null;
             if (menuSettings != null) {
                 if (!string.IsNullOrEmpty(menuSettings.nextText)) nextText = menuSettings.nextText;
-                if (menuSettings.nextIcon != null) nextIcon = menuSettings.nextIcon.Get();
+                nextIcon = menuSettings.nextIcon?.Get();
             }
             var maxControlsPerPage = GetMaxControlsPerPage();
             root.ForEachMenu((menu, path) => {

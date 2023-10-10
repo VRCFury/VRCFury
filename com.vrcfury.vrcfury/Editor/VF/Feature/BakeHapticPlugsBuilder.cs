@@ -23,6 +23,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
+        [VFAutowired] private readonly SpsOptionsService spsOptions;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticPlugs)]
         public void Apply() {
@@ -97,7 +98,7 @@ namespace VF.Feature {
                             var param = fx.NewBool("tipLight", synced: true);
                             manager.GetMenu()
                                 .NewMenuToggle(
-                                    $"{BakeHapticSocketsBuilder.optionsFolder}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
+                                    $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
                                     param);
                             tipLightOnClip = fx.NewClip("EnableAutoReceivers");
                             var layer = fx.NewLayer("Tip Light");

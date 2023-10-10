@@ -26,6 +26,10 @@ namespace VF.Feature {
             return false;
         }
         
+        public override bool OnlyOneAllowed() {
+            return true;
+        }
+        
         public override string GetEditorTitle() {
             return "Anchor Override Fix";
         }
