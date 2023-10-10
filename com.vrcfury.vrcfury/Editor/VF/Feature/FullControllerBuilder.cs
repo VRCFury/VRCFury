@@ -401,10 +401,15 @@ namespace VF.Feature {
 
                 var missingPaths = new HashSet<string>();
                 var usesWdOff = false;
+                var usesAdditive = false;
                 foreach (var c in model.controllers) {
-                    var rc = c.controller.Get();
-                    var controller = rc as AnimatorController;
-                    if (controller == null) continue;
+                    var c1 = c.controller?.Get() as AnimatorController;
+                    if (c1 == null) continue;
+                    var controller = (VFController)c1;
+                    if (c.type == VRCAvatarDescriptor.AnimLayerType.Additive) usesAdditive = true;
+                    foreach (var layer in controller.GetLayers()) {
+                        if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) usesAdditive = true;
+                    }
                     foreach (var state in new AnimatorIterator.States().From(controller)) {
                         if (!state.writeDefaultValues) {
                             usesWdOff = true;
@@ -419,10 +424,17 @@ namespace VF.Feature {
 
                 if (usesWdOff) {
                     text.Add(
-                        "These controllers use WD off!" +
+                        "This controller uses WD off!" +
                         " If you want this prop to be reusable, you should use WD on." +
                         " VRCFury will automatically convert the WD on or off to match the client's avatar," +
                         " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
+                    text.Add("");
+                }
+                if (usesAdditive) {
+                    text.Add(
+                        "This controller contains an Additive layer! Beware that this will likely TOTALLY DESTROY the animations" +
+                        " of any avatar using WD off, even animations unrelated to your prop. Avoid using Additive layers at all costs!"
+                    );
                     text.Add("");
                 }
                 if (missingPaths.Count > 0) {
