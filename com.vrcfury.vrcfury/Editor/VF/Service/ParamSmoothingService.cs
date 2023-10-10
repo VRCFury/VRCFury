@@ -8,6 +8,7 @@ using VF.Builder;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Inspector;
 using VF.Utils;
 using VF.Utils.Controller;
 
@@ -16,7 +17,31 @@ namespace VF.Service {
     [VFService]
     public class ParamSmoothingService {
         [VFAutowired] private readonly AvatarManager avatarManager;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
         
+        // A VFAFloat, but it's guaranteed to be 0 or 1
+        public class VFAFloatBool {
+            private readonly VFAFloat param;
+
+            public VFAFloatBool(VFAFloat param, bool alwaysFalse = false, bool alwaysTrue = false) {
+                this.param = param;
+                this.alwaysTrue = alwaysTrue;
+                this.alwaysFalse = alwaysFalse;
+            }
+            public string Name() {
+                return param.Name();
+            }
+            public bool GetDefault() {
+                return param.GetDefault() > 0.5;
+            }
+            public VFCondition IsTrue() {
+                return param.IsGreaterThan(0.5f);
+            }
+            public bool alwaysTrue { get; }
+            public bool alwaysFalse { get; }
+            public static implicit operator VFAFloat(VFAFloatBool d) => d.param;
+        }
+
         public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
             if (smoothingSeconds <= 0) return target;
             if (smoothingSeconds > 10) smoothingSeconds = 10;
@@ -51,106 +76,67 @@ namespace VF.Service {
             var fx = avatarManager.GetFx();
 
             var output = fx.NewFloat(name, def: target.GetDefault());
-            
-            // These clips drive the output param to certain values
-            var minClip = fx.NewClip($"{output.Name()}-1");
-            minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, -1f));
-            var maxClip = fx.NewClip($"{output.Name()}1");
-            maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, 1f));
 
             // Maintain tree - keeps the current value
-            var maintainTree = fx.NewBlendTree($"{output.Name()}_do_not_change");
-            maintainTree.blendType = BlendTreeType.Simple1D;
-            maintainTree.useAutomaticThresholds = false;
-            maintainTree.blendParameter = output.Name();
-            maintainTree.AddChild(minClip, -1);
-            maintainTree.AddChild(maxClip, 1);
+            var maintainTree = MakeMaintainer(output);
 
             // Target tree - uses the target (input) value
-            var targetTree = fx.NewBlendTree($"{output.Name()}_lock_to_{target.Name()}");
-            targetTree.blendType = BlendTreeType.Simple1D;
-            targetTree.useAutomaticThresholds = false;
-            targetTree.blendParameter = target.Name();
-            targetTree.AddChild(minClip, -1);
-            targetTree.AddChild(maxClip, 1);
+            var targetTree = MakeCopier(target, output);
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
-            var smoothTree = fx.NewBlendTree($"{output.Name()}_smooth_to_{target.Name()}");
-            smoothTree.blendType = BlendTreeType.Simple1D;
-            smoothTree.useAutomaticThresholds = false;
-            smoothTree.blendParameter = speedParam.Name();
-            smoothTree.AddChild(maintainTree, 0);
-            smoothTree.AddChild(targetTree, 1);
+            var smoothTree = Make1D(
+                $"{output.Name()} smoothto {target.Name()}",
+                speedParam,
+                (maintainTree, 0),
+                (targetTree, 1)
+            );
 
-            var layer = fx.NewLayer("Smoothing " + name);
-            layer.NewState("Smooth").WithAnimation(smoothTree);
+            directTree.Add(smoothTree);
+
             return output;
         }
 
         public VFAFloat SetValueWithConditions(
             string name,
-            float minPossible, float maxPossible,
-            float defaultValue,
-            params (VFAFloat,VFCondition)[] targets
+            params (VFAFloat,VFAFloatBool)[] targets
         ) {
             var fx = avatarManager.GetFx();
 
+            var defaultValue = targets
+                .Where(target => target.Item2 == null || target.Item2.GetDefault())
+                .Select(target => target.Item1.GetDefault())
+                .First();
+
             var output = fx.NewFloat(name, def: defaultValue);
-            
-            // These clips drive the output param to certain values
-            var minClip = fx.NewClip($"{output.Name()}Max");
-            minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, maxPossible));
-            var maxClip = fx.NewClip($"{output.Name()}Min");
-            maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, minPossible));
 
-            Motion GenerateTargetTree(VFAFloat target) {
-                // Target tree - uses the target (input) value
-                var targetTree = fx.NewBlendTree($"{output.Name()}_set_to_{target.Name()}");
-                targetTree.blendType = BlendTreeType.Simple1D;
-                targetTree.useAutomaticThresholds = false;
-                targetTree.blendParameter = target.Name();
-                targetTree.AddChild(minClip, maxPossible);
-                targetTree.AddChild(maxClip, minPossible);
-                return targetTree;
-            }
+            VFAFloatBool anyPreviousState = null;
+            foreach (var target in targets) {
+                var couldBeThisState = target.Item2 ?? True();
 
-            var layer = fx.NewLayer("SetConditional " + name);
+                var isThisState = (anyPreviousState == null)
+                    ? couldBeThisState
+                    : And(couldBeThisState, Not(anyPreviousState));
 
-            VFState.FakeAnyState(targets.Select(target => {
-                if (target.Item1 == null) {
-                    return (layer.NewState("Maintain").WithAnimation(GenerateTargetTree(output)), target.Item2);
+                if (anyPreviousState == null) {
+                    anyPreviousState = isThisState;
+                } else {
+                    anyPreviousState = Or(anyPreviousState, couldBeThisState);
                 }
-                return (layer.NewState("Target " + target.Item1.Name()).WithAnimation(GenerateTargetTree(target.Item1)), target.Item2);
-            }).ToArray());
+
+                directTree.Add(isThisState, MakeCopier(target.Item1, output));
+            }
 
             return output;
         }
 
-        public VFCondition GreaterThan(VFAFloat a, VFAFloat b, bool orEqualTo = false) {
+        private VFAFloatBool False() {
             var fx = avatarManager.GetFx();
-            var bIsWinning = fx.NewFloat("comparison");
-            var layer = fx.NewLayer($"{a.Name()} vs {b.Name()}");
-            var tree = IsBWinningTree(a, b, bIsWinning);
-            layer.NewState($"{a.Name()} vs {b.Name()}").WithAnimation(tree);
-            if (orEqualTo) return bIsWinning.IsGreaterThan(0.5f).Not();
-            return bIsWinning.IsLessThan(0.5f);
+            return new VFAFloatBool(fx.Zero(), alwaysFalse: true);
         }
-
-        public Motion IsBWinningTree(VFAFloat a, VFAFloat b, VFAFloat bWinning) {
+        private VFAFloatBool True() {
             var fx = avatarManager.GetFx();
-            var bWinningClip = fx.NewClip("vs1");
-            bWinningClip.SetCurve("", typeof(Animator), bWinning.Name(), AnimationCurve.Constant(0, 0, 1f));
-            var aWinningClip = fx.NewClip("vs0");
-            aWinningClip.SetCurve("", typeof(Animator), bWinning.Name(), AnimationCurve.Constant(0, 0, 0f));
-            var tree = fx.NewBlendTree($"{a.Name()} vs {b.Name()}");
-            tree.useAutomaticThresholds = false;
-            tree.blendType = BlendTreeType.FreeformCartesian2D;
-            tree.AddChild(aWinningClip, new Vector2(1f, 0));
-            tree.AddChild(bWinningClip, new Vector2(0, 1f));
-            tree.blendParameter = a.Name();
-            tree.blendParameterY = b.Name();
-            return tree;
+            return new VFAFloatBool(fx.One(), alwaysTrue: true);
         }
 
         public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
@@ -160,12 +146,10 @@ namespace VF.Service {
             var output = fx.NewFloat(name, def: outputDefault);
 
             // These clips drive the output param to certain values
-            var minClip = fx.NewClip(output.Name() + "Min");
-            minClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, outMin));
-            var maxClip = fx.NewClip(output.Name() + "Max");
-            maxClip.SetCurve("", typeof(Animator), output.Name(), AnimationCurve.Constant(0, 0, outMax));
+            var minClip = MakeSetter(output, outMin);
+            var maxClip = MakeSetter(output, outMax);
 
-            var tree = fx.NewBlendTree($"{input.Name()}_map_{inMin}_{inMax}_to_{outMin}_{outMax}");
+            var tree = fx.NewBlendTree($"{input.Name()} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
             tree.blendParameter = input.Name();
@@ -177,35 +161,132 @@ namespace VF.Service {
                 tree.AddChild(minClip, inMin);
             }
 
-            var layer = fx.NewLayer($"Map {input.Name()} from {inMin}-{inMax} to {outMin}-{outMax}");
-            layer.NewState($"Run").WithAnimation(tree);
+            directTree.Add(tree);
 
             return output;
+        }
+
+        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
+            var sub = Subtract($"{a.Name()} - {b.Name()}", a, b);
+            if (orEqual) {
+                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) >= ({b.Name()})", sub, (VRCFuryEditorUtils.NextFloatDown(0), 0), (0, 1)));
+            }
+            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) > ({b.Name()})", sub, (0, 0), (VRCFuryEditorUtils.NextFloatUp(0), 1)));
+        }
+        
+        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
+            if (orEqual) {
+                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) >= {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 0), (b, 1)));
+            }
+            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) > {b}", a, (b, 0), (VRCFuryEditorUtils.NextFloatUp(b), 1)));
+        }
+        
+        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
+            if (orEqual) {
+                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) <= {b}", a, (b, 1), (VRCFuryEditorUtils.NextFloatUp(b), 0)));
+            }
+            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) < {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 1), (b, 0)));
+        }
+
+        public VFAFloat Subtract(string name, VFAFloat a, VFAFloat b) {
+            return Add(name, a, b, true);
         }
         
         public VFAFloat Add(string name, VFAFloat a, VFAFloat b, bool subtract = false) {
             var fx = avatarManager.GetFx();
-            var output = fx.NewFloat(name, def: a.GetDefault() + b.GetDefault());
-            var text = $"{output.Name()} = {a.Name()} + {b.Name()}";
-            var directLayer = fx.NewLayer(text);
-            var tree = fx.NewBlendTree(text);
-            tree.blendType = BlendTreeType.Direct;
-            directLayer.NewState("Drive").WithAnimation(tree);
-            var zeroClip = fx.NewClip($"{output.Name()} = 0");
-            zeroClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), output.Name()), 0f);
-            var oneClip = fx.NewClip($"{output.Name()} = 1");
-            oneClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), output.Name()), 1f);
-            tree.AddDirectChild(fx.One().Name(), zeroClip);
-            tree.AddDirectChild(a.Name(), oneClip);
-            if (!subtract) {
-                tree.AddDirectChild(b.Name(), oneClip);
-            } else {
-                var negClip = fx.NewClip($"{output.Name()} = -1");
-                negClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), output.Name()), -1f);
-                tree.AddDirectChild(b.Name(), negClip);
-            }
+            var output = fx.NewFloat(name, def: subtract ? a.GetDefault() - b.GetDefault() : a.GetDefault() + b.GetDefault());
+            var zeroClip = MakeSetter(output, 0);
+            var oneClip = MakeSetter(output, 1);
+
+            directTree.Add(zeroClip);
+            directTree.Add(a, oneClip);
+            directTree.Add(b, !subtract ? oneClip : MakeSetter(output, -1));
 
             return output;
+        }
+
+        public AnimationClip MakeSetter(VFAFloat param, float value) {
+            var fx = avatarManager.GetFx();
+            var clip = fx.NewClip($"{param.Name()} = {value}");
+            clip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
+            return clip;
+        }
+
+        private BlendTree Make1D(string name, VFAFloat param, params (Motion, float)[] children) {
+            var fx = avatarManager.GetFx();
+            var tree = fx.NewBlendTree(name);
+            tree.blendType = BlendTreeType.Simple1D;
+            tree.useAutomaticThresholds = false;
+            tree.blendParameter = param.Name();
+            foreach (var (motion,threshold) in children) {
+                tree.AddChild(motion, threshold);
+            }
+            return tree;
+        }
+
+        public VFAFloat Map1D(string name, VFAFloat input, params (float, float)[] children) {
+            var fx = avatarManager.GetFx();
+            var defaultValue = children
+                .Where(child => input.GetDefault() <= child.Item1)
+                .Select(child => child.Item2)
+                .DefaultIfEmpty(children.Last().Item2)
+                .First();
+            var output = fx.NewFloat(name, def: defaultValue);
+            directTree.Add(Make1D(
+                name,
+                input,
+                children.Select(child => ((Motion)MakeSetter(output, child.Item2), child.Item1)).ToArray()
+            ));
+            return output;
+        }
+
+        public BlendTree MakeDirect(string name) {
+            var fx = avatarManager.GetFx();
+            var tree = fx.NewBlendTree(name);
+            tree.blendType = BlendTreeType.Direct;
+            return tree;
+        }
+        
+        /**
+         * Only works on values > 0 !
+         * Value MUST be defaulted to 0, or the copy will ADD to it
+         */
+        public BlendTree MakeCopier(VFAFloat from, VFAFloat to) {
+            var direct = MakeDirect($"{to.Name()} = ({from.Name()})");
+            direct.AddDirectChild(True().Name(), MakeSetter(to, 0));
+            direct.AddDirectChild(from.Name(), MakeSetter(to, 1));
+            return direct;
+        }
+        
+        public BlendTree MakeMaintainer(VFAFloat param) {
+            return MakeCopier(param, param);
+        }
+
+        public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b) {
+            if (a.alwaysTrue || b.alwaysTrue) return True();
+            if (a.alwaysFalse) return b;
+            if (b.alwaysFalse) return a;
+            return GreaterThan(Add($"({a.Name()}) OR ({b.Name()})", a, b), 0.5f);
+        }
+        
+        public VFAFloatBool And(VFAFloatBool a, VFAFloatBool b) {
+            if (a.alwaysFalse || b.alwaysFalse) return False();
+            if (a.alwaysTrue) return b;
+            if (b.alwaysTrue) return a;
+            return GreaterThan(Add($"({a.Name()}) AND ({b.Name()})", a, b), 1.5f);
+        }
+        
+        public VFAFloatBool Not(VFAFloatBool a) {
+            if (a.alwaysFalse) return True();
+            if (a.alwaysTrue) return False();
+            return LessThan(a, 0, true);
+        }
+
+        public VFAFloat Max(VFAFloat a, VFAFloat b) {
+            return SetValueWithConditions($"Max of ({a.Name()}) or ({b.Name()})",
+                (a, GreaterThan(a, b)),
+                (b, null)
+            );
         }
     }
 }

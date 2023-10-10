@@ -12,7 +12,6 @@ namespace VF.Builder.Haptics {
         private const string SpsOverrun = "_SPS_Overrun";
         private const string SpsBakedLength = "_SPS_BakedLength";
         private const string SpsBake = "_SPS_Bake";
-        //private const string SpsChannel = "_SPS_Channel";
 
         public static void ConfigureSpsMaterial(
             SkinnedMeshRenderer skin,
@@ -49,7 +48,6 @@ namespace VF.Builder.Haptics {
                 }
                 m.SetOverrideTag("_SPS_Blendshape" + i + "Animated", "1");
             }
-            //m.SetFloat(SpsChannel, (int)channel);
         }
 
         public static bool IsSps(Material mat) {

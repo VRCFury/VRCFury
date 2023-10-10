@@ -37,7 +37,7 @@ namespace VF.Builder.Haptics {
                          ?? avatarObject;
             var beaconRoot = GameObjects.Create("vfh_versionbeacon", parent);
             var versionBeaconTag = "VFH_VERSION_" + BeaconVersion;
-            HapticUtils.AddSender(beaconRoot, Vector3.zero, "VersionBeacon", 0.01f, versionBeaconTag);
+            HapticUtils.AddSender(beaconRoot, Vector3.zero, "VersionBeacon", 0.01f, new [] { versionBeaconTag });
 
             var receiveTags = new List<string>() { versionBeaconTag };
             if (BeaconVersion == 7) receiveTags.Add("OGB_VERSION_6");
@@ -48,7 +48,7 @@ namespace VF.Builder.Haptics {
                 "BeaconReceiver",
                 3f, // this is the max radius that vrc will allow
                 receiveTags.ToArray(),
-                allowSelf: false,
+                party: HapticUtils.ReceiverParty.Others,
                 localOnly: true
             );
             beaconReceiver.SetActive(false);

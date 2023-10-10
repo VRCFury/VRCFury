@@ -137,13 +137,15 @@ namespace VF.Feature {
             rightWeightParam = MakeWeightLayer(GestureRightWeight, GestureRightCondition);
         }
         private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition whenEnabled) {
-            var maintained =
-                smoothing.SetValueWithConditions(
-                    $"{input.Name()}Maintained",
-                    0, 1, 0,
-                    (input, whenEnabled),
-                    (null, null)
-                );
+            var fx = GetFx();
+            var layer = fx.NewLayer($"{input.Name()}Smoothed");
+            var maintained = fx.NewFloat($"{input.Name()}Maintained");
+            var maintain = layer.NewState("Maintain").WithAnimation(smoothing.MakeMaintainer(maintained));
+            var copy = layer.NewState("Copy").WithAnimation(smoothing.MakeCopier(input, maintained));
+
+            maintain.TransitionsTo(copy).When(whenEnabled);
+            copy.TransitionsTo(maintain).When(whenEnabled.Not());
+
             return smoothing.Smooth($"{input.Name()}Smoothed", maintained, 0.2f);
         }
 
