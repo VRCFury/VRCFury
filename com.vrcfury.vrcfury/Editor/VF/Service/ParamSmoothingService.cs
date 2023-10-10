@@ -22,8 +22,11 @@ namespace VF.Service {
         // A VFAFloat, but it's guaranteed to be 0 or 1
         public class VFAFloatBool {
             private readonly VFAFloat param;
-            public VFAFloatBool(VFAFloat param) {
+
+            public VFAFloatBool(VFAFloat param, bool alwaysFalse = false, bool alwaysTrue = false) {
                 this.param = param;
+                this.alwaysTrue = alwaysTrue;
+                this.alwaysFalse = alwaysFalse;
             }
             public string Name() {
                 return param.Name();
@@ -34,6 +37,8 @@ namespace VF.Service {
             public VFCondition IsTrue() {
                 return param.IsGreaterThan(0.5f);
             }
+            public bool alwaysTrue { get; }
+            public bool alwaysFalse { get; }
             public static implicit operator VFAFloat(VFAFloatBool d) => d.param;
         }
 
@@ -107,7 +112,7 @@ namespace VF.Service {
 
             VFAFloatBool anyPreviousState = null;
             foreach (var target in targets) {
-                var couldBeThisState = target.Item2 ?? new VFAFloatBool(fx.One());
+                var couldBeThisState = target.Item2 ?? True();
 
                 var isThisState = (anyPreviousState == null)
                     ? couldBeThisState
@@ -123,6 +128,15 @@ namespace VF.Service {
             }
 
             return output;
+        }
+
+        private VFAFloatBool False() {
+            var fx = avatarManager.GetFx();
+            return new VFAFloatBool(fx.Zero(), alwaysFalse: true);
+        }
+        private VFAFloatBool True() {
+            var fx = avatarManager.GetFx();
+            return new VFAFloatBool(fx.One(), alwaysTrue: true);
         }
 
         public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
@@ -152,26 +166,26 @@ namespace VF.Service {
             return output;
         }
 
-        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false) {
+        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
             var sub = Subtract($"{a.Name()} - {b.Name()}", a, b);
             if (orEqual) {
-                return new VFAFloatBool(Map1D($"{a.Name()} >= {b.Name()}", sub, (VRCFuryEditorUtils.NextFloatDown(0), 0), (0, 1)));
+                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) >= ({b.Name()})", sub, (VRCFuryEditorUtils.NextFloatDown(0), 0), (0, 1)));
             }
-            return new VFAFloatBool(Map1D($"{a.Name()} > {b.Name()}", sub, (0, 0), (VRCFuryEditorUtils.NextFloatUp(0), 1)));
+            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) > ({b.Name()})", sub, (0, 0), (VRCFuryEditorUtils.NextFloatUp(0), 1)));
         }
         
-        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false) {
+        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
             if (orEqual) {
-                return new VFAFloatBool(Map1D($"{a.Name()} >= {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 0), (b, 1)));
+                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) >= {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 0), (b, 1)));
             }
-            return new VFAFloatBool(Map1D($"{a.Name()} > {b}", a, (b, 0), (VRCFuryEditorUtils.NextFloatUp(b), 1)));
+            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) > {b}", a, (b, 0), (VRCFuryEditorUtils.NextFloatUp(b), 1)));
         }
         
-        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false) {
+        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
             if (orEqual) {
-                return new VFAFloatBool(Map1D($"{a.Name()} <= {b}", a, (b, 1), (VRCFuryEditorUtils.NextFloatUp(b), 0)));
+                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) <= {b}", a, (b, 1), (VRCFuryEditorUtils.NextFloatUp(b), 0)));
             }
-            return new VFAFloatBool(Map1D($"{a.Name()} < {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 1), (b, 0)));
+            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) < {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 1), (b, 0)));
         }
 
         public VFAFloat Subtract(string name, VFAFloat a, VFAFloat b) {
@@ -234,7 +248,7 @@ namespace VF.Service {
         }
         
         public BlendTree MakeCopier(VFAFloat from, VFAFloat to) {
-            var direct = MakeDirect($"{to.Name()} = {from.Name()}");
+            var direct = MakeDirect($"{to.Name()} = ({from.Name()})");
             direct.AddDirectChild(from.Name(), MakeSetter(to, 1));
             return direct;
         }
@@ -244,15 +258,30 @@ namespace VF.Service {
         }
 
         public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b) {
-            return GreaterThan(Add($"{a.Name()} + {b.Name()}", a, b), 0.5f);
+            if (a.alwaysTrue || b.alwaysTrue) return True();
+            if (a.alwaysFalse) return b;
+            if (b.alwaysFalse) return a;
+            return GreaterThan(Add($"({a.Name()}) OR ({b.Name()})", a, b), 0.5f);
         }
         
         public VFAFloatBool And(VFAFloatBool a, VFAFloatBool b) {
-            return GreaterThan(Add($"{a.Name()} + {b.Name()}", a, b), 1.5f);
+            if (a.alwaysFalse || b.alwaysFalse) return False();
+            if (a.alwaysTrue) return b;
+            if (b.alwaysTrue) return a;
+            return GreaterThan(Add($"({a.Name()}) AND ({b.Name()})", a, b), 1.5f);
         }
         
         public VFAFloatBool Not(VFAFloatBool a) {
+            if (a.alwaysFalse) return True();
+            if (a.alwaysTrue) return False();
             return LessThan(a, 0, true);
+        }
+
+        public VFAFloat Max(VFAFloat a, VFAFloat b) {
+            return SetValueWithConditions($"Max of ({a.Name()}) or ({b.Name()})",
+                (a, GreaterThan(a, b)),
+                (b, null)
+            );
         }
     }
 }
