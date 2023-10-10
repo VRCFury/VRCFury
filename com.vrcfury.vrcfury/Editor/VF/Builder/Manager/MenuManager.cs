@@ -53,14 +53,6 @@ namespace VF.Builder {
             return control;
         }
 
-        public bool SetIconGuid(string path, string guid) {
-            var iconPath = AssetDatabase.GUIDToAssetPath(guid);
-            if (string.IsNullOrWhiteSpace(iconPath)) return false;
-            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(iconPath);
-            if (!icon) return false;
-            return SetIcon(path, icon);
-        }
-
         public bool SetIcon(string path, Texture2D icon) {
             GetSubmenuAndItem(path, false, out _, out _, out var controlName, out var parentMenu);
             if (!parentMenu) return false;

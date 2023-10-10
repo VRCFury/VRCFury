@@ -25,7 +25,7 @@ namespace VF.Builder.Haptics {
             var boneWeights = mesh.boneWeights;
             var vertices = mesh.vertices;
             var uvs = mesh.uv;
-            var textureMask = plug.textureMask != null ? MakeReadable(plug.textureMask.Get()) : null;
+            var textureMask = MakeReadable(plug.textureMask?.Get());
 
             ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
             if (plug.useBoneMask && renderer is SkinnedMeshRenderer skin) {

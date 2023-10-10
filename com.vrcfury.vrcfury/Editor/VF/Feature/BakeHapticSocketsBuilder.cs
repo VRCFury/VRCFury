@@ -143,7 +143,7 @@ namespace VF.Feature {
                         }
 
                         var holeOn = fx.NewBool(name, synced: true);
-                        var icon = socket.menuIcon != null ? socket.menuIcon.Get() : null;
+                        var icon = socket.menuIcon?.Get();
                         manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", holeOn, icon: icon);
 
                         var layer = fx.NewLayer(name);
