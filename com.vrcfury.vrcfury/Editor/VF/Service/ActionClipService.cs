@@ -169,7 +169,7 @@ namespace VF.Service {
                             Debug.LogWarning("Missing object in action: " + name);
                             break;
                         }
-                        if (matAction.mat == null) {
+                        if (matAction.mat?.Get() == null) {
                             Debug.LogWarning("Missing material in action: " + name);
                             break;
                         }

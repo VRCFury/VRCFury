@@ -2,6 +2,8 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Component;
+using VF.Feature;
+using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -11,6 +13,43 @@ namespace VF.Service {
     public class SpsOptionsService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly MenuChangesService menuChanges;
+
+        [FeatureBuilderAction(FeatureOrder.MoveSpsMenus)]
+        public void MoveMenus() {
+            var mainPath = GetMenuPath();
+            
+            menuChanges.AddExtraAction(new MoveMenuItem {
+                fromPath = "Holes",
+                toPath = mainPath
+            });
+            menuChanges.AddExtraAction(new MoveMenuItem {
+                fromPath = "Sockets",
+                toPath = mainPath
+            });
+            menuChanges.AddExtraAction(new MoveMenuItem {
+                fromPath = "SPS",
+                toPath = mainPath
+            });
+            
+            var icon = GetOptions().menuIcon?.Get()
+                ?? VRCFuryEditorUtils.GetResource<Texture2D>("sps_icon.png");
+            menuChanges.AddExtraAction(new SetIcon {
+                path = mainPath,
+                icon = icon
+            });
+
+            var optionsPath = GetOptionsPath();
+            if (optionsPath != mainPath) {
+                var optionsIcon = VRCFuryEditorUtils.LoadGuid<Texture2D>("16e0846165acaa1429417e757c53ef9b");
+                if (optionsIcon != null) {
+                    menuChanges.AddExtraAction(new SetIcon {
+                        path = optionsPath,
+                        icon = optionsIcon
+                    });
+                }
+            }
+        }
 
         public SpsOptions GetOptions() {
             var opts = globals.allFeaturesInRun.OfType<SpsOptions>().FirstOrDefault();
@@ -22,12 +61,6 @@ namespace VF.Service {
             if (string.IsNullOrWhiteSpace(path)) {
                 path = "SPS";
             }
-            manager.GetMenu().GetSubmenu(path);
-
-            var icon = GetOptions().menuIcon != null
-                ? GetOptions().menuIcon.Get()
-                : VRCFuryEditorUtils.GetResource<Texture2D>("sps_icon.png");
-            manager.GetMenu().SetIcon(path, icon);
             return path;
         }
 
@@ -35,10 +68,7 @@ namespace VF.Service {
             if (manager.AvatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Length == 0) {
                 return GetMenuPath();
             }
-            var path = GetMenuPath() + "/<b>Options";
-            manager.GetMenu().GetSubmenu(path);
-            manager.GetMenu().SetIconGuid(path, "16e0846165acaa1429417e757c53ef9b");
-            return path;
+            return GetMenuPath() + "/<b>Options";
         }
     }
 }

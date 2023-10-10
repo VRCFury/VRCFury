@@ -534,11 +534,17 @@ namespace VF.Model.Feature {
                     fromPath = "SPS" + fromPath.Substring(7);
                 }
             }
+
+            if (fromVersion < 3) {
+                if (toPath.StartsWith("Sockets/") || toPath == "Sockets") {
+                    toPath = "SPS" + toPath.Substring(7);
+                }
+            }
             return false;
         }
 
         public override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
     
@@ -634,6 +640,19 @@ namespace VF.Model.Feature {
     public class SetIcon : NewFeatureModel {
         public string path;
         public GuidTexture2d icon;
+        
+        public override bool Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (path.StartsWith("Sockets/") || path == "Sockets") {
+                    path = "SPS" + path.Substring(7);
+                }
+            }
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]
