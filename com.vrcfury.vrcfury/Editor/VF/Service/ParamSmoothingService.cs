@@ -247,8 +247,13 @@ namespace VF.Service {
             return tree;
         }
         
+        /**
+         * Only works on values > 0 !
+         * Value MUST be defaulted to 0, or the copy will ADD to it
+         */
         public BlendTree MakeCopier(VFAFloat from, VFAFloat to) {
             var direct = MakeDirect($"{to.Name()} = ({from.Name()})");
+            direct.AddDirectChild(True().Name(), MakeSetter(to, 0));
             direct.AddDirectChild(from.Name(), MakeSetter(to, 1));
             return direct;
         }
