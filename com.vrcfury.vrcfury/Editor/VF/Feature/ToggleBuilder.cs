@@ -223,12 +223,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         );
 
         var hasTitle = !string.IsNullOrEmpty(model.name);
-        var hasIcon = model.enableIcon && model.icon != null;
+        var hasIcon = model.enableIcon && model.icon?.Get() != null;
         if (model.addMenuItem && (hasTitle || hasIcon)) {
             manager.GetMenu().NewMenuSlider(
                 model.name,
                 x,
-                icon: model.enableIcon ? model.icon.Get() : null
+                icon: model.enableIcon ? model.icon?.Get() : null
             );
         }
 
@@ -268,7 +268,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         layerName = model.name;
 
         var hasTitle = !string.IsNullOrEmpty(model.name);
-        var hasIcon = model.enableIcon && model.icon != null;
+        var hasIcon = model.enableIcon && model.icon?.Get() != null;
 
         if (!hasTitle && model.useGlobalParam) layerName = model.globalParam;
         if (!hasTitle && !hasIcon) addMenuItem = false;
@@ -309,14 +309,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 manager.GetMenu().NewMenuButton(
                     model.name,
                     param,
-                    icon: model.enableIcon ? model.icon.Get() : null,
+                    icon: model.icon?.Get(),
                     value: intTarget != -1 ? intTarget : 1
                 );
             } else {
                 manager.GetMenu().NewMenuToggle(
                     model.name,
                     param,
-                    icon: model.enableIcon ? model.icon.Get() : null,
+                    icon: model.icon?.Get(),
                     value: intTarget != -1 ? intTarget : 1
                 );
             }
