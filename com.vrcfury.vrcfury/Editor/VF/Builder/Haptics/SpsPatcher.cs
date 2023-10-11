@@ -70,7 +70,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "2";
+            var hashContent = contents + spsMain + "3";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -463,7 +463,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static string WithEachInclude(string contents, string filePath, Func<string, string> with, bool includeLibraryFiles = false) {
-            return GetRegex(@"(\s*#include\s"")([^""]+)("")").Replace(contents, match => {
+            return GetRegex(@"(?:^|\n)(\s*#include\s"")([^""]+)("")").Replace(contents, match => {
                 var before = match.Groups[1].ToString();
                 var path = match.Groups[2].ToString();
                 var after = match.Groups[3].ToString();
