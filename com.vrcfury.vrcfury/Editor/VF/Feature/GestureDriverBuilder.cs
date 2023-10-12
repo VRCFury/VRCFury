@@ -17,7 +17,8 @@ namespace VF.Feature {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();
-        [VFAutowired] private readonly ParamSmoothingService smoothing;
+        [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         
         [FeatureBuilderAction]
@@ -140,8 +141,8 @@ namespace VF.Feature {
             var fx = GetFx();
             var layer = fx.NewLayer($"{input.Name()}Smoothed");
             var maintained = fx.NewFloat($"{input.Name()}Maintained");
-            var maintain = layer.NewState("Maintain").WithAnimation(smoothing.MakeMaintainer(maintained));
-            var copy = layer.NewState("Copy").WithAnimation(smoothing.MakeCopier(input, maintained));
+            var maintain = layer.NewState("Maintain").WithAnimation(math.MakeMaintainer(maintained));
+            var copy = layer.NewState("Copy").WithAnimation(math.MakeCopier(input, maintained));
 
             maintain.TransitionsTo(copy).When(whenEnabled);
             copy.TransitionsTo(maintain).When(whenEnabled.Not());

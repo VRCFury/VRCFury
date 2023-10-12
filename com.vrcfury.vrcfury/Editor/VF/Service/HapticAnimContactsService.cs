@@ -16,7 +16,8 @@ namespace VF.Service {
      */
     [VFService]
     public class HapticAnimContactsService {
-        [VFAutowired] private readonly ParamSmoothingService smoothing;
+        [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly AvatarManager avatarManager;
 
@@ -38,17 +39,17 @@ namespace VF.Service {
                 var maxDist = actions.Max(a => Math.Max(a.startDistance, a.endDistance));
                 var colliderWorldRadius = maxDist * worldLength;
                 var contact = CreateFrontBack(prefix, animRoot, colliderWorldRadius, allowSelf, HapticUtils.CONTACT_ORF_MAIN);
-                var activeWhen = smoothing.Or(
-                    smoothing.GreaterThan(contact.front, contact.back, true),
-                    smoothing.GreaterThan(contact.front, 0.8f)
+                var activeWhen = math.Or(
+                    math.GreaterThan(contact.front, contact.back, true),
+                    math.GreaterThan(contact.front, 0.8f)
                 );
-                var distance = smoothing.Map(
+                var distance = math.Map(
                     $"{prefix}/Distance",
                     contact.front,
                     0, 1,
                     maxDist, 0
                 );
-                var distanceWithoutBehind = smoothing.SetValueWithConditions(
+                var distanceWithoutBehind = math.SetValueWithConditions(
                     $"{prefix}/DistanceWithoutBehind",
                     (distance, activeWhen),
                     (fx.NewFloat($"{prefix}/MaxDist", def: distance.GetDefault()), null)
@@ -63,7 +64,7 @@ namespace VF.Service {
                 var prefix = $"{name}/Anim{actionNum}";
 
                 var distance = GetDistance(depthAction.enableSelf);
-                var mapped = smoothing.Map(
+                var mapped = math.Map(
                     $"{prefix}/Mapped",
                     distance,
                     depthAction.startDistance, depthAction.endDistance,
@@ -119,25 +120,25 @@ namespace VF.Service {
                 var outerRadius = Math.Max(0.01f, maxDist);
                 var outer = CreateFrontBack($"{prefix}/Outer", GameObjects.Create("Outer", animRoot), outerRadius, allowSelf, HapticUtils.CONTACT_PEN_MAIN);
 
-                var targets = new List<(VFAFloat, ParamSmoothingService.VFAFloatBool)>();
+                var targets = new List<(VFAFloat, MathService.VFAFloatBool)>();
                 if (minDist < 0) {
                     var inner = CreateFrontBack($"{prefix}/Inner", GameObjects.Create("Inner", animRoot), -minDist, allowSelf, HapticUtils.CONTACT_PEN_MAIN, Vector3.forward * minDist);
                     // Some of the animations have an inside depth (negative distance)
                     targets.Add((
-                        smoothing.Map($"{prefix}/Inner/Distance", inner.front, 1, 0, offset+minDist, offset+0),
-                        smoothing.GreaterThan(outer.front, 1, true, name: $"{prefix}/Inner/Usable")
+                        math.Map($"{prefix}/Inner/Distance", inner.front, 1, 0, offset+minDist, offset+0),
+                        math.GreaterThan(outer.front, 1, true, name: $"{prefix}/Inner/Usable")
                     ));
                 }
                 if (maxDist > 0) {
                     // Some of the animations have an outside depth (positive distance)
                     targets.Add((
-                        smoothing.Map($"{prefix}/Outer/Distance", outer.front, 1, 0, offset+0, offset+outerRadius),
-                        smoothing.GreaterThan(outer.front, 0, name: $"{prefix}/Outer/Usable")
+                        math.Map($"{prefix}/Outer/Distance", outer.front, 1, 0, offset+0, offset+outerRadius),
+                        math.GreaterThan(outer.front, 0, name: $"{prefix}/Outer/Usable")
                     ));
                 }
                 // If plug isn't in either region, set to 0
                 targets.Add((fx.NewFloat($"{prefix}/MaxDist", def: offset+outerRadius), null));
-                var unsmoothed = smoothing.SetValueWithConditions(
+                var unsmoothed = math.SetValueWithConditions(
                     $"{prefix}/Distance",
                     targets.ToArray()
                 );
@@ -153,7 +154,7 @@ namespace VF.Service {
                 var prefix = $"{name}/Anim{actionNum}";
 
                 var unsmoothed = GetDistance(depthAction.enableSelf);
-                var mapped = smoothing.Map(
+                var mapped = math.Map(
                     $"{prefix}/Mapped",
                     unsmoothed,
                     offset + depthAction.startDistance * (worldScale ? 1f : animRoot.transform.lossyScale.z),
@@ -210,13 +211,13 @@ namespace VF.Service {
                 HapticUtils.AddReceiver(parent, posOffset, frontSelfParam.Name(),
                     "FrontSelf", radius, new[] { contactTag },
                     HapticUtils.ReceiverParty.Self);
-                frontParam = smoothing.Max(frontParam, frontSelfParam);
+                frontParam = math.Max(frontParam, frontSelfParam);
                 
                 var backSelfParam = fx.NewFloat($"{paramName}/BackSelf");
                 HapticUtils.AddReceiver(parent, posOffset + Vector3.forward * -0.01f, backSelfParam.Name(),
                     "BackSelf", radius, new[] { contactTag },
                     HapticUtils.ReceiverParty.Self);
-                backParam = smoothing.Max(backParam, backSelfParam);
+                backParam = math.Max(backParam, backSelfParam);
             }
             
             return new FrontBack {
