@@ -39,6 +39,22 @@ namespace VF.Builder {
         public static void WarmupCache(VFGameObject avatarObject) {
             Load(avatarObject);
         }
+
+        public static HumanBodyBones FindObjectAsBoneOrException(VFGameObject avatarObject, VFGameObject findObject) {
+            var lookup = Load(avatarObject);
+
+            foreach (var kvp in lookup) {
+                var bone = kvp.Key;
+                var path = kvp.Value;
+                var found = avatarObject.transform.Find(path);
+                if (found == findObject.transform) {
+                    return bone;
+                }
+            }
+
+            throw new VRCFBuilderException(
+                "Did not find " + findObject.name + " object in the humanoid descriptor in the original path.");
+        }
         
         private static string FindBonePathOrException(Transform avatarObject, HumanBodyBones findBone) {
             var lookup = Load(avatarObject);

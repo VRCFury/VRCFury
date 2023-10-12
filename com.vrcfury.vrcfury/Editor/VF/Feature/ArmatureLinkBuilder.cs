@@ -313,6 +313,24 @@ namespace VF.Feature {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
+            var bonePathOnAvatarDragTarget = model.bonePathOnAvatarDragTarget;
+            if (bonePathOnAvatarDragTarget != null) {
+                var pathTarget = (VFGameObject)bonePathOnAvatarDragTarget;
+                // If the bone is a humanoid bone, just set the property instead of setting the path
+                try {
+                    var humanoidBone = VRCFArmatureUtils.FindObjectAsBoneOrException(avatarObject, pathTarget);
+                    model.boneOnAvatar = humanoidBone;
+                    model.bonePathOnAvatar = null;
+                    model.bonePathOnAvatarDragTarget = null;
+                } catch (Exception) {
+                    // Did not find object in the humanoid descriptor in the original path.
+                    // So we'll assume it's safe to set an absolute path
+                    var path = pathTarget.GetPath(avatarObject);
+                    model.bonePathOnAvatar = path;
+                    model.bonePathOnAvatarDragTarget = null;    
+                }
+            }
+            
             VFGameObject avatarBone = null;
 
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
@@ -476,7 +494,11 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.WrappedLabel("String path to bone on avatar:"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("If provided, humanoid bone dropdown will be ignored."));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
-
+            adv.Add(VRCFuryEditorUtils.WrappedLabel(
+                "Drag in object to generate path to bone on avatar:"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatarDragTarget")));
+            
+            
             adv.Add(new VisualElement { style = { paddingTop = 10 } });
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Keep bone offsets:"));
             adv.Add(VRCFuryEditorUtils.WrappedLabel(
@@ -526,6 +548,7 @@ namespace VF.Feature {
                     return "No valid link target found";
                 }
                 var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
+                
                 var text = new List<string>();
                 var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links);
                 text.Add($"Merging to bone: {links.avatarMain.GetPath(avatarObject)}");

@@ -372,6 +372,7 @@ namespace VF.Model.Feature {
         public HumanBodyBones boneOnAvatar;
         public string bonePathOnAvatar;
         public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
+        public GameObject bonePathOnAvatarDragTarget;
         public string removeBoneSuffix;
         public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
