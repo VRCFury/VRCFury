@@ -15,13 +15,12 @@ using VF.Injector;
 using VF.Service;
 using VRC.SDKBase;
 using static System.Linq.Enumerable;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature
 {
     public class CombineMeshesBuilder : FeatureBuilder<CombineMeshes>
     {
-        [VFAutowired] private readonly ObjectMoveService mover;
-
         private static string[] preferredBaseMeshNames = new string[] { "body", "main" };
 
         public override string GetEditorTitle()
@@ -53,19 +52,16 @@ namespace VF.Feature
             var changes = CalculateMeshChanges();
             foreach (var group in changes.Groups)
             {
-                var skins = group.Value;
-                var basis = skins[0];
-                VFGameObject basisObject = basis.gameObject;
-                var meshesToAdd = skins.Skip(1).ToList();
-                basis.sharedMesh = mutableManager.MakeMutable(basis.sharedMesh, basis.owner()); ;
+                var (basis, meshesToAdd) = group.Value;
+                var basisObject = basis.owner();
+                basis.sharedMesh = mutableManager.MakeMutable(basis.sharedMesh, basis.owner());
                 VRCFuryEditorUtils.MarkDirty(basis);
 
-                var combinable = new CombinableMesh(basis);
+                var combinable = new MeshCombiner(basis);
                 foreach (var mesh in meshesToAdd)
                 {
                     combinable.AddMesh(mesh);
                     VFGameObject obj = mesh.gameObject;
-                    mover.DirectRewrite(obj, basisObject);
                     obj.Destroy();
                 }
                 combinable.Combine();
@@ -79,7 +75,7 @@ namespace VF.Feature
 
         private struct MeshChanges
         {
-            public Dictionary<SkinnedMeshRendererGroup, List<SkinnedMeshRenderer>> Groups { get; set; }
+            public Dictionary<SkinnedMeshRendererGroup, (SkinnedMeshRenderer, List<SkinnedMeshRenderer>)> Groups { get; set; }
             public List<SkinnedMeshRenderer> Toggled { get; set; }
             public List<SkinnedMeshRenderer> Removed { get; set; }
             public List<SkinnedMeshRenderer> NotCombinable { get; set; }
@@ -88,36 +84,55 @@ namespace VF.Feature
         private MeshChanges CalculateMeshChanges()
         {
             var task = new MeshChanges();
-            task.Groups = new Dictionary<SkinnedMeshRendererGroup, List<SkinnedMeshRenderer>>();
+            task.Groups = new Dictionary<SkinnedMeshRendererGroup, (SkinnedMeshRenderer, List<SkinnedMeshRenderer>)>();
             task.Removed = new List<SkinnedMeshRenderer>();
             task.Toggled = new List<SkinnedMeshRenderer>();
             task.NotCombinable = new List<SkinnedMeshRenderer>();
 
-            var descriptor = avatarObject.GetComponent<VRC_AvatarDescriptor>();
+            var descriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
             var faceMesh = descriptor.VisemeSkinnedMesh;
 
             var animatedBindings = manager.GetAllUsedControllersRaw()
                       .Select(tuple => tuple.Item2)
-                      .SelectMany(controller => GetBindings(avatarObject, controller))
+                      .SelectMany(controller => ((AnimatorController) controller).GetBindings(avatarObject))
                       .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
-                          .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
-                      .Where(a =>
-                      {
-                          var (binding, _) = a;
-                          return binding.type == typeof(GameObject) && binding.propertyName == "m_IsActive";
-                      })
-                      .ToList();
+                          .SelectMany(animator => (animator.runtimeAnimatorController as AnimatorController).GetBindings(animator.gameObject)))
+                      .ToLookup(x => x.Item1.path, x => x.Item1);
 
+            bool IsObjectToggleBinding(EditorCurveBinding binding) => 
+                    binding.type == typeof(GameObject) && binding.propertyName == "m_IsActive";
+            bool IsIncompatibleBinding(EditorCurveBinding binding) => 
+                    IsObjectToggleBinding(binding) || 
+                    binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName == "m_IsActive" ||
+                    binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("material.") ||
+                    binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.") ||
+                    binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("m_Materials.");
+            
             bool IsObjectToggled(GameObject obj)
             {
                 var path = clipBuilder.GetPath(obj.transform);
-
-                foreach (var (binding, curve) in animatedBindings)
+                foreach (var binding in animatedBindings[path])
                 {
-                    if (binding.path == path)
+                    if (IsObjectToggleBinding(binding)) 
                     {
                         return true;
                     }
+                }
+
+                return false;
+            }
+
+            bool IsObjectToggledInHierarchy(GameObject obj) 
+            {
+                var current = obj;
+
+                while (current != null && current != avatarObject) 
+                {
+                    if (IsObjectToggled(obj)) 
+                    {
+                        return true;
+                    }
+                    current = current.transform.parent?.gameObject;
                 }
 
                 return false;
@@ -137,11 +152,25 @@ namespace VF.Feature
                 return true;
             }
 
+            bool ObjectHasIncompatibleBindings(GameObject obj) 
+            {
+                var path = clipBuilder.GetPath(obj.transform);
+                foreach (var binding in animatedBindings[path])
+                {
+                    if (IsIncompatibleBinding(binding)) 
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject))
             {
                 if (!(renderer is SkinnedMeshRenderer skin)) continue;
 
-                if (IsObjectToggled(skin.gameObject))
+                if (IsObjectToggledInHierarchy(skin.gameObject))
                 {
                     task.Toggled.Add(skin);
                     continue;
@@ -161,52 +190,50 @@ namespace VF.Feature
                 var group = new SkinnedMeshRendererGroup(skin);
                 if (!task.Groups.ContainsKey(group))
                 {
-                    task.Groups.Add(group, new List<SkinnedMeshRenderer>());
+                    task.Groups.Add(group, (skin, new List<SkinnedMeshRenderer>()));
                 }
-                var entries = task.Groups[group];
+                else 
+                {
+                    //Only have to do this if we already initialized this group
+                    var (preferred, entries) = task.Groups[group];
 
-                var isPreferredBase = Array.IndexOf(preferredBaseMeshNames, skin.name.ToLower()) != -1;
-                var hasFaceMesh = !isFaceMesh && entries.Count > 0 && entries[0] == faceMesh;
-                if (isFaceMesh || (isPreferredBase && !hasFaceMesh))
-                {
-                    entries.Insert(0, skin);
-                }
-                else
-                {
-                    entries.Add(skin);
+                    var isPreferredBase = Array.IndexOf(preferredBaseMeshNames, skin.name.ToLower()) != -1;
+                    var hasFaceMesh = !isFaceMesh && entries.Count > 0 && entries[0] == faceMesh;
+                    if (isFaceMesh || (isPreferredBase && !hasFaceMesh))
+                    {
+                        //Make this mesh the merge base
+                        task.Groups[group] = (skin, entries);
+                        entries.Add(preferred);
+                    } else {
+                        entries.Add(skin);
+                    }
                 }
             }
 
             foreach (var entry in task.Groups.ToList())
             {
-                if (entry.Value.Count < 2)
+                var (preferred, skins) = entry.Value;
+                //Only check meshes for incompatbile bindings once we know the merge base
+                //TODO: Allow bindings that are compatible with identical bindings on the merge base
+                foreach (var skin in skins) 
+                {
+                    if (ObjectHasIncompatibleBindings(skin.gameObject))
+                    {
+                        skins.Remove(skin);
+                        task.NotCombinable.Add(skin);
+                    }
+                }
+                if (skins.Count < 2)
                 {
                     task.Groups.Remove(entry.Key);
-                    task.NotCombinable.AddRange(entry.Value);
+                    task.NotCombinable.AddRange(skins);
+                    continue;
                 }
             }
-
             return task;
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, AnimatorController controller)
-        {
-            var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
-
-            var clipsInController = new AnimatorIterator.Clips().From(controller);
-
-            return clipsInController
-                .SelectMany(clip => clip.GetFloatCurves())
-                .Select(pair =>
-                {
-                    var (binding, curve) = pair;
-                    binding.path = ClipRewriter.Join(prefix, binding.path, allowAdvancedOperators: false);
-                    return (binding, curve);
-                })
-                .ToList();
-        }
-
-        private class CombinableMesh
+        private class MeshCombiner
         {
             SkinnedMeshRenderer skin;
             List<List<int>> indices;
@@ -222,7 +249,7 @@ namespace VF.Feature
             Dictionary<string, int> blendshapeMapping;
             List<(string, List<(float, List<Vector3>, List<Vector3>, List<Vector3>)>)> blendshapes;
 
-            public CombinableMesh(SkinnedMeshRenderer skin)
+            public MeshCombiner(SkinnedMeshRenderer skin)
             {
                 this.skin = skin;
                 var mesh = this.skin.sharedMesh;

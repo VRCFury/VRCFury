@@ -198,27 +198,12 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, AnimatorController controller) {
-            var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
-
-            var clipsInController = new AnimatorIterator.Clips().From(controller);
-
-            return clipsInController
-                .SelectMany(clip => clip.GetFloatCurves())
-                .Select(pair => {
-                    var (binding, curve) = pair;
-                    binding.path = ClipRewriter.Join(prefix, binding.path, allowAdvancedOperators: false);
-                    return (binding, curve);
-                })
-                .ToList();
-        }
-
         private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin, Mesh mesh) {
             var animatedBindings = manager.GetAllUsedControllersRaw()
                 .Select(tuple => tuple.Item2)
-                .SelectMany(controller => GetBindings(avatarObject, controller))
+                .SelectMany(controller => ((AnimatorController) controller).GetBindings(avatarObject))
                 .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
-                    .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
+                    .SelectMany(animator => (animator.runtimeAnimatorController as AnimatorController).GetBindings(animator.gameObject)))
                 .ToList();
 
             var skinPath = clipBuilder.GetPath(skin.transform);

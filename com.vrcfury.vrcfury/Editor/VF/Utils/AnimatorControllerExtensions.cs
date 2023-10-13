@@ -11,6 +11,24 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
     public static class AnimatorControllerExtensions {
+
+        public static ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(this AnimatorController controller, GameObject obj) {
+            var avatarObject = obj.GetComponentInParent<VRCAvatarDescriptor>().gameObject;
+            var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
+
+            var clipsInController = new AnimatorIterator.Clips().From(controller);
+
+            return clipsInController
+                .SelectMany(clip => clip.GetFloatCurves())
+                .Select(pair => {
+                    var (binding, curve) = pair;
+                    binding.path = ClipRewriter.Join(prefix, binding.path, allowAdvancedOperators: false);
+                    return (binding, curve);
+                })
+                .ToList();
+        }
+
+
         public static void Rewrite(this AnimatorController c, AnimationRewriter rewriter) {
             // Rewrite clips
             foreach (var clip in new AnimatorIterator.Clips().From(c)) {
