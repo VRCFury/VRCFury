@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor.Animations;
@@ -66,19 +67,24 @@ namespace VF.Builder {
         private static AnimatorConditionsUnion Simplify(AnimatorConditionsUnion conds) {
             // Simplify each transform
             conds = conds.Select(Simplify);
+
+            // Remove duplicates
+            var all = conds
+                .Select(c => new HashSet<AnimatorCondition>(c))
+                .Distinct(HashSet<AnimatorCondition>.CreateSetComparer())
+                .ToArray();
             
-            // Remove duplicates and supersets
-            var all = conds.ToList();
+            // Remove supersets
             conds = all.Where(c => {
                 var set = c.ToImmutableHashSet();
-                var hasSubset = all.Any(other => c != other && set.IsSupersetOf(other));
+                var hasSubset = all.Any(other => c != other && set.IsProperSupersetOf(other));
                 return !hasSubset;
             });
 
             // Remove impossible
             conds = conds.Where(c => !IsImpossible(c));
 
-            return conds.ToList();
+            return conds.ToArray();
         }
 
         private static string Stringify(AnimatorConditions conds) {
@@ -86,7 +92,7 @@ namespace VF.Builder {
         }
         
         private static AnimatorConditions Simplify(AnimatorConditions conds) {
-            var all = conds.ToList();
+            var all = conds.ToArray();
 
             // Remove redundant conditions
             conds = all.Where(c => !IsRedundant(c, all));
@@ -97,7 +103,7 @@ namespace VF.Builder {
             // Sort
             conds = conds.OrderBy(c => c.parameter);
 
-            return conds.ToList();
+            return conds.ToArray();
         }
 
         private static bool IsImpossible(AnimatorConditions conds) {
