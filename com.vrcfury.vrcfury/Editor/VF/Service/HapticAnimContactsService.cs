@@ -120,20 +120,20 @@ namespace VF.Service {
                 var outerRadius = Math.Max(0.01f, maxDist);
                 var outer = CreateFrontBack($"{prefix}/Outer", GameObjects.Create("Outer", animRoot), outerRadius, allowSelf, HapticUtils.CONTACT_PEN_MAIN);
 
-                var targets = new List<(VFAFloat, MathService.VFAFloatBool)>();
+                var targets = new List<(MathService.VFAFloatOrConst, MathService.VFAFloatBool)>();
                 if (minDist < 0) {
                     var inner = CreateFrontBack($"{prefix}/Inner", GameObjects.Create("Inner", animRoot), -minDist, allowSelf, HapticUtils.CONTACT_PEN_MAIN, Vector3.forward * minDist);
                     // Some of the animations have an inside depth (negative distance)
                     targets.Add((
                         math.Map($"{prefix}/Inner/Distance", inner.front, 1, 0, offset+minDist, offset+0),
-                        math.GreaterThan(outer.front, 1, true, name: $"{prefix}/Inner/Usable")
+                        math.GreaterThan(outer.front, 1, true)
                     ));
                 }
                 if (maxDist > 0) {
                     // Some of the animations have an outside depth (positive distance)
                     targets.Add((
                         math.Map($"{prefix}/Outer/Distance", outer.front, 1, 0, offset+0, offset+outerRadius),
-                        math.GreaterThan(outer.front, 0, name: $"{prefix}/Outer/Usable")
+                        math.GreaterThan(outer.front, 0)
                     ));
                 }
                 // If plug isn't in either region, set to 0

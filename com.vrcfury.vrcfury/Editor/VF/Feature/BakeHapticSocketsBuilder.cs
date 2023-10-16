@@ -241,8 +241,8 @@ namespace VF.Feature {
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
                         var tree = math.MakeDirect($"{aName} vs {bName}");
-                        tree.AddDirectChild(bDist.Name(), math.MakeSetter(vsParam, 1));
-                        tree.AddDirectChild(aDist.Name(), math.MakeSetter(vsParam, -1));
+                        tree.Add(bDist, math.MakeSetter(vsParam, 1));
+                        tree.Add(aDist, math.MakeSetter(vsParam, -1));
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }
