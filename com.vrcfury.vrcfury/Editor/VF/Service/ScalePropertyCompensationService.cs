@@ -77,7 +77,7 @@ namespace VF.Service {
 
                 zeroClip = manager.GetFx().NewClip("scaleComp_zero");
                 var one = manager.GetFx().One();
-                directTree.AddDirectChild(one.Name(), zeroClip);
+                directTree.Add(one, zeroClip);
             }
 
             var scaleClip = manager.GetFx().NewClip("scaleComp_" + referenceNumber);
@@ -94,11 +94,11 @@ namespace VF.Service {
             foreach (var (param, index) in pathToParam.Values.Select((p, index) => (p, index))) {
                 var isLast = index == pathToParam.Count - 1;
                 if (isLast) {
-                    tree.AddDirectChild(param.Name(), scaleClip);
+                    tree.Add(param, scaleClip);
                 } else {
                     var subTree = manager.GetFx().NewBlendTree("scaleCompSub");
                     subTree.blendType = BlendTreeType.Direct;
-                    tree.AddDirectChild(param.Name(), subTree);
+                    tree.Add(param, subTree);
                     tree = subTree;
                 }
             }

@@ -95,7 +95,7 @@ namespace VF.Feature {
                 var states = layer.stateMachine.states;
                 if (states.Length == 1) {
                     var state = states[0].state;
-                    if (hasNonstaticClips) {
+                    if (hasNonstaticClips && state.timeParameterActive) {
                         // TODO: This could also break if the animation tangents are not linear
 
                         var dualState = ClipBuilderService.SplitRangeClip(state.motion);
@@ -103,8 +103,8 @@ namespace VF.Feature {
                             AddDebug($"Not optimizing (contains single clip that is not static and not a single time range)");
                             continue;
                         }
-                        if (!state.timeParameterActive || string.IsNullOrWhiteSpace(state.timeParameter)) {
-                            AddDebug($"Not optimizing (contains a time range clip but doesn't use motion time)");
+                        if (string.IsNullOrWhiteSpace(state.timeParameter)) {
+                            AddDebug($"Not optimizing (uses motion time, but the motion time param is empty)");
                             continue;
                         }
 
@@ -215,6 +215,16 @@ namespace VF.Feature {
 
                 if (paramUsedInOtherLayer) {
                     AddDebug($"Not optimizing (parameter used in some other layer)");
+                    continue;
+                }
+                
+                var paramType = fx.GetRaw().parameters
+                    .Where(p => p.name == param)
+                    .Select(p => p.type)
+                    .DefaultIfEmpty(AnimatorControllerParameterType.Float)
+                    .First();
+                if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
+                    AddDebug($"Not optimizing (using an int VRC built-in, which means >1 is likely)");
                     continue;
                 }
 
