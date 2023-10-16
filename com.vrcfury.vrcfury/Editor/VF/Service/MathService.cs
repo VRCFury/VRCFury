@@ -14,8 +14,11 @@ using VF.Utils.Controller;
 
 namespace VF.Service {
 
+    /**
+     * Performs math within an animator
+     */
     [VFService]
-    public class ParamSmoothingService {
+    public class MathService {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         
@@ -40,61 +43,6 @@ namespace VF.Service {
             public bool alwaysTrue { get; }
             public bool alwaysFalse { get; }
             public static implicit operator VFAFloat(VFAFloatBool d) => d.param;
-        }
-
-        public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
-            if (smoothingSeconds <= 0) return target;
-            if (smoothingSeconds > 10) smoothingSeconds = 10;
-            var fractionPerFrame = GetFractionPerFrame(smoothingSeconds, useAcceleration);
-
-            var fx = avatarManager.GetFx();
-            var speedParam = fx.NewFloat($"{name}/FractionPerFrame", def: fractionPerFrame);
-
-            var output = Smooth_($"{name}/Pass1", target, speedParam);
-            if (useAcceleration) output = Smooth_($"{name}/Pass2", output, speedParam);
-            return output;
-        }
-
-        private float GetFractionPerFrame(float seconds, bool useAcceleration) {
-            var framerate = 60;
-            var targetFrames = seconds * framerate;
-            var currentSpeed = 0.5f;
-            var nextStep = 0.25f;
-            for (var i = 0; i < 20; i++) {
-                var currentFrames = VRCFuryHapticSocket.GetFramesRequired(currentSpeed, useAcceleration);
-                if (currentFrames > targetFrames) {
-                    currentSpeed += nextStep;
-                } else {
-                    currentSpeed -= nextStep;
-                }
-                nextStep *= 0.5f;
-            }
-            return currentSpeed;
-        }
-
-        private VFAFloat Smooth_(string name, VFAFloat target, VFAFloat speedParam) {
-            var fx = avatarManager.GetFx();
-
-            var output = fx.NewFloat(name, def: target.GetDefault());
-
-            // Maintain tree - keeps the current value
-            var maintainTree = MakeMaintainer(output);
-
-            // Target tree - uses the target (input) value
-            var targetTree = MakeCopier(target, output);
-
-            //The following two trees merge the update and the maintain tree together. The smoothParam controls 
-            //how much from either tree should be applied during each tick
-            var smoothTree = Make1D(
-                $"{output.Name()} smoothto {target.Name()}",
-                speedParam,
-                (maintainTree, 0),
-                (targetTree, 1)
-            );
-
-            directTree.Add(smoothTree);
-
-            return output;
         }
 
         public VFAFloat SetValueWithConditions(
@@ -212,7 +160,7 @@ namespace VF.Service {
             return clip;
         }
 
-        private BlendTree Make1D(string name, VFAFloat param, params (Motion, float)[] children) {
+        public BlendTree Make1D(string name, VFAFloat param, params (Motion, float)[] children) {
             var fx = avatarManager.GetFx();
             var tree = fx.NewBlendTree(name);
             tree.blendType = BlendTreeType.Simple1D;
@@ -287,6 +235,21 @@ namespace VF.Service {
                 (a, GreaterThan(a, b)),
                 (b, null)
             );
+        }
+        
+        public VFAFloat Multiply(string name, VFAFloat a, VFAFloat b) {
+            var fx = avatarManager.GetFx();
+            var output = fx.NewFloat(name, def: a.GetDefault() * b.GetDefault());
+            var zeroClip = MakeSetter(output, 0);
+            var oneClip = MakeSetter(output, 1);
+            
+            var subTree = MakeDirect("Multiply");
+            subTree.AddDirectChild(b.Name(), oneClip);
+
+            directTree.Add(zeroClip);
+            directTree.Add(a, subTree);
+
+            return output;
         }
     }
 }

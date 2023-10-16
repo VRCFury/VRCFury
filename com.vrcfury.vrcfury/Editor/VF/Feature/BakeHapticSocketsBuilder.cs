@@ -25,7 +25,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
-        [VFAutowired] private readonly ParamSmoothingService paramSmoothing;
+        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
@@ -240,9 +240,9 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = paramSmoothing.MakeDirect($"{aName} vs {bName}");
-                        tree.AddDirectChild(bDist.Name(), paramSmoothing.MakeSetter(vsParam, 1));
-                        tree.AddDirectChild(aDist.Name(), paramSmoothing.MakeSetter(vsParam, -1));
+                        var tree = math.MakeDirect($"{aName} vs {bName}");
+                        tree.AddDirectChild(bDist.Name(), math.MakeSetter(vsParam, 1));
+                        tree.AddDirectChild(aDist.Name(), math.MakeSetter(vsParam, -1));
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }
