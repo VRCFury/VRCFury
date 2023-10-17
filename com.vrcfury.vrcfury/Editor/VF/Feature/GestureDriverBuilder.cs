@@ -156,7 +156,7 @@ namespace VF.Feature {
             off.TransitionsTo(on).When(enabled);
             on.TransitionsTo(off).When(enabled.Not());
 
-            return smoothing.Smooth($"{input.Name()}/Smoothed", input, 0.15f);
+            return smoothing.Smooth($"{input.Name()}/Smoothed", target, 0.15f);
         }
 
         public override string GetEditorTitle() {
