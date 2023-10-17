@@ -22,7 +22,7 @@ namespace VF.Service {
             var fx = manager.GetFx();
             var next = fx.NewFloat("frameTimeNext");
             var previous = fx.NewFloat("frameTimePrev");
-            directTree.Add(math.MakeCopier(next, previous));
+
             
             var clip = fx.NewClip("FrameTimeCounter");
             clip.SetCurve(
@@ -30,8 +30,10 @@ namespace VF.Service {
                 new FloatOrObjectCurve(AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000))
             );
             directTree.Add(clip);
+            
+            directTree.Add(math.MakeCopier(next, previous));
 
-            var diff = math.Subtract("frameTime", next, previous);
+            var diff = math.Subtract(next, previous, name: "frameTime");
 
             cached = diff;
             return diff;

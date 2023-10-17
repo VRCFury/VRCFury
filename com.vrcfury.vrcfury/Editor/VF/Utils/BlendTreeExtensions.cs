@@ -1,5 +1,6 @@
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Utils.Controller;
 
 namespace VF.Utils {
     public static class BlendTreeExtensions {
@@ -10,6 +11,10 @@ namespace VF.Utils {
             child.directBlendParameter = param;
             children[children.Length - 1] = child;
             tree.children = children;
+        }
+
+        public static void Add(this BlendTree tree, VFAFloat param, Motion motion) {
+            AddDirectChild(tree, param.Name(), motion);
         }
     }
 }

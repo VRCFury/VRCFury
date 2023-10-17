@@ -1,6 +1,9 @@
-﻿using VF.Builder;
+﻿using System.Collections.Generic;
+using UnityEngine;
+using VF.Builder;
 using VF.Component;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Service {
@@ -16,20 +19,33 @@ namespace VF.Service {
         
         public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
             if (smoothingSeconds <= 0) return target;
-            if (smoothingSeconds > 10) smoothingSeconds = 10;
-            var fractionPerFrame = GetSpeed(smoothingSeconds, useAcceleration);
 
             var fx = manager.GetFx();
-            var speedParam = fx.NewFloat($"{name}/FractionPerFrame", def: fractionPerFrame);
-            var speedParamCompensated =
-                math.Multiply($"{name}/FractionPerFrameComp", speedParam, frameTimeService.GetFrameTime());
-
-            var output = Smooth_($"{name}/Pass1", target, speedParamCompensated);
-            if (useAcceleration) output = Smooth_($"{name}/Pass2", output, speedParamCompensated);
+            var output = fx.NewFloat(name, def: target.GetDefault());
+            directTree.Add(Smooth(target, output, smoothingSeconds, useAcceleration));
             return output;
         }
+        
+        public Motion Smooth(VFAFloat target, VFAFloat output, float smoothingSeconds, bool useAcceleration = true, string prefix = "") {
+            if (smoothingSeconds <= 0) return math.MakeCopier(target, output);
+            if (smoothingSeconds > 10) smoothingSeconds = 10;
+            var speed = GetSpeed(smoothingSeconds, useAcceleration);
+            if (prefix != "") prefix = "/" + prefix;
 
-        private float GetSpeed(float seconds, bool useAcceleration) {
+            if (!useAcceleration) {
+                return Smooth_(target, output, speed);
+            }
+
+            var fx = manager.GetFx();
+            var tree = math.MakeDirect(output.Name());
+            var pass1 = fx.NewFloat($"{output.Name()}{prefix}/Pass1", def: output.GetDefault());
+            tree.Add(fx.One(), Smooth_(target, pass1, speed));
+            tree.Add(fx.One(), Smooth_(pass1, output, speed));
+            return tree;
+        }
+
+        private Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
+        private VFAFloat GetSpeed(float seconds, bool useAcceleration) {
             var framerateForCalculation = 60; // closer to the in game framerate, the more technically accurate it will be
             var targetFrames = seconds * framerateForCalculation;
             var currentSpeed = 0.5f;
@@ -43,14 +59,18 @@ namespace VF.Service {
                 }
                 nextStep *= 0.5f;
             }
-            return currentSpeed * framerateForCalculation;
+            var fractionPerSecond = currentSpeed * framerateForCalculation;
+            
+            var name = $"smoothingSpeed/{seconds}{(useAcceleration ? "/withAccel" : "")}";
+            if (cachedSpeeds.TryGetValue(name, out var output)) {
+                return output;
+            }
+            output = math.Multiply(name, frameTimeService.GetFrameTime(), fractionPerSecond);
+            cachedSpeeds[name] = output;
+            return output;
         }
 
-        private VFAFloat Smooth_(string name, VFAFloat target, VFAFloat speedParam) {
-            var fx = manager.GetFx();
-
-            var output = fx.NewFloat(name, def: target.GetDefault());
-
+        private Motion Smooth_(VFAFloat target, VFAFloat output, VFAFloat speedParam) {
             // Maintain tree - keeps the current value
             var maintainTree = math.MakeMaintainer(output);
 
@@ -62,13 +82,11 @@ namespace VF.Service {
             var smoothTree = math.Make1D(
                 $"{output.Name()} smoothto {target.Name()}",
                 speedParam,
-                (maintainTree, 0),
-                (targetTree, 1)
+                (0, maintainTree),
+                (1, targetTree)
             );
 
-            directTree.Add(smoothTree);
-
-            return output;
+            return smoothTree;
         }
 
     }

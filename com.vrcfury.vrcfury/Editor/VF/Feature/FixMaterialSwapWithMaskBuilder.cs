@@ -79,7 +79,7 @@ namespace VF.Feature {
                             value = mat
                         }
                     });
-                    directTree.AddDirectChild(param.Name(), clip);
+                    directTree.Add(param, clip);
                 }
             }
         }

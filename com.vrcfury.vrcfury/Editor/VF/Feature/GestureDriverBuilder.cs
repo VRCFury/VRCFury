@@ -11,6 +11,8 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
@@ -20,6 +22,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -79,6 +82,25 @@ namespace VF.Feature {
             } else {
                 throw new Exception("Unknown hand type");
             }
+            
+            var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
+            
+            var clip = actionClipService.LoadState(uid, gesture.state);
+            if (gesture.enableWeight && weightHand > 0) {
+                MakeWeightParams();
+                var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
+                var tree = fx.NewBlendTree(uid + "_blend");
+                tree.blendType = BlendTreeType.Simple1D;
+                tree.useAutomaticThresholds = false;
+                tree.blendParameter = weightParam.Name();
+                tree.AddChild(fx.GetEmptyClip(), 0);
+                tree.AddChild(clip, 1);
+                on.WithAnimation(tree);
+                onCondition = weightParam.IsGreaterThan(0.05f);
+                transitionTime = 0.05f;
+            } else {
+                on.WithAnimation(clip);
+            }
 
             if (lockMenuParam != null) {
                 onCondition = onCondition.Or(lockMenuParam.IsTrue());
@@ -104,23 +126,7 @@ namespace VF.Feature {
                 on.Drives(disableBlinkParam, true);
                 addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
             }
-            
-            var clip = actionClipService.LoadState(uid, gesture.state);
-            if (gesture.enableWeight && weightHand > 0) {
-                MakeWeightParams();
-                var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
-                var tree = fx.NewBlendTree(uid + "_blend");
-                tree.blendType = BlendTreeType.Simple1D;
-                tree.useAutomaticThresholds = false;
-                tree.blendParameter = weightParam.Name();
-                tree.AddChild(fx.GetEmptyClip(), 0);
-                tree.AddChild(clip, 1);
-                on.WithAnimation(tree);
-            } else {
-                on.WithAnimation(clip);
-            }
 
-            var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
             off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
         }
@@ -130,24 +136,27 @@ namespace VF.Feature {
         private void MakeWeightParams() {
             if (leftWeightParam != null) return;
             var fx = GetFx();
-            var GestureLeftWeight = fx.GestureLeftWeight();
-            var GestureRightWeight = fx.GestureRightWeight();
-            var GestureLeftCondition = fx.GestureLeft().IsEqualTo(1);
-            var GestureRightCondition = fx.GestureRight().IsEqualTo(1);
-            leftWeightParam = MakeWeightLayer(GestureLeftWeight, GestureLeftCondition);
-            rightWeightParam = MakeWeightLayer(GestureRightWeight, GestureRightCondition);
+            leftWeightParam = MakeWeightLayer(
+                fx.GestureLeftWeight(),
+                fx.GestureLeft().IsEqualTo(1)
+            );
+            rightWeightParam = MakeWeightLayer(
+                fx.GestureRightWeight(),
+                fx.GestureRight().IsEqualTo(1)
+            );
         }
-        private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition whenEnabled) {
+        private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition enabled) {
             var fx = GetFx();
-            var layer = fx.NewLayer($"{input.Name()}Smoothed");
-            var maintained = fx.NewFloat($"{input.Name()}Maintained");
-            var maintain = layer.NewState("Maintain").WithAnimation(math.MakeMaintainer(maintained));
-            var copy = layer.NewState("Copy").WithAnimation(math.MakeCopier(input, maintained));
+            var layer = fx.NewLayer($"{input.Name()} Target");
 
-            maintain.TransitionsTo(copy).When(whenEnabled);
-            copy.TransitionsTo(maintain).When(whenEnabled.Not());
+            var target = fx.NewFloat($"{input.Name()}/Target", def: input.GetDefault());
 
-            return smoothing.Smooth($"{input.Name()}Smoothed", maintained, 0.2f);
+            var off = layer.NewState("Off").WithAnimation(math.MakeSetter(target, 0));
+            var on = layer.NewState("On").WithAnimation(math.MakeCopier(input, target));
+            off.TransitionsTo(on).When(enabled);
+            on.TransitionsTo(off).When(enabled.Not());
+
+            return smoothing.Smooth($"{input.Name()}/Smoothed", input, 0.15f);
         }
 
         public override string GetEditorTitle() {

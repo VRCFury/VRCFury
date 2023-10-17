@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -24,67 +25,60 @@ namespace VF.Service {
         
         // A VFAFloat, but it's guaranteed to be 0 or 1
         public class VFAFloatBool {
-            private readonly VFAFloat param;
+            public Func<Motion, Motion, Motion> create { private set; get; }
+            public bool defaultIsTrue { private set; get; }
 
-            public VFAFloatBool(VFAFloat param, bool alwaysFalse = false, bool alwaysTrue = false) {
-                this.param = param;
-                this.alwaysTrue = alwaysTrue;
-                this.alwaysFalse = alwaysFalse;
+            public VFAFloatBool(Func<Motion, Motion, Motion> create, bool defaultIsTrue) {
+                this.create = create;
+                this.defaultIsTrue = defaultIsTrue;
             }
-            public string Name() {
-                return param.Name();
-            }
-            public bool GetDefault() {
-                return param.GetDefault() > 0.5;
-            }
-            public VFCondition IsTrue() {
-                return param.IsGreaterThan(0.5f);
-            }
-            public bool alwaysTrue { get; }
-            public bool alwaysFalse { get; }
-            public static implicit operator VFAFloat(VFAFloatBool d) => d.param;
+        }
+
+        public class VFAFloatOrConst {
+            public VFAFloat param { get; private set; }
+            public float constt  { get; private set; }
+            public static implicit operator VFAFloatOrConst(VFAFloat d) => new VFAFloatOrConst() { param = d };
+            public static implicit operator VFAFloatOrConst(float d) => new VFAFloatOrConst() { constt = d };
+            public float GetDefault() => param?.GetDefault() ?? constt;
         }
 
         public VFAFloat SetValueWithConditions(
             string name,
-            params (VFAFloat,VFAFloatBool)[] targets
+            params (VFAFloatOrConst,VFAFloatBool)[] targets
         ) {
-            var fx = avatarManager.GetFx();
-
             var defaultValue = targets
-                .Where(target => target.Item2 == null || target.Item2.GetDefault())
+                .Where(target => target.Item2 == null || target.Item2.defaultIsTrue)
                 .Select(target => target.Item1.GetDefault())
                 .First();
 
-            var output = fx.NewFloat(name, def: defaultValue);
+            var output = MakeZeroBasisFloat(name, def: defaultValue);
 
-            VFAFloatBool anyPreviousState = null;
-            foreach (var target in targets) {
-                var couldBeThisState = target.Item2 ?? True();
+            Motion elseTree = null;
+            foreach (var (target, when) in targets.Reverse()) {
+                var doWhenTrue = MakeCopier(target, output);
 
-                var isThisState = (anyPreviousState == null)
-                    ? couldBeThisState
-                    : And(couldBeThisState, Not(anyPreviousState));
-
-                if (anyPreviousState == null) {
-                    anyPreviousState = isThisState;
-                } else {
-                    anyPreviousState = Or(anyPreviousState, couldBeThisState);
+                if (when == null || elseTree == null) {
+                    elseTree = doWhenTrue;
+                    continue;
                 }
 
-                directTree.Add(isThisState, MakeCopier(target.Item1, output));
+                elseTree = when.create(doWhenTrue, elseTree);
             }
-
+            directTree.Add(elseTree);
             return output;
         }
 
-        private VFAFloatBool False() {
-            var fx = avatarManager.GetFx();
-            return new VFAFloatBool(fx.Zero(), alwaysFalse: true);
+        public VFAFloatBool False() {
+            return new VFAFloatBool(
+                (whenTrue, whenFalse) => whenFalse,
+                false
+            );
         }
-        private VFAFloatBool True() {
-            var fx = avatarManager.GetFx();
-            return new VFAFloatBool(fx.One(), alwaysTrue: true);
+        public VFAFloatBool True() {
+            return new VFAFloatBool(
+                (whenTrue, whenFalse) => whenTrue,
+                true
+            );
         }
 
         public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
@@ -97,7 +91,7 @@ namespace VF.Service {
             var minClip = MakeSetter(output, outMin);
             var maxClip = MakeSetter(output, outMax);
 
-            var tree = fx.NewBlendTree($"{input.Name()} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
+            var tree = fx.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
             tree.blendParameter = input.Name();
@@ -113,65 +107,105 @@ namespace VF.Service {
 
             return output;
         }
-
-        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
-            var sub = Subtract($"{a.Name()} - {b.Name()}", a, b);
-            if (orEqual) {
-                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) >= ({b.Name()})", sub, (VRCFuryEditorUtils.NextFloatDown(0), 0), (0, 1)));
-            }
-            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) > ({b.Name()})", sub, (0, 0), (VRCFuryEditorUtils.NextFloatUp(0), 1)));
-        }
         
-        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
-            if (orEqual) {
-                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) >= {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 0), (b, 1)));
-            }
-            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) > {b}", a, (b, 0), (VRCFuryEditorUtils.NextFloatUp(b), 1)));
-        }
-        
-        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
-            if (orEqual) {
-                return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) <= {b}", a, (b, 1), (VRCFuryEditorUtils.NextFloatUp(b), 0)));
-            }
-            return new VFAFloatBool(Map1D(name ?? $"({a.Name()}) < {b}", a, (VRCFuryEditorUtils.NextFloatDown(b), 1), (b, 0)));
+        public VFAFloatBool Equals(VFAFloat a, float b, string name = null) {
+            return new VFAFloatBool((whenTrue, whenFalse) => Make1D(
+                name ?? $"{CleanName(a)} == {b}",
+                a,
+                (Down(b), whenFalse),
+                (b, whenTrue),
+                (Up(b), whenFalse)
+            ), a.GetDefault() == b);
         }
 
-        public VFAFloat Subtract(string name, VFAFloat a, VFAFloat b) {
-            return Add(name, a, b, true);
+        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false) {
+            return new VFAFloatBool((whenTrue, whenFalse) => {
+                var fx = avatarManager.GetFx();
+                var tree = fx.NewBlendTree($"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}");
+                tree.blendType = BlendTreeType.SimpleDirectional2D;
+                tree.useAutomaticThresholds = false;
+                tree.blendParameter = a.Name();
+                tree.blendParameterY = b.Name();
+                tree.AddChild(whenFalse, new Vector2(-10000, -10000));
+                tree.AddChild(whenFalse, new Vector2(10000, 10000));
+                tree.AddChild(whenFalse, new Vector2(0, 0));
+                tree.AddChild(whenFalse, new Vector2(-10000, 10000));
+                tree.AddChild(whenTrue, new Vector2(Up(-10000), -10000));
+                tree.AddChild(whenTrue, new Vector2(10000, Down(10000)));
+                tree.AddChild(whenTrue, new Vector2(Up(0), Down(0)));
+                tree.AddChild(whenTrue, new Vector2(10000, -10000));
+                return tree;
+            }, a.GetDefault() > b.GetDefault() || (orEqual && a.GetDefault() == b.GetDefault()));
         }
         
-        public VFAFloat Add(string name, VFAFloat a, VFAFloat b, bool subtract = false) {
+        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false) {
+            return new VFAFloatBool((whenTrue, whenFalse) => Make1D(
+                $"{CleanName(a)} > {b}",
+                a,
+                (orEqual ? Down(b) : b, whenFalse),
+                (orEqual ? b : Up(b), whenTrue)
+            ), a.GetDefault() > b || (orEqual && a.GetDefault() == b));
+        }
+
+        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false) {
+            return Not(GreaterThan(a, b, !orEqual));
+        }
+
+        private static float Up(float a) {
+            return VRCFuryEditorUtils.NextFloatUp(a);
+        }
+        private static float Down(float a) {
+            return VRCFuryEditorUtils.NextFloatDown(a);
+        }
+
+        public VFAFloat Subtract(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
+            return Add(a, b, true, name: name);
+        }
+        
+        private VFAFloat Add(VFAFloatOrConst a, VFAFloatOrConst b, bool subtract = false, string name = null) {
             var fx = avatarManager.GetFx();
-            var output = fx.NewFloat(name, def: subtract ? a.GetDefault() - b.GetDefault() : a.GetDefault() + b.GetDefault());
-            var zeroClip = MakeSetter(output, 0);
-            var oneClip = MakeSetter(output, 1);
+            name = name ?? $"{CleanName(a)} {(subtract ? '-' : '+')} {CleanName(b)}";
+            var output = MakeZeroBasisFloat(
+                name,
+                def: subtract ? a.GetDefault() - b.GetDefault() : a.GetDefault() + b.GetDefault()
+            );
 
-            directTree.Add(zeroClip);
-            directTree.Add(a, oneClip);
-            directTree.Add(b, !subtract ? oneClip : MakeSetter(output, -1));
+            var tree = MakeDirect(name);
+            directTree.Add(tree);
+
+            if (a.param != null)
+                tree.Add(a.param, MakeSetter(output, 1));
+            else
+                tree.Add(fx.One(), MakeSetter(output, a.constt));
+
+            if (b.param != null)
+                tree.Add(b.param, MakeSetter(output, subtract ? -1 : 1));
+            else
+                tree.Add(fx.One(), MakeSetter(output, (subtract ? -1 : 1) * a.constt));
 
             return output;
         }
 
         public AnimationClip MakeSetter(VFAFloat param, float value) {
             var fx = avatarManager.GetFx();
-            var clip = fx.NewClip($"{param.Name()} = {value}");
+            var clip = fx.NewClip($"{CleanName(param)} = {value}");
             clip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
             return clip;
         }
 
-        public BlendTree Make1D(string name, VFAFloat param, params (Motion, float)[] children) {
+        public BlendTree Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
             var fx = avatarManager.GetFx();
             var tree = fx.NewBlendTree(name);
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
             tree.blendParameter = param.Name();
-            foreach (var (motion,threshold) in children) {
+            foreach (var (threshold, motion) in children) {
                 tree.AddChild(motion, threshold);
             }
             return tree;
         }
 
+        /*
         public VFAFloat Map1D(string name, VFAFloat input, params (float, float)[] children) {
             var fx = avatarManager.GetFx();
             var defaultValue = children
@@ -187,6 +221,7 @@ namespace VF.Service {
             ));
             return output;
         }
+        */
 
         public BlendTree MakeDirect(string name) {
             var fx = avatarManager.GetFx();
@@ -199,56 +234,75 @@ namespace VF.Service {
          * Only works on values > 0 !
          * Value MUST be defaulted to 0, or the copy will ADD to it
          */
-        public BlendTree MakeCopier(VFAFloat from, VFAFloat to) {
-            var direct = MakeDirect($"{to.Name()} = ({from.Name()})");
-            direct.AddDirectChild(True().Name(), MakeSetter(to, 0));
-            direct.AddDirectChild(from.Name(), MakeSetter(to, 1));
-            return direct;
+        public Motion MakeCopier(VFAFloatOrConst from, VFAFloat to) {
+            if (from.param != null) {
+                var direct = MakeDirect($"{CleanName(to)} = {CleanName(from)}");
+                direct.Add(from.param, MakeSetter(to, 1));
+                return direct;
+            } else {
+                return MakeSetter(to, from.constt);
+            }
         }
         
-        public BlendTree MakeMaintainer(VFAFloat param) {
+        public Motion MakeMaintainer(VFAFloat param) {
             return MakeCopier(param, param);
         }
 
-        public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b) {
-            if (a.alwaysTrue || b.alwaysTrue) return True();
-            if (a.alwaysFalse) return b;
-            if (b.alwaysFalse) return a;
-            return GreaterThan(Add($"({a.Name()}) OR ({b.Name()})", a, b), 0.5f);
+        public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b, string name = null) {
+            return new VFAFloatBool(
+                (whenTrue, whenFalse) => a.create(whenTrue, b.create(whenTrue, whenFalse)),
+                a.defaultIsTrue || b.defaultIsTrue
+            );
         }
         
-        public VFAFloatBool And(VFAFloatBool a, VFAFloatBool b) {
-            if (a.alwaysFalse || b.alwaysFalse) return False();
-            if (a.alwaysTrue) return b;
-            if (b.alwaysTrue) return a;
-            return GreaterThan(Add($"({a.Name()}) AND ({b.Name()})", a, b), 1.5f);
+        public VFAFloatBool And(VFAFloatBool a, VFAFloatBool b, string name = null) {
+            return new VFAFloatBool(
+                (whenTrue, whenFalse) => a.create(b.create(whenTrue, whenFalse), whenFalse),
+                a.defaultIsTrue && b.defaultIsTrue
+            );
         }
         
         public VFAFloatBool Not(VFAFloatBool a) {
-            if (a.alwaysFalse) return True();
-            if (a.alwaysTrue) return False();
-            return LessThan(a, 0, true);
+            return new VFAFloatBool(
+                (whenTrue, whenFalse) => a.create(whenFalse, whenTrue),
+                !a.defaultIsTrue
+            );
         }
 
         public VFAFloat Max(VFAFloat a, VFAFloat b) {
-            return SetValueWithConditions($"Max of ({a.Name()}) or ({b.Name()})",
+            return SetValueWithConditions($"MAX({CleanName(a)},{CleanName(b)})",
                 (a, GreaterThan(a, b)),
                 (b, null)
             );
         }
         
-        public VFAFloat Multiply(string name, VFAFloat a, VFAFloat b) {
+        public VFAFloat Multiply(string name, VFAFloat a, VFAFloatOrConst b) {
             var fx = avatarManager.GetFx();
-            var output = fx.NewFloat(name, def: a.GetDefault() * b.GetDefault());
-            var zeroClip = MakeSetter(output, 0);
-            var oneClip = MakeSetter(output, 1);
-            
-            var subTree = MakeDirect("Multiply");
-            subTree.AddDirectChild(b.Name(), oneClip);
+            var output = MakeZeroBasisFloat(name, def: a.GetDefault() * b.GetDefault());
 
-            directTree.Add(zeroClip);
-            directTree.Add(a, subTree);
+            if (b.param != null) {
+                var subTree = MakeDirect("Multiply");
+                subTree.Add(b.param, MakeSetter(output, 1));
+                directTree.Add(a, subTree);
+            } else {
+                directTree.Add(a, MakeSetter(output, b.constt));
+            }
 
+            return output;
+        }
+
+        private static string CleanName(VFAFloatOrConst a) {
+            if (a.param != null) return a.param.Name();
+            return a.constt + "";
+        }
+
+        // When controlling an AAP using a blend tree, the "default value" of the parameter will be included (at least partially)
+        // in the calculated value UNLESS the weight of the inputs is >= 1. We can prevent it from being involved at all by animating the
+        // value to 0 with weight 1. We can skip this if the default is already 0 though.
+        public VFAFloat MakeZeroBasisFloat(string name, float def) {
+            var fx = avatarManager.GetFx();
+            var output = fx.NewFloat(name, def: def);
+            if (def != 0) directTree.Add(MakeSetter(output, 0));
             return output;
         }
     }
