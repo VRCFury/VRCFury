@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -306,6 +307,11 @@ namespace VF.Builder {
             
             var copy = SafeInstantiate(original);
             copy.name = original.name;
+            if (copy is Material copyMat) {
+                if (string.IsNullOrWhiteSpace(copyMat.GetTag("thry_rename_suffix", false))) {
+                    copyMat.SetOverrideTag("thry_rename_suffix", Regex.Replace(original.name, "[^a-zA-Z0-9_]", ""));
+                }
+            }
             VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, $"{copy.name} for {owner.name}");
             mutableOwners[copy] = owner;
             originalToMutable[(original, owner)] = copy;
