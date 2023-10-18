@@ -45,8 +45,10 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
         public void RecordAllDefaults() {
-            var settings = GetBuildSettings();
-            if (settings.useWriteDefaults) return;
+            // We shouldn't need to record defaults if useWriteDefaults is true, BUT due to a vrchat bug,
+            // the defaults state for properties are broken in mirrors, so we're forced to record them all in the base layer.
+            //var settings = GetBuildSettings();
+            //if (settings.useWriteDefaults) return;
 
             foreach (var layer in GetMaintainedLayers(GetFx())) {
                 foreach (var state in new AnimatorIterator.States().From(layer)) {
