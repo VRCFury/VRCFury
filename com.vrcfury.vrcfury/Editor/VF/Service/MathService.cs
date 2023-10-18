@@ -130,10 +130,7 @@ namespace VF.Service {
                 tree.AddChild(whenFalse, new Vector2(10000, 10000));
                 tree.AddChild(whenFalse, new Vector2(0, 0));
                 tree.AddChild(whenFalse, new Vector2(-10000, 10000));
-                tree.AddChild(whenTrue, new Vector2(Up(-10000), -10000));
-                tree.AddChild(whenTrue, new Vector2(10000, Down(10000)));
-                tree.AddChild(whenTrue, new Vector2(Up(0), Down(0)));
-                tree.AddChild(whenTrue, new Vector2(10000, -10000));
+                tree.AddChild(whenTrue, new Vector2(0.000001f, -0.000001f));
                 return tree;
             }, a.GetDefault() > b.GetDefault() || (orEqual && a.GetDefault() == b.GetDefault()));
         }
