@@ -159,9 +159,8 @@ namespace VF.Service {
                 }
             }
 
-            if (times.Count != 2) return null;
-            times.Remove(0);
-            if (times.Count != 1) return null;
+            if (!times.Contains(0)) return null;
+            if (times.Count > 2) return null;
 
             var startClip = new AnimationClip();
             var endClip = new AnimationClip();
