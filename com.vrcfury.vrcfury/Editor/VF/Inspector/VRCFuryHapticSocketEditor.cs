@@ -254,15 +254,15 @@ namespace VF.Inspector {
             var senders = GameObjects.Create("Senders", bakeRoot);
 
             // Senders
-            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, new [] { HapticUtils.CONTACT_ORF_MAIN });
-            HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f, new [] { HapticUtils.CONTACT_ORF_NORM });
+            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, new [] { HapticUtils.TagTpsOrfRoot, HapticUtils.TagSpsSocketRoot });
+            HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f, new [] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront });
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
                 HapticUtils.AddSender(
                     senders,
                     Vector3.zero,
                     "Type",
                     0.001f,
-                    new [] { lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.CONTACT_ORF_IsRing : HapticUtils.CONTACT_ORF_IsHole }
+                    new [] { lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole }
                 );
             }
             
@@ -290,7 +290,7 @@ namespace VF.Inspector {
                     
                     var frotRadius = 0.1f;
                     var frotPos = 0.05f;
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.CONTACT_ORF_MAIN}, HapticUtils.ReceiverParty.Others, localOnly:true);
+                    HapticUtils.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, localOnly:true);
                 }
                 
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Self, localOnly:true);

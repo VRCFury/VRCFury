@@ -38,7 +38,7 @@ namespace VF.Service {
                 var prefix = $"{name}/Anim{(allowSelf ? "" : "Others")}";
                 var maxDist = actions.Max(a => Math.Max(a.startDistance, a.endDistance));
                 var colliderWorldRadius = maxDist * worldLength;
-                var contact = CreateFrontBack(prefix, animRoot, colliderWorldRadius, allowSelf, HapticUtils.CONTACT_ORF_MAIN);
+                var contact = CreateFrontBack(prefix, animRoot, colliderWorldRadius, allowSelf, HapticUtils.TagTpsOrfRoot);
                 var activeWhen = math.Or(
                     math.GreaterThan(contact.front, contact.back, true),
                     math.GreaterThan(contact.front, 0.8f)
