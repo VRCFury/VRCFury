@@ -109,7 +109,11 @@ namespace VF.Builder.Haptics {
                     suffixes.Add("");
                 }
             }
-            tags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToArray();
+
+            tags = tags.SelectMany(tag => {
+                if (!tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
+                return suffixes.Select(suffix => tag + suffix);
+            }).ToArray();
 
             var child = GameObjects.Create(objName, obj);
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return child;
