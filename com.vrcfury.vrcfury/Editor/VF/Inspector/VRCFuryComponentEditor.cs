@@ -215,6 +215,11 @@ namespace VF.Inspector {
             }
             
             container.Add(body);
+            
+            // TODO: make this look nicer
+            var versionLabel = new Label($"VRCFury - version: {VRCFPackageUtils.Version}");
+            versionLabel.name = "versionLabel";
+            container.Add(versionLabel);
 
             /*
             el.RegisterCallback<AttachToPanelEvent>(e => {

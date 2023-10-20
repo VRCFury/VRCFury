@@ -33,3 +33,7 @@ PropertyField.VrcFuryEditorProp > .unity-base-field {
 .vfTooltip.vfTooltipHidden {
     display: none;
 }
+versionLabel {
+    align-content: flex-end;
+    align-self: flex-end;
+}
