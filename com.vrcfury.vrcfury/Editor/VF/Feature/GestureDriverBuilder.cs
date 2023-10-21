@@ -33,13 +33,6 @@ namespace VF.Feature {
 
         private void MakeGesture(GestureDriver.Gesture gesture, GestureDriver.Hand handOverride = GestureDriver.Hand.EITHER) {
             var hand = handOverride == GestureDriver.Hand.EITHER ? gesture.hand : handOverride;
-            
-            if (gesture.enableWeight && hand == GestureDriver.Hand.EITHER &&
-                gesture.sign == GestureDriver.HandSign.FIST) {
-                MakeGesture(gesture, GestureDriver.Hand.LEFT);
-                MakeGesture(gesture, GestureDriver.Hand.RIGHT);
-                return;
-            }
 
             var fx = GetFx();
             var uniqueNum = i++;
@@ -62,42 +55,45 @@ namespace VF.Feature {
                 }
             }
 
-            var GestureLeft = fx.GestureLeft();
-            var GestureRight = fx.GestureRight();
+            void MakeHand(bool right, ref VFCondition aggCondition, ref VFAFloat aggWeight) {
+                if (hand == GestureDriver.Hand.LEFT && right) return;
+                if (hand == GestureDriver.Hand.RIGHT && !right) return;
+                var sign = (right && hand == GestureDriver.Hand.COMBO) ? gesture.comboSign : gesture.sign;
 
-            VFCondition onCondition;
-            int weightHand = 0;
-            if (hand == GestureDriver.Hand.LEFT) {
-                onCondition = GestureLeft.IsEqualTo((int)gesture.sign);
-                if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
-            } else if (hand == GestureDriver.Hand.RIGHT) {
-                onCondition = GestureRight.IsEqualTo((int)gesture.sign);
-                if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 2;
-            } else if (hand == GestureDriver.Hand.EITHER) {
-                onCondition = GestureLeft.IsEqualTo((int)gesture.sign).Or(GestureRight.IsEqualTo((int)gesture.sign));
-            } else if (hand == GestureDriver.Hand.COMBO) {
-                onCondition = GestureLeft.IsEqualTo((int)gesture.sign).And(GestureRight.IsEqualTo((int)gesture.comboSign));
-                if (gesture.comboSign == GestureDriver.HandSign.FIST) weightHand = 2;
-                else if(gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
-            } else {
-                throw new Exception("Unknown hand type");
+                var myCondition = (right ? fx.GestureRight() : fx.GestureLeft()).IsEqualTo((int)sign);
+                if (aggCondition == null) aggCondition = myCondition;
+                else if (hand == GestureDriver.Hand.EITHER) aggCondition = aggCondition.Or(myCondition);
+                else if (hand == GestureDriver.Hand.COMBO) aggCondition = aggCondition.And(myCondition);
+
+                if (sign == GestureDriver.HandSign.FIST && gesture.enableWeight) {
+                    var myWeight = right ? fx.GestureRightWeight() : fx.GestureLeftWeight();
+                    if (aggWeight == null) aggWeight = myWeight;
+                    else aggWeight = math.Max(aggWeight, myWeight);
+                }
             }
-            
+
+            VFCondition onCondition = null;
+            VFAFloat weight = null;
+            MakeHand(false, ref onCondition, ref weight);
+            MakeHand(true, ref onCondition, ref weight);
+
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
             
             var clip = actionClipService.LoadState(uid, gesture.state);
-            if (gesture.enableWeight && weightHand > 0) {
-                MakeWeightParams();
-                var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
+            if (weight != null) {
+                var smoothedWeight = MakeWeightLayer(
+                    weight,
+                    onCondition
+                );
+                onCondition = smoothedWeight.IsGreaterThan(0.05f);
+                transitionTime = 0.05f;
                 var tree = fx.NewBlendTree(uid + "_blend");
                 tree.blendType = BlendTreeType.Simple1D;
                 tree.useAutomaticThresholds = false;
-                tree.blendParameter = weightParam.Name();
+                tree.blendParameter = smoothedWeight.Name();
                 tree.AddChild(fx.GetEmptyClip(), 0);
                 tree.AddChild(clip, 1);
                 on.WithAnimation(tree);
-                onCondition = weightParam.IsGreaterThan(0.05f);
-                transitionTime = 0.05f;
             } else {
                 on.WithAnimation(clip);
             }
@@ -131,20 +127,6 @@ namespace VF.Feature {
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
         }
 
-        private VFAFloat leftWeightParam;
-        private VFAFloat rightWeightParam;
-        private void MakeWeightParams() {
-            if (leftWeightParam != null) return;
-            var fx = GetFx();
-            leftWeightParam = MakeWeightLayer(
-                fx.GestureLeftWeight(),
-                fx.GestureLeft().IsEqualTo(1)
-            );
-            rightWeightParam = MakeWeightLayer(
-                fx.GestureRightWeight(),
-                fx.GestureRight().IsEqualTo(1)
-            );
-        }
         private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition enabled) {
             var fx = GetFx();
             var layer = fx.NewLayer($"{input.Name()} Target");

@@ -20,10 +20,13 @@ namespace VF.Builder.Haptics {
         public static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
         public static string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
         public static string CONTACT_PEN_ROOT = "TPS_Pen_Root";
-        public static string CONTACT_ORF_MAIN = "TPS_Orf_Root";
-        public static string CONTACT_ORF_NORM = "TPS_Orf_Norm";
-        public static string CONTACT_ORF_IsRing = "SPS_Socket_Ring";
-        public static string CONTACT_ORF_IsHole = "SPS_Socket_Hole";
+        public static string TagTpsOrfRoot = "TPS_Orf_Root";
+        public static string TagTpsOrfFront = "TPS_Orf_Norm";
+
+        public static string TagSpsSocketRoot = "SPS_Socket_Root";
+        public static string TagSpsSocketFront = "SPS_Socket_Front";
+        public static string TagSpsSocketIsRing = "SPS_Socket_Ring";
+        public static string TagSpsSocketIsHole = "SPS_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",
@@ -109,7 +112,11 @@ namespace VF.Builder.Haptics {
                     suffixes.Add("");
                 }
             }
-            tags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToArray();
+
+            tags = tags.SelectMany(tag => {
+                if (!tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
+                return suffixes.Select(suffix => tag + suffix);
+            }).ToArray();
 
             var child = GameObjects.Create(objName, obj);
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return child;
@@ -158,8 +165,8 @@ namespace VF.Builder.Haptics {
         public static bool IsTPSSender(VRCContactSender c) {
             if (c.collisionTags.Any(t => t == CONTACT_PEN_MAIN)) return true;
             if (c.collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) return true;
-            if (c.collisionTags.Any(t => t == CONTACT_ORF_MAIN)) return true;
-            if (c.collisionTags.Any(t => t == CONTACT_ORF_NORM)) return true;
+            if (c.collisionTags.Any(t => t == TagTpsOrfRoot)) return true;
+            if (c.collisionTags.Any(t => t == TagTpsOrfFront)) return true;
             return false;
         }
 

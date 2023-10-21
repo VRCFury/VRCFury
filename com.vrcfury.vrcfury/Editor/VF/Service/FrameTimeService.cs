@@ -23,13 +23,13 @@ namespace VF.Service {
             var next = fx.NewFloat("frameTimeNext");
             var previous = fx.NewFloat("frameTimePrev");
 
-            
-            var clip = fx.NewClip("FrameTimeCounter");
+            var layer = fx.NewLayer("FrameTime Counter");
+            var clip = fx.NewClip("FrameTime Counter");
             clip.SetCurve(
                 EditorCurveBinding.FloatCurve("", typeof(Animator), next.Name()),
                 new FloatOrObjectCurve(AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000))
             );
-            directTree.Add(clip);
+            var state = layer.NewState("Count").WithAnimation(clip);
             
             directTree.Add(math.MakeCopier(next, previous));
 

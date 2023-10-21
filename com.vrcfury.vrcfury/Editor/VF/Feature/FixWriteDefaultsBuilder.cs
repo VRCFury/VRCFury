@@ -47,7 +47,7 @@ namespace VF.Feature {
         public void RecordAllDefaults() {
             // We shouldn't need to record defaults if useWriteDefaults is true, BUT due to a vrchat bug,
             // the defaults state for properties are broken in mirrors, so we're forced to record them all in the base layer.
-            //var settings = GetBuildSettings();
+            var settings = GetBuildSettings();
             //if (settings.useWriteDefaults) return;
 
             foreach (var layer in GetMaintainedLayers(GetFx())) {
@@ -55,6 +55,15 @@ namespace VF.Feature {
                     if (!state.writeDefaultValues) continue;
                     foreach (var clip in new AnimatorIterator.Clips().From(state)) {
                         foreach (var binding in clip.GetFloatBindings()) {
+                            if (
+                                settings.useWriteDefaults
+                                && binding.type == typeof(SkinnedMeshRenderer)
+                                && binding.path == "Body"
+                                && binding.propertyName.StartsWith("blendShape.")
+                                && MmdUtils.IsMaybeMmdBlendshape(binding.propertyName.Substring(11))
+                            ) {
+                                continue;
+                            }
                             RecordDefaultNow(binding, true);
                         }
                         foreach (var binding in clip.GetObjectBindings()) {
@@ -68,6 +77,11 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.AdjustWriteDefaults)]
         public void AdjustWriteDefaults() {
             var settings = GetBuildSettings();
+
+            if (settings.ignoredBroken) {
+                var fx = manager.GetFx();
+                fx.NewBool($"VF/BrokenWd", usePrefix: false, synced: true, networkSynced: false);
+            }
 
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in GetMaintainedLayers(controller)) {
@@ -87,6 +101,7 @@ namespace VF.Feature {
         private class BuildSettings {
             public bool applyToUnmanagedLayers;
             public bool useWriteDefaults;
+            public bool ignoredBroken;
         }
         private BuildSettings _buildSettings;
         private BuildSettings GetBuildSettings() {
@@ -152,7 +167,8 @@ namespace VF.Feature {
 
             _buildSettings = new BuildSettings {
                 applyToUnmanagedLayers = applyToUnmanagedLayers,
-                useWriteDefaults = useWriteDefaults
+                useWriteDefaults = useWriteDefaults,
+                ignoredBroken = analysis.isBroken && mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled
             };
             return _buildSettings;
         }
