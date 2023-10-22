@@ -23,10 +23,10 @@ namespace VF.Builder.Haptics {
         public static string TagTpsOrfRoot = "TPS_Orf_Root";
         public static string TagTpsOrfFront = "TPS_Orf_Norm";
 
-        public static string TagSpsSocketRoot = "SPS_Socket_Root";
-        public static string TagSpsSocketFront = "SPS_Socket_Front";
-        public static string TagSpsSocketIsRing = "SPS_Socket_Ring";
-        public static string TagSpsSocketIsHole = "SPS_Socket_Hole";
+        public static string TagSpsSocketRoot = "SPSLL_Socket_Root";
+        public static string TagSpsSocketFront = "SPSLL_Socket_Front";
+        public static string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
+        public static string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",
