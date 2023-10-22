@@ -309,14 +309,11 @@ namespace VF.Feature {
                 = new Stack<(VFGameObject, VFGameObject)>();
         }
 
-        private Links GetLinks() {
-            VFGameObject propBone = model.propBone;
-            if (propBone == null) return null;
-
+        private void GetDragTarget() {
             var bonePathOnAvatarDragTarget = model.bonePathOnAvatarDragTarget;
             if (bonePathOnAvatarDragTarget != null) {
                 var pathTarget = (VFGameObject)bonePathOnAvatarDragTarget;
-                // If the bone is a humanoid bone, just set the property instead of setting the path
+                // If the bone is a humanoid bone, just set the dropdown instead of setting the path
                 try {
                     var humanoidBone = VRCFArmatureUtils.FindObjectAsBoneOrException(avatarObject, pathTarget);
                     model.boneOnAvatar = humanoidBone;
@@ -324,13 +321,18 @@ namespace VF.Feature {
                     model.bonePathOnAvatarDragTarget = null;
                 } catch (Exception) {
                     // Did not find object in the humanoid descriptor in the original path.
-                    // So we'll assume it's safe to set an absolute path
+                    // So unless the user is renaming their humanoid bones, this should be safe to hard set the path
                     var path = pathTarget.GetPath(avatarObject);
                     model.bonePathOnAvatar = path;
                     model.bonePathOnAvatarDragTarget = null;    
                 }
             }
-            
+        }
+        
+        private Links GetLinks() {
+            VFGameObject propBone = model.propBone;
+            if (propBone == null) return null;
+
             VFGameObject avatarBone = null;
 
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
@@ -453,6 +455,12 @@ namespace VF.Feature {
             container.Add(rootBoneLabelWhenReparent);
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
 
+            container.Add(VRCFuryEditorUtils.WrappedLabel(
+                "Or drag in the bone directly here:"));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatarDragTarget")));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("String path to bone on avatar:"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("If provided, humanoid bone dropdown will be ignored."));
+            container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             
             var adv = new Foldout {
@@ -489,14 +497,6 @@ namespace VF.Feature {
                                                     "something like _PropName to the end of every bone, breaking AvatarLink in the process. If empty, the suffix will be predicted " +
                                                     "based on the difference between the name of the given root bones."));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeBoneSuffix")));
-            
-            adv.Add(new VisualElement { style = { paddingTop = 10 } });
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("String path to bone on avatar:"));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("If provided, humanoid bone dropdown will be ignored."));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel(
-                "Drag in object to generate path to bone on avatar:"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatarDragTarget")));
             
             
             adv.Add(new VisualElement { style = { paddingTop = 10 } });
@@ -539,6 +539,8 @@ namespace VF.Feature {
                     return "Avatar descriptor is missing";
                 }
 
+                GetDragTarget();
+                
                 var linkMode = GetLinkMode();
                 rootBoneLabelWhenReparent.style.display = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
                 rootBoneLabelWhenSkin.style.display = linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
