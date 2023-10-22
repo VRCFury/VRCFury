@@ -55,7 +55,6 @@ namespace VF.Service {
 
             tags = tags.SelectMany(tag => {
                 if (!tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
-                if (tag == HapticUtils.TagSpsSocketLegacyLight) return new[] { tag };
                 return suffixes.Select(suffix => tag + suffix);
             }).ToArray();
 

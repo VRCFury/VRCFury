@@ -9,6 +9,14 @@ void sps_parse_light(float range, half4 color, out int type) {
 		type = 0;
 		return;
 	}
+	if (_SPS_Tri_Enabled > 0) {
+		float thousandths = range % 0.001;
+		if (thousandths > 0.0001 && thousandths < 0.0003) {
+			// Legacy light coming from a lightless SPS socket
+			type = 0;
+			return;
+		}
+	}
 
 	int legacyRange = round((range % 0.1) * 100);
 
@@ -38,38 +46,39 @@ bool sps_search(
 	out float3 rootNormal,
 	inout float4 color
 ) {
-	if (_SPS_Target_Center == 1 || _SPS_Target_Forward == 1 || _SPS_Target_Right == 1 || _SPS_Target_Up == 1
-		|| _SPS_Front_Center == 1 || _SPS_Front_Forward == 1 || _SPS_Front_Right == 1 || _SPS_Front_Up == 1)
-	{
-		rootLocal = float3(0,0,0);
-		isRing = false;
-		rootNormal = float3(0,0,1);
-		return true;
+	if (_SPS_Tri_Enabled > 0) {
+		if (_SPS_Tri_Root_Center == 1 || _SPS_Tri_Root_Forward == 1 || _SPS_Tri_Root_Right == 1 || _SPS_Tri_Root_Up == 1
+			|| _SPS_Tri_Front_Center == 1 || _SPS_Tri_Front_Forward == 1 || _SPS_Tri_Front_Right == 1 || _SPS_Tri_Front_Up == 1)
+		{
+			rootLocal = float3(0,0,0);
+			isRing = false;
+			rootNormal = float3(0,0,1);
+			return true;
+		}
+
+		if (_SPS_Tri_Root_Center > 0 && _SPS_Tri_Root_Forward > 0 && _SPS_Tri_Root_Right > 0 && _SPS_Tri_Root_Up > 0
+			&& _SPS_Tri_Front_Center > 0 && _SPS_Tri_Front_Forward > 0 && _SPS_Tri_Front_Right > 0 && _SPS_Tri_Front_Up > 0)
+		{
+			bool triIsRing = _SPS_Tri_Root_Center == _SPS_Tri_IsRing;
+			bool triIsHole = _SPS_Tri_Root_Center == _SPS_Tri_IsHole;
+			if (triIsRing || triIsHole) {
+				rootLocal = float3(
+					triangulate(_SPS_Tri_Root_Center, _SPS_Tri_Root_Right, 0.01),
+					triangulate(_SPS_Tri_Root_Center, _SPS_Tri_Root_Up, 0.01),
+					triangulate(_SPS_Tri_Root_Center, _SPS_Tri_Root_Forward, 0.01)
+				);
+				isRing = false;
+				float3 front = float3(
+					triangulate(_SPS_Tri_Front_Center, _SPS_Tri_Front_Right, 0.01),
+					triangulate(_SPS_Tri_Front_Center, _SPS_Tri_Front_Up, 0.01),
+					triangulate(_SPS_Tri_Front_Center, _SPS_Tri_Front_Forward, 0.01)
+				);
+				rootNormal = sps_normalize(front - rootLocal);
+				return true;
+			}
+		}
 	}
 
-	if (_SPS_Target_Center == 0 || _SPS_Target_Forward == 0 || _SPS_Target_Right == 0 || _SPS_Target_Up == 0
-		|| _SPS_Front_Center == 0 || _SPS_Front_Forward == 0 || _SPS_Front_Right == 0 || _SPS_Front_Up == 0)
-	{
-		rootLocal = float3(0,0,0);
-		isRing = false;
-		rootNormal = float3(0,0,0);
-		return false;
-	}
-
-	rootLocal = float3(
-		triangulate(_SPS_Target_Center, _SPS_Target_Right, 0.01),
-		triangulate(_SPS_Target_Center, _SPS_Target_Up, 0.01),
-		triangulate(_SPS_Target_Center, _SPS_Target_Forward, 0.01)
-	);
-	isRing = false;
-	float3 front = float3(
-		triangulate(_SPS_Front_Center, _SPS_Front_Right, 0.01),
-		triangulate(_SPS_Front_Center, _SPS_Front_Up, 0.01),
-		triangulate(_SPS_Front_Center, _SPS_Front_Forward, 0.01)
-	);
-	rootNormal = sps_normalize(front - rootLocal);
-	return true;
-	
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];

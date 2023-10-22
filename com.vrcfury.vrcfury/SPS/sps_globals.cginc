@@ -39,13 +39,16 @@ float _SPS_BlendshapeCount;
 float _SPS_Enabled;
 float _SPS_Overrun;
 
-float _SPS_Target_Center;
-float _SPS_Target_Forward;
-float _SPS_Target_Up;
-float _SPS_Target_Right;
-float _SPS_Front_Center;
-float _SPS_Front_Forward;
-float _SPS_Front_Up;
-float _SPS_Front_Right;
+float _SPS_Tri_Enabled;
+float _SPS_Tri_Root_Center;
+float _SPS_Tri_Root_Forward;
+float _SPS_Tri_Root_Up;
+float _SPS_Tri_Root_Right;
+float _SPS_Tri_Front_Center;
+float _SPS_Tri_Front_Forward;
+float _SPS_Tri_Front_Up;
+float _SPS_Tri_Front_Right;
+float _SPS_Tri_IsRing;
+float _SPS_Tri_IsHole;
 
 #endif

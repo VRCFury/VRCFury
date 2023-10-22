@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
@@ -93,8 +94,18 @@ namespace VF.Feature {
                     var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(postBakeClip);
 
-                    if (plug.enableSps) {
+                    if (plug.enableSps && EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                         var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
+                        triRoot.worldScale = Vector3.one;
+                        var p = triRoot.AddComponent<ScaleConstraint>();
+                        p.AddSource(new ConstraintSource() {
+                            sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
+                            weight = 1
+                        });
+                        p.weight = 1;
+                        p.constraintActive = true;
+                        p.locked = true;
+                        
                         var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
                             new[] { HapticUtils.TagSpsSocketRoot });
                         var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
@@ -103,7 +114,7 @@ namespace VF.Feature {
                             "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
                             HapticUtils.ReceiverParty.Both);
                         var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
-                            "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
+                            "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
                             HapticUtils.ReceiverParty.Both);
                         
                         foreach (var r in renderers) {
@@ -114,8 +125,10 @@ namespace VF.Feature {
                                 configureMaterial = r.configureMaterial,
                                 spsBlendshapes = r.spsBlendshapes
                             });
-                            _triangulationService.SendToShader(tri, "_SPS_Target", r.renderer);
-                            _triangulationService.SendToShader(triFront, "_SPS_Front", r.renderer);
+                            _triangulationService.SendToShader(tri, "_SPS_Tri_Root", r.renderer);
+                            _triangulationService.SendToShader(triFront, "_SPS_Tri_Front", r.renderer);
+                            _triangulationService.SendParamToShader(isHole, "_SPS_Tri_IsHole", r.renderer);
+                            _triangulationService.SendParamToShader(isRing, "_SPS_Tri_IsRing", r.renderer);
                         }
                     }
 
