@@ -32,6 +32,12 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
+    public class FxFloatAction : Action {
+        public string name;
+        public float value = 1;
+    }
+    
+    [Serializable]
     public class AnimationClipAction : Action {
         public GuidAnimationClip clip;
     }
@@ -40,6 +46,23 @@ namespace VF.Model.StateAction {
     public class ShaderInventoryAction : Action {
         public Renderer renderer;
         public int slot = 1;
+    }
+
+    [Serializable]
+    public class PoiyomiUVTileAction : Action {
+        public Renderer renderer;
+        public int row = 0;
+        public int column = 0;
+        public bool dissolve = false;
+        public string renamedMaterial = "";
+    }
+    
+    [Serializable]
+    public class MaterialPropertyAction : Action {
+        public Renderer renderer;
+        public bool affectAllMeshes;
+        public string propertyName;
+        public float value;
     }
     
     [Serializable]

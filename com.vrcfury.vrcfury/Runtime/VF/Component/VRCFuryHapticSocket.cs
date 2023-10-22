@@ -22,11 +22,12 @@ namespace VF.Component {
         public new string name;
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
         public float length;
+        public bool unitsInMeters = true;
         public bool addMenuItem = true;
+        public GuidTexture2d menuIcon;
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;
-        //public VRCFuryHapticPlug.Channel channel;
 
         public bool enableDepthAnimations = false;
         public List<DepthAction> depthActions = new List<DepthAction>();
@@ -39,7 +40,7 @@ namespace VF.Component {
             public float startDistance = 0;
             public float endDistance = -0.25f;
             public bool enableSelf;
-            public float smoothingSeconds = 1f;
+            public float smoothingSeconds = 0.25f;
             public bool ResetMePlease2;
             
             [Obsolete] public float minDepth;
@@ -91,7 +92,7 @@ namespace VF.Component {
             return GetFramesRequired((float)(1 - Math.Pow(oldSmoothingVal, 0.1)), true) / 60f;
         }
         public static int GetFramesRequired(float fractionPerFrame, bool useAcceleration) {
-            var targetFraction = 0.7f; // Let's say 70% is enough to be considered "done"
+            var targetFraction = 0.9f; // Let's say 90% is enough to be considered "done"
             float target = useAcceleration ? 0 : 1;
             float position = 0;
             for (var frame = 1; frame < 1000; frame++) {

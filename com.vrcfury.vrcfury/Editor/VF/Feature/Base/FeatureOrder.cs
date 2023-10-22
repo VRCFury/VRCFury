@@ -14,6 +14,7 @@ namespace VF.Feature.Base {
         
         // Needs to happen before toggles begin getting processed
         ForceObjectState,
+        RemoveEditorOnly,
 
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase,
@@ -63,6 +64,7 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
+        DpsTipScaleFix,
         
         FixTouchingContacts,
 
@@ -79,18 +81,21 @@ namespace VF.Feature.Base {
         Slot4Fix,
         CleanupEmptyLayers,
         PullMusclesOutOfFx,
+        RemoveDefaultedAdditiveLayer,
+        FixUnsetPlayableLayers,
         FixMasks,
         FixMaterialSwapWithMask,
         ControllerConflictCheck,
         AdjustWriteDefaults,
         FixEmptyMotions,
         AnimatorLayerControlFix,
+        RemoveNonQuestMaterials,
+        RemoveBadControllerTransitions,
         FinalizeController,
 
         // Finalize Menus
-        SetMenuIcons1,
+        MoveSpsMenus,
         MoveMenuItems,
-        SetMenuIcons2,
         FinalizeMenu,
 
         // Finalize Parameters
@@ -100,7 +105,7 @@ namespace VF.Feature.Base {
         MarkThingsAsDirtyJustInCase,
         
         RemoveJunkAnimators,
-        
+
         // Needs to be at the very end, because it places immutable clips into the avatar
         RestoreProxyClips,
         // Needs to happen after everything is done using the animator

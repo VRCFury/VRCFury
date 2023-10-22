@@ -12,6 +12,8 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Service;
+using VF.Utils;
+using VF.Utils.Controller;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -20,7 +22,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly PhysboneResetService physboneResetService;
 
-    private List<VFAState> exclusiveTagTriggeringStates = new List<VFAState>();
+    private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFABool param;
     private AnimationClip restingClip;
 
@@ -68,11 +70,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             def: model.defaultOn ? model.defaultSliderValue : 0,
             usePrefix: usePrefixOnParam
         );
-        manager.GetMenu().NewMenuSlider(
-            model.name,
-            x,
-            icon: model.enableIcon ? model.icon.Get() : null
-        );
+
+        var hasTitle = !string.IsNullOrEmpty(model.name);
+        var hasIcon = model.enableIcon && model.icon?.Get() != null;
+        if (model.addMenuItem && (hasTitle || hasIcon)) {
+            manager.GetMenu().NewMenuSlider(
+                model.name,
+                x,
+                icon: model.enableIcon ? model.icon?.Get() : null
+            );
+        }
 
         var clip = actionClipService.LoadState("On", model.state);
         if (ClipBuilderService.IsStaticMotion(clip)) {
@@ -107,7 +114,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var off = layer.NewState("Off");
 
         var (paramName, usePrefixOnParam) = GetParamName();
-        VFACondition onCase;
+        VFCondition onCase;
         if (model.useInt) {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
@@ -126,19 +133,19 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         var hasTitle = !string.IsNullOrEmpty(model.name);
-        var hasIcon = model.enableIcon && model.icon != null;
+        var hasIcon = model.enableIcon && model.icon?.Get() != null;
         if (model.addMenuItem && (hasTitle || hasIcon)) {
             if (model.holdButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
                     param,
-                    icon: model.enableIcon ? model.icon.Get() : null
+                    icon: model.icon?.Get()
                 );
             } else {
                 manager.GetMenu().NewMenuToggle(
                     model.name,
                     param,
-                    icon: model.enableIcon ? model.icon.Get() : null
+                    icon: model.icon?.Get()
                 );
             }
         }
@@ -146,9 +153,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     private void Apply(
         ControllerManager fx,
-        VFALayer layer,
-        VFAState off,
-        VFACondition onCase,
+        VFLayer layer,
+        VFState off,
+        VFCondition onCase,
         string onName,
         State action,
         State inAction,
@@ -171,8 +178,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        VFAState inState;
-        VFAState onState;
+        VFState inState;
+        VFState onState;
         if (model.hasTransition) {
             var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);

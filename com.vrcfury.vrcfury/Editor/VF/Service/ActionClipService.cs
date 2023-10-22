@@ -83,6 +83,47 @@ namespace VF.Service {
                         }
                         break;
                     }
+                    case PoiyomiUVTileAction poiyomiUVTileAction: {
+                        var renderer = poiyomiUVTileAction.renderer;
+                        if (poiyomiUVTileAction.row > 3 || poiyomiUVTileAction.row < 0 || poiyomiUVTileAction.column > 3 || poiyomiUVTileAction.column < 0) {
+                            throw new ArgumentException("Poiyomi UV Tiles are ranges between 0-3, check if slots are within these ranges.");
+                        }
+                        if (renderer != null) {
+                            var propertyName = poiyomiUVTileAction.dissolve ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
+                            propertyName += $"{poiyomiUVTileAction.row}_{(poiyomiUVTileAction.column)}";
+                            if (poiyomiUVTileAction.renamedMaterial != "")
+                                propertyName += $"_{poiyomiUVTileAction.renamedMaterial}";
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(renderer.gameObject),
+                                renderer.GetType(),
+                                $"material.{propertyName}"
+                            );
+                            offClip.SetConstant(binding, 1f);
+                            onClip.SetConstant(binding, 0f);
+                        }
+                        break;
+                    }
+                    case MaterialPropertyAction materialPropertyAction: {
+                        if (materialPropertyAction.renderer == null && !materialPropertyAction.affectAllMeshes) break;
+                        var renderers = new[] { materialPropertyAction.renderer };
+                        if (materialPropertyAction.affectAllMeshes) {
+                            renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
+                        }
+
+                        foreach (var renderer in renderers) {
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(renderer.gameObject),
+                                renderer.GetType(),
+                                $"material.{materialPropertyAction.propertyName}"
+                            );
+                            if (renderer.sharedMaterials.Any(mat =>
+                                    mat != null && mat.HasProperty(materialPropertyAction.propertyName))) {
+                                onClip.SetConstant(binding, materialPropertyAction.value);
+                            }
+                            
+                        }
+                        break;
+                    }
                     case AnimationClipAction clipAction:
                         var clipActionClip = clipAction.clip.Get();
                         if (clipActionClip && clipActionClip != firstClip) {
@@ -128,7 +169,7 @@ namespace VF.Service {
                             Debug.LogWarning("Missing object in action: " + name);
                             break;
                         }
-                        if (matAction.mat == null) {
+                        if (matAction.mat?.Get() == null) {
                             Debug.LogWarning("Missing material in action: " + name);
                             break;
                         }
@@ -147,6 +188,23 @@ namespace VF.Service {
                         );
                         offClip.SetConstant(binding, 0);
                         onClip.SetConstant(binding, 1);
+                        break;
+                    }
+                    case FxFloatAction fxFloatAction: {
+                        if (string.IsNullOrWhiteSpace(fxFloatAction.name)) {
+                            break;
+                        }
+
+                        if (FullControllerBuilder.VRChatGlobalParams.Contains(fxFloatAction.name)) {
+                            throw new Exception("Set an FX Float cannot set built-in vrchat parameters");
+                        }
+
+                        var binding = EditorCurveBinding.FloatCurve(
+                            "",
+                            typeof(Animator),
+                            fxFloatAction.name
+                        );
+                        onClip.SetConstant(binding, fxFloatAction.value);
                         break;
                     }
                 }

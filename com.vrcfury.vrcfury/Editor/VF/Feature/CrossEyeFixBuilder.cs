@@ -68,5 +68,9 @@ namespace VF.Feature {
         public override bool AvailableOnProps() {
             return false;
         }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using VF.Inspector;
@@ -12,13 +13,24 @@ namespace VF.Builder {
             this.syncedParams = syncedParams;
         }
 
-        public void addSyncedParam(VRCExpressionParameters.Parameter param) {
-            var exists = syncedParams.parameters.FirstOrDefault(p => p.name == param.name);
-            if (exists != null) return;
+        public void AddSyncedParam(VRCExpressionParameters.Parameter param) {
+            var exists = GetParam(param.name);
+            if (exists != null) {
+                if (param.valueType != exists.valueType) {
+                    throw new Exception(
+                        $"VRCF tried to create synced parameter {param.name} with type {param.valueType}," +
+                        $" but parameter already exists with type {exists.valueType}");
+                }
+                return;
+            }
             var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
             syncedParamsList.Add(param);
             syncedParams.parameters = syncedParamsList.ToArray();
             VRCFuryEditorUtils.MarkDirty(syncedParams);
+        }
+
+        public VRCExpressionParameters.Parameter GetParam(string name) {
+            return syncedParams.parameters.FirstOrDefault(p => p.name == name);
         }
 
         public VRCExpressionParameters GetRaw() {

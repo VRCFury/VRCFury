@@ -10,6 +10,7 @@ using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
@@ -44,14 +45,25 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
         public void RecordAllDefaults() {
+            // We shouldn't need to record defaults if useWriteDefaults is true, BUT due to a vrchat bug,
+            // the defaults state for properties are broken in mirrors, so we're forced to record them all in the base layer.
             var settings = GetBuildSettings();
-            if (settings.useWriteDefaults) return;
+            //if (settings.useWriteDefaults) return;
 
             foreach (var layer in GetMaintainedLayers(GetFx())) {
                 foreach (var state in new AnimatorIterator.States().From(layer)) {
                     if (!state.writeDefaultValues) continue;
                     foreach (var clip in new AnimatorIterator.Clips().From(state)) {
                         foreach (var binding in clip.GetFloatBindings()) {
+                            if (
+                                settings.useWriteDefaults
+                                && binding.type == typeof(SkinnedMeshRenderer)
+                                && binding.path == "Body"
+                                && binding.propertyName.StartsWith("blendShape.")
+                                && MmdUtils.IsMaybeMmdBlendshape(binding.propertyName.Substring(11))
+                            ) {
+                                continue;
+                            }
                             RecordDefaultNow(binding, true);
                         }
                         foreach (var binding in clip.GetObjectBindings()) {
@@ -65,6 +77,11 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.AdjustWriteDefaults)]
         public void AdjustWriteDefaults() {
             var settings = GetBuildSettings();
+
+            if (settings.ignoredBroken) {
+                var fx = manager.GetFx();
+                fx.NewBool($"VF/BrokenWd", usePrefix: false, synced: true, networkSynced: false);
+            }
 
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in GetMaintainedLayers(controller)) {
@@ -84,6 +101,7 @@ namespace VF.Feature {
         private class BuildSettings {
             public bool applyToUnmanagedLayers;
             public bool useWriteDefaults;
+            public bool ignoredBroken;
         }
         private BuildSettings _buildSettings;
         private BuildSettings GetBuildSettings() {
@@ -91,7 +109,7 @@ namespace VF.Feature {
                 return _buildSettings;
             }
             
-            var allManagedStateMachines = manager.GetAllTouchedControllers()
+            var allManagedStateMachines = manager.GetAllUsedControllers()
                 .SelectMany(controller => controller.GetManagedLayers())
                 .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
@@ -149,12 +167,13 @@ namespace VF.Feature {
 
             _buildSettings = new BuildSettings {
                 applyToUnmanagedLayers = applyToUnmanagedLayers,
-                useWriteDefaults = useWriteDefaults
+                useWriteDefaults = useWriteDefaults,
+                ignoredBroken = analysis.isBroken && mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled
             };
             return _buildSettings;
         }
 
-        private IEnumerable<MutableLayer> GetMaintainedLayers(ControllerManager controller) {
+        private IEnumerable<VFLayer> GetMaintainedLayers(ControllerManager controller) {
             var settings = GetBuildSettings();
             return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }
@@ -178,7 +197,7 @@ namespace VF.Feature {
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
         public static DetectionResults DetectExistingWriteDefaults(
-            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, AnimatorController>> avatarControllers,
+            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> avatarControllers,
             ISet<AnimatorStateMachine> stateMachinesToIgnore = null
         ) {
             var controllerInfos = avatarControllers.Select(tuple => {

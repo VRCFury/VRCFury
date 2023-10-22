@@ -666,6 +666,10 @@ public static class VRCFuryEditorUtils {
     public static bool IsInRagdollSystem(VFGameObject obj) {
         while (obj != null) {
             if (obj.name == "Ragdoll System") return true;
+            if (obj.name == "CarbonCopy Container") return true;
+            // DexClone_worldSpace/CloneContainer0?
+            if (obj.name.StartsWith("CloneContainer")) return true;
+            if (obj.name == "DexClone_worldSpace") return true;
             obj = obj.parent;
         }
         return false;
@@ -734,6 +738,12 @@ public static class VRCFuryEditorUtils {
     public static T GetResource<T>(string path) where T : Object {
         var resourcesPath = AssetDatabase.GUIDToAssetPath("c4e4fa889bc2bc54abfc219a5424b763");
         return AssetDatabase.LoadAssetAtPath<T>($"{resourcesPath}/{path}");
+    }
+
+    public static T LoadGuid<T>(string guid) where T : Object {
+        var path = AssetDatabase.GUIDToAssetPath(guid);
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        return AssetDatabase.LoadAssetAtPath<T>(path);
     }
     
     public static Type GetPropertyType(SerializedProperty prop) {

@@ -13,13 +13,13 @@ namespace VF.Builder.Exceptions {
 
             return e;
         }
-        
+
         public static async Task ErrorDialogBoundaryAsync(Func<Task> go) {
             try {
                 await go();
             } catch(Exception e) {
                 Debug.LogException(e);
-                await AsyncUtils.DisplayDialog("VRCFury encountered an error.\n\n" + GetGoodCause(e).Message);
+                await AsyncUtils.DisplayDialog($"VRCFury encountered an error.\n\n{GetGoodCause(e).Message}");
             }
         }
 
@@ -28,11 +28,22 @@ namespace VF.Builder.Exceptions {
                 go();
             } catch(Exception e) {
                 Debug.LogException(e);
-                EditorUtility.DisplayDialog(
-                    "VRCFury Error",
-                    "VRCFury encountered an error.\n\n" + GetGoodCause(e).Message,
-                    "Ok"
-                );
+                
+                var sneaky = SneakyException.GetFromStack(e);
+                if (sneaky != null) {
+                    EditorUtility.DisplayDialog(
+                        "Avatar Error",
+                        sneaky.Message,
+                        "Ok"
+                    );
+                } else {
+                    EditorUtility.DisplayDialog(
+                        "VRCFury Error",
+                        $"VRCFury encountered an error.\n\n{GetGoodCause(e).Message}",
+                        "Ok"
+                    );
+                }
+
                 return false;
             }
 

@@ -42,6 +42,11 @@ namespace VF.Feature {
                     continue;
                 }
 
+                if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
+                    AddDebug($"Not optimizing (layer is additive)");
+                    continue;
+                }
+
                 if (layer.stateMachine.stateMachines.Length > 0) {
                     AddDebug("Not optimizing (contains submachine)");
                     continue;
@@ -212,6 +217,16 @@ namespace VF.Feature {
                     AddDebug($"Not optimizing (parameter used in some other layer)");
                     continue;
                 }
+                
+                var paramType = fx.GetRaw().parameters
+                    .Where(p => p.name == param)
+                    .Select(p => p.type)
+                    .DefaultIfEmpty(AnimatorControllerParameterType.Float)
+                    .First();
+                if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
+                    AddDebug($"Not optimizing (using an int VRC built-in, which means >1 is likely)");
+                    continue;
+                }
 
                 eligibleLayers.Add(new EligibleLayer {
                     offState = offClip,
@@ -322,6 +337,10 @@ namespace VF.Feature {
 
         public override bool AvailableOnProps() {
             return false;
+        }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
         }
     }
 }

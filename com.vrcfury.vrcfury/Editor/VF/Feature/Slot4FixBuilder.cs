@@ -31,6 +31,10 @@ namespace VF.Feature {
             return false;
         }
         
+        public override bool OnlyOneAllowed() {
+            return true;
+        }
+        
         [FeatureBuilderAction(FeatureOrder.Slot4Fix)]
         public void Apply() {
             var meshesToPatch = new HashSet<Mesh>();

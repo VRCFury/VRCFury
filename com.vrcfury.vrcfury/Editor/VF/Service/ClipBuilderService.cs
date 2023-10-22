@@ -159,21 +159,30 @@ namespace VF.Service {
                 }
             }
 
-            if (times.Count != 2) return null;
-            times.Remove(0);
-            if (times.Count != 1) return null;
+            if (!times.Contains(0)) return null;
+            if (times.Count > 2) return null;
 
             var startClip = new AnimationClip();
             var endClip = new AnimationClip();
             
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 if (curve.IsFloat) {
+                    var first = true;
                     foreach (var key in curve.FloatCurve.keys) {
-                        (key.time == 0 ? startClip : endClip).SetConstant(binding, key.value);
+                        if (first) {
+                            startClip.SetConstant(binding, key.value);
+                            first = false;
+                        }
+                        endClip.SetConstant(binding, key.value);
                     }
                 } else {
+                    var first = true;
                     foreach (var key in curve.ObjectCurve) {
-                        (key.time == 0 ? startClip : endClip).SetConstant(binding, key.value);
+                        if (first) {
+                            startClip.SetConstant(binding, key.value);
+                            first = false;
+                        }
+                        endClip.SetConstant(binding, key.value);
                     }
                 }
             }

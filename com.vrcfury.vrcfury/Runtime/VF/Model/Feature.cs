@@ -529,11 +529,22 @@ namespace VF.Model.Feature {
                     fromPath = "Sockets" + fromPath.Substring(5);
                 }
             }
+            if (fromVersion < 2) {
+                if (fromPath.StartsWith("Sockets/") || fromPath == "Sockets") {
+                    fromPath = "SPS" + fromPath.Substring(7);
+                }
+            }
+
+            if (fromVersion < 3) {
+                if (toPath.StartsWith("Sockets/") || toPath == "Sockets") {
+                    toPath = "SPS" + toPath.Substring(7);
+                }
+            }
             return false;
         }
 
         public override int GetLatestVersion() {
-            return 1;
+            return 3;
         }
     }
     
@@ -608,6 +619,7 @@ namespace VF.Model.Feature {
         public List<GameObject> objs;
         public string baseObj;
         public bool includeAll = true;
+        public bool exactMatch = false;
         public List<Exclude> excludes = new List<Exclude>();
         public List<Include> includes = new List<Include>();
         
@@ -628,6 +640,19 @@ namespace VF.Model.Feature {
     public class SetIcon : NewFeatureModel {
         public string path;
         public GuidTexture2d icon;
+        
+        public override bool Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (path.StartsWith("Sockets/") || path == "Sockets") {
+                    path = "SPS" + path.Substring(7);
+                }
+            }
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]
@@ -678,6 +703,12 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class ShowInFirstPerson : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class SpsOptions : NewFeatureModel {
+        public GuidTexture2d menuIcon;
+        public string menuPath;
     }
 
 }

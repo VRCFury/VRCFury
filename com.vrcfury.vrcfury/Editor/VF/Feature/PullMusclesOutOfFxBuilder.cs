@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -74,7 +75,7 @@ namespace VF.Feature {
 
         private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion)> states) {
             ControllerManager controller;
-            VFALayer layer;
+            VFLayer layer;
             if (type == LayerType.Action) {
                 controller = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                 layer = controller.NewLayer("VRCFury Actions");
@@ -91,7 +92,7 @@ namespace VF.Feature {
 
             var off = layer.NewState("Off");
 
-            var previousStates = new List<(VFACondition, VFAState)>();
+            var previousStates = new List<(VFCondition, VFState)>();
             foreach (var s in states) {
                 var (param, motion) = s;
                 var newState = layer.NewState(motion.name);

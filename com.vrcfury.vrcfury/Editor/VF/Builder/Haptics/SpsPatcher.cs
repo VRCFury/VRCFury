@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -52,12 +53,14 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
-            Replace(
-                @"((?:^|\n)\s*Properties\s*{)",
-                $"$1\n{propertiesContent}\n",
-                1
-            );
+            if (parentHash == null) {
+                var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
+                Replace(
+                    @"((?:^|\n)\s*Properties\s*{)",
+                    $"$1\n{propertiesContent}\n",
+                    1
+                );
+            }
 
             string spsMain;
             if (keepImports) {
@@ -67,7 +70,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "2";
+            var hashContent = contents + spsMain + "3";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -460,7 +463,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static string WithEachInclude(string contents, string filePath, Func<string, string> with, bool includeLibraryFiles = false) {
-            return GetRegex(@"(\s*#include\s"")([^""]+)("")").Replace(contents, match => {
+            return GetRegex(@"(?:^|\n)(\s*#include\s"")([^""]+)("")").Replace(contents, match => {
                 var before = match.Groups[1].ToString();
                 var path = match.Groups[2].ToString();
                 var after = match.Groups[3].ToString();
@@ -528,13 +531,22 @@ namespace VF.Builder.Haptics {
             return ReadFile(path);
         }
         private static string ReadFile(string path) {
-            StreamReader sr = new StreamReader(path);
             string content;
-            try {
-                content = sr.ReadToEnd();
-            } finally {
-                sr.Close();
+            if (path.EndsWith("lilcontainer")) {
+                var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
+                var unpackMethod = lilShaderContainer.GetMethods().First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
+                content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
+                var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                content = content.Replace("\"Includes", "\"" + shaderLibsPath);
+            } else {
+                StreamReader sr = new StreamReader(path);
+                try {
+                    content = sr.ReadToEnd();
+                } finally {
+                    sr.Close();
+                }
             }
+
             content = WithEachInclude(content, path, includePath => {
                 return $"#include \"{includePath}\"";
             });

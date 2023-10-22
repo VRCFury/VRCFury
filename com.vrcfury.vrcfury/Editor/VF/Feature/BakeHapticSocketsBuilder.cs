@@ -14,6 +14,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
@@ -24,13 +25,11 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
-        [VFAutowired] private readonly ParamSmoothingService paramSmoothing;
+        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
-        
-        public const string socketsMenu = "Sockets";
-        public const string optionsFolder = socketsMenu + "/<b>Options";
+        [VFAutowired] private readonly SpsOptionsService spsOptions;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticSockets)]
         public void Apply() {
@@ -45,7 +44,7 @@ namespace VF.Feature {
             AnimationClip autoOnClip = null;
             if (enableAuto) {
                 autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false);
-                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
+                manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
                 var off = autoReceiverLayer.NewState("Off");
@@ -62,7 +61,7 @@ namespace VF.Feature {
             VFABool stealthOn = null;
             if (enableStealth) {
                 stealthOn = fx.NewBool("stealth", synced: true);
-                manager.GetMenu().NewMenuToggle($"{optionsFolder}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
+                manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
             var enableMulti = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
@@ -72,23 +71,21 @@ namespace VF.Feature {
             VFABool multiOn = null;
             if (enableMulti) {
                 multiOn = fx.NewBool("multi", synced: true, networkSynced: false);
-                var multiFolder = $"{optionsFolder}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active holes";
+                var multiFolder = $"{spsOptions.GetOptionsPath()}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active sockets";
                 manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use SPS or TPS - NO DPS!");
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Nobody else can use a hole at the same time");
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>DO NOT ENABLE MORE THAN 2");
             }
 
-            manager.GetMenu().SetIconGuid(optionsFolder, "16e0846165acaa1429417e757c53ef9b");
-
             var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
-            var exclusiveTriggers = new List<Tuple<VFABool, VFAState>>();
+            var exclusiveTriggers = new List<Tuple<VFABool, VFState>>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                 try {
                     VFGameObject obj = socket.gameObject;
                     PhysboneUtils.RemoveFromPhysbones(socket.transform);
                     fakeHead.MarkEligible(socket.gameObject);
-                    if (VRCFuryHapticSocketEditor.IsChildOfHead(socket)) {
+                    if (HapticUtils.IsChildOfHead(socket.owner())) {
                         var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
                         mover.Move(socket.gameObject, head);
                     }
@@ -146,7 +143,8 @@ namespace VF.Feature {
                         }
 
                         var holeOn = fx.NewBool(name, synced: true);
-                        manager.GetMenu().NewMenuToggle($"{socketsMenu}/{name}", holeOn);
+                        var icon = socket.menuIcon?.Get();
+                        manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", holeOn, icon: icon);
 
                         var layer = fx.NewLayer(name);
                         var offState = layer.NewState("Off");
@@ -161,7 +159,7 @@ namespace VF.Feature {
                         var whenStealthEnabled = stealthOn?.IsTrue() ?? fx.Never();
                         var whenMultiEnabled = multiOn?.IsTrue() ?? fx.Never();
 
-                        VFAState.FakeAnyState(
+                        VFState.FakeAnyState(
                             (stealthState, whenOn.And(whenLocal.And(whenStealthEnabled))),
                             (onLocalMultiState, whenOn.And(whenLocal.And(whenMultiEnabled))),
                             (onLocalState, whenOn.And(whenLocal)),
@@ -180,7 +178,7 @@ namespace VF.Feature {
                                 "AutoDistance",
                                 0.3f,
                                 new[] { HapticUtils.CONTACT_PEN_MAIN },
-                                allowSelf: false
+                                party: HapticUtils.ReceiverParty.Others
                             );
                             distReceiver.SetActive(false);
                             clipBuilder.Enable(autoOnClip, distReceiver);
@@ -193,7 +191,8 @@ namespace VF.Feature {
                             socket.depthActions,
                             socket.owner(),
                             animRoot,
-                            name
+                            name,
+                            socket.unitsInMeters
                         );
                     }
                 } catch (Exception e) {
@@ -227,7 +226,7 @@ namespace VF.Feature {
 
                 var vsParam = fx.NewFloat("comparison");
 
-                var states = new Dictionary<Tuple<int, int>, VFAState>();
+                var states = new Dictionary<Tuple<int, int>, VFState>();
                 for (var i = 0; i < autoSockets.Count; i++) {
                     var (aName, aEnabled, aDist) = autoSockets[i];
                     var triggerOn = layer.NewState($"Start {aName}").Move(start, i, 2);
@@ -241,12 +240,14 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = paramSmoothing.IsBWinningTree(aDist, bDist, vsParam);
+                        var tree = math.MakeDirect($"{aName} vs {bName}");
+                        tree.Add(bDist, math.MakeSetter(vsParam, 1));
+                        tree.Add(aDist, math.MakeSetter(vsParam, -1));
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }
                 }
-                
+
                 for (var i = 0; i < autoSockets.Count; i++) {
                     var (name, enabled, dist) = autoSockets[i];
                     var triggerOn = states[Tuple.Create(i, -1)];
@@ -260,7 +261,7 @@ namespace VF.Feature {
                         var current = states[Tuple.Create(i, j)];
                         var otherActivate = states[Tuple.Create(j, -1)];
 
-                        current.TransitionsTo(otherActivate).When(vsParam.IsGreaterThan(0.51f));
+                        current.TransitionsTo(otherActivate).When(vsParam.IsGreaterThan(0));
                         
                         var nextI = j + 1;
                         if (nextI == i) nextI++;

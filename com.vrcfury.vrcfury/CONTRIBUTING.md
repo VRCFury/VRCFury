@@ -47,19 +47,39 @@ For more information, please refer to <https://unlicense.org>
 
 ## Special Thanks to the contributors!
 
-* Morghus
-  * Created numerous setup prefabs
-* GameGeek720
-  * Added Toggle enhancements for transitions and the local player
-* Raphiiko
-  * Added global parameters for Toggles
-* nullstalgia
-  * Added option for Toggles to use momentary push buttons
-* Ximmer-VR
-  * Made Toggle sliders work with global parameters
-* wholesomevr
-  * Made Armature Link work with Dynamic Bone Contacts
-* anatawa12, lyuma, anatawa12
-  * Special thanks for continuing efforts to make VRCFury and Av3Emu more compatible with each other
+* anatawa12
+  * Improvements to VRCFury/Av3Emu compatibility
 * CobaltSpace
   * Ensured that gogoloco params are always global
+* GameGeek720
+  * Added Toggle enhancements for transitions and the local player
+  * Fixed Toggle sliders always adding a menu option, even if the menu path was empty
+* KaelanDuck
+  * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
+* lyuma
+  * Improvements to VRCFury/Av3Emu compatibility
+* Morghus
+  * Created numerous setup prefabs
+  * Fix DirectTreeOptimizer for clips with partial keyframes
+* nullstalgia
+  * Added option for Toggles to use momentary push buttons
+  * Prevented SPS toggle from disabling SPS autorig physbone
+  * Set the Editor Test Copy's Animator controller to the generated FX layer
+* Raphiiko
+  * Added global parameters for Toggles
+* TayouVR
+  * Added Logging to Blendshape Optimizer
+  * Improved log outputs from exception handling
+  * Contributed SPS support for legacy DPS channel 1 (unused)
+  * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
+* TheLastRar
+  * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
+  * Added scaling of legacy DPS tip light intensity
+  * Add option for using local space for socket units
+  * Add option for exact matching in BlendShapeLink
+* Toys0125
+  * Added Poiyomi UV Tile action type
+* wholesomevr
+  * Made Armature Link work with Dynamic Bone Contacts
+* Ximmer-VR
+  * Made Toggle sliders work with global parameters

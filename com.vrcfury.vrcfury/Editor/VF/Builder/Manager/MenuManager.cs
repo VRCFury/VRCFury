@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
@@ -52,20 +53,12 @@ namespace VF.Builder {
             return control;
         }
 
-        public bool SetIconGuid(string path, string guid) {
-            var iconPath = AssetDatabase.GUIDToAssetPath(guid);
-            if (string.IsNullOrWhiteSpace(iconPath)) return false;
-            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(iconPath);
-            if (!icon) return false;
-            return SetIcon(path, icon);
-        }
-
         public bool SetIcon(string path, Texture2D icon) {
             GetSubmenuAndItem(path, false, out _, out _, out var controlName, out var parentMenu);
             if (!parentMenu) return false;
 
-            var controls = parentMenu.controls.Where(c => c.name == controlName).ToList();
-            if (controls.Count == 0) return false;
+            var controls = FindControlsWithName(parentMenu, controlName);
+            if (controls.Length == 0) return false;
 
             foreach (var control in controls) {
                 control.icon = icon;
@@ -77,8 +70,8 @@ namespace VF.Builder {
             GetSubmenuAndItem(from, false, out var fromPath, out var fromPrefix, out var fromName, out var fromMenu);
             if (!fromMenu) return false;
             
-            var fromControls = fromMenu.controls.Where(c => c.name == fromName).ToList();
-            if (fromControls.Count == 0) return false;
+            var fromControls = FindControlsWithName(fromMenu, fromName);
+            if (fromControls.Length == 0) return false;
             fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
 
             if (string.IsNullOrWhiteSpace(to)) {
@@ -120,6 +113,38 @@ namespace VF.Builder {
             prefixMenu = GetSubmenu(prefix, createIfMissing: create);
         }
 
+        private static VRCExpressionsMenu.Control[] FindControlsWithName(
+            VRCExpressionsMenu menu,
+            string name,
+            Func<VRCExpressionsMenu.Control,bool> predicate = null
+        ) {
+            string Normalize(string a) =>
+                Regex.Replace(Regex.Replace(a.ToLower(), @"<.*?>", ""), @"\s\s+", " ").Trim();
+            string[] GetSlugs(string a) => Regex.Replace(a, @"<.*?>", "`")
+                .Split('`')
+                .Select(slug => Normalize(slug))
+                .Where(slug => !string.IsNullOrWhiteSpace(slug))
+                .ToArray();
+            var nameMatchMethods = new Func<string,string,bool>[] {
+                (a,b) => a == b,
+                (a,b) => !string.IsNullOrWhiteSpace(Normalize(a)) && Normalize(a) == Normalize(b),
+                (a,b) => !string.IsNullOrWhiteSpace(Normalize(a)) && GetSlugs(b).Contains(Normalize(a)),
+            };
+            foreach (var method in nameMatchMethods) {
+                bool Matches(VRCExpressionsMenu.Control other) {
+                    if (predicate != null && !predicate(other)) return false;
+                    return method(name, other.name);
+                }
+                var matches = menu.controls.Where(Matches).ToArray();
+                if (matches.Length > 0) return matches;
+            }
+            return new VRCExpressionsMenu.Control[] { };
+        }
+
+        public VRCExpressionsMenu GetSubmenu(string path) {
+            return GetSubmenu(SplitPath(path));
+        }
+
         /**
          * Gets the VRC menu for the path specified, recursively creating if it doesn't exist.
          * If createFromControl is set, we will use it as the basis if creating the folder control is needed.
@@ -138,9 +163,7 @@ namespace VF.Builder {
                     offset = Int32.Parse(folderName.Substring(dupIndex + 5));
                     folderName = folderName.Substring(0, dupIndex);
                 }
-                var folderControls = current.controls.Where(
-                    c => c.name == folderName && c.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
-                    .ToArray();
+                var folderControls = FindControlsWithName(current, folderName, c => c.type == VRCExpressionsMenu.Control.ControlType.SubMenu);
                 var folderControl = offset < folderControls.Length ? folderControls[offset] : null;
                 if (folderControl == null) {
                     if (!createIfMissing) return null;

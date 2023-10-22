@@ -24,6 +24,8 @@ namespace VF.Feature {
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly TriangulationService _triangulationService;
+        [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
+        [VFAutowired] private readonly SpsOptionsService spsOptions;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticPlugs)]
         public void Apply() {
@@ -91,19 +93,23 @@ namespace VF.Feature {
                     if (plug.addDpsTipLight) {
                         var tip = GameObjects.Create("LegacyDpsTip", bakeRoot);
                         tip.active = false;
-                        var light = tip.AddComponent<Light>();
-                        light.type = LightType.Point;
-                        light.color = Color.black;
-                        light.range = 0.49f;
-                        light.shadows = LightShadows.None;
-                        light.renderMode = LightRenderMode.ForceVertex;
-                        light.intensity = worldLength;
+                        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                            var light = tip.AddComponent<Light>();
+                            light.type = LightType.Point;
+                            light.color = Color.black;
+                            light.range = 0.49f;
+                            light.shadows = LightShadows.None;
+                            light.renderMode = LightRenderMode.ForceVertex;
+                            light.intensity = worldLength;
+
+                            dpsTipToDo.Add(light);
+                        }
 
                         if (tipLightOnClip == null) {
                             var param = fx.NewBool("tipLight", synced: true);
                             manager.GetMenu()
                                 .NewMenuToggle(
-                                    $"{BakeHapticSocketsBuilder.optionsFolder}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
+                                    $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
                                     param);
                             tipLightOnClip = fx.NewClip("EnableAutoReceivers");
                             var layer = fx.NewLayer("Tip Light");
@@ -141,6 +147,7 @@ namespace VF.Feature {
             public IList<string> spsBlendshapes;
         }
         private List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
+        private List<Light> dpsTipToDo = new List<Light>();
 
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
@@ -215,5 +222,11 @@ namespace VF.Feature {
             }
         }
 
+        [FeatureBuilderAction(FeatureOrder.DpsTipScaleFix)]
+        public void ApplyDpsTipScale() {
+            foreach (var light in dpsTipToDo)
+                scaleCompensationService.AddScaledProp(light.gameObject,
+                    new[] { (light.owner(), typeof(Light), "m_Intensity", light.intensity) });
+        }
     }
 }
