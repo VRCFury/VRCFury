@@ -13,6 +13,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
@@ -26,6 +27,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly TriangulationService _triangulationService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
+        [VFAutowired] private readonly HapticContactsService hapticContacts;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticPlugs)]
         public void Apply() {
@@ -52,9 +54,30 @@ namespace VF.Feature {
                     var name = bakeInfo.name;
                     var bakeRoot = bakeInfo.bakeRoot;
                     var renderers = bakeInfo.renderers;
+                    var worldRadius = bakeInfo.worldRadius;
                     var worldLength = bakeInfo.worldLength;
                     foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                         _forceStateInAnimatorService.DisableDuringLoad(r.transform);
+                    }
+                    
+                    // Haptic Receivers
+                    {
+                        var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
+                        var receivers = GameObjects.Create("Receivers", bakeRoot);
+                        var halfWay = Vector3.forward * (worldLength / 2);
+                        var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
+                        // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
+                        var extraRadiusForRub = 0.08f;
+                        // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+                        var capsuleRotation = Quaternion.Euler(90,0,0);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
                     }
 
                     if (plug.configureTps || plug.enableSps) {
@@ -73,9 +96,15 @@ namespace VF.Feature {
                     if (plug.enableSps) {
                         var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
                         var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
-                            new[] { HapticUtils.CONTACT_ORF_MAIN });
+                            new[] { HapticUtils.TagSpsSocketRoot });
                         var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
-                            new[] { HapticUtils.CONTACT_ORF_NORM });
+                            new[] { HapticUtils.TagSpsSocketFront });
+                        var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                            "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
+                            HapticUtils.ReceiverParty.Both);
+                        var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                            "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
+                            HapticUtils.ReceiverParty.Both);
                         
                         foreach (var r in renderers) {
                             spsRewritesToDo.Add(new SpsRewriteToDo {

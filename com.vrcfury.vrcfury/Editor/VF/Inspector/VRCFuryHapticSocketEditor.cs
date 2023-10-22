@@ -233,14 +233,12 @@ namespace VF.Inspector {
             DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
-        public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
+        public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null) {
             var transform = socket.transform;
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "socket");
 
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
-            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
-            var capsuleRotation = Quaternion.Euler(90,0,0);
 
             var name = GetName(socket);
             if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
@@ -254,49 +252,16 @@ namespace VF.Inspector {
             var senders = GameObjects.Create("Senders", bakeRoot);
 
             // Senders
-            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, new [] { HapticUtils.TagTpsOrfRoot, HapticUtils.TagSpsSocketRoot });
-            HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f, new [] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront });
-            if (lightType != VRCFuryHapticSocket.AddLight.None) {
-                HapticUtils.AddSender(
-                    senders,
-                    Vector3.zero,
-                    "Type",
-                    0.001f,
-                    new [] { lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole }
-                );
-            }
-            
-            var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
-
-            if (onlySenders) {
-                var info = GameObjects.Create("Info", bakeRoot);
-                if (!string.IsNullOrWhiteSpace(socket.name)) {
-                    var nameObj = GameObjects.Create("name=" + socket.name, info);
+            {
+                var rootTags = new List<string>();
+                rootTags.Add(HapticUtils.TagTpsOrfRoot);
+                rootTags.Add(HapticUtils.TagSpsSocketRoot);
+                if (lightType != VRCFuryHapticSocket.AddLight.None) {
+                    rootTags.Add(lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole);
                 }
-            } else {
-                // Receivers
-                var handTouchZoneSize = GetHandTouchZoneSize(socket);
-                var receivers = GameObjects.Create("Receivers", bakeRoot);
-                if (handTouchZoneSize != null) {
-                    var oscDepth = handTouchZoneSize.Item1;
-                    var closeRadius = handTouchZoneSize.Item2;
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, localOnly:true);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, localOnly:true);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    // Legacy non-upgraded TPS detection
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, localOnly:true);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    
-                    var frotRadius = 0.1f;
-                    var frotPos = 0.05f;
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, localOnly:true);
-                }
-                
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Self, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Self, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Others, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, localOnly:true);
+                HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray());
+                HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
+                    new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront });
             }
 
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
@@ -311,7 +276,7 @@ namespace VF.Inspector {
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
-                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.42f : 0.41f;
+                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.4202f : 0.4102f;
                     mainLight.shadows = LightShadows.None;
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -320,7 +285,7 @@ namespace VF.Inspector {
                     var frontLight = front.AddComponent<Light>();
                     frontLight.type = LightType.Point;
                     frontLight.color = Color.black;
-                    frontLight.range = 0.45f;
+                    frontLight.range = 0.4502f;
                     frontLight.shadows = LightShadows.None;
                     frontLight.renderMode = LightRenderMode.ForceVertex;
                 }
@@ -343,7 +308,7 @@ namespace VF.Inspector {
             return Tuple.Create(name, bakeRoot);
         }
 
-        private static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
+        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
             bool enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;

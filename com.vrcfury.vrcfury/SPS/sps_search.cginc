@@ -18,8 +18,8 @@ void sps_parse_light(float range, half4 color, out int type) {
 }
 float3 sps_toLocal(float3 v) { return mul(unity_WorldToObject, float4(v, 1)); }
 float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)); }
-// https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-3250460
-float sps_attenToRange(float atten) { return (0.005 * sqrt(1000000.0 - atten)) / sqrt(atten); }
+// https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-9052987
+float sps_attenToRange(float atten) { return 5.0 * (1.0 / sqrt(atten)); }
 
 float triangulate(float centerRange,float offsetRange,float distBetweenStations) {
 	centerRange = (1-centerRange) * 3;
