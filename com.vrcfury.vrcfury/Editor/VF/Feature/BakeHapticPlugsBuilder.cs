@@ -37,6 +37,7 @@ namespace VF.Feature {
             var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
 
             AnimationClip tipLightOnClip = null;
+            AnimationClip triangulationOnClip = null;
             var i = 0;
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
@@ -130,6 +131,28 @@ namespace VF.Feature {
                             _triangulationService.SendParamToShader(isHole, "_SPS_Tri_IsHole", r.renderer);
                             _triangulationService.SendParamToShader(isRing, "_SPS_Tri_IsRing", r.renderer);
                         }
+                    }
+                    
+                    if (triangulationOnClip == null) {
+                        var param = fx.NewBool("triangulationOn", synced: true);
+                        manager.GetMenu()
+                            .NewMenuToggle(
+                                $"{spsOptions.GetOptionsPath()}/<b>Lightless SPS (Beta)",
+                                param);
+                        triangulationOnClip = fx.NewClip("TriangulationOn");
+                        var layer = fx.NewLayer("Lightless SPS");
+                        var off = layer.NewState("Off");
+                        var on = layer.NewState("On").WithAnimation(triangulationOnClip);
+                        var whenOn = param.IsTrue();
+                        off.TransitionsTo(on).When(whenOn);
+                        on.TransitionsTo(off).When(whenOn.Not());
+                    }
+
+                    foreach (var r in renderers) {
+                        triangulationOnClip.SetConstant(
+                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Enabled"),
+                            1
+                        );
                     }
 
                     if (plug.addDpsTipLight) {

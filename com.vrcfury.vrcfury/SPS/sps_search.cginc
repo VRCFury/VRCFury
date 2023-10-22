@@ -46,7 +46,7 @@ bool sps_search(
 	out float3 rootNormal,
 	inout float4 color
 ) {
-	if (_SPS_Tri_Enabled > 0) {
+	if (_SPS_Tri_Enabled > 0.5) {
 		if (_SPS_Tri_Root_Center == 1 || _SPS_Tri_Root_Forward == 1 || _SPS_Tri_Root_Right == 1 || _SPS_Tri_Root_Up == 1
 			|| _SPS_Tri_Front_Center == 1 || _SPS_Tri_Front_Forward == 1 || _SPS_Tri_Front_Right == 1 || _SPS_Tri_Front_Up == 1)
 		{

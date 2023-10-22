@@ -33,6 +33,7 @@ namespace VF.Builder.Haptics {
             var m = mutableManager.MakeMutable(original, skin.owner());
             SpsPatcher.Patch(m, plug.spsKeepImports);
             m.SetOverrideTag(SpsEnabled + "Animated", "1");
+            m.SetOverrideTag("_SPS_Tri_EnabledAnimated", "1");
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
             m.SetFloat(SpsLength, worldLength);
