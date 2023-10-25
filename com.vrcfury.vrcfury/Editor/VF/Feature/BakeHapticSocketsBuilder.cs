@@ -195,6 +195,74 @@ namespace VF.Feature {
                             socket.unitsInMeters
                         );
                     }
+
+                    if ((socket.enablePlugLengthParameter && !string.IsNullOrWhiteSpace(socket.plugLengthParameterName)) 
+                        || (socket.enablePlugWidthParameter && !string.IsNullOrWhiteSpace(socket.plugWidthParameterName))) {
+                        var penTip = fx.NewFloat($"{name}/PenTip", usePrefix: false); // TODO: use socket specific parameter
+                        var rootRadius = fx.NewFloat($"{name}_RootRadius", def: 0.01f);
+                        var half = fx.NewFloat($"{name}_0.5", def: 0.5f);
+                        
+                        // Saves the `Plug Length` & `Plug Width` AAPs when plug param layers are in Idle state
+                        var plugLengthSaveLayer = fx.NewLayer($"{name}_Plug Params Save");
+                        var keepTree = fx.NewBlendTree($"{name}_Save");
+                        keepTree.blendType = BlendTreeType.Direct;
+                        plugLengthSaveLayer.NewState("Save")
+                            .WithAnimation(keepTree);
+
+                        if (socket.enablePlugLengthParameter &&
+                            !string.IsNullOrWhiteSpace(socket.plugLengthParameterName)) {
+                            // Calculate `Plug Length` using `TPS_Pen_Penetrating - TPS_Pen_Root + 0.01` 
+                            var plugLength = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
+                            var penRoot = fx.NewFloat($"{name}/PenRoot", usePrefix: false);
+                            var length1Clip = fx.NewClip($"{name}_Length1");
+                            length1Clip.SetCurve("", typeof(Animator), plugLength.Name(), AnimationCurve.Constant(0, 0, 1));
+                            var lengthMinus1Clip = fx.NewClip($"{name}_Length-1");
+                            lengthMinus1Clip.SetCurve("", typeof(Animator), plugLength.Name(), AnimationCurve.Constant(0, 0, -1));
+                            keepTree.AddDirectChild(plugLength.Name(), length1Clip);
+
+                            var plugLengthLayer = fx.NewLayer($"{name}_Plug Length");
+                            var lengthTree = fx.NewBlendTree($"{name}_Plug Length");
+                            lengthTree.blendType = BlendTreeType.Direct;
+                            lengthTree.AddDirectChild(penTip.Name(), length1Clip);
+                            lengthTree.AddDirectChild(penRoot.Name(), lengthMinus1Clip);
+                            lengthTree.AddDirectChild(rootRadius.Name(), length1Clip);
+                            var plugLengthState = plugLengthLayer.NewState("Plug Length")
+                                .WithAnimation(lengthTree);
+                            var idleState = plugLengthLayer.NewState("Idle");
+                            plugLengthState.TransitionsTo(idleState)
+                                .When(penTip.IsGreaterThan(0.999f).Or(penRoot.IsLessThan(0.001f)));
+                            idleState.TransitionsToExit()
+                                .When(penRoot.IsGreaterThan(0.001f).And(penTip.IsLessThan(0.999f)));
+                        }
+                        
+                        if (socket.enablePlugWidthParameter &&
+                            !string.IsNullOrWhiteSpace(socket.plugWidthParameterName)) {
+                            // Calculate `Plug Width` using `(TPS_Pen_Penetrating - TPS_Pen_Width)/2` 
+                            var plugWidth = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
+                            var penWidth = fx.NewFloat($"{name}/PenWidth", usePrefix: false);
+                            var width1Clip = fx.NewClip($"{name}_Width1");
+                            width1Clip.SetCurve("", typeof(Animator), plugWidth.Name(), AnimationCurve.Constant(0, 0, 1));
+                            var widthMinus1Clip = fx.NewClip($"{name}_Width-1");
+                            widthMinus1Clip.SetCurve("", typeof(Animator), plugWidth.Name(), AnimationCurve.Constant(0, 0, -1));
+                            keepTree.AddDirectChild(plugWidth.Name(), width1Clip);
+                            
+                            var plugWidthLayer = fx.NewLayer($"{name}_Plug Width");
+                            var widthSubTree = fx.NewBlendTree($"{name}_Plug Width Sub");
+                            widthSubTree.blendType = BlendTreeType.Direct;
+                            widthSubTree.AddDirectChild(penTip.Name(), width1Clip);
+                            widthSubTree.AddDirectChild(penWidth.Name(), widthMinus1Clip);
+                            var widthTree = fx.NewBlendTree($"{name}_Plug Width");
+                            widthTree.blendType = BlendTreeType.Direct;
+                            widthTree.AddDirectChild(half.Name(), widthSubTree);
+                            var plugWidthState = plugWidthLayer.NewState("Plug Width")
+                                .WithAnimation(widthTree);
+                            var widthIdleState = plugWidthLayer.NewState("Idle");
+                            plugWidthState.TransitionsTo(widthIdleState)
+                                .When(penTip.IsGreaterThan(0.999f).Or(penWidth.IsLessThan(0.001f)));
+                            widthIdleState.TransitionsToExit()
+                                .When(penWidth.IsGreaterThan(0.001f).And(penTip.IsLessThan(0.999f)));
+                        }
+                    }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Socket: {socket.owner().GetPath()}", e);
                 }

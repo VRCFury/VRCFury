@@ -35,6 +35,11 @@ namespace VF.Component {
         public bool enableActiveAnimation = false;
         public State activeActions;
 
+        public bool enablePlugLengthParameter;
+        public string plugLengthParameterName;
+        public bool enablePlugWidthParameter;
+        public string plugWidthParameterName;
+        
         [Serializable]
         public class DepthAction {
             public State state;

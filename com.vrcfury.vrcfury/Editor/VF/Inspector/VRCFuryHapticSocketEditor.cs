@@ -112,6 +112,15 @@ namespace VF.Inspector {
                 return activeBox;
             }, enableActiveAnimationProp));
 
+            var plugParams = VRCFuryEditorUtils.Section("Global Plug Parameters");
+            container.Add(plugParams);
+            var enablePlugLengthParameterProp = serializedObject.FindProperty("enablePlugLengthParameter");
+            var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Width"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
+
             var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this socket by default");
             container.Add(haptics);
             haptics.Add(VRCFuryEditorUtils.BetterProp(
@@ -294,11 +303,24 @@ namespace VF.Inspector {
                     var frotPos = 0.05f;
                     HapticUtils.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
                 }
-                
+
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
                 HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+
+                if ((socket.enablePlugLengthParameter && !string.IsNullOrWhiteSpace(socket.plugLengthParameterName))
+                    || (socket.enablePlugWidthParameter && !string.IsNullOrWhiteSpace(socket.plugWidthParameterName))) {
+                    HapticUtils.AddReceiver(receivers, Vector3.zero, $"{name}/PenTip", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, allowSelf: true, allowOthers: true);
+                    if (socket.enablePlugLengthParameter &&
+                        !string.IsNullOrWhiteSpace(socket.plugLengthParameterName)) {
+                        HapticUtils.AddReceiver(receivers, Vector3.zero, $"{name}/PenRoot", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, allowSelf: true, allowOthers: true);
+                    }
+                    if (socket.enablePlugWidthParameter &&
+                        !string.IsNullOrWhiteSpace(socket.plugWidthParameterName)) {
+                        HapticUtils.AddReceiver(receivers, Vector3.zero, $"{name}/PenWidth", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, allowSelf: true, allowOthers: true);
+                    }
+                }
             }
 
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
