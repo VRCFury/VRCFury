@@ -70,7 +70,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "3";
+            var hashContent = contents + spsMain + "4";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -303,11 +303,14 @@ namespace VF.Builder.Haptics {
             var colorParam = FindParam("COLOR", "spsColor", "float4");
             
             var newHeader = new List<string>();
-            // Special case for liltoon
+            // Enable appdata features in shaders where they may be controlled by preprocessor defines
+            // liltoon
             newHeader.Add("#define LIL_APP_POSITION");
             newHeader.Add("#define LIL_APP_NORMAL");
             newHeader.Add("#define LIL_APP_VERTEXID");
             newHeader.Add("#define LIL_APP_COLOR");
+            // UnlitWF
+            newHeader.Add("#define _V2F_HAS_VERTEXCOLOR");
             
             var newBody = new List<string>();
             newBody.Add(spsMain);
