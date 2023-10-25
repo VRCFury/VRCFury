@@ -106,18 +106,29 @@ namespace VF.Feature {
                         p.weight = 1;
                         p.constraintActive = true;
                         p.locked = true;
+
+                        for (var partyI = 0; partyI <= 1; partyI++) {
+                            var party = partyI == 0 ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others;
+                            var prefix = partyI == 0 ? "Self" : "Other";
+                            
+                            var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
+                                new[] { HapticUtils.TagSpsSocketRoot }, party);
+                            var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
+                                new[] { HapticUtils.TagSpsSocketFront }, party);
+                            var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                                "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
+                                party);
+                            var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                                "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
+                                party);
                         
-                        var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
-                            new[] { HapticUtils.TagSpsSocketRoot });
-                        var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
-                            new[] { HapticUtils.TagSpsSocketFront });
-                        var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
-                            "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
-                            HapticUtils.ReceiverParty.Both);
-                        var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
-                            "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
-                            HapticUtils.ReceiverParty.Both);
-                        
+                            foreach (var r in renderers) {
+                                _triangulationService.SendToShader(tri, $"_SPS_Tri_{prefix}_Root", r.renderer);
+                                _triangulationService.SendToShader(triFront, $"_SPS_Tri_{prefix}_Front", r.renderer);
+                                _triangulationService.SendParamToShader(isHole, $"_SPS_Tri_{prefix}_IsHole", r.renderer);
+                                _triangulationService.SendParamToShader(isRing, $"_SPS_Tri_{prefix}_IsRing", r.renderer);
+                            }
+                        }
                         foreach (var r in renderers) {
                             spsRewritesToDo.Add(new SpsRewriteToDo {
                                 plugObject = plug.owner(),
@@ -126,10 +137,6 @@ namespace VF.Feature {
                                 configureMaterial = r.configureMaterial,
                                 spsBlendshapes = r.spsBlendshapes
                             });
-                            _triangulationService.SendToShader(tri, "_SPS_Tri_Root", r.renderer);
-                            _triangulationService.SendToShader(triFront, "_SPS_Tri_Front", r.renderer);
-                            _triangulationService.SendParamToShader(isHole, "_SPS_Tri_IsHole", r.renderer);
-                            _triangulationService.SendParamToShader(isRing, "_SPS_Tri_IsRing", r.renderer);
                         }
                     }
                     
@@ -150,8 +157,16 @@ namespace VF.Feature {
 
                     foreach (var r in renderers) {
                         triangulationOnClip.SetConstant(
-                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Enabled"),
+                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
                             1
+                        );
+                        triangulationOnClip.SetConstant(
+                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Other_Enabled"),
+                            1
+                        );
+                        triangulationOnClip.SetConstant(
+                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Target_LL_Lights"),
+                            0
                         );
                     }
 

@@ -1,15 +1,13 @@
 #include "UnityShaderVariables.cginc"
 #include "sps_globals.cginc"
 
-#define SPS_PI float(3.14159265359)
-
 // Type: 0=invalid 1=hole 2=ring 3=front
 void sps_parse_light(float range, half4 color, out int type) {
 	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
 		type = 0;
 		return;
 	}
-	if (_SPS_Tri_Enabled > 0) {
+	if (_SPS_Target_LL_Lights < 0.5) {
 		float thousandths = range % 0.001;
 		if (thousandths > 0.0001 && thousandths < 0.0003) {
 			// Legacy light coming from a lightless SPS socket
@@ -29,56 +27,14 @@ float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)); }
 // https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-9052987
 float sps_attenToRange(float atten) { return 5.0 * (1.0 / sqrt(atten)); }
 
-float triangulate(float centerRange,float offsetRange,float distBetweenStations) {
-	centerRange = (1-centerRange) * 3;
-	offsetRange = (1-offsetRange) * 3;
-	float inner = (distBetweenStations*distBetweenStations + centerRange*centerRange - offsetRange*offsetRange) / (2*distBetweenStations*centerRange);
-	inner = clamp(inner, -1, 1);
-	float ang = acos(inner);
-	float offset = centerRange * sin(ang - SPS_PI/2);
-	return -offset;
-}
-
 // Find nearby socket lights
-bool sps_search(
-	out float3 rootLocal,
-	out bool isRing,
-	out float3 rootNormal,
-	inout float4 color
+void sps_search(
+	inout bool ioFound,
+	inout float3 ioRootLocal,
+	inout bool ioIsRing,
+	inout float3 ioRootNormal,
+	inout float4 ioColor
 ) {
-	if (_SPS_Tri_Enabled > 0.5) {
-		if (_SPS_Tri_Root_Center == 1 || _SPS_Tri_Root_Forward == 1 || _SPS_Tri_Root_Right == 1 || _SPS_Tri_Root_Up == 1
-			|| _SPS_Tri_Front_Center == 1 || _SPS_Tri_Front_Forward == 1 || _SPS_Tri_Front_Right == 1 || _SPS_Tri_Front_Up == 1)
-		{
-			rootLocal = float3(0,0,0);
-			isRing = false;
-			rootNormal = float3(0,0,1);
-			return true;
-		}
-
-		if (_SPS_Tri_Root_Center > 0 && _SPS_Tri_Root_Forward > 0 && _SPS_Tri_Root_Right > 0 && _SPS_Tri_Root_Up > 0
-			&& _SPS_Tri_Front_Center > 0 && _SPS_Tri_Front_Forward > 0 && _SPS_Tri_Front_Right > 0 && _SPS_Tri_Front_Up > 0)
-		{
-			bool triIsRing = _SPS_Tri_Root_Center == _SPS_Tri_IsRing;
-			bool triIsHole = _SPS_Tri_Root_Center == _SPS_Tri_IsHole;
-			if (triIsRing || triIsHole) {
-				rootLocal = float3(
-					triangulate(_SPS_Tri_Root_Center, _SPS_Tri_Root_Right, 0.01),
-					triangulate(_SPS_Tri_Root_Center, _SPS_Tri_Root_Up, 0.01),
-					triangulate(_SPS_Tri_Root_Center, _SPS_Tri_Root_Forward, 0.01)
-				);
-				isRing = false;
-				float3 front = float3(
-					triangulate(_SPS_Tri_Front_Center, _SPS_Tri_Front_Right, 0.01),
-					triangulate(_SPS_Tri_Front_Center, _SPS_Tri_Front_Up, 0.01),
-					triangulate(_SPS_Tri_Front_Center, _SPS_Tri_Front_Forward, 0.01)
-				);
-				rootNormal = sps_normalize(front - rootLocal);
-				return true;
-			}
-		}
-	}
-
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];
@@ -141,18 +97,14 @@ bool sps_search(
 		frontFound = false;
 	}
 
-	if (rootFound) {
-		rootLocal = lightLocalPos[rootIndex];
-		isRing = lightType[rootIndex] != 1;
-		rootNormal = frontFound
-			? lightLocalPos[frontIndex] - lightLocalPos[rootIndex]
-			: -1 * lightLocalPos[rootIndex];
-		rootNormal = sps_normalize(rootNormal);
-	} else {
-	 	rootLocal = float3(0,0,0);
-	 	isRing = false;
-	 	rootNormal = float3(0,0,0);
-	}
-	
-	return rootFound;
+	if (!rootFound) return;
+	if (ioFound && length(lightLocalPos[rootIndex]) >= length(ioRootLocal)) return;
+
+	ioFound = true;
+	ioRootLocal = lightLocalPos[rootIndex];
+	ioIsRing = lightType[rootIndex] != 1;
+	ioRootNormal = frontFound
+		? lightLocalPos[frontIndex] - lightLocalPos[rootIndex]
+		: -1 * lightLocalPos[rootIndex];
+	ioRootNormal = sps_normalize(ioRootNormal);
 }
