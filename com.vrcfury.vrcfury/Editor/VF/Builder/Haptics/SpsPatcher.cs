@@ -70,7 +70,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "4";
+            var hashContent = contents + spsMain + "5";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -204,8 +204,8 @@ namespace VF.Builder.Haptics {
             string newInputParams;
             string newPassParams;
             string mainParamName;
-            string searchForOldStruct;
-            bool useStructExtends;
+            string searchForOldStruct = flattenedPass;
+            bool useStructExtends = !isSurfaceShader;
             if (oldVertFunction != null) {
                 var foundOldVert = GetRegex(Regex.Escape(oldVertFunction) + @"\s*\(([^\);]*)\)\s*\{")
                     .Matches(flattenedPass)
@@ -262,16 +262,12 @@ namespace VF.Builder.Haptics {
                 var rewrittenPassParams = RewriteParamList(paramList, stripTypes: true,
                     rewriteFirstParamNameTo: $"({firstParamType}){mainParamName}");
                 newPassParams = rewrittenPassParams.rewritten;
-                searchForOldStruct = flattenedPass;
-                useStructExtends = true;
             } else {
                 oldStructType = "appdata_full";
-                searchForOldStruct = ReadAndFlattenContent("#include \"UnityCG.cginc\"", includeLibraryFiles: true);
                 returnType = "void";
                 newInputParams = "inout SpsInputs input";
                 mainParamName = "input";
                 newPassParams = null;
-                useStructExtends = false;
             }
 
             var oldStructBody = "";
@@ -496,11 +492,13 @@ namespace VF.Builder.Haptics {
         }
         private static string ReadAndFlattenContent(string content, HashSet<string> included = null, bool includeLibraryFiles = false) {
             var output = new List<string>();
-            // if (includeLibraryFiles && content.Contains("CGPROGRAM")) {
-            //     content = "#include \"HLSLSupport.cginc\"\n"
-            //         + "#include \"UnityShaderVariables.cginc\"\n"
-            //         + content;
-            // }
+            if (includeLibraryFiles && content.Contains("CGPROGRAM")) {
+                content = "#include \"HLSLSupport.cginc\"\n" + content;
+                content = "#include \"UnityShaderVariables.cginc\"\n" + content;
+                if (content.Contains("#pragma surface ")) {
+                    content = "#include \"Lighting.cginc\"\n" + content;
+                }
+            }
             content = WithEachInclude(content, null, includePath => {
                 return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
             }, includeLibraryFiles);
