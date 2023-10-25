@@ -25,11 +25,6 @@ namespace VF.Feature.Base {
         
         UpgradeLegacyHaptics,
         
-        // Needs to run after all haptic components are in place
-        // Needs to run before Toggles, because of its "After Bake" action
-        BakeHapticPlugs,
-        BakeHapticSockets,
-        BakeHapticVersions,
         
         ApplyRestState1,
 
@@ -42,6 +37,13 @@ namespace VF.Feature.Base {
         // may move objects out of the props and onto the avatar base). One example is the FullController which
         // scans the prop children for contact receivers.
         ArmatureLinkBuilder,
+        
+        // TODO UNDO MOVING THIS
+        // Needs to run after all haptic components are in place
+        // Needs to run before Toggles, because of its "After Bake" action
+        BakeHapticPlugs,
+        BakeHapticSockets,
+        BakeHapticVersions,
         
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,

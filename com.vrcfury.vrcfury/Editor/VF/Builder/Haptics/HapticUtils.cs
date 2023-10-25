@@ -263,13 +263,20 @@ namespace VF.Builder.Haptics {
                 alreadyChecked.Add(current);
                 if (current == parent) return true;
                 if (followConstraints) {
-                    var constraint = current.GetComponent<IConstraint>();
-                    if (constraint != null && constraint.sourceCount > 0) {
+                    Transform foundConstraint = null;
+                    foreach (var constraint in current.GetComponents<IConstraint>()) {
+                        if (!(constraint is ParentConstraint) && !(constraint is PositionConstraint)) continue;
+                        if (constraint.sourceCount == 0) continue;
                         var source = constraint.GetSource(0).sourceTransform;
                         if (source != null && !alreadyChecked.Contains(source)) {
-                            current = source;
-                            continue;
+                            foundConstraint = source;
+                            break;
                         }
+                    }
+
+                    if (foundConstraint) {
+                        current = foundConstraint;
+                        continue;
                     }
                 }
                 current = current.parent;
