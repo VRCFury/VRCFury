@@ -45,6 +45,16 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
         public void RecordAllDefaults() {
+            var propsInNonFx = new HashSet<EditorCurveBinding>();
+            foreach (var c in manager.GetAllUsedControllers()) {
+                if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) continue;
+                foreach (var clip in c.GetClips()) {
+                    foreach (var binding in clip.GetAllBindings()) {
+                        propsInNonFx.Add(binding.Normalize());
+                    }
+                }
+            }
+            
             // We shouldn't need to record defaults if useWriteDefaults is true, BUT due to a vrchat bug,
             // the defaults state for properties are broken in mirrors, so we're forced to record them all in the base layer.
             var settings = GetBuildSettings();
@@ -64,9 +74,12 @@ namespace VF.Feature {
                             ) {
                                 continue;
                             }
+
+                            if (propsInNonFx.Contains(binding.Normalize())) continue;
                             RecordDefaultNow(binding, true);
                         }
                         foreach (var binding in clip.GetObjectBindings()) {
+                            if (propsInNonFx.Contains(binding.Normalize())) continue;
                             RecordDefaultNow(binding, false);
                         }
                     }
