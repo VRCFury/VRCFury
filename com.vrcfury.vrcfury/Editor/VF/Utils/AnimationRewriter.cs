@@ -6,8 +6,9 @@ using UnityEngine;
 namespace VF.Utils {
     public class AnimationRewriter {
         public delegate (EditorCurveBinding, FloatOrObjectCurve, bool) CurveRewriter(EditorCurveBinding binding, FloatOrObjectCurve curve);
-        public static AnimationRewriter RewritePath(Func<string, string> rewrite) {
+        public static AnimationRewriter RewritePath(Func<string, string> rewrite, Type rewriteType = null) {
             return RewriteBinding(binding => {
+                if (rewriteType != null && binding.type != rewriteType) return binding;
                 var newPath = rewrite(binding.path);
                 if (newPath == null) return null;
                 if (newPath == binding.path) return binding;

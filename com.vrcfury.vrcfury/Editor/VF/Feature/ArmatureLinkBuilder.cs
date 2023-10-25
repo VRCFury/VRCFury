@@ -99,6 +99,7 @@ namespace VF.Feature {
                 // Now, update all the skinned meshes in the prop to use the avatar's bone objects
                 var boneMapping = new Dictionary<Transform, Transform>();
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
+                    MovePhysboneColliders(propBone, avatarBone);
                     FailIfComponents(propBone);
                     UpdatePhysbones(propBone, avatarBone);
                     UpdatePhysboneColliders(propBone, avatarBone);
@@ -175,6 +176,39 @@ namespace VF.Feature {
                     p.SetRotationOffset(0, (Quaternion.Inverse(avatarBone.transform.rotation) * p.transform.rotation).eulerAngles);
                 }
             }
+        }
+
+        private void MovePhysboneColliders(GameObject propBone, GameObject avatarBone) {
+            var oldCollider = propBone.GetComponent<VRCPhysBoneCollider>();
+            if (oldCollider == null) return;
+
+            // collider exists on a bone that will stop existing, so we need to move it to a new child object on the avatar bone
+            var childBone = GameObjects.Create(
+                $"vrcf_merged_collider_{uniqueModelNum} (from {propBone.name})",
+                parent: avatarBone,
+                useTransformFrom: propBone
+            );
+
+            // create a new collider on the child bone and copy the settings over
+            var newCollider = childBone.AddComponent<VRCPhysBoneCollider>();
+            EditorUtility.CopySerialized(oldCollider, newCollider);
+
+            // if the collider targeted the bone it was on (why?) then point it to the base bone instead
+            if (newCollider.GetRootTransform() == propBone.transform) {
+                newCollider.rootTransform = avatarBone.transform;
+            }
+
+            // change oldCollider references on any physbones to point to newCollider
+            foreach (var physbone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
+                if (!physbone.colliders.Contains(oldCollider)) continue;
+                physbone.colliders = physbone.colliders.Select(c => (c == oldCollider) ? newCollider : c).ToList();
+            }
+
+            // rewrite all animation paths referencing the old collider to point to the new one
+            mover.DirectRewrite(oldCollider.gameObject, newCollider.gameObject, typeof(VRCPhysBoneCollider));
+
+            // remove the old collider
+            Object.DestroyImmediate(oldCollider);
         }
 
         private (float, float, float) GetScalingFactor(Links links) {

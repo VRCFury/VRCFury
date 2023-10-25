@@ -33,19 +33,19 @@ namespace VF.Service {
             DirectRewrite(oldPath, newPath);
         }
 
-        public void DirectRewrite(GameObject oldObj, GameObject newObj) {
+        public void DirectRewrite(GameObject oldObj, GameObject newObj, Type rewriteType = null) {
             var oldPath = clipBuilder.GetPath(oldObj);
             var newPath = clipBuilder.GetPath(newObj);
-            DirectRewrite(oldPath, newPath);
+            DirectRewrite(oldPath, newPath, rewriteType);
         }
         
-        private void DirectRewrite(string from, string to) {
+        private void DirectRewrite(string from, string to, Type rewriteType = null) {
             var rewriter = AnimationRewriter.RewritePath(path => {
                 if (path.StartsWith(from + "/") || path == from) {
                     path = to + path.Substring(from.Length);
                 }
                 return path;
-            });
+            }, rewriteType);
 
             foreach (var controller in manager.GetAllUsedControllers()) {
                 ((AnimatorController)controller.GetRaw()).Rewrite(rewriter);
