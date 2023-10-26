@@ -1,5 +1,5 @@
 #include "sps_bezier.cginc"
-#include "sps_search.cginc"
+#include "sps_light.cginc"
 #include "sps_tri.cginc"
 #include "sps_bake.cginc"
 #include "sps_utils.cginc"
