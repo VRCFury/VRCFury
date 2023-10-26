@@ -66,8 +66,8 @@ float sps_tri_triangulate(float centerRange,float offsetRange,float distBetweenS
     offsetRange = (1-offsetRange) * 3;
     float inner = (distBetweenStations*distBetweenStations + centerRange*centerRange - offsetRange*offsetRange) / (2*distBetweenStations*centerRange);
     inner = clamp(inner, -1, 1);
-    float ang = acos(inner);
-    float offset = centerRange * sin(ang - SPS_PI/2);
+    const float ang = acos(inner);
+    const float offset = centerRange * sin(ang - SPS_PI/2);
     return -offset;
 }
 float3 sps_tri_triangulate(SpsTriCoords coords) {
@@ -87,10 +87,10 @@ void sps_tri_search(
 ) {
     if (data.enabled < 0.5) return;
 
-    float3 root = sps_tri_triangulate(data.root);
-    float3 front = sps_tri_triangulate(data.front);
-    bool isRing = data.root.center == data.isRing;
-    bool isHole = data.root.center == data.isHole;
+    const float3 root = sps_tri_triangulate(data.root);
+    const float3 front = sps_tri_triangulate(data.front);
+    const bool isRing = data.root.center == data.isRing;
+    const bool isHole = data.root.center == data.isHole;
     if (!isRing && !isHole) return;
 
     if (distance(root, front) > 0.1) return;

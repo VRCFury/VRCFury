@@ -48,6 +48,3 @@ _SPS_Tri_Other_Front_Up("_SPS_Tri_Other_Front_Up", Float) = 0
 _SPS_Tri_Other_Front_Right("_SPS_Tri_Other_Front_Right", Float) = 0
 _SPS_Tri_Other_IsRing("_SPS_Tri_Other_IsRing", Float) = 0
 _SPS_Tri_Other_IsHole("_SPS_Tri_Other_IsHole", Float) = 0
-
-[Space]
-_SPS_End("", Float) = 0

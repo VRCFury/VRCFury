@@ -1,14 +1,15 @@
 #include "UnityShaderVariables.cginc"
 #include "sps_globals.cginc"
+#include "sps_utils.cginc"
 
 // Type: 0=invalid 1=hole 2=ring 3=front
-void sps_parse_light(float range, half4 color, out int type) {
+void sps_light_parse(float range, half4 color, out int type) {
 	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
 		type = 0;
 		return;
 	}
 	if (_SPS_Target_LL_Lights < 0.5) {
-		float thousandths = range % 0.001;
+		const float thousandths = range % 0.001;
 		if (thousandths > 0.0001 && thousandths < 0.0003) {
 			// Legacy light coming from a lightless SPS socket
 			type = 0;
@@ -16,19 +17,15 @@ void sps_parse_light(float range, half4 color, out int type) {
 		}
 	}
 
-	int legacyRange = round((range % 0.1) * 100);
+	const int legacyRange = round((range % 0.1) * 100);
 
 	if (legacyRange == 1) type = 1;
 	if (legacyRange == 2) type = 2;
 	if (legacyRange == 5) type = 3;
 }
-float3 sps_toLocal(float3 v) { return mul(unity_WorldToObject, float4(v, 1)); }
-float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)); }
-// https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-9052987
-float sps_attenToRange(float atten) { return 5.0 * (1.0 / sqrt(atten)); }
 
 // Find nearby socket lights
-void sps_search(
+void sps_light_search(
 	inout bool ioFound,
 	inout float3 ioRootLocal,
 	inout bool ioIsRing,
@@ -43,7 +40,7 @@ void sps_search(
 	{
 		for(int i = 0; i < 4; i++) {
 	 		const float range = sps_attenToRange(unity_4LightAtten0[i]);
-			sps_parse_light(range, unity_LightColor[i], lightType[i]);
+			sps_light_parse(range, unity_LightColor[i], lightType[i]);
 	 		lightWorldPos[i] = float3(unity_4LightPosX0[i], unity_4LightPosY0[i], unity_4LightPosZ0[i]);
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}

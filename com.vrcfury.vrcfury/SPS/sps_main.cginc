@@ -26,7 +26,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		sps_tri_search(selfData, found, rootPos, isRing, frontNormal, color);
 		sps_tri_GetData(Other, otherData)
 		sps_tri_search(otherData, found, rootPos, isRing, frontNormal, color);
-		sps_search(found, rootPos, isRing, frontNormal, color);
+		sps_light_search(found, rootPos, isRing, frontNormal, color);
 	}
 	if (!found) return;
 
