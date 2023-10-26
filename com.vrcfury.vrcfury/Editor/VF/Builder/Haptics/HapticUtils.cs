@@ -84,62 +84,8 @@ namespace VF.Builder.Haptics {
 
         public enum ReceiverParty {
             Self,
-            Others
-        }
-
-        public static GameObject AddReceiver(
-            Transform obj,
-            Vector3 pos,
-            String param,
-            String objName,
-            float radius,
-            string[] tags,
-            ReceiverParty party,
-            bool localOnly = false,
-            float height = 0,
-            Quaternion rotation = default,
-            ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity,
-            bool worldScale = true
-        ) {
-            var isOnHips = IsDirectChildOfHips(obj);
-            var suffixes = new List<string>();
-            if (party == ReceiverParty.Others) {
-                suffixes.Add("");
-            } else if (party == ReceiverParty.Self) {
-                if (isOnHips) {
-                    suffixes.Add("_SelfNotOnHips");
-                } else {
-                    suffixes.Add("");
-                }
-            }
-
-            tags = tags.SelectMany(tag => {
-                if (!tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
-                return suffixes.Select(suffix => tag + suffix);
-            }).ToArray();
-
-            var child = GameObjects.Create(objName, obj);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return child;
-            var receiver = child.AddComponent<VRCContactReceiver>();
-            receiver.position = pos;
-            receiver.parameter = param;
-            receiver.radius = radius;
-            receiver.receiverType = type;
-            receiver.collisionTags = new List<string>(tags);
-            receiver.allowOthers = party == ReceiverParty.Others;
-            receiver.allowSelf = party == ReceiverParty.Self;
-            receiver.localOnly = localOnly;
-            if (height > 0) {
-                receiver.shapeType = ContactBase.ShapeType.Capsule;
-                receiver.height = height;
-                receiver.rotation = rotation;
-            }
-            if (worldScale) {
-                receiver.position /= child.worldScale.x;
-                receiver.radius /= child.worldScale.x;
-                receiver.height /= child.worldScale.x;
-            }
-            return child;
+            Others,
+            Both
         }
 
         public static void RemoveTPSSenders(Transform obj) {
@@ -317,13 +263,20 @@ namespace VF.Builder.Haptics {
                 alreadyChecked.Add(current);
                 if (current == parent) return true;
                 if (followConstraints) {
-                    var constraint = current.GetComponent<IConstraint>();
-                    if (constraint != null && constraint.sourceCount > 0) {
+                    Transform foundConstraint = null;
+                    foreach (var constraint in current.GetComponents<IConstraint>()) {
+                        if (!(constraint is ParentConstraint) && !(constraint is PositionConstraint)) continue;
+                        if (constraint.sourceCount == 0) continue;
                         var source = constraint.GetSource(0).sourceTransform;
                         if (source != null && !alreadyChecked.Contains(source)) {
-                            current = source;
-                            continue;
+                            foundConstraint = source;
+                            break;
                         }
+                    }
+
+                    if (foundConstraint) {
+                        current = foundConstraint;
+                        continue;
                     }
                 }
                 current = current.parent;

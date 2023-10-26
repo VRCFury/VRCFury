@@ -274,7 +274,6 @@ namespace VF.Inspector {
             VRCFuryHapticPlug plug,
             List<string> usedNames = null,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
-            bool onlySenders = false,
             MutableManager mutableManager = null,
             bool deferMaterialConfig = false
         ) {
@@ -323,11 +322,6 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
-            
-            // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
-            var extraRadiusForRub = 0.08f;
-            
             Debug.Log("Baking haptic component in " + transform + " as " + name);
             
             var bakeRoot = GameObjects.Create("BakedHapticPlug", transform);
@@ -341,30 +335,6 @@ namespace VF.Inspector {
             HapticUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH });
             HapticUtils.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength);
             HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT });
-            
-            var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
-
-            if (onlySenders) {
-                var info = GameObjects.Create("Info", bakeRoot);
-                if (!string.IsNullOrWhiteSpace(plug.name)) {
-                    var nameObj = GameObjects.Create("name=" + plug.name, info);
-                }
-                if (plug.length != 0 || plug.radius != 0) {
-                    var sizeObj = GameObjects.Create("size", info);
-                    sizeObj.localScale = new Vector3(plug.length, plug.radius, 0);
-                }
-            } else {
-                // Receivers
-                var receivers = GameObjects.Create("Receivers", bakeRoot);
-                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, localOnly:true);
-                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Self, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, localOnly:true);
-                HapticUtils.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
-            }
             
             // TODO: Check if there are 0 renderers,
             // or if there are 0 materials on any of the renderers

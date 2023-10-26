@@ -30,6 +30,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
+        [VFAutowired] private readonly HapticContactsService hapticContacts;
 
         [FeatureBuilderAction(FeatureOrder.BakeHapticSockets)]
         public void Apply() {
@@ -90,6 +91,38 @@ namespace VF.Feature {
                         mover.Move(socket.gameObject, head);
                     }
                     var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
+                    
+                    // Haptic receivers
+                    {
+                        // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+                        var capsuleRotation = Quaternion.Euler(90,0,0);
+                        
+                        var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
+                    
+                        // Receivers
+                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
+                        var receivers = GameObjects.Create("Receivers", bakeRoot);
+                        if (handTouchZoneSize != null) {
+                            var oscDepth = handTouchZoneSize.Item1;
+                            var closeRadius = handTouchZoneSize.Item2;
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
+                            // Legacy non-upgraded TPS detection
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
+                            
+                            var frotRadius = 0.1f;
+                            var frotPos = 0.05f;
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        }
+                        
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                    }
 
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                         _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
@@ -170,18 +203,18 @@ namespace VF.Feature {
                         exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
 
                         if (socket.enableAuto && autoOnClip) {
-                            var distParam = fx.NewFloat(name + "/AutoDistance");
-                            var distReceiver = HapticUtils.AddReceiver(
-                                bakeRoot,
+                            var autoReceiverObj = GameObjects.Create("AutoDistance", bakeRoot);
+                            var distParam = hapticContacts.AddReceiver(
+                                autoReceiverObj,
                                 Vector3.zero,
-                                distParam.Name(),
-                                "AutoDistance",
+                                name + "/AutoDistance",
+                                "Receiver",
                                 0.3f,
                                 new[] { HapticUtils.CONTACT_PEN_MAIN },
                                 party: HapticUtils.ReceiverParty.Others
                             );
-                            distReceiver.SetActive(false);
-                            clipBuilder.Enable(autoOnClip, distReceiver);
+                            autoReceiverObj.active = false;
+                            clipBuilder.Enable(autoOnClip, autoReceiverObj);
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                         }
                     }
@@ -209,7 +242,7 @@ namespace VF.Feature {
                 }
             }
 
-            if (autoOn != null) {
+            if (autoOn != null && autoSockets.Count > 0) {
                 var layer = fx.NewLayer("Auto Socket Mode");
                 var remoteTrap = layer.NewState("Remote trap");
                 var stopped = layer.NewState("Stopped");
