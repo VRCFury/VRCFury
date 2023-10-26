@@ -144,7 +144,7 @@ namespace VF.Feature {
                         var param = fx.NewBool("triangulationOn", synced: true);
                         manager.GetMenu()
                             .NewMenuToggle(
-                                $"{spsOptions.GetOptionsPath()}/<b>Lightless SPS (Beta)",
+                                $"{spsOptions.GetOptionsPath()}/<b>SPSLL (Alpha)<\\/b>\n<size=20>Use contacts instead of lights - Experimental!",
                                 param);
                         triangulationOnClip = fx.NewClip("TriangulationOn");
                         var layer = fx.NewLayer("Lightless SPS");
