@@ -242,7 +242,7 @@ namespace VF.Feature {
                 }
             }
 
-            if (autoOn != null) {
+            if (autoOn != null && autoSockets.Count > 0) {
                 var layer = fx.NewLayer("Auto Socket Mode");
                 var remoteTrap = layer.NewState("Remote trap");
                 var stopped = layer.NewState("Stopped");

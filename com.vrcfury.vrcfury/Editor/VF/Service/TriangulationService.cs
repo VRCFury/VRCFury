@@ -23,9 +23,9 @@ namespace VF.Service {
         public Triangulator CreateTriangulator(VFGameObject parent, string prefix, string paramName, string[] tags, HapticUtils.ReceiverParty party) {
             var tri = new Triangulator {
                 center = hapticContacts.AddReceiver(parent, Vector3.zero, $"{paramName}_center", $"{prefix}Center", 3f, tags, party),
-                up = hapticContacts.AddReceiver(parent, Vector3.up * 0.01f, $"{paramName}_up", $"{prefix}Up", 3f, tags, party),
-                forward = hapticContacts.AddReceiver(parent, Vector3.forward * 0.01f, $"{paramName}_forward", $"{prefix}Forward", 3f, tags, party),
-                right = hapticContacts.AddReceiver(parent, Vector3.right * 0.01f, $"{paramName}_right", $"{prefix}Right", 3f, tags, party)
+                up = hapticContacts.AddReceiver(parent, Vector3.up * 0.1f, $"{paramName}_up", $"{prefix}Up", 3f, tags, party),
+                forward = hapticContacts.AddReceiver(parent, Vector3.forward * 0.1f, $"{paramName}_forward", $"{prefix}Forward", 3f, tags, party),
+                right = hapticContacts.AddReceiver(parent, Vector3.right * 0.1f, $"{paramName}_right", $"{prefix}Right", 3f, tags, party)
             };
 
             return tri;

@@ -72,9 +72,9 @@ float sps_tri_triangulate(float centerRange,float offsetRange,float distBetweenS
 }
 float3 sps_tri_triangulate(SpsTriCoords coords) {
     return float3(
-        sps_tri_triangulate(coords.center, coords.right, 0.01),
-        sps_tri_triangulate(coords.center, coords.up, 0.01),
-        sps_tri_triangulate(coords.center, coords.forward, 0.01)
+        sps_tri_triangulate(coords.center, coords.right, 0.1),
+        sps_tri_triangulate(coords.center, coords.up, 0.1),
+        sps_tri_triangulate(coords.center, coords.forward, 0.1)
     );
 }
 void sps_tri_search(
