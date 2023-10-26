@@ -95,40 +95,7 @@ namespace VF.Feature {
                     var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(postBakeClip);
 
-                    if (plug.enableSps && EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
-                        var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
-                        triRoot.worldScale = Vector3.one;
-                        var p = triRoot.AddComponent<ScaleConstraint>();
-                        p.AddSource(new ConstraintSource() {
-                            sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
-                            weight = 1
-                        });
-                        p.weight = 1;
-                        p.constraintActive = true;
-                        p.locked = true;
-
-                        for (var partyI = 0; partyI <= 1; partyI++) {
-                            var party = partyI == 0 ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others;
-                            var prefix = partyI == 0 ? "Self" : "Other";
-                            
-                            var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
-                                new[] { HapticUtils.TagSpsSocketRoot }, party);
-                            var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
-                                new[] { HapticUtils.TagSpsSocketFront }, party);
-                            var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
-                                "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
-                                party);
-                            var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
-                                "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
-                                party);
-                        
-                            foreach (var r in renderers) {
-                                _triangulationService.SendToShader(tri, $"_SPS_Tri_{prefix}_Root", r.renderer);
-                                _triangulationService.SendToShader(triFront, $"_SPS_Tri_{prefix}_Front", r.renderer);
-                                _triangulationService.SendParamToShader(isHole, $"_SPS_Tri_{prefix}_IsHole", r.renderer);
-                                _triangulationService.SendParamToShader(isRing, $"_SPS_Tri_{prefix}_IsRing", r.renderer);
-                            }
-                        }
+                    if (plug.enableSps) {
                         foreach (var r in renderers) {
                             spsRewritesToDo.Add(new SpsRewriteToDo {
                                 plugObject = plug.owner(),
@@ -139,35 +106,82 @@ namespace VF.Feature {
                             });
                         }
                     }
-                    
-                    if (triangulationOnClip == null) {
-                        var param = fx.NewBool("triangulationOn", synced: true);
-                        manager.GetMenu()
-                            .NewMenuToggle(
-                                $"{spsOptions.GetOptionsPath()}/<b>SPSLL (Alpha)<\\/b>\n<size=20>Use contacts instead of lights - Experimental!",
-                                param);
-                        triangulationOnClip = fx.NewClip("TriangulationOn");
-                        var layer = fx.NewLayer("Lightless SPS");
-                        var off = layer.NewState("Off");
-                        var on = layer.NewState("On").WithAnimation(triangulationOnClip);
-                        var whenOn = param.IsTrue();
-                        off.TransitionsTo(on).When(whenOn);
-                        on.TransitionsTo(off).When(whenOn.Not());
-                    }
 
-                    foreach (var r in renderers) {
-                        triangulationOnClip.SetConstant(
-                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
-                            1
-                        );
-                        triangulationOnClip.SetConstant(
-                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Other_Enabled"),
-                            1
-                        );
-                        triangulationOnClip.SetConstant(
-                            EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Target_LL_Lights"),
-                            0
-                        );
+                    if (spsOptions.GetOptions().enableLightlessToggle && plug.enableSps) {
+                        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                            var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
+                            triRoot.worldScale = Vector3.one;
+                            var p = triRoot.AddComponent<ScaleConstraint>();
+                            p.AddSource(new ConstraintSource() {
+                                sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
+                                weight = 1
+                            });
+                            p.weight = 1;
+                            p.constraintActive = true;
+                            p.locked = true;
+
+                            for (var partyI = 0; partyI <= 1; partyI++) {
+                                var party = partyI == 0 ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others;
+                                var prefix = partyI == 0 ? "Self" : "Other";
+                                
+                                var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
+                                    new[] { HapticUtils.TagSpsSocketRoot }, party);
+                                var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
+                                    new[] { HapticUtils.TagSpsSocketFront }, party);
+                                var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                                    "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
+                                    party);
+                                var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                                    "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
+                                    party);
+                            
+                                foreach (var r in renderers) {
+                                    _triangulationService.SendToShader(tri, $"_SPS_Tri_{prefix}_Root", r.renderer);
+                                    _triangulationService.SendToShader(triFront, $"_SPS_Tri_{prefix}_Front", r.renderer);
+                                    _triangulationService.SendParamToShader(isHole, $"_SPS_Tri_{prefix}_IsHole", r.renderer);
+                                    _triangulationService.SendParamToShader(isRing, $"_SPS_Tri_{prefix}_IsRing", r.renderer);
+                                }
+                            }
+                            foreach (var r in renderers) {
+                                spsRewritesToDo.Add(new SpsRewriteToDo {
+                                    plugObject = plug.owner(),
+                                    skin = (SkinnedMeshRenderer)r.renderer,
+                                    bakeRoot = bakeRoot,
+                                    configureMaterial = r.configureMaterial,
+                                    spsBlendshapes = r.spsBlendshapes
+                                });
+                            }
+                        }
+                        
+                        if (triangulationOnClip == null) {
+                            var param = fx.NewBool("triangulationOn", synced: true);
+                            manager.GetMenu()
+                                .NewMenuToggle(
+                                    $"{spsOptions.GetOptionsPath()}/<b>SPSLL (Alpha)<\\/b>\n<size=20>Use contacts instead of lights - Experimental!",
+                                    param);
+                            triangulationOnClip = fx.NewClip("TriangulationOn");
+                            var layer = fx.NewLayer("Lightless SPS");
+                            var off = layer.NewState("Off");
+                            var on = layer.NewState("On").WithAnimation(triangulationOnClip);
+                            var whenOn = param.IsTrue();
+                            off.TransitionsTo(on).When(whenOn);
+                            on.TransitionsTo(off).When(whenOn.Not());
+                        }
+
+                        foreach (var r in renderers) {
+                            triangulationOnClip.SetConstant(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
+                                1
+                            );
+                            triangulationOnClip.SetConstant(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Other_Enabled"),
+                                1
+                            );
+                            triangulationOnClip.SetConstant(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Target_LL_Lights"),
+                                0
+                            );
+                        }
                     }
 
                     if (plug.addDpsTipLight) {
