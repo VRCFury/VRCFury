@@ -108,9 +108,10 @@ namespace VF.Feature {
                     }
 
                     if (spsOptions.GetOptions().enableLightlessToggle && plug.enableSps) {
+                        var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
+                        triRoot.active = false;
+                        triRoot.worldScale = Vector3.one;
                         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
-                            var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
-                            triRoot.worldScale = Vector3.one;
                             var p = triRoot.AddComponent<ScaleConstraint>();
                             p.AddSource(new ConstraintSource() {
                                 sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
@@ -142,15 +143,6 @@ namespace VF.Feature {
                                     _triangulationService.SendParamToShader(isRing, $"_SPS_Tri_{prefix}_IsRing", r.renderer);
                                 }
                             }
-                            foreach (var r in renderers) {
-                                spsRewritesToDo.Add(new SpsRewriteToDo {
-                                    plugObject = plug.owner(),
-                                    skin = (SkinnedMeshRenderer)r.renderer,
-                                    bakeRoot = bakeRoot,
-                                    configureMaterial = r.configureMaterial,
-                                    spsBlendshapes = r.spsBlendshapes
-                                });
-                            }
                         }
                         
                         if (triangulationOnClip == null) {
@@ -168,6 +160,7 @@ namespace VF.Feature {
                             on.TransitionsTo(off).When(whenOn.Not());
                         }
 
+                        clipBuilder.Enable(triangulationOnClip, triRoot);
                         foreach (var r in renderers) {
                             triangulationOnClip.SetConstant(
                                 EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
