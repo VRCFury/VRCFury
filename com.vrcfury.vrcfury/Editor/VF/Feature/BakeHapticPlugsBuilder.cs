@@ -107,7 +107,7 @@ namespace VF.Feature {
                         }
                     }
 
-                    if (spsOptions.GetOptions().enableLightlessToggle && plug.enableSps) {
+                    if (spsOptions.GetOptions().enableLightlessToggle2 && plug.enableSps) {
                         var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
                         triRoot.active = false;
                         triRoot.worldScale = Vector3.one;
