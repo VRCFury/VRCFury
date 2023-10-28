@@ -354,7 +354,7 @@ namespace VF.Inspector {
                         var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
 
                         if (plug.enableSps && plug.spsAutorig) {
-                            SpsAutoRigger.AutoRig(skin, worldLength, mutableManager);
+                            SpsAutoRigger.AutoRig(skin, worldLength, worldRadius, mutableManager);
                         }
                         
                         var spsBlendshapes = plug.spsBlendshapes
