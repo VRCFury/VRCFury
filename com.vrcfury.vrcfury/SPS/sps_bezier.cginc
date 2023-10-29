@@ -3,7 +3,7 @@
 // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
 float3 sps_bezier(float3 p0, float3 p1, float3 p2, float3 p3, float t)
 {
-	float minT = 1-t;
+	const float minT = 1-t;
 	return
 		minT * minT * minT * p0
 		+ 3 * minT * minT * t * p1
@@ -12,7 +12,7 @@ float3 sps_bezier(float3 p0, float3 p1, float3 p2, float3 p3, float t)
 }
 float3 sps_bezierDerivative(float3 p0, float3 p1, float3 p2, float3 p3, float t)
 {
-	float minT = 1-t;
+	const float minT = 1-t;
 	return
 		3 * minT * minT * (p1 - p0)
 		+ 6 * minT * t * (p2 - p1)
@@ -65,7 +65,7 @@ void sps_bezierSolve(float3 p0, float3 p1, float3 p2, float3 p3, float lookingFo
 	}
 
 	curveLength = totalLength;
-	float t = saturate(adjustedT);
+	const float t = saturate(adjustedT);
 	position = sps_bezier(p0, p1, p2, p3, t);
 	forward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, t));
 	up = sps_nearest_normal(forward, approximateUp);

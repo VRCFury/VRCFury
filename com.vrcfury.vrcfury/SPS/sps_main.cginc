@@ -1,5 +1,6 @@
 #include "sps_bezier.cginc"
-#include "sps_search.cginc"
+#include "sps_light.cginc"
+#include "sps_tri.cginc"
 #include "sps_bake.cginc"
 #include "sps_utils.cginc"
 
@@ -19,7 +20,14 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	float3 rootPos;
 	bool isRing;
 	float3 frontNormal;
-	const bool found = sps_search(rootPos, isRing, frontNormal, color);
+	bool found = false;
+	{
+		sps_tri_GetData(Self, selfData)
+		sps_tri_search(selfData, found, rootPos, isRing, frontNormal, color);
+		sps_tri_GetData(Other, otherData)
+		sps_tri_search(otherData, found, rootPos, isRing, frontNormal, color);
+		sps_light_search(found, rootPos, isRing, frontNormal, color);
+	}
 	if (!found) return;
 
 	float orfDistance = length(rootPos);
@@ -40,39 +48,32 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		float applyLerp = 1;
 		// Cancel if base angle is too sharp
 		const float allowedExitAngle = 0.6;
-		const float exitAngleTooSharp = sps_saturated_map(
-			exitAngle,
-			SPS_PI*(allowedExitAngle*0.8), SPS_PI*allowedExitAngle
-		);
+		const float exitAngleTooSharp = exitAngle > SPS_PI*allowedExitAngle ? 1 : 0;
 		applyLerp = min(applyLerp, 1-exitAngleTooSharp);
 
 		// Cancel if the entrance angle is too sharp
-		const float allowedEntranceAngle = isRing ? 0.5 : 0.8;
-		const float entranceAngleTooSharp = sps_saturated_map(
-			entranceAngle,
-			SPS_PI*(allowedEntranceAngle*0.8), SPS_PI*allowedEntranceAngle
-		);
-		applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
+		if (!isRing) {
+			const float allowedEntranceAngle = isRing ? 0.5 : 0.8;
+			const float entranceAngleTooSharp = entranceAngle > SPS_PI*allowedEntranceAngle ? 1 : 0;
+			applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
+		}
 		
 		if (!isRing) {
 			// Uncancel if hilted in a hole
-			const float hiltedSphereRadius = 0.6;
-			const float inSphere = sps_saturated_map(
-				orfDistance,
-				worldLength*hiltedSphereRadius, worldLength*(hiltedSphereRadius*0.8)
-			);
+			const float hiltedSphereRadius = 0.3;
+			const float inSphere = orfDistance > worldLength*hiltedSphereRadius ? 0 : 1;
 			//const float hilted = min(isBehind, inSphere);
 			//shrinkLerp = hilted;
 			const float hilted = inSphere;
 			applyLerp = max(applyLerp, hilted);
 		} else {
 			// Cancel if ring is near or behind base
-			const float isBehind = sps_saturated_map(rootPos.z, worldLength*0.05, 0);
+			const float isBehind = rootPos.z > 0 ? 0 : 1;
 			applyLerp = min(applyLerp, 1-isBehind);
 		}
 
 		// Cancel if too far away
-		const float tooFar = sps_saturated_map(orfDistance, worldLength*1.3, worldLength*2);
+		const float tooFar = sps_saturated_map(orfDistance, worldLength*1.2, worldLength*1.6);
 		applyLerp = min(applyLerp, 1-tooFar);
 
 		applyLerp = applyLerp * saturate(_SPS_Enabled);
