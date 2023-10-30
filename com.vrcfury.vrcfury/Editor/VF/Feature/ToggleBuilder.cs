@@ -272,10 +272,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
-        return CreateEditor(prop, content => content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state"))));
-    }
-
-    private static VisualElement CreateEditor(SerializedProperty prop, Action<VisualElement> renderBody) {
         var content = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
@@ -414,8 +410,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         button.style.flexGrow = 0;
         flex.Add(button);
 
-        renderBody(content);
-
         if (resetPhysboneProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
@@ -481,51 +475,42 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, enableDriveGlobalParamProp));
         }
 
-        if (separateLocalProp != null)
-        {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (separateLocalProp.boolValue)
-                {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localState"), "Local State"));
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+
+            VisualElement MakeSingle(string tin, string state, string tout) {
+                var single = new VisualElement();
+                if (hasTransitionProp.boolValue) {
+                    single.Add(MakeTabbed(
+                        "Transition In:",
+                        VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tin))
+                    ));
+                    single.Add(MakeTabbed(
+                        "Then do this until turned off:",
+                        VRCFuryStateEditor.render(prop.FindPropertyRelative(state))
+                    ));
+                    var cout = new VisualElement();
+                    cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("simpleOutTransition"), "Transition Out is reverse of Transition In"));
+                    if (!simpleOutTransitionProp.boolValue)
+                        cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tout)));
+                    single.Add(MakeTabbed("Then transition out:", cout));
+                } else {
+                    single.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative(state)));
                 }
-                return c;
-            }, separateLocalProp));
-        }
-
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var c = new VisualElement();
-            if (hasTransitionProp.boolValue)
-            {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateIn"), "Transition In"));
-
-                if (!simpleOutTransitionProp.boolValue)
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionStateOut"), "Transition Out"));
+                return single;
             }
-            return c;
-        }, hasTransitionProp, simpleOutTransitionProp));
 
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var remoteSingle = MakeSingle("transitionStateIn", "state", "transitionStateOut");
             var c = new VisualElement();
-            if (separateLocalProp.boolValue && hasTransitionProp.boolValue)
-            {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateIn"), "Local Trans. In"));
-
-                if (!simpleOutTransitionProp.boolValue)
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localTransitionStateOut"), "Local Trans. Out"));
-
+            if (separateLocalProp.boolValue) {
+                var localSingle = MakeSingle("localTransitionStateIn", "localState", "localTransitionStateOut");
+                c.Add(MakeTabbed("In local:", localSingle));
+                c.Add(MakeTabbed("In remote:", remoteSingle));
+            } else {
+                c = remoteSingle;
             }
-            return c;
+
+            return MakeTabbed("When toggle is enabled:", c);
         }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
-
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var c = new VisualElement();
-            if (hasTransitionProp.boolValue)
-            {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("simpleOutTransition"), "Transition Out is reverse of Transition In"));
-            }
-            return c;
-        }, hasTransitionProp));
 
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -570,6 +555,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         ));
 
         return content;
+    }
+
+    private VisualElement MakeTabbed(string label, VisualElement child) {
+        var output = new VisualElement();
+        output.Add(VRCFuryEditorUtils.WrappedLabel(label, style: s => s.unityFontStyleAndWeight = FontStyle.Bold));
+        var tabbed = new VisualElement { style = { paddingLeft = 5 } };
+        tabbed.Add(child);
+        output.Add(tabbed);
+        return output;
     }
 }
 

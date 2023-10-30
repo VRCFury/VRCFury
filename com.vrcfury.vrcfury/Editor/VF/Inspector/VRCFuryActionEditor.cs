@@ -402,17 +402,21 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     }
                 };
 
-                var label = new Label("Object Toggle") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
+                row.Add(VRCFuryEditorUtils.Prop(
+                    prop.FindPropertyRelative("mode"),
+                    formatEnum: str => {
+                        if (str == "Toggle") return "Flip State (Deprecated)";
+                        return str;
+                    },
+                    style: s => {
+                        s.flexGrow = 0;
+                        s.flexBasis = 100;
+                    }));
 
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
+                row.Add(VRCFuryEditorUtils.Prop(
+                    prop.FindPropertyRelative("obj"),
+                    style: s => s.flexGrow = 1
+                ));
 
                 return row;
             }

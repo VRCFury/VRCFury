@@ -397,21 +397,7 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.WrappedLabel("(Reparent Root) The prop object is moved into the avatar's bone. No other merging takes place."));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("(Bone Constraint) Adds a parent constraint to every prop bone, linking it to the avatar bone. Awful performance, pretty much never use this."));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("(Auto) Selects Skin Rewrite if a mesh uses bones from the prop armature, or Reparent Root otherwise."));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("linkMode"), formatEnum: str => {
-                if (str == ArmatureLink.ArmatureLinkMode.SkinRewrite.ToString()) {
-                    return "Skin Rewrite";
-                } else if (str == ArmatureLink.ArmatureLinkMode.MergeAsChildren.ToString()) {
-                    return "Merge as Children";
-                } else if (str == ArmatureLink.ArmatureLinkMode.ReparentRoot.ToString()) {
-                    return "Reparent Root";
-                } else if (str == ArmatureLink.ArmatureLinkMode.ParentConstraint.ToString()) {
-                    return "Bone Constraint";
-                } else if (str == ArmatureLink.ArmatureLinkMode.Auto.ToString()) {
-                    return "Auto";
-                }
-
-                return str;
-            }));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("linkMode")));
             
             adv.Add(new VisualElement { style = { paddingTop = 10 } });
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Remove bone suffix/prefix:"));
