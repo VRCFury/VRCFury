@@ -137,19 +137,11 @@ namespace VF.Feature {
                 .Where(param => param.valueType == VRCExpressionParameters.ValueType.Int)
                 .Any(param => param.name == model.toggleParam);
 
-            addOtherFeature(new ObjectState {
-                states = {
-                    new ObjectState.ObjState {
-                        action = ObjectState.Action.DEACTIVATE,
-                        obj = GetBaseObject()
-                    }
-                }
-            });
             var toggleParam = RewriteParamName(model.toggleParam);
             addOtherFeature(new Toggle {
                 name = toggleParam,
                 state = new State {
-                    actions = { new ObjectToggleAction { obj = GetBaseObject() } }
+                    actions = { new ObjectToggleAction { obj = GetBaseObject(), mode = ObjectToggleAction.Mode.TurnOn} }
                 },
                 securityEnabled = model.useSecurityForToggle,
                 addMenuItem = false,
