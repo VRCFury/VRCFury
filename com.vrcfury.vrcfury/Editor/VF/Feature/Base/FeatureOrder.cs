@@ -13,7 +13,8 @@ namespace VF.Feature.Base {
         ResetAnimatorBefore,
         
         // Needs to happen before toggles begin getting processed
-        ForceObjectState,
+        DeleteDuringUpload,
+        ApplyDuringUpload,
         RemoveEditorOnly,
 
         // Needs to be the first thing to instantiate the ControllerManagers

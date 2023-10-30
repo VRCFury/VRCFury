@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
+using VF.Model;
 
 namespace VF.Inspector {
     public class VRCFuryComponentEditor<T> : Editor where T : VRCFuryComponent {
@@ -198,7 +199,12 @@ namespace VF.Inspector {
             VisualElement body;
             if (isInstance) {
                 var copy = CopyComponent(v);
-                copy.Upgrade();
+                try {
+                    VRCFury.RunningFakeUpgrade = true;
+                    copy.Upgrade();
+                } finally {
+                    VRCFury.RunningFakeUpgrade = false;
+                }
                 copy.gameObjectOverride = v.gameObject;
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy);

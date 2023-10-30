@@ -617,6 +617,15 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
+    public class DeleteDuringUpload : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class ApplyDuringUpload : NewFeatureModel {
+        public State action;
+    }
+
+    [Serializable]
     public class BlendShapeLink : NewFeatureModel {
         public List<GameObject> objs;
         public string baseObj;

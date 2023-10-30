@@ -20,7 +20,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
 
@@ -219,7 +219,9 @@ namespace VF.Service {
                 }
             }
 
-            restingState.ApplyClipToRestingState(offClip);
+            if (applyOffClip) {
+                restingState.ApplyClipToRestingState(offClip);
+            }
 
             return onClip;
         }
