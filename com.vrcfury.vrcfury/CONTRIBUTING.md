@@ -49,6 +49,8 @@ For more information, please refer to <https://unlicense.org>
 
 * anatawa12
   * Improvements to VRCFury/Av3Emu compatibility
+* babo4d
+  * Added bone radius to SPS autorig physbone
 * CobaltSpace
   * Ensured that gogoloco params are always global
 * GameGeek720
