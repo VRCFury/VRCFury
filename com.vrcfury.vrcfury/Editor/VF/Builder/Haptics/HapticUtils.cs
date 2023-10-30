@@ -198,6 +198,7 @@ namespace VF.Builder.Haptics {
             name = Regex.Replace(name, @"dps", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"gameobject", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"object", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"armature", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"tps", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"haptic", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"socket", "", RegexOptions.IgnoreCase);
