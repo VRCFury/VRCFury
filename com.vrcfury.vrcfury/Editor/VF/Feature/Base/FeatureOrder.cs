@@ -27,11 +27,9 @@ namespace VF.Feature.Base {
         
         // Needs to run after all haptic components are in place
         // Needs to run before Toggles, because of its "After Bake" action
-        BakeHapticPlugs,
-        BakeHapticSockets,
-        BakeHapticVersions,
-        
         ApplyRestState1,
+        BakeHapticPlugs,
+        ApplyRestState2,
 
         Default,
         
@@ -69,9 +67,9 @@ namespace VF.Feature.Base {
         FixTouchingContacts,
 
         // Needs to run after everything else is done messing with rest state
-        ApplyRestState2,
-        ApplyToggleRestingState,
         ApplyRestState3,
+        ApplyToggleRestingState,
+        ApplyRestState4,
 
         // Finalize Controllers
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves

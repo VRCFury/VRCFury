@@ -20,7 +20,7 @@ namespace VF.Builder.Haptics {
         // Bump when any senders are changed
         private const int BeaconVersion = 7;
 
-        [FeatureBuilderAction(FeatureOrder.BakeHapticVersions)]
+        [FeatureBuilderAction]
         public void Apply() {
             if (!avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
                 && !avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any()) {

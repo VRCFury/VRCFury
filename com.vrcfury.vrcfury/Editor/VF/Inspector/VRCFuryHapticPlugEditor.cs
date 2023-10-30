@@ -272,7 +272,6 @@ namespace VF.Inspector {
         [CanBeNull]
         public static BakeResult Bake(
             VRCFuryHapticPlug plug,
-            List<string> usedNames = null,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             MutableManager mutableManager = null,
             bool deferMaterialConfig = false
@@ -309,21 +308,9 @@ namespace VF.Inspector {
                 }
             }
 
-            var name = plug.name;
-            if (string.IsNullOrWhiteSpace(name)) {
-                if (renderers.Count > 0) {
-                    name = HapticUtils.GetName(renderers.First().gameObject);
-                } else {
-                    name = HapticUtils.GetName(plug.owner());
-                }
-            }
-            if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
-            
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            Debug.Log("Baking haptic component in " + transform + " as " + name);
-            
             var bakeRoot = GameObjects.Create("BakedHapticPlug", transform);
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
@@ -429,7 +416,6 @@ namespace VF.Inspector {
             }
 
             return new BakeResult {
-                name = name,
                 bakeRoot = bakeRoot,
                 renderers = rendererResults,
                 worldLength = worldLength,
@@ -438,7 +424,6 @@ namespace VF.Inspector {
         }
 
         public class BakeResult {
-            public string name;
             public VFGameObject bakeRoot;
             public ICollection<RendererResult> renderers;
             public float worldLength;

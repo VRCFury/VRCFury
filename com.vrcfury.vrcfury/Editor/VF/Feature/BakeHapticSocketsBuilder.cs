@@ -32,7 +32,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
 
-        [FeatureBuilderAction(FeatureOrder.BakeHapticSockets)]
+        [FeatureBuilderAction]
         public void Apply() {
             var fx = GetFx();
             var usedNames = new List<string>();
@@ -90,7 +90,12 @@ namespace VF.Feature {
                         var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
                         mover.Move(socket.gameObject, head);
                     }
-                    var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
+                    
+                    var name = VRCFuryHapticSocketEditor.GetName(socket);
+                    name = HapticUtils.GetNextName(usedNames, name);
+                    Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
+
+                    var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket);
                     
                     // Haptic receivers
                     {
