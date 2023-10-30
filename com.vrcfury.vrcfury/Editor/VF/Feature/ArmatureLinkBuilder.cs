@@ -69,7 +69,7 @@ namespace VF.Feature {
 
                 foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                     // Update skins to use bones and bind poses from the original avatar
-                    if (skin.bones.Any(b => boneMapping.ContainsKey(b))) {
+                    if (skin.bones.Any(b => b != null && boneMapping.ContainsKey(b))) {
                         if (skin.sharedMesh) {
                             skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh, skin.owner());
                             var mesh = skin.sharedMesh;
