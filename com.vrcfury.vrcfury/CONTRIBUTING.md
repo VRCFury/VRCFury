@@ -58,6 +58,7 @@ For more information, please refer to <https://unlicense.org>
   * Fixed Toggle sliders always adding a menu option, even if the menu path was empty
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
+  * Made colliders merge properly within Armature Link (unused)
 * lyuma
   * Improvements to VRCFury/Av3Emu compatibility
 * Morghus
