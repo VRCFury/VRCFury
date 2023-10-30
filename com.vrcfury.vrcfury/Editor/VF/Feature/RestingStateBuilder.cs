@@ -65,6 +65,11 @@ namespace VF.Feature {
         public void ApplyPendingClips3() {
             ApplyPendingClips();
         }
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState4)]
+        public void ApplyPendingClips4() {
+            ApplyPendingClips();
+        }
+
 
         public IEnumerable<AnimationClip> GetPendingClips() {
             return pendingClips.Select(pending => pending.clip);

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Model.Feature;
+using VF.Model.StateAction;
 using VF.Upgradeable;
 using Action = VF.Model.StateAction.Action;
 
@@ -14,6 +16,8 @@ namespace VF.Model {
 
         [Header("VRCFury failed to load")]
         public bool somethingIsBroken;
+
+        public static bool RunningFakeUpgrade = false;
         
         public override bool Upgrade(int fromVersion) {
             var features = config.features;
@@ -34,7 +38,36 @@ namespace VF.Model {
                         toggle.exclusiveTag = tag;
                         features.Insert(++i, toggle);
                     }
+
                     didSomething = true;
+                } else if (features[i] is ObjectState os) {
+                    features.RemoveAt(i--);
+
+                    var apply = new ApplyDuringUpload();
+                    apply.action = new State();
+                    foreach (var s in os.states) {
+                        if (s.obj == null) continue;
+                        if (s.action == ObjectState.Action.DELETE) {
+                            if (!RunningFakeUpgrade) {
+                                var vrcf = s.obj.AddComponent<VRCFury>();
+                                vrcf.config.features.Add(new DeleteDuringUpload());
+                            }
+                        } else if (s.action == ObjectState.Action.ACTIVATE) {
+                            apply.action.actions.Add(new ObjectToggleAction() {
+                                mode = ObjectToggleAction.Mode.TurnOn,
+                                obj = s.obj
+                            });
+                        } else if (s.action == ObjectState.Action.DEACTIVATE) {
+                            apply.action.actions.Add(new ObjectToggleAction() {
+                                mode = ObjectToggleAction.Mode.TurnOff,
+                                obj = s.obj
+                            });
+                        }
+                    }
+
+                    if (apply.action.actions.Count > 0) {
+                        features.Insert(++i, apply);
+                    }
                 } else if (features[i] is LegacyFeatureModel legacy) {
                     features.RemoveAt(i--);
                     features.Insert(++i, legacy.CreateNewInstance());

@@ -376,17 +376,18 @@ namespace VF.Model.Feature {
         public string bonePathOnAvatar;
         public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public string removeBoneSuffix;
-        public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
         
         // legacy
-        public bool useOptimizedUpload;
-        public bool useBoneMerging;
-        public bool keepBoneOffsets;
+        [Obsolete] public bool useOptimizedUpload;
+        [Obsolete] public bool useBoneMerging;
+        [Obsolete] public bool keepBoneOffsets;
+        [Obsolete] public bool physbonesOnAvatarBones;
         
         public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
             if (fromVersion < 1) {
                 if (useBoneMerging) {
                     linkMode = ArmatureLinkMode.SkinRewrite;
@@ -411,6 +412,7 @@ namespace VF.Model.Feature {
                 }
             }
             return false;
+#pragma warning restore 0612
         }
         public override int GetLatestVersion() {
             return 5;
@@ -615,6 +617,15 @@ namespace VF.Model.Feature {
             ACTIVATE,
             DELETE
         }
+    }
+
+    [Serializable]
+    public class DeleteDuringUpload : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class ApplyDuringUpload : NewFeatureModel {
+        public State action;
     }
 
     [Serializable]

@@ -30,11 +30,40 @@ namespace VF.Feature {
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
 
+        private Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
+            new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
+
+        /**
+         * We do mesh analysis early, and in a separate step from the rest, so that the post-bake action can be applied
+         * before things like toggles are built
+         */
         [FeatureBuilderAction(FeatureOrder.BakeHapticPlugs)]
+        public void ApplyEarlyBake() {
+            var usedRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
+            foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
+                try {
+                    PhysboneUtils.RemoveFromPhysbones(plug.transform);
+                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(
+                        plug,
+                        usedRenderers,
+                        mutableManager: mutableManager,
+                        deferMaterialConfig: true
+                    );
+                    if (bakeInfo == null) continue;
+                    bakeResults[plug] = bakeInfo;
+                    
+                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                    restingState.ApplyClipToRestingState(postBakeClip);
+                } catch (Exception e) {
+                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                }
+            }
+        }
+
+        [FeatureBuilderAction]
         public void Apply() {
             var fx = GetFx();
             var usedNames = new List<string>();
-            var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
 
             AnimationClip tipLightOnClip = null;
             AnimationClip triangulationOnClip = null;
@@ -42,18 +71,9 @@ namespace VF.Feature {
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
-                    PhysboneUtils.RemoveFromPhysbones(plug.transform);
-                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(
-                        plug,
-                        usedNames,
-                        plugRenderers,
-                        mutableManager: mutableManager,
-                        deferMaterialConfig: true
-                    );
-
+                    var bakeInfo = bakeResults[plug];
                     if (bakeInfo == null) continue;
 
-                    var name = bakeInfo.name;
                     var bakeRoot = bakeInfo.bakeRoot;
                     var renderers = bakeInfo.renderers;
                     var worldRadius = bakeInfo.worldRadius;
@@ -61,6 +81,17 @@ namespace VF.Feature {
                     foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                         _forceStateInAnimatorService.DisableDuringLoad(r.transform);
                     }
+
+                    var name = plug.name;
+                    if (string.IsNullOrWhiteSpace(name)) {
+                        if (renderers.Count > 0) {
+                            name = HapticUtils.GetName(renderers.First().renderer.owner());
+                        } else {
+                            name = HapticUtils.GetName(plug.owner());
+                        }
+                    }
+                    if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
+                    Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
                     
                     // Haptic Receivers
                     {
@@ -91,9 +122,6 @@ namespace VF.Feature {
                             }
                         }
                     }
-
-                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                    restingState.ApplyClipToRestingState(postBakeClip);
 
                     if (plug.enableSps) {
                         foreach (var r in renderers) {
