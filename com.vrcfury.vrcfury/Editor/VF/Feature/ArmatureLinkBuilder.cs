@@ -263,20 +263,27 @@ namespace VF.Feature {
 
             VFGameObject avatarBone = null;
 
-            if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
-                try {
-                    avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, model.boneOnAvatar);
-                } catch (Exception) {
-                    foreach (var fallback in model.fallbackBones) {
-                        avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, fallback);
-                        if (avatarBone) break;
-                    }
-                    if (!avatarBone) {
-                        throw;
-                    }
+            try {
+                avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, model.boneOnAvatar);
+            } catch (Exception) {
+                foreach (var fallback in model.fallbackBones) {
+                    avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, fallback);
+                    if (avatarBone) break;
                 }
-            } else {
-                avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
+                if (!avatarBone) {
+                    throw;
+                }
+            }
+            
+            if (!string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
+                // Check for path within humanoid bone
+                // if nothing is there, check from avatar root instead
+                if (avatarBone?.transform.Find(model.bonePathOnAvatar)?.gameObject) {
+                    avatarBone = avatarBone?.transform.Find(model.bonePathOnAvatar)?.gameObject;
+                } else {
+                    avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
+                }
+
                 if (avatarBone == null) {
                     throw new VRCFBuilderException(
                         "ArmatureLink failed to find " + model.bonePathOnAvatar + " bone on avatar.");
