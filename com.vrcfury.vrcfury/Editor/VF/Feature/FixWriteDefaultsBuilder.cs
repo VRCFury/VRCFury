@@ -55,26 +55,16 @@ namespace VF.Feature {
                 }
             }
             
-            // We shouldn't need to record defaults if useWriteDefaults is true, BUT due to a vrchat bug,
-            // the defaults state for properties are broken in mirrors, so we're forced to record them all in the base layer.
+            // Note to self: Never record defaults when WD is on, because a unity bug with WD on can cause the defaults to override lower layers
+            // even though the lower layers should be higher priority.
             var settings = GetBuildSettings();
-            //if (settings.useWriteDefaults) return;
+            if (settings.useWriteDefaults) return;
 
             foreach (var layer in GetMaintainedLayers(GetFx())) {
                 foreach (var state in new AnimatorIterator.States().From(layer)) {
                     if (!state.writeDefaultValues) continue;
                     foreach (var clip in new AnimatorIterator.Clips().From(state)) {
                         foreach (var binding in clip.GetFloatBindings()) {
-                            if (
-                                settings.useWriteDefaults
-                                && binding.type == typeof(SkinnedMeshRenderer)
-                                && binding.path == "Body"
-                                && binding.propertyName.StartsWith("blendShape.")
-                                && MmdUtils.IsMaybeMmdBlendshape(binding.propertyName.Substring(11))
-                            ) {
-                                continue;
-                            }
-
                             if (propsInNonFx.Contains(binding.Normalize())) continue;
                             RecordDefaultNow(binding, true);
                         }
