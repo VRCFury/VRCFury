@@ -189,7 +189,10 @@ namespace VF.Feature {
                 .Any(b => b.GetRootTransform() == transform)) {
                 return true;
             }
-            
+            if (avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()
+                .Any(b => b.GetRootTransform() == transform)) {
+                return true;
+            }
             if (avatarObject.GetComponentsInSelfAndChildren<ContactBase>()
                 .Any(b => b.GetRootTransform() == transform)) {
                 return true;
