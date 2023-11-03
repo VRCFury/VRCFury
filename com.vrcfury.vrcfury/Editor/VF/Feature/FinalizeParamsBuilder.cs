@@ -9,16 +9,23 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FinalizeParams)]
         public void Apply() {
             var p = manager.GetParams();
-            var maxParams = VRCExpressionParameters.MAX_PARAMETER_COST;
-            if (maxParams > 9999) {
+            var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
+            if (maxBits > 9999) {
                 // Some versions of the VRChat SDK have a broken value for this
-                maxParams = 256;
+                maxBits = 256;
             }
-            if (p.GetRaw().CalcTotalCost() > maxParams) {
+            if (p.GetRaw().CalcTotalCost() > maxBits) {
                 throw new SneakyException(
                     "Your avatar is out of space for parameters! Used "
-                    + p.GetRaw().CalcTotalCost() + "/" + maxParams
-                    + ". Ask your avatar creator, or the creator of the last prop you've added, if there are any parameters you can remove to make space.");
+                    + p.GetRaw().CalcTotalCost() + "/" + maxBits
+                    + " bits. Ask your avatar creator, or the creator of the last prop you've added, if there are any parameters you can remove to make space.");
+            }
+
+            if (p.GetRaw().parameters.Length > 256) {
+                throw new SneakyException(
+                    $"Your avatar is using too many synced and unsynced expression parameters ({p.GetRaw().parameters.Length})!"
+                    + " A bug in vrchat causes this to unexpectedly throw away some of your parameters.\n\n" +
+                    "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param");
             }
 
             var contacts = avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>().Length;

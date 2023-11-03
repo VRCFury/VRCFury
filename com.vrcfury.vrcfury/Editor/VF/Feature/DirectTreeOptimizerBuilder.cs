@@ -78,13 +78,18 @@ namespace VF.Feature {
                     .Any(clip => !ClipBuilderService.IsStaticMotion(clip));
 
                 var usedBindings = bindingsByLayer[layer];
+                if (usedBindings.Any(b => b.propertyName.Contains("m_LocalEulerAngles"))) {
+                    AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
+                    continue;
+                }
+                
                 var otherLayersAnimateTheSameThing = bindingsByLayer
                     .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
                     .Select(pair => pair.Key)
                     .ToArray();
                 if (otherLayersAnimateTheSameThing.Length > 0) {
                     var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => l.name));
-                    AddDebug($"Not optimizing (shares animations with other layer: {names}");
+                    AddDebug($"Not optimizing (shares animations with other layer: {names})");
                     continue;
                 }
 

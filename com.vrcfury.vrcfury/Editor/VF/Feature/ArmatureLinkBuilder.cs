@@ -14,6 +14,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDK3.Dynamics.PhysBone.Components;
@@ -67,6 +68,14 @@ namespace VF.Feature {
                     boneMapping[propBone.transform] = avatarBone.transform;
                 }
 
+                var animatedTransforms = manager.GetAllUsedControllers()
+                    .SelectMany(c => c.GetClips())
+                    .SelectMany(clip => clip.GetAllBindings())
+                    .Where(binding => binding.type == typeof(Transform))
+                    .Select(binding => avatarObject.Find(binding.path).transform)
+                    .Where(transform => transform != null)
+                    .ToImmutableHashSet();
+
                 foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                     // Update skins to use bones and bind poses from the original avatar
                     if (skin.bones.Any(b => b != null && boneMapping.ContainsKey(b))) {
@@ -78,6 +87,7 @@ namespace VF.Feature {
                                     VFGameObject bone = boneAndBindPose.a;
                                     var bindPose = boneAndBindPose.b;
                                     if (bone == null) return bindPose;
+                                    if (animatedTransforms.Contains(bone)) return bindPose;
                                     if (boneMapping.TryGetValue(bone, out var mergedTo)) {
                                         return mergedTo.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
                                     }
@@ -88,7 +98,12 @@ namespace VF.Feature {
                         }
 
                         skin.bones = skin.bones
-                            .Select(b => (b != null && boneMapping.TryGetValue(b, out var to)) ? to : b)
+                            .Select(b => {
+                                if (b == null) return b;
+                                if (animatedTransforms.Contains(b)) return b;
+                                if (boneMapping.TryGetValue(b, out var to)) return to;
+                                return b;
+                            })
                             .ToArray();
                         
                         VRCFuryEditorUtils.MarkDirty(skin);
@@ -189,7 +204,10 @@ namespace VF.Feature {
                 .Any(b => b.GetRootTransform() == transform)) {
                 return true;
             }
-            
+            if (avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()
+                .Any(b => b.GetRootTransform() == transform)) {
+                return true;
+            }
             if (avatarObject.GetComponentsInSelfAndChildren<ContactBase>()
                 .Any(b => b.GetRootTransform() == transform)) {
                 return true;

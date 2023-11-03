@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -67,6 +68,7 @@ namespace VF.Builder {
                 AnimatorController ctrl;
                 if (existingController != null) {
                     ctrl = mutableManager.CopyRecursive(existingController, filename);
+                    FullControllerBuilder.FixNullStateMachines(ctrl);
                 } else {
                     ctrl = new AnimatorController();
                     VRCFuryAssetDatabase.SaveAsset(ctrl, tmpDir, filename);

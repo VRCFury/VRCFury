@@ -58,6 +58,7 @@ namespace VF.Feature {
                     continue;
                 }
                 var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
+                FixNullStateMachines(copy as AnimatorController);
                 while (copy is AnimatorOverrideController ov) {
                     if (ov.runtimeAnimatorController is AnimatorController ac2) {
                         AnimatorIterator.ReplaceClips(ac2, clip => ov[clip]);
@@ -65,6 +66,7 @@ namespace VF.Feature {
                     RuntimeAnimatorController newCopy = null;
                     if (ov.runtimeAnimatorController != null) {
                         newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, saveFilename: "tmp", addPrefix: false);
+                        FixNullStateMachines(newCopy as AnimatorController);
                     }
                     AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                     copy = newCopy;
@@ -285,6 +287,28 @@ namespace VF.Feature {
         VFGameObject GetBaseObject() {
             if (model.rootObjOverride) return model.rootObjOverride;
             return featureBaseObject;
+        }
+
+        /**
+         * Some people have corrupt controller layers containing no state machine.
+         * The simplest fix for this is for us to just stuff an empty state machine into it.
+         * We can't just delete it because it would interfere with the layer index numbers.
+         */
+        public static void FixNullStateMachines(AnimatorController ctrl) {
+            if (ctrl == null) return;
+            var path = AssetDatabase.GetAssetPath(ctrl);
+            ctrl.layers = ctrl.layers.Select(layer => {
+                if (layer.stateMachine == null) {
+                    layer.stateMachine = new AnimatorStateMachine {
+                        name = layer.name,
+                        hideFlags = HideFlags.HideInHierarchy
+                    };
+                    if (path != "") {
+                        AssetDatabase.AddObjectToAsset(layer.stateMachine, path);
+                    }
+                }
+                return layer;
+            }).ToArray();
         }
 
         public override string GetEditorTitle() {
