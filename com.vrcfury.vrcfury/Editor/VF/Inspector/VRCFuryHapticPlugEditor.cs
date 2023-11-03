@@ -6,6 +6,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
@@ -21,6 +22,8 @@ namespace VF.Inspector {
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");
             var enableSps = serializedObject.FindProperty("enableSps");
+            
+            container.Add(ConstraintWarning(target.gameObject));
             
             var boneWarning = VRCFuryEditorUtils.Warn(
                 "WARNING: This renderer is rigged with bones, but you didn't put the Haptic Plug inside a bone! When SPS is used" +
@@ -199,6 +202,25 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
 
             return container;
+        }
+
+        public static VisualElement ConstraintWarning(VFGameObject obj, bool isSocket = false) {
+            var output = new VisualElement();
+            var warning = VRCFuryEditorUtils.Warn(
+                "This SPS component is used within a Constraint! " +
+                "AVOID using SPS within constraints if at all possible. " +
+                (isSocket
+                    ? "Sharing one socket in multiple locations will make your avatar LESS performant, not more! "
+                    : "") +
+                "\n\n" +
+                "Check out https://vrcfury.com/sps/constraints for details");
+            warning.style.display = DisplayStyle.None;
+            output.Add(warning);
+            VRCFuryEditorUtils.RefreshOnInterval(output, () => {
+                var found = obj.GetComponentsInSelfAndParents<IConstraint>().Length > 0;
+                warning.style.display = found ? DisplayStyle.Flex : DisplayStyle.None;
+            });
+            return output;
         }
         
         public class GizmoCache {

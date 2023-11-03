@@ -23,6 +23,8 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
+            container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject, true));
+            
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
             
             var addLightProp = serializedObject.FindProperty("addLight");
