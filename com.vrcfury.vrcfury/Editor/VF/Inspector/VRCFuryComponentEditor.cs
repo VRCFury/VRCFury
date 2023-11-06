@@ -209,18 +209,23 @@ namespace VF.Inspector {
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy);
                 body.SetEnabled(false);
-                // We have to delay this by a frame, because unity automatically calls Bind on this visualelement
-                // right after we return from this function
-                EditorApplication.delayCall += () => {
-                    body.Bind(copySo);
-                };
+                // We have to delay adding the editor to the inspector, because otherwise unity will call Bind()
+                // on this visual element immediately after we return from this method, binding it back
+                // to the original (non-temporary-upgraded) object
+                var added = false;
+                container.RegisterCallback<AttachToPanelEvent>(e => {
+                    if (!added) {
+                        added = true;
+                        container.Add(body);
+                        body.Bind(copySo);
+                    }
+                });
             } else {
                 v.Upgrade();
                 serializedObject.Update();
                 body = CreateEditor(serializedObject, v);
+                container.Add(body);
             }
-            
-            container.Add(body);
 
             /*
             el.RegisterCallback<AttachToPanelEvent>(e => {
