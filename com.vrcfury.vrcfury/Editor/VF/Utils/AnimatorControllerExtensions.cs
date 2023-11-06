@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using Editor.VF.Utils;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -79,18 +80,18 @@ namespace VF.Utils {
             foreach (var tree in new AnimatorIterator.Trees().From(c)) {
                 tree.blendParameter = rewriteParamName(tree.blendParameter);
                 tree.blendParameterY = rewriteParamName(tree.blendParameterY);
-                tree.children = tree.children.Select(child => {
+                tree.RewriteChildren(child => {
                     child.directBlendParameter = rewriteParamName(child.directBlendParameter);
                     return child;
-                }).ToArray();
+                });
             }
 
             // Transitions
             foreach (var transition in new AnimatorIterator.Transitions().From(c)) {
-                transition.conditions = transition.conditions.Select(cond => {
+                transition.RewriteConditions(cond => {
                     cond.parameter = rewriteParamName(cond.parameter);
                     return cond;
-                }).ToArray();
+                });
                 VRCFuryEditorUtils.MarkDirty(transition);
             }
             

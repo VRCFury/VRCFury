@@ -10,7 +10,7 @@ using VF.Component;
 using VF.Model;
 
 namespace VF.Inspector {
-    public class VRCFuryComponentEditor<T> : Editor where T : VRCFuryComponent {
+    public class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
 
         /*
         public override bool UseDefaultMargins() {

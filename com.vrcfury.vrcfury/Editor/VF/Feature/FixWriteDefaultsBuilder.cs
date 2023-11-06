@@ -95,7 +95,10 @@ namespace VF.Feature {
                         .Any(tree => tree.blendType == BlendTreeType.Direct);
 
                     foreach (var state in new AnimatorIterator.States().From(layer)) {
-                        state.writeDefaultValues = useWriteDefaultsForLayer;
+                        // Avoid calling this if not needed, since it internally invalidates the controller cache every time
+                        if (state.writeDefaultValues != useWriteDefaultsForLayer) {
+                            state.writeDefaultValues = useWriteDefaultsForLayer;
+                        }
                     }
                 }
             }

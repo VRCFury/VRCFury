@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Linq;
+using Editor.VF.Utils;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -21,7 +22,7 @@ namespace VF.Feature {
                 var paramTypes = c.GetRaw().parameters
                     .ToImmutableDictionary(p => p.name, p => p.type);
                 foreach (var transition in new AnimatorIterator.Transitions().From(c.GetRaw())) {
-                    transition.conditions = transition.conditions.Select(condition => {
+                    transition.RewriteConditions(condition => {
                         var mode = condition.mode;
                         var valid = true;
                         if (paramTypes.TryGetValue(condition.parameter, out var type)) {
@@ -50,7 +51,7 @@ namespace VF.Feature {
                         }
 
                         return condition;
-                    }).ToArray();
+                    });
                 }
             }
         }
