@@ -23,6 +23,8 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
+            container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject, true));
+            
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
             
             var addLightProp = serializedObject.FindProperty("addLight");
@@ -136,7 +138,7 @@ namespace VF.Inspector {
         }
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
-        public class VRCFuryHapticPlaySocketEditor : Editor {
+        public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
                 if (!gizmo.show) return;
