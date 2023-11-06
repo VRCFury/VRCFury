@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using UnityEditor.Experimental.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -192,8 +191,7 @@ namespace VF.Inspector {
                 // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
                 // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
                 // will just be thrown out randomly, and unity will dump a bunch of errors.
-                var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(v);
-                container.Add(CreatePrefabInstanceLabel(baseFury));
+                container.Add(CreatePrefabInstanceLabel(v));
             }
 
             VisualElement body;
@@ -287,15 +285,11 @@ namespace VF.Inspector {
             return overrideLabel;
         }
 
-        private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component parent) {
+        private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component component) {
             void Open() {
-                var open = typeof(PrefabStageUtility).GetMethod("OpenPrefab",
-                    BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
-                    null,
-                    new[] { typeof(string), typeof(GameObject) },
-                    null
-                );
-                open.Invoke(null, new object[] { AssetDatabase.GetAssetPath(parent), parent.gameObject });
+                var componentInBasePrefab = PrefabUtility.GetCorrespondingObjectFromOriginalSource(component);
+                var prefabPath = AssetDatabase.GetAssetPath(componentInBasePrefab);
+                UnityCompatUtils.OpenPrefab(prefabPath, component.gameObject);
             }
             var label = new Button(Open) {
                 text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
