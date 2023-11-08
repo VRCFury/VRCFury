@@ -314,64 +314,51 @@ namespace VF.Feature {
         public override string GetEditorTitle() {
             return "Full Controller";
         }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
-            var content = new VisualElement();
-            
-            content.Add(VRCFuryEditorUtils.Info(
-                "This feature will merge the given controller / menu / parameters into the avatar" +
-                " during the upload process."));
-            
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers"),
-                (i, el) => {
-                    var wrapper = new VisualElement();
-                    wrapper.style.flexDirection = FlexDirection.Row;
-                    var a = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("controller"));
-                    a.style.flexBasis = 0;
-                    a.style.flexGrow = 1;
-                    wrapper.Add(a);
-                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("type"));
-                    b.style.flexBasis = 0;
-                    b.style.flexGrow = 1;
-                    wrapper.Add(b);
-                    return wrapper;
-                }));
-
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix:"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel("(If prefix is left empty, menu will be merged into avatar's root menu)"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus"),
-                (i, el) => {
-                    var wrapper = new VisualElement();
-                    wrapper.style.flexDirection = FlexDirection.Row;
-                    var a = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("menu"));
-                    a.style.flexBasis = 0;
-                    a.style.flexGrow = 1;
-                    wrapper.Add(a);
-                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("prefix"));
-                    b.style.flexBasis = 0;
-                    b.style.flexGrow = 1;
-                    wrapper.Add(b);
-                    return wrapper;
-                }));
-            
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms"),
-                (i, el) => VRCFuryEditorUtils.Prop(el.FindPropertyRelative("parameters"))));
-            
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel(
-                "Parameters in this list will have their name kept as is, allowing you to interact with " +
-                "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
-                "parameters (such as gestures) are included by default."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
-            
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clips:"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel(
-                "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
-                " in the controller were originally written to be based from a specific avatar root," +
-                " but you are now trying to use as a re-usable VRCFury prop."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings"), (i, rewrite) => {
+        
+        [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
+        public class ControllerEntryDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var wrapper = new VisualElement();
+                wrapper.style.flexDirection = FlexDirection.Row;
+                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller"));
+                a.style.flexBasis = 0;
+                a.style.flexGrow = 1;
+                wrapper.Add(a);
+                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type"));
+                b.style.flexBasis = 0;
+                b.style.flexGrow = 1;
+                wrapper.Add(b);
+                return wrapper;
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(FullController.MenuEntry))]
+        public class MenuEntryDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var wrapper = new VisualElement();
+                wrapper.style.flexDirection = FlexDirection.Row;
+                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu"));
+                a.style.flexBasis = 0;
+                a.style.flexGrow = 1;
+                wrapper.Add(a);
+                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix"));
+                b.style.flexBasis = 0;
+                b.style.flexGrow = 1;
+                wrapper.Add(b);
+                return wrapper;
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(FullController.ParamsEntry))]
+        public class ParamsEntryDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                return VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("parameters"));
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(FullController.BindingRewrite))]
+        public class BindingRewriteDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty rewrite) {
                 var row = new VisualElement();
                 row.Add(VRCFuryEditorUtils.WrappedLabel("If animated path has this prefix:"));
                 row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => s.paddingLeft = 15));
@@ -392,7 +379,39 @@ namespace VF.Feature {
                 Update();
                 
                 return row;
-            }));
+            }
+        }
+
+        public override VisualElement CreateEditor(SerializedProperty prop) {
+            var content = new VisualElement();
+            
+            content.Add(VRCFuryEditorUtils.Info(
+                "This feature will merge the given controller / menu / parameters into the avatar" +
+                " during the upload process."));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
+
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("(If prefix is left empty, menu will be merged into avatar's root menu)"));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel(
+                "Parameters in this list will have their name kept as is, allowing you to interact with " +
+                "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
+                "parameters (such as gestures) are included by default."));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clips:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel(
+                "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
+                " in the controller were originally written to be based from a specific avatar root," +
+                " but you are now trying to use as a re-usable VRCFury prop."));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings")));
 
             var adv = new Foldout {
                 text = "Advanced Options",

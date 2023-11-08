@@ -146,11 +146,17 @@ namespace VF.Feature {
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"),
-                (i,el) => RenderGestureEditor(el));
+            return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"));
+        }
+        
+        [CustomPropertyDrawer(typeof(GestureDriver.Gesture))]
+        public class GestureDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                return RenderGestureEditor(prop);
+            }
         }
 
-        private VisualElement RenderGestureEditor(SerializedProperty gesture) {
+        private static VisualElement RenderGestureEditor(SerializedProperty gesture) {
             var wrapper = new VisualElement();
             
             var handProp = gesture.FindPropertyRelative("hand");

@@ -51,7 +51,11 @@ public class VRCFuryStateEditor {
 
             VisualElement singleLineEditor = null;
             if (list.arraySize == 1) {
-                singleLineEditor = VRCFuryEditorUtils.Prop(list.GetArrayElementAtIndex(0));
+                var first = list.GetArrayElementAtIndex(0);
+                var type = VRCFuryEditorUtils.GetManagedReferenceType(first);
+                if (type == typeof(ObjectToggleAction) || type == typeof(AnimationClipAction) || type == typeof(BlendShapeAction)) {
+                    singleLineEditor = VRCFuryEditorUtils.Prop(first);
+                }
             }
 
             var showPlus = singleLineEditor != null || list.arraySize == 0;

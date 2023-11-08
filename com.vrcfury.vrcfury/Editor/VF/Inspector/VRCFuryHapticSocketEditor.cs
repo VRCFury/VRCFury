@@ -85,16 +85,7 @@ namespace VF.Inspector {
                     (unscaledUnitsProp.boolValue ? "1 Unit is 1 Meter (~3.28 feet)" : $"1 Unit is {target.transform.lossyScale.z} Meter(s) (~{Math.Round(target.transform.lossyScale.z * 3.28, 2)} feet)")
                 ), unscaledUnitsProp));
 
-                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
-                    var c = new VisualElement();
-
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                    return c;
-                }));
+                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions")));
                 return da;
             }, enableDepthAnimationsProp));
             
@@ -135,6 +126,19 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
 
             return container;
+        }
+        
+        [CustomPropertyDrawer(typeof(VRCFuryHapticSocket.DepthAction))]
+        public class DepthActionDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var c = new VisualElement();
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
+                return c;
+            }
         }
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
