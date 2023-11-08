@@ -31,7 +31,8 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
             var missingAssets = new List<GuidWrapper>();
-            
+
+            var paramsInFile = new HashSet<string>();
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
                 if (!prms) {
@@ -39,6 +40,9 @@ namespace VF.Feature {
                     continue;
                 }
                 var copy = mutableManager.CopyRecursive(prms);
+                foreach (var param in copy.parameters) {
+                    paramsInFile.Add(param.name);
+                }
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -90,6 +94,9 @@ namespace VF.Feature {
                     missingAssets.Add(m.menu);
                     continue;
                 }
+
+                CheckMenuParams(menu, paramsInFile);
+
                 var copy = mutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
@@ -123,6 +130,29 @@ namespace VF.Feature {
                         "Are you sure you've imported all the packages needed? Here are the files that are missing:\n\n" +
                         list);
                 }
+            }
+        }
+
+        private static void CheckMenuParams(VRCExpressionsMenu menu, ICollection<string> paramsInFile) {
+            var failedParams = new List<string>();
+            void CheckParam(string param, IList<string> path) {
+                if (string.IsNullOrEmpty(param)) return;
+                if (paramsInFile.Contains(param)) return;
+                failedParams.Add($"{param} (used by {string.Join('/', path)})");
+            }
+            menu.ForEachMenu(ForEachItem: (item, path) => {
+                CheckParam(item.parameter?.name, path);
+                if (item.subParameters != null) {
+                    foreach (var p in item.subParameters) {
+                        CheckParam(p?.name, path);
+                    }
+                }
+                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+            });
+            if (failedParams.Count > 0) {
+                throw new Exception(
+                    "The merged menu uses parameters that aren't in the merged parameters file:\n\n" +
+                    string.Join('\n', failedParams));
             }
         }
 
