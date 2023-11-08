@@ -4,12 +4,14 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
@@ -61,17 +63,30 @@ public static class FeatureFinder {
             .Select(tuple => tuple.Item2);
     }
 
-    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, VFGameObject gameObject) {
+    public static VisualElement RenderFeatureEditor(SerializedProperty prop) {
         string title = "???";
         
         try {
-            if (model == null) {
+            var component = (VRCFury)prop.serializedObject.targetObject;
+
+            VFGameObject gameObject = component.gameObjectOverride;
+            if (gameObject == null) {
+                gameObject = component.gameObject;
+            }
+            if (gameObject == null) {
+                return RenderFeatureEditor(
+                    title,
+                    VRCFuryEditorUtils.Error("Failed to find game object")
+                );
+            }
+            
+            var modelType = VRCFuryEditorUtils.GetManagedReferenceType(prop);
+            if (modelType == null) {
                 return RenderFeatureEditor(
                     title,
                     VRCFuryEditorUtils.Error("VRCFury doesn't have code for this feature. Is your VRCFury up to date?")
                 );
             }
-            var modelType = model.GetType();
             title = modelType.Name;
             var found = GetAllFeatures().TryGetValue(modelType, out var implementationType);
             if (!found) {
@@ -86,7 +101,10 @@ public static class FeatureFinder {
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
             featureInstance.avatarObjectOverride = gameObject.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.gameObject;
             featureInstance.featureBaseObject = gameObject;
-            featureInstance.GetType().GetField("model").SetValue(featureInstance, model);
+            var startBracket = prop.propertyPath.IndexOf("[");
+            var endBracket = prop.propertyPath.IndexOf("]");
+            var index = Int32.Parse(prop.propertyPath.Substring(startBracket + 1, endBracket - startBracket - 1));
+            featureInstance.GetType().GetField("model").SetValue(featureInstance, component.config.features[index]);
 
             title = featureInstance.GetEditorTitle() ?? title;
 

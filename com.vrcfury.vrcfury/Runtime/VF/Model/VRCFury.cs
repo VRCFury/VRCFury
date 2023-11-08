@@ -11,7 +11,7 @@ using Action = VF.Model.StateAction.Action;
 namespace VF.Model {
     [HelpURL("https://vrcfury.com")]
     public class VRCFury : VRCFuryComponent {
-        [HideInInspector]
+
         public VRCFuryConfig config = new VRCFuryConfig();
 
         [Header("VRCFury failed to load")]

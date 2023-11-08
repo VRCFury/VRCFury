@@ -174,15 +174,7 @@ namespace VF.Inspector {
                     "1 Unit is the length of the plug"
                 ));
                 
-                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
-                    var c = new VisualElement();
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                    return c;
-                }));
+                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions")));
 
                 return da;
             }, enableDepthAnimationsProp));
@@ -202,6 +194,19 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
 
             return container;
+        }
+        
+        [CustomPropertyDrawer(typeof(VRCFuryHapticPlug.PlugDepthAction))]
+        public class PlugDepthActionDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var c = new VisualElement();
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
+                return c;
+            }
         }
 
         public static VisualElement ConstraintWarning(VFGameObject obj, bool isSocket = false) {
