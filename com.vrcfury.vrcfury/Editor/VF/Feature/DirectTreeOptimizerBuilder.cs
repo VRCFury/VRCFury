@@ -78,7 +78,7 @@ namespace VF.Feature {
                     .Any(clip => !ClipBuilderService.IsStaticMotion(clip));
 
                 var usedBindings = bindingsByLayer[layer];
-                if (usedBindings.Any(b => b.propertyName.Contains("m_LocalEulerAngles"))) {
+                if (usedBindings.Any(b => b.propertyName.Contains("localEulerAngles"))) {
                     AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
                     continue;
                 }
