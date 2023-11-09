@@ -42,6 +42,8 @@ namespace VF.Component {
                                          !string.IsNullOrWhiteSpace(plugLengthParameterName);
         public bool IsValidPlugWidth => enablePlugWidthParameter &&
                                          !string.IsNullOrWhiteSpace(plugWidthParameterName);
+        
+        [Serializable]
         public class DepthAction {
             public State state;
             public float startDistance = 0;
