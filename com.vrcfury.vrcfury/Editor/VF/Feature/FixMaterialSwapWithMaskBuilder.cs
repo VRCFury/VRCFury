@@ -51,7 +51,7 @@ namespace VF.Feature {
                         var newCurve = curve
                             .Select(frame => new Keyframe(frame.time, frame.value == mat ? 1 : 0))
                             .ToArray();
-                        var newBinding = EditorCurveBinding.DiscreteCurve("", typeof(Animator), param.Name());
+                        var newBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name());
                         clip.SetFloatCurve(newBinding, new AnimationCurve(newCurve));
                     }
                     clip.SetObjectCurve(binding, null);
