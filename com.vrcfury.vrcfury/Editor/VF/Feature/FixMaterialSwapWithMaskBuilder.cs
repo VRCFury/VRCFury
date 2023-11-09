@@ -48,11 +48,16 @@ namespace VF.Feature {
                             bindingMatToParam[(normalizedBinding, mat)] = param;
                         }
 
-                        var newCurve = curve
+                        var newFrames = curve
                             .Select(frame => new Keyframe(frame.time, frame.value == mat ? 1 : 0))
                             .ToArray();
+                        var newCurve = new AnimationCurve(newFrames);
+                        for (var i = 0; i < newCurve.keys.Length; i++) {
+                            AnimationUtility.SetKeyLeftTangentMode(newCurve, i, AnimationUtility.TangentMode.Constant);
+                            AnimationUtility.SetKeyRightTangentMode(newCurve, i, AnimationUtility.TangentMode.Constant);
+                        }
                         var newBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name());
-                        clip.SetFloatCurve(newBinding, new AnimationCurve(newCurve));
+                        clip.SetFloatCurve(newBinding, newCurve);
                     }
                     clip.SetObjectCurve(binding, null);
                 }
