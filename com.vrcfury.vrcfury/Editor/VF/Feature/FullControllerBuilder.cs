@@ -32,7 +32,6 @@ namespace VF.Feature {
         public void Apply() {
             var missingAssets = new List<GuidWrapper>();
 
-            var paramsInFile = new HashSet<string>();
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
                 if (!prms) {
@@ -40,9 +39,6 @@ namespace VF.Feature {
                     continue;
                 }
                 var copy = mutableManager.CopyRecursive(prms);
-                foreach (var param in copy.parameters) {
-                    paramsInFile.Add(param.name);
-                }
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -95,7 +91,7 @@ namespace VF.Feature {
                     continue;
                 }
 
-                CheckMenuParams(menu, paramsInFile);
+                CheckMenuParams(menu);
 
                 var copy = mutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
@@ -133,12 +129,12 @@ namespace VF.Feature {
             }
         }
 
-        private static void CheckMenuParams(VRCExpressionsMenu menu, ICollection<string> paramsInFile) {
+        private void CheckMenuParams(VRCExpressionsMenu menu) {
             var failedParams = new List<string>();
             void CheckParam(string param, IList<string> path) {
                 if (string.IsNullOrEmpty(param)) return;
-                if (paramsInFile.Contains(param)) return;
-                failedParams.Add($"{param} (used by {string.Join('/', path)})");
+                if (manager.GetParams().GetParam(RewriteParamName(param)) != null) return;
+                failedParams.Add($"{param} (used by {string.Join("/", path)})");
             }
             menu.ForEachMenu(ForEachItem: (item, path) => {
                 CheckParam(item.parameter?.name, path);
@@ -152,7 +148,7 @@ namespace VF.Feature {
             if (failedParams.Count > 0) {
                 throw new Exception(
                     "The merged menu uses parameters that aren't in the merged parameters file:\n\n" +
-                    string.Join('\n', failedParams));
+                    string.Join("\n", failedParams));
             }
         }
 
