@@ -634,7 +634,7 @@ public static class VRCFuryEditorUtils {
                     try {
                         label.text = refreshMessage();
                     } catch (Exception e) {
-                        label.text = $"Error: {e.StackTrace}";
+                        label.text = $"Error: {e.Message}";
                     }
                 }, interval);
             }
