@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -208,7 +209,10 @@ namespace VF.Builder {
             return ctrl.NewInt(name, def);
         }
         public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
-            if (usePrefix) name = makeUniqueParamName(name);
+            if (usePrefix) {
+                name = Regex.Replace(name, @"^VF\d+_", "");
+                name = makeUniqueParamName(name);
+            }
             if (synced) {
                 var param = new VRCExpressionParameters.Parameter();
                 param.name = name;

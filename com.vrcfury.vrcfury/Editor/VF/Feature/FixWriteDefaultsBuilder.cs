@@ -45,6 +45,18 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
         public void RecordAllDefaults() {
+            var propsInNonFx = new HashSet<EditorCurveBinding>();
+            foreach (var c in manager.GetAllUsedControllers()) {
+                if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) continue;
+                foreach (var clip in c.GetClips()) {
+                    foreach (var binding in clip.GetAllBindings()) {
+                        propsInNonFx.Add(binding.Normalize());
+                    }
+                }
+            }
+            
+            // Note to self: Never record defaults when WD is on, because a unity bug with WD on can cause the defaults to override lower layers
+            // even though the lower layers should be higher priority.
             var settings = GetBuildSettings();
             if (settings.useWriteDefaults) return;
 
@@ -53,9 +65,11 @@ namespace VF.Feature {
                     if (!state.writeDefaultValues) continue;
                     foreach (var clip in new AnimatorIterator.Clips().From(state)) {
                         foreach (var binding in clip.GetFloatBindings()) {
+                            if (propsInNonFx.Contains(binding.Normalize())) continue;
                             RecordDefaultNow(binding, true);
                         }
                         foreach (var binding in clip.GetObjectBindings()) {
+                            if (propsInNonFx.Contains(binding.Normalize())) continue;
                             RecordDefaultNow(binding, false);
                         }
                     }
@@ -67,6 +81,11 @@ namespace VF.Feature {
         public void AdjustWriteDefaults() {
             var settings = GetBuildSettings();
 
+            if (settings.ignoredBroken) {
+                var fx = manager.GetFx();
+                fx.NewBool($"VF/BrokenWd", usePrefix: false, synced: true, networkSynced: false);
+            }
+
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in GetMaintainedLayers(controller)) {
                     // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
@@ -76,7 +95,10 @@ namespace VF.Feature {
                         .Any(tree => tree.blendType == BlendTreeType.Direct);
 
                     foreach (var state in new AnimatorIterator.States().From(layer)) {
-                        state.writeDefaultValues = useWriteDefaultsForLayer;
+                        // Avoid calling this if not needed, since it internally invalidates the controller cache every time
+                        if (state.writeDefaultValues != useWriteDefaultsForLayer) {
+                            state.writeDefaultValues = useWriteDefaultsForLayer;
+                        }
                     }
                 }
             }
@@ -85,6 +107,7 @@ namespace VF.Feature {
         private class BuildSettings {
             public bool applyToUnmanagedLayers;
             public bool useWriteDefaults;
+            public bool ignoredBroken;
         }
         private BuildSettings _buildSettings;
         private BuildSettings GetBuildSettings() {
@@ -150,7 +173,8 @@ namespace VF.Feature {
 
             _buildSettings = new BuildSettings {
                 applyToUnmanagedLayers = applyToUnmanagedLayers,
-                useWriteDefaults = useWriteDefaults
+                useWriteDefaults = useWriteDefaults,
+                ignoredBroken = analysis.isBroken && mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled
             };
             return _buildSettings;
         }

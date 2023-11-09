@@ -20,7 +20,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
 
@@ -132,14 +132,23 @@ namespace VF.Service {
                             onClip.CopyFrom(copy);
                         }
                         break;
-                    case ObjectToggleAction toggle:
+                    case ObjectToggleAction toggle: {
                         if (toggle.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
-                        } else {
-                            clipBuilder.Enable(offClip, toggle.obj, toggle.obj.activeSelf);
-                            clipBuilder.Enable(onClip, toggle.obj, !toggle.obj.activeSelf);
+                            break;
                         }
+
+                        var onState = true;
+                        if (toggle.mode == ObjectToggleAction.Mode.TurnOff) {
+                            onState = false;
+                        } else if (toggle.mode == ObjectToggleAction.Mode.Toggle) {
+                            onState = !toggle.obj.activeSelf;
+                        }
+
+                        clipBuilder.Enable(offClip, toggle.obj, !onState);
+                        clipBuilder.Enable(onClip, toggle.obj, onState);
                         break;
+                    }
                     case BlendShapeAction blendShape:
                         var foundOne = false;
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
@@ -169,7 +178,7 @@ namespace VF.Service {
                             Debug.LogWarning("Missing object in action: " + name);
                             break;
                         }
-                        if (matAction.mat == null) {
+                        if (matAction.mat?.Get() == null) {
                             Debug.LogWarning("Missing material in action: " + name);
                             break;
                         }
@@ -210,7 +219,9 @@ namespace VF.Service {
                 }
             }
 
-            restingState.ApplyClipToRestingState(offClip);
+            if (applyOffClip) {
+                restingState.ApplyClipToRestingState(offClip);
+            }
 
             return onClip;
         }

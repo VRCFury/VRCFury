@@ -64,7 +64,7 @@ namespace VF.Feature {
 
                 bool ShouldKeepName(string name) {
                     if (animatedBlendshapes.Contains(name)) return true;
-                    if (model.keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name)) return true;
+                    if (model.keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body") return true;
                     return false;
                 }
 

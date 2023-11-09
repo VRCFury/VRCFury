@@ -28,12 +28,12 @@ namespace VF.Feature {
             }
             
             foreach (var tree in new AnimatorIterator.Trees().From(state)) {
-                tree.children = tree.children.Select(child => {
+                tree.RewriteChildren(child => {
                     if (child.motion is AnimationClip cl) {
                         child.motion = CheckClip(cl);
                     }
                     return child;
-                }).ToArray();
+                });
             }
         }
 

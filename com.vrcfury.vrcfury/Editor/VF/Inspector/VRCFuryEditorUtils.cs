@@ -739,6 +739,12 @@ public static class VRCFuryEditorUtils {
         var resourcesPath = AssetDatabase.GUIDToAssetPath("c4e4fa889bc2bc54abfc219a5424b763");
         return AssetDatabase.LoadAssetAtPath<T>($"{resourcesPath}/{path}");
     }
+
+    public static T LoadGuid<T>(string guid) where T : Object {
+        var path = AssetDatabase.GUIDToAssetPath(guid);
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        return AssetDatabase.LoadAssetAtPath<T>(path);
+    }
     
     public static Type GetPropertyType(SerializedProperty prop) {
         var util = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");

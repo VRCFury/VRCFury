@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     /**
@@ -86,7 +88,7 @@ namespace VF.Builder {
             }
         }
 
-        private static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) {
+        private static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) where T : Object {
             var all = new HashSet<T>();
             var stack = new Stack<T>();
             stack.Push(root);
@@ -95,7 +97,15 @@ namespace VF.Builder {
                 if (one == null) continue;
                 if (all.Contains(one)) continue;
                 all.Add(one);
-                getChildren(one).ToList().ForEach(stack.Push);
+                foreach (var child in getChildren(one)) {
+                    if (child != null && !(child is T)) {
+                        throw new Exception(
+                            $"{root.name} contains a child object that is not of type {typeof(T).Name}." +
+                            $" This should be impossible, and is usually a sign of cache memory corruption within unity. Try reimporting or renaming the file" +
+                            $" containing this resource. ({AssetDatabase.GetAssetPath(root)})");
+                    }
+                    stack.Push(child);
+                }
             }
             return all.ToImmutableHashSet();
         }

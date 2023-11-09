@@ -58,6 +58,7 @@ namespace VF.Feature {
                     continue;
                 }
                 var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
+                FixNullStateMachines(copy as AnimatorController);
                 while (copy is AnimatorOverrideController ov) {
                     if (ov.runtimeAnimatorController is AnimatorController ac2) {
                         AnimatorIterator.ReplaceClips(ac2, clip => ov[clip]);
@@ -65,6 +66,7 @@ namespace VF.Feature {
                     RuntimeAnimatorController newCopy = null;
                     if (ov.runtimeAnimatorController != null) {
                         newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, saveFilename: "tmp", addPrefix: false);
+                        FixNullStateMachines(newCopy as AnimatorController);
                     }
                     AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                     copy = newCopy;
@@ -137,19 +139,11 @@ namespace VF.Feature {
                 .Where(param => param.valueType == VRCExpressionParameters.ValueType.Int)
                 .Any(param => param.name == model.toggleParam);
 
-            addOtherFeature(new ObjectState {
-                states = {
-                    new ObjectState.ObjState {
-                        action = ObjectState.Action.DEACTIVATE,
-                        obj = GetBaseObject()
-                    }
-                }
-            });
             var toggleParam = RewriteParamName(model.toggleParam);
             addOtherFeature(new Toggle {
                 name = toggleParam,
                 state = new State {
-                    actions = { new ObjectToggleAction { obj = GetBaseObject() } }
+                    actions = { new ObjectToggleAction { obj = GetBaseObject(), mode = ObjectToggleAction.Mode.TurnOn} }
                 },
                 securityEnabled = model.useSecurityForToggle,
                 addMenuItem = false,
@@ -295,6 +289,28 @@ namespace VF.Feature {
             return featureBaseObject;
         }
 
+        /**
+         * Some people have corrupt controller layers containing no state machine.
+         * The simplest fix for this is for us to just stuff an empty state machine into it.
+         * We can't just delete it because it would interfere with the layer index numbers.
+         */
+        public static void FixNullStateMachines(AnimatorController ctrl) {
+            if (ctrl == null) return;
+            var path = AssetDatabase.GetAssetPath(ctrl);
+            ctrl.layers = ctrl.layers.Select(layer => {
+                if (layer.stateMachine == null) {
+                    layer.stateMachine = new AnimatorStateMachine {
+                        name = layer.name,
+                        hideFlags = HideFlags.HideInHierarchy
+                    };
+                    if (path != "") {
+                        AssetDatabase.AddObjectToAsset(layer.stateMachine, path);
+                    }
+                }
+                return layer;
+            }).ToArray();
+        }
+
         public override string GetEditorTitle() {
             return "Full Controller";
         }
@@ -401,10 +417,15 @@ namespace VF.Feature {
 
                 var missingPaths = new HashSet<string>();
                 var usesWdOff = false;
+                var usesAdditive = false;
                 foreach (var c in model.controllers) {
-                    var rc = c.controller.Get();
-                    var controller = rc as AnimatorController;
-                    if (controller == null) continue;
+                    var c1 = c.controller?.Get() as AnimatorController;
+                    if (c1 == null) continue;
+                    var controller = (VFController)c1;
+                    if (c.type == VRCAvatarDescriptor.AnimLayerType.Additive) usesAdditive = true;
+                    foreach (var layer in controller.GetLayers()) {
+                        if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) usesAdditive = true;
+                    }
                     foreach (var state in new AnimatorIterator.States().From(controller)) {
                         if (!state.writeDefaultValues) {
                             usesWdOff = true;
@@ -419,10 +440,17 @@ namespace VF.Feature {
 
                 if (usesWdOff) {
                     text.Add(
-                        "These controllers use WD off!" +
+                        "This controller uses WD off!" +
                         " If you want this prop to be reusable, you should use WD on." +
                         " VRCFury will automatically convert the WD on or off to match the client's avatar," +
                         " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
+                    text.Add("");
+                }
+                if (usesAdditive) {
+                    text.Add(
+                        "This controller contains an Additive layer! Beware that this will likely TOTALLY DESTROY the animations" +
+                        " of any avatar using WD off, even animations unrelated to your prop. Avoid using Additive layers at all costs!"
+                    );
                     text.Add("");
                 }
                 if (missingPaths.Count > 0) {

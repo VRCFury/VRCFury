@@ -373,17 +373,18 @@ namespace VF.Model.Feature {
         public string bonePathOnAvatar;
         public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public string removeBoneSuffix;
-        public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
         
         // legacy
-        public bool useOptimizedUpload;
-        public bool useBoneMerging;
-        public bool keepBoneOffsets;
+        [Obsolete] public bool useOptimizedUpload;
+        [Obsolete] public bool useBoneMerging;
+        [Obsolete] public bool keepBoneOffsets;
+        [Obsolete] public bool physbonesOnAvatarBones;
         
         public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
             if (fromVersion < 1) {
                 if (useBoneMerging) {
                     linkMode = ArmatureLinkMode.SkinRewrite;
@@ -408,6 +409,7 @@ namespace VF.Model.Feature {
                 }
             }
             return false;
+#pragma warning restore 0612
         }
         public override int GetLatestVersion() {
             return 5;
@@ -534,11 +536,17 @@ namespace VF.Model.Feature {
                     fromPath = "SPS" + fromPath.Substring(7);
                 }
             }
+
+            if (fromVersion < 3) {
+                if (toPath.StartsWith("Sockets/") || toPath == "Sockets") {
+                    toPath = "SPS" + toPath.Substring(7);
+                }
+            }
             return false;
         }
 
         public override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
     
@@ -609,6 +617,15 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
+    public class DeleteDuringUpload : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class ApplyDuringUpload : NewFeatureModel {
+        public State action;
+    }
+
+    [Serializable]
     public class BlendShapeLink : NewFeatureModel {
         public List<GameObject> objs;
         public string baseObj;
@@ -634,6 +651,19 @@ namespace VF.Model.Feature {
     public class SetIcon : NewFeatureModel {
         public string path;
         public GuidTexture2d icon;
+        
+        public override bool Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (path.StartsWith("Sockets/") || path == "Sockets") {
+                    path = "SPS" + path.Substring(7);
+                }
+            }
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]
@@ -690,6 +720,7 @@ namespace VF.Model.Feature {
     public class SpsOptions : NewFeatureModel {
         public GuidTexture2d menuIcon;
         public string menuPath;
+        public bool enableLightlessToggle2 = false;
     }
 
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Component;
 using VF.Utils;
@@ -12,7 +13,6 @@ namespace VF.Builder.Haptics {
         private const string SpsOverrun = "_SPS_Overrun";
         private const string SpsBakedLength = "_SPS_BakedLength";
         private const string SpsBake = "_SPS_Bake";
-        //private const string SpsChannel = "_SPS_Channel";
 
         public static void ConfigureSpsMaterial(
             SkinnedMeshRenderer skin,
@@ -33,7 +33,16 @@ namespace VF.Builder.Haptics {
 
             var m = mutableManager.MakeMutable(original, skin.owner());
             SpsPatcher.Patch(m, plug.spsKeepImports);
-            m.SetOverrideTag(SpsEnabled + "Animated", "1");
+            {
+                // Prevent poi from stripping our parameters
+                var count = ShaderUtil.GetPropertyCount(m.shader);
+                for (var i = 0; i < count; i++) {
+                    var propertyName = ShaderUtil.GetPropertyName(m.shader, i);
+                    if (propertyName.StartsWith("_SPS_")) {
+                       m.SetOverrideTag(propertyName + "Animated", "1");
+                    }
+                }
+            }
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
             m.SetFloat(SpsLength, worldLength);
@@ -47,9 +56,7 @@ namespace VF.Builder.Haptics {
                 if (skin.sharedMesh.HasBlendshape(name)) {
                     m.SetFloat("_SPS_Blendshape" + i, skin.GetBlendShapeWeight(name));
                 }
-                m.SetOverrideTag("_SPS_Blendshape" + i + "Animated", "1");
             }
-            //m.SetFloat(SpsChannel, (int)channel);
         }
 
         public static bool IsSps(Material mat) {

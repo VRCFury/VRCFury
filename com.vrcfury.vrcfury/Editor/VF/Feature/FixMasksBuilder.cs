@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -63,13 +64,19 @@ namespace VF.Feature {
 
             foreach (var layer in fx.GetLayers()) {
                 var oldMask = layer.mask;
+                
+                // Direct blendtree layers don't need a mask because they're always WD on
+                // and that doesn't break transforms on gesture because... unity reasons
+                var isOnlyDirectTree = new AnimatorIterator.States()
+                    .From(layer)
+                    .All(state => state.motion is BlendTree tree && tree.blendType == BlendTreeType.Direct);
+                if (isOnlyDirectTree) continue;
 
                 var transformedPaths = new AnimatorIterator.Clips().From(layer)
                     .SelectMany(clip => clip.GetAllBindings())
                     .Where(binding => binding.type == typeof(Transform))
                     .Select(binding => binding.path)
                     .ToImmutableHashSet();
-                if (transformedPaths.Count == 0) continue;
 
                 var mask = AvatarMaskExtensions.Empty();
                 mask.SetTransforms(transformedPaths);

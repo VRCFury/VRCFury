@@ -99,7 +99,7 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
+                        VRCFuryHapticSocketEditor.Bake(socket);
                     });
                     Object.DestroyImmediate(socket);
                 }
@@ -112,7 +112,7 @@ namespace VF {
                     plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         var mutableManager = new MutableManager(tmpDir);
-                        VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
+                        VRCFuryHapticPlugEditor.Bake(plug, mutableManager: mutableManager);
                     });
                     Object.DestroyImmediate(plug);
                 }

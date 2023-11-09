@@ -78,13 +78,18 @@ namespace VF.Feature {
                     .Any(clip => !ClipBuilderService.IsStaticMotion(clip));
 
                 var usedBindings = bindingsByLayer[layer];
+                if (usedBindings.Any(b => b.propertyName.Contains("m_LocalEulerAngles"))) {
+                    AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
+                    continue;
+                }
+                
                 var otherLayersAnimateTheSameThing = bindingsByLayer
                     .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
                     .Select(pair => pair.Key)
                     .ToArray();
                 if (otherLayersAnimateTheSameThing.Length > 0) {
                     var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => l.name));
-                    AddDebug($"Not optimizing (shares animations with other layer: {names}");
+                    AddDebug($"Not optimizing (shares animations with other layer: {names})");
                     continue;
                 }
 
@@ -215,6 +220,16 @@ namespace VF.Feature {
 
                 if (paramUsedInOtherLayer) {
                     AddDebug($"Not optimizing (parameter used in some other layer)");
+                    continue;
+                }
+                
+                var paramType = fx.GetRaw().parameters
+                    .Where(p => p.name == param)
+                    .Select(p => p.type)
+                    .DefaultIfEmpty(AnimatorControllerParameterType.Float)
+                    .First();
+                if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
+                    AddDebug($"Not optimizing (using an int VRC built-in, which means >1 is likely)");
                     continue;
                 }
 

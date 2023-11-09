@@ -11,14 +11,18 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace VF.Feature {
     public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();
-        [VFAutowired] private readonly ParamSmoothingService smoothing;
+        [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -29,13 +33,6 @@ namespace VF.Feature {
 
         private void MakeGesture(GestureDriver.Gesture gesture, GestureDriver.Hand handOverride = GestureDriver.Hand.EITHER) {
             var hand = handOverride == GestureDriver.Hand.EITHER ? gesture.hand : handOverride;
-            
-            if (gesture.enableWeight && hand == GestureDriver.Hand.EITHER &&
-                gesture.sign == GestureDriver.HandSign.FIST) {
-                MakeGesture(gesture, GestureDriver.Hand.LEFT);
-                MakeGesture(gesture, GestureDriver.Hand.RIGHT);
-                return;
-            }
 
             var fx = GetFx();
             var uniqueNum = i++;
@@ -58,25 +55,47 @@ namespace VF.Feature {
                 }
             }
 
-            var GestureLeft = fx.GestureLeft();
-            var GestureRight = fx.GestureRight();
+            void MakeHand(bool right, ref VFCondition aggCondition, ref VFAFloat aggWeight) {
+                if (hand == GestureDriver.Hand.LEFT && right) return;
+                if (hand == GestureDriver.Hand.RIGHT && !right) return;
+                var sign = (right && hand == GestureDriver.Hand.COMBO) ? gesture.comboSign : gesture.sign;
 
-            VFCondition onCondition;
-            int weightHand = 0;
-            if (hand == GestureDriver.Hand.LEFT) {
-                onCondition = GestureLeft.IsEqualTo((int)gesture.sign);
-                if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
-            } else if (hand == GestureDriver.Hand.RIGHT) {
-                onCondition = GestureRight.IsEqualTo((int)gesture.sign);
-                if (gesture.sign == GestureDriver.HandSign.FIST) weightHand = 2;
-            } else if (hand == GestureDriver.Hand.EITHER) {
-                onCondition = GestureLeft.IsEqualTo((int)gesture.sign).Or(GestureRight.IsEqualTo((int)gesture.sign));
-            } else if (hand == GestureDriver.Hand.COMBO) {
-                onCondition = GestureLeft.IsEqualTo((int)gesture.sign).And(GestureRight.IsEqualTo((int)gesture.comboSign));
-                if (gesture.comboSign == GestureDriver.HandSign.FIST) weightHand = 2;
-                else if(gesture.sign == GestureDriver.HandSign.FIST) weightHand = 1;
+                var myCondition = (right ? fx.GestureRight() : fx.GestureLeft()).IsEqualTo((int)sign);
+                if (aggCondition == null) aggCondition = myCondition;
+                else if (hand == GestureDriver.Hand.EITHER) aggCondition = aggCondition.Or(myCondition);
+                else if (hand == GestureDriver.Hand.COMBO) aggCondition = aggCondition.And(myCondition);
+
+                if (sign == GestureDriver.HandSign.FIST && gesture.enableWeight) {
+                    var myWeight = right ? fx.GestureRightWeight() : fx.GestureLeftWeight();
+                    if (aggWeight == null) aggWeight = myWeight;
+                    else aggWeight = math.Max(aggWeight, myWeight);
+                }
+            }
+
+            VFCondition onCondition = null;
+            VFAFloat weight = null;
+            MakeHand(false, ref onCondition, ref weight);
+            MakeHand(true, ref onCondition, ref weight);
+
+            var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
+            
+            var clip = actionClipService.LoadState(uid, gesture.state);
+            if (weight != null) {
+                var smoothedWeight = MakeWeightLayer(
+                    weight,
+                    onCondition
+                );
+                onCondition = smoothedWeight.IsGreaterThan(0.05f);
+                transitionTime = 0.05f;
+                var tree = fx.NewBlendTree(uid + "_blend");
+                tree.blendType = BlendTreeType.Simple1D;
+                tree.useAutomaticThresholds = false;
+                tree.blendParameter = smoothedWeight.Name();
+                tree.AddChild(fx.GetEmptyClip(), 0);
+                tree.AddChild(clip, 1);
+                on.WithAnimation(tree);
             } else {
-                throw new Exception("Unknown hand type");
+                on.WithAnimation(clip);
             }
 
             if (lockMenuParam != null) {
@@ -103,48 +122,23 @@ namespace VF.Feature {
                 on.Drives(disableBlinkParam, true);
                 addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
             }
-            
-            var clip = actionClipService.LoadState(uid, gesture.state);
-            if (gesture.enableWeight && weightHand > 0) {
-                MakeWeightParams();
-                var weightParam = weightHand == 1 ? leftWeightParam : rightWeightParam;
-                var tree = fx.NewBlendTree(uid + "_blend");
-                tree.blendType = BlendTreeType.Simple1D;
-                tree.useAutomaticThresholds = false;
-                tree.blendParameter = weightParam.Name();
-                tree.AddChild(fx.GetEmptyClip(), 0);
-                tree.AddChild(clip, 1);
-                on.WithAnimation(tree);
-            } else {
-                on.WithAnimation(clip);
-            }
 
-            var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
             off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
         }
 
-        private VFAFloat leftWeightParam;
-        private VFAFloat rightWeightParam;
-        private void MakeWeightParams() {
-            if (leftWeightParam != null) return;
+        private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition enabled) {
             var fx = GetFx();
-            var GestureLeftWeight = fx.GestureLeftWeight();
-            var GestureRightWeight = fx.GestureRightWeight();
-            var GestureLeftCondition = fx.GestureLeft().IsEqualTo(1);
-            var GestureRightCondition = fx.GestureRight().IsEqualTo(1);
-            leftWeightParam = MakeWeightLayer(GestureLeftWeight, GestureLeftCondition);
-            rightWeightParam = MakeWeightLayer(GestureRightWeight, GestureRightCondition);
-        }
-        private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition whenEnabled) {
-            var maintained =
-                smoothing.SetValueWithConditions(
-                    $"{input.Name()}Maintained",
-                    0, 1, 0,
-                    (input, whenEnabled),
-                    (null, null)
-                );
-            return smoothing.Smooth($"{input.Name()}Smoothed", maintained, 0.2f);
+            var layer = fx.NewLayer($"{input.Name()} Target");
+
+            var target = fx.NewFloat($"{input.Name()}/Target", def: input.GetDefault());
+
+            var off = layer.NewState("Off").WithAnimation(math.MakeSetter(target, 0));
+            var on = layer.NewState("On").WithAnimation(math.MakeCopier(input, target));
+            off.TransitionsTo(on).When(enabled);
+            on.TransitionsTo(off).When(enabled.Not());
+
+            return smoothing.Smooth($"{input.Name()}/Smoothed", target, 0.15f);
         }
 
         public override string GetEditorTitle() {

@@ -8,7 +8,7 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder.Haptics {
     public static class SpsAutoRigger {
-        public static void AutoRig(SkinnedMeshRenderer skin, float worldLength, MutableManager mutableManager) {
+        public static void AutoRig(SkinnedMeshRenderer skin, float worldLength, float worldRadius, MutableManager mutableManager) {
             if (skin.bones.Length != 1) {
                 return;
             }
@@ -23,6 +23,7 @@ namespace VF.Builder.Haptics {
             var bones = new List<Transform>();
             var bindPoses = new List<Matrix4x4>();
             var localLength = worldLength / skin.rootBone.lossyScale.z;
+            var localRadius = worldRadius / skin.rootBone.lossyScale.z;
             for (var i = 0; i < boneCount; i++) {
                 var bone = GameObjects.Create("VrcFuryAutoRig" + i, lastParent);
                 var pos = bone.localPosition;
@@ -57,6 +58,10 @@ namespace VF.Builder.Haptics {
             physbone.spring = 0.1f;
             physbone.stiffness = 0.3f;
             physbone.rootTransform = bones.First();
+
+            var radiusEnd = Mathf.Max(0.0f, 1.0f - localRadius / localLength);
+            physbone.radiusCurve = AnimationCurve.Linear(radiusEnd, 1.0f, 1.0f, 0.0f);
+            physbone.radius = localRadius;
 
             mesh.boneWeights = weights;
         }
