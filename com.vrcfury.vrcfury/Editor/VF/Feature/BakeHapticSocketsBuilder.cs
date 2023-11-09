@@ -96,6 +96,10 @@ namespace VF.Feature {
                     Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
 
                     var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket);
+                    VFAFloat penTip = null;
+                    VFAFloat penRoot = null;
+                    VFAFloat penWidth = null;
+                    
                     
                     // Haptic receivers
                     {
@@ -127,6 +131,19 @@ namespace VF.Feature {
                         hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
                         hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
                         hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        
+                        if ((socket.enablePlugLengthParameter && !string.IsNullOrWhiteSpace(socket.plugLengthParameterName))
+                            || (socket.enablePlugWidthParameter && !string.IsNullOrWhiteSpace(socket.plugWidthParameterName))) {
+                            penTip = hapticContacts.AddReceiver(receivers, Vector3.zero, $"{name}/PenTip", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, HapticUtils.ReceiverParty.Both);
+                            if (socket.enablePlugLengthParameter &&
+                                !string.IsNullOrWhiteSpace(socket.plugLengthParameterName)) {
+                                penRoot = hapticContacts.AddReceiver(receivers, Vector3.zero, $"{name}/PenRoot", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, HapticUtils.ReceiverParty.Both);
+                            }
+                            if (socket.enablePlugWidthParameter &&
+                                !string.IsNullOrWhiteSpace(socket.plugWidthParameterName)) {
+                                penWidth = hapticContacts.AddReceiver(receivers, Vector3.zero, $"{name}/PenWidth", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
+                            }
+                        }
                     }
 
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
@@ -236,7 +253,6 @@ namespace VF.Feature {
 
                     if ((socket.enablePlugLengthParameter && !string.IsNullOrWhiteSpace(socket.plugLengthParameterName)) 
                         || (socket.enablePlugWidthParameter && !string.IsNullOrWhiteSpace(socket.plugWidthParameterName))) {
-                        var penTip = fx.NewFloat($"{name}/PenTip", usePrefix: false); // TODO: use socket specific parameter
                         var rootRadius = fx.NewFloat($"{name}_RootRadius", def: 0.01f);
                         var half = fx.NewFloat($"{name}_0.5", def: 0.5f);
                         
@@ -251,7 +267,6 @@ namespace VF.Feature {
                             !string.IsNullOrWhiteSpace(socket.plugLengthParameterName)) {
                             // Calculate `Plug Length` using `TPS_Pen_Penetrating - TPS_Pen_Root + 0.01` 
                             var plugLength = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
-                            var penRoot = fx.NewFloat($"{name}/PenRoot", usePrefix: false);
                             var length1Clip = fx.NewClip($"{name}_Length1");
                             length1Clip.SetCurve("", typeof(Animator), plugLength.Name(), AnimationCurve.Constant(0, 0, 1));
                             var lengthMinus1Clip = fx.NewClip($"{name}_Length-1");
@@ -277,7 +292,6 @@ namespace VF.Feature {
                             !string.IsNullOrWhiteSpace(socket.plugWidthParameterName)) {
                             // Calculate `Plug Width` using `(TPS_Pen_Penetrating - TPS_Pen_Width)/2` 
                             var plugWidth = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
-                            var penWidth = fx.NewFloat($"{name}/PenWidth", usePrefix: false);
                             var width1Clip = fx.NewClip($"{name}_Width1");
                             width1Clip.SetCurve("", typeof(Animator), plugWidth.Name(), AnimationCurve.Constant(0, 0, 1));
                             var widthMinus1Clip = fx.NewClip($"{name}_Width-1");
