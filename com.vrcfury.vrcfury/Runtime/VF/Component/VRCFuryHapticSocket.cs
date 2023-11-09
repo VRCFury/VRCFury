@@ -38,8 +38,10 @@ namespace VF.Component {
         public string plugLengthParameterName;
         public bool enablePlugWidthParameter;
         public string plugWidthParameterName;
-        
-        [Serializable]
+        public bool IsValidPlugLength => enablePlugLengthParameter &&
+                                         !string.IsNullOrWhiteSpace(plugLengthParameterName);
+        public bool IsValidPlugWidth => enablePlugWidthParameter &&
+                                         !string.IsNullOrWhiteSpace(plugWidthParameterName);
         public class DepthAction {
             public State state;
             public float startDistance = 0;
