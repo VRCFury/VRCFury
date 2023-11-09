@@ -121,9 +121,7 @@ public static class VRCFuryEditorUtils {
 
         output.Add(listView);
         output.Add(footer);
-        return output;
-#endif
-
+#else
         var entriesContainer = new VisualElement();
         output.Add(entriesContainer);
         Border(entriesContainer, 1);
@@ -196,7 +194,7 @@ public static class VRCFuryEditorUtils {
         subtract.AddToClassList("vfList2019__button");
         subtract.AddManipulator(new Clickable(OnClickMinus));
         buttons.Add(subtract);
-
+#endif
         return output;
     }
 
