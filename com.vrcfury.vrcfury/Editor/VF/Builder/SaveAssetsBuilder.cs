@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
 using Object = UnityEngine.Object;
@@ -13,6 +14,7 @@ namespace VF.Builder {
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
+            // Special handling for mask and controller names
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
                     if (layer.mask != null) {
@@ -24,6 +26,8 @@ namespace VF.Builder {
                     $"VRCFury {controller.GetType().ToString()} for {manager.AvatarObject.name}"
                 );
             }
+            
+            // Save everything else
             foreach (var component in manager.AvatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                 ForEachUnsavedChild(component, asset => {
                     SaveAssetAndChildren(
