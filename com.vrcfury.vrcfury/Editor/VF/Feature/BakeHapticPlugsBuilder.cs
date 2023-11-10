@@ -283,7 +283,9 @@ namespace VF.Feature {
                 );
 
                 void RewriteClip(AnimationClip clip) {
-                    foreach (var (binding,curve) in clip.GetAllCurves()) {
+                    foreach (var (_binding,curve) in clip.GetAllCurves()) {
+                        var binding = _binding;
+
                         if (curve.IsFloat) {
                             if (binding.path == pathToRenderer) {
                                 if (binding.propertyName == "material._TPS_AnimatedToggle") {
@@ -298,10 +300,11 @@ namespace VF.Feature {
                                 }
                             }
                         }
+
                         if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer)) {
-                            var b = binding;
-                            b.type = typeof(SkinnedMeshRenderer);
-                            clip.SetCurve(b, curve);
+                            clip.SetCurve(binding, null);
+                            binding.type = typeof(SkinnedMeshRenderer);
+                            clip.SetCurve(binding, curve);
                         }
 
                         if (curve.IsFloat && binding.path == pathToRenderer && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.")) {
