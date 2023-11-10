@@ -31,7 +31,7 @@ namespace VF.Builder.Haptics {
                     $" on the mesh instead.");
             }
 
-            var m = mutableManager.MakeMutable(original, skin.owner());
+            var m = MutableManager.MakeMutable(original);
             SpsPatcher.Patch(m, plug.spsKeepImports);
             {
                 // Prevent poi from stripping our parameters

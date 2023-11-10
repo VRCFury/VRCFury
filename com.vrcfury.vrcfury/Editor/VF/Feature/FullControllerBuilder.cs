@@ -38,7 +38,7 @@ namespace VF.Feature {
                     missingAssets.Add(p.parameters);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(prms);
+                var copy = MutableManager.CopyRecursive(prms);
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -57,7 +57,7 @@ namespace VF.Feature {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
+                var copy = MutableManager.CopyRecursive(source);
                 FixNullStateMachines(copy as AnimatorController);
                 while (copy is AnimatorOverrideController ov) {
                     if (ov.runtimeAnimatorController is AnimatorController ac2) {
@@ -65,10 +65,9 @@ namespace VF.Feature {
                     }
                     RuntimeAnimatorController newCopy = null;
                     if (ov.runtimeAnimatorController != null) {
-                        newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, saveFilename: "tmp", addPrefix: false);
+                        newCopy = MutableManager.CopyRecursive(ov.runtimeAnimatorController, addPrefix: false);
                         FixNullStateMachines(newCopy as AnimatorController);
                     }
-                    AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
                     copy = newCopy;
                 }
                 if (copy is AnimatorController ac) {
@@ -93,7 +92,7 @@ namespace VF.Feature {
 
                 CheckMenuParams(menu);
 
-                var copy = mutableManager.CopyRecursive(menu);
+                var copy = MutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
                 manager.GetMenu().MergeMenu(prefix, copy);
@@ -322,16 +321,12 @@ namespace VF.Feature {
          */
         public static void FixNullStateMachines(AnimatorController ctrl) {
             if (ctrl == null) return;
-            var path = AssetDatabase.GetAssetPath(ctrl);
             ctrl.layers = ctrl.layers.Select(layer => {
                 if (layer.stateMachine == null) {
                     layer.stateMachine = new AnimatorStateMachine {
                         name = layer.name,
                         hideFlags = HideFlags.HideInHierarchy
                     };
-                    if (path != "") {
-                        AssetDatabase.AddObjectToAsset(layer.stateMachine, path);
-                    }
                 }
                 return layer;
             }).ToArray();

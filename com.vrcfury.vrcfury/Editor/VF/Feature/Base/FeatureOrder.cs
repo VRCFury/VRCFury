@@ -109,5 +109,7 @@ namespace VF.Feature.Base {
         RestoreProxyClips,
         // Needs to happen after everything is done using the animator
         ResetAnimatorAfter,
+
+        SaveAssets,
     }
 }

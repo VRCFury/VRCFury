@@ -83,7 +83,7 @@ namespace VF.Feature {
                     .Select(id => new SavedBlendshape(mesh, id))
                     .ToArray();
 
-                var meshCopy = mutableManager.MakeMutable(mesh, renderer.owner());
+                var meshCopy = MutableManager.MakeMutable(mesh);
                 meshCopy.ClearBlendShapes();
                 skin.sharedMesh = meshCopy;
                 VRCFuryEditorUtils.MarkDirty(skin);

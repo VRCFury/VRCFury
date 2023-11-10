@@ -107,7 +107,6 @@ namespace VF.Builder {
         }
         private AnimationClip _NewClip(string name) {
             var clip = new AnimationClip { name = name };
-            AssetDatabase.AddObjectToAsset(clip, ctrl);
             return clip;
         }
         public BlendTree NewBlendTree(string name) {
@@ -115,7 +114,6 @@ namespace VF.Builder {
         }
         private BlendTree _NewBlendTree(string name) {
             var tree = new BlendTree { name = name };
-            AssetDatabase.AddObjectToAsset(tree, ctrl);
             return tree;
         }
 
@@ -141,16 +139,6 @@ namespace VF.Builder {
                 return layer;
             }).ToArray();
             ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
-
-            var path = AssetDatabase.GetAssetPath(other);
-            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path)) {
-                if (asset is Motion) asset.name = NewClipName(asset.name);
-                if (asset is AnimatorController) continue;
-                AssetDatabase.RemoveObjectFromAsset(asset);
-                AssetDatabase.AddObjectToAsset(asset, ctrl);
-            }
-            
-            AssetDatabase.DeleteAsset(path);
         }
 
         public string NewLayerName(string name) {

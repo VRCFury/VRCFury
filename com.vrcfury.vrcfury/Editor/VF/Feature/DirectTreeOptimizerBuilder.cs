@@ -115,10 +115,8 @@ namespace VF.Feature {
 
                         offClip = dualState.Item1;
                         offClip.name = state.motion.name + " (OFF)";
-                        AssetDatabase.AddObjectToAsset(offClip, state.motion);
                         onClip = dualState.Item2;
                         onClip.name = state.motion.name + " (ON)";
-                        AssetDatabase.AddObjectToAsset(onClip, state.motion);
                         param = state.timeParameter;
                     } else {
                         offClip = null;
@@ -195,7 +193,6 @@ namespace VF.Feature {
                             else if (Mathf.Approximately(s.speed, 0)) single = dualState.Item1;
                             else return null;
                             single.name = $"{clip.name} (speed={s.speed} end state)";
-                            AssetDatabase.AddObjectToAsset(single, clip);
                             return single;
                         }
 

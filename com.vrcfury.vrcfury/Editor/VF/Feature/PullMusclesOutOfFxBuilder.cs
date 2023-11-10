@@ -85,7 +85,6 @@ namespace VF.Feature {
                 layer = controller.NewLayer(type == LayerType.RightHand ? "VRCFury Right Hand" : "VRCFury Left Hand");
                 var mask = AvatarMaskExtensions.Empty();
                 mask.SetHumanoidBodyPartActive(type == LayerType.RightHand ? AvatarMaskBodyPart.RightFingers : AvatarMaskBodyPart.LeftFingers, true);
-                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "vrcfGestureMask");
                 controller.GetRaw().GetLayer(layer.GetRawStateMachine()).mask = mask;
                 controller.GetManagedLayers().First(l => l.stateMachine == layer.GetRawStateMachine()).weight = 0;
             }
@@ -187,12 +186,12 @@ namespace VF.Feature {
                 }
             }
 
-            var copyWithoutMuscles = mutableManager.CopyRecursive(originalMotion, $"{originalMotion.name} (no muscles)");
+            var copyWithoutMuscles = MutableManager.CopyRecursive(originalMotion);
             foreach (var clip in new AnimatorIterator.Clips().From(copyWithoutMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(ShouldTransferBinding);
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             }
-            var copyOnlyMuscles = mutableManager.CopyRecursive(originalMotion, $"{originalMotion.name} (only muscles)");
+            var copyOnlyMuscles = MutableManager.CopyRecursive(originalMotion);
             foreach (var clip in new AnimatorIterator.Clips().From(copyOnlyMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(b => !ShouldTransferBinding(b));
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));

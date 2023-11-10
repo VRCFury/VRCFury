@@ -50,7 +50,6 @@ namespace VF.Feature {
                     mask.UnionWith(union);
                 }
             }
-            VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
             return mask;
         }
 
@@ -84,7 +83,6 @@ namespace VF.Feature {
                     mask.IntersectWith(oldMask);
                 }
 
-                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layer.GetLayerId());
                 layer.mask = mask;
             }
 
