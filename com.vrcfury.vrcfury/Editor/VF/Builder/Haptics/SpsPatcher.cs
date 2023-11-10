@@ -60,6 +60,7 @@ namespace VF.Builder.Haptics {
                     $"$1\n{propertiesContent}\n",
                     1
                 );
+                contents = GetRegex(@"\n\s+CustomEditor [^\n]+").Replace(contents, "");
             }
 
             string spsMain;
