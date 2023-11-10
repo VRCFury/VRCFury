@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -22,8 +23,6 @@ namespace VF.Feature {
                     expectedMask = GetGestureMask(c);
                 } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
                     expectedMask = GetFxMask(c, allControllers);
-                } else {
-                    expectedMask = null;
                 }
 
                 var layer0 = ctrl.GetLayer(0);
@@ -36,19 +35,13 @@ namespace VF.Feature {
         }
 
         /**
-         * We build the gesture mask by unioning all the masks from the avatar base, plus any controllers
-         * we've merged in. We also add left and right fingers, to ensure they're allowed so VRCFury-added
-         * hand gestures can work.
+         * We build the gesture base mask by unioning all the masks from the other layers.
          */
         private AvatarMask GetGestureMask(ControllerManager gesture) {
             var mask = AvatarMaskExtensions.Empty();
-            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
-
-            foreach (var union in gesture.GetUnionBaseMasks()) {
-                if (union != null) {
-                    mask.UnionWith(union);
-                }
+            foreach (var layer in gesture.GetLayers()) {
+                if (layer.mask == null) throw new Exception("Gesture layer unexpectedly contains no mask");
+                mask.UnionWith(layer.mask);
             }
             return mask;
         }

@@ -16,6 +16,8 @@ namespace VF.Builder {
         private string tmpDir;
 
         private static readonly Type[] typesToMakeMutable = {
+            // This has to be here because animator override controllers
+            // can have other controllers as children
             typeof(RuntimeAnimatorController),
 
             // Animator Controller internals

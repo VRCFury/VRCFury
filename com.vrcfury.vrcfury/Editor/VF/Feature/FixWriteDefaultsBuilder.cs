@@ -120,7 +120,10 @@ namespace VF.Feature {
                 .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
 
-            var analysis = DetectExistingWriteDefaults(manager.GetAllUsedControllersRaw(), allManagedStateMachines);
+            var analysis = DetectExistingWriteDefaults(
+                manager.GetAllUsedControllers().Select(c => (c.GetType(), c.GetRaw())),
+                allManagedStateMachines
+            );
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
@@ -204,7 +207,7 @@ namespace VF.Feature {
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
         public static DetectionResults DetectExistingWriteDefaults(
-            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> avatarControllers,
+            IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> avatarControllers,
             ISet<AnimatorStateMachine> stateMachinesToIgnore = null
         ) {
             var controllerInfos = avatarControllers.Select(tuple => {

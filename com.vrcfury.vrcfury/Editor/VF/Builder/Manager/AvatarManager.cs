@@ -63,10 +63,9 @@ namespace VF.Builder {
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             if (!_controllers.TryGetValue(type, out var output)) {
                 var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
-                AnimatorController ctrl;
+                VFController ctrl;
                 if (existingController != null) {
-                    ctrl = MutableManager.CopyRecursive(existingController);
-                    FullControllerBuilder.FixNullStateMachines(ctrl);
+                    ctrl = VFController.CopyAndLoadController(existingController);
                 } else {
                     ctrl = new AnimatorController();
                 }
@@ -78,7 +77,6 @@ namespace VF.Builder {
                     currentFeatureNameProvider,
                     currentFeatureClipPrefixProvider,
                     MakeUniqueParamName,
-                    tmpDir,
                     treatAsManaged: isDefault
                 );
                 _controllers[type] = output;
@@ -94,11 +92,6 @@ namespace VF.Builder {
                 .Where(c => c.controller != null)
                 .Select(c => GetController(c.type))
                 .ToArray();
-        }
-        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> GetAllUsedControllersRaw() {
-            return VRCAvatarUtils.GetAllControllers(avatar)
-                .Where(c => c.controller != null)
-                .Select(c => Tuple.Create(c.type, c.controller));
         }
 
         private ParamManager _params;

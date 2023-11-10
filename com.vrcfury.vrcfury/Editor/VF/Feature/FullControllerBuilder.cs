@@ -51,27 +51,14 @@ namespace VF.Feature {
 
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, VFController)>();
             foreach (var c in model.controllers) {
-                var type = c.type;
                 var source = c.controller.Get();
                 if (source == null) {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = MutableManager.CopyRecursive(source);
-                FixNullStateMachines(copy as AnimatorController);
-                while (copy is AnimatorOverrideController ov) {
-                    if (ov.runtimeAnimatorController is AnimatorController ac2) {
-                        AnimatorIterator.ReplaceClips(ac2, clip => ov[clip]);
-                    }
-                    RuntimeAnimatorController newCopy = null;
-                    if (ov.runtimeAnimatorController != null) {
-                        newCopy = MutableManager.CopyRecursive(ov.runtimeAnimatorController, addPrefix: false);
-                        FixNullStateMachines(newCopy as AnimatorController);
-                    }
-                    copy = newCopy;
-                }
-                if (copy is AnimatorController ac) {
-                    toMerge.Add((type, ac));
+                var copy = VFController.CopyAndLoadController(source);
+                if (copy) {
+                    toMerge.Add((c.type, copy));
                 }
             }
 
@@ -278,17 +265,15 @@ namespace VF.Feature {
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             ((AnimatorController)from).RewriteParameters(RewriteParamName);
 
-            // Merge base mask
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
-                var mask = from.layers[0].avatarMask;
-                if (mask == null) {
+            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                var layer0 = from.GetLayer(0);
+                if (layer0 != null && layer0.mask == null) {
                     throw new VRCFBuilderException(
                         "A VRCFury full controller is configured to merge in a Gesture controller," +
                         " but the controller does not have a Base Mask set. Beware that Gesture controllers" +
                         " should typically be used for animating FINGERS ONLY. If your controller animates" +
                         " non-humanoid transforms, they should typically be merged into FX instead!");
                 }
-                toMain.UnionBaseMask(mask);
             }
 
             // Merge Params
@@ -300,11 +285,6 @@ namespace VF.Feature {
                 });
             }
 
-            var layer0 = from.GetLayer(0);
-            if (layer0 != null) {
-                layer0.weight = 1;
-            }
-
             // Merge Layers
             toMain.TakeOwnershipOf(from);
         }
@@ -312,24 +292,6 @@ namespace VF.Feature {
         VFGameObject GetBaseObject() {
             if (model.rootObjOverride) return model.rootObjOverride;
             return featureBaseObject;
-        }
-
-        /**
-         * Some people have corrupt controller layers containing no state machine.
-         * The simplest fix for this is for us to just stuff an empty state machine into it.
-         * We can't just delete it because it would interfere with the layer index numbers.
-         */
-        public static void FixNullStateMachines(AnimatorController ctrl) {
-            if (ctrl == null) return;
-            ctrl.layers = ctrl.layers.Select(layer => {
-                if (layer.stateMachine == null) {
-                    layer.stateMachine = new AnimatorStateMachine {
-                        name = layer.name,
-                        hideFlags = HideFlags.HideInHierarchy
-                    };
-                }
-                return layer;
-            }).ToArray();
         }
 
         public override string GetEditorTitle() {
