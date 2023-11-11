@@ -121,9 +121,7 @@ public static class VRCFuryEditorUtils {
 
         output.Add(listView);
         output.Add(footer);
-        return output;
-#endif
-
+#else
         var entriesContainer = new VisualElement();
         output.Add(entriesContainer);
         Border(entriesContainer, 1);
@@ -196,7 +194,7 @@ public static class VRCFuryEditorUtils {
         subtract.AddToClassList("vfList2019__button");
         subtract.AddManipulator(new Clickable(OnClickMinus));
         buttons.Add(subtract);
-
+#endif
         return output;
     }
 
@@ -636,7 +634,7 @@ public static class VRCFuryEditorUtils {
                     try {
                         label.text = refreshMessage();
                     } catch (Exception e) {
-                        label.text = $"Error: {e.StackTrace}";
+                        label.text = $"Error: {e.Message}";
                     }
                 }, interval);
             }

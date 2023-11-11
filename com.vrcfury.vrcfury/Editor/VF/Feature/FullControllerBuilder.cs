@@ -31,14 +31,14 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
             var missingAssets = new List<GuidWrapper>();
-            
+
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
                 if (!prms) {
                     missingAssets.Add(p.parameters);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(prms);
+                var copy = MutableManager.CopyRecursive(prms);
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -51,28 +51,14 @@ namespace VF.Feature {
 
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, VFController)>();
             foreach (var c in model.controllers) {
-                var type = c.type;
                 var source = c.controller.Get();
                 if (source == null) {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
-                FixNullStateMachines(copy as AnimatorController);
-                while (copy is AnimatorOverrideController ov) {
-                    if (ov.runtimeAnimatorController is AnimatorController ac2) {
-                        AnimatorIterator.ReplaceClips(ac2, clip => ov[clip]);
-                    }
-                    RuntimeAnimatorController newCopy = null;
-                    if (ov.runtimeAnimatorController != null) {
-                        newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, saveFilename: "tmp", addPrefix: false);
-                        FixNullStateMachines(newCopy as AnimatorController);
-                    }
-                    AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
-                    copy = newCopy;
-                }
-                if (copy is AnimatorController ac) {
-                    toMerge.Add((type, ac));
+                var copy = VFController.CopyAndLoadController(source);
+                if (copy) {
+                    toMerge.Add((c.type, copy));
                 }
             }
 
@@ -90,7 +76,10 @@ namespace VF.Feature {
                     missingAssets.Add(m.menu);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(menu);
+
+                CheckMenuParams(menu);
+
+                var copy = MutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
                 manager.GetMenu().MergeMenu(prefix, copy);
@@ -123,6 +112,29 @@ namespace VF.Feature {
                         "Are you sure you've imported all the packages needed? Here are the files that are missing:\n\n" +
                         list);
                 }
+            }
+        }
+
+        private void CheckMenuParams(VRCExpressionsMenu menu) {
+            var failedParams = new List<string>();
+            void CheckParam(string param, IList<string> path) {
+                if (string.IsNullOrEmpty(param)) return;
+                if (manager.GetParams().GetParam(RewriteParamName(param)) != null) return;
+                failedParams.Add($"{param} (used by {string.Join("/", path)})");
+            }
+            menu.ForEachMenu(ForEachItem: (item, path) => {
+                CheckParam(item.parameter?.name, path);
+                if (item.subParameters != null) {
+                    foreach (var p in item.subParameters) {
+                        CheckParam(p?.name, path);
+                    }
+                }
+                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+            });
+            if (failedParams.Count > 0) {
+                throw new Exception(
+                    "The merged menu uses parameters that aren't in the merged parameters file:\n\n" +
+                    string.Join("\n", failedParams));
             }
         }
 
@@ -253,17 +265,15 @@ namespace VF.Feature {
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             ((AnimatorController)from).RewriteParameters(RewriteParamName);
 
-            // Merge base mask
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
-                var mask = from.layers[0].avatarMask;
-                if (mask == null) {
+            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                var layer0 = from.GetLayer(0);
+                if (layer0 != null && layer0.mask == null) {
                     throw new VRCFBuilderException(
                         "A VRCFury full controller is configured to merge in a Gesture controller," +
                         " but the controller does not have a Base Mask set. Beware that Gesture controllers" +
                         " should typically be used for animating FINGERS ONLY. If your controller animates" +
                         " non-humanoid transforms, they should typically be merged into FX instead!");
                 }
-                toMain.UnionBaseMask(mask);
             }
 
             // Merge Params
@@ -275,11 +285,6 @@ namespace VF.Feature {
                 });
             }
 
-            var layer0 = from.GetLayer(0);
-            if (layer0 != null) {
-                layer0.weight = 1;
-            }
-
             // Merge Layers
             toMain.TakeOwnershipOf(from);
         }
@@ -287,28 +292,6 @@ namespace VF.Feature {
         VFGameObject GetBaseObject() {
             if (model.rootObjOverride) return model.rootObjOverride;
             return featureBaseObject;
-        }
-
-        /**
-         * Some people have corrupt controller layers containing no state machine.
-         * The simplest fix for this is for us to just stuff an empty state machine into it.
-         * We can't just delete it because it would interfere with the layer index numbers.
-         */
-        public static void FixNullStateMachines(AnimatorController ctrl) {
-            if (ctrl == null) return;
-            var path = AssetDatabase.GetAssetPath(ctrl);
-            ctrl.layers = ctrl.layers.Select(layer => {
-                if (layer.stateMachine == null) {
-                    layer.stateMachine = new AnimatorStateMachine {
-                        name = layer.name,
-                        hideFlags = HideFlags.HideInHierarchy
-                    };
-                    if (path != "") {
-                        AssetDatabase.AddObjectToAsset(layer.stateMachine, path);
-                    }
-                }
-                return layer;
-            }).ToArray();
         }
 
         public override string GetEditorTitle() {

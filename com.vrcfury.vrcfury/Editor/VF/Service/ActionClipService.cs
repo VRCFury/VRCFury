@@ -46,7 +46,7 @@ namespace VF.Service {
                 .FirstOrDefault()
                 .Get();
             if (firstClip) {
-                var copy = mutableManager.CopyRecursive(firstClip);
+                var copy = MutableManager.CopyRecursive(firstClip);
                 copy.Rewrite(rewriter);
                 var nameBak = onClip.name;
                 EditorUtility.CopySerialized(copy, onClip);
@@ -127,7 +127,7 @@ namespace VF.Service {
                     case AnimationClipAction clipAction:
                         var clipActionClip = clipAction.clip.Get();
                         if (clipActionClip && clipActionClip != firstClip) {
-                            var copy = mutableManager.CopyRecursive(clipActionClip);
+                            var copy = MutableManager.CopyRecursive(clipActionClip);
                             copy.Rewrite(rewriter);
                             onClip.CopyFrom(copy);
                         }

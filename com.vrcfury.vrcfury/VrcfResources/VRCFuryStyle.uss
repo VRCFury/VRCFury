@@ -89,6 +89,6 @@ PropertyField.VrcFuryEditorProp > .unity-base-field {
     background-color: rgba(255, 255, 255, 0.1);
 }
 .vfList2019__notLastItem {
-    border-bottom-width: 1;
+    border-bottom-width: 1px;
     border-bottom-color: black;
 }

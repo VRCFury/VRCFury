@@ -112,7 +112,7 @@ namespace VF.Feature {
             if (!renderer) return;
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                 if (!mat.HasProperty(propName)) return mat;
-                mat = mutableManager.MakeMutable(mat, renderer.owner());
+                mat = MutableManager.MakeMutable(mat);
                 mat.SetFloat(propName, val.GetFloat());
                 return mat;
             }).ToArray();

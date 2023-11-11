@@ -79,7 +79,7 @@ namespace VF.Service {
         }
         public void Enable(AnimationClip clip, VFGameObject obj, bool active = true) {
             var path = GetPath(obj);
-            var binding = EditorCurveBinding.DiscreteCurve(path, typeof(GameObject), "m_IsActive");
+            var binding = EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive");
             clip.SetConstant(binding, active ? 1 : 0);
         }
         public void Scale(AnimationClip clip, VFGameObject obj, Vector3 scale) {

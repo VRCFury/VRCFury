@@ -120,7 +120,10 @@ namespace VF.Feature {
                 .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
 
-            var analysis = DetectExistingWriteDefaults(manager.GetAllUsedControllersRaw(), allManagedStateMachines);
+            var analysis = DetectExistingWriteDefaults(
+                manager.GetAllUsedControllers().Select(c => (c.GetType(), c.GetRaw())),
+                allManagedStateMachines
+            );
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
@@ -132,6 +135,7 @@ namespace VF.Feature {
                     " This may cause weird issues to happen with your animations," +
                     " such as toggles or animations sticking on or off forever.\n\n" +
                     "VRCFury can try to fix this for you automatically. Should it try?\n\n" +
+                    "You can easily undo this change by removing the 'Fix Write Defaults' component that will be added to your avatar root.\n\n" +
                     $"(Debug info: {analysis.debugInfo}, VRCF will try to convert to {(analysis.shouldBeOnIfWeAreInControl ? "ON" : "OFF")})",
                     "Auto-Fix",
                     "Skip",
@@ -203,7 +207,7 @@ namespace VF.Feature {
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
         public static DetectionResults DetectExistingWriteDefaults(
-            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> avatarControllers,
+            IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> avatarControllers,
             ISet<AnimatorStateMachine> stateMachinesToIgnore = null
         ) {
             var controllerInfos = avatarControllers.Select(tuple => {

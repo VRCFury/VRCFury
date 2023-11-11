@@ -11,6 +11,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -83,7 +84,7 @@ namespace VF.Feature {
                     .Select(id => new SavedBlendshape(mesh, id))
                     .ToArray();
 
-                var meshCopy = mutableManager.MakeMutable(mesh, renderer.owner());
+                var meshCopy = MutableManager.MakeMutable(mesh);
                 meshCopy.ClearBlendShapes();
                 skin.sharedMesh = meshCopy;
                 VRCFuryEditorUtils.MarkDirty(skin);
@@ -198,7 +199,7 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, AnimatorController controller) {
+        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, VFController controller) {
             var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
             var clipsInController = new AnimatorIterator.Clips().From(controller);
@@ -214,8 +215,8 @@ namespace VF.Feature {
         }
 
         private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin, Mesh mesh) {
-            var animatedBindings = manager.GetAllUsedControllersRaw()
-                .Select(tuple => tuple.Item2)
+            var animatedBindings = manager.GetAllUsedControllers()
+                .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
                 .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
                     .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))

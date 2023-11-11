@@ -19,15 +19,6 @@ namespace VF.VrcHooks {
             if (!VRCFuryBuilder.ShouldRun(vrcCloneObject)) {
                 return true;
             }
-            
-            if (EditorApplication.isPlaying) {
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "Something is causing VRCFury to build while play mode is still initializing. This may cause unity to crash!!\n\n" +
-                    "If you use Av3Emulator, consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.",
-                    "Ok"
-                );
-            }
 
             // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
             // Let's get a reference to the original avatar, so we can apply our changes to it as well.
@@ -40,7 +31,7 @@ namespace VF.VrcHooks {
 
             // Clean up junk from the original avatar, in case it still has junk from way back when we used to
             // dirty the original
-            GameObject original = null;
+            VFGameObject original = null;
             {
                 foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
                     if (desc.owner().name + "(Clone)" == cloneObjectName && desc.gameObject.activeInHierarchy) {
@@ -48,6 +39,19 @@ namespace VF.VrcHooks {
                         break;
                     }
                 }
+            }
+            
+            if (EditorApplication.isPlaying) {
+                vrcCloneObject?.Destroy();
+                original?.Destroy();
+                EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    "Something asked VRCFury to build while play mode is still initializing. This is an av3emu bug and would cause unity to crash.\n\n" +
+                    "Consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.\n\n" +
+                    "The avatar object has been removed from play mode to avoid crashing.",
+                    "Ok"
+                );
+                return false;
             }
 
             var builder = new VRCFuryBuilder();
