@@ -83,7 +83,6 @@ namespace VF.Feature.Base {
         RemoveDefaultedAdditiveLayer,
         FixUnsetPlayableLayers,
         FixMasks,
-        FixMaterialSwapWithMask,
         ControllerConflictCheck,
         AdjustWriteDefaults,
         FixEmptyMotions,

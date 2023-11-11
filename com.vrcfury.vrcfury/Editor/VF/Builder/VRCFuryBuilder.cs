@@ -143,7 +143,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(FixMaterialSwapWithMaskBuilder));
         AddBuilder(typeof(RestingStateBuilder));
         AddBuilder(typeof(PullMusclesOutOfFxBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
