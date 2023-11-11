@@ -120,15 +120,32 @@ namespace VF.Builder {
          * The animator controller (and its sub-assets) should be owned by vrcfury, and should
          * be the ONLY THING in that file!!!
          */
-        public void TakeOwnershipOf(AnimatorController other) {
+        public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool allManaged = true) {
             other.layers = other.layers.Select((layer, i) => {
-                if (i == 0) layer.defaultWeight = 1;
-                layer.name = NewLayerName(layer.name);
-                managedLayers.Add(layer.stateMachine);
-                layerOwners[layer.stateMachine] = currentFeatureNameProvider();
+                if (allManaged) {
+                    layer.name = NewLayerName(layer.name);
+                    managedLayers.Add(layer.stateMachine);
+                    layerOwners[layer.stateMachine] = currentFeatureNameProvider();
+                }
                 return layer;
             }).ToArray();
-            ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
+
+            if (putOnTop) {
+                ctrl.layers = other.layers.Concat(ctrl.layers).ToArray();
+            } else {
+                ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
+            }
+
+            other.layers = new AnimatorControllerLayer[] { };
+        }
+        public void TakeOwnershipOf(ControllerManager other, bool putOnTop = false) {
+            TakeOwnershipOf(other.ctrl, putOnTop: putOnTop, allManaged: false);
+            managedLayers.UnionWith(other.managedLayers);
+            foreach (var entry in other.layerOwners) {
+                layerOwners[entry.Key] = entry.Value;
+            }
+            other.managedLayers.Clear();
+            other.layerOwners.Clear();
         }
 
         public string NewLayerName(string name) {
