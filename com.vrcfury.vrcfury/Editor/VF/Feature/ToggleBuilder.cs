@@ -11,7 +11,6 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model;
-using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -31,7 +30,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private int intTarget = -1;
     private bool enableExclusiveTag;
 
-    private string humanoidMask = null;
     private string primaryExclusive = null;
 
     [VFAutowired] private readonly ActionClipService actionClipService;
@@ -52,18 +50,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 	
     public ISet<string> GetExclusiveTags() {
-        CheckHumanoidMask();
-        var tags = model.enableExclusiveTag ? model.exclusiveTag : "";
-        if (humanoidMask == "emote") {
-            tags += ",VF_EMOTE";
-        }
-        if (humanoidMask == "leftHand" || humanoidMask == "hands") {
-            tags += ",VF_LEFT_HAND";
-        }
-        if (humanoidMask == "rightHand" || humanoidMask == "hands") {
-            tags += ",VF_RIGHT_HAND";
-        }
-        return GetExclusives(tags);
+        if(model.enableExclusiveTag)
+            return GetExclusives(model.exclusiveTag);
+        return new HashSet<string>(); 
     }
 
     public ISet<string> GetGlobalParams() {
@@ -73,33 +62,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
     public VFAParam GetParam() {
         return param;
-    }
-
-    private string GetHumanoidMaskName(params State[] states) {
-        var leftHand = false;
-        var rightHand = false;
-        foreach (var state in states) {
-            if (state == null || state.actions.Count() == 0) continue;
-            foreach(var action in state.actions) {
-                if (action is AnimationClipAction actionClip) {
-                    var muscleTypes = new AnimatorIterator.Clips().From(actionClip.clip.Get())
-                        .SelectMany(clip => clip.GetMuscleBindingTypes())
-                        .ToImmutableHashSet();
-
-                    if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other))
-                        return "emote";
-                    if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.LeftHand))
-                        leftHand = true;
-                    if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.RightHand))
-                        rightHand = true;
-                }
-            }
-        }
-
-        if (leftHand && rightHand) return "hands";
-        if (leftHand) return "leftHand";
-        if (rightHand) return "rightHand";
-        return "none";
     }
 
     private VFLayer GetLayer(string layerName) {
@@ -157,13 +119,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             primaryExclusive = targetTag;
         }
         return primaryExclusive;
-    }
-
-    private void CheckHumanoidMask() {
-        if (humanoidMask != null) return;
-
-        humanoidMask = GetHumanoidMaskName(model.state, model.localState, model.transitionStateIn, model.localTransitionStateIn, model.transitionStateOut, model.localTransitionStateOut);
-        if (humanoidMask != "none") enableExclusiveTag = true;
     }
 
     private void CheckExclusives() {
@@ -273,7 +228,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (!hasTitle && model.useGlobalParam) layerName = model.globalParam;
         if (!hasTitle && !hasIcon) addMenuItem = false;
 
-        CheckHumanoidMask();
         CheckExclusives();
 
         var fx = GetFx();
