@@ -158,6 +158,7 @@ namespace VF.Builder {
         }
         
         public static void ForEachChild(Object obj, Func<Object,bool> visit) {
+            if (obj == null) return;
             var visited = new HashSet<Object>();
             var stack = new Stack<Object>();
             stack.Push(obj);
