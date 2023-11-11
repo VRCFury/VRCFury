@@ -13,7 +13,7 @@ namespace VF.Feature {
     public class FixMasksBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixMasks)]
         public void Apply() {
-            var allControllers = manager.GetAllUsedControllers().ToArray();
+            FixGestureConflict();
 
             foreach (var c in manager.GetAllUsedControllers()) {
                 var ctrl = c.GetRaw();
@@ -22,7 +22,7 @@ namespace VF.Feature {
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                     expectedMask = GetGestureMask(c);
                 } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    expectedMask = GetFxMask(c, allControllers);
+                    expectedMask = GetFxMask(c);
                 }
 
                 var layer0 = ctrl.GetLayer(0);
@@ -32,6 +32,22 @@ namespace VF.Feature {
                     c.EnsureEmptyBaseLayer().mask = expectedMask;
                 }
             }
+        }
+
+        private void FixGestureConflict() {
+            if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
+                // No customized gesture controller
+                return;
+            }
+
+            var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
+            var gestureContainsTransform = gesture.GetClips()
+                .SelectMany(clip => clip.GetAllBindings())
+                .Any(binding => binding.type == typeof(Transform));
+            if (!gestureContainsTransform) return;
+
+            var fx = manager.GetFx();
+            fx.TakeOwnershipOf(gesture, putOnTop: true);
         }
 
         /**
@@ -46,39 +62,18 @@ namespace VF.Feature {
             return mask;
         }
 
-        private AvatarMask GetFxMask(ControllerManager fx, IEnumerable<ControllerManager> allControllers) {
-            var gestureContainsTransform = allControllers
-                .Where(c => c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture)
-                .SelectMany(c => c.GetClips())
-                .SelectMany(clip => clip.GetAllBindings())
-                .Any(binding => binding.type == typeof(Transform));
-            if (!gestureContainsTransform) return null;
-
+        private AvatarMask GetFxMask(ControllerManager fx) {
+            var mask = AvatarMaskExtensions.Empty();
+            mask.AllowAllTransforms();
             foreach (var layer in fx.GetLayers()) {
-                var oldMask = layer.mask;
-                
-                // Direct blendtree layers don't need a mask because they're always WD on
-                // and that doesn't break transforms on gesture because... unity reasons
-                var isOnlyDirectTree = new AnimatorIterator.States()
-                    .From(layer)
-                    .All(state => state.motion is BlendTree tree && tree.blendType == BlendTreeType.Direct);
-                if (isOnlyDirectTree) continue;
-
-                var transformedPaths = new AnimatorIterator.Clips().From(layer)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Where(binding => binding.type == typeof(Transform))
-                    .Select(binding => binding.path)
-                    .ToImmutableHashSet();
-
-                var mask = AvatarMaskExtensions.Empty();
-                mask.SetTransforms(transformedPaths);
-                if (oldMask != null) {
-                    mask.IntersectWith(oldMask);
+                if (layer.mask != null) {
+                    mask.UnionWith(layer.mask);
                 }
-
-                layer.mask = mask;
             }
 
+            if (mask.AllowsAnyMuscles()) {
+                return mask;
+            }
             return null;
         }
     }
