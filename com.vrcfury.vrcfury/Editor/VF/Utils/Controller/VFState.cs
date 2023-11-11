@@ -67,13 +67,6 @@ namespace VF.Utils.Controller {
             driver.localOnly = local;
             return driver;
         }
-        public VRCAnimatorTrackingControl GetTrackingControl() {
-             foreach (var b in node.state.behaviours) {
-                if (b is VRCAnimatorTrackingControl tc) return tc;
-             }
-            var driver = node.state.VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
-            return driver;
-        }
         private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
             var driver = GetDriver(local);
             var p = new VRC_AvatarParameterDriver.Parameter();
@@ -114,50 +107,6 @@ namespace VF.Utils.Controller {
             p.type = (VRC_AvatarParameterDriver.ChangeType)3; //VRC_AvatarParameterDriver.ChangeType.Copy;
             driver.parameters.Add(p);
             return this;
-        }
-
-        public VFState TrackingController(int trackingHead, int trackingLeftHand, int trackingRightHand, int trackingHip, int trackingLeftFoot, int trackingRightFoot, int trackingLeftFingers, int trackingRightFingers, int trackingEyes, int trackingMouth) {
-
-            //TODO: not multi toggle safe
-
-            var controller = GetTrackingControl();
-            controller.trackingHead = (VRC_AnimatorTrackingControl.TrackingType)trackingHead;
-            controller.trackingLeftHand = (VRC_AnimatorTrackingControl.TrackingType)trackingLeftHand;
-            controller.trackingRightHand = (VRC_AnimatorTrackingControl.TrackingType)trackingRightHand;
-            controller.trackingHip = (VRC_AnimatorTrackingControl.TrackingType)trackingHip;
-            controller.trackingLeftFoot = (VRC_AnimatorTrackingControl.TrackingType)trackingLeftFoot;
-            controller.trackingRightFoot = (VRC_AnimatorTrackingControl.TrackingType)trackingRightFoot;
-            controller.trackingLeftFingers = (VRC_AnimatorTrackingControl.TrackingType)trackingLeftFingers;
-            controller.trackingRightFingers = (VRC_AnimatorTrackingControl.TrackingType)trackingRightFingers;
-            controller.trackingEyes = (VRC_AnimatorTrackingControl.TrackingType)trackingEyes;
-            controller.trackingMouth = (VRC_AnimatorTrackingControl.TrackingType)trackingMouth;
-            return this;
-        }
-
-        public VFState TrackingController(string quickChoice) {
-            switch (quickChoice) {
-                case "allTracking":
-                    return TrackingController(1,1,1,1,1,1,1,1,1,1);
-                case "allAnimation":
-                    return TrackingController(2,2,2,2,2,2,2,2,2,2);
-                case "emoteTracking":
-                    return TrackingController(1,1,1,1,1,1,1,1,0,0);
-                case "emoteAnimation":
-                    return TrackingController(2,2,2,2,2,2,2,2,0,0);
-                case "handsTracking":
-                    return TrackingController(0,0,0,0,0,0,1,1,0,0);
-                case "handsAnimation":
-                    return TrackingController(0,0,0,0,0,0,2,2,0,0);
-                case "leftHandTracking":
-                    return TrackingController(0,0,0,0,0,0,1,0,0,0);
-                case "leftHandAnimation":
-                    return TrackingController(0,0,0,0,0,0,2,0,0,0);
-                case "rightHandTracking":
-                    return TrackingController(0,0,0,0,0,0,0,1,0,0);
-                case "rightHandAnimation":
-                    return TrackingController(0,0,0,0,0,0,0,2,0,0);
-            }
-            throw new VRCFBuilderException("Unrecognized Tracking Controller Quick Choice: " + quickChoice);
         }
 
         public VFEntryTransition TransitionsFromEntry() {

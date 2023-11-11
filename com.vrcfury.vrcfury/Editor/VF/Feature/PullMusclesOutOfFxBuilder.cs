@@ -20,9 +20,6 @@ namespace VF.Feature {
      */
     public class PullMusclesOutOfFxBuilder : FeatureBuilder {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
-        private VFABool rightHandParam;
-        private VFABool leftHandParam;
-        private VFABool emoteParam;
         
         [FeatureBuilderAction(FeatureOrder.PullMusclesOutOfFx)]
         public void Apply() {
@@ -69,46 +66,11 @@ namespace VF.Feature {
         private List<(LayerType, VFABool, Motion)> statesToCreate = new List<(LayerType, VFABool, Motion)>();
 
         private void CreateAltLayers() {
-            if (statesToCreate.Count() > 0){
-                CreateTrackingLayer();
-            }
             foreach (var group in statesToCreate.GroupBy(state => state.Item1)) {
                 var type = group.Key;
                 var states = group.Select(tuple => (tuple.Item2, tuple.Item3)).ToArray();
                 CreateAltLayer(type, states);
             }
-        }
-
-        private void CreateTrackingLayer(){
-            var controller = manager.GetFx();
-            var layer = controller.NewLayer("Tracking Control");
-            rightHandParam = controller.NewBool("Right Hand Track", def: true);
-            leftHandParam = controller.NewBool("Left Hand Track", def: true);
-            emoteParam = controller.NewBool("Emote Track", def: true);
-
-            var trackAll = layer.NewState("Track All");
-            trackAll.TrackingController("allTracking");
-
-            var animateRight = layer.NewState("Animate Right");
-            animateRight.TrackingController("rightHandAnimation");
-
-            var animateLeft = layer.NewState("Animate Left");
-            animateLeft.TrackingController("leftHandAnimation");
-
-            var animateEmote = layer.NewState("Animate Emote");
-            animateEmote.TrackingController("emoteAnimation");
-
-            trackAll.TransitionsTo(animateRight).When(rightHandParam.IsFalse());
-            trackAll.TransitionsTo(animateLeft).When(leftHandParam.IsFalse());
-            
-            animateRight.TransitionsTo(animateLeft).When(leftHandParam.IsFalse().And(rightHandParam.IsFalse()));
-            animateLeft.TransitionsTo(animateRight).When(leftHandParam.IsFalse().And(rightHandParam.IsFalse()));
-
-            animateEmote.TransitionsFromAny().When(emoteParam.IsFalse());
-
-            animateRight.TransitionsToExit().When(rightHandParam.IsTrue());
-            animateLeft.TransitionsToExit().When(leftHandParam.IsTrue());
-            animateEmote.TransitionsToExit().When(emoteParam.IsTrue());
         }
 
         private void CreateAltLayer(LayerType type, IEnumerable<(VFABool,Motion)> states) {
@@ -140,7 +102,7 @@ namespace VF.Feature {
 
                 var outState = layer.NewState($"{motion.name} - Out");
                 off.TransitionsToExit().When(myCond);
-                newState.TransitionsFromAny().When(myCond);
+                newState.TransitionsFromEntry().When(myCond);
                 newState.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not());
                 newState.TransitionsTo(newState).WithTransitionExitTime(1).When(); 
                 foreach (var (otherCond,other) in previousStates) {
@@ -149,9 +111,6 @@ namespace VF.Feature {
                 outState.TransitionsToExit().When(controller.Always());
 
                 if (type == LayerType.Action) {
-                    newState.Drives(emoteParam, false);
-                    outState.Drives(emoteParam, true);
-
                     var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                     weightOn.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOn.goalWeight = 1;
@@ -159,9 +118,6 @@ namespace VF.Feature {
                     weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     weightOff.goalWeight = 0;
                 } else {
-                    newState.Drives(type == LayerType.RightHand ? rightHandParam : leftHandParam, false);
-                    outState.Drives(type == LayerType.RightHand ? rightHandParam : leftHandParam, true);
-
                     var weightOn = newState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
                     weightOn.goalWeight = 1;
                     animatorLayerControlManager.Register(weightOn, layer.GetRawStateMachine());
