@@ -50,6 +50,9 @@ namespace VF.Builder {
         private static bool IsSaved(Object asset) {
             if (asset is UnityEngine.Component || asset is GameObject || asset is MonoScript) return true;
             if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) return true;
+            // This shouldn't be needed, however we've found that in some cases (maybe related to when an asset has been deleted?)
+            // an object can have a "" asset path, but trying to add it to a new asset will throw an "already belongs to an asset" exception
+            AssetDatabase.RemoveObjectFromAsset(asset);
             return false;
         }
 
