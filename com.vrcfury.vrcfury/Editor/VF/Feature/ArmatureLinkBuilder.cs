@@ -80,7 +80,7 @@ namespace VF.Feature {
                     // Update skins to use bones and bind poses from the original avatar
                     if (skin.bones.Any(b => b != null && boneMapping.ContainsKey(b))) {
                         if (skin.sharedMesh) {
-                            skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh, skin.owner());
+                            skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
                             var mesh = skin.sharedMesh;
                             mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
                                 .Select(boneAndBindPose => {

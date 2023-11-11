@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -12,7 +13,7 @@ namespace VF.Feature {
     public class FixMasksBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixMasks)]
         public void Apply() {
-            var allControllers = manager.GetAllUsedControllers().ToArray();
+            FixGestureConflict();
 
             foreach (var c in manager.GetAllUsedControllers()) {
                 var ctrl = c.GetRaw();
@@ -21,9 +22,7 @@ namespace VF.Feature {
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                     expectedMask = GetGestureMask(c);
                 } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    expectedMask = GetFxMask(c, allControllers);
-                } else {
-                    expectedMask = null;
+                    expectedMask = GetFxMask(c);
                 }
 
                 var layer0 = ctrl.GetLayer(0);
@@ -35,59 +34,46 @@ namespace VF.Feature {
             }
         }
 
+        private void FixGestureConflict() {
+            if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
+                // No customized gesture controller
+                return;
+            }
+
+            var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
+            var gestureContainsTransform = gesture.GetClips()
+                .SelectMany(clip => clip.GetAllBindings())
+                .Any(binding => binding.type == typeof(Transform));
+            if (!gestureContainsTransform) return;
+
+            var fx = manager.GetFx();
+            fx.TakeOwnershipOf(gesture, putOnTop: true);
+        }
+
         /**
-         * We build the gesture mask by unioning all the masks from the avatar base, plus any controllers
-         * we've merged in. We also add left and right fingers, to ensure they're allowed so VRCFury-added
-         * hand gestures can work.
+         * We build the gesture base mask by unioning all the masks from the other layers.
          */
         private AvatarMask GetGestureMask(ControllerManager gesture) {
             var mask = AvatarMaskExtensions.Empty();
-            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
-
-            foreach (var union in gesture.GetUnionBaseMasks()) {
-                if (union != null) {
-                    mask.UnionWith(union);
-                }
+            foreach (var layer in gesture.GetLayers()) {
+                if (layer.mask == null) throw new Exception("Gesture layer unexpectedly contains no mask");
+                mask.UnionWith(layer.mask);
             }
-            VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
             return mask;
         }
 
-        private AvatarMask GetFxMask(ControllerManager fx, IEnumerable<ControllerManager> allControllers) {
-            var gestureContainsTransform = allControllers
-                .Where(c => c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture)
-                .SelectMany(c => c.GetClips())
-                .SelectMany(clip => clip.GetAllBindings())
-                .Any(binding => binding.type == typeof(Transform));
-            if (!gestureContainsTransform) return null;
-
+        private AvatarMask GetFxMask(ControllerManager fx) {
+            var mask = AvatarMaskExtensions.Empty();
+            mask.AllowAllTransforms();
             foreach (var layer in fx.GetLayers()) {
-                var oldMask = layer.mask;
-                
-                // Direct blendtree layers don't need a mask because they're always WD on
-                // and that doesn't break transforms on gesture because... unity reasons
-                var isOnlyDirectTree = new AnimatorIterator.States()
-                    .From(layer)
-                    .All(state => state.motion is BlendTree tree && tree.blendType == BlendTreeType.Direct);
-                if (isOnlyDirectTree) continue;
-
-                var transformedPaths = new AnimatorIterator.Clips().From(layer)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Where(binding => binding.type == typeof(Transform))
-                    .Select(binding => binding.path)
-                    .ToImmutableHashSet();
-
-                var mask = AvatarMaskExtensions.Empty();
-                mask.SetTransforms(transformedPaths);
-                if (oldMask != null) {
-                    mask.IntersectWith(oldMask);
+                if (layer.mask != null) {
+                    mask.UnionWith(layer.mask);
                 }
-
-                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layer.GetLayerId());
-                layer.mask = mask;
             }
 
+            if (mask.AllowsAnyMuscles()) {
+                return mask;
+            }
             return null;
         }
     }

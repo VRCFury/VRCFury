@@ -1,11 +1,16 @@
 using System;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Feature;
 
 namespace VF.Builder {
     public static class AnimatorStateExtensions {
         public static StateMachineBehaviour VAddStateMachineBehaviour(this AnimatorState state, Type type) {
-            var added = state.AddStateMachineBehaviour(type);
+            // Unity 2019 and lower log an error if this isn't persistent
+            StateMachineBehaviour added = null;
+            CleanupLegacyBuilder.WithTemporaryPersistence(state, () => {
+                added = state.AddStateMachineBehaviour(type);
+            });
             if (added == null) {
                 AnimatorStateMachineExtensions.ThrowProbablyCompileErrorException($"Failed to create state behaviour of type {type.Name}.");
             }

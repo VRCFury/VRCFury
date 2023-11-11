@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Inspector;
 using VF.Utils;
@@ -15,8 +16,8 @@ namespace VF.Builder {
         public class FoundController {
             public VRCAvatarDescriptor.AnimLayerType type;
             public bool isDefault;
-            public VFController controller;
-            public Action<VFController> set;
+            public RuntimeAnimatorController controller;
+            public Action<RuntimeAnimatorController> set;
             public Action setToDefault;
         }
         
@@ -31,7 +32,7 @@ namespace VF.Builder {
                 var type = layer.type;
 
                 var isDefault = !avatar.customizeAnimationLayers || layer.isDefault;
-                var controller = isDefault ? null : layer.animatorController as AnimatorController;
+                var controller = isDefault ? null : layer.animatorController;
                 var foundController = new FoundController {
                     controller = controller,
                     type = type,
@@ -87,7 +88,7 @@ namespace VF.Builder {
             return c;
         }
 
-        public static (bool,AnimatorController) GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
+        public static (bool,RuntimeAnimatorController) GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
             var matching = GetAllControllers(avatar).Where(layer => layer.type == type).ToArray();
             if (matching.Length == 0) {
                 throw new VRCFBuilderException("Failed to find playable layer on avatar descriptor with type " + type);
@@ -108,12 +109,12 @@ namespace VF.Builder {
             return (false,found.controller);
         }
         
-        public static void SetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type, AnimatorController controller) {
+        public static void SetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type, RuntimeAnimatorController controller) {
             var setOne = false;
             foreach (var layer in GetAllControllers(avatar)) {
                 if (layer.type == type) {
                     setOne = true;
-                    layer.set.Invoke(controller);
+                    layer.set(controller);
                 }
             }
 
