@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Feature;
 using VF.Feature.Base;
@@ -26,56 +28,58 @@ namespace VF.Builder {
                     $"VRCFury {controller.GetType().ToString()} for {manager.AvatarObject.name}"
                 );
             }
-            
+
             // Save everything else
             foreach (var component in manager.AvatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                ForEachUnsavedChild(component, asset => {
+                foreach (var asset in GetUnsavedChildren(component, recurse: false)) {
                     SaveAssetAndChildren(
                         asset,
                         $"VRCFury {asset.GetType().Name} for {component.gameObject.name}"
                     );
-                    return false;
-                });
+                }
             }
         }
 
-        private void ForEachUnsavedChild(Object obj, Func<Object, bool> visit) {
+        private IList<Object> GetUnsavedChildren(Object obj, bool recurse = true) {
+            var unsavedChildren = new List<Object>();
             MutableManager.ForEachChild(obj, asset => {
                 if (asset == obj) return true;
                 if (IsSaved(asset)) return false;
-                return visit(asset);
+                unsavedChildren.Add(asset);
+                return recurse;
             });
+            return unsavedChildren;
         }
 
         private static bool IsSaved(Object asset) {
-            if (asset is UnityEngine.Component || asset is GameObject || asset is MonoScript) return true;
+            // Note to future self. DO NOT RETURN TRUE FOR MonoScript HERE
+            // State machine behaviors are MonoScripts.
+            if (asset is UnityEngine.Component || asset is GameObject) return true;
             if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) return true;
-            // This shouldn't be needed, however we've found that in some cases (maybe related to when an asset has been deleted?)
-            // an object can have a "" asset path, but trying to add it to a new asset will throw an "already belongs to an asset" exception
-            AssetDatabase.RemoveObjectFromAsset(asset);
             return false;
         }
 
         private void SaveAssetAndChildren(Object asset, string filename) {
             if (IsSaved(asset)) return;
 
+            var unsavedChildren = GetUnsavedChildren(asset);
+
             // Save child textures
             // If we don't save textures before the materials that use them, unity just throws them away
-            ForEachUnsavedChild(asset, subAsset => {
+            foreach (var subAsset in unsavedChildren) {
                 if (subAsset is Texture2D) {
                     VRCFuryAssetDatabase.SaveAsset(subAsset, manager.tmpDir, filename + "_" + subAsset.name);
                 }
-                return true;
-            });
+            }
             
             // Save the main asset
             VRCFuryAssetDatabase.SaveAsset(asset, manager.tmpDir, filename);
 
             // Attach children
-            ForEachUnsavedChild(asset, subAsset => {
+            foreach (var subAsset in unsavedChildren) {
+                AssetDatabase.RemoveObjectFromAsset(subAsset);
                 AssetDatabase.AddObjectToAsset(subAsset, asset);
-                return true;
-            });
+            }
         }
     }
 }

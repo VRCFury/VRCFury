@@ -37,7 +37,7 @@ namespace VF.Feature {
             AssetDatabase.AddObjectToAsset(obj, tempAsset);
             try {
                 with();
-            } catch {
+            } finally {
                 foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(
                              AssetDatabase.GetAssetPath(tempAsset))) {
                     if (asset == tempAsset) continue;
