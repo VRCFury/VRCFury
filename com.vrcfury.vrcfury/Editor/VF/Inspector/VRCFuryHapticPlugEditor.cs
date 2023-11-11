@@ -387,7 +387,7 @@ namespace VF.Inspector {
                                 if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return mat;
 
                                 if (plug.enableSps) {
-                                    var copy = MutableManager.MakeMutable(mat);
+                                    var copy = mutableManager.MakeMutable(mat, skin.owner());
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
                                     SpsConfigurer.ConfigureSpsMaterial(skin, copy, worldLength,
@@ -396,7 +396,7 @@ namespace VF.Inspector {
                                     return copy;
                                 }
                                 if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
-                                    var copy = MutableManager.MakeMutable(mat);
+                                    var copy = mutableManager.MakeMutable(mat, skin.owner());
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
                                     TpsConfigurer.ConfigureTpsMaterial(skin, copy, worldLength,

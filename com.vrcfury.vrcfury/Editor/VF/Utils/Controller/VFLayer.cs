@@ -6,21 +6,15 @@ using VF.Builder;
 
 namespace VF.Utils.Controller {
     public class VFLayer {
-        private readonly VFController ctrl;
-        private readonly AnimatorStateMachine _stateMachine;
+        private VFController ctrl;
+        private AnimatorStateMachine _stateMachine;
         
+        public static implicit operator AnimatorStateMachine(VFLayer d) => d?._stateMachine;
+
         public VFLayer(VFController ctrl, AnimatorStateMachine stateMachine) {
             this.ctrl = ctrl;
             this._stateMachine = stateMachine;
         }
-        
-        public static implicit operator AnimatorStateMachine(VFLayer d) => d?._stateMachine;
-        public static bool operator ==(VFLayer a, VFLayer b) => a?._stateMachine == b?._stateMachine;
-        public static bool operator !=(VFLayer a, VFLayer b) => !(a == b);
-        public override bool Equals(object obj) => this == (VFLayer)obj;
-        public override int GetHashCode() => _stateMachine.GetHashCode();
-
-        public AnimatorStateMachine stateMachine => _stateMachine;
 
         public bool Exists() {
             return ctrl.ContainsLayer(_stateMachine);
@@ -55,6 +49,21 @@ namespace VF.Utils.Controller {
             get => ctrl.layers[GetLayerId()].avatarMask;
             set { WithLayer(l => l.avatarMask = value); }
         }
+        
+        public static bool operator ==(VFLayer a, VFLayer b) {
+            return a?._stateMachine == b?._stateMachine;
+        }
+        public static bool operator !=(VFLayer a, VFLayer b) {
+            return !(a == b);
+        }
+        public override bool Equals(object obj) {
+            return this == (VFLayer)obj;
+        }
+        public override int GetHashCode() {
+            return _stateMachine.GetHashCode();
+        }
+
+        public AnimatorStateMachine stateMachine => _stateMachine;
 
         private static string WrapStateName(string name, int attemptWrapAt = 35) {
             var lines = new List<string>();

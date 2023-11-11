@@ -13,7 +13,7 @@ namespace VF.Builder {
     public class AvatarManager {
         private readonly VFGameObject avatarObject;
         private readonly VRCAvatarDescriptor avatar;
-        public readonly string tmpDir;
+        private readonly string tmpDir;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureNameProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
@@ -46,6 +46,7 @@ namespace VF.Builder {
         public MenuManager GetMenu() {
             if (_menu == null) {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarObject.name);
                 var initializing = true;
                 _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : currentMenuSortPosition());
 
@@ -63,11 +64,14 @@ namespace VF.Builder {
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             if (!_controllers.TryGetValue(type, out var output)) {
                 var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
-                VFController ctrl;
+                var filename = "VRCFury " + type + " for " + avatarObject.name;
+                AnimatorController ctrl;
                 if (existingController != null) {
-                    ctrl = VFController.CopyAndLoadController(existingController);
+                    ctrl = mutableManager.CopyRecursive(existingController, filename);
+                    FullControllerBuilder.FixNullStateMachines(ctrl);
                 } else {
                     ctrl = new AnimatorController();
+                    VRCFuryAssetDatabase.SaveAsset(ctrl, tmpDir, filename);
                 }
                 output = new ControllerManager(
                     ctrl,
@@ -77,6 +81,7 @@ namespace VF.Builder {
                     currentFeatureNameProvider,
                     currentFeatureClipPrefixProvider,
                     MakeUniqueParamName,
+                    tmpDir,
                     treatAsManaged: isDefault
                 );
                 _controllers[type] = output;
@@ -93,6 +98,11 @@ namespace VF.Builder {
                 .Select(c => GetController(c.type))
                 .ToArray();
         }
+        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> GetAllUsedControllersRaw() {
+            return VRCAvatarUtils.GetAllControllers(avatar)
+                .Where(c => c.controller != null)
+                .Select(c => Tuple.Create(c.type, c.controller));
+        }
 
         private ParamManager _params;
         public ParamManager GetParams() {
@@ -101,10 +111,11 @@ namespace VF.Builder {
                 var filename = "VRCFury Params for " + avatarObject.name;
                 VRCExpressionParameters prms;
                 if (origParams != null) {
-                    prms = MutableManager.CopyRecursive(origParams);
+                    prms = mutableManager.CopyRecursive(origParams, filename);
                 } else {
                     prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
                     prms.parameters = new VRCExpressionParameters.Parameter[]{};
+                    VRCFuryAssetDatabase.SaveAsset(prms, tmpDir, filename);
                 }
                 VRCAvatarUtils.SetAvatarParams(avatar, prms);
                 _params = new ParamManager(prms);

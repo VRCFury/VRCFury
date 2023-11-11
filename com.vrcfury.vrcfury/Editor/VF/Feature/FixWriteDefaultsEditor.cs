@@ -2,14 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Animations;
-using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
@@ -33,12 +30,8 @@ namespace VF.Feature {
                 var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
                 if (avatar == null) return "No avatar descriptor";
                 var avatarControllers = VRCAvatarUtils.GetAllControllers(avatar)
-                    .Select(c => {
-                        var ctrl = c.controller;
-                        while (ctrl is AnimatorOverrideController ov) ctrl = ov.runtimeAnimatorController;
-                        return (c.type, (VFController)(ctrl as AnimatorController));
-                    })
-                    .Where(c => c.Item2 != null);
+                    .Where(c => c.controller != null)
+                    .Select(c => Tuple.Create(c.type, c.controller));
                 var analysis = FixWriteDefaultsBuilder.DetectExistingWriteDefaults(avatarControllers);
 
                 var output = new List<string>();

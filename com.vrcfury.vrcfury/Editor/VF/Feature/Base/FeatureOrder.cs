@@ -78,7 +78,7 @@ namespace VF.Feature.Base {
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
         Slot4Fix,
-        CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
+        CleanupEmptyLayers,
         PullMusclesOutOfFx,
         RemoveDefaultedAdditiveLayer,
         FixUnsetPlayableLayers,
@@ -109,7 +109,5 @@ namespace VF.Feature.Base {
         RestoreProxyClips,
         // Needs to happen after everything is done using the animator
         ResetAnimatorAfter,
-
-        SaveAssets,
     }
 }

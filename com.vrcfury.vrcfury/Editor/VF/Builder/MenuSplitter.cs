@@ -29,6 +29,7 @@ namespace VF.Builder {
                 while (page.controls.Count > maxControlsPerPage) {
                     var nextPage = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                     nextPage.name = $"{menu.name} (Page {pageNum++})";
+                    AssetDatabase.AddObjectToAsset(nextPage, root);
                     while (page.controls.Count > maxControlsPerPage - 1) {
                         nextPage.controls.Insert(0, page.controls[page.controls.Count - 1]);
                         page.controls.RemoveAt(page.controls.Count - 1);

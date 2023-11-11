@@ -87,7 +87,7 @@ namespace VF.Menu {
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
                 foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
-                    var controller = c.controller as AnimatorController;
+                    var controller = c.controller;
                     if (controller == null) continue;
                     var typeName = VRCFEnumUtils.GetName(c.type);
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {

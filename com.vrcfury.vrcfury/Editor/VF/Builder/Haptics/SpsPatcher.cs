@@ -53,10 +53,6 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            if (contents.Contains("_SPS_Bake")) {
-                throw new Exception("Shader appears to already be patched, which should be impossible");
-            }
-
             if (parentHash == null) {
                 var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
                 Replace(
@@ -64,7 +60,6 @@ namespace VF.Builder.Haptics {
                     $"$1\n{propertiesContent}\n",
                     1
                 );
-                contents = GetRegex(@"\n\s+CustomEditor [^\n]+").Replace(contents, "");
             }
 
             string spsMain;

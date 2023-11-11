@@ -111,33 +111,32 @@ namespace VF.Builder {
 
         public int childCount => transform.childCount;
         
-        // Components can sometimes be null for some reason. Perhaps when they're corrupt?
-        private static bool NotNull<T>(T obj) => obj != null;
-        
         public UnityEngine.Component GetComponent(Type t) {
-            return GetComponents(t).FirstOrDefault();
-        }
-        public T GetComponent<T>() where T : UnityEngine.Component {
-            return GetComponents<T>().FirstOrDefault();
+            return gameObject.GetComponent(t);
         }
         
-        public UnityEngine.Component[] GetComponents(Type t) {
-            return gameObject.GetComponents(t).Where(NotNull).ToArray();
+        public T GetComponent<T>() where T : UnityEngine.Component {
+            return gameObject.GetComponent<T>();
         }
+        
         public T[] GetComponents<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponents<T>().Where(NotNull).ToArray();
+            return gameObject.GetComponents<T>();
         }
         
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
+            // GetComponentInParent<T> randomly returns null sometimes, even if the component actually exists :|
+            // This is especially common in editors (where the reference is gotten through prop.serializedObject)
+            // GetComponentsInParent works fine though? It's almost as if some hidden destroyed component is present.
+            //return gameObject.GetComponentInParent<T>();
             return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
-            return gameObject.GetComponentsInChildren<T>(true).Where(NotNull).ToArray();
+            return gameObject.GetComponentsInChildren<T>(true);
         }
         
         public T[] GetComponentsInSelfAndParents<T>() {
-            return gameObject.GetComponentsInParent<T>(true).Where(NotNull).ToArray();
+            return gameObject.GetComponentsInParent<T>(true);
         }
 
         public T AddComponent<T>() where T : UnityEngine.Component {

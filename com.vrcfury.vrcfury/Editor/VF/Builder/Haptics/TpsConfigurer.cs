@@ -54,7 +54,7 @@ namespace VF.Builder.Haptics {
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
             if (skin.sharedMesh.boneWeights.Length == 0) {
                 var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.transform);
-                var meshCopy = MutableManager.MakeMutable(skin.sharedMesh);
+                var meshCopy = mutableManager.MakeMutable(skin.sharedMesh, skin.owner());
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 

@@ -24,7 +24,9 @@ namespace VF.Utils.Controller {
                    || (other is AnimatorController b && ctrl == b)
                    || (other == null && ctrl == null);
         }
-        public override int GetHashCode() => Tuple.Create(ctrl).GetHashCode();
+        public override int GetHashCode() {
+            return Tuple.Create(ctrl).GetHashCode();
+        }
 
         public VFLayer NewLayer(string name, int insertAt = -1) {
             // Unity breaks if name contains .
@@ -129,93 +131,6 @@ namespace VF.Utils.Controller {
         public AnimatorControllerParameter[] parameters {
             get => ctrl.parameters;
             set => ctrl.parameters = value;
-        }
-
-        [CanBeNull]
-        public static VFController CopyAndLoadController(RuntimeAnimatorController ctrl) {
-            if (ctrl == null) {
-                return null;
-            }
-
-            // Make a copy of everything
-            ctrl = MutableManager.CopyRecursive(ctrl);
-
-            // Collect any override controllers wrapping the main controller
-            var overrides = new List<AnimatorOverrideController>();
-            while (ctrl is AnimatorOverrideController ov) {
-                overrides.Add(ov);
-                ctrl = ov.runtimeAnimatorController;
-            }
-
-            // Bail if we hit a dead end
-            if (!(ctrl is AnimatorController ac)) {
-                return null;
-            }
-            
-            // Apply override controllers
-            if (overrides.Count > 0) {
-                AnimatorIterator.ReplaceClips(ac, clip => {
-                    return overrides
-                        .Select(ov => ov[clip])
-                        .Where(overrideClip => overrideClip != null)
-                        .DefaultIfEmpty(clip)
-                        .First();
-                });
-            }
-
-            var output = new VFController(ac);
-            output.FixNullStateMachines();
-            output.FixLayer0Weight();
-            output.ApplyBaseMask();
-            return output;
-        }
-
-        /**
-         * Some people have corrupt controller layers containing no state machine.
-         * The simplest fix for this is for us to just stuff an empty state machine into it.
-         * We can't just delete it because it would interfere with the layer index numbers.
-         */
-        private void FixNullStateMachines() {
-            ctrl.layers = ctrl.layers.Select(layer => {
-                if (layer.stateMachine == null) {
-                    layer.stateMachine = new AnimatorStateMachine {
-                        name = layer.name,
-                        hideFlags = HideFlags.HideInHierarchy
-                    };
-                }
-                return layer;
-            }).ToArray();
-        }
-
-        /**
-         * Layer 0 is always treated as fully weighted by unity, regardless of its actually setting.
-         * This can do weird things when we move that layer around, so we always ensure that the
-         * setting of the base layer is properly set to 1.
-         */
-        private void FixLayer0Weight() {
-            var layer0 = GetLayer(0);
-            if (layer0 == null) return;
-            layer0.weight = 1;
-        }
-
-        /**
-         * VRCF's handles masks by "applying" the base mask to every mask in the controller. This makes things like
-         * merging controllers and features much easier. Later on, we recalculate a new base mask in FixMasksBuilder. 
-         */
-        private void ApplyBaseMask() {
-            var layer0 = GetLayer(0);
-            if (layer0 == null) return;
-
-            var baseMask = layer0.mask;
-            foreach (var layer in GetLayers()) {
-                if (layer.mask == baseMask) continue;
-                if (layer.mask == null) {
-                    layer.mask = AvatarMaskExtensions.Empty();
-                    layer.mask.UnionWith(baseMask);
-                } else {
-                    layer.mask.IntersectWith(baseMask);
-                }
-            }
         }
     }
 }

@@ -230,6 +230,7 @@ namespace VF.Builder {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             newMenu.name = string.Join(" » ", cleanPath);
+            AssetDatabase.AddObjectToAsset(newMenu, rootMenu);
             return newMenu;
         }
         private static string CleanTitleForFilename(string str) {
