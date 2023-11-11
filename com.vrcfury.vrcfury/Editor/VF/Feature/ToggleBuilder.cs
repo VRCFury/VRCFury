@@ -334,10 +334,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         State outAction,
         VFABool physBoneResetter
     ) {
-
-        var transitionTime = model.transitionTime;
-        if (!model.hasTransitionTime)  transitionTime = -1;
-
         var clip = actionClipService.LoadState(onName, action);
 
         if (model.securityEnabled) {
@@ -371,7 +367,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
 
-        off.TransitionsToExit().When(onCase).WithTransitionDurationSeconds(transitionTime);
+        off.TransitionsToExit().When(onCase);
         inState.TransitionsFromEntry().When(onCase);
 
         if (model.simpleOutTransition) outAction = inAction;
@@ -379,7 +375,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.hasTransition && outAction != null && outAction.actions.Count() != 0) {
             var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
         } else {
             outState = onState;
         }
@@ -389,7 +385,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var exitTransition = outState.TransitionsToExit();
 
         if (onEqualsOut) {
-            exitTransition.When(onCase.Not()).WithTransitionDurationSeconds(transitionTime).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
         } else {
             exitTransition.When().WithTransitionExitTime(1);
         }
@@ -551,7 +547,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
-        var hasTransitionTimeProp = prop.FindPropertyRelative("hasTransitionTime");
         var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
@@ -656,10 +651,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
-            advMenu.AddItem(new GUIContent("Has Transition Time"), hasTransitionTimeProp.boolValue, () => {
-                    hasTransitionTimeProp.boolValue = !hasTransitionTimeProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
             advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
                     hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
