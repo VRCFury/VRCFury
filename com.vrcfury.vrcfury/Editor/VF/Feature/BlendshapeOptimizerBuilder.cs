@@ -30,15 +30,6 @@ namespace VF.Feature {
                 "This feature will automatically bake all non-animated blendshapes into the mesh," +
                 " saving VRAM for free!"
             ));
-            
-            var adv = new Foldout {
-                text = "Advanced Options",
-                value = false
-            };
-            content.Add(adv);
-            
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepMmdShapes"), "Keep MMD Blendshapes"));
-            
             return content;
         }
 
@@ -52,6 +43,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BlendshapeOptimizer)]
         public void Apply() {
+            var keepMmdShapes = allFeaturesInRun.Any(f => f is MmdCompatibility);
 
             foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 if (!(renderer is SkinnedMeshRenderer skin)) continue;
@@ -65,7 +57,7 @@ namespace VF.Feature {
 
                 bool ShouldKeepName(string name) {
                     if (animatedBlendshapes.Contains(name)) return true;
-                    if (model.keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body") return true;
+                    if (keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body") return true;
                     return false;
                 }
 

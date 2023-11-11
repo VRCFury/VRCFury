@@ -696,9 +696,9 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BlendshapeOptimizer : NewFeatureModel {
-        public bool keepMmdShapes;
+        [Obsolete] public bool keepMmdShapes;
     }
-    
+
     [Serializable]
     public class Slot4Fix : NewFeatureModel {
     }
@@ -722,6 +722,11 @@ namespace VF.Model.Feature {
         public GuidTexture2d menuIcon;
         public string menuPath;
         public bool enableLightlessToggle2 = false;
+    }
+
+    [Serializable]
+    public class MmdCompatibility : NewFeatureModel {
+        
     }
 
 }

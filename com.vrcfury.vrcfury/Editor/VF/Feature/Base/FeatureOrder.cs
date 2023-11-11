@@ -84,6 +84,7 @@ namespace VF.Feature.Base {
         FixUnsetPlayableLayers,
         FixMasks,
         ControllerConflictCheck,
+        AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AdjustWriteDefaults,
         FixEmptyMotions,
         AnimatorLayerControlFix,
