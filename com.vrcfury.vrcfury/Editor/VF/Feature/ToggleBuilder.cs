@@ -211,7 +211,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         
         useInt = model.useInt;
         addMenuItem = model.addMenuItem;
-        enableExclusiveTag = model.enableExclusiveTag || enableExclusiveTag;
 
         if (model.slider) {
             CreateSlider();
