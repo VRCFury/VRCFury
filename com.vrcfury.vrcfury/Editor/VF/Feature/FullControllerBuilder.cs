@@ -276,15 +276,6 @@ namespace VF.Feature {
                 }
             }
 
-            // Merge Params
-            foreach (var p in from.parameters) {
-                to.NewParam(p.name, p.type, n => {
-                    n.defaultBool = p.defaultBool;
-                    n.defaultFloat = p.defaultFloat;
-                    n.defaultInt = p.defaultInt;
-                });
-            }
-
             // Merge Layers
             toMain.TakeOwnershipOf(from);
         }

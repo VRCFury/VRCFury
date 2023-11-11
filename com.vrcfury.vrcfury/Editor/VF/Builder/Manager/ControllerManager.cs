@@ -121,6 +121,7 @@ namespace VF.Builder {
          * be the ONLY THING in that file!!!
          */
         public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool allManaged = true) {
+            // Merge Layers
             other.layers = other.layers.Select((layer, i) => {
                 if (allManaged) {
                     layer.name = NewLayerName(layer.name);
@@ -137,6 +138,17 @@ namespace VF.Builder {
             }
 
             other.layers = new AnimatorControllerLayer[] { };
+            
+            // Merge Params
+            foreach (var p in other.parameters) {
+                ctrl.NewParam(p.name, p.type, n => {
+                    n.defaultBool = p.defaultBool;
+                    n.defaultFloat = p.defaultFloat;
+                    n.defaultInt = p.defaultInt;
+                });
+            }
+
+            other.parameters = new AnimatorControllerParameter[] { };
         }
         public void TakeOwnershipOf(ControllerManager other, bool putOnTop = false) {
             TakeOwnershipOf(other.ctrl, putOnTop: putOnTop, allManaged: false);
