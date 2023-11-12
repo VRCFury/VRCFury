@@ -52,6 +52,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return new HashSet<string>(); 
     }
 
+    private void SetStartState(VFLayer layer, AnimatorState state) {
+        layer.GetRawStateMachine().defaultState = state;
+    }
+
     public VFABool GetParam() {
         return param;
     }
@@ -253,6 +257,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 off.Drives(driveGlobal, false);
                 inState.Drives(driveGlobal, true);
             }
+        }
+
+        if (model.includeInRest && model.defaultOn) {
+            SetStartState(layer, onState.GetRaw());
         }
     }
 
