@@ -249,6 +249,7 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
+        public bool hasExitTime = false;
         public bool enableIcon;
         public GuidTexture2d icon;
         public bool enableDriveGlobalParam;

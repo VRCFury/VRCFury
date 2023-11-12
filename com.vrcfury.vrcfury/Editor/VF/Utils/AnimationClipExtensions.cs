@@ -116,6 +116,13 @@ namespace VF.Utils {
             clip.SetCurves(other.GetAllCurves());
         }
 
+        public static void CopyFromLast(this AnimationClip clip, AnimationClip other) {
+            foreach (var c in other.GetAllCurves()) {
+                var val = c.Item2.GetLast();
+                clip.SetConstant(c.Item1, val);
+            }
+        }
+
         public static bool IsLooping(this AnimationClip clip) {
             var so = new SerializedObject(clip);
             return so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
