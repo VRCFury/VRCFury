@@ -329,6 +329,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
+        var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
@@ -428,6 +429,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             {
                 advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
                     hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
+            if (hasExitTimeProp != null)
+            {
+                advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
+                    hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
             }
