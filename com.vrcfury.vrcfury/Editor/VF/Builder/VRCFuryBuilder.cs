@@ -15,7 +15,6 @@ using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
-using VF.Utils.Controller;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -121,7 +120,7 @@ public class VRCFuryBuilder {
             allFeaturesInRun = collectedModels,
             allBuildersInRun = collectedBuilders,
             avatarObject = avatarObject,
-            originalObject = originalObject
+            originalObject = originalObject,
         };
         injector.RegisterService(globals);
 

@@ -15,7 +15,6 @@ using VF.Model.Feature;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
