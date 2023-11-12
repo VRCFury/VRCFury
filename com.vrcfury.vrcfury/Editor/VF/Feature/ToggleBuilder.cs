@@ -26,8 +26,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFABool param;
     private AnimationClip restingClip;
 
-    private bool addMenuItem;
-
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
@@ -81,7 +79,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var on = layer.NewState("On");
         var x = fx.NewFloat(
             paramName,
-            synced: addMenuItem,
+            synced: true,
             saved: model.saved,
             def: model.defaultOn ? model.defaultSliderValue : 0,
             usePrefix: usePrefixOnParam
@@ -117,11 +115,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        addMenuItem = model.addMenuItem;
-        var hasTitle = !string.IsNullOrEmpty(model.name);
-        var hasIcon = model.enableIcon && model.icon?.Get() != null;
-        if (!hasTitle && !hasIcon) addMenuItem = false;
-
         if (model.slider) {
             CreateSlider();
             return;
@@ -130,8 +123,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         var layerName = model.name;
-        if (!hasTitle && model.useGlobalParam) layerName = model.globalParam;
-
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
@@ -142,7 +133,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
         } else {
-            var boolParam = fx.NewBool(paramName, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
@@ -155,8 +146,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
-        
-        if (addMenuItem) {
+        var hasTitle = !string.IsNullOrEmpty(model.name);
+        var hasIcon = model.enableIcon && model.icon?.Get() != null;
+        if (model.addMenuItem && (hasTitle || hasIcon)) {
             if (model.holdButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
