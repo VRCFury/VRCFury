@@ -249,6 +249,8 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
+        public bool hasTransitionTime = false;
+        public float transitionTime = 0;
         public bool hasExitTime = false;
         public bool enableIcon;
         public GuidTexture2d icon;
