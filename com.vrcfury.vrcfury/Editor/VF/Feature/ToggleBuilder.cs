@@ -70,6 +70,33 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (model.name, model.usePrefixOnParam);
     }
 
+    private void ApplyToggle(ControllerManager fx,
+        VFLayer layer,
+        VFState off,
+        VFCondition onCase,
+        string onName,
+        State action,
+        VFAFloat param)
+        {
+            var on = layer.NewState(onName);
+            var clip = actionClipService.LoadState(onName, action);
+            if (ClipBuilderService.IsStaticMotion(clip)) {
+                var tree = fx.NewBlendTree(onName + " Tree");
+                tree.blendType = BlendTreeType.Simple1D;
+                tree.useAutomaticThresholds = false;
+                tree.blendParameter = param.Name();
+                tree.AddChild(fx.GetEmptyClip(), 0);
+                tree.AddChild(clip, 1);
+                on.WithAnimation(tree);
+            } else {
+                on.WithAnimation(clip).MotionTime(param);
+            }
+
+            off.TransitionsTo(on).When(onCase);
+            on.TransitionsTo(off).When(onCase.Not());
+
+        }
+
     private void CreateSlider(bool synced) {
         var fx = GetFx();
         var layerName = model.name;
@@ -78,7 +105,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var (paramName, usePrefixOnParam) = GetParamName();
 
         var off = layer.NewState("Off");
-        var on = layer.NewState("On");
         var x = fx.NewFloat(
             paramName,
             synced: synced,
@@ -86,6 +112,16 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             def: model.defaultOn ? model.defaultSliderValue : 0,
             usePrefix: usePrefixOnParam
         );
+
+        var onCase = x.IsGreaterThan(0);
+
+        if (model.separateLocal) {
+            var isLocal = fx.IsLocal().IsTrue();
+            ApplyToggle(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, x);
+            ApplyToggle(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, x);
+        } else {
+            ApplyToggle(fx, layer, off, onCase, "On", model.state, x);
+        }
 
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
@@ -96,23 +132,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 icon: model.enableIcon ? model.icon?.Get() : null
             );
         }
-
-        var clip = actionClipService.LoadState("On", model.state);
-        if (ClipBuilderService.IsStaticMotion(clip)) {
-            var tree = fx.NewBlendTree("On Tree");
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.useAutomaticThresholds = false;
-            tree.blendParameter = x.Name();
-            tree.AddChild(fx.GetEmptyClip(), 0);
-            tree.AddChild(clip, 1);
-            on.WithAnimation(tree);
-        } else {
-            on.WithAnimation(clip).MotionTime(x);
-        }
-
-        var isOn = x.IsGreaterThan(0);
-        off.TransitionsTo(on).When(isOn);
-        on.TransitionsTo(off).When(isOn.Not());
     }
 
     [FeatureBuilderAction]
