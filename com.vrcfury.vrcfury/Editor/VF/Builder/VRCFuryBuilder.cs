@@ -106,7 +106,6 @@ public class VRCFuryBuilder {
         var totalModelCount = 0;
         var collectedModels = new List<FeatureModel>();
         var collectedBuilders = new List<FeatureBuilder>();
-        var intAliases = new Dictionary<VFABool, (VFAInteger, int)>();
 
         var injector = new VRCFuryInjector();
         injector.RegisterService(mutableManager);
@@ -122,8 +121,7 @@ public class VRCFuryBuilder {
             allFeaturesInRun = collectedModels,
             allBuildersInRun = collectedBuilders,
             avatarObject = avatarObject,
-            originalObject = originalObject,
-            intAliases = intAliases
+            originalObject = originalObject
         };
         injector.RegisterService(globals);
 

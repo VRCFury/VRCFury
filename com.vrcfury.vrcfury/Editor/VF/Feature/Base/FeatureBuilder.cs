@@ -32,7 +32,6 @@ namespace VF.Feature.Base {
         protected VFGameObject originalObject => globals.originalObject;
         protected List<FeatureModel> allFeaturesInRun => globals.allFeaturesInRun;
         protected List<FeatureBuilder> allBuildersInRun => globals.allBuildersInRun;
-        protected Dictionary<VFABool, (VFAInteger, int)> intAliases => globals.intAliases;
         public VFGameObject avatarObjectOverride = null;
         public void addOtherFeature(FeatureModel model) {
             globals.addOtherFeature(model, featureBaseObject);

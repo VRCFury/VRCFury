@@ -17,6 +17,5 @@ namespace VF.Service {
         public Action<FeatureModel,VFGameObject> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
-        public Dictionary<VFABool, (VFAInteger, int)> intAliases;
     }
 }

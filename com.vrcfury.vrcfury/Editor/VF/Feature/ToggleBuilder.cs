@@ -26,6 +26,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFABool param;
     private AnimationClip restingClip;
 
+    private string primaryExclusive = null;
+
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
@@ -50,6 +52,60 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return SeparateList(model.driveGlobalParam);
         }
         return new HashSet<string>(); 
+    }
+
+    public string GetPrimaryExclusive() {
+        if (primaryExclusive == null) {
+            string targetTag = "";
+            int targetMax = -1;
+
+            foreach (var exclusiveTag in GetExclusiveTags()) {
+                int tagCount = 1;
+                foreach (var toggle in allBuildersInRun
+                            .OfType<ToggleBuilder>()) {
+
+                    if (!toggle.model.exclusiveOffState && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
+                        tagCount++;
+                    }
+                }
+
+                if (tagCount > targetMax) {
+                    targetTag = exclusiveTag;
+                    targetMax = tagCount;
+                }
+            }
+
+            primaryExclusive = targetTag;
+        }
+        return primaryExclusive;
+    }
+
+    private (bool, int) CheckExclusives() {
+        if (!model.enableExclusiveTag) return (false, -1);
+        string targetTag = GetPrimaryExclusive();
+        int tagCount = 1;
+        int tagIndex = 0;
+
+       
+        foreach (var toggle in allBuildersInRun
+                    .OfType<ToggleBuilder>()) {
+
+            if (!model.exclusiveOffState && toggle == this) {
+                tagIndex = tagCount;
+            }
+            if (!toggle.model.exclusiveOffState && toggle.GetPrimaryExclusive() == targetTag) {
+                tagCount++;
+            }
+        }
+
+        if (tagCount > 256) {
+            throw new Exception("Too many toggles for exclusive tag " + targetTag + ". Please reduce the number of toggles using this tag to below 255.");
+        }
+
+        if (tagCount > 8) {
+            return (true, tagIndex);
+        }
+        return (false, -1);
     }
 
     private void SetStartState(VFLayer layer, AnimatorState state) {
@@ -131,6 +187,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return;
         }
 
+        var (useInt, intTarget) = CheckExclusives();
+        useInt = useInt || model.useInt;
+
         var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         var layerName = model.name;
@@ -143,9 +202,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var (paramName, usePrefixOnParam) = GetParamName();
         VFCondition onCase;
-        if (model.useInt) {
-            var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-            onCase = numParam.IsNotEqualTo(0);
+        if (useInt) {
+            if (intTarget == -1) {
+                var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+                onCase = numParam.IsNotEqualTo(0);
+            } else {
+                var boolParam = fx.NewBool(paramName, synced: false, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+                param = boolParam;
+                onCase = boolParam.IsTrue();
+            }
         } else {
             var boolParam = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             param = boolParam;
@@ -161,18 +226,43 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (addMenuItem) {
-            if (model.holdButton) {
-                manager.GetMenu().NewMenuButton(
-                    model.name,
-                    param,
-                    icon: model.icon?.Get()
-                );
+            if (!useInt) {
+                if (model.holdButton) {
+                    manager.GetMenu().NewMenuButton(
+                        model.name,
+                        param,
+                        icon: model.icon?.Get()
+                    );
+                } else {
+                    manager.GetMenu().NewMenuToggle(
+                        model.name,
+                        param,
+                        icon: model.icon?.Get()
+                    );
+                }
             } else {
-                manager.GetMenu().NewMenuToggle(
-                    model.name,
-                    param,
-                    icon: model.icon?.Get()
-                );
+                var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: model.saved, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                var aliasLayer = fx.NewLayer(layerName + "_Alias");
+                var startState = aliasLayer.NewState("Start").Drives(param, false);
+                var aliasState = aliasLayer.NewState("Alias").Drives(param, true);
+                startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
+                aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
+                aliasState.TransitionsTo(startState).When(param.IsFalse());
+                if (model.holdButton) {
+                    manager.GetMenu().NewMenuButton(
+                        model.name,
+                        intParam,
+                        icon: model.icon?.Get(),
+                        value: intTarget
+                    );
+                } else {
+                    manager.GetMenu().NewMenuToggle(
+                        model.name,
+                        intParam,
+                        icon: model.icon?.Get(),
+                        value: intTarget
+                    );
+                }
             }
         }
     }
