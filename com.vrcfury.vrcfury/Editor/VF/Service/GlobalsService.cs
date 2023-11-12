@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Model.Feature;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -16,5 +17,6 @@ namespace VF.Service {
         public Action<FeatureModel,VFGameObject> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
+        public Dictionary<VFABool, (VFAInteger, int)> intAliases;
     }
 }

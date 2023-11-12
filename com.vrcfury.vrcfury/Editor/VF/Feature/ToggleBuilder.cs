@@ -27,6 +27,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private AnimationClip restingClip;
 
     private bool addMenuItem;
+    private string primaryExclusive = null;
+    private bool useInt;
+    private int intTarget = -1;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -44,6 +47,60 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if(model.enableExclusiveTag)
             return SeparateList(model.exclusiveTag);
         return new HashSet<string>(); 
+    }
+
+    public string GetPrimaryExclusive() {
+        if (primaryExclusive == null) {
+            string targetTag = "";
+            int targetMax = -1;
+
+            foreach (var exclusiveTag in GetExclusiveTags()) {
+                int tagCount = 1;
+                foreach (var toggle in allBuildersInRun
+                            .OfType<ToggleBuilder>()) {
+
+                    if (!toggle.model.exclusiveOffState && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
+                        tagCount++;
+                    }
+                }
+
+                if (tagCount > targetMax) {
+                    targetTag = exclusiveTag;
+                    targetMax = tagCount;
+                }
+            }
+
+            primaryExclusive = targetTag;
+        }
+        return primaryExclusive;
+    }
+
+    private void CheckExclusives() {
+        if (!model.enableExclusiveTag) return;
+        string targetTag = GetPrimaryExclusive();
+        int tagCount = 1;
+        int tagIndex = 0;
+
+       
+        foreach (var toggle in allBuildersInRun
+                    .OfType<ToggleBuilder>()) {
+
+            if (!model.exclusiveOffState && toggle == this) {
+                tagIndex = tagCount;
+            }
+            if (!toggle.model.exclusiveOffState && toggle.GetPrimaryExclusive() == targetTag) {
+                tagCount++;
+            }
+        }
+
+        if (tagCount > 256) {
+            throw new Exception("Too many toggles for exclusive tag " + targetTag + ". Please reduce the number of toggles using this tag to below 255.");
+        }
+
+        if (tagCount > 8) {
+            useInt = true;
+            intTarget = tagIndex;
+        }
     }
 
     public ISet<string> GetGlobalParams() {
@@ -81,7 +138,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var on = layer.NewState("On");
         var x = fx.NewFloat(
             paramName,
-            synced: addMenuItem,
+            synced: true,
             saved: model.saved,
             def: model.defaultOn ? model.defaultSliderValue : 0,
             usePrefix: usePrefixOnParam
@@ -118,6 +175,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [FeatureBuilderAction]
     public void Apply() {
         addMenuItem = model.addMenuItem;
+        useInt = model.useInt;
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         if (!hasTitle && !hasIcon) addMenuItem = false;
@@ -126,6 +184,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             CreateSlider();
             return;
         }
+
+        CheckExclusives();
 
         var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
@@ -138,11 +198,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         var (paramName, usePrefixOnParam) = GetParamName();
         VFCondition onCase;
-        if (model.useInt) {
-            var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-            onCase = numParam.IsNotEqualTo(0);
+        if (useInt) {
+            if (intTarget == -1) {
+                var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+                onCase = numParam.IsNotEqualTo(0);
+            } else {
+                var boolParam = fx.NewBool(paramName, synced: false, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+                param = boolParam;
+                onCase = boolParam.IsTrue();
+            }
         } else {
-            var boolParam = fx.NewBool(paramName, synced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
@@ -157,18 +223,43 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         
         if (addMenuItem) {
-            if (model.holdButton) {
-                manager.GetMenu().NewMenuButton(
-                    model.name,
-                    param,
-                    icon: model.icon?.Get()
-                );
+            if (!useInt) {
+                if (model.holdButton) {
+                    manager.GetMenu().NewMenuButton(
+                        model.name,
+                        param,
+                        icon: model.icon?.Get()
+                    );
+                } else {
+                    manager.GetMenu().NewMenuToggle(
+                        model.name,
+                        param,
+                        icon: model.icon?.Get()
+                    );
+                }
             } else {
-                manager.GetMenu().NewMenuToggle(
-                    model.name,
-                    param,
-                    icon: model.icon?.Get()
-                );
+                var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: model.saved, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                var aliasLayer = fx.NewLayer(layerName + "_Alias");
+                var startState = aliasLayer.NewState("Start").Drives(param, false);
+                var aliasState = aliasLayer.NewState("Alias").Drives(param, true);
+                startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
+                aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
+                intAliases[param] = (intParam, intTarget);
+                if (model.holdButton) {
+                    manager.GetMenu().NewMenuButton(
+                        model.name,
+                        intParam,
+                        icon: model.icon?.Get(),
+                        value: intTarget
+                    );
+                } else {
+                    manager.GetMenu().NewMenuToggle(
+                        model.name,
+                        intParam,
+                        icon: model.icon?.Get(),
+                        value: intTarget
+                    );
+                }
             }
         }
     }
@@ -282,6 +373,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 if (otherParam != null) {
                     foreach (var state in exclusiveTagTriggeringStates) {
                         state.Drives(otherParam, false);
+                        if (intAliases.ContainsKey(otherParam) && !(intAliases.ContainsKey(param) && intAliases[otherParam].Item1.Name() == intAliases[param].Item1.Name())) {
+                            state.Drives(intAliases[otherParam].Item1, 0);;
+                        }
                     }
                     allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
                 }
