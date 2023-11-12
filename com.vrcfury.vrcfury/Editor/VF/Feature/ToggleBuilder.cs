@@ -215,21 +215,21 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
             onState = layer.NewState(onName).WithAnimation(clip);
-            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
+            inState.TransitionsTo(onState).When().WithTransitionExitTime(1).WithTransitionDurationSeconds(model.hasTransitionTime ? model.transitionTime : -1);
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
         }
         exclusiveTagTriggeringStates.Add(inState);
-        off.TransitionsTo(inState).When(onCase);
+        off.TransitionsTo(inState).When(onCase).WithTransitionDurationSeconds(model.hasTransitionTime && !model.hasTransition ? model.transitionTime : -1);
 
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition) {
             var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(model.hasTransitionTime ? model.transitionTime : -1);
             outState.TransitionsToExit().When().WithTransitionExitTime(1);
         } else {
-            onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(model.hasTransitionTime ? model.transitionTime : -1);;
         }
 
         if (physBoneResetter != null) {
@@ -329,6 +329,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
+        var hasTransitionTimeProp = prop.FindPropertyRelative("hasTransitionTime");
         var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
@@ -433,6 +434,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (hasTransitionTimeProp != null)
+            {
+                advMenu.AddItem(new GUIContent("Has Transition Time"), hasTransitionTimeProp.boolValue, () => {
+                    hasTransitionTimeProp.boolValue = !hasTransitionTimeProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             if (hasExitTimeProp != null)
             {
                 advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
@@ -510,6 +519,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, enableIconProp));
         }
 
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (hasTransitionTimeProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("transitionTime"), "Transition Time"));
+            }
+            return c;
+        }, hasTransitionTimeProp));
+
         if (enableDriveGlobalParamProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
@@ -579,6 +596,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     tags.Add("This is the Exclusive Off State");
                 if (holdButtonProp != null && holdButtonProp.boolValue)
                     tags.Add("Hold Button");
+                if (hasExitTimeProp != null && hasExitTimeProp.boolValue)
+                    tags.Add("Run to Completion");
 
                 var row = new VisualElement();
                 row.style.flexWrap = Wrap.Wrap;
@@ -601,7 +620,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultOnProp,
             includeInRestProp,
             exclusiveOffStateProp,
-            holdButtonProp
+            holdButtonProp,
+            hasTransitionTimeProp,
+            hasExitTimeProp
         ));
 
         return content;
