@@ -77,6 +77,7 @@ namespace VF.Builder {
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {
+                if (subAsset is Texture2D) continue;
                 AssetDatabase.RemoveObjectFromAsset(subAsset);
                 AssetDatabase.AddObjectToAsset(subAsset, asset);
             }
