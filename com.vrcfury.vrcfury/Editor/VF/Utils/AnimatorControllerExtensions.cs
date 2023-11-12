@@ -78,12 +78,7 @@ namespace VF.Utils {
 
             // Blend trees
             foreach (var tree in new AnimatorIterator.Trees().From(c)) {
-                tree.blendParameter = rewriteParamName(tree.blendParameter);
-                tree.blendParameterY = rewriteParamName(tree.blendParameterY);
-                tree.RewriteChildren(child => {
-                    child.directBlendParameter = rewriteParamName(child.directBlendParameter);
-                    return child;
-                });
+                tree.RewriteParameters(rewriteParamName);
             }
 
             // Transitions
