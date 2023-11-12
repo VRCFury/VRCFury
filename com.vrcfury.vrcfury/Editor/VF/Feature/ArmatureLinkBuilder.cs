@@ -298,6 +298,15 @@ namespace VF.Feature {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
+            foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject)) {
+                if (b.IsChildOf(propBone)) {
+                    throw new VRCFBuilderException(
+                        "Link From is part of the avatar's armature." +
+                        " The object dragged into Armature Link should not be a bone from the avatar's armature." +
+                        " If you are linking clothes, be sure to drag in the main bone from the clothes' armature instead!");
+                }
+            }
+
             VFGameObject avatarBone = null;
 
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
@@ -318,12 +327,6 @@ namespace VF.Feature {
                     throw new VRCFBuilderException(
                         "ArmatureLink failed to find " + model.bonePathOnAvatar + " bone on avatar.");
                 }
-            }
-
-            if (avatarBone == propBone) {
-                throw new VRCFBuilderException(
-                    "The object dragged into Armature Link should not be a bone from the avatar's armature." +
-                    " If you are linking clothes, be sure to drag in the main bone from the clothes' armature instead!");
             }
 
             var removeBoneSuffix = model.removeBoneSuffix;
