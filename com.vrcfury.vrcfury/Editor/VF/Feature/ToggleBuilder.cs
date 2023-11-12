@@ -245,9 +245,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var aliasLayer = fx.NewLayer(layerName + "_Alias");
                 var startState = aliasLayer.NewState("Start").Drives(param, false);
                 var aliasState = aliasLayer.NewState("Alias").Drives(param, true);
+                var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
                 startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
                 aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
-                aliasState.TransitionsTo(startState).When(param.IsFalse());
+                aliasState.TransitionsTo(intResetState).When(param.IsFalse().And(intParam.IsEqualTo(intTarget)));
+                intResetState.TransitionsTo(startState).When(fx.Always());
                 if (model.holdButton) {
                     manager.GetMenu().NewMenuButton(
                         model.name,
