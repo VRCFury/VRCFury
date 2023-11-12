@@ -51,18 +51,41 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 			applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
 		}
 
+		const float hiltedSphereRadius = 0.5;
 		if (type == SPS_TYPE_HOLE) {
 			// Uncancel if hilted in a hole
-			const float hiltedSphereRadius = 0.5;
 			const float inSphere = orfDistance > worldLength*hiltedSphereRadius ? 0 : 1;
 			//const float hilted = min(isBehind, inSphere);
 			//shrinkLerp = hilted;
 			const float hilted = inSphere;
 			applyLerp = max(applyLerp, hilted);
 		} else {
-			// Cancel if ring is near or behind base
-			const float isBehind = rootPos.z > 0 ? 0 : 1;
-			applyLerp = min(applyLerp, 1-isBehind);
+			if (type == SPS_TYPE_RING_TWOWAY)
+			{
+				// Cancel if ring is near or behind base
+				const float isBehind = rootPos.z > 0 ? 0 : 1;
+				applyLerp = min(applyLerp, 1-isBehind);
+			}
+
+			// Align to axis if hilted in a ring
+			// Prevent orifice from getting too close to plug as that can introduce excessive roll
+			const float minDistance = worldLength * 0.2;
+			const float lerpDistance = minDistance;
+			
+			// Consider plane aligned to orifice
+			const float orfPerpDistance = dot(sps_normalize(-frontNormal), rootPos);
+			float shiftLerp = ((orfPerpDistance > minDistance) || (orfPerpDistance < (-worldLength * hiltedSphereRadius))) ? 0 : 1;
+			
+			const float shiftAmount = (minDistance - orfPerpDistance);
+			const float3 shiftedRoot = rootPos - sps_normalize(frontNormal) * shiftAmount;
+			
+			// Lerp out as ring extends away from plug
+			// https://stackoverflow.com/a/52471226
+			const float orfPlaneDistance = length(shiftedRoot + frontNormal * dot(shiftedRoot, -frontNormal) / dot(frontNormal, frontNormal));
+			shiftLerp *= sps_saturated_map(orfPlaneDistance, minDistance + lerpDistance, minDistance);
+
+			rootPos = lerp(rootPos, shiftedRoot, shiftLerp);
+			orfDistance = length(rootPos);
 		}
 
 		// Cancel if too far away
