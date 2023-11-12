@@ -31,22 +31,24 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
         + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
 
-   public ISet<string> SeparateList(string objects) {
-        return objects.Split(',')
+    private static ISet<string> SeparateList(string str) {
+        return str.Split(',')
             .Select(tag => tag.Trim())
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
             .ToImmutableHashSet();
     }
 
-    public ISet<string> GetExclusiveTags() {
-        if(model.enableExclusiveTag)
+    private ISet<string> GetExclusiveTags() {
+        if (model.enableExclusiveTag) {
             return SeparateList(model.exclusiveTag);
+        }
         return new HashSet<string>(); 
     }
 
-    public ISet<string> GetGlobalParams() {
-        if(model.enableDriveGlobalParam)
+    private ISet<string> GetDriveGlobalParams() {
+        if (model.enableDriveGlobalParam) {
             return SeparateList(model.driveGlobalParam);
+        }
         return new HashSet<string>(); 
     }
 
@@ -68,7 +70,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (model.name, model.usePrefixOnParam);
     }
 
-    private void CreateSlider() {
+    private void CreateSlider(bool synced) {
         var fx = GetFx();
         var layerName = model.name;
         var layer = fx.NewLayer(layerName);
@@ -79,7 +81,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var on = layer.NewState("On");
         var x = fx.NewFloat(
             paramName,
-            synced: true,
+            synced: synced,
             saved: model.saved,
             def: model.defaultOn ? model.defaultSliderValue : 0,
             usePrefix: usePrefixOnParam
@@ -115,14 +117,26 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
+        var hasTitle = !string.IsNullOrEmpty(model.name);
+        var hasIcon = model.enableIcon && model.icon?.Get() != null;
+        var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
+
+        var synced = true;
+        if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
+            synced = false;
+        }
+
         if (model.slider) {
-            CreateSlider();
+            CreateSlider(synced);
             return;
         }
 
         var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
 
         var layerName = model.name;
+        if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
+        if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
+
         var fx = GetFx();
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
@@ -133,7 +147,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = numParam.IsNotEqualTo(0);
         } else {
-            var boolParam = fx.NewBool(paramName, synced: true, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var boolParam = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
@@ -146,9 +160,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
 
-        var hasTitle = !string.IsNullOrEmpty(model.name);
-        var hasIcon = model.enableIcon && model.icon?.Get() != null;
-        if (model.addMenuItem && (hasTitle || hasIcon)) {
+        if (addMenuItem) {
             if (model.holdButton) {
                 manager.GetMenu().NewMenuButton(
                     model.name,
@@ -178,10 +190,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     ) {
         var clip = actionClipService.LoadState(onName, action);
 
-        if (restingClip == null && model.includeInRest) {
-            restingClip = clip;
-        }
-
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
                 .OfType<SecurityLockBuilder>()
@@ -200,7 +208,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
 
             // if clip is empty, copy last frame of transition
-            if (clip == fx.GetEmptyClip()) {
+            if (clip.GetAllBindings().Length == 0) {
                 clip = fx.NewClip(onName);
                 clip.CopyFromLast(transitionClipIn);
             }
@@ -219,16 +227,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
             outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            outState.TransitionsToExit().When().WithTransitionExitTime(1);
         } else {
-            outState = onState;
-        }
-
-        var exitTransition = outState.TransitionsToExit();
-
-        if (outState == onState) {
-            exitTransition.When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
-        } else {
-            exitTransition.When().WithTransitionExitTime(1);
+            onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
         }
 
         if (physBoneResetter != null) {
@@ -236,9 +237,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState.Drives(physBoneResetter, true);
         }
 
-        if (model.enableDriveGlobalParam && !string.IsNullOrWhiteSpace(model.driveGlobalParam)) {
-            foreach(var p in GetGlobalParams()) {
-                if (string.IsNullOrWhiteSpace(p)) continue;
+        if (model.enableDriveGlobalParam) {
+            foreach(var p in GetDriveGlobalParams()) {
                 var driveGlobal = fx.NewBool(
                     p,
                     synced: false,
@@ -251,8 +251,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        if (model.includeInRest && model.defaultOn) {
+        if (model.includeInRest && model.defaultOn && !model.separateLocal) {
             SetStartState(layer, onState.GetRaw());
+        }
+
+        if (restingClip == null && model.includeInRest) {
+            restingClip = clip;
         }
     }
 
