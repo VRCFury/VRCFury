@@ -27,8 +27,10 @@ namespace VF.Feature {
 
                 var layer0 = ctrl.GetLayer(0);
                 // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a
-                // controller with no layers
-                if (layer0 == null || layer0.mask != expectedMask) {
+                //   controller with no layers
+                // On FX, ALWAYS make an empty base layer, because for some reason transition times can break
+                //   and animate immediately when performed within the base layer
+                if (layer0 == null || layer0.mask != expectedMask || c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
                     c.EnsureEmptyBaseLayer().mask = expectedMask;
                 }
             }
