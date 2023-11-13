@@ -40,16 +40,31 @@ namespace VF.Feature {
             }
 
             var anim = findAnimatedTransformsService.Find();
+            // Some artists do a dumb thing and put a physbone on the clothing's hips (for things like a skirt), but don't
+            // ignore any transforms (which would cause our merger to avoid merging things like... the avatar's arms)
+            // We fix this by ignoring types of animations on those bones
+            var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).ToImmutableHashSet();
+            foreach (var (propBone, avatarBone) in links.mergeBones) {
+                if (avatarHumanoidBones.Contains(avatarBone)) {
+                    anim.positionIsAnimated.Remove(propBone);
+                    anim.rotationIsAnimated.Remove(propBone);
+                    anim.physboneChild.Remove(propBone);
+                    anim.physboneRoot.Remove(propBone);
+                }
+            }
+
             var doNotMerge = new HashSet<Transform>();
-            foreach (var t in anim.positionIsAnimated.ToArray()) {
-                doNotMerge.UnionWith(t.asVf().GetSelfAndAllChildren().Select(o => o.transform));
-            }
-            foreach (var t in anim.rotationIsAnimated.ToArray()) {
-                doNotMerge.UnionWith(t.asVf().GetSelfAndAllChildren().Select(o => o.transform).Where(tr => tr != t));
-            }
+            doNotMerge.UnionWith(anim.positionIsAnimated);
+            doNotMerge.UnionWith(anim.rotationIsAnimated);
+            doNotMerge.UnionWith(anim.physboneChild);
+            // Recursively add all children
+            doNotMerge.UnionWith(doNotMerge.ToArray().SelectMany(t => t.asVf().GetSelfAndAllChildren().Select(o => o.transform)));
+
             var doNotRebindSkins = new HashSet<Transform>();
             doNotRebindSkins.UnionWith(anim.scaleIsAnimated);
+            doNotRebindSkins.UnionWith(anim.physboneRoot); // (physbone roots can rotate)
             doNotRebindSkins.UnionWith(doNotMerge);
+
             var debugLog = "";
             foreach (var (propBone,avatarBone) in links.mergeBones) {
                 if (doNotRebindSkins.Contains(propBone)) {
@@ -167,12 +182,12 @@ namespace VF.Feature {
 
                     // Move it on over
                     var newName = $"vrcf_{uniqueModelNum}_{propBone.name} from {rootName}";
-                    if (anim.positionIsAnimatedByPhysbone.Contains(propBone)) {
-                        newName += " (Animated Position by PB)";
+                    if (anim.physboneChild.Contains(propBone)) {
+                        newName += " (Child of PhysBone)";
                     } else if (anim.positionIsAnimated.Contains(propBone)) {
                         newName += " (Animated Position)";
-                    } else if (anim.rotationIsAnimatedByPhysbone.Contains(propBone)) {
-                        newName += " (Animated Rotation by PB)";
+                    } else if (anim.physboneRoot.Contains(propBone)) {
+                        newName += " (Root of Physbone)";
                     } else if (anim.rotationIsAnimated.Contains(propBone)) {
                         newName += " (Animated Rotation)";
                     } else if (anim.scaleIsAnimated.Contains(propBone)) {

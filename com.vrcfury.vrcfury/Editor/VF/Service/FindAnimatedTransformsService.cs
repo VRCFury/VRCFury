@@ -16,10 +16,10 @@ namespace VF.Service {
             public HashSet<Transform> scaleIsAnimated = new HashSet<Transform>();
             public HashSet<Transform> positionIsAnimated = new HashSet<Transform>();
             public HashSet<Transform> rotationIsAnimated = new HashSet<Transform>();
-            public HashSet<Transform> positionIsAnimatedByPhysbone = new HashSet<Transform>();
-            public HashSet<Transform> rotationIsAnimatedByPhysbone = new HashSet<Transform>();
+            public HashSet<Transform> physboneRoot = new HashSet<Transform>();
+            public HashSet<Transform> physboneChild = new HashSet<Transform>();
             private Dictionary<Transform, List<string>> debugSources = new Dictionary<Transform, List<string>>();
-            
+
             public void AddDebugSource(Transform t, string source) {
                 if (debugSources.TryGetValue(t, out var list)) list.Add(source);
                 else debugSources[t] = new List<string> { source };
@@ -32,19 +32,32 @@ namespace VF.Service {
 
         public AnimatedTransforms Find() {
             var output = new AnimatedTransforms();
-
             var avatarObject = manager.AvatarObject;
-            foreach (var physbone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
-                var affected = PhysboneUtils.GetAffectedTransforms(physbone);
-                output.positionIsAnimated.UnionWith(affected.mayMove);
-                output.rotationIsAnimated.UnionWith(affected.mayRotate);
-                output.positionIsAnimatedByPhysbone.UnionWith(affected.mayMove);
-                output.rotationIsAnimatedByPhysbone.UnionWith(affected.mayRotate);
-                foreach (var r in affected.mayRotate) {
-                    output.AddDebugSource(r, "Physbone on " + physbone.owner().GetPath(avatarObject));
+            
+            // Physbones
+            foreach (var physBone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
+                var root = physBone.GetRootTransform().asVf();
+                var path = physBone.owner().GetPath(avatarObject);
+                bool IsIgnored(Transform transform) =>
+                    physBone.ignoreTransforms.Any(ignored => ignored != null && transform.IsChildOf(ignored));
+                var nonIgnoredChildren = root.Children()
+                    .Where(child => !IsIgnored(child))
+                    .ToArray();
+
+                if (nonIgnoredChildren.Length > 1 && physBone.multiChildType == VRCPhysBoneBase.MultiChildType.Ignore) {
+                    // Root is ignored
+                } else {
+                    output.physboneRoot.Add(root);
+                    output.AddDebugSource(root, $"Physbone on {path}");
+                }
+
+                output.physboneChild.UnionWith(nonIgnoredChildren.Select(o => o.transform));
+                foreach (var r in nonIgnoredChildren) {
+                    output.AddDebugSource(r, $"Physbone on {path}");
                 }
             }
 
+            // Animation clips
             foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
                 var transformBindings = clip.GetAllBindings()
                     .Where(binding => binding.type == typeof(Transform))
