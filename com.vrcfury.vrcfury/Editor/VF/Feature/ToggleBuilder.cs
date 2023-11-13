@@ -70,7 +70,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (model.name, model.usePrefixOnParam);
     }
 
-    private void ApplyToggle(ControllerManager fx,
+    private void ApplySlider(ControllerManager fx,
         VFLayer layer,
         VFState off,
         VFCondition onCase,
@@ -117,10 +117,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            ApplyToggle(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, x);
-            ApplyToggle(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, x);
+            ApplySlider(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, x);
+            ApplySlider(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, x);
         } else {
-            ApplyToggle(fx, layer, off, onCase, "On", model.state, x);
+            ApplySlider(fx, layer, off, onCase, "On", model.state, x);
         }
 
         var hasTitle = !string.IsNullOrEmpty(model.name);
