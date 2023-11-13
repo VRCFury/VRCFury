@@ -32,23 +32,45 @@ namespace VF.Feature {
                 Debug.LogWarning("Root bone is null on armature link.");
                 return;
             }
-            
-            var animatedTransforms = new HashSet<Transform>();
+
+            var scaleIsAnimated = new HashSet<Transform>();
+            var positionIsAnimated = new HashSet<Transform>();
+            var rotationIsAnimated = new HashSet<Transform>();
+            var doNotRebindSkins = new HashSet<Transform>();
+            var doNotMerge = new HashSet<Transform>();
             {
                 foreach (var physbone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
-                    animatedTransforms.UnionWith(PhysboneUtils.GetAffectedTransforms(physbone));
+                    var affected = PhysboneUtils.GetAffectedTransforms(physbone);
+                    positionIsAnimated.UnionWith(affected.mayMove);
+                    rotationIsAnimated.UnionWith(affected.mayRotate);
                 }
 
-                var rawAnimatedTransforms = manager.GetAllUsedControllers()
+                var transformBindings = manager.GetAllUsedControllers()
                     .SelectMany(c => c.GetClips())
                     .SelectMany(clip => clip.GetAllBindings())
                     .Where(binding => binding.type == typeof(Transform))
-                    .Select(binding => avatarObject.Find(binding.path).transform)
-                    .Where(transform => transform != null)
                     .ToImmutableHashSet();
-                animatedTransforms.UnionWith(rawAnimatedTransforms
-                    .SelectMany(t => t.asVf().GetSelfAndAllChildren())
-                    .Select(g => g.transform));
+                foreach (var binding in transformBindings) {
+                    var transform = avatarObject.Find(binding.path).transform;
+                    if (transform == null) continue;
+                    var lower = binding.propertyName.ToLower();
+                    if (lower.Contains("scale"))
+                        scaleIsAnimated.Add(transform);
+                    else if (lower.Contains("euler"))
+                        rotationIsAnimated.Add(transform);
+                    else if (lower.Contains("position"))
+                        positionIsAnimated.Add(transform);
+                }
+
+                foreach (var t in positionIsAnimated.ToArray()) {
+                    doNotMerge.UnionWith(t.asVf().GetSelfAndAllChildren().Select(o => o.transform));
+                }
+                foreach (var t in rotationIsAnimated.ToArray()) {
+                    doNotMerge.UnionWith(t.asVf().GetSelfAndAllChildren().Select(o => o.transform).Where(tr => tr != t));
+                }
+
+                doNotRebindSkins.UnionWith(scaleIsAnimated);
+                doNotRebindSkins.UnionWith(doNotMerge);
             }
 
             var links = GetLinks();
@@ -97,7 +119,7 @@ namespace VF.Feature {
                                     VFGameObject bone = boneAndBindPose.a;
                                     var bindPose = boneAndBindPose.b;
                                     if (bone == null) return bindPose;
-                                    if (animatedTransforms.Contains(bone)) return bindPose;
+                                    if (doNotRebindSkins.Contains(bone)) return bindPose;
                                     if (skinRewriteMapping.TryGetValue(bone, out var mergedTo)) {
                                         return mergedTo.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
                                     }
@@ -110,7 +132,7 @@ namespace VF.Feature {
                         skin.bones = skin.bones
                             .Select(b => {
                                 if (b == null) return b;
-                                if (animatedTransforms.Contains(b)) return b;
+                                if (doNotRebindSkins.Contains(b)) return b;
                                 if (skinRewriteMapping.TryGetValue(b, out var to)) return to;
                                 return b;
                             })
@@ -122,7 +144,7 @@ namespace VF.Feature {
                     // Update skin to use root bone from the original avatar (updating bounds if needed)
                     {
                         var oldRootBone = HapticUtils.GetMeshRoot(skin);
-                        if (skinRewriteMapping.TryGetValue(oldRootBone, out var newRootBone) && !animatedTransforms.Contains(oldRootBone)) {
+                        if (skinRewriteMapping.TryGetValue(oldRootBone, out var newRootBone) && !doNotRebindSkins.Contains(oldRootBone)) {
                             var b = skin.localBounds;
                             b.center = new Vector3(
                                 b.center.x * oldRootBone.lossyScale.x / newRootBone.lossyScale.x,
@@ -143,7 +165,7 @@ namespace VF.Feature {
 
                 // Move over all the old components / children from the old location to a new child
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
-                    if (animatedTransforms.Contains(propBone.parent) && propBone != links.propMain) {
+                    if (doNotMerge.Contains(propBone) && doNotMerge.Contains(propBone.parent) && propBone != links.propMain) {
                         //Debug.LogWarning("Bone is not merged because its parent is affected by a physbone or animated transform: " + propBone.GetPath(links.propMain));
                         continue;
                     }
@@ -161,8 +183,18 @@ namespace VF.Feature {
 
                     // Move it on over
                     var newName = $"vrcf_{uniqueModelNum}_{propBone.name} from {rootName}";
-                    if (animatedTransforms.Contains(propBone)) {
-                        newName += " (Animated)";
+                    if (positionIsAnimated.Contains(propBone)) {
+                        newName += " (Animated Position)";
+                    } else if (rotationIsAnimated.Contains(propBone)) {
+                        newName += " (Animated Rotation)";
+                    } else if (scaleIsAnimated.Contains(propBone)) {
+                        newName += " (Animated Scale)";
+                    } else if (propBone.Children().Any()) {
+                        newName += " (Added Children)";
+                    } else if (propBone.GetComponents<UnityEngine.Component>().Length > 1) {
+                        newName += " (Added Components)";
+                    } else {
+                        newName += " (Referenced Externally)";
                     }
                     mover.Move(
                         propBone,
