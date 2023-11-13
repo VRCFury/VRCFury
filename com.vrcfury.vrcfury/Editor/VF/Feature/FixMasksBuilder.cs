@@ -64,18 +64,26 @@ namespace VF.Feature {
             return mask;
         }
 
+        /**
+         * If a project uses WD off, and animates ANY muscle within a controller, that controller "claims ownership"
+         * of every muscle allowed by its mask. This means that it's very important that we only allow FX to
+         * have as few muscles as possible, because animating hands within FX would bust the entire rest of the avatar
+         * if the mask allowed it.
+         */
         private AvatarMask GetFxMask(ControllerManager fx) {
-            var mask = AvatarMaskExtensions.Empty();
-            mask.AllowAllTransforms();
-            foreach (var layer in fx.GetLayers()) {
-                if (layer.mask != null) {
-                    mask.UnionWith(layer.mask);
-                }
-            }
+            var allowHands = fx.GetLayers()
+                .Any(layer => layer.mask != null &&
+                              (layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers)
+                               || layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers)));
 
-            if (mask.AllowsAnyMuscles()) {
+            if (allowHands) {
+                var mask = AvatarMaskExtensions.Empty();
+                mask.AllowAllTransforms();
+                mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+                mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
                 return mask;
             }
+
             return null;
         }
     }
