@@ -41,12 +41,16 @@ namespace VF.Feature {
                 // No customized gesture controller
                 return;
             }
-
             var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
+
             var gestureContainsTransform = gesture.GetClips()
                 .SelectMany(clip => clip.GetAllBindings())
                 .Any(binding => binding.type == typeof(Transform));
-            if (!gestureContainsTransform) return;
+
+            var activateGestureToFxTransfer = gestureContainsTransform || DoesFxControlHands();
+            if (!activateGestureToFxTransfer) {
+                return;
+            }
 
             var fx = manager.GetFx();
             fx.TakeOwnershipOf(gesture, putOnTop: true);
@@ -64,6 +68,13 @@ namespace VF.Feature {
             return mask;
         }
 
+        private bool DoesFxControlHands() {
+            return manager.GetFx().GetLayers()
+                .Any(layer => layer.mask != null &&
+                              (layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers)
+                               || layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers)));
+        }
+
         /**
          * If a project uses WD off, and animates ANY muscle within a controller, that controller "claims ownership"
          * of every muscle allowed by its mask. This means that it's very important that we only allow FX to
@@ -71,12 +82,7 @@ namespace VF.Feature {
          * if the mask allowed it.
          */
         private AvatarMask GetFxMask(ControllerManager fx) {
-            var allowHands = fx.GetLayers()
-                .Any(layer => layer.mask != null &&
-                              (layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers)
-                               || layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers)));
-
-            if (allowHands) {
+            if (DoesFxControlHands()) {
                 var mask = AvatarMaskExtensions.Empty();
                 mask.AllowAllTransforms();
                 mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
