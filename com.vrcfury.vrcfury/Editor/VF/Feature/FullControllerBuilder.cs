@@ -250,15 +250,7 @@ namespace VF.Feature {
                     rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
                 ),
                 ClipRewriter.AdjustRootScale(avatarObject),
-                ClipRewriter.AnimatorBindingsAlwaysTargetRoot(),
-                AnimationRewriter.RewriteBinding(binding => {
-                    if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                        if (binding.IsMuscle() || binding.IsProxyBinding()) {
-                            return null;
-                        }
-                    }
-                    return binding;
-                }, false)
+                ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
             ));
             
             // Rewrite params
