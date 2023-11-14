@@ -48,11 +48,12 @@ namespace VF.Service {
             weightOff.goalWeight = 0;
             
             var animOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
-            foreach (var type in TrackingConflictResolverBuilder.allTypes) {
-                type.SetValue(animOn, VRC_AnimatorTrackingControl.TrackingType.Animation);
-            }
             var animOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
             foreach (var type in TrackingConflictResolverBuilder.allTypes) {
+                if (type.fieldName == "trackingEyes" || type.fieldName == "trackingMouth") {
+                    continue;
+                }
+                type.SetValue(animOn, VRC_AnimatorTrackingControl.TrackingType.Animation);
                 type.SetValue(animOff, VRC_AnimatorTrackingControl.TrackingType.Tracking);
             }
 
