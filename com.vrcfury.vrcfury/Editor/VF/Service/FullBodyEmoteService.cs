@@ -1,6 +1,7 @@
 using System.Linq;
 using UnityEngine;
 using VF.Builder;
+using VF.Feature;
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -45,6 +46,15 @@ namespace VF.Service {
             var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
             weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
             weightOff.goalWeight = 0;
+            
+            var animOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
+            foreach (var type in TrackingConflictResolverBuilder.allTypes) {
+                type.SetValue(animOn, VRC_AnimatorTrackingControl.TrackingType.Animation);
+            }
+            var animOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
+            foreach (var type in TrackingConflictResolverBuilder.allTypes) {
+                type.SetValue(animOff, VRC_AnimatorTrackingControl.TrackingType.Tracking);
+            }
 
             var fx = manager.GetFx();
             var enableParam = fx.NewFloat(clip.name + " (Trigger)");

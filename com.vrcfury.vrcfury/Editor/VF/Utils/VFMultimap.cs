@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace VF.Utils {
     public class VFMultimap<A,B> {
@@ -14,6 +15,10 @@ namespace VF.Utils {
             } else {
                 data[key] = new List<B> { value };
             }
+        }
+
+        public IEnumerable<A> GetKeys() {
+            return data.Keys;
         }
     }
 }
