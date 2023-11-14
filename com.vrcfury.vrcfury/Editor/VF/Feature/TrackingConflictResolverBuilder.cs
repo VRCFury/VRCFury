@@ -75,27 +75,51 @@ namespace VF.Feature {
                 var currentSettingDict = typesUsed.ToDictionary(type => type,
                     type => fx.NewBool("TC_current_" + type.fieldName));
 
-                void AddStates(string name, VRC_AnimatorTrackingControl.TrackingType controlValue, int driveValue, Func<VFCondition, VFCondition> mutator) {
-                    var all = layer.NewState($"All - {name}");
-                    all.TransitionsFromEntry().When(VFCondition.All(whenAnimatedDict.Select(e => mutator(e.Value))));
-                    all.TransitionsToExit().When(fx.Always());
-                    var allControl = all.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
-                    var allDriver = all.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                    
-                    foreach (var type in typesUsed) {
-                        var whenAnimated = whenAnimatedDict[type];
-                        var current = currentSettingDict[type];
-                        var activateWhen = mutator(whenAnimated).And(mutator(current.IsFalse()));
-                        var state = layer.NewState(type.fieldName + " - " + name);
-                        idle.TransitionsToExit().When(activateWhen);
-                        state.TransitionsFromEntry().When(activateWhen);
-                        state.TransitionsToExit().When(fx.Always());
+                void AddStates(
+                    string modeName,
+                    VRC_AnimatorTrackingControl.TrackingType controlValue,
+                    int driveValue,
+                    Func<VFCondition, VFCondition> mutator
+                ) {
+                    void AddState(
+                        string stateName,
+                        IList<TrackingControlType> types,
+                        bool addTransitionFromIdle = false,
+                        bool checkAlreadyActive = true
+                    ) {
+                        if (types.Count == 0) return;
+
+                        var state = layer.NewState($"{stateName} - {modeName}");
+                        var triggerWhen = VFCondition.All(types.Select(type => mutator(whenAnimatedDict[type])));
+                        if (checkAlreadyActive) {
+                            var isAlreadyActive = VFCondition.All(types.Select(type => mutator(currentSettingDict[type].IsTrue())));
+                            triggerWhen = triggerWhen.And(isAlreadyActive.Not());
+                        }
+
+                        if (addTransitionFromIdle) {
+                            idle.TransitionsToExit().When(triggerWhen);
+                        }
+
+                        state.TransitionsFromEntry().When(triggerWhen);
+                        if (checkAlreadyActive) {
+                            state.TransitionsToExit().When(fx.Always());
+                        } else {
+                            state.TransitionsToExit().When(triggerWhen.Not());
+                        }
+
                         var control = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
                         var driver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                        type.SetValue(allControl, controlValue);
-                        type.SetValue(control, controlValue);
-                        allDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = current.Name(), value = driveValue });
-                        driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = current.Name(), value = driveValue });
+                    
+                        foreach (var type in types) {
+                            type.SetValue(control, controlValue);
+                            driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type].Name(), value = driveValue });
+                        }
+                    }
+                    
+                    AddState("All", typesUsed, checkAlreadyActive: false);
+                    AddState("NoFace", typesUsed.Where(t => !t.isFace).ToArray());
+                    foreach (var type in typesUsed) {
+                        AddState(type.fieldName, new [] { type }, addTransitionFromIdle: true);
                     }
                 }
 
@@ -106,6 +130,7 @@ namespace VF.Feature {
 
         public class TrackingControlType {
             public string fieldName;
+            public bool isFace;
 
             public VRC_AnimatorTrackingControl.TrackingType GetValue(VRC_AnimatorTrackingControl c) {
                 var field = c.GetType().GetField(fieldName);
@@ -128,8 +153,8 @@ namespace VF.Feature {
             new TrackingControlType { fieldName = "trackingRightFoot" },
             new TrackingControlType { fieldName = "trackingLeftFingers" },
             new TrackingControlType { fieldName = "trackingRightFingers" },
-            new TrackingControlType { fieldName = "trackingEyes" },
-            new TrackingControlType { fieldName = "trackingMouth" }
+            new TrackingControlType { fieldName = "trackingEyes", isFace = true },
+            new TrackingControlType { fieldName = "trackingMouth", isFace = true}
         };
     }
 }
