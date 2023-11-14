@@ -222,9 +222,10 @@ namespace VF.Service {
                 restingState.ApplyClipToRestingState(offClip);
             }
 
-            // We don't allow proxy clips in loaded animation clips, because it does really
-            // weird things downstream.
-            onClip.CollapseProxyBindings(true);
+            if (onClip.CollapseProxyBindings().Count > 0) {
+                throw new Exception(
+                    "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
+            }
 
             if (onClip.GetFloatBindings().Any(b =>
                     b.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.Other)) {
