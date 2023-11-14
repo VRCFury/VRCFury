@@ -79,7 +79,6 @@ namespace VF.Feature.Base {
         BlendshapeOptimizer, // Needs to run after RecordDefaults
         Slot4Fix,
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
-        PullMusclesOutOfFx,
         RemoveDefaultedAdditiveLayer,
         FixUnsetPlayableLayers,
         FixMasks,
