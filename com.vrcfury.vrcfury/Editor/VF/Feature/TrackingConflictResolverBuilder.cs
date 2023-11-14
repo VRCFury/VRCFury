@@ -99,7 +99,12 @@ namespace VF.Feature {
                         }
 
                         state.TransitionsFromEntry().When(triggerWhen);
-                        state.TransitionsToExit().When(fx.Always());
+                        if (checkAlreadyActive) {
+                            state.TransitionsToExit().When(fx.Always());
+                        } else {
+                            state.TransitionsToExit().When(triggerWhen.Not());
+                        }
+
                         var control = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
                         var driver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
                     
