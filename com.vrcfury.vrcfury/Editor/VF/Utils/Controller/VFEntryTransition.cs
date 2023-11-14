@@ -9,6 +9,10 @@ namespace VF.Utils.Controller {
             this.transitionProvider = transitionProvider;
         }
 
+        public VFEntryTransition When() {
+            var transition = transitionProvider();
+            return this;
+        }
         public VFEntryTransition When(VFCondition cond) {
             foreach (var t in cond.transitions) {
                 var transition = transitionProvider();

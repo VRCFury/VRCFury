@@ -53,7 +53,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
         return new HashSet<string>(); 
     }
-
     public string GetPrimaryExclusive() {
         if (primaryExclusive == null) {
             string targetTag = "";
@@ -238,8 +237,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = boolParam.IsTrue();
         }
 
-        off.TransitionsFromEntry().When(onCase.Not());
-
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
             Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
@@ -366,8 +363,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        if (model.includeInRest && model.defaultOn && !model.separateLocal) {
-            SetStartState(layer, onState.GetRaw());
+        if (model.defaultOn && !model.separateLocal && !model.securityEnabled) {
+            layer.GetRawStateMachine().defaultState = onState.GetRaw();
+            off.TransitionsFromEntry().When();
         }
 
         if (restingClip == null && model.includeInRest) {

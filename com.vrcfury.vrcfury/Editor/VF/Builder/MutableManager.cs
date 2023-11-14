@@ -96,7 +96,7 @@ namespace VF.Builder {
                     if (!IsType(original, typesToMakeMutable)) return false;
                 }
 
-                var copy = MakeMutable(original);
+                var copy = MakeMutable(original, true);
                 if (obj == original) rootCopy = copy as T;
 
                 if (IsType(copy, hiddenTypes)) {
@@ -182,12 +182,12 @@ namespace VF.Builder {
         private static bool IsType(Object obj, Type[] types) =>
             types.Any(type => type.IsInstanceOfType(obj));
 
-        public static T MakeMutable<T>(T original) where T : Object {
-            if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(original))) {
+        public static T MakeMutable<T>(T original, bool forceCopy = false) where T : Object {
+            if (!forceCopy && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(original))) {
                 // Already mutable
                 return original;
             }
-            
+
             var copy = SafeInstantiate(original);
             copy.name = original.name;
             if (copy is Material copyMat) {
