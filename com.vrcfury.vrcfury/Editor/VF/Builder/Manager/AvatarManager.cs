@@ -65,7 +65,7 @@ namespace VF.Builder {
                 var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
                 VFController ctrl;
                 if (existingController != null) {
-                    ctrl = VFController.CopyAndLoadController(existingController);
+                    ctrl = VFController.CopyAndLoadController(existingController, type);
                 } else {
                     ctrl = new AnimatorController();
                 }
