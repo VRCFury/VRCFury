@@ -186,12 +186,12 @@ namespace VF.Feature {
                 }
             }
 
-            var copyWithoutMuscles = MutableManager.CopyRecursive(originalMotion);
+            var copyWithoutMuscles = MutableManager.CopyRecursive(originalMotion, addPrefix: false);
             foreach (var clip in new AnimatorIterator.Clips().From(copyWithoutMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(ShouldTransferBinding);
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             }
-            var copyOnlyMuscles = MutableManager.CopyRecursive(originalMotion);
+            var copyOnlyMuscles = MutableManager.CopyRecursive(originalMotion, addPrefix: false);
             foreach (var clip in new AnimatorIterator.Clips().From(copyOnlyMuscles)) {
                 var deleteBindings = clip.GetFloatBindings().Where(b => !ShouldTransferBinding(b));
                 clip.SetCurves(deleteBindings.Select(b => (b,(FloatOrObjectCurve)null)));
