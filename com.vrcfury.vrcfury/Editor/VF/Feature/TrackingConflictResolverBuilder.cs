@@ -85,7 +85,7 @@ namespace VF.Feature {
                     foreach (var type in typesUsed) {
                         var whenAnimated = whenAnimatedDict[type];
                         var current = currentSettingDict[type];
-                        var activateWhen = mutator(whenAnimated).And(mutator(current.IsTrue()));
+                        var activateWhen = mutator(whenAnimated).And(mutator(current.IsFalse()));
                         var state = layer.NewState(type.fieldName + " - " + name);
                         idle.TransitionsToExit().When(activateWhen);
                         state.TransitionsFromEntry().When(activateWhen);
