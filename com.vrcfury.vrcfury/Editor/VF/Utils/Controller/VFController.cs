@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
     public class VFController {
@@ -132,7 +133,7 @@ namespace VF.Utils.Controller {
         }
 
         [CanBeNull]
-        public static VFController CopyAndLoadController(RuntimeAnimatorController ctrl) {
+        public static VFController CopyAndLoadController(RuntimeAnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
             if (ctrl == null) {
                 return null;
             }
@@ -166,7 +167,7 @@ namespace VF.Utils.Controller {
             var output = new VFController(ac);
             output.FixNullStateMachines();
             output.FixLayer0Weight();
-            output.ApplyBaseMask();
+            output.ApplyBaseMask(type);
             return output;
         }
 
@@ -202,18 +203,30 @@ namespace VF.Utils.Controller {
          * VRCF's handles masks by "applying" the base mask to every mask in the controller. This makes things like
          * merging controllers and features much easier. Later on, we recalculate a new base mask in FixMasksBuilder. 
          */
-        private void ApplyBaseMask() {
+        private void ApplyBaseMask(VRCAvatarDescriptor.AnimLayerType type) {
+            var isFx = type == VRCAvatarDescriptor.AnimLayerType.FX;
             var layer0 = GetLayer(0);
             if (layer0 == null) return;
 
+            bool HasMuscles(VFLayer layer) {
+                return new AnimatorIterator.Clips().From(layer)
+                    .SelectMany(clip => clip.GetFloatBindings())
+                    .Any(binding => binding.IsMuscle());
+            }
+
             var baseMask = layer0.mask;
             foreach (var layer in GetLayers()) {
-                if (layer.mask == baseMask) continue;
+                var useBaseMask = baseMask;
+                if (isFx && useBaseMask == null && HasMuscles(layer)) {
+                    useBaseMask = AvatarMaskExtensions.Empty();
+                    useBaseMask.AllowAllTransforms();
+                }
+                if (layer.mask == useBaseMask) continue;
                 if (layer.mask == null) {
                     layer.mask = AvatarMaskExtensions.Empty();
-                    layer.mask.UnionWith(baseMask);
+                    layer.mask.UnionWith(useBaseMask);
                 } else {
-                    layer.mask.IntersectWith(baseMask);
+                    layer.mask.IntersectWith(useBaseMask);
                 }
             }
         }

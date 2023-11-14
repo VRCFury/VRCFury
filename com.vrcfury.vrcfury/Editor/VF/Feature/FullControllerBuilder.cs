@@ -56,7 +56,7 @@ namespace VF.Feature {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = VFController.CopyAndLoadController(source);
+                var copy = VFController.CopyAndLoadController(source, c.type);
                 if (copy) {
                     toMerge.Add((c.type, copy));
                 }
