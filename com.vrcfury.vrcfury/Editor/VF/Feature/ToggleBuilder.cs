@@ -52,10 +52,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return new HashSet<string>(); 
     }
 
-    private void SetStartState(VFLayer layer, AnimatorState state) {
-        layer.GetRawStateMachine().defaultState = state;
-    }
-
     public VFABool GetParam() {
         return param;
     }
@@ -151,8 +147,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             param = boolParam;
             onCase = boolParam.IsTrue();
         }
-
-        off.TransitionsFromEntry().When(onCase.Not());
 
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
@@ -253,8 +247,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        if (model.includeInRest && model.defaultOn && !model.separateLocal) {
-            SetStartState(layer, onState.GetRaw());
+        if (model.defaultOn && !model.separateLocal && !model.securityEnabled) {
+            layer.GetRawStateMachine().defaultState = onState.GetRaw();
+            off.TransitionsFromEntry().When();
         }
 
         if (restingClip == null && model.includeInRest) {
