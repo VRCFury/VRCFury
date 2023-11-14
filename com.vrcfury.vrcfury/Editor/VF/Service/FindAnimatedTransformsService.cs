@@ -18,6 +18,7 @@ namespace VF.Service {
             public HashSet<Transform> rotationIsAnimated = new HashSet<Transform>();
             public HashSet<Transform> physboneRoot = new HashSet<Transform>();
             public HashSet<Transform> physboneChild = new HashSet<Transform>();
+            public HashSet<Transform> activated = new HashSet<Transform>();
             private Dictionary<Transform, List<string>> debugSources = new Dictionary<Transform, List<string>>();
 
             public void AddDebugSource(Transform t, string source) {
@@ -59,20 +60,23 @@ namespace VF.Service {
 
             // Animation clips
             foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
-                var transformBindings = clip.GetAllBindings()
-                    .Where(binding => binding.type == typeof(Transform))
-                    .ToImmutableHashSet();
-                foreach (var binding in transformBindings) {
-                    var transform = avatarObject.Find(binding.path).transform;
-                    if (transform == null) continue;
-                    var lower = binding.propertyName.ToLower();
-                    if (lower.Contains("scale"))
-                        output.scaleIsAnimated.Add(transform);
-                    else if (lower.Contains("euler"))
-                        output.rotationIsAnimated.Add(transform);
-                    else if (lower.Contains("position"))
-                        output.positionIsAnimated.Add(transform);
-                    output.AddDebugSource(transform, "Animation clip: " + clip.name);
+                foreach (var binding in clip.GetAllBindings()) {
+                    if (binding.type == typeof(Transform)) {
+                        var transform = avatarObject.Find(binding.path).transform;
+                        if (transform == null) continue;
+                        var lower = binding.propertyName.ToLower();
+                        if (lower.Contains("scale"))
+                            output.scaleIsAnimated.Add(transform);
+                        else if (lower.Contains("euler"))
+                            output.rotationIsAnimated.Add(transform);
+                        else if (lower.Contains("position"))
+                            output.positionIsAnimated.Add(transform);
+                        output.AddDebugSource(transform, "Animation clip: " + clip.name);
+                    } else if (binding.type == typeof(GameObject)) {
+                        var transform = avatarObject.Find(binding.path).transform;
+                        if (transform == null) continue;
+                        output.activated.Add(transform);
+                    }
                 }
             }
 

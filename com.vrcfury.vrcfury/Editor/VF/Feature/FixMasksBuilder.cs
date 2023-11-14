@@ -11,10 +11,29 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class FixMasksBuilder : FeatureBuilder {
-        [FeatureBuilderAction(FeatureOrder.FixMasks)]
-        public void Apply() {
-            FixGestureConflict();
+        [FeatureBuilderAction(FeatureOrder.FixGestureFxConflict)]
+        public void FixGestureFxConflict() {
+            if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
+                // No customized gesture controller
+                return;
+            }
+            var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
 
+            var gestureContainsTransform = gesture.GetClips()
+                .SelectMany(clip => clip.GetAllBindings())
+                .Any(binding => binding.type == typeof(Transform));
+
+            var activateGestureToFxTransfer = gestureContainsTransform || DoesFxControlHands();
+            if (!activateGestureToFxTransfer) {
+                return;
+            }
+
+            var fx = manager.GetFx();
+            fx.TakeOwnershipOf(gesture, putOnTop: true);
+        }
+        
+        [FeatureBuilderAction(FeatureOrder.FixMasks)]
+        public void FixMasks() {
             foreach (var c in manager.GetAllUsedControllers()) {
                 var ctrl = c.GetRaw();
 
@@ -34,26 +53,6 @@ namespace VF.Feature {
                     c.EnsureEmptyBaseLayer().mask = expectedMask;
                 }
             }
-        }
-
-        private void FixGestureConflict() {
-            if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
-                // No customized gesture controller
-                return;
-            }
-            var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
-
-            var gestureContainsTransform = gesture.GetClips()
-                .SelectMany(clip => clip.GetAllBindings())
-                .Any(binding => binding.type == typeof(Transform));
-
-            var activateGestureToFxTransfer = gestureContainsTransform || DoesFxControlHands();
-            if (!activateGestureToFxTransfer) {
-                return;
-            }
-
-            var fx = manager.GetFx();
-            fx.TakeOwnershipOf(gesture, putOnTop: true);
         }
 
         /**

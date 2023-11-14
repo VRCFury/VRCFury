@@ -33,22 +33,21 @@ namespace VF.Feature.Base {
         ApplyRestState2,
 
         Default,
-        
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
-        
+        // Needs to run after any builders have added their "disable blinking" models (gesture builders mostly)
+        Blinking,
+        // Needs to run after all possible toggles have been created and applied
+        CollectToggleExclusiveTags,
+        // Needs to run before ArmatureLinkBuilder, which reads active state of objects
+        ApplyRestState3,
+
         // Needs to happen after builders have scanned their prop children objects for any purpose (since this action
         // may move objects out of the props and onto the avatar base). One example is the FullController which
         // scans the prop children for contact receivers.
         ArmatureLinkBuilder,
         ShowInFirstPersonBuilder,
-        
-        // Needs to run after all possible toggles have been created and applied
-        CollectToggleExclusiveTags,
-        
-        // Needs to run after any builders have added their "disable blinking" models (gesture builders mostly)
-        Blinking,
-        
+
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix,
         AnchorOverrideFix,
@@ -69,11 +68,11 @@ namespace VF.Feature.Base {
         FixTouchingContacts,
 
         // Needs to run after everything else is done messing with rest state
-        ApplyRestState3,
         ApplyToggleRestingState,
         ApplyRestState4,
 
         // Finalize Controllers
+        FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
         RecordAllDefaults,
