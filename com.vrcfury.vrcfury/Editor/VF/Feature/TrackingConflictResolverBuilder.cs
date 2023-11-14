@@ -87,6 +87,8 @@ namespace VF.Feature {
                         bool addTransitionFromIdle = false,
                         bool checkAlreadyActive = true
                     ) {
+                        if (types.Count == 0) return;
+
                         var state = layer.NewState($"{stateName} - {modeName}");
                         var triggerWhen = VFCondition.All(types.Select(type => mutator(whenAnimatedDict[type])));
                         if (checkAlreadyActive) {
