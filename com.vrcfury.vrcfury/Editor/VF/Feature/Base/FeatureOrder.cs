@@ -41,6 +41,7 @@ namespace VF.Feature.Base {
         // may move objects out of the props and onto the avatar base). One example is the FullController which
         // scans the prop children for contact receivers.
         ArmatureLinkBuilder,
+        ShowInFirstPersonBuilder,
         
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
