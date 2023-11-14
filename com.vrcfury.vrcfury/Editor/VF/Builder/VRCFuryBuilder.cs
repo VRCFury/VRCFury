@@ -133,7 +133,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(DefaultAdditiveLayerFixBuilder));
         AddBuilder(typeof(FixWriteDefaultsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
-        AddBuilder(typeof(ControllerConflictBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
         AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
@@ -144,7 +143,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
         AddBuilder(typeof(RestingStateBuilder));
-        AddBuilder(typeof(PullMusclesOutOfFxBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
         AddBuilder(typeof(FixEmptyMotionBuilder));
 

@@ -9,7 +9,6 @@ using VF.Injector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
@@ -19,6 +18,7 @@ namespace VF.Service {
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
@@ -42,9 +42,8 @@ namespace VF.Service {
 
             var firstClip = state.actions
                 .OfType<AnimationClipAction>()
-                .Select(action => action.clip)
-                .FirstOrDefault()
-                .Get();
+                .Select(action => action.clip.Get())
+                .FirstOrDefault(clip => clip != null);
             if (firstClip) {
                 var copy = MutableManager.CopyRecursive(firstClip);
                 copy.Rewrite(rewriter);
@@ -221,6 +220,16 @@ namespace VF.Service {
 
             if (applyOffClip) {
                 restingState.ApplyClipToRestingState(offClip);
+            }
+
+            // We don't allow proxy clips in loaded animation clips, because it does really
+            // weird things downstream.
+            onClip.CollapseProxyBindings(true);
+
+            if (onClip.GetFloatBindings().Any(b =>
+                    b.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.Other)) {
+                var trigger = fullBodyEmoteService.AddClip(onClip);
+                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
             }
 
             return onClip;

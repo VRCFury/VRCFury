@@ -8,44 +8,6 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder {
     public class PhysboneUtils {
-        public class AffectedTransforms {
-            public readonly List<Transform> mayRotate = new List<Transform>();
-            public readonly List<Transform> mayMove = new List<Transform>();
-        }
-        public static AffectedTransforms GetAffectedTransforms(VRCPhysBoneBase physBone) {
-            var output = new AffectedTransforms();
-
-            bool IsIgnored(Transform transform) =>
-                physBone.ignoreTransforms.Any(ignored => ignored != null && transform.IsChildOf(ignored));
-
-            var stack = new Stack<VFGameObject>();
-            stack.Push(physBone.GetRootTransform());
-            while (stack.Count > 0) {
-                var t = stack.Pop();
-                if (IsIgnored(t)) continue;
-
-                var nonIgnoredChildren = t.Children()
-                    .Where(child => !IsIgnored(child))
-                    .ToArray();
-
-                if (nonIgnoredChildren.Length > 1 && physBone.multiChildType == VRCPhysBoneBase.MultiChildType.Ignore) {
-                    foreach (var c in nonIgnoredChildren) {
-                        stack.Push(c);
-                    }
-                } else {
-                    output.mayRotate.Add(t);
-                    var allChildren = t.GetSelfAndAllChildren()
-                        .Where(o => o != t)
-                        .Select(o => o.transform)
-                        .ToArray();
-                    output.mayRotate.AddRange(allChildren);
-                    output.mayMove.AddRange(allChildren);
-                }
-            }
-
-            return output;
-        }
-        
         public static void RemoveFromPhysbones(VFGameObject obj, bool force = false) {
             if (!force && ContainsBonesUsedExternally(obj)) {
                 return;
