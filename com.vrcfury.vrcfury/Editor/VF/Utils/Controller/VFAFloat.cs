@@ -18,6 +18,10 @@ namespace VF.Utils.Controller {
             return IsGreaterThan(num).Not();
         }
 
+        public override VFCondition IsFalse() {
+            return IsLessThanOrEquals(0);
+        }
+
         public float GetDefault() {
             return param.defaultFloat;
         }

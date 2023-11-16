@@ -10,6 +10,17 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FinalizeController)]
         public void Apply() {
 #if ! VRC_NEW_PUBLIC_SDK
+            // Old VRCSDK didn't apply these fixes itself after running postprocessor
+            ApplyFixes();
+#else
+            // When in play mode, the VRCSDK isn't involved, so we have to run the fixes ourself
+            if (Application.isPlaying) {
+                ApplyFixes();
+            }
+#endif
+        }
+        
+        private void ApplyFixes() {
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
 
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
@@ -58,7 +69,6 @@ namespace VF.Feature {
                 }
             }
             VRCFuryEditorUtils.MarkDirty(avatar);
-#endif
         }
     }
 }

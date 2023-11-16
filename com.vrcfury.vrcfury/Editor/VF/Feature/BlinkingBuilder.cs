@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine.UIElements;
@@ -14,17 +16,10 @@ namespace VF.Feature {
 
 public class BlinkingBuilder : FeatureBuilder<Blinking> {
     [VFAutowired] private readonly ActionClipService actionClipService;
-    
-    /** Adding this feature to the build will disable blinking when the param is true */
-    [NoBuilder]
-    public class BlinkingPrevention : FeatureModel {
-        public VFABool param;
-    }
+    [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
 
-    [FeatureBuilderAction(FeatureOrder.Blinking)]
+    [FeatureBuilderAction]
     public void Apply() {
-        if (!StateExists(model.state)) return;
-
         var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
         avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
 
@@ -79,11 +74,13 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             idle.TransitionsTo(waitTrue).When(blinkTriggerSynced.IsTrue());
             waitFalse.TransitionsTo(checkActive).When(blinkTriggerSynced.IsTrue());
             waitTrue.TransitionsTo(checkActive).When(blinkTriggerSynced.IsFalse());
-            
-            foreach (var prevention in allFeaturesInRun.OfType<BlinkingPrevention>()) {
-                checkActive.TransitionsTo(idle).When(prevention.param.IsTrue());
-            }
-            checkActive.TransitionsTo(blinkStart).When(fx.Always());
+
+            trackingConflictResolverBuilder.WhenCollected(() => {
+                foreach (var inhibitorParam in trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingEyes)) {
+                    checkActive.TransitionsTo(idle).When(inhibitorParam.IsGreaterThan(0));
+                }
+                checkActive.TransitionsTo(blinkStart).When(fx.Always());
+            });
             blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
             if (holdDuration > 0) {
                 var hold = layer.NewState("Hold").WithAnimation(blinkClip).Move(blink, 1, 0);

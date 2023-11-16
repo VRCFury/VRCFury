@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Model.StateAction;
 using VF.Upgradeable;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 // Notes for the future:
 // Don't ever remove a class -- it will break the entire list of SerializedReferences that contained it
@@ -235,7 +237,7 @@ namespace VF.Model.Feature {
     [Serializable]
     public class Toggle : LegacyFeatureModel2 {
         public string name;
-        public State state;
+        public State state = new State();
         public bool saved;
         public bool slider;
         public bool securityEnabled;
@@ -244,7 +246,7 @@ namespace VF.Model.Feature {
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
-        public List<GameObject> resetPhysbones = new List<GameObject>();
+        [Obsolete] public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
@@ -272,6 +274,26 @@ namespace VF.Model.Feature {
         public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
             // TODO
+        }
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                if (resetPhysbones != null) {
+                    foreach (var obj in resetPhysbones) {
+                        if (obj == null) continue;
+                        var physBone = obj.GetComponent<VRCPhysBone>();
+                        if (physBone == null) continue;
+                        state.actions.Add(new ResetPhysboneAction { physBone = physBone });
+                    }
+                }
+            }
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
         }
     }
 
@@ -558,12 +580,12 @@ namespace VF.Model.Feature {
         public List<Gesture> gestures = new List<Gesture>();
         
         [Serializable]
-        public class Gesture {
+        public class Gesture : VrcfUpgradeable {
             public Hand hand;
             public HandSign sign;
             public HandSign comboSign;
-            public State state;
-            public bool disableBlinking;
+            public State state = new State();
+            [Obsolete] public bool disableBlinking;
             public bool customTransitionTime;
             public float transitionTime = 0;
             public bool enableLockMenuItem;
@@ -573,6 +595,21 @@ namespace VF.Model.Feature {
             public bool enableWeight;
             
             public bool ResetMePlease2;
+            
+            public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+                if (fromVersion < 1) {
+                    if (disableBlinking && !state.actions.Any(a => a is BlockBlinkingAction)) {
+                        state.actions.Add(new BlockBlinkingAction());
+                    }
+                }
+                return false;
+#pragma warning restore 0612
+            }
+
+            public override int GetLatestVersion() {
+                return 1;
+            }
         }
 
         public enum Hand {
@@ -724,6 +761,7 @@ namespace VF.Model.Feature {
         public GuidTexture2d menuIcon;
         public string menuPath;
         public bool enableLightlessToggle2 = false;
+        public bool saveSockets = false;
     }
 
     [Serializable]

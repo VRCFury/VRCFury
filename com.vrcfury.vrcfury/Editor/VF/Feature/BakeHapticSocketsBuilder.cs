@@ -36,6 +36,7 @@ namespace VF.Feature {
         public void Apply() {
             var fx = GetFx();
             var usedNames = new List<string>();
+            var saved = spsOptions.GetOptions().saveSockets;
 
             var enableAuto = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
                 .Where(o => o.addMenuItem && o.enableAuto)
@@ -44,7 +45,7 @@ namespace VF.Feature {
             VFABool autoOn = null;
             AnimationClip autoOnClip = null;
             if (enableAuto) {
-                autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false);
+                autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false, saved: saved);
                 manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
@@ -61,7 +62,7 @@ namespace VF.Feature {
                 .Length >= 1;
             VFABool stealthOn = null;
             if (enableStealth) {
-                stealthOn = fx.NewBool("stealth", synced: true);
+                stealthOn = fx.NewBool("stealth", synced: true, saved: saved);
                 manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
@@ -71,7 +72,7 @@ namespace VF.Feature {
                 .Length >= 2;
             VFABool multiOn = null;
             if (enableMulti) {
-                multiOn = fx.NewBool("multi", synced: true, networkSynced: false);
+                multiOn = fx.NewBool("multi", synced: true, networkSynced: false, saved: saved);
                 var multiFolder = $"{spsOptions.GetOptionsPath()}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active sockets";
                 manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use SPS or TPS - NO DPS!");
@@ -180,7 +181,7 @@ namespace VF.Feature {
                             clipBuilder.OneFrame(onRemoteClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
                         }
 
-                        var holeOn = fx.NewBool(name, synced: true);
+                        var holeOn = fx.NewBool(name, synced: true, saved: saved);
                         var icon = socket.menuIcon?.Get();
                         manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", holeOn, icon: icon);
 
