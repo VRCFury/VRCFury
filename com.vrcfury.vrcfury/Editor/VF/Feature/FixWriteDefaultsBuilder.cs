@@ -93,6 +93,8 @@ namespace VF.Feature {
                     var useWriteDefaultsForLayer = settings.useWriteDefaults;
                     useWriteDefaultsForLayer |= new AnimatorIterator.Trees().From(layer)
                         .Any(tree => tree.blendType == BlendTreeType.Direct);
+                    useWriteDefaultsForLayer |= layer.blendingMode == AnimatorLayerBlendingMode.Additive
+                        || controller.GetType() == VRCAvatarDescriptor.AnimLayerType.Additive;
 
                     foreach (var state in new AnimatorIterator.States().From(layer)) {
                         // Avoid calling this if not needed, since it internally invalidates the controller cache every time
@@ -194,7 +196,8 @@ namespace VF.Feature {
             public List<string> offStates = new List<string>();
             public List<string> directOnStates = new List<string>();
             public List<string> directOffStates = new List<string>();
-            public List<string> additiveLayers = new List<string>();
+            public List<string> additiveOnStates = new List<string>();
+            public List<string> additiveOffStates = new List<string>();
         }
 
         public class DetectionResults {
@@ -218,18 +221,16 @@ namespace VF.Feature {
                     var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
                     if (!ignore) {
                         foreach (var state in new AnimatorIterator.States().From(layer)) {
-                            var hasDirect = new AnimatorIterator.Trees().From(state)
-                                .Any(tree => tree.blendType == BlendTreeType.Direct);
-
-                            var list = hasDirect
-                                ? (state.writeDefaultValues ? info.directOnStates : info.directOffStates)
-                                : (state.writeDefaultValues ? info.onStates : info.offStates);
+                            List<string> list;
+                            if (layer.blendingMode == AnimatorLayerBlendingMode.Additive || type == VRCAvatarDescriptor.AnimLayerType.Additive) {
+                                list = state.writeDefaultValues ? info.additiveOnStates : info.additiveOffStates;
+                            } else if (new AnimatorIterator.Trees().From(state).Any(tree => tree.blendType == BlendTreeType.Direct)) {
+                                list = state.writeDefaultValues ? info.directOnStates : info.directOffStates;
+                            } else {
+                                list = state.writeDefaultValues ? info.onStates : info.offStates;
+                            }
                             list.Add(layer.name + " | " + state.name);
                         }
-                    }
-                    
-                    if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
-                        info.additiveLayers.Add(layer.name);
                     }
                 }
 
@@ -243,7 +244,8 @@ namespace VF.Feature {
                 if (info.offStates.Count > 0) entries.Add(info.offStates.Count + " off");
                 if (info.directOnStates.Count > 0) entries.Add(info.directOnStates.Count + " direct-on");
                 if (info.directOffStates.Count > 0) entries.Add(info.directOffStates.Count + " direct-off");
-                if (info.additiveLayers.Count > 0) entries.Add(info.additiveLayers.Count + " additive");
+                if (info.additiveOnStates.Count > 0) entries.Add(info.additiveOnStates.Count + " additive-on");
+                if (info.additiveOffStates.Count > 0) entries.Add(info.additiveOffStates.Count + " additive-off");
                 if (entries.Count > 0) {
                     debugList.Add($"{info.type}:{string.Join("|",entries)}");
                 }
@@ -256,6 +258,7 @@ namespace VF.Feature {
             var onStates = Collect(info => info.onStates);
             var offStates = Collect(info => info.offStates);
             var directOffStates = Collect(info => info.directOffStates);
+            var additiveOffStates = Collect(info => info.additiveOffStates);
 
             var fxInfo = controllerInfos.Find(i => i.type == VRCAvatarDescriptor.AnimLayerType.FX);
             bool shouldBeOnIfWeAreNotInControl;
@@ -267,7 +270,7 @@ namespace VF.Feature {
 
             var shouldBeOnIfWeAreInControl = shouldBeOnIfWeAreNotInControl;
             
-            var weirdStates = (shouldBeOnIfWeAreNotInControl ? offStates : onStates).Concat(directOffStates).ToList();
+            var weirdStates = (shouldBeOnIfWeAreNotInControl ? offStates : onStates).Concat(directOffStates).Concat(additiveOffStates).ToList();
             var broken = weirdStates.Count > 0;
 
             return new DetectionResults {
