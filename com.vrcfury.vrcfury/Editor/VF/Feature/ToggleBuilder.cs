@@ -167,6 +167,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         } else if (useInt) {
            if (intTarget == -1) {
                 var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+                exclusiveParam = numParam;
                 onCase = numParam.IsNotEqualTo(0);
             } else {
                 var boolParam = fx.NewBool(paramName, synced: false, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
@@ -197,7 +198,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                             value: intTarget
                         );
                     }
-
                 }
             }
         } else {
@@ -231,7 +231,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         } else {
             Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut);
         }
-
     }
 
     private void Apply(
