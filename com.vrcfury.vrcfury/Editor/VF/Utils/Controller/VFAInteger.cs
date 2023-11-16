@@ -17,5 +17,9 @@ namespace VF.Utils.Controller {
         public VFCondition IsLessThan(float num) {
             return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.Less, parameter = Name(), threshold = num });
         }
+
+        public override VFCondition IsFalse() {
+            return IsEqualTo(0);
+        }
     }
 }

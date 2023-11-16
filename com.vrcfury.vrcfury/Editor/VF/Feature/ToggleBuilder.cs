@@ -23,7 +23,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly PhysboneResetService physboneResetService;
 
     private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
-    private VFABool param;
+    private VFAParam exclusiveParam;
     private AnimationClip restingClip;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
@@ -52,8 +52,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return new HashSet<string>(); 
     }
 
-    public VFABool GetParam() {
-        return param;
+    public VFAParam GetExclusiveParam() {
+        return exclusiveParam;
     }
 
     private (string,bool) GetParamName() {
@@ -66,53 +66,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (model.name, model.usePrefixOnParam);
     }
 
-    private void CreateSlider(bool synced) {
-        var fx = GetFx();
-        var layerName = model.name;
-        var layer = fx.NewLayer(layerName);
-
-        var (paramName, usePrefixOnParam) = GetParamName();
-
-        var off = layer.NewState("Off");
-        var on = layer.NewState("On");
-        var x = fx.NewFloat(
-            paramName,
-            synced: synced,
-            saved: model.saved,
-            def: model.defaultOn ? model.defaultSliderValue : 0,
-            usePrefix: usePrefixOnParam
-        );
-
-        var hasTitle = !string.IsNullOrEmpty(model.name);
-        var hasIcon = model.enableIcon && model.icon?.Get() != null;
-        if (model.addMenuItem && (hasTitle || hasIcon)) {
-            manager.GetMenu().NewMenuSlider(
-                model.name,
-                x,
-                icon: model.enableIcon ? model.icon?.Get() : null
-            );
-        }
-
-        var clip = actionClipService.LoadState("On", model.state);
-        if (ClipBuilderService.IsStaticMotion(clip)) {
-            var tree = fx.NewBlendTree("On Tree");
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.useAutomaticThresholds = false;
-            tree.blendParameter = x.Name();
-            tree.AddChild(fx.GetEmptyClip(), 0);
-            tree.AddChild(clip, 1);
-            on.WithAnimation(tree);
-        } else {
-            on.WithAnimation(clip).MotionTime(x);
-        }
-
-        var isOn = x.IsGreaterThan(0);
-        off.TransitionsTo(on).When(isOn);
-        on.TransitionsTo(off).When(isOn.Not());
-    }
-
     [FeatureBuilderAction]
     public void Apply() {
+        var fx = GetFx();
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
@@ -122,9 +78,50 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             synced = false;
         }
 
+        var (paramName, usePrefixOnParam) = GetParamName();
+        VFCondition onCase;
+        VFAFloat weight = null;
         if (model.slider) {
-            CreateSlider(synced);
-            return;
+            var param = fx.NewFloat(
+                paramName,
+                synced: synced,
+                saved: model.saved,
+                def: model.defaultOn ? model.defaultSliderValue : 0,
+                usePrefix: usePrefixOnParam
+            );
+            exclusiveParam = param;
+            onCase = param.IsGreaterThan(0);
+            weight = param;
+            if (addMenuItem) {
+                manager.GetMenu().NewMenuSlider(
+                    model.name,
+                    param,
+                    icon: model.enableIcon ? model.icon?.Get() : null
+                );
+            }
+        } else if (model.useInt) {
+            var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+            exclusiveParam = param;
+            onCase = param.IsNotEqualTo(0);
+        } else {
+            var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            exclusiveParam = param;
+            onCase = param.IsTrue();
+            if (addMenuItem) {
+                if (model.holdButton) {
+                    manager.GetMenu().NewMenuButton(
+                        model.name,
+                        param,
+                        icon: model.icon?.Get()
+                    );
+                } else {
+                    manager.GetMenu().NewMenuToggle(
+                        model.name,
+                        param,
+                        icon: model.icon?.Get()
+                    );
+                }
+            }
         }
 
         var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
@@ -133,43 +130,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
         if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
 
-        var fx = GetFx();
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
 
-        var (paramName, usePrefixOnParam) = GetParamName();
-        VFCondition onCase;
-        if (model.useInt) {
-            var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-            onCase = numParam.IsNotEqualTo(0);
-        } else {
-            var boolParam = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-            param = boolParam;
-            onCase = boolParam.IsTrue();
-        }
-
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal), weight, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
         } else {
-            Apply(fx, layer, off, onCase, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-        }
-
-        if (addMenuItem) {
-            if (model.holdButton) {
-                manager.GetMenu().NewMenuButton(
-                    model.name,
-                    param,
-                    icon: model.icon?.Get()
-                );
-            } else {
-                manager.GetMenu().NewMenuToggle(
-                    model.name,
-                    param,
-                    icon: model.icon?.Get()
-                );
-            }
+            Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
         }
     }
 
@@ -178,6 +147,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFLayer layer,
         VFState off,
         VFCondition onCase,
+        VFAFloat weight,
         string onName,
         State action,
         State inAction,
@@ -198,9 +168,22 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         VFState inState;
         VFState onState;
-        VFState outState;
 
-        if (model.hasTransition) {
+        if (weight != null) {
+            inState = onState = layer.NewState(onName);
+            if (ClipBuilderService.IsStaticMotion(clip)) {
+                var tree = fx.NewBlendTree($"{onName} Tree");
+                tree.blendType = BlendTreeType.Simple1D;
+                tree.useAutomaticThresholds = false;
+                tree.blendParameter = weight.Name();
+                tree.AddChild(fx.GetEmptyClip(), 0);
+                tree.AddChild(clip, 1);
+                onState.WithAnimation(clip);
+                onState.WithAnimation(tree);
+            } else {
+                onState.WithAnimation(clip).MotionTime(weight);
+            }
+        } else if (model.hasTransition) {
             var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
 
             // if clip is empty, copy last frame of transition
@@ -221,7 +204,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.simpleOutTransition) outAction = inAction;
         if (model.hasTransition) {
             var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
-            outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
+            var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
             outState.TransitionsToExit().When().WithTransitionExitTime(1);
         } else {
@@ -257,8 +240,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
     }
 
-     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
-     public void ApplyExclusiveTags() {
+    [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
+    public void ApplyExclusiveTags() {
         if (exclusiveTagTriggeringStates.Count == 0) return;
 
         var fx = GetFx();
@@ -271,23 +254,23 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var otherTags = other.GetExclusiveTags();
             var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
             if (conflictsWithOther) {
-                var otherParam = other.GetParam();
+                var otherParam = other.GetExclusiveParam();
                 if (otherParam != null) {
                     foreach (var state in exclusiveTagTriggeringStates) {
-                        state.Drives(otherParam, false);
+                        state.Drives(otherParam, 0);
                     }
                     allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
                 }
             }
         }
 
-        if (model.exclusiveOffState && param != null) {
+        if (model.exclusiveOffState && exclusiveParam != null) {
             var layer = fx.NewLayer(model.name + " - Off Trigger");
             var off = layer.NewState("Idle");
             var on = layer.NewState("Trigger");
             off.TransitionsTo(on).When(allOthersOffCondition);
-            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(param.IsFalse()));
-            on.Drives(param, true);
+            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(exclusiveParam.IsFalse()));
+            on.Drives(exclusiveParam, 1);
         }
     }
 
