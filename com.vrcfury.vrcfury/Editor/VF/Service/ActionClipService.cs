@@ -26,7 +26,19 @@ namespace VF.Service {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
 
-            if (state == null || state.actions.Count == 0) {
+            if (state == null) {
+                return avatarManager.GetFx().GetEmptyClip();
+            }
+
+            var actions = state.actions.Where(action => {
+                if (action.desktopActive || action.androidActive) {
+                    var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
+                    if (isAndroid && !action.androidActive) return false;
+                    if (!isAndroid && !action.desktopActive) return false;
+                }
+                return true;
+            }).ToArray();
+            if (actions.Length == 0) {
                 return avatarManager.GetFx().GetEmptyClip();
             }
 
@@ -42,7 +54,7 @@ namespace VF.Service {
             var offClip = new AnimationClip();
             var onClip = fx.NewClip(name);
 
-            var firstClip = state.actions
+            var firstClip = actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip.Get())
                 .FirstOrDefault(clip => clip != null);
@@ -54,7 +66,7 @@ namespace VF.Service {
                 onClip.name = nameBak;
             }
 
-            foreach (var action in state.actions) {
+            foreach (var action in actions) {
                 switch (action) {
                     case FlipbookAction flipbook:
                         if (flipbook.obj != null) {

@@ -7,8 +7,10 @@ using VF.Upgradeable;
 namespace VF.Model.StateAction {
     [Serializable]
     public class Action : VrcfUpgradeable {
+        public bool desktopActive = false;
+        public bool androidActive = false;
     }
-    
+
     [Serializable]
     public class ObjectToggleAction : Action {
         public GameObject obj;
