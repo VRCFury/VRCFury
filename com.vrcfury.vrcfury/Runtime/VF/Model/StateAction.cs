@@ -95,5 +95,9 @@ namespace VF.Model.StateAction {
         public GameObject obj;
         public float scale = 1;
     }
+    
+    [Serializable]
+    public class BlockBlinkingAction : Action {
+    }
 
 }

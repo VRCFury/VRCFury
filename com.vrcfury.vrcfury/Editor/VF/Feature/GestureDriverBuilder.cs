@@ -116,13 +116,6 @@ namespace VF.Feature {
                 }
             }
 
-            if (gesture.disableBlinking) {
-                var disableBlinkParam = fx.NewBool(uid + "_disableBlink");
-                off.Drives(disableBlinkParam, false);
-                on.Drives(disableBlinkParam, true);
-                addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
-            }
-
             off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
         }
@@ -197,7 +190,6 @@ namespace VF.Feature {
 
             wrapper.Add(VRCFuryStateEditor.render(gesture.FindPropertyRelative("state")));
 
-            var disableBlinkProp = gesture.FindPropertyRelative("disableBlinking");
             var customTransitionTimeProp = gesture.FindPropertyRelative("customTransitionTime");
             var transitionTimeProp = gesture.FindPropertyRelative("transitionTime");
             var enableLockMenuItemProp = gesture.FindPropertyRelative("enableLockMenuItem");
@@ -208,10 +200,6 @@ namespace VF.Feature {
 
             var button = VRCFuryEditorUtils.Button("Options", () => {
                 var advMenu = new GenericMenu();
-                advMenu.AddItem(new GUIContent("Disable blinking when active"), disableBlinkProp.boolValue, () => {
-                    disableBlinkProp.boolValue = !disableBlinkProp.boolValue;
-                    gesture.serializedObject.ApplyModifiedProperties();
-                });
                 advMenu.AddItem(new GUIContent("Customize transition time"), customTransitionTimeProp.boolValue, () => {
                     customTransitionTimeProp.boolValue = !customTransitionTimeProp.boolValue;
                     gesture.serializedObject.ApplyModifiedProperties();
@@ -237,13 +225,12 @@ namespace VF.Feature {
             
             wrapper.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var w = new VisualElement();
-                if (disableBlinkProp.boolValue) w.Add(VRCFuryEditorUtils.WrappedLabel("Blinking disabled when active"));
                 if (customTransitionTimeProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(transitionTimeProp, "Custom transition time (seconds)"));
                 if (enableLockMenuItemProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(lockMenuItemProp, "Lock menu item path"));
                 if (enableExclusiveTagProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(exclusiveTagProp, "Exclusive Tag"));
                 if (enableWeightProp.boolValue) w.Add(VRCFuryEditorUtils.WrappedLabel("Use gesture weight (fist only)"));
                 return w;
-            }, disableBlinkProp, customTransitionTimeProp, enableLockMenuItemProp, enableExclusiveTagProp, enableWeightProp));
+            }, customTransitionTimeProp, enableLockMenuItemProp, enableExclusiveTagProp, enableWeightProp));
             
             return wrapper;
         }

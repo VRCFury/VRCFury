@@ -14,11 +14,13 @@ namespace VF.Service {
     /** Turns VRCFury actions into clips */
     [VFService]
     public class ActionClipService {
+        [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MutableManager mutableManager;
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
+        [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
@@ -213,6 +215,11 @@ namespace VF.Service {
                             fxFloatAction.name
                         );
                         onClip.SetConstant(binding, fxFloatAction.value);
+                        break;
+                    }
+                    case BlockBlinkingAction blockBlinkingAction: {
+                        var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingEyes);
+                        onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
                         break;
                     }
                 }

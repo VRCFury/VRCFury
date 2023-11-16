@@ -41,6 +41,8 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SpsOnAction()); });
             menu.AddItem(new GUIContent("Set an FX Float"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FxFloatAction()); });
+            menu.AddItem(new GUIContent("Disable Blinking"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlockBlinkingAction()); });
             menu.ShowAsContext();
         }
 

@@ -557,6 +557,11 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 return row;
             }
+            case nameof(BlockBlinkingAction): {
+                return new Label {
+                    text = "Disable Blinking"
+                };
+            }
         }
 
         return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");

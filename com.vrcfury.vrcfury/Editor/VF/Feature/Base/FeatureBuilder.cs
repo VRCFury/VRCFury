@@ -67,10 +67,6 @@ namespace VF.Feature.Base {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
 
-        protected static bool StateExists(State state) {
-            return state != null;
-        }
-
         public virtual string GetClipPrefix() {
             return null;
         }

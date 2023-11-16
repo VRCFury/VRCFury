@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Model.StateAction;
@@ -556,12 +557,12 @@ namespace VF.Model.Feature {
         public List<Gesture> gestures = new List<Gesture>();
         
         [Serializable]
-        public class Gesture {
+        public class Gesture : VrcfUpgradeable {
             public Hand hand;
             public HandSign sign;
             public HandSign comboSign;
-            public State state;
-            public bool disableBlinking;
+            public State state = new State();
+            [Obsolete] public bool disableBlinking;
             public bool customTransitionTime;
             public float transitionTime = 0;
             public bool enableLockMenuItem;
@@ -571,6 +572,21 @@ namespace VF.Model.Feature {
             public bool enableWeight;
             
             public bool ResetMePlease2;
+            
+            public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+                if (fromVersion < 1) {
+                    if (disableBlinking && !state.actions.Any(a => a is BlockBlinkingAction)) {
+                        state.actions.Add(new BlockBlinkingAction());
+                    }
+                }
+                return false;
+#pragma warning restore 0612
+            }
+
+            public override int GetLatestVersion() {
+                return 1;
+            }
         }
 
         public enum Hand {

@@ -1,34 +1,37 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
+using VF.Model.StateAction;
+using VF.Service;
 
 namespace VF.Feature {
 
 public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
+    [VFAutowired] private ActionClipService actionClipService;
+    
     [FeatureBuilderAction(FeatureOrder.SenkyGestureDriver)]
     public void Apply() {
         var feature = new GestureDriver {
             gestures = {
                 new GestureDriver.Gesture {
                     sign = GestureDriver.HandSign.THUMBSUP,
-                    state = model.eyesHappy,
-                    disableBlinking = true,
+                    state = WithBlinkingDisabled(model.eyesHappy),
                     lockMenuItem = "Emote Lock/Happy",
                     exclusiveTag = "eyes",
                 },
                 new GestureDriver.Gesture {
                     sign = GestureDriver.HandSign.HANDGUN,
-                    state = model.eyesSad,
-                    disableBlinking = true,
+                    state = WithBlinkingDisabled(model.eyesSad),
                     lockMenuItem = "Emote Lock/Sad",
                     exclusiveTag = "eyes",
                 },
                 new GestureDriver.Gesture {
                     sign = GestureDriver.HandSign.ROCKNROLL,
-                    state = model.eyesAngry,
-                    disableBlinking = true,
+                    state = WithBlinkingDisabled(model.eyesAngry),
                     lockMenuItem = "Emote Lock/Angry",
                     exclusiveTag = "eyes",
                 },
@@ -82,6 +85,16 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         }
 
         addOtherFeature(feature);
+    }
+
+    private State WithBlinkingDisabled(State input) {
+        var clip = actionClipService.LoadState("senkygesture", input);
+        return new State() {
+            actions = {
+                new AnimationClipAction { clip = clip },
+                new BlockBlinkingAction()
+            }
+        };
     }
 
     public override string GetEditorTitle() {
