@@ -474,6 +474,7 @@ namespace VF.Builder.Haptics {
                 if (path.StartsWith("/")) path = path.Substring(1);
                 string fullPath;
                 var attempts = new List<string>();
+                var isLib = false;
                 if (filePath == null) {
                     fullPath = path;
                     attempts.Add(fullPath);
@@ -481,14 +482,16 @@ namespace VF.Builder.Haptics {
                     fullPath = Path.Combine(filePath, "..", path);
                     attempts.Add(fullPath);
                 }
-                if (includeLibraryFiles && !path.Contains("..") && !File.Exists(fullPath)) {
+                if (!path.Contains("..") && !File.Exists(fullPath)) {
                     fullPath = Path.Combine(EditorApplication.applicationContentsPath, "CGIncludes", path);
                     attempts.Add(fullPath);
+                    isLib = true;
                 }
                 if (!File.Exists(fullPath)) {
-                    if (includeLibraryFiles) {
-                        Debug.LogWarning("Failed to find include at " + string.Join(" or ", fullPath));
-                    }
+                    Debug.LogWarning("Failed to find include at " + string.Join(" or ", attempts));
+                    return match.Groups[0].ToString();
+                }
+                if (!includeLibraryFiles && isLib) {
                     return match.Groups[0].ToString();
                 }
                 return "\n" + with(fullPath) + "\n";
