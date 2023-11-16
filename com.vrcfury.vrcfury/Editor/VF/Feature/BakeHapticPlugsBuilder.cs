@@ -163,12 +163,16 @@ namespace VF.Feature {
                                 var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
                                     "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
                                     party, useHipAvoidance: plug.useHipAvoidance);
-                            
+                                var isBidirectional = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                                    "IsBidirectional", 3f, new[] { HapticUtils.TagSpsSocketIsBidirectional },
+                                    party, useHipAvoidance: plug.useHipAvoidance);
+
                                 foreach (var r in renderers) {
                                     _triangulationService.SendToShader(tri, $"_SPS_Tri_{prefix}_Root", r.renderer);
                                     _triangulationService.SendToShader(triFront, $"_SPS_Tri_{prefix}_Front", r.renderer);
                                     _triangulationService.SendParamToShader(isHole, $"_SPS_Tri_{prefix}_IsHole", r.renderer);
                                     _triangulationService.SendParamToShader(isRing, $"_SPS_Tri_{prefix}_IsRing", r.renderer);
+                                    _triangulationService.SendParamToShader(isBidirectional, $"_SPS_Tri_{prefix}_IsBidirectional", r.renderer);
                                 }
                             }
                         }

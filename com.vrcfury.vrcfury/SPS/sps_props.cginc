@@ -36,6 +36,7 @@ _SPS_Tri_Self_Front_Up("_SPS_Tri_Self_Front_Up", Float) = 0
 _SPS_Tri_Self_Front_Right("_SPS_Tri_Self_Front_Right", Float) = 0
 _SPS_Tri_Self_IsRing("_SPS_Tri_Self_IsRing", Float) = 0
 _SPS_Tri_Self_IsHole("_SPS_Tri_Self_IsHole", Float) = 0
+_SPS_Tri_Self_IsHole("_SPS_Tri_Self_IsBidirectional", Float) = 0
 
 _SPS_Tri_Other_Enabled("_SPS_Tri_Other_Enabled", Float) = 0
 _SPS_Tri_Other_Root_Center("_SPS_Tri_Other_Root_Center", Float) = 0
@@ -48,3 +49,4 @@ _SPS_Tri_Other_Front_Up("_SPS_Tri_Other_Front_Up", Float) = 0
 _SPS_Tri_Other_Front_Right("_SPS_Tri_Other_Front_Right", Float) = 0
 _SPS_Tri_Other_IsRing("_SPS_Tri_Other_IsRing", Float) = 0
 _SPS_Tri_Other_IsHole("_SPS_Tri_Other_IsHole", Float) = 0
+_SPS_Tri_Other_IsHole("_SPS_Tri_Other_IsBidirectional", Float) = 0

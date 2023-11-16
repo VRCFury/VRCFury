@@ -14,7 +14,8 @@
     float _SPS_Tri_##prefix##_Front_Up;\
     float _SPS_Tri_##prefix##_Front_Right;\
     float _SPS_Tri_##prefix##_IsRing;\
-    float _SPS_Tri_##prefix##_IsHole;
+    float _SPS_Tri_##prefix##_IsHole;\
+    float _SPS_Tri_##prefix##_IsBidirectional;
 
 SPS_TRI_DEFINE(Self)
 SPS_TRI_DEFINE(Other)
@@ -31,6 +32,7 @@ struct SpsTriData {
     SpsTriCoords front;
     float isRing;
     float isHole;
+    float isBidirectional;
 };
 
 #define sps_tri_GetCoords(prefix,name) \
@@ -51,6 +53,7 @@ struct SpsTriData {
         name.front = tmpfront; \
         name.isRing = _SPS_Tri_##prefix##_IsRing; \
         name.isHole = _SPS_Tri_##prefix##_IsHole; \
+        name.isBidirectional = _SPS_Tri_##prefix##_IsBidirectional; \
     }
 
 bool sps_tri_isTouching(SpsTriCoords coords) {
@@ -82,6 +85,7 @@ void sps_tri_search(
     inout bool ioFound,
     inout float3 ioRootLocal,
     inout bool ioIsRing,
+    inout bool ioIsReversible,
     inout float3 ioRootNormal,
     inout float4 ioColor
 ) {
@@ -91,12 +95,14 @@ void sps_tri_search(
     const float3 front = sps_tri_triangulate(data.front);
     const bool isRing = data.root.center == data.isRing;
     const bool isHole = data.root.center == data.isHole;
+    const bool isBidirectional = data.root.center == data.isBidirectional;
     if (!isRing && !isHole) return;
 
     if (distance(root, front) > 0.1) return;
     if (ioFound && length(root) >= length(ioRootLocal)) return;
 
     ioIsRing = isRing;
+    ioIsReversible = isBidirectional;
     ioRootLocal = root;
     ioRootNormal = sps_normalize(front - root);
     ioFound = true;
