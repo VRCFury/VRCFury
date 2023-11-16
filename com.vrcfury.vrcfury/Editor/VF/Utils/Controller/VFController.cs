@@ -211,7 +211,7 @@ namespace VF.Utils.Controller {
             bool HasMuscles(VFLayer layer) {
                 return new AnimatorIterator.Clips().From(layer)
                     .SelectMany(clip => clip.GetFloatBindings())
-                    .Any(binding => binding.IsMuscle());
+                    .Any(binding => binding.IsMuscle() || binding.IsProxyBinding());
             }
 
             var baseMask = layer0.mask;

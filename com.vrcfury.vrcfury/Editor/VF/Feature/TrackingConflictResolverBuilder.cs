@@ -19,12 +19,29 @@ namespace VF.Feature {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly DirectBlendTreeService directTreeService;
         [VFAutowired] private readonly MathService mathService;
-        
+
+        private VFMultimap<TrackingControlType, VFAFloat> inhibitors =
+            new VFMultimap<TrackingControlType, VFAFloat>();
+
+        public VFAFloat AddInhibitor(string owner, TrackingControlType type) {
+            var param = manager.GetFx().NewFloat($"TC_{owner}_{type.fieldName}");
+            inhibitors.Put(type, param);
+            return param;
+        }
+
+        private List<Action> whenCollected = new List<Action>();
+        public void WhenCollected(Action a) {
+            whenCollected.Add(a);
+        }
+
+        public IList<VFAFloat> GetInhibitors(TrackingControlType type) {
+            return inhibitors.Get(type);
+        }
+
         [FeatureBuilderAction(FeatureOrder.TrackingConflictResolver)]
         public void Apply() {
 
             var trackingParamsCache = new Dictionary<(string, TrackingControlType), VFAFloat>();
-            var trackingParams = new VFMultimap<TrackingControlType, VFAFloat>();
             var fx = manager.GetFx();
 
             foreach (var controller in manager.GetAllUsedControllers()) {
@@ -37,9 +54,8 @@ namespace VF.Feature {
                                 var value = type.GetValue(trackingControl);
                                 if (value != VRC_AnimatorTrackingControl.TrackingType.NoChange) {
                                     if (!trackingParamsCache.TryGetValue((layerOwner, type), out var param)) {
-                                        param = fx.NewFloat("TC_" + layerOwner + "_" + type.fieldName);
+                                        param = AddInhibitor(layerOwner, type);
                                         trackingParamsCache[(layerOwner, type)] = param;
-                                        trackingParams.Put(type, param);
                                     }
                                     driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
                                         name = param.Name(),
@@ -55,14 +71,18 @@ namespace VF.Feature {
                 }
             }
 
-            var typesUsed = trackingParams.GetKeys().ToArray();
+            foreach (var a in whenCollected) {
+                a();
+            }
+
+            var typesUsed = inhibitors.GetKeys().ToArray();
             if (typesUsed.Length > 0) {
                 var whenAnimatedDict = new Dictionary<TrackingControlType, VFCondition>();
                 {
                     foreach (var type in typesUsed) {
                         var merged = fx.NewFloat("TC_merged_" + type.fieldName);
                         var setter = mathService.MakeSetter(merged, 1);
-                        foreach (var input in trackingParams.Get(type)) {
+                        foreach (var input in inhibitors.Get(type)) {
                             directTreeService.Add(input, setter);
                         }
                         whenAnimatedDict[type] = merged.IsGreaterThan(0.5f);
@@ -87,6 +107,8 @@ namespace VF.Feature {
                         bool addTransitionFromIdle = false,
                         bool checkAlreadyActive = true
                     ) {
+                        if (types.Count == 0) return;
+
                         var state = layer.NewState($"{stateName} - {modeName}");
                         var triggerWhen = VFCondition.All(types.Select(type => mutator(whenAnimatedDict[type])));
                         if (checkAlreadyActive) {
@@ -142,17 +164,29 @@ namespace VF.Feature {
             }
         }
 
+        public static TrackingControlType TrackingHead = new TrackingControlType { fieldName = "trackingHead" };
+        public static TrackingControlType TrackingLeftHand = new TrackingControlType { fieldName = "trackingLeftHand" };
+        public static TrackingControlType TrackingRightHand = new TrackingControlType { fieldName = "trackingRightHand" };
+        public static TrackingControlType TrackingHip = new TrackingControlType { fieldName = "trackingHip" };
+        public static TrackingControlType TrackingLeftFoot = new TrackingControlType { fieldName = "trackingLeftFoot" };
+        public static TrackingControlType TrackingRightFoot = new TrackingControlType { fieldName = "trackingRightFoot" };
+        public static TrackingControlType TrackingLeftFingers = new TrackingControlType { fieldName = "trackingLeftFingers" };
+        public static TrackingControlType TrackingRightFingers = new TrackingControlType { fieldName = "trackingRightFingers" };
+        public static TrackingControlType TrackingEyes = new TrackingControlType { fieldName = "trackingEyes", isFace = true };
+        public static TrackingControlType TrackingMouth = new TrackingControlType { fieldName = "trackingMouth", isFace = true };
+        
+
         public static TrackingControlType[] allTypes = new [] {
-            new TrackingControlType { fieldName = "trackingHead" },
-            new TrackingControlType { fieldName = "trackingLeftHand" },
-            new TrackingControlType { fieldName = "trackingRightHand" },
-            new TrackingControlType { fieldName = "trackingHip" },
-            new TrackingControlType { fieldName = "trackingLeftFoot" },
-            new TrackingControlType { fieldName = "trackingRightFoot" },
-            new TrackingControlType { fieldName = "trackingLeftFingers" },
-            new TrackingControlType { fieldName = "trackingRightFingers" },
-            new TrackingControlType { fieldName = "trackingEyes", isFace = true },
-            new TrackingControlType { fieldName = "trackingMouth", isFace = true}
+            TrackingHead,
+            TrackingLeftHand,
+            TrackingRightHand,
+            TrackingHip,
+            TrackingLeftFoot,
+            TrackingRightFoot,
+            TrackingLeftFingers,
+            TrackingRightFingers,
+            TrackingEyes,
+            TrackingMouth
         };
     }
 }

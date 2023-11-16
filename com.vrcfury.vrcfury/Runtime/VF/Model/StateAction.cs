@@ -3,12 +3,15 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using VF.Component;
 using VF.Upgradeable;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Model.StateAction {
     [Serializable]
     public class Action : VrcfUpgradeable {
+        public bool desktopActive = false;
+        public bool androidActive = false;
     }
-    
+
     [Serializable]
     public class ObjectToggleAction : Action {
         public GameObject obj;
@@ -94,6 +97,15 @@ namespace VF.Model.StateAction {
     public class ScaleAction : Action {
         public GameObject obj;
         public float scale = 1;
+    }
+    
+    [Serializable]
+    public class BlockBlinkingAction : Action {
+    }
+    
+    [Serializable]
+    public class ResetPhysboneAction : Action {
+        public VRCPhysBone physBone;
     }
 
 }
