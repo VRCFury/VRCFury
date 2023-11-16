@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -21,6 +22,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
+        [VFAutowired] private readonly PhysboneResetService physboneResetService;
         
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
@@ -65,6 +67,8 @@ namespace VF.Service {
                 EditorUtility.CopySerialized(copy, onClip);
                 onClip.name = nameBak;
             }
+
+            var physbonesToReset = new HashSet<VFGameObject>();
 
             foreach (var action in actions) {
                 switch (action) {
@@ -234,7 +238,18 @@ namespace VF.Service {
                         onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
                         break;
                     }
+                    case ResetPhysboneAction resetPhysbone: {
+                        if (resetPhysbone.physBone != null) {
+                            physbonesToReset.Add(resetPhysbone.physBone.gameObject);
+                        }
+                        break;
+                    }
                 }
+            }
+
+            if (physbonesToReset.Count > 0) {
+                var param = physboneResetService.CreatePhysBoneResetter(physbonesToReset, name);
+                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
 
             if (applyOffClip) {

@@ -7,6 +7,7 @@ using VF.Model.StateAction;
 using VF.Upgradeable;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 // Notes for the future:
 // Don't ever remove a class -- it will break the entire list of SerializedReferences that contained it
@@ -236,7 +237,7 @@ namespace VF.Model.Feature {
     [Serializable]
     public class Toggle : LegacyFeatureModel2 {
         public string name;
-        public State state;
+        public State state = new State();
         public bool saved;
         public bool slider;
         public bool securityEnabled;
@@ -245,7 +246,7 @@ namespace VF.Model.Feature {
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
-        public List<GameObject> resetPhysbones = new List<GameObject>();
+        [Obsolete] public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
@@ -271,6 +272,26 @@ namespace VF.Model.Feature {
         public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
             // TODO
+        }
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                if (resetPhysbones != null) {
+                    foreach (var obj in resetPhysbones) {
+                        if (obj == null) continue;
+                        var physBone = obj.GetComponent<VRCPhysBone>();
+                        if (physBone == null) continue;
+                        state.actions.Add(new ResetPhysboneAction { physBone = physBone });
+                    }
+                }
+            }
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
         }
     }
 

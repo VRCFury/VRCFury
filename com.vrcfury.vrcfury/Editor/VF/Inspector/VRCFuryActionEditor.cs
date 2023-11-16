@@ -609,6 +609,29 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     text = "Disable Blinking"
                 };
             }
+            case nameof(ResetPhysboneAction): {
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+
+                var label = new Label {
+                    text = "Reset Physbone",
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physBone"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+
+                return row;
+            }
         }
 
         return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");

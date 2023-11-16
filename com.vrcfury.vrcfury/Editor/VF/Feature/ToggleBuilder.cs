@@ -20,7 +20,6 @@ namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
-    [VFAutowired] private readonly PhysboneResetService physboneResetService;
 
     private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
@@ -124,8 +123,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        var physBoneResetter = physboneResetService.CreatePhysBoneResetter(model.resetPhysbones, model.name);
-
         var layerName = model.name;
         if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
         if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
@@ -135,10 +132,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
-            Apply(fx, layer, off, onCase.And(isLocal), weight, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut);
+            Apply(fx, layer, off, onCase.And(isLocal), weight, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut);
         } else {
-            Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut, physBoneResetter);
+            Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut);
         }
     }
 
@@ -151,8 +148,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         string onName,
         State action,
         State inAction,
-        State outAction,
-        VFABool physBoneResetter
+        State outAction
     ) {
         var clip = actionClipService.LoadState(onName, action);
 
@@ -209,11 +205,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             outState.TransitionsToExit().When().WithTransitionExitTime(1);
         } else {
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
-        }
-
-        if (physBoneResetter != null) {
-            off.Drives(physBoneResetter, true);
-            inState.Drives(physBoneResetter, true);
         }
 
         if (model.enableDriveGlobalParam) {
@@ -302,7 +293,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var includeInRestProp = prop.FindPropertyRelative("includeInRest");
         var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
-        var resetPhysboneProp = prop.FindPropertyRelative("resetPhysbones");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
         var separateLocalProp = prop.FindPropertyRelative("separateLocal");
@@ -359,12 +349,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 advMenu.AddItem(new GUIContent("Show in Rest Pose"), includeInRestProp.boolValue, () => {
                     includeInRestProp.boolValue = !includeInRestProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
-
-            if (resetPhysboneProp != null) {
-                advMenu.AddItem(new GUIContent("Add PhysBone to Reset"), false, () => {
-                    VRCFuryEditorUtils.AddToList(resetPhysboneProp);
                 });
             }
 
@@ -430,17 +414,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         });
         button.style.flexGrow = 0;
         flex.Add(button);
-
-        if (resetPhysboneProp != null) {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (resetPhysboneProp.arraySize > 0) {
-                    c.Add(VRCFuryEditorUtils.WrappedLabel("Reset PhysBones:"));
-                    c.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("resetPhysbones")));
-                }
-                return c;
-            }, resetPhysboneProp));
-        }
 
         if (enableExclusiveTagProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {

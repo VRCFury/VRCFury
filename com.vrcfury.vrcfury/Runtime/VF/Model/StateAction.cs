@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using VF.Component;
 using VF.Upgradeable;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Model.StateAction {
     [Serializable]
@@ -100,6 +101,11 @@ namespace VF.Model.StateAction {
     
     [Serializable]
     public class BlockBlinkingAction : Action {
+    }
+    
+    [Serializable]
+    public class ResetPhysboneAction : Action {
+        public VRCPhysBone physBone;
     }
 
 }
