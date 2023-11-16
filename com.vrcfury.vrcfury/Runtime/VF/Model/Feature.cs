@@ -722,6 +722,7 @@ namespace VF.Model.Feature {
         public GuidTexture2d menuIcon;
         public string menuPath;
         public bool enableLightlessToggle2 = false;
+        public bool saveSockets = false;
     }
 
     [Serializable]
