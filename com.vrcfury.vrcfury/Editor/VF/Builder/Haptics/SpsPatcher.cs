@@ -473,15 +473,24 @@ namespace VF.Builder.Haptics {
                 var after = match.Groups[3].ToString();
                 if (path.StartsWith("/")) path = path.Substring(1);
                 string fullPath;
+                var attempts = new List<string>();
                 if (filePath == null) {
                     fullPath = path;
+                    attempts.Add(fullPath);
                 } else {
-                    fullPath = ClipRewriter.Join(Path.GetDirectoryName(filePath).Replace('\\', '/'), path);
+                    fullPath = Path.Combine(filePath, "..", path);
+                    attempts.Add(fullPath);
                 }
                 if (includeLibraryFiles && !path.Contains("..") && !File.Exists(fullPath)) {
-                    fullPath = ClipRewriter.Join(EditorApplication.applicationPath.Replace('\\', '/'), "../Data/CGIncludes/" + path);
+                    fullPath = Path.Combine(EditorApplication.applicationContentsPath, "CGIncludes", path);
+                    attempts.Add(fullPath);
                 }
-                if (!File.Exists(fullPath)) return match.Groups[0].ToString();
+                if (!File.Exists(fullPath)) {
+                    if (includeLibraryFiles) {
+                        Debug.LogWarning("Failed to find include at " + string.Join(" or ", fullPath));
+                    }
+                    return match.Groups[0].ToString();
+                }
                 return "\n" + with(fullPath) + "\n";
             });
         }
