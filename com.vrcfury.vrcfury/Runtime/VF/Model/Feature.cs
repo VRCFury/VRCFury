@@ -251,8 +251,6 @@ namespace VF.Model.Feature {
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
-        public bool hasTransitionTime = false;
-        public float transitionTime = 0;
         public bool hasExitTime = false;
         public bool enableIcon;
         public GuidTexture2d icon;
@@ -263,8 +261,12 @@ namespace VF.Model.Feature {
         public bool hasTransition;
         public State transitionStateIn;
         public State transitionStateOut;
+        public float transitionTimeIn = 0;
+        public float transitionTimeOut = 0;
         public State localTransitionStateIn;
         public State localTransitionStateOut;
+        public float localTransitionTimeIn = 0;
+        public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
         public bool useGlobalParam;
