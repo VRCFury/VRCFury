@@ -61,6 +61,7 @@ For more information, please refer to <https://unlicense.org>
   * Made toggles not add a synchronized parameter when using vrchat built-in parameters
   * Fixed toggles possibly being in the wrong state for one frame upon loading
   * Added ability for toggles to "play to completion"
+  * Added transition time support to Toggles
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
   * Made colliders merge properly within Armature Link (unused)
