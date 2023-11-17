@@ -132,10 +132,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut);
-            Apply(fx, layer, off, onCase.And(isLocal), weight, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+            Apply(fx, layer, off, onCase.And(isLocal), weight, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
         } else {
-            Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut);
+            Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
         }
     }
 
@@ -148,7 +148,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         string onName,
         State action,
         State inAction,
-        State outAction
+        State outAction,
+        float inTime,
+        float outTime
     ) {
         var clip = actionClipService.LoadState(onName, action);
 
@@ -180,32 +182,42 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 onState.WithAnimation(clip).MotionTime(weight);
             }
         } else if (model.hasTransition) {
-            var transitionClipIn = actionClipService.LoadState(onName + " In", inAction);
-
+            var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
                 clip = fx.NewClip(onName);
-                clip.CopyFromLast(transitionClipIn);
+                clip.CopyFromLast(inClip);
+            }
+            var outClip = model.simpleOutTransition ? inClip : actionClipService.LoadState(onName + " Out", outAction);
+            var outSpeed = model.simpleOutTransition ? -1 : 1;
+            
+            // Copy "object enabled" and "material" states to in and out clips if they don't already have them
+            // This is a convenience feature, so that people don't need to turn on objects in their transitions
+            // if it's already on in the main clip.
+            foreach (var (binding,curve) in clip.GetAllCurves()) {
+                if (!curve.IsFloat) {
+                    if (inClip.GetObjectCurve(binding) == null) inClip.SetConstant(binding, curve.GetFirst());
+                    if (outClip.GetObjectCurve(binding) == null) outClip.SetConstant(binding, curve.GetLast());
+                } else if (binding.type == typeof(GameObject)) {
+                    if (inClip.GetFloatCurve(binding) == null) inClip.SetConstant(binding, curve.GetFirst());
+                    if (outClip.GetFloatCurve(binding) == null) outClip.SetConstant(binding, curve.GetLast());
+                }
             }
 
-            inState = layer.NewState(onName + " In").WithAnimation(transitionClipIn);
+            inState = layer.NewState(onName + " In").WithAnimation(inClip);
             onState = layer.NewState(onName).WithAnimation(clip);
-            inState.TransitionsTo(onState).When().WithTransitionExitTime(1);
+            inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.length > 0 ? 1 : -1).WithTransitionDurationSeconds(inTime);
+
+            var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
+            outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.length > 0 ? 1 : -1);
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
-        }
-        exclusiveTagTriggeringStates.Add(inState);
-        off.TransitionsTo(inState).When(onCase);
-
-        if (model.simpleOutTransition) outAction = inAction;
-        if (model.hasTransition) {
-            var transitionClipOut = actionClipService.LoadState(onName + " Out", outAction);
-            var outState = layer.NewState(onName + " Out").WithAnimation(transitionClipOut).Speed(model.simpleOutTransition ? -1 : 1);
-            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
-            outState.TransitionsToExit().When().WithTransitionExitTime(1);
-        } else {
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
         }
+
+        exclusiveTagTriggeringStates.Add(inState);
+        off.TransitionsTo(inState).When(onCase);
 
         if (model.enableDriveGlobalParam) {
             foreach(var p in GetDriveGlobalParams()) {
@@ -299,6 +311,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
         var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
         var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
+        var hasExitTimeProp = prop.FindPropertyRelative("hasExitTime");
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
@@ -396,6 +409,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
+            if (hasExitTimeProp != null)
+            {
+                advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
+                    hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+            }
+
             if (useGlobalParamProp != null) {
                 advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
                     useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
@@ -471,32 +492,40 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
 
-            VisualElement MakeSingle(string tin, string state, string tout) {
+            VisualElement MakeSingle(string tin, string state, string tout, string timeIn, string timeOut) {
                 var single = new VisualElement();
                 if (hasTransitionProp.boolValue) {
                     single.Add(MakeTabbed(
-                        "Transition In:",
+                        "Transition in:",
                         VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tin))
+                    ));
+                    single.Add(MakeTabbed(
+                        "Then blend for this much time:",
+                        VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(timeIn))
                     ));
                     single.Add(MakeTabbed(
                         "Then do this until turned off:",
                         VRCFuryStateEditor.render(prop.FindPropertyRelative(state))
                     ));
+                    single.Add(MakeTabbed(
+                        "Then blend for this much time:",
+                        VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(timeOut))
+                    ));
                     var cout = new VisualElement();
                     cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("simpleOutTransition"), "Transition Out is reverse of Transition In"));
                     if (!simpleOutTransitionProp.boolValue)
                         cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tout)));
-                    single.Add(MakeTabbed("Then transition out:", cout));
+                    single.Add(MakeTabbed("Then play this transition out:", cout));
                 } else {
                     single.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative(state)));
                 }
                 return single;
             }
 
-            var remoteSingle = MakeSingle("transitionStateIn", "state", "transitionStateOut");
+            var remoteSingle = MakeSingle("transitionStateIn", "state", "transitionStateOut", "transitionTimeIn", "transitionTimeOut");
             var c = new VisualElement();
             if (separateLocalProp.boolValue) {
-                var localSingle = MakeSingle("localTransitionStateIn", "localState", "localTransitionStateOut");
+                var localSingle = MakeSingle("localTransitionStateIn", "localState", "localTransitionStateOut", "localTransitionTimeIn", "localTransitionTimeOut");
                 c.Add(MakeTabbed("In local:", localSingle));
                 c.Add(MakeTabbed("In remote:", remoteSingle));
             } else {
@@ -523,6 +552,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     tags.Add("This is the Exclusive Off State");
                 if (holdButtonProp != null && holdButtonProp.boolValue)
                     tags.Add("Hold Button");
+                if (hasExitTimeProp != null && hasExitTimeProp.boolValue)
+                    tags.Add("Run to Completion");
 
                 var row = new VisualElement();
                 row.style.flexWrap = Wrap.Wrap;
@@ -545,7 +576,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             defaultOnProp,
             includeInRestProp,
             exclusiveOffStateProp,
-            holdButtonProp
+            holdButtonProp,
+            hasExitTimeProp
         ));
 
         return content;

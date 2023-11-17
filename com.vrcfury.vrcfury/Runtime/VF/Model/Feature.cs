@@ -261,8 +261,12 @@ namespace VF.Model.Feature {
         public bool hasTransition;
         public State transitionStateIn;
         public State transitionStateOut;
+        public float transitionTimeIn = 0;
+        public float transitionTimeOut = 0;
         public State localTransitionStateIn;
         public State localTransitionStateOut;
+        public float localTransitionTimeIn = 0;
+        public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
         public bool useGlobalParam;
