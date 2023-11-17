@@ -53,7 +53,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return new HashSet<string>(); 
     }
     public string GetPrimaryExclusive() {
-        if (model.slider) return "";
+        if (model.slider || string.IsNullOrEmpty(model.name)) return "";
         if (primaryExclusive == null) {
             string targetTag = "";
             int targetMax = -1;
@@ -63,7 +63,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 foreach (var toggle in allBuildersInRun
                             .OfType<ToggleBuilder>()) {
 
-                    if (!toggle.model.exclusiveOffState && toggle.exclusiveParam is VFABool && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
+                    if (!toggle.model.exclusiveOffState && 
+                        toggle.exclusiveParam is VFABool && 
+                        !toggle.model.slider &&
+                        !string.IsNullOrEmpty(model.name) &&
+                        toggle.GetExclusiveTags().Contains(exclusiveTag)) {
                         tagCount++;
                     }
                 }
