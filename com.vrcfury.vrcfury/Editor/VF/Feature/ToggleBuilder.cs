@@ -282,7 +282,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
-            if (clip == fx.GetEmptyClip()) {
+            if (clip.GetAllBindings().Length == 0) {
                 clip = fx.NewClip(onName);
                 clip.CopyFromLast(inClip);
             }
