@@ -29,7 +29,8 @@ namespace VF.Service {
             var avatarObject = avatarManager.AvatarObject;
 
             if (state == null) {
-                return avatarManager.GetFx().GetEmptyClip();
+                // Don't use fx.GetEmptyClip(), since this clip may be mutated later
+                return new AnimationClip();
             }
 
             var actions = state.actions.Where(action => {
@@ -41,7 +42,7 @@ namespace VF.Service {
                 return true;
             }).ToArray();
             if (actions.Length == 0) {
-                return avatarManager.GetFx().GetEmptyClip();
+                return new AnimationClip();
             }
 
             var rewriter = AnimationRewriter.Combine(
