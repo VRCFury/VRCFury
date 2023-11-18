@@ -29,6 +29,13 @@ namespace VF.Feature {
                             if (type == AnimatorControllerParameterType.Bool ||
                                 type == AnimatorControllerParameterType.Trigger) {
                                 valid = mode == AnimatorConditionMode.If || mode == AnimatorConditionMode.IfNot;
+
+                                // When you use a bool with an incorrect mode, the editor just always says "True",
+                                // so let's just actually make it do that instead of converting it to InvalidParamType
+                                if (!valid) {
+                                    condition.mode = AnimatorConditionMode.If;
+                                    valid = true;
+                                }
                             }
 
                             if (type == AnimatorControllerParameterType.Int) {
