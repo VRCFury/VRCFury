@@ -620,22 +620,33 @@ public static class VRCFuryEditorUtils {
             rightColumn.Add(holder);
             RefreshOnInterval(el, () => {
                 holder.Clear();
+                var show = false;
                 try {
-                    holder.Add(refreshElement());
+                    var newContent = refreshElement();
+                    if (newContent != null) {
+                        holder.Add(newContent);
+                        show = true;
+                    }
                 } catch (Exception e) {
                     holder.Add(WrappedLabel($"Error: {e.Message}"));
+                    show = true;
                 }
+                el.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             }, interval);
         } else {
             var label = WrappedLabel(message);
             rightColumn.Add(label);
             if (refreshMessage != null) {
                 RefreshOnInterval(el, () => {
+                    var show = false;
                     try {
                         label.text = refreshMessage();
+                        show = !string.IsNullOrWhiteSpace(label.text);
                     } catch (Exception e) {
                         label.text = $"Error: {e.Message}";
+                        show = true;
                     }
+                    el.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
                 }, interval);
             }
         }
