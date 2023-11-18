@@ -45,6 +45,8 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlockBlinkingAction()); });
             menu.AddItem(new GUIContent("Reset Physbone"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ResetPhysboneAction()); });
+             menu.AddItem(new GUIContent("Set a Global Parameter"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SetGlobalParamAction()); });
             menu.ShowAsContext();
         }
 

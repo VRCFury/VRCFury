@@ -632,6 +632,32 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 return row;
             }
+            case nameof(SetGlobalParamAction): {
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+
+                var label = new Label("Set a Global Param") {
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 120
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("param"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+                
+                var valueField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"));
+                valueField.style.flexBasis = 30;
+                row.Add(valueField);
+
+                return row;
+            }
         }
 
         return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");

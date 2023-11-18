@@ -108,4 +108,10 @@ namespace VF.Model.StateAction {
         public VRCPhysBone physBone;
     }
 
+    [Serializable]
+    public class SetGlobalParamAction: Action {
+        public string param;
+        public string value;
+    }
+
 }

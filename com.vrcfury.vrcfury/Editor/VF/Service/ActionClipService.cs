@@ -245,6 +245,16 @@ namespace VF.Service {
                         }
                         break;
                     }
+                    case SetGlobalParamAction globalParamAction: {
+                        if (string.IsNullOrWhiteSpace(globalParamAction.param))
+                            break;
+                        if (string.IsNullOrWhiteSpace(globalParamAction.value))
+                            break;
+
+                        var value = float.Parse(globalParamAction.value);
+                        onClip.SetConstant(EditorCurveBinding.FloatCurve("Global Param", typeof(Animator), globalParamAction.param), value);
+                        break;
+                    }
                 }
             }
 

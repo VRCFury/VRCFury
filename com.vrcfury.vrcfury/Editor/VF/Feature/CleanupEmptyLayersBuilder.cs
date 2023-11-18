@@ -26,6 +26,9 @@ namespace VF.Feature {
                         if (binding.path == "__vrcf_length") {
                             return null;
                         }
+                        if (binding.path == "__vrcf_global_param") {
+                            return null;
+                        }
                         if (!binding.IsValid(avatarObject)) {
                             removedBindings.Add($"{binding.PrettyString()} from {clip.name}");
                             return null;
