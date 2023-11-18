@@ -648,6 +648,10 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 };
                 row.Add(label);
 
+                var typeField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("paramType"));
+                typeField.style.flexBasis = 100;
+                row.Add(typeField);
+
                 var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("param"));
                 propField.style.flexGrow = 1;
                 row.Add(propField);

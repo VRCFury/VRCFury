@@ -251,8 +251,32 @@ namespace VF.Service {
                         if (string.IsNullOrWhiteSpace(globalParamAction.value))
                             break;
 
-                        var value = float.Parse(globalParamAction.value);
-                        onClip.SetConstant(EditorCurveBinding.FloatCurve("Global Param", typeof(Animator), globalParamAction.param), value);
+                        string checkValue = "";
+
+                        switch(globalParamAction.paramType) {
+                            case SetGlobalParamAction.ParamType.boolParam:
+                                fx.NewBool(globalParamAction.param, synced: false, saved: false, def: false, usePrefix: false);
+                                if (globalParamAction.value.ToLower().Contains("t")) checkValue = "1";
+                                else if (globalParamAction.value.ToLower().Contains("f")) checkValue = "0";
+                                else checkValue = globalParamAction.value;
+                                break;
+                            case SetGlobalParamAction.ParamType.intParam:
+                                fx.NewInt(globalParamAction.param, synced: false, saved: false, def: 0, usePrefix: false);
+                                checkValue = globalParamAction.value;
+                                break;
+                            case SetGlobalParamAction.ParamType.floatParam:
+                                fx.NewFloat(globalParamAction.param, synced: false, saved: false, def: 0, usePrefix: false);
+                                checkValue = globalParamAction.value;
+                                break;
+                        }
+                        try {
+                            var value = float.Parse(checkValue);
+                            onClip.SetConstant(EditorCurveBinding.FloatCurve("__vrcf_global_param", typeof(Animator), globalParamAction.param), value);
+                        } catch {
+                            var e = new Exception($"Failed to parse global paramter value for {globalParamAction.param}.");
+                            Debug.LogError(e);
+                            throw e;
+                        }
                         break;
                     }
                 }

@@ -7,6 +7,8 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Service;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace VF.Feature {
     /**
@@ -20,13 +22,23 @@ namespace VF.Feature {
                 var removedBindings = new List<string>();
 
                 // Delete bindings targeting things that don't exist
-                foreach (var clip in new AnimatorIterator.Clips().From(c.GetRaw())) {
+                foreach (var state in new AnimatorIterator.States().From(c.GetRaw())) {
+                    var clip = state.motion as AnimationClip;
+                    if (clip == null) continue;
+
                     var originalLength = clip.length;
                     clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                         if (binding.path == "__vrcf_length") {
                             return null;
                         }
                         if (binding.path == "__vrcf_global_param") {
+                            var driver = state.AddStateMachineBehaviour(typeof(VRCAvatarParameterDriver)) as VRCAvatarParameterDriver;
+                            var p = new VRC_AvatarParameterDriver.Parameter();
+                            p.name = binding.propertyName;
+                            p.type = VRC_AvatarParameterDriver.ChangeType.Set;
+                            var value = AnimationUtility.GetEditorCurve(clip, binding)[0].value;
+                            p.value = value;
+                            driver.parameters.Add(p);
                             return null;
                         }
                         if (!binding.IsValid(avatarObject)) {

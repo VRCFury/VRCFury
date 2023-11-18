@@ -112,6 +112,12 @@ namespace VF.Model.StateAction {
     public class SetGlobalParamAction: Action {
         public string param;
         public string value;
+        public ParamType paramType;
+        public enum ParamType {
+        boolParam,
+        intParam,
+        floatParam
+    }
     }
 
 }

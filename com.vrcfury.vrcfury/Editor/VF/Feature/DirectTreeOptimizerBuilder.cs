@@ -144,6 +144,10 @@ namespace VF.Feature {
                         AddDebug($"Not optimizing (contains {states.Length} states)");
                         continue;
                     }
+                    if (states.Where(s => s.state.motion as AnimationClip).Any(s => (s.state.motion as AnimationClip).GetAllCurves().Any(c => c.Item1.path == "__vrcf_global_param"))) {
+                        AddDebug("Not optimizing (contains set global param)");
+                        continue;
+                    }
                     
                     var state0 = states[0].state;
                     var state1 = states[1].state;
