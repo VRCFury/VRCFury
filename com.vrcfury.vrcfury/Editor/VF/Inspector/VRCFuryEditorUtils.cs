@@ -159,22 +159,23 @@ public static class VRCFuryEditorUtils {
 
                 data.AddToClassList("vfListRowButtons");
             }
-            if (size == 0) {
-                if (onEmpty != null) {
-                    entries.Add(onEmpty());
-                } else {
-                    var label = WrappedLabel("This list is empty. Click + to add an entry.");
-                    label.style.unityTextAlign = TextAnchor.MiddleCenter;
-                    Padding(label, 5);
-                    entries.Add(label);
-                }
+            if (size != 0) return entries;
+            if (onEmpty != null) {
+                entries.Add(onEmpty());
+            } else {
+                var label = WrappedLabel("This list is empty. Click + to add an entry.");
+                label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                Padding(label, 5);
+                entries.Add(label);
             }
             return entries;
         }, list));
 
-        var buttonRow = new VisualElement();
-        buttonRow.style.flexDirection = FlexDirection.Row;
-        output.Add(buttonRow);
+        var buttonRow = new VisualElement {
+            style = {
+                flexDirection = FlexDirection.Row
+            }
+        };
 
         var buttonSpacer = new VisualElement();
         buttonRow.Add(buttonSpacer);
@@ -212,7 +213,7 @@ public static class VRCFuryEditorUtils {
             list.serializedObject.Update();
         }
 
-        if (doWith != null) doWith(newEntry);
+        doWith?.Invoke(newEntry);
         list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
         return newEntry;
@@ -297,9 +298,12 @@ public static class VRCFuryEditorUtils {
                 return (WrappedLabel(label), null);
             }
 
-            labelBox = new VisualElement();
-            labelBox.style.flexGrow = 0;
-            labelBox.style.flexDirection = FlexDirection.Row;
+            labelBox = new VisualElement {
+                style = {
+                    flexGrow = 0,
+                    flexDirection = FlexDirection.Row
+                }
+            };
             labelBox.Add(WrappedLabel(label));
             var im = new Image {
                 image = EditorGUIUtility.FindTexture("_Help"),
@@ -332,7 +336,7 @@ public static class VRCFuryEditorUtils {
         bool better = false
     ) {
         VisualElement field = null;
-        bool isCheckbox = false;
+        var isCheckbox = false;
         if (fieldOverride != null) {
             field = fieldOverride;
             isCheckbox = field is Toggle;
@@ -409,8 +413,11 @@ public static class VRCFuryEditorUtils {
             }
             addFieldLast = true;
         } else {
-            var labelRow = new VisualElement();
-            labelRow.style.flexDirection = FlexDirection.Row;
+            var labelRow = new VisualElement {
+                style = {
+                    flexDirection = FlexDirection.Row
+                }
+            };
 
             labelBox.style.minWidth = labelWidth;
             labelBox.style.flexGrow = 0;
@@ -447,20 +454,21 @@ public static class VRCFuryEditorUtils {
                 return _OnChange(prop, () => prop.enumValueIndex, changed, (a,b) => a==b);
         }
 
-        if (prop.isArray) {
-            var fakeField = new IntegerField();
-            fakeField.bindingPath = prop.propertyPath+".Array.size";
-            fakeField.style.display = DisplayStyle.None;
-            var oldValue = prop.arraySize;
-            fakeField.RegisterValueChangedCallback(e => {
-                if (prop.arraySize == oldValue) return;
-                oldValue = prop.arraySize;
-                //Debug.Log("Detected change in " + prop.propertyPath);
-                changed();
-            });
-            return fakeField;
-        }
-        throw new Exception("Type " + prop.propertyType + " not supported (yet) by OnChange");
+        if (!prop.isArray) throw new Exception("Type " + prop.propertyType + " not supported (yet) by OnChange");
+        var fakeField = new IntegerField {
+            bindingPath = prop.propertyPath+".Array.size",
+            style = {
+                display = DisplayStyle.None
+            }
+        };
+        var oldValue = prop.arraySize;
+        fakeField.RegisterValueChangedCallback(e => {
+            if (prop.arraySize == oldValue) return;
+            oldValue = prop.arraySize;
+            //Debug.Log("Detected change in " + prop.propertyPath);
+            changed();
+        });
+        return fakeField;
     }
     private static VisualElement _OnChange<T>(SerializedProperty prop, Func<T> getValue, Action changed, Func<T,T,bool> equals) {
         // The register events can sometimes randomly fire when binding / unbinding happens,
@@ -505,11 +513,10 @@ public static class VRCFuryEditorUtils {
         if (props.Length == 0 || props.Any(p => p == null))
             throw new Exception("RefreshOnChange received null prop");
         container.Add(RefreshOnTrigger(content, props[0].serializedObject, out var triggerRefresh));
-        foreach (var prop in props) {
-            if (prop != null) {
-                var onChangeField = OnChange(prop, triggerRefresh);
-                container.Add(onChangeField);
-            }
+        foreach (var prop in props)     {
+            if (prop == null) continue;
+            var onChangeField = OnChange(prop, triggerRefresh);
+            container.Add(onChangeField);
         }
         return container;
     }
@@ -518,8 +525,8 @@ public static class VRCFuryEditorUtils {
         if (float.IsNaN(input) || float.IsPositiveInfinity(input) || float.IsNegativeInfinity(input))
             return input;
 
-        byte[] bytes = BitConverter.GetBytes(input);
-        int bits = BitConverter.ToInt32(bytes, 0);
+        var bytes = BitConverter.GetBytes(input);
+        var bits = BitConverter.ToInt32(bytes, 0);
 
         if (input > 0) {
             bits += offset;
@@ -673,12 +680,10 @@ public static class VRCFuryEditorUtils {
     public static Type GetManagedReferenceType(SerializedProperty prop) {
         var typename = prop.managedReferenceFullTypename;
         var i = typename.IndexOf(' ');
-        if (i > 0) {
-            var assemblyPart = typename.Substring(0, i);
-            var nsClassnamePart = typename.Substring(i);
-            return Type.GetType($"{nsClassnamePart}, {assemblyPart}");
-        }
-        return null;
+        if (i <= 0) return null;
+        var assemblyPart = typename.Substring(0, i);
+        var nsClassnamePart = typename.Substring(i);
+        return Type.GetType($"{nsClassnamePart}, {assemblyPart}");
     }
     
     public static string GetManagedReferenceTypeName(SerializedProperty prop) {
@@ -691,8 +696,12 @@ public static class VRCFuryEditorUtils {
      */
     public static bool IsInRagdollSystem(VFGameObject obj) {
         while (obj != null) {
-            if (obj.name == "Ragdoll System") return true;
-            if (obj.name == "CarbonCopy Container") return true;
+            switch (obj.name) {
+                case "Ragdoll System":
+                case "CarbonCopy Container":
+                    return true;
+            }
+
             // DexClone_worldSpace/CloneContainer0?
             if (obj.name.StartsWith("CloneContainer")) return true;
             if (obj.name == "DexClone_worldSpace") return true;
@@ -721,18 +730,20 @@ public static class VRCFuryEditorUtils {
 
     public static void MarkDirty(Object obj) {
         EditorUtility.SetDirty(obj);
-        
-        // This shouldn't be needed in unity 2020+
-        if (obj is GameObject go) {
-            MarkSceneDirty(go.scene);
-        } else if (obj is UnityEngine.Component c) {
-            MarkSceneDirty(c.gameObject.scene);
+
+        switch (obj) {
+            // This shouldn't be needed in unity 2020+
+            case GameObject go:
+                MarkSceneDirty(go.scene);
+                break;
+            case UnityEngine.Component c:
+                MarkSceneDirty(c.gameObject.scene);
+                break;
         }
     }
 
     private static void MarkSceneDirty(Scene scene) {
         if (Application.isPlaying) return;
-        if (scene == null) return;
         if (!scene.isLoaded) return;
         if (!scene.IsValid()) return;
         EditorSceneManager.MarkSceneDirty(scene);
@@ -742,10 +753,9 @@ public static class VRCFuryEditorUtils {
         double lastUpdate = 0;
         void Update() {
             var now = EditorApplication.timeSinceStartup;
-            if (lastUpdate < now - interval) {
-                lastUpdate = now;
-                run();
-            }
+            if (!(lastUpdate < now - interval)) return;
+            lastUpdate = now;
+            run();
         }
         el.RegisterCallback<AttachToPanelEvent>(e => {
             EditorApplication.update += Update;
@@ -768,8 +778,7 @@ public static class VRCFuryEditorUtils {
 
     public static T LoadGuid<T>(string guid) where T : Object {
         var path = AssetDatabase.GUIDToAssetPath(guid);
-        if (string.IsNullOrWhiteSpace(path)) return null;
-        return AssetDatabase.LoadAssetAtPath<T>(path);
+        return string.IsNullOrWhiteSpace(path) ? null : AssetDatabase.LoadAssetAtPath<T>(path);
     }
     
     public static Type GetPropertyType(SerializedProperty prop) {
@@ -777,7 +786,7 @@ public static class VRCFuryEditorUtils {
         var method = util.GetMethod("GetFieldInfoFromProperty",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         var prms = new object[] { prop, null };
-        method.Invoke(null, prms);
+        method?.Invoke(null, prms);
         return prms[1] as Type;
     }
 }

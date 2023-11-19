@@ -27,7 +27,7 @@ namespace VF.Menu {
             EditorUtility.DisplayDialog(DialogTitle,
                 $"{(plug ? "Plug" : "Socket")} created!\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so it faces the correct direction!", "Ok");
             
-            SceneView sv = EditorWindow.GetWindow<SceneView>();
+            var sv = EditorWindow.GetWindow<SceneView>();
             if (sv != null) sv.drawGizmos = true;
         }
     }

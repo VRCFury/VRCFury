@@ -14,11 +14,8 @@ namespace VF {
         private const string LegacyPrefabsImportedMarker = TmpDirPath + "/LegacyPrefabsImported";
         
         public static string GetPath() {
-            var importLegacyPrefabs = false;
-            if ((Directory.Exists(LegacyTmpDirPath) || Directory.Exists(TmpDirPath)) &&
-                !File.Exists(LegacyPrefabsImportedMarker)) {
-                importLegacyPrefabs = true;
-            }
+            var importLegacyPrefabs = (Directory.Exists(LegacyTmpDirPath) || Directory.Exists(TmpDirPath)) &&
+                                      !File.Exists(LegacyPrefabsImportedMarker);
 
             if (!Directory.Exists(TmpDirPath)) {
                 Directory.CreateDirectory(TmpDirPath); 
@@ -47,25 +44,19 @@ namespace VF {
         }
 
         public static void ReresolvePackages() {
-            MethodInfo method = typeof(Client).GetMethod("Resolve",
+            var method = typeof(Client).GetMethod("Resolve",
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
                 null,
                 new Type[] {},
                 null
             );
-            method.Invoke(null, null);
+            method?.Invoke(null, null);
         }
 
         static TmpFilePackage() {
             GetPath();
         }
 
-        private static readonly string PackageJson =
-            "{\n" +
-            "\"name\": \"com.vrcfury.temp\",\n" +
-            "\"displayName\": \"VRCFury Temp Files\",\n" +
-            "\"version\": \"0.0.0\",\n" +
-            "\"hideInEditor\": false\n" +
-            "}";
+        private const string PackageJson = "{\n" + "\"name\": \"com.vrcfury.temp\",\n" + "\"displayName\": \"VRCFury Temp Files\",\n" + "\"version\": \"0.0.0\",\n" + "\"hideInEditor\": false\n" + "}";
     }
 }

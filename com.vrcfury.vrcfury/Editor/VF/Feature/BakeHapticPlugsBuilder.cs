@@ -84,11 +84,7 @@ namespace VF.Feature {
 
                     var name = plug.name;
                     if (string.IsNullOrWhiteSpace(name)) {
-                        if (renderers.Count > 0) {
-                            name = HapticUtils.GetName(renderers.First().renderer.owner());
-                        } else {
-                            name = HapticUtils.GetName(plug.owner());
-                        }
+                        name = HapticUtils.GetName(renderers.Count > 0 ? renderers.First().renderer.owner() : plug.owner());
                     }
                     if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
                     Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
@@ -307,23 +303,27 @@ namespace VF.Feature {
                             clip.SetCurve(binding, curve);
                         }
 
-                        if (curve.IsFloat && binding.path == pathToRenderer && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.")) {
-                            var blendshapeName = binding.propertyName.Substring(11);
-                            var blendshapeMeshIndex = rewrite.spsBlendshapes.IndexOf(blendshapeName);
-                            if (blendshapeMeshIndex >= 0) {
-                                clip.SetCurve(
-                                    EditorCurveBinding.FloatCurve(pathToRenderer, typeof(SkinnedMeshRenderer), $"material._SPS_Blendshape{blendshapeMeshIndex}"),
-                                    curve
-                                );
-                            }
-                        }
+                        switch (curve.IsFloat) {
+                            case true when binding.path == pathToRenderer && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape."): {
+                                var blendshapeName = binding.propertyName.Substring(11);
+                                var blendshapeMeshIndex = rewrite.spsBlendshapes.IndexOf(blendshapeName);
+                                if (blendshapeMeshIndex >= 0) {
+                                    clip.SetCurve(
+                                        EditorCurveBinding.FloatCurve(pathToRenderer, typeof(SkinnedMeshRenderer), $"material._SPS_Blendshape{blendshapeMeshIndex}"),
+                                        curve
+                                    );
+                                }
 
-                        if (!curve.IsFloat && binding.path == pathToRenderer && binding.propertyName.StartsWith("m_Materials")) {
-                            var newKeys = curve.ObjectCurve.Select(frame => {
-                                if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
-                                return frame;
-                            }).ToArray();
-                            clip.SetCurve(binding, new FloatOrObjectCurve(newKeys));
+                                break;
+                            }
+                            case false when binding.path == pathToRenderer && binding.propertyName.StartsWith("m_Materials"): {
+                                var newKeys = curve.ObjectCurve.Select(frame => {
+                                    if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
+                                    return frame;
+                                }).ToArray();
+                                clip.SetCurve(binding, new FloatOrObjectCurve(newKeys));
+                                break;
+                            }
                         }
                     }
                 }

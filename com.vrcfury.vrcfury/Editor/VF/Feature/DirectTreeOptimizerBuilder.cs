@@ -124,18 +124,12 @@ namespace VF.Feature {
                         param = floatTrue.Name();
                     }
                 } else {
-                    ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
-                        var output = new List<AnimatorTransitionBase>();
-                        foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
-                            if (t.destinationState == state || (t.isExit && layer.stateMachine.defaultState == state)) {
-                                output.Add(t);
-                            }
-                        }
-                        return output.ToArray();
+                    ICollection<AnimatorTransitionBase> GetTransitionsTo(Object state) {
+                        return new AnimatorIterator.Transitions().From(layer).Where(t => t.destinationState == state || (t.isExit && layer.stateMachine.defaultState == state)).ToArray();
                     }
 
                     if (states.Length == 3) {
-                        bool IsJunkState(AnimatorState state) {
+                        bool IsJunkState(Object state) {
                             return layer.stateMachine.defaultState == state && GetTransitionsTo(state).Count == 0;
                         }
                         states = states.Where(child => !IsJunkState(child.state)).ToArray();
@@ -164,19 +158,18 @@ namespace VF.Feature {
 
                     AnimatorState onState;
                     AnimatorState offState;
-                    if (
-                        state0EffectiveCondition == EffectiveCondition.WHEN_0 &&
-                        state1EffectiveCondition == EffectiveCondition.WHEN_1) {
-                        offState = state0;
-                        onState = state1;
-                    } else if (
-                        state0EffectiveCondition == EffectiveCondition.WHEN_1 &&
-                        state1EffectiveCondition == EffectiveCondition.WHEN_0) {
-                        offState = state1;
-                        onState = state0;
-                    } else {
-                        AddDebug($"Not optimizing (state conditions are not an inversion of each other)");
-                        continue;
+                    switch (state0EffectiveCondition) {
+                        case EffectiveCondition.WHEN_0 when state1EffectiveCondition == EffectiveCondition.WHEN_1:
+                            offState = state0;
+                            onState = state1;
+                            break;
+                        case EffectiveCondition.WHEN_1 when state1EffectiveCondition == EffectiveCondition.WHEN_0:
+                            offState = state1;
+                            onState = state0;
+                            break;
+                        default:
+                            AddDebug($"Not optimizing (state conditions are not an inversion of each other)");
+                            continue;
                     }
                     
                     if (hasNonstaticClips) {
@@ -270,11 +263,17 @@ namespace VF.Feature {
 
                     var fxRaw = fx.GetRaw();
                     fxRaw.parameters = fxRaw.parameters.Select(p => {
-                        if (p.name == toggle.param) {
-                            if (p.type == AnimatorControllerParameterType.Bool) p.defaultFloat = p.defaultBool ? 1 : 0;
-                            if (p.type == AnimatorControllerParameterType.Int) p.defaultFloat = p.defaultInt;
-                            p.type = AnimatorControllerParameterType.Float;
+                        if (p.name != toggle.param) return p;
+                        switch (p.type) {
+                            case AnimatorControllerParameterType.Bool:
+                                p.defaultFloat = p.defaultBool ? 1 : 0;
+                                break;
+                            case AnimatorControllerParameterType.Int:
+                                p.defaultFloat = p.defaultInt;
+                                break;
                         }
+
+                        p.type = AnimatorControllerParameterType.Float;
                         return p;
                     }).ToArray();
                 }

@@ -29,7 +29,7 @@ namespace VF.Service {
                 EditorCurveBinding.FloatCurve("", typeof(Animator), next.Name()),
                 new FloatOrObjectCurve(AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000))
             );
-            var state = layer.NewState("Count").WithAnimation(clip);
+            layer.NewState("Count").WithAnimation(clip);
             
             directTree.Add(math.MakeCopier(next, previous));
 

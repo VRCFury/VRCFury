@@ -197,7 +197,7 @@ your
         static MmdUtils() {
             mmdShapes = text.Split('\n')
                 .Select(line => line.Trim())
-                .Select(line => Normalize(line))
+                .Select(Normalize)
                 .Where(line => !string.IsNullOrWhiteSpace(line))
                 .ToImmutableHashSet();
         }

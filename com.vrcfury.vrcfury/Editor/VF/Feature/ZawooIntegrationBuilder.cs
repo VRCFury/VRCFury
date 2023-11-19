@@ -35,10 +35,9 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
             foreach (Transform c in child) {
                 if (c.GetComponent<VRCFury>() != null) continue;
                 var name = c.asVf().name.ToLower();
-                if (name.Contains("constraint") && name.Contains("peen")) {
-                    maybeValid = true;
-                    isCanine |= name.Contains("canine");
-                }
+                if (!name.Contains("constraint") || !name.Contains("peen")) continue;
+                maybeValid = true;
+                isCanine |= name.Contains("canine");
             }
             if (!maybeValid) continue;
             roots.Add(Tuple.Create(isCanine ? Type.Canine : Type.Anthro, child.gameObject));
@@ -54,20 +53,25 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         VRCExpressionsMenu menu = null;
         VRCExpressionParameters prms = null;
         string toggleParam = null;
-        if (type == Type.Canine) {
-            menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_caninePeen");
-            if (menu == null) return;
-            var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
-            fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX Template.controller");
-            prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_caninePeen.asset");
-            toggleParam = "caninePeenToggle";
-        } else if (type == Type.Anthro) {
-            menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_hybridAnthroPeen");
-            if (menu == null) return;
-            var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
-            fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX_template.controller");
-            prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_hybridAnthroPeen.asset");
-            toggleParam = "peenToggle";
+        switch (type) {
+            case Type.Canine: {
+                menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_caninePeen");
+                if (menu == null) return;
+                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+                fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX Template.controller");
+                prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_caninePeen.asset");
+                toggleParam = "caninePeenToggle";
+                break;
+            }
+            case Type.Anthro: {
+                menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_hybridAnthroPeen");
+                if (menu == null) return;
+                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+                fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX_template.controller");
+                prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_hybridAnthroPeen.asset");
+                toggleParam = "peenToggle";
+                break;
+            }
         }
 
         if (fx == null || menu == null || prms == null) {

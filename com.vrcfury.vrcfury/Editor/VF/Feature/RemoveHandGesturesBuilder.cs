@@ -29,10 +29,20 @@ namespace VF.Feature {
                 }
 
                 var forceTrue = false;
-                if (c.mode == AnimatorConditionMode.Less) forceTrue = c.threshold > 0;
-                if (c.mode == AnimatorConditionMode.Greater) forceTrue = c.threshold < 0;
-                if (c.mode == AnimatorConditionMode.Equals) forceTrue = c.threshold == 0;
-                if (c.mode == AnimatorConditionMode.NotEqual) forceTrue = c.threshold != 0;
+                switch (c.mode) {
+                    case AnimatorConditionMode.Less:
+                        forceTrue = c.threshold > 0;
+                        break;
+                    case AnimatorConditionMode.Greater:
+                        forceTrue = c.threshold < 0;
+                        break;
+                    case AnimatorConditionMode.Equals:
+                        forceTrue = c.threshold == 0;
+                        break;
+                    case AnimatorConditionMode.NotEqual:
+                        forceTrue = c.threshold != 0;
+                        break;
+                }
                 return new AnimatorCondition {
                     parameter = tru.Name(),
                     mode = forceTrue ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot

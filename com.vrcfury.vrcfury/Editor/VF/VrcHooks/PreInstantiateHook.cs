@@ -45,15 +45,18 @@ namespace VF.VrcHooks {
             if (runField == null) throw new Exception($"Failed to find {fieldName}");
             void Fix(GameObject obj) => PreInstantiate(obj);
             var runObj = runField.GetValue(null);
-            if (runObj is Action<GameObject> run1) {
-                runField.SetValue(null, Fix + run1);
-            } else if (runObj is Func<GameObject, bool> run2) {
-                runField.SetValue(null, (Func<GameObject, bool>)(obj => {
-                    Fix(obj);
-                    return run2(obj);
-                }));
-            } else {
-                throw new Exception($"Invalid {fieldName}");
+            switch (runObj) {
+                case Action<GameObject> run1:
+                    runField.SetValue(null, Fix + run1);
+                    break;
+                case Func<GameObject, bool> run2:
+                    runField.SetValue(null, (Func<GameObject, bool>)(obj => {
+                        Fix(obj);
+                        return run2(obj);
+                    }));
+                    break;
+                default:
+                    throw new Exception($"Invalid {fieldName}");
             }
         }
 #endif

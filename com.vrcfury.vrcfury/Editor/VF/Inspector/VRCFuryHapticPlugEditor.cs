@@ -87,10 +87,11 @@ namespace VF.Inspector {
             
             sizeSection.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 var size = PlugSizeDetector.GetWorldSize(target);
-                var text = new List<string>();
-                text.Add("Attached renderers: " + string.Join(", ", size.renderers.Select(r => r.owner().name)));
-                text.Add($"Detected Length: {size.worldLength}m");
-                text.Add($"Detected Radius: {size.worldRadius}m");
+                var text = new List<string> {
+                    "Attached renderers: " + string.Join(", ", size.renderers.Select(r => r.owner().name)),
+                    $"Detected Length: {size.worldLength}m",
+                    $"Detected Radius: {size.worldRadius}m"
+                };
 
                 var bones = size.renderers.OfType<SkinnedMeshRenderer>()
                     .SelectMany(skin => skin.bones)
@@ -104,53 +105,52 @@ namespace VF.Inspector {
             }));
             
             container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader)"));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                        container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
-                if (enableSps.boolValue) {
-                    var spsBox = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
-                    c.Add(spsBox);
-                    spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
-                        serializedObject.FindProperty("spsAutorig"),
-                        "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
-                        style: style => { style.paddingBottom = 5; }
-                    ));
+                if (!enableSps.boolValue) return c;
+                var spsBox = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
+                c.Add(spsBox);
+                spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
+                    serializedObject.FindProperty("spsAutorig"),
+                    "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
+                    style: style => { style.paddingBottom = 5; }
+                ));
                     
-                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
-                        serializedObject.FindProperty("postBakeActions"),
-                        "Post-Bake Actions",
-                        tooltip: "Haptic Plug meshes should be posed 'straight' so that length and pose calculations" +
-                                 " can be performed. If you'd like it to appear in a different way by default in game, you can add actions here" +
-                                 " which will be applied to the avatar after the calculations are finished."
-                    ));
+                spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("postBakeActions"),
+                    "Post-Bake Actions",
+                    tooltip: "Haptic Plug meshes should be posed 'straight' so that length and pose calculations" +
+                             " can be performed. If you'd like it to appear in a different way by default in game, you can add actions here" +
+                             " which will be applied to the avatar after the calculations are finished."
+                ));
 
-                    var animatedProp = serializedObject.FindProperty("spsAnimatedEnabled");
-                    var animatedField = new Toggle();
-                    animatedField.SetValueWithoutNotify(animatedProp.floatValue > 0);
-                    animatedField.RegisterValueChangedCallback(cb => {
-                        animatedProp.floatValue = cb.newValue ? 1 : 0;
-                        animatedProp.serializedObject.ApplyModifiedProperties();
-                    });
-                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
-                        serializedObject.FindProperty("spsAnimatedEnabled"),
-                        "Animated Toggle",
-                        fieldOverride: animatedField,
-                        tooltip: "You can ANIMATE this box on and off with an animation clip, in order to" +
-                                 " turn SPS off during certain situations."
-                    ));
-                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
-                        serializedObject.FindProperty("spsBlendshapes"),
-                        "Animated blendshapes to keep while deforming",
-                        fieldOverride: VRCFuryEditorUtils.List(serializedObject.FindProperty("spsBlendshapes")),
-                        tooltip: "Usually, SPS penetrators revert blendshapes back to exactly the way they look in the editor while deforming toward a socket." +
-                                 " You can specify up to 16 blendshapes in this list which can still be animated while deforming."
-                    ));
-                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
-                        serializedObject.FindProperty("spsOverrun"),
-                        "Allow Hole Overrun",
-                        tooltip: "This allows the plug to extend very slightly past holes to improve collapse visuals." +
-                                 " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
-                    ));
-                }
+                var animatedProp = serializedObject.FindProperty("spsAnimatedEnabled");
+                var animatedField = new Toggle();
+                animatedField.SetValueWithoutNotify(animatedProp.floatValue > 0);
+                animatedField.RegisterValueChangedCallback(cb => {
+                    animatedProp.floatValue = cb.newValue ? 1 : 0;
+                    animatedProp.serializedObject.ApplyModifiedProperties();
+                });
+                spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("spsAnimatedEnabled"),
+                    "Animated Toggle",
+                    fieldOverride: animatedField,
+                    tooltip: "You can ANIMATE this box on and off with an animation clip, in order to" +
+                             " turn SPS off during certain situations."
+                ));
+                spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("spsBlendshapes"),
+                    "Animated blendshapes to keep while deforming",
+                    fieldOverride: VRCFuryEditorUtils.List(serializedObject.FindProperty("spsBlendshapes")),
+                    tooltip: "Usually, SPS penetrators revert blendshapes back to exactly the way they look in the editor while deforming toward a socket." +
+                             " You can specify up to 16 blendshapes in this list which can still be animated while deforming."
+                ));
+                spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("spsOverrun"),
+                    "Allow Hole Overrun",
+                    tooltip: "This allows the plug to extend very slightly past holes to improve collapse visuals." +
+                             " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
+                ));
                 return c;
             }, enableSps));
 
@@ -262,8 +262,9 @@ namespace VF.Inspector {
             }
 
             var size = cache.size;
-            var localLength = size.worldLength / transform.lossyScale.x;
-            var localRadius = size.worldRadius / transform.lossyScale.x;
+            var lossyScale = transform.lossyScale;
+            var localLength = size.worldLength / lossyScale.x;
+            var localRadius = size.worldRadius / lossyScale.x;
             var localForward = size.localRotation * Vector3.forward;
             var localHalfway = localForward * (localLength / 2);
             var localCapsuleRotation = size.localRotation * Quaternion.Euler(90,0,0);
@@ -288,12 +289,11 @@ namespace VF.Inspector {
 
         public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
             var renderers = new List<Renderer>();
-            if (plug.autoRenderer) {
-                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.gameObject, !plug.useLegacyRendererFinder));
-            } else {
-                renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
-            }
+            renderers.AddRange(plug.autoRenderer
+                ? PlugRendererFinder.GetAutoRenderer(plug.gameObject, !plug.useLegacyRendererFinder)
+                : plug.configureTpsMesh.Where(r => r != null));
             return renderers;
+
         }
 
         [CanBeNull]

@@ -29,10 +29,9 @@ namespace VF.Utils.Controller {
             node.position = MovePos(orig, x, y);
             var states = stateMachine.states;
             var index = Array.FindIndex(states, n => n.state == node.state);
-            if (index >= 0) {
-                states[index] = node;
-                stateMachine.states = states;
-            }
+            if (index < 0) return this;
+            states[index] = node;
+            stateMachine.states = states;
             return this;
         }
         public VFState Move(VFState other, float x, float y) {
@@ -69,9 +68,11 @@ namespace VF.Utils.Controller {
         }
         private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
             var driver = GetDriver(local);
-            var p = new VRC_AvatarParameterDriver.Parameter();
-            p.name = param;
-            p.type = VRC_AvatarParameterDriver.ChangeType.Set;
+            var p = new VRC_AvatarParameterDriver.Parameter
+            {
+                name = param,
+                type = VRC_AvatarParameterDriver.ChangeType.Set
+            };
             driver.parameters.Add(p);
             return p;
         }
@@ -98,8 +99,10 @@ namespace VF.Utils.Controller {
         }
         public VFState DrivesCopy(VFAInteger param, VFAInteger source) {
             var driver = GetDriver(true);
-            var p = new VRC_AvatarParameterDriver.Parameter();
-            p.name = param.Name();
+            var p = new VRC_AvatarParameterDriver.Parameter
+            {
+                name = param.Name()
+            };
             var sourceField = p.GetType().GetField("source");
             if (sourceField == null) throw new VRCFBuilderException("VRCFury feature failed to build because VRCSDK is outdated");
             sourceField.SetValue(p, source.Name());
@@ -136,7 +139,7 @@ namespace VF.Utils.Controller {
             foreach (var (state, when) in states) {
                 VFCondition myWhen;
                 if (state == states[states.Length - 1].Item1) {
-                    myWhen = above.Not();
+                    myWhen = above?.Not();
                 } else if (above == null) {
                     above = myWhen = when;
                 } else {

@@ -38,18 +38,17 @@ public class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
         }
 
         var pointingToAvatar = target.gameObject.GetComponent<VRCAvatarDescriptor>() != null;
-        if (pointingToAvatar) {
-            var box = new Box();
-            box.style.marginTop = box.style.marginBottom = 10;
-            container.Add(box);
+        if (!pointingToAvatar) return container;
+        var box = new Box();
+        box.style.marginTop = box.style.marginBottom = 10;
+        container.Add(box);
 
-            var label = VRCFuryEditorUtils.WrappedLabel(
-                "Beware: VRCFury is non-destructive, which means these features will only be visible" +
-                " when you upload or if you enter the editor Play mode!");
-            VRCFuryEditorUtils.Padding(box, 5);
-            VRCFuryEditorUtils.BorderRadius(box, 5);
-            box.Add(label);
-        }
+        var label = VRCFuryEditorUtils.WrappedLabel(
+            "Beware: VRCFury is non-destructive, which means these features will only be visible" +
+            " when you upload or if you enter the editor Play mode!");
+        VRCFuryEditorUtils.Padding(box, 5);
+        VRCFuryEditorUtils.BorderRadius(box, 5);
+        box.Add(label);
 
         return container;
     }

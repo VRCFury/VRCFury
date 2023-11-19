@@ -16,7 +16,7 @@ namespace VF.Builder.Haptics {
             bakeArray.Add(new Color32(r, g, b, a));
         }
         public void WriteFloat(float f) {
-            byte[] bytes = BitConverter.GetBytes(f);
+            var bytes = BitConverter.GetBytes(f);
             WriteColor(bytes[0], bytes[1], bytes[2], bytes[3]);
         }
         public void WriteVector3(Vector3 v) {
@@ -28,8 +28,9 @@ namespace VF.Builder.Haptics {
         public Texture2D Save() {
             var width = tpsCompatibility ? 8190 : 8192;
             var height = (int)(bakeArray.LongCount() / width) + 1;
-            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
-            tex.name = "SPS Data";
+            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true) {
+                name = "SPS Data"
+            };
             var texArray = tex.GetPixels32();
             for (var i = 0; i < bakeArray.Count; i++) {
                 texArray[i] = bakeArray[i];

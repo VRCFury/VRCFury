@@ -55,26 +55,29 @@ namespace VF.Menu {
             if (lower.Contains("armature_peen")) return true;
             return false;
         }
+        
         private static bool ShouldRemoveAsset(Object obj) {
             if (obj == null) return false;
             var path = AssetDatabase.GetAssetPath(obj);
             if (path == null) return false;
             var lower = path.ToLower();
-            if (lower.Contains("caninepeen")) return true;
-            if (lower.Contains("hybridanthropeen")) return true;
-            return false;
+            return lower.Contains("caninepeen") || lower.Contains("hybridanthropeen");
         }
+
         private static bool ShouldRemoveLayer(string name) {
             if (name.StartsWith("kcp_")) return true;
-            if (name == "State Change") return true;
-            if (name == "Particle") return true;
-            if (name == "Dynamic") return true;
-            return false;
+            switch (name)
+            {
+                case "State Change":
+                case "Particle":
+                    return true;
+                default:
+                    return name == "Dynamic";
+            }
         }
+
         private static bool ShouldRemoveParam(string name) {
-            if (name.StartsWith("caninePeen")) return true;
-            if (name.StartsWith("peen")) return true;
-            return false;
+            return name.StartsWith("caninePeen") || name.StartsWith("peen");
         }
     }
 }

@@ -8,7 +8,7 @@ namespace VF {
     public class BadInstallDetector {
         static BadInstallDetector() {
             if (!UpdateMenuItem.IsVrcfuryALocalPackage()) return;
-            var manifestPath = "Packages/manifest.json";
+            const string manifestPath = "Packages/manifest.json";
             if (!File.Exists(manifestPath)) return;
             var manifestContainsVrcfury = File.ReadLines(manifestPath)
                 .Any(line => line.Contains("com.vrcfury.vrcfury"));

@@ -119,8 +119,8 @@ namespace VF.Feature {
                             hapticContacts.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
                             hapticContacts.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
                             
-                            var frotRadius = 0.1f;
-                            var frotPos = 0.05f;
+                            const float frotRadius = 0.1f;
+                            const float frotPos = 0.05f;
                             hapticContacts.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
                         }
                         
@@ -141,7 +141,7 @@ namespace VF.Feature {
                         obj.active = true;
                         _forceStateInAnimatorService.ForceEnable(obj);
 
-                        ICollection<VFGameObject> FindChildren(params string[] names) {
+                        IEnumerable<VFGameObject> FindChildren(params string[] names) {
                             return names.Select(n => bakeRoot.Find(n))
                                 .Where(t => t != null)
                                 .ToArray();

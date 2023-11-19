@@ -8,6 +8,13 @@ using VF.Utils;
 
 namespace VF.Builder.Haptics {
     public static class SpsConfigurer {
+        private static readonly int Enabled = Shader.PropertyToID(SpsEnabled);
+        private static readonly int Length = Shader.PropertyToID(SpsLength);
+        private static readonly int BakedLength = Shader.PropertyToID(SpsBakedLength);
+        private static readonly int Overrun = Shader.PropertyToID(SpsOverrun);
+        private static readonly int Bake = Shader.PropertyToID(SpsBake);
+        private static readonly int SpsBlendshapeCount = Shader.PropertyToID("_SPS_BlendshapeCount");
+        private static readonly int SpsBlendshapeVertCount = Shader.PropertyToID("_SPS_BlendshapeVertCount");
         private const string SpsEnabled = "_SPS_Enabled";
         private const string SpsLength = "_SPS_Length";
         private const string SpsOverrun = "_SPS_Overrun";
@@ -43,14 +50,14 @@ namespace VF.Builder.Haptics {
                     }
                 }
             }
-            m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
+            m.SetFloat(Enabled, plug.spsAnimatedEnabled);
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
-            m.SetFloat(SpsLength, worldLength);
-            m.SetFloat(SpsBakedLength, worldLength);
-            m.SetFloat(SpsOverrun, plug.spsOverrun ? 1 : 0);
-            m.SetTexture(SpsBake, spsBaked);
-            m.SetFloat("_SPS_BlendshapeCount", spsBlendshapes.Count);
-            m.SetFloat("_SPS_BlendshapeVertCount", skin.sharedMesh.vertexCount);
+            m.SetFloat(Length, worldLength);
+            m.SetFloat(nameID: BakedLength, worldLength);
+            m.SetFloat(Overrun, plug.spsOverrun ? 1 : 0);
+            m.SetTexture(Bake, spsBaked);
+            m.SetFloat(SpsBlendshapeCount, spsBlendshapes.Count);
+            m.SetFloat(SpsBlendshapeVertCount, skin.sharedMesh.vertexCount);
             for (var i = 0; i < spsBlendshapes.Count; i++) {
                 var name = spsBlendshapes[i];
                 if (skin.sharedMesh.HasBlendshape(name)) {

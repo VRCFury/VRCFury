@@ -92,7 +92,7 @@ namespace VF.Component {
             return GetFramesRequired((float)(1 - Math.Pow(oldSmoothingVal, 0.1)), true) / 60f;
         }
         public static int GetFramesRequired(float fractionPerFrame, bool useAcceleration) {
-            var targetFraction = 0.9f; // Let's say 90% is enough to be considered "done"
+            const float targetFraction = 0.9f; // Let's say 90% is enough to be considered "done"
             float target = useAcceleration ? 0 : 1;
             float position = 0;
             for (var frame = 1; frame < 1000; frame++) {

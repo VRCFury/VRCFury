@@ -66,7 +66,7 @@ namespace VF.Updater {
                 AssetDatabase.DeleteAsset(UpdateScenePath);
                 EditorSceneManager.SaveScene(updateScene, UpdateScenePath);
 
-                var info = new string[] {
+                var info = new[] {
                     "This is used to re-open your",
                     "scenes after VRCFury has updated.",
                     "If the update fails for some reason,",
@@ -99,10 +99,9 @@ namespace VF.Updater {
                 var first = true;
                 foreach (var path in paths.Where(File.Exists)) {
                     var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
-                    if (scene.IsValid() && scene.isLoaded && first) {
-                        first = false;
-                        EditorSceneManager.SetActiveScene(scene);
-                    }
+                    if (!scene.IsValid() || !scene.isLoaded || !first) continue;
+                    first = false;
+                    EditorSceneManager.SetActiveScene(scene);
                 }
 
                 if (first == false) {

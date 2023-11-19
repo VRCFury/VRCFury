@@ -118,8 +118,7 @@ namespace VF.Feature {
                     .OrderBy(mapping => mapping)
                     .ToArray();
 
-                var text = new List<string>();
-                text.Add("Base Skin: " + baseSkin.owner().name);
+                var text = new List<string> { "Base Skin: " + baseSkin.owner().name };
                 if (linkSkins.Count > 0) {
                     text.Add("Linked Skins: " + string.Join(", ", linkSkins.Select(l => l.owner().name)));
                 } else {
@@ -129,7 +128,7 @@ namespace VF.Feature {
                 if (allMappings.Length > 0) {
                     string FormatMapping((string,string) pair) {
                         var (from, to) = pair;
-                        string skinListStr = "";
+                        var skinListStr = "";
                         if (linkSkins.Count > 1) {
                             var skinList = linkSkins
                                 .Where(s => mappingsWithSkin.Contains((s, pair)))

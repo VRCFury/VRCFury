@@ -81,15 +81,12 @@ namespace VF.Feature {
          * if the mask allowed it.
          */
         private AvatarMask GetFxMask(ControllerManager fx) {
-            if (DoesFxControlHands()) {
-                var mask = AvatarMaskExtensions.Empty();
-                mask.AllowAllTransforms();
-                mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-                mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
-                return mask;
-            }
-
-            return null;
+            if (!DoesFxControlHands()) return null;
+            var mask = AvatarMaskExtensions.Empty();
+            mask.AllowAllTransforms();
+            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+            return mask;
         }
     }
 }

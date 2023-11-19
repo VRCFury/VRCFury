@@ -48,25 +48,22 @@ namespace VF.Feature {
                 foreach (var layer in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(layer);
                     AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
-                        if (b is VRCAnimatorTrackingControl trackingControl) {
-                            var driver = (VRCAvatarParameterDriver)add(typeof(VRCAvatarParameterDriver));
-                            foreach (var type in allTypes) {
-                                var value = type.GetValue(trackingControl);
-                                if (value != VRC_AnimatorTrackingControl.TrackingType.NoChange) {
-                                    if (!trackingParamsCache.TryGetValue((layerOwner, type), out var param)) {
-                                        param = AddInhibitor(layerOwner, type);
-                                        trackingParamsCache[(layerOwner, type)] = param;
-                                    }
-                                    driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                                        name = param.Name(),
-                                        value = value == VRC_AnimatorTrackingControl.TrackingType.Animation ? 1 : 0
-                                    });
-                                }
+                        if (!(b is VRCAnimatorTrackingControl trackingControl)) return true;
+                        var driver = (VRCAvatarParameterDriver)add(typeof(VRCAvatarParameterDriver));
+                        foreach (var type in allTypes) {
+                            var value = type.GetValue(trackingControl);
+                            if (value == VRC_AnimatorTrackingControl.TrackingType.NoChange) continue;
+                            if (!trackingParamsCache.TryGetValue((layerOwner, type), out var param)) {
+                                param = AddInhibitor(layerOwner, type);
+                                trackingParamsCache[(layerOwner, type)] = param;
                             }
-                            return false;
+                            driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                                name = param.Name(),
+                                value = value == VRC_AnimatorTrackingControl.TrackingType.Animation ? 1 : 0
+                            });
                         }
+                        return false;
 
-                        return true;
                     });
                 }
             }
@@ -103,7 +100,7 @@ namespace VF.Feature {
                 ) {
                     void AddState(
                         string stateName,
-                        IList<TrackingControlType> types,
+                        ICollection<TrackingControlType> types,
                         bool addTransitionFromIdle = false,
                         bool checkAlreadyActive = true
                     ) {
@@ -121,11 +118,7 @@ namespace VF.Feature {
                         }
 
                         state.TransitionsFromEntry().When(triggerWhen);
-                        if (checkAlreadyActive) {
-                            state.TransitionsToExit().When(fx.Always());
-                        } else {
-                            state.TransitionsToExit().When(triggerWhen.Not());
-                        }
+                        state.TransitionsToExit().When(checkAlreadyActive ? fx.Always() : triggerWhen.Not());
 
                         var control = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
                         var driver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();

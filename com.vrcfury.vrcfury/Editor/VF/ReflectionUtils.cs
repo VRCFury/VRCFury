@@ -11,7 +11,7 @@ namespace VF {
                 .FirstOrDefault(t => t != null);
         }
         
-        public static Type[] GetTypesWithAttributeFromAnyAssembly<T>() where T : Attribute {
+        public static IEnumerable<Type> GetTypesWithAttributeFromAnyAssembly<T>() where T : Attribute {
             return AppDomain.CurrentDomain.GetAssemblies().AsParallel()
                 .SelectMany(assembly => assembly.GetTypes())
                 .Where(type => type.GetCustomAttribute<T>() != null)
@@ -28,15 +28,10 @@ namespace VF {
         }
         
         public static IEnumerable<FieldInfo> GetAllFields(Type objType) {
-            var output = new List<FieldInfo>();
-            foreach (var field in objType.GetFields()) {
-                output.Add(field);
-            }
+            var output = objType.GetFields().ToList();
             for (var current = objType; current != null; current = current.BaseType) {
                 var privateFields = current.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
-                foreach (var field in privateFields) {
-                    output.Add(field);
-                }
+                output.AddRange(privateFields);
             }
             return output;
         }

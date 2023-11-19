@@ -51,13 +51,12 @@ namespace VF.Utils {
             // Parameter Drivers
             if (includeWrites) {
                 foreach (var b in new AnimatorIterator.Behaviours().From(c)) {
-                    if (b is VRCAvatarParameterDriver oldB) {
-                        foreach (var p in oldB.parameters) {
-                            p.name = rewriteParamName(p.name);
-                            var sourceField = p.GetType().GetField("source");
-                            if (sourceField != null) {
-                                sourceField.SetValue(p, rewriteParamName((string)sourceField.GetValue(p)));
-                            }
+                    if (!(b is VRCAvatarParameterDriver oldB)) continue;
+                    foreach (var p in oldB.parameters) {
+                        p.name = rewriteParamName(p.name);
+                        var sourceField = p.GetType().GetField("source");
+                        if (sourceField != null) {
+                            sourceField.SetValue(p, rewriteParamName((string)sourceField.GetValue(p)));
                         }
                     }
                 }

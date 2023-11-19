@@ -33,13 +33,11 @@ namespace VF.Feature {
             var layers = avatar.baseAnimationLayers;
             for (var i = 0; i < layers.Length; i++) {
                 var layer = layers[i];
-                if (layer.type == VRCAvatarDescriptor.AnimLayerType.Gesture || layer.type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    var c = layer.animatorController as AnimatorController;
-                    if (c && c.layers.Length > 0) {
-                        layer.mask = c.layers[0].avatarMask;
-                        layers[i] = layer;
-                    }
-                }
+                if (layer.type != VRCAvatarDescriptor.AnimLayerType.Gesture && layer.type != VRCAvatarDescriptor.AnimLayerType.FX) continue;
+                var c = layer.animatorController as AnimatorController;
+                if (!c || c.layers.Length <= 0) continue;
+                layer.mask = c.layers[0].avatarMask;
+                layers[i] = layer;
             }
         }
         
@@ -57,8 +55,8 @@ namespace VF.Feature {
 
                     //States
                     foreach (var state in stateMachine.states) {
-                        VRCAvatarDescriptor.DebugHash hash = new VRCAvatarDescriptor.DebugHash();
-                        string fullName = prefix + state.state.name;
+                        var hash = new VRCAvatarDescriptor.DebugHash();
+                        var fullName = prefix + state.state.name;
                         hash.hash = Animator.StringToHash(fullName);
                         hash.name = fullName.Remove(0, rootStateMachine.name.Length + 1);
                         avatar.animationHashSet.Add(hash);

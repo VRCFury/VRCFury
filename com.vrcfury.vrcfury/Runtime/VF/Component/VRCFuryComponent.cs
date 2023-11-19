@@ -5,18 +5,9 @@ using VF.Upgradeable;
 namespace VF.Component {
     public abstract class VRCFuryComponent : VrcfUpgradeableMonoBehaviour, IVrcfEditorOnly {
         [NonSerialized] public GameObject gameObjectOverride;
-        public new GameObject gameObject {
-            get {
-                if (gameObjectOverride != null) return gameObjectOverride;
-                return base.gameObject;
-            }
-        }
-        public new Transform transform {
-            get {
-                if (gameObjectOverride != null) return gameObjectOverride.transform;
-                return base.transform;
-            }
-        }
+        public new GameObject gameObject => gameObjectOverride != null ? gameObjectOverride : base.gameObject;
+
+        public new Transform transform => gameObjectOverride != null ? gameObjectOverride.transform : base.transform;
         
         public override int GetLatestVersion() {
             return 1;

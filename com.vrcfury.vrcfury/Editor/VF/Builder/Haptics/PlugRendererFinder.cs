@@ -13,7 +13,9 @@ namespace VF.Builder.Haptics {
                     var foundOnObject = current.GetComponents<Renderer>().ToImmutableList();
                     if (foundOnObject.Count == 1) {
                         return foundOnObject;
-                    } else if (foundOnObject.Count > 1) {
+                    }
+
+                    if (foundOnObject.Count > 1) {
                         return ImmutableList<Renderer>.Empty;
                     }
 
@@ -35,8 +37,7 @@ namespace VF.Builder.Haptics {
             }
 
             var foundWithDps = GetAutoRendererInner(obj, true);
-            if (foundWithDps.Count > 0) return foundWithDps;
-            return GetAutoRendererInner(obj, false);
+            return foundWithDps.Count > 0 ? foundWithDps : GetAutoRendererInner(obj, false);
         }
 
         private static IImmutableList<Renderer> GetAutoRendererInner(VFGameObject obj, bool dpsOrTpsOnly) {
@@ -53,8 +54,9 @@ namespace VF.Builder.Haptics {
                 var foundOnParent = parent.GetComponents<Renderer>().Where(IsDps).ToImmutableList();
                 if (foundOnParent.Count > 0) return foundOnParent;
 
+                var parent1 = parent;
                 var foundOnChildOfParent = Enumerable.Range(0, parent.childCount)
-                    .Select(childNum => parent.GetChild(childNum))
+                    .Select(childNum => parent1.GetChild(childNum))
                     .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps))
                     .ToImmutableList();
                 if (foundOnChildOfParent.Count > 0) return foundOnChildOfParent;

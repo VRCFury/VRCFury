@@ -25,31 +25,35 @@ namespace VF.Feature {
                     transition.RewriteConditions(condition => {
                         var mode = condition.mode;
                         var valid = true;
-                        if (paramTypes.TryGetValue(condition.parameter, out var type)) {
-                            if (type == AnimatorControllerParameterType.Bool ||
-                                type == AnimatorControllerParameterType.Trigger) {
-                                valid = mode == AnimatorConditionMode.If || mode == AnimatorConditionMode.IfNot;
+                      if (paramTypes.TryGetValue(condition.parameter, out var type)) {
+                            switch (type) {
+                                case AnimatorControllerParameterType.Bool:
+                                case AnimatorControllerParameterType.Trigger:
+                                {
+                                    valid = mode == AnimatorConditionMode.If || mode == AnimatorConditionMode.IfNot;
 
-                                // When you use a bool with an incorrect mode, the editor just always says "True",
-                                // so let's just actually make it do that instead of converting it to InvalidParamType
-                                if (!valid) {
-                                    condition.mode = AnimatorConditionMode.If;
-                                    valid = true;
+                                    // When you use a bool with an incorrect mode, the editor just always says "True",
+                                    // so let's just actually make it do that instead of converting it to InvalidParamType
+                                    if (!valid) {
+                                        condition.mode = AnimatorConditionMode.If;
+                                        valid = true;
+                                    }
+
+                                    break;
                                 }
-                            }
-
-                            if (type == AnimatorControllerParameterType.Int) {
-                                valid = mode == AnimatorConditionMode.Equals
-                                        || mode == AnimatorConditionMode.NotEqual
-                                        || mode == AnimatorConditionMode.Greater
-                                        || mode == AnimatorConditionMode.Less;
-                            }
-
-                            if (type == AnimatorControllerParameterType.Float) {
-                                valid = mode == AnimatorConditionMode.Greater || mode == AnimatorConditionMode.Less;
+                                case AnimatorControllerParameterType.Int:
+                                    valid = mode == AnimatorConditionMode.Equals
+                                            || mode == AnimatorConditionMode.NotEqual
+                                            || mode == AnimatorConditionMode.Greater
+                                            || mode == AnimatorConditionMode.Less;
+                                    break;
+                                case AnimatorControllerParameterType.Float:
+                                    valid = mode == AnimatorConditionMode.Greater || mode == AnimatorConditionMode.Less;
+                                    break;
                             }
                         } else {
                             valid = false;
+                        }id = false;
                         }
 
                         if (!valid) {

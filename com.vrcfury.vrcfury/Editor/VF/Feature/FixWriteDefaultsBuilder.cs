@@ -33,13 +33,13 @@ namespace VF.Feature {
         }
         
         private AnimationClip _defaultClip = null;
+
         private AnimationClip GetDefaultClip() {
-            if (_defaultClip == null) {
-                var fx = GetFx();
-                _defaultClip = fx.NewClip("Defaults");
-                var defaultLayer = fx.NewLayer("Defaults", 0);
-                defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
-            }
+            if (_defaultClip != null) return _defaultClip;
+            var fx = GetFx();
+            _defaultClip = fx.NewClip("Defaults");
+            var defaultLayer = fx.NewLayer("Defaults", 0);
+            defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             return _defaultClip;
         }
 
@@ -155,18 +155,23 @@ namespace VF.Feature {
 
             bool applyToUnmanagedLayers;
             bool useWriteDefaults;
-            if (mode == FixWriteDefaults.FixWriteDefaultsMode.Auto) {
-                applyToUnmanagedLayers = true;
-                useWriteDefaults = analysis.shouldBeOnIfWeAreInControl;
-            } else if (mode == FixWriteDefaults.FixWriteDefaultsMode.ForceOff) {
-                applyToUnmanagedLayers = true;
-                useWriteDefaults = false;
-            } else if (mode == FixWriteDefaults.FixWriteDefaultsMode.ForceOn) {
-                applyToUnmanagedLayers = true;
-                useWriteDefaults = true;
-            } else {
-                applyToUnmanagedLayers = false;
-                useWriteDefaults = analysis.shouldBeOnIfWeAreNotInControl;
+            switch (mode) {
+                case FixWriteDefaults.FixWriteDefaultsMode.Auto:
+                    applyToUnmanagedLayers = true;
+                    useWriteDefaults = analysis.shouldBeOnIfWeAreInControl;
+                    break;
+                case FixWriteDefaults.FixWriteDefaultsMode.ForceOff:
+                    applyToUnmanagedLayers = true;
+                    useWriteDefaults = false;
+                    break;
+                case FixWriteDefaults.FixWriteDefaultsMode.ForceOn:
+                    applyToUnmanagedLayers = true;
+                    useWriteDefaults = true;
+                    break;
+                default:
+                    applyToUnmanagedLayers = false;
+                    useWriteDefaults = analysis.shouldBeOnIfWeAreNotInControl;
+                    break;
             }
             
             Debug.Log("VRCFury is fixing write defaults "
@@ -215,22 +220,22 @@ namespace VF.Feature {
         ) {
             var controllerInfos = avatarControllers.Select(tuple => {
                 var (type, controller) = tuple;
-                var info = new ControllerInfo();
-                info.type = type;
+                var info = new ControllerInfo {
+                    type = type
+                };
                 foreach (var layer in controller.layers) {
                     var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
-                    if (!ignore) {
-                        foreach (var state in new AnimatorIterator.States().From(layer)) {
-                            List<string> list;
-                            if (layer.blendingMode == AnimatorLayerBlendingMode.Additive || type == VRCAvatarDescriptor.AnimLayerType.Additive) {
-                                list = state.writeDefaultValues ? info.additiveOnStates : info.additiveOffStates;
-                            } else if (new AnimatorIterator.Trees().From(state).Any(tree => tree.blendType == BlendTreeType.Direct)) {
-                                list = state.writeDefaultValues ? info.directOnStates : info.directOffStates;
-                            } else {
-                                list = state.writeDefaultValues ? info.onStates : info.offStates;
-                            }
-                            list.Add(layer.name + " | " + state.name);
+                    if (ignore) continue;
+                    foreach (var state in new AnimatorIterator.States().From(layer)) {
+                        List<string> list;
+                        if (layer.blendingMode == AnimatorLayerBlendingMode.Additive || type == VRCAvatarDescriptor.AnimLayerType.Additive) {
+                            list = state.writeDefaultValues ? info.additiveOnStates : info.additiveOffStates;
+                        } else if (new AnimatorIterator.Trees().From(state).Any(tree => tree.blendType == BlendTreeType.Direct)) {
+                            list = state.writeDefaultValues ? info.directOnStates : info.directOffStates;
+                        } else {
+                            list = state.writeDefaultValues ? info.onStates : info.offStates;
                         }
+                        list.Add(layer.name + " | " + state.name);
                     }
                 }
 

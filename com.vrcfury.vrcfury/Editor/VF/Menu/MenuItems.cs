@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -100,10 +101,9 @@ namespace VF.Menu {
                 VFGameObject obj = Selection.activeGameObject;
                 if (obj == null) return;
                 var list = new List<string>();
-                foreach (var c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                    if (c == null || c is Transform) continue;
-                    list.Add(c.GetType().Name + " in " + c.owner().GetPath(obj));
-                }
+                var list = (from c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()
+                    where c != null && !(c is Transform)
+                    select c.GetType().Name + " in " + c.owner().GetPath(obj)).ToList();
 
                 Debug.Log($"List of components on {obj}:\n" + string.Join("\n", list));
 

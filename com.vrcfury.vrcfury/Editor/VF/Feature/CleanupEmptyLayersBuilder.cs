@@ -26,11 +26,10 @@ namespace VF.Feature {
                         if (binding.path == "__vrcf_length") {
                             return null;
                         }
-                        if (!binding.IsValid(avatarObject)) {
-                            removedBindings.Add($"{binding.PrettyString()} from {clip.name}");
-                            return null;
-                        }
-                        return binding;
+
+                        if (binding.IsValid(avatarObject)) return binding;
+                        removedBindings.Add($"{binding.PrettyString()} from {clip.name}");
+                        return null;
                     }));
                     var newLength = clip.length;
                     if (originalLength != newLength) {
@@ -54,10 +53,9 @@ namespace VF.Feature {
                     var hasBehaviour = new AnimatorIterator.Behaviours().From(layer)
                         .Any();
 
-                    if (!hasNonEmptyClip && !hasBehaviour) {
-                        Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");
-                        c.RemoveLayer(layer);
-                    }
+                    if (hasNonEmptyClip || hasBehaviour) continue;
+                    Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");
+                    c.RemoveLayer(layer);
                 }
             }
         }

@@ -17,7 +17,7 @@ namespace VF {
                 var brokenComponents = new HashSet<VRCFuryComponent>();
 
                 if (typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path)) {
-                    for (int n = 0; n < SceneManager.sceneCount; ++n) {
+                    for (var n = 0; n < SceneManager.sceneCount; ++n) {
                         var scene = SceneManager.GetSceneAt(n);
                         if (scene.path == path) {
                             brokenComponents.UnionWith(VFGameObject.GetRoots(scene)
@@ -37,12 +37,11 @@ namespace VF {
                 }
             }
 
-            if (blocked.Count > 0) {
-                EditorUtility.DisplayDialog("VRCFury Blocked Saving",
-                    string.Join("\n", blocked),
-                    "Ok"); 
-                paths = paths.ToList().Where(e => !blockedPaths.Contains(e)).ToArray();
-            }
+            if (blocked.Count <= 0) return paths;
+            EditorUtility.DisplayDialog("VRCFury Blocked Saving",
+                string.Join("\n", blocked),
+                "Ok"); 
+            paths = paths.ToList().Where(e => !blockedPaths.Contains(e)).ToArray();
             
             return paths;
         }

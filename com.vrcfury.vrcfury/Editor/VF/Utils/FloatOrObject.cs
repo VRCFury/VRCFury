@@ -37,10 +37,12 @@ namespace VF.Utils {
         }
 
         public static bool operator ==(FloatOrObject a, FloatOrObject b) {
-            return a?.isFloat == b?.isFloat
-                   && a?.floatVal == b?.floatVal
-                   && a?.objectVal == b?.objectVal;
+            return a?.floatVal != null
+                   && a.isFloat == b?.isFloat
+                   && a.floatVal == b.floatVal
+                   && a.objectVal == b.objectVal;
         }
+        
         public static bool operator !=(FloatOrObject a, FloatOrObject b) {
             return !(a == b);
         }

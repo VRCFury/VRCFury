@@ -78,19 +78,17 @@ namespace VF.Model.Feature {
         public State outState;
 
         public override bool Upgrade(int fromVersion) {
-            if (fromVersion < 1) {
-                if (obj != null) {
-                    inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
-                    outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
-                    obj = null;
-                }
-
-                if (!string.IsNullOrWhiteSpace(blendshape)) {
-                    inState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 0 });
-                    outState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 100 });
-                    blendshape = null;
-                }
+            if (fromVersion >= 1) return false;
+            if (obj != null) {
+                inState.actions.Add(new ScaleAction { obj = obj, scale = scaleMin });
+                outState.actions.Add(new ScaleAction { obj = obj, scale = scaleMax });
+                obj = null;
             }
+
+            if (string.IsNullOrWhiteSpace(blendshape)) return false;
+            inState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 0 });
+            outState.actions.Add(new BlendShapeAction() { blendShape = blendshape, blendShapeValue = 100 });
+            blendshape = null;
             return false;
         }
         public override int GetLatestVersion() {
@@ -695,10 +693,9 @@ namespace VF.Model.Feature {
         public GuidTexture2d icon;
         
         public override bool Upgrade(int fromVersion) {
-            if (fromVersion < 1) {
-                if (path.StartsWith("Sockets/") || path == "Sockets") {
-                    path = "SPS" + path.Substring(7);
-                }
+            if (fromVersion >= 1) return false;
+            if (path.StartsWith("Sockets/") || path == "Sockets") {
+                path = "SPS" + path.Substring(7);
             }
             return false;
         }

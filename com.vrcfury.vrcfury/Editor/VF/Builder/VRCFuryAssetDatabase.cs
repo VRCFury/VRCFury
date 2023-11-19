@@ -37,7 +37,7 @@ namespace VF.Builder {
             var safeFilename = MakeFilenameSafe(filename);
 
             string fullPath;
-            for (int i = 0;; i++) {
+            for (var i = 0;; i++) {
                 fullPath = dir
                            + "/"
                            + safeFilename + (i > 0 ? "_" + i : "")
@@ -50,16 +50,22 @@ namespace VF.Builder {
 
         public static void SaveAsset(Object obj, string dir, string filename) {
             string ext;
-            if (obj is AnimationClip) {
-                ext = "anim";
-            } else if (obj is Material) {
-                ext = "mat";
-            } else if (obj is AnimatorController) {
-                ext = "controller";
-            } else if (obj is AvatarMask) {
-                ext = "mask";
-            } else {
-                ext = "asset";
+            switch (obj) {
+                case AnimationClip _:
+                    ext = "anim";
+                    break;
+                case Material _:
+                    ext = "mat";
+                    break;
+                case AnimatorController _:
+                    ext = "controller";
+                    break;
+                case AvatarMask _:
+                    ext = "mask";
+                    break;
+                default:
+                    ext = "asset";
+                    break;
             }
 
             var fullPath = GetUniquePath(dir, filename, ext);
@@ -69,7 +75,7 @@ namespace VF.Builder {
             AssetDatabase.CreateAsset(obj, fullPath);
         }
 
-        private static bool assetEditing = false;
+        private static bool assetEditing;
         public static void WithAssetEditing(Action go) {
             if (!assetEditing) {
                 AssetDatabase.StartAssetEditing();
@@ -115,30 +121,25 @@ namespace VF.Builder {
         }
 
         public static void DeleteFolder(string path) {
-            if (Directory.Exists(path)) {
-                foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
-                    var assetPath = AssetDatabase.GUIDToAssetPath(asset);
-                    AssetDatabase.DeleteAsset(assetPath);
-                }
+            if (!Directory.Exists(path)) return;
+            foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
+                var assetPath = AssetDatabase.GUIDToAssetPath(asset);
+                AssetDatabase.DeleteAsset(assetPath);
             }
         }
 
         public static Tuple<string, long> ParseId(string id) {
-            if (!string.IsNullOrWhiteSpace(id)) {
-                var split = id.Split(':');
-                if (split.Length == 2) {
-                    var guid = split[0];
-                    var fileID = long.Parse(split[1]);
-                    return Tuple.Create(guid, fileID);
-                }
-            }
-            return null;
+            if (string.IsNullOrWhiteSpace(id)) return null;
+            var split = id.Split(':');
+            if (split.Length != 2) return null;
+            var guid = split[0];
+            var fileID = long.Parse(split[1]);
+            return Tuple.Create(guid, fileID);
         }
 
         public static T FindAsset<T>(string id) where T : Object {
             var parsed = ParseId(id);
-            if (parsed == null) return null;
-            return FindAsset<T>(parsed.Item1, parsed.Item2);
+            return parsed == null ? null : FindAsset<T>(parsed.Item1, parsed.Item2);
         }
         
         public static T FindAsset<T>(string guid, long fileID) where T : Object {

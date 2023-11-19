@@ -124,11 +124,9 @@ namespace VF.Builder.Haptics {
         }
 
         public static Quaternion GetTpsRotation(Material mat) {
-            if (mat.HasProperty(TpsPenetratorForward)) {
-                var c = mat.GetVector(TpsPenetratorForward);
-                return Quaternion.LookRotation(new Vector3(c.x, c.y, c.z));
-            }
-            return Quaternion.identity;
+            if (!mat.HasProperty(TpsPenetratorForward)) return Quaternion.identity;
+            var c = mat.GetVector(TpsPenetratorForward);
+            return Quaternion.LookRotation(new Vector3(c.x, c.y, c.z));
         }
 
         public static bool IsLocked(Material mat) {

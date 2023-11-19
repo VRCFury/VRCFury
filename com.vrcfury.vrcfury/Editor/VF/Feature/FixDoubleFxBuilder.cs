@@ -16,11 +16,10 @@ namespace VF.Feature {
             var fxLayerDefault = new List<bool>();
             for (var i = 0; i < avatar.baseAnimationLayers.Length; i++) {
                 var layer = avatar.baseAnimationLayers[i];
-                if (layer.type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    fxLayers.Add(layer.isDefault ? null : layer.animatorController);
-                    fxLayerIds.Add(i);
-                    fxLayerDefault.Add(layer.isDefault);
-                }
+                if (layer.type != VRCAvatarDescriptor.AnimLayerType.FX) continue;
+                fxLayers.Add(layer.isDefault ? null : layer.animatorController);
+                fxLayerIds.Add(i);
+                fxLayerDefault.Add(layer.isDefault);
             }
 
             if (fxLayers.Count > 1) {

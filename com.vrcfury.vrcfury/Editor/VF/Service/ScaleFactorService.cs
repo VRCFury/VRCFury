@@ -27,10 +27,11 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         
         private VFAFloat cached;
+
         public VFAFloat Get() {
-            if (cached == null) cached = Generate();
-            return cached;
+            return cached ?? (cached = Generate());
         }
+
 
         private VFAFloat Generate() {
             var fx = manager.GetFx();
@@ -42,7 +43,7 @@ namespace VF.Service {
             var senderObj = GameObjects.Create("Sender", holder);
             var sender = senderObj.AddComponent<VRCContactSender>();
             sender.radius = 0.001f / senderObj.worldScale.x;
-            var tag = "VRCF_SCALEFACTORFIX_AA";
+            const string tag = "VRCF_SCALEFACTORFIX_AA";
             sender.collisionTags.Add(tag);
 
             var receiverObj = GameObjects.Create("Receiver", holder);

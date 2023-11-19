@@ -19,10 +19,9 @@ namespace Editor.VF.Utils {
                     || newCondition.threshold != condition.threshold;
                 return newCondition;
             }).ToArray();
-            if (updated) {
-                transition.conditions = newConditions;
-                VRCFuryEditorUtils.MarkDirty(transition);
-            }
+            if (!updated) return;
+            transition.conditions = newConditions;
+            VRCFuryEditorUtils.MarkDirty(transition);
         }
     }
 }

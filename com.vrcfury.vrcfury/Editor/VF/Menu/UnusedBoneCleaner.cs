@@ -68,8 +68,7 @@ namespace VF.Menu {
                     if (name == parentName + "_end") return false;
                     if (obj.transform.childCount > 0) return false;
                     if (obj.GetComponents<UnityEngine.Component>().Length > 1) return false;
-                    if (usedBones.Contains(obj.transform)) return false;
-                    return true;
+                    return !usedBones.Contains(obj.transform);
                 }
             );
         }

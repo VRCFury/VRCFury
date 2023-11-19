@@ -148,10 +148,9 @@ namespace VF.Inspector {
             if (resetPhysboneProp != null) {
                 content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                     var c = new VisualElement();
-                    if (resetPhysboneProp.arraySize > 0) {
-                        c.Add(VRCFuryEditorUtils.WrappedLabel("Reset PhysBones:"));
-                        c.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("resetPhysbones")));
-                    }
+                    if (resetPhysboneProp.arraySize <= 0) return c;
+                    c.Add(VRCFuryEditorUtils.WrappedLabel("Reset PhysBones:"));
+                    c.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("resetPhysbones")));
                     return c;
                 }, resetPhysboneProp));
             }
@@ -187,14 +186,13 @@ namespace VF.Inspector {
             if (enableDriveGlobalParamProp != null) {
                 content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                     var c = new VisualElement();
-                    if (enableDriveGlobalParamProp.boolValue) {
-                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("driveGlobalParam"), "Drive Global Param"));
-                        c.Add(VRCFuryEditorUtils.Warn(
-                            "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
-                            "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +
-                            "manually-created state transitions in your avatar. This should NEVER be used on vrcfury props, as any merged " +
-                            "full controllers will have their parameters rewritten."));
-                    }
+                    if (!enableDriveGlobalParamProp.boolValue) return c;
+                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("driveGlobalParam"), "Drive Global Param"));
+                    c.Add(VRCFuryEditorUtils.Warn(
+                        "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
+                        "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +
+                        "manually-created state transitions in your avatar. This should NEVER be used on vrcfury props, as any merged " +
+                        "full controllers will have their parameters rewritten."));
                     return c;
                 }, enableDriveGlobalParamProp));
             }
@@ -213,26 +211,21 @@ namespace VF.Inspector {
 
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
-                if (hasTransitionProp.boolValue)
-                {
-                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("transitionStateIn"), "Transition In"));
+                if (!hasTransitionProp.boolValue) return c;
+                c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("transitionStateIn"), "Transition In"));
 
-                    if (!simpleOutTransitionProp.boolValue)
-                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("transitionStateOut"), "Transition Out"));
-                }
+                if (!simpleOutTransitionProp.boolValue)
+                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("transitionStateOut"), "Transition Out"));
                 return c;
             }, hasTransitionProp, simpleOutTransitionProp));
 
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
-                if (separateLocalProp.boolValue && hasTransitionProp.boolValue)
-                {
-                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("localTransitionStateIn"), "Local Trans. In"));
+                if (separateLocalProp != null && (!separateLocalProp.boolValue || !hasTransitionProp.boolValue)) return c;
+                c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("localTransitionStateIn"), "Local Trans. In"));
 
-                    if (!simpleOutTransitionProp.boolValue)
-                        c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("localTransitionStateOut"), "Local Trans. Out"));
-                        
-                }
+                if (!simpleOutTransitionProp.boolValue)
+                    c.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("localTransitionStateOut"), "Local Trans. Out"));
                 return c;
             }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
 
@@ -262,12 +255,14 @@ namespace VF.Inspector {
                         tags.Add("This is the Exclusive Off State");
                     if (holdButtonProp != null && holdButtonProp.boolValue)
                         tags.Add("Hold Button");
-
-                    var row = new VisualElement();
-                    row.style.flexWrap = Wrap.Wrap;
-                    row.style.flexDirection = FlexDirection.Row;
-                    foreach (var tag in tags) {
-                        var flag = new Label(tag);
+                    
+                    var row = new VisualElement {
+                        style = {
+                            flexWrap = Wrap.Wrap,
+                            flexDirection = FlexDirection.Row
+                        }
+                    };
+                    foreach (var flag in tags.Select(tag => new Label(tag))) {
                         flag.style.width = StyleKeyword.Auto;
                         flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
                         flag.style.borderTopRightRadius = 5;

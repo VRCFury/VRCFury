@@ -11,12 +11,10 @@ namespace VF.Builder {
     public static class ClipRewriter {
         public static AnimationRewriter AnimatorBindingsAlwaysTargetRoot() {
             return AnimationRewriter.RewriteBinding(binding => {
-                if (binding.type == typeof(Animator)) {
-                    var newBinding = binding;
-                    newBinding.path = "";
-                    return newBinding;
-                }
-                return binding;
+                if (binding.type != typeof(Animator)) return binding;
+                var newBinding = binding;
+                newBinding.path = "";
+                return newBinding;
             });
         }
         
@@ -67,7 +65,7 @@ namespace VF.Builder {
                     return binding;
                 }
 
-                VFGameObject current = animObject;
+                var current = animObject;
                 while (current != null) {
                     var testBinding = binding;
                     testBinding.path = Join(current.GetPath(rootObject), binding.path);
@@ -90,15 +88,21 @@ namespace VF.Builder {
                 if (path.StartsWith("/") && allowAdvancedOperators) {
                     ret.Clear();
                 }
-                foreach (var part in path.Split('/')) {
-                    if (part.Equals("..") && ret.Count > 0 && !"..".Equals(ret[ret.Count - 1]) && allowAdvancedOperators) {
-                        ret.RemoveAt(ret.Count - 1);
-                    } else if (part == "." && allowAdvancedOperators) {
-                        // omit this chunk
-                    } else if (part == "") {
-                        // omit this chunk
-                    } else {
-                        ret.Add(part);
+                foreach (var part in path.Split('/'))
+                {
+                    switch (part) {
+                        case ".." when ret.Count > 0 && !"..".Equals(ret[ret.Count - 1]) && allowAdvancedOperators:
+                            ret.RemoveAt(ret.Count - 1);
+                            break;
+                        case "." when allowAdvancedOperators:
+                            // omit this chunk
+                            break;
+                        case "":
+                            // omit this chunk
+                            break;
+                        default:
+                            ret.Add(part);
+                            break;
                     }
                 }
             }

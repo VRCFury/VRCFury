@@ -39,17 +39,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     private ISet<string> GetExclusiveTags() {
-        if (model.enableExclusiveTag) {
-            return SeparateList(model.exclusiveTag);
-        }
-        return new HashSet<string>(); 
+        return model.enableExclusiveTag ? SeparateList(model.exclusiveTag) : new HashSet<string>();
     }
 
     private ISet<string> GetDriveGlobalParams() {
-        if (model.enableDriveGlobalParam) {
-            return SeparateList(model.driveGlobalParam);
-        }
-        return new HashSet<string>(); 
+        return model.enableDriveGlobalParam ? SeparateList(model.driveGlobalParam) : new HashSet<string>();
     }
 
     public VFAParam GetExclusiveParam() {
@@ -73,10 +67,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
 
-        var synced = true;
-        if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
-            synced = false;
-        }
+        var synced = !(model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam));
 
         var (paramName, usePrefixOnParam) = GetParamName();
         VFCondition onCase;
@@ -257,15 +248,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                      .Where(b => b != this)) {
             var otherTags = other.GetExclusiveTags();
             var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
-            if (conflictsWithOther) {
-                var otherParam = other.GetExclusiveParam();
-                if (otherParam != null) {
-                    foreach (var state in exclusiveTagTriggeringStates) {
-                        state.Drives(otherParam, 0);
-                    }
-                    allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
-                }
+            if (!conflictsWithOther) continue;
+            var otherParam = other.GetExclusiveParam();
+            if (otherParam == null) continue;
+            foreach (var state in exclusiveTagTriggeringStates) {
+                state.Drives(otherParam, 0);
             }
+            allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
         }
 
         if (model.exclusiveOffState && exclusiveParam != null) {
@@ -284,12 +273,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
     public void ApplyRestingState() {
-        if (restingClip != null) {
-            var restingStateBuilder = allBuildersInRun
-                .OfType<RestingStateBuilder>()
-                .First();
-            restingStateBuilder.ApplyClipToRestingState(restingClip, true);
-        }
+        if (restingClip == null) return;
+        var restingStateBuilder = allBuildersInRun
+            .OfType<RestingStateBuilder>()
+            .First();
+        restingStateBuilder.ApplyClipToRestingState(restingClip, true);
     }
 
     public override string GetEditorTitle() {
@@ -479,14 +467,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (enableDriveGlobalParamProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
-                if (enableDriveGlobalParamProp.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("driveGlobalParam"), "Drive Global Param"));
-                    c.Add(VRCFuryEditorUtils.Warn(
-                        "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
-                        "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +
-                        "manually-created state transitions in your avatar. This should NEVER be used on vrcfury props, as any merged " +
-                        "full controllers will have their parameters rewritten."));
-                }
+                if (!enableDriveGlobalParamProp.boolValue) return c;
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("driveGlobalParam"), "Drive Global Param"));
+                c.Add(VRCFuryEditorUtils.Warn(
+                    "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
+                    "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +
+                    "manually-created state transitions in your avatar. This should NEVER be used on vrcfury props, as any merged " +
+                    "full controllers will have their parameters rewritten."));
                 return c;
             }, enableDriveGlobalParamProp));
         }
@@ -556,11 +543,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 if (hasExitTimeProp != null && hasExitTimeProp.boolValue)
                     tags.Add("Run to Completion");
 
-                var row = new VisualElement();
-                row.style.flexWrap = Wrap.Wrap;
-                row.style.flexDirection = FlexDirection.Row;
-                foreach (var tag in tags) {
-                    var flag = new Label(tag);
+                var row = new VisualElement {
+                    style = {
+                        flexWrap = Wrap.Wrap,
+                        flexDirection = FlexDirection.Row
+                    }
+                };
+                foreach (var flag in tags.Select(tag => new Label(tag)))
+                {
                     flag.style.width = StyleKeyword.Auto;
                     flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
                     flag.style.borderTopRightRadius = 5;

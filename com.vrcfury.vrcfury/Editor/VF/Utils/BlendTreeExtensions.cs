@@ -37,10 +37,9 @@ namespace VF.Utils {
                            || newChild.mirror != child.mirror;
                 return newChild;
             }).ToArray();
-            if (updated) {
-                tree.children = newChildren;
-                VRCFuryEditorUtils.MarkDirty(tree);
-            }
+            if (!updated) return;
+            tree.children = newChildren;
+            VRCFuryEditorUtils.MarkDirty(tree);
         }
 
         public static void RewriteParameters(this BlendTree tree, Func<string, string> rewriteParamName) {

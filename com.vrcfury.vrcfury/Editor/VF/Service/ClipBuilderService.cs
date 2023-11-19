@@ -15,7 +15,7 @@ namespace VF.Service {
         //private static float ONE_FRAME = 1 / 60f;
         private readonly VFGameObject baseObject;
         public ClipBuilderService(AvatarManager avatarManager) {
-            this.baseObject = avatarManager.AvatarObject;
+            baseObject = avatarManager.AvatarObject;
         }
 
         public static ObjectReferenceKeyframe[] OneFrame(Object obj) {
@@ -46,12 +46,15 @@ namespace VF.Service {
                 var outputCurve = new AnimationCurve();
                 foreach (var (time,sourceClip) in sources) {
                     var sourceCurve = sourceClip.GetFloatCurve(binding);
-                    if (sourceCurve.keys.Length == 1) {
-                        outputCurve.AddKey(new Keyframe(time, sourceCurve.keys[0].value, 0f, 0f));
-                    } else if (sourceCurve.keys.Length == 0) {
-                        outputCurve.AddKey(new Keyframe(time, defaultValue, 0f, 0f));
-                    } else {
-                        throw new Exception("Source curve didn't contain exactly 1 key: " + sourceCurve.keys.Length);
+                    switch (sourceCurve.keys.Length) {
+                        case 1:
+                            outputCurve.AddKey(new Keyframe(time, sourceCurve.keys[0].value, 0f, 0f));
+                            break;
+                        case 0:
+                            outputCurve.AddKey(new Keyframe(time, defaultValue, 0f, 0f));
+                            break;
+                        default:
+                            throw new Exception("Source curve didn't contain exactly 1 key: " + sourceCurve.keys.Length);
                     }
                 }
                 target.SetFloatCurve(binding, outputCurve);
@@ -62,12 +65,15 @@ namespace VF.Service {
                 var outputCurve = new List<ObjectReferenceKeyframe>();
                 foreach (var (time,sourceClip) in sources) {
                     var sourceCurve = sourceClip.GetObjectCurve(binding);
-                    if (sourceCurve.Length == 1) {
-                        outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = sourceCurve[0].value });
-                    } else if (sourceCurve.Length == 0) {
-                        outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = defaultValue });
-                    } else {
-                        throw new Exception("Source curve didn't contain exactly 1 key: " + sourceCurve.Length);
+                    switch (sourceCurve.Length) {
+                        case 1:
+                            outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = sourceCurve[0].value });
+                            break;
+                        case 0:
+                            outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = defaultValue });
+                            break;
+                        default:
+                            throw new Exception("Source curve didn't contain exactly 1 key: " + sourceCurve.Length);
                     }
                 }
                 target.SetObjectCurve(binding, outputCurve.ToArray());
@@ -151,12 +157,8 @@ namespace VF.Service {
         public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(Motion motion) {
             if (!(motion is AnimationClip clip)) return null;
             var times = new HashSet<float>();
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (curve.IsFloat) {
-                    times.UnionWith(curve.FloatCurve.keys.Select(key => key.time));
-                } else {
-                    times.UnionWith(curve.ObjectCurve.Select(key => key.time));
-                }
+            foreach (var (_,curve) in clip.GetAllCurves()) {
+                times.UnionWith(curve.IsFloat ? curve.FloatCurve.keys.Select(key => key.time) : curve.ObjectCurve.Select(key => key.time));
             }
 
             if (!times.Contains(0)) return null;

@@ -12,13 +12,12 @@ namespace VF.Service {
         private BlendTree _tree;
 
         public BlendTree GetTree() {
-            if (_tree == null) {
-                var fx = manager.GetFx();
-                var directLayer = fx.NewLayer("Direct Blend Tree Service");
-                _tree = fx.NewBlendTree("Direct Blend Tree Service");
-                _tree.blendType = BlendTreeType.Direct;
-                directLayer.NewState("Tree").WithAnimation(_tree);
-            }
+            if (_tree != null) return _tree;
+            var fx = manager.GetFx();
+            var directLayer = fx.NewLayer("Direct Blend Tree Service");
+            _tree = fx.NewBlendTree("Direct Blend Tree Service");
+            _tree.blendType = BlendTreeType.Direct;
+            directLayer.NewState("Tree").WithAnimation(_tree);
             return _tree;
         }
 

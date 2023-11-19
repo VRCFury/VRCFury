@@ -24,7 +24,7 @@ namespace VF.Menu {
             var exists = VFGameObject.GetRoots(originalObject.scene)
                 .FirstOrDefault(o => o.name == cloneName);
             if (exists) {
-                exists.Destroy();
+                exists?.Destroy();
             }
             var clone = originalObject.Clone();
             clone.active = true;

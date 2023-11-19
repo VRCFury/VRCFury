@@ -40,14 +40,13 @@ namespace VF.Service {
             });
 
             var optionsPath = GetOptionsPath();
-            if (optionsPath != mainPath) {
-                var optionsIcon = VRCFuryEditorUtils.LoadGuid<Texture2D>("16e0846165acaa1429417e757c53ef9b");
-                if (optionsIcon != null) {
-                    menuChanges.AddExtraAction(new SetIcon {
-                        path = optionsPath,
-                        icon = optionsIcon
-                    });
-                }
+            if (optionsPath == mainPath) return;
+            var optionsIcon = VRCFuryEditorUtils.LoadGuid<Texture2D>("16e0846165acaa1429417e757c53ef9b");
+            if (optionsIcon != null) {
+                menuChanges.AddExtraAction(new SetIcon {
+                    path = optionsPath,
+                    icon = optionsIcon
+                });
             }
         }
 

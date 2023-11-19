@@ -39,14 +39,12 @@ namespace VF {
                     }
                 }
 
-                if (wrapper.objRef != null && !type.IsInstanceOfType(wrapper.objRef)) {
-                    // objRef is the wrong type somehow
-                    wrapper.objRef = null;
-                    wrapper.id = "";
-                    changed = true;
-                }
+                 if (wrapper.objRef == null || type.IsInstanceOfType(wrapper.objRef)) return changed;
+                // objRef is the wrong type somehow
+                wrapper.objRef = null;
+                wrapper.id = "";
 
-                return changed;
+                return true;
             };
         }
     }

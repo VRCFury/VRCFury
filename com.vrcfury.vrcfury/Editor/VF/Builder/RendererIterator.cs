@@ -12,29 +12,34 @@ namespace VF.Builder {
         public static  ICollection<Tuple<Renderer, Mesh, Action<Mesh>>> GetRenderersWithMeshes(VFGameObject obj) {
             var output = new List<Tuple<Renderer, Mesh, Action<Mesh>>>();
             foreach (var renderer in obj.GetComponentsInSelfAndChildren<Renderer>()) {
-                if (renderer is SkinnedMeshRenderer skin) {
-                    if (skin.sharedMesh == null) continue;
-                    output.Add(Tuple.Create(
-                        renderer,
-                        skin.sharedMesh,
-                        (Action<Mesh>)(m => {
-                            skin.sharedMesh = m;
-                            VRCFuryEditorUtils.MarkDirty(skin);
-                        })
-                    ));
-                } else if (renderer is MeshRenderer) {
-                    var mesh = renderer.gameObject.GetComponent<MeshFilter>()?.sharedMesh;
-                    if (mesh == null) continue;
-                    output.Add(Tuple.Create(
-                        renderer,
-                        mesh,
-                        (Action<Mesh>)(m => {
-                            var filter = renderer.gameObject.GetComponent<MeshFilter>();
-                            if (!filter) filter = renderer.gameObject.AddComponent<MeshFilter>();
-                            filter.sharedMesh = m;
-                            VRCFuryEditorUtils.MarkDirty(filter);
-                        })
-                    ));
+                switch (renderer) {
+                    case SkinnedMeshRenderer skin when skin.sharedMesh == null:
+                        continue;
+                    case SkinnedMeshRenderer skin:
+                        output.Add(Tuple.Create(
+                            renderer,
+                            skin.sharedMesh,
+                            (Action<Mesh>)(m => {
+                                skin.sharedMesh = m;
+                                VRCFuryEditorUtils.MarkDirty(skin);
+                            })
+                        ));
+                        break;
+                    case MeshRenderer _: {
+                        var mesh = renderer.gameObject.GetComponent<MeshFilter>()?.sharedMesh;
+                        if (mesh == null) continue;
+                        output.Add(Tuple.Create(
+                            renderer,
+                            mesh,
+                            (Action<Mesh>)(m => {
+                                var filter = renderer.gameObject.GetComponent<MeshFilter>();
+                                if (!filter) filter = renderer.gameObject.AddComponent<MeshFilter>();
+                                filter.sharedMesh = m;
+                                VRCFuryEditorUtils.MarkDirty(filter);
+                            })
+                        ));
+                        break;
+                    }
                 }
             }
 

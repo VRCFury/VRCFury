@@ -219,8 +219,7 @@ namespace VF {
 
         private static bool Exists(string guid) {
             var path = AssetDatabase.GUIDToAssetPath(guid);
-            if (path == null) return false;
-            return File.Exists(path);
+            return path != null && File.Exists(path);
         }
 
         private static void Import(string id) {

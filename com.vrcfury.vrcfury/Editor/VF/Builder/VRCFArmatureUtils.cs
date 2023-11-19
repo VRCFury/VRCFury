@@ -121,7 +121,7 @@ namespace VF.Builder {
             if (boneHashArray == null || !boneHashArray.isArray) {
                 throw new VRCFBuilderException("Bone hash array is missing");
             }
-            for (int i = 0; i < boneHashArray.arraySize; i++) {
+            for (var i = 0; i < boneHashArray.arraySize; i++) {
                 output[i] = boneHashArray.GetArrayElementAtIndex(i).longValue;
             }
             return output;
@@ -133,10 +133,9 @@ namespace VF.Builder {
                 throw new VRCFBuilderException("TOS array is missing");
             }
             var output = new Dictionary<long, string>();
-            for (int i = 0; i < tosArray.arraySize; i++) {
+            for (var i = 0; i < tosArray.arraySize; i++) {
                 var element = tosArray.GetArrayElementAtIndex(i);
-                if (element == null) continue;
-                var hashProp = element.FindPropertyRelative("first");
+                var hashProp = element?.FindPropertyRelative("first");
                 if (hashProp == null) continue;
                 var pathProp = element.FindPropertyRelative("second");
                 if (pathProp == null) continue;

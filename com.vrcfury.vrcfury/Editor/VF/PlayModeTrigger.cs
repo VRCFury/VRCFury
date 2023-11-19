@@ -27,13 +27,12 @@ namespace VF {
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
-            if (state == PlayModeStateChange.ExitingEditMode) {
-                if (PlayModeMenuItem.Get()) {
-                    var rootObjects = VFGameObject.GetRoots();
-                    VRCFPrefabFixer.Fix(rootObjects);
-                }
-                tmpDir = null;
+            if (state != PlayModeStateChange.ExitingEditMode) return;
+            if (PlayModeMenuItem.Get()) {
+                var rootObjects = VFGameObject.GetRoots();
+                VRCFPrefabFixer.Fix(rootObjects);
             }
+            tmpDir = null;
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
@@ -59,7 +58,7 @@ namespace VF {
             if (tmpDir == null) {
                 var tmpDirParent = TmpFilePackage.GetPath() + "/PlayMode";
                 VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
-                tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
+                tmpDir = $"{tmpDirParent}/{DateTime.Now:yyyyMMdd-HHmmss}";
                 Directory.CreateDirectory(tmpDir);
             }
 
@@ -160,8 +159,8 @@ namespace VF {
          */
         private static void RestartAv3Emulator() {
             try {
-                var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator");
-                if (av3EmulatorType == null) av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
+                var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator") ??
+                                      ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
                 if (av3EmulatorType == null) return;
                 
                 Debug.Log("Restarting av3emulator ...");
@@ -203,15 +202,13 @@ namespace VF {
          * it to set that texture again.
          */
         private static void RestartAudiolink() {
-            var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
-            if (alComponentType == null) alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
+            var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink") ?? ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
             if (alComponentType == null) return;
             foreach (var gm in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
                 Debug.Log("Restarting AudioLink ...");
-                if (gm.gameObject.activeSelf) {
-                    gm.gameObject.SetActive(false);
-                    gm.gameObject.SetActive(true);
-                }
+                if (!gm.gameObject.activeSelf) continue;
+                gm.gameObject.SetActive(false);
+                gm.gameObject.SetActive(true);
             }
         }
 

@@ -20,8 +20,8 @@ namespace VF.Builder.Haptics {
             var transform = plug.transform;
             var renderers = VRCFuryHapticPlugEditor.GetRenderers(plug);
 
-            Quaternion worldRotation = transform.rotation;
-            Vector3 worldPosition = transform.position;
+            var worldRotation = transform.rotation;
+            var worldPosition = transform.position;
             if (!plug.configureTps && !plug.enableSps && plug.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
                 worldRotation = GetAutoWorldRotation(firstRenderer);

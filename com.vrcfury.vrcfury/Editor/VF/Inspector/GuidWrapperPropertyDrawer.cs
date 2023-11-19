@@ -30,7 +30,7 @@ namespace VF.Inspector {
                 if (objField.value != null) return new VisualElement();
 
                 var parsed = VrcfObjectId.FromId(id.stringValue);
-                var missingId = "";
+                string missingId;
                 if (!string.IsNullOrWhiteSpace(parsed.objectName)) {
                     missingId = $"{parsed.objectName} from {parsed.fileName}";
                 } else if (!string.IsNullOrWhiteSpace(parsed.fileName)) {

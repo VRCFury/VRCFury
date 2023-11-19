@@ -14,20 +14,21 @@ namespace VF.Builder {
             }
             foreach (var physbone in obj.root.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 var root = physbone.GetRootTransform();
-                if (obj != root && obj.IsChildOf(root)) {
-                    var alreadyExcluded = physbone.ignoreTransforms.Any(other => other != null && obj.IsChildOf(other));
-                    if (!alreadyExcluded) {
-                        physbone.ignoreTransforms.Add(obj);
-                    }
+                if (obj == root || !obj.IsChildOf(root)) continue;
+                var alreadyExcluded = physbone.ignoreTransforms.Any(other => other != null && obj.IsChildOf(other));
+                if (!alreadyExcluded) {
+                    physbone.ignoreTransforms.Add(obj);
                 }
             }
         }
 
         private static bool ContainsBonesUsedExternally(VFGameObject obj) {
             foreach (var s in obj.root.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                foreach (var bone in s.bones) {
-                    if (bone && bone.IsChildOf(obj)) return true;
+                if (s.bones.Any(bone => bone && bone.IsChildOf(obj)))
+                {
+                    return true;
                 }
+
                 if (s.rootBone && s.rootBone.IsChildOf(obj)) return true;
             }
             foreach (var c in obj.root.GetComponentsInSelfAndChildren<IConstraint>()) {
@@ -36,10 +37,7 @@ namespace VF.Builder {
                     if (t && t.IsChildOf(obj)) return true;
                 }
             }
-            if (obj.GetComponentsInSelfAndChildren<Renderer>().Length > 1) {
-                return true;
-            }
-            return false;
+            return obj.GetComponentsInSelfAndChildren<Renderer>().Length > 1;
         }
     }
 }

@@ -20,23 +20,21 @@ namespace VF.Builder {
             foreach (var stateMachine in GetAllStateMachines(root)) {
                 for (var i = 0; i < stateMachine.behaviours.Length; i++) {
                     var keep = action(stateMachine.behaviours[i], type => stateMachine.VAddStateMachineBehaviour(type));
-                    if (!keep) {
-                        var behaviours = stateMachine.behaviours.ToList();
-                        behaviours.RemoveAt(i);
-                        stateMachine.behaviours = behaviours.ToArray();
-                        i--;
-                    }
+                    if (keep) continue;
+                    var behaviours = stateMachine.behaviours.ToList();
+                    behaviours.RemoveAt(i);
+                    stateMachine.behaviours = behaviours.ToArray();
+                    i--;
                 }
             }
             foreach (var state in new States().From(root)) {
                 for (var i = 0; i < state.behaviours.Length; i++) {
                     var keep = action(state.behaviours[i], type => state.VAddStateMachineBehaviour(type));
-                    if (!keep) {
-                        var behaviours = state.behaviours.ToList();
-                        behaviours.RemoveAt(i);
-                        state.behaviours = behaviours.ToArray();
-                        i--;
-                    }
+                    if (keep) continue;
+                    var behaviours = state.behaviours.ToList();
+                    behaviours.RemoveAt(i);
+                    state.behaviours = behaviours.ToArray();
+                    i--;
                 }
             }
         }
@@ -54,10 +52,9 @@ namespace VF.Builder {
                             break;
                         case BlendTree tree:
                             var children = tree.children;
-                            for (var i = 0; i < children.Length; i++) {
-                                var childNum = i;
-                                var child = children[childNum];
-                                motions.Push((child.motion, m => child.motion = m));
+                            foreach (var child in children) {
+                                var child1 = child;
+                                motions.Push((child.motion, m => child1.motion = m));
                             }
                             break;
                     }
@@ -70,21 +67,18 @@ namespace VF.Builder {
                 return ImmutableHashSet<T>.Empty;
             }
             public IImmutableSet<T> From(AnimatorState root) {
-                if (root == null) return ImmutableHashSet<T>.Empty;
-                return From(root.motion);
+                return root == null ? ImmutableHashSet<T>.Empty : From(root.motion);
             }
             public virtual IImmutableSet<T> From(AnimatorStateMachine root) {
                 return new States().From(root).SelectMany(From).ToImmutableHashSet();
             }
 
             public IImmutableSet<T> From(AnimatorControllerLayer root) {
-                if (root == null) return ImmutableHashSet<T>.Empty;
-                return From(root.stateMachine);
+                return root == null ? ImmutableHashSet<T>.Empty : From(root.stateMachine);
             }
 
             public IImmutableSet<T> From(AnimatorController root) {
-                if (root == null) return ImmutableHashSet<T>.Empty;
-                return root.layers.SelectMany(From).ToImmutableHashSet();
+                return root == null ? ImmutableHashSet<T>.Empty : root.layers.SelectMany(From).ToImmutableHashSet();
             }
         }
 
@@ -98,7 +92,7 @@ namespace VF.Builder {
                 if (all.Contains(one)) continue;
                 all.Add(one);
                 foreach (var child in getChildren(one)) {
-                    if (child != null && !(child is T)) {
+                    if (child != null && !(child != null)) {
                         throw new Exception(
                             $"{root.name} contains a child object that is not of type {typeof(T).Name}." +
                             $" This should be impossible, and is usually a sign of cache memory corruption within unity. Try reimporting or renaming the file" +

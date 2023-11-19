@@ -19,8 +19,7 @@ namespace VF.Utils {
         public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite, bool skipProxyBindings = true) {
             var output = RewriteCurve((binding, curve) => {
                 var newBinding = rewrite(binding);
-                if (newBinding == null) return (binding, null, false);
-                return (newBinding.Value, curve, false);
+                return newBinding == null ? (binding, null, false) : (newBinding.Value, curve, false);
             });
             output.skipProxyBindings = skipProxyBindings;
             return output;
@@ -77,8 +76,7 @@ namespace VF.Utils {
                 EditorCurveBinding.FloatCurve(input, typeof(Transform), "test"),
                 new FloatOrObjectCurve(AnimationCurve.Constant(0,0,0))
             );
-            if (rewritten.Item2 == null) return null;
-            return rewritten.Item1.path;
+            return rewritten.Item2 == null ? null : rewritten.Item1.path;
         }
     }
 }

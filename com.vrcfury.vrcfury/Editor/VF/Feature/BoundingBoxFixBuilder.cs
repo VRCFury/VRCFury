@@ -40,10 +40,9 @@ namespace VF.Feature {
                 bounds.Encapsulate(avatarObject.transform.position);
                 var extents = bounds.extents;
                 var linear = extents.x + extents.y + extents.z;
-                if (linear > maxLinear) {
-                    maxLinear = linear;
-                    maxRenderer = renderer;
-                }
+                if (!(linear > maxLinear)) continue;
+                maxLinear = linear;
+                maxRenderer = renderer;
             }
 
             if (maxRenderer != null) {
@@ -87,8 +86,8 @@ namespace VF.Feature {
                 return true;
             }
 
-            var stepSizeInMeters = 0.05f;
-            var maxSteps = 20;
+            const float stepSizeInMeters = 0.05f;
+            const int maxSteps = 20;
             var stepSize = stepSizeInMeters / root.transform.lossyScale.x;
             for (var i = 0; i < maxSteps; i++) {
                 ModifyBounds(sizeX: stepSize, centerX: -stepSize);
@@ -102,7 +101,7 @@ namespace VF.Feature {
             VRCFuryEditorUtils.MarkDirty(skin);
         }
 
-        private static Bounds GetUpdatedBounds(SkinnedMeshRenderer skin, Bounds newBounds) {
+        private static Bounds GetUpdatedBounds(Renderer skin, Bounds newBounds) {
             var root = HapticUtils.GetMeshRoot(skin);
 
             List<Vector3> GetLocalCorners(Bounds obj) {
@@ -128,7 +127,7 @@ namespace VF.Feature {
 
         private static Bounds CalculateFullBounds(VFGameObject avatarObject) {
             var bounds = new Bounds(avatarObject.transform.position, Vector3.zero);
-            foreach (Renderer renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+            foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) {
                     bounds.Encapsulate(renderer.bounds);
                 }

@@ -26,7 +26,7 @@ namespace VF.Service {
                 else debugSources[t] = new List<string> { source };
             }
 
-            public IList<string> GetDebugSources(Transform t) {
+            public IEnumerable<string> GetDebugSources(Transform t) {
                 return debugSources.TryGetValue(t, out var output) ? output : new List<string>();
             }
         }

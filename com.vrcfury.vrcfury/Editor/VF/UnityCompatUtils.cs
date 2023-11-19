@@ -15,7 +15,7 @@ namespace VF {
                 new[] { typeof(string), typeof(GameObject) },
                 null
             );
-            open.Invoke(null, new object[] { path, focus });
+            open?.Invoke(null, new object[] { path, focus });
 #endif
         }
     }

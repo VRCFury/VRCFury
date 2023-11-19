@@ -57,7 +57,7 @@ namespace VF.Builder.Haptics {
             bool worldScale = true
         ) {
             var isOnHips = IsDirectChildOfHips(obj);
-            var suffixes = new List<string>();
+            var suffixes = new List<string> { "" };
             suffixes.Add("");
             if (!isOnHips) {
                 suffixes.Add("_SelfNotOnHips");
@@ -89,22 +89,27 @@ namespace VF.Builder.Haptics {
         }
 
         public static void RemoveTPSSenders(Transform obj) {
-            var remove = new List<UnityEngine.Component>();
-            foreach (Transform child in obj) {
-                foreach (var sender in child.gameObject.GetComponents<VRCContactSender>()) {
-                    if (IsTPSSender(sender)) {
+            while (true) {
+                var remove = new List<UnityEngine.Component>();
+                foreach (Transform child in obj) {
+                    foreach (var sender in child.gameObject.GetComponents<VRCContactSender>())
+                    {
+                        if (!IsTPSSender(sender)) continue;
                         Debug.Log("Deleting TPS sender on " + sender.gameObject);
                         remove.Add(sender);
                     }
                 }
-            }
 
-            foreach (var c in remove) {
-                AvatarCleaner.RemoveComponent(c);
-            }
+                foreach (var c in remove) {
+                    AvatarCleaner.RemoveComponent(c);
+                }
 
-            if (obj.parent) {
-                RemoveTPSSenders(obj.parent);
+                if (obj.parent) {
+                    obj = obj.parent;
+                    continue;
+                }
+
+                break;
             }
         }
 
@@ -117,12 +122,11 @@ namespace VF.Builder.Haptics {
         }
 
         public static string GetNextName(List<string> usedNames, string prefix) {
-            for (int i = 0; ; i++) {
+            for (var i = 0; ; i++) {
                 var next = prefix + (i == 0 ? "" : i+"");
-                if (!usedNames.Contains(next)) {
-                    usedNames.Add(next);
-                    return next;
-                }
+                if (usedNames.Contains(next)) continue;
+                usedNames.Add(next);
+                return next;
             }
         }
 
@@ -222,10 +226,10 @@ namespace VF.Builder.Haptics {
             var arr = str.ToCharArray();
             var lastWasUpper = false;
             for (var i = 0; i < arr.Length; i++) {
-                var currentIsUpper = Char.IsUpper(arr[i]);
+                var currentIsUpper = char.IsUpper(arr[i]);
                 if (lastWasUpper && currentIsUpper) {
-                    arr[i - 1] = Char.ToLower(arr[i - 1]);
-                    arr[i] = Char.ToLower(arr[i]);
+                    arr[i - 1] = char.ToLower(arr[i - 1]);
+                    arr[i] = char.ToLower(arr[i]);
                 }
                 lastWasUpper = currentIsUpper;
             }
@@ -248,7 +252,7 @@ namespace VF.Builder.Haptics {
 
         public static bool IsChildOfBone(VFGameObject obj, HumanBodyBones bone, bool followConstraints = true) {
             try {
-                VFGameObject avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
+                var avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj, obj, followConstraints);
@@ -257,32 +261,29 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static bool IsChildOf(Transform parent, Transform child, bool followConstraints) {
+        private static bool IsChildOf(Object parent, Transform child, bool followConstraints){
             var alreadyChecked = new HashSet<Transform>();
             var current = child;
-            while (current != null) {
+            while (current != null)
+            {
                 alreadyChecked.Add(current);
                 if (current == parent) return true;
                 if (followConstraints) {
-                    Transform foundConstraint = null;
-                    foreach (var constraint in current.GetComponents<IConstraint>()) {
-                        if (!(constraint is ParentConstraint) && !(constraint is PositionConstraint)) continue;
-                        if (constraint.sourceCount == 0) continue;
-                        var source = constraint.GetSource(0).sourceTransform;
-                        if (source != null && !alreadyChecked.Contains(source)) {
-                            foundConstraint = source;
-                            break;
-                        }
-                    }
+                    var foundConstraint =
+                        (from constraint in current.GetComponents<IConstraint>()
+                            where constraint is ParentConstraint || constraint is PositionConstraint
+                            where constraint.sourceCount != 0
+                            select constraint.GetSource(0).sourceTransform).FirstOrDefault(source => source != null && !alreadyChecked.Contains(source));
 
                     if (foundConstraint) {
                         current = foundConstraint;
                         continue;
                     }
                 }
+
                 current = current.parent;
             }
+
             return false;
         }
-    }
 }

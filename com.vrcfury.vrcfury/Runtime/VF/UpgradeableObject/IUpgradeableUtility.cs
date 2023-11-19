@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace VF.Upgradeable {
     public static class IUpgradeableUtility {
@@ -39,11 +40,7 @@ namespace VF.Upgradeable {
                 }
             });
             list.Reverse();
-            var upgradedOne = false;
-            foreach (var u in list) {
-                upgradedOne |= u.UpgradeOne();
-            }
-            return upgradedOne;
+            return list.Aggregate(false, (current, u) => current | u.UpgradeOne());
         }
 
         public static bool IsTooNew(object root) {

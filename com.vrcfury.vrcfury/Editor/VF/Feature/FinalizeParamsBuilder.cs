@@ -9,11 +9,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FinalizeParams)]
         public void Apply() {
             var p = manager.GetParams();
-            var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
-            if (maxBits > 9999) {
-                // Some versions of the VRChat SDK have a broken value for this
-                maxBits = 256;
-            }
+            const int maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
             if (p.GetRaw().CalcTotalCost() > maxBits) {
                 throw new SneakyException(
                     "Your avatar is out of space for parameters! Used "
@@ -30,7 +26,7 @@ namespace VF.Feature {
 
             var contacts = avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>().Length;
             contacts += avatarObject.GetComponentsInSelfAndChildren<VRCContactSender>().Length;
-            var contactLimit = 256;
+            const int contactLimit = 256;
             if (contacts > contactLimit) {
                 throw new SneakyException(
                     "Your avatar is using more than the allowed number of contacts! Used "

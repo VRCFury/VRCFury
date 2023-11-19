@@ -31,7 +31,7 @@ namespace VF.Updater {
         }
 
         private static async Task UpgradeUnsafe() {
-            var vpmManifest = "Packages/vpm-manifest.json";
+            const string vpmManifest = "Packages/vpm-manifest.json";
             if (File.Exists(vpmManifest) && File.ReadLines(vpmManifest).Any(line => line.Contains("vrcfury"))) {
                 throw new Exception(
                     "VRCFury was installed using the VRChat Creator Companion. " +
@@ -43,7 +43,7 @@ namespace VF.Updater {
                     "VRCFury is not installed as a local package, and thus cannot update itself.");
             }
             
-            var url = "https://vrcfury.com/downloadRawZip";
+            const string url = "https://vrcfury.com/downloadRawZip";
             var tempFile = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject) + ".zip";
             try {
                 using (var response = await HttpClient.GetAsync(url)) {
@@ -63,7 +63,9 @@ namespace VF.Updater {
                         if (string.IsNullOrWhiteSpace(entry.Name)) continue;
                         var outPath = tmpDir+"/"+entry.FullName;
                         var outDir = Path.GetDirectoryName(outPath);
-                        if (!Directory.Exists(outDir)) Directory.CreateDirectory(outDir);
+                        if (!Directory.Exists(outDir))
+                            if (outDir != null)
+                                Directory.CreateDirectory(outDir);
                         using (var entryStream = entry.Open()) {
                             using (var outFile = new FileStream(outPath, FileMode.Create, FileAccess.Write)) {
                                 await entryStream.CopyToAsync(outFile);

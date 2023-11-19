@@ -26,8 +26,10 @@ namespace VF.VrcHooks {
                 var validation = GetTypeFromAnyAssembly("VRC.SDKBase.Validation.AvatarValidation");
                 var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-                var whitelist = whitelistField.GetValue(null);
-                whitelistField.SetValue(null, UpdateComponentList((string[])whitelist));
+                if (whitelistField != null) {
+                    var whitelist = whitelistField.GetValue(null);
+                    whitelistField.SetValue(null, UpdateComponentList((string[])whitelist));
+                }
             } catch (Exception e) {
                 preprocessPatchEx = e;
             }
@@ -37,8 +39,10 @@ namespace VF.VrcHooks {
                 var validation = GetTypeFromAnyAssembly("VRC.SDK3.Validation.AvatarValidation");
                 var whitelistField = validation.GetField("ComponentTypeWhiteListCommon",
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-                var whitelist = whitelistField.GetValue(null);
-                whitelistField.SetValue(null, UpdateComponentList((string[])whitelist));
+                if (whitelistField != null) {
+                    var whitelist = whitelistField.GetValue(null);
+                    whitelistField.SetValue(null, UpdateComponentList((string[])whitelist));
+                }
             } catch (Exception) {
                 if (preprocessPatchEx != null) {
                     Debug.LogError(new Exception("VRCFury preprocess patch failed", preprocessPatchEx));
@@ -51,15 +55,16 @@ namespace VF.VrcHooks {
                 var validation = GetTypeFromAnyAssembly("VRC.SDKBase.Validation.ValidationUtils");
                 var cachedWhitelists = validation.GetField("_whitelistCache",
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                if (cachedWhitelists == null) return;
                 var whitelists = cachedWhitelists.GetValue(null);
                 var clearMethod = whitelists.GetType().GetMethod("Clear");
-                clearMethod.Invoke(whitelists, new object[] {});
+                if (clearMethod != null) clearMethod.Invoke(whitelists, new object[] { });
             } catch (Exception e) {
                 Debug.LogError(new Exception("VRCFury failed to clear whitelist cache", e));
             }
         }
         
-        private static string[] UpdateComponentList(string[] list) {
+        private static string[] UpdateComponentList(IEnumerable<string> list) {
             var addTypes = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())
                 .Where(type => typeof(IVrcfEditorOnly).IsAssignableFrom(type))

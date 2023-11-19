@@ -85,14 +85,10 @@ namespace VF.Builder.Haptics {
                 hash = $"{parentHash}-{hash}";
             }
 
-            string newShaderName;
-            if (shader.name.StartsWith("Hidden/Locked/")) {
+            var newShaderName =
                 // Special case for Poiyomi
                 // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
-                newShaderName = $"Hidden/Locked/SPSPatched/{hash}";
-            } else {
-                newShaderName = $"Hidden/SPSPatched/{hash}";
-            }
+                shader.name.StartsWith("Hidden/Locked/") ? $"Hidden/Locked/SPSPatched/{hash}" : $"Hidden/SPSPatched/{hash}";
             var alreadyExists = Shader.Find(newShaderName);
             if (alreadyExists != null) {
                 return new PatchResult {
@@ -118,15 +114,13 @@ namespace VF.Builder.Haptics {
                     }
                 },
                 rest => {
-                    if (GetRegex(@"\n[ \t]*#pragma[ \t]+surface").IsMatch(rest)) {
-                        patchedPasses++;
-                        try {
-                            return PatchPass(rest, spsMain, true);
-                        } catch (Exception e) {
-                            throw new Exception($"Failed to patch surface shader: " + e.Message, e);
-                        }
+                    if (!GetRegex(@"\n[ \t]*#pragma[ \t]+surface").IsMatch(rest)) return rest;
+                    patchedPasses++;
+                    try {
+                        return PatchPass(rest, spsMain, true);
+                    } catch (Exception e) {
+                        throw new Exception($"Failed to patch surface shader: " + e.Message, e);
                     }
-                    return rest;
                 }
             );
             var childShaders = new Dictionary<Shader, Shader>();
@@ -138,13 +132,12 @@ namespace VF.Builder.Haptics {
                     throw new Exception("Failed to find included shader: " + shaderName);
                 }
 
-                if (!childShaders.TryGetValue(includedShader, out var rewrittenIncludedShader)) {
-                    var output = PatchUnsafe(includedShader, keepImports, hash);
-                    patchedPasses += output.patchedPasses;
-                    rewrittenIncludedShader = output.shader;
-                    childShaders[includedShader] = rewrittenIncludedShader;
-                }
-                
+                if (childShaders.TryGetValue(includedShader, out var rewrittenIncludedShader)) return $"\nUsePass \"{rewrittenIncludedShader.name}/{passName}\"\n";
+                var output = PatchUnsafe(includedShader, keepImports, hash);
+                patchedPasses += output.patchedPasses;
+                rewrittenIncludedShader = output.shader;
+                childShaders[includedShader] = rewrittenIncludedShader;
+
                 return $"\nUsePass \"{rewrittenIncludedShader.name}/{passName}\"\n";
             });
             if (patchedPasses == 0) {
@@ -173,7 +166,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static string PatchPass(string pass, string spsMain, bool isSurfaceShader) {
-            var newVertFunction = "spsVert";
+            const string newVertFunction = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string oldVertFunction = null;
             var foundPragma = false;
@@ -185,11 +178,7 @@ namespace VF.Builder.Haptics {
                         oldVertFunction = vertMatch.Groups[1].ToString();
                         return "vertex:" + newVertFunction;
                     });
-                    if (oldVertFunction == null) {
-                        newPragma = $"{match.Groups[0]} vertex:{newVertFunction}";
-                    } else {
-                        newPragma = $"{match.Groups[1]}{match.Groups[2]}{extraParams}";
-                    }
+                newPragma = oldVertFunction == null ? $"{match.Groups[0]} vertex:{newVertFunction}" : $"{match.Groups[1]}{match.Groups[2]}{extraParams}";
                 } else {
                     oldVertFunction = match.Groups[2].ToString();
                     newPragma = $"{match.Groups[1]}spsVert{match.Groups[3]}";
@@ -220,10 +209,10 @@ namespace VF.Builder.Haptics {
                         // is because it makes the regex REALLY SLOW to have wildcards at the start.
                         var ps = m.Groups[1].ToString();
                         var i = m.Index - 1;
-                        if (!Char.IsWhiteSpace(flattenedPass[i])) return null;
-                        while (Char.IsWhiteSpace(flattenedPass[i])) i--;
+                        if (!char.IsWhiteSpace(flattenedPass[i])) return null;
+                        while (char.IsWhiteSpace(flattenedPass[i])) i--;
                         var endOfReturnType = i + 1;
-                        while (!Char.IsWhiteSpace(flattenedPass[i])) i--;
+                        while (!char.IsWhiteSpace(flattenedPass[i])) i--;
                         var startOfReturnType = i + 1;
                         var r = flattenedPass.Substring(startOfReturnType, endOfReturnType - startOfReturnType);
                         return Tuple.Create(ps, r);
@@ -303,18 +292,18 @@ namespace VF.Builder.Haptics {
             var vertexIdParam = FindParam("SV_VertexID", "spsVertexId", "uint");
             var colorParam = FindParam("COLOR", "spsColor", "float4");
             
-            var newHeader = new List<string>();
-            // Enable appdata features in shaders where they may be controlled by preprocessor defines
-            // liltoon
-            newHeader.Add("#define LIL_APP_POSITION");
-            newHeader.Add("#define LIL_APP_NORMAL");
-            newHeader.Add("#define LIL_APP_VERTEXID");
-            newHeader.Add("#define LIL_APP_COLOR");
-            // UnlitWF
-            newHeader.Add("#define _V2F_HAS_VERTEXCOLOR");
+            var newHeader = new List<string>{
+                // Enable appdata features in shaders where they may be controlled by preprocessor defines
+                // liltoon
+                "#define LIL_APP_POSITION",
+                "#define LIL_APP_NORMAL",
+                "#define LIL_APP_VERTEXID",
+                "#define LIL_APP_COLOR",
+                // UnlitWF
+                "#define _V2F_HAS_VERTEXCOLOR"
+            };
             
-            var newBody = new List<string>();
-            newBody.Add(spsMain);
+            var newBody = new List<string> { spsMain };
             var extends = useStructExtends ? $" : {oldStructType}" : "";
             newBody.Add($"struct SpsInputs{extends} {{");
             newBody.Add(newStructBody);
@@ -329,9 +318,9 @@ namespace VF.Builder.Haptics {
 
             // We add the body to the end of the pass, since otherwise it may be too early and
             // get inserted before includes that are needed for the base data types
-            var startCg = pass.IndexOf("CGPROGRAM");
-            if (startCg < 0) startCg = pass.IndexOf("HLSLPROGRAM");
-            if (startCg > 0) startCg = pass.IndexOf("\n", startCg);
+            var startCg = pass.IndexOf("CGPROGRAM", StringComparison.Ordinal);
+            if (startCg < 0) startCg = pass.IndexOf("HLSLPROGRAM", StringComparison.Ordinal);
+            if (startCg > 0) startCg = pass.IndexOf("\n", startCg, StringComparison.Ordinal);
             if (startCg < 0) throw new Exception("Failed to find CGPROGRAM");
             pass = pass.Substring(0, startCg) + "\n"
                    + string.Join("\n", newHeader)
@@ -339,8 +328,8 @@ namespace VF.Builder.Haptics {
 
             // We add the body to the end of the pass, since otherwise it may be too early and
             // get inserted before includes that are needed for the base data types
-            var endCg = pass.LastIndexOf("ENDCG");
-            if (endCg < 0) endCg = pass.LastIndexOf("ENDHLSL");
+            var endCg = pass.LastIndexOf("ENDCG", StringComparison.Ordinal);
+            if (endCg < 0) endCg = pass.LastIndexOf("ENDHLSL", StringComparison.Ordinal);
             if (endCg < 0) throw new Exception("Failed to find ENDCG");
             pass = pass.Substring(0, endCg) + "\n"
                    + string.Join("\n", newBody)
@@ -373,10 +362,9 @@ namespace VF.Builder.Haptics {
                             p = Regex.Replace(p, @"(\S+)(\s*)$", rewriteFirstParamNameTo+"$2");
                         }
                     }
-                    if (stripTypes) {
-                        p = Regex.Replace(p, @":.*", "");
-                        p = Regex.Replace(p, @"\S.*\s(\S+)\s*$", "$1");
-                    }
+                    if (!stripTypes) return p;
+                    p = Regex.Replace(p, @":.*", "");
+                    p = Regex.Replace(p, @"\S.*\s(\S+)\s*$", "$1");
                     return p;
                 }));
             }));
@@ -440,27 +428,38 @@ namespace VF.Builder.Haptics {
                     if (inStringEscape) {
                         inStringEscape = false;
                         // skip it, this is a literal
-                    } else if (c == '\\') {
-                        inStringEscape = true;
-                    } else if (c == '"') {
-                        inString = false;
+                    } else switch (c) {
+                        case '\\':
+                            inStringEscape = true;
+                            break;
+                        case '"':
+                            inString = false;
+                            break;
                     }
                     continue;
                 }
 
-                if (c == '/' && i != str.Length - 1 && str[i + 1] == '*') {
-                    inBlockComment = true;
-                    i++;
-                } else if (c == '/' && i != str.Length - 1 && str[i + 1] == '/') {
-                    inLineComment = true;
-                    i++;
-                } else if (c == '{') {
-                    bracketLevel++;
-                } else if (c == '}') {
-                    bracketLevel--;
-                    if (bracketLevel == 0) return i+1;
-                } else if (c == '"') {
-                    inString = true;
+                switch (c) {
+                    case '/' when i != str.Length - 1 && str[i + 1] == '*':
+                        inBlockComment = true;
+                        i++;
+                        break;
+                    case '/' when i != str.Length - 1 && str[i + 1] == '/':
+                        inLineComment = true;
+                        i++;
+                        break;
+                    case '{':
+                        bracketLevel++;
+                        break;
+                    case '}':
+                    {
+                        bracketLevel--;
+                        if (bracketLevel == 0) return i+1;
+                        break;
+                    }
+                    case '"':
+                        inString = true;
+                        break;
                 }
             }
             throw new Exception("Failed to find matching closing bracket");
@@ -516,9 +515,7 @@ namespace VF.Builder.Haptics {
                     content = "#include \"Lighting.cginc\"\n" + content;
                 }
             }
-            content = WithEachInclude(content, null, includePath => {
-                return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
-            }, includeLibraryFiles);
+            content = WithEachInclude(content, null, includePath => ReadAndFlattenPath(includePath, included, includeLibraryFiles), includeLibraryFiles);
             output.Add(content);
             return string.Join("\n", output);
         }
@@ -526,21 +523,27 @@ namespace VF.Builder.Haptics {
         private static string GetPathToSps() {
             return AssetDatabase.GUIDToAssetPath("6cf9adf85849489b97305dfeecc74768");
         }
-        private static string ReadFile(Shader shader) {
+        private static string ReadFile(Object shader) {
             var path = AssetDatabase.GetAssetPath(shader);
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new Exception("Failed to find source file for the shader");
             }
 
-            if (path.StartsWith("Resources") || path.StartsWith("Library")) {
-                if (shader.name == "Standard") {
+            if (!path.StartsWith("Resources") && !path.StartsWith("Library")) return ReadFile(path);
+            switch (shader.name) {
+                case "Standard":
                     path = $"{GetPathToSps()}/Standard.shader.orig";
-                } else if (shader.name == "Standard (Specular setup)") {
+                    break;
+                case "Standard (Specular setup)":
                     path = $"{GetPathToSps()}/StandardSpecular.shader.orig";
-                } else if (shader.name.Contains("Error")) {
-                    throw new VRCFBuilderException(
-                        "This is an error shader. Please verify that the base material actually loads.");
-                } else {
+                    break;
+                default:
+                {
+                    if (shader.name.Contains("Error")) {
+                        throw new VRCFBuilderException(
+                            "This is an error shader. Please verify that the base material actually loads.");
+                    }
+
                     throw new VRCFBuilderException(
                         "SPS does not yet support this built-in unity shader.");
                 }
@@ -554,10 +557,10 @@ namespace VF.Builder.Haptics {
                 var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
                 var unpackMethod = lilShaderContainer.GetMethods().First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
                 content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
-                var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
                 content = content.Replace("\"Includes", "\"" + shaderLibsPath);
             } else {
-                StreamReader sr = new StreamReader(path);
+                var sr = new StreamReader(path);
                 try {
                     content = sr.ReadToEnd();
                 } finally {
@@ -565,15 +568,13 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            content = WithEachInclude(content, path, includePath => {
-                return $"#include \"{includePath}\"";
-            });
+            content = WithEachInclude(content, path, includePath => $"#include \"{includePath}\"");
             content = content.Replace("\r", "");
             return content;
         }
         
         private static void WriteFile(string path, string content) {
-            StreamWriter sw = new StreamWriter(path);
+            var sw = new StreamWriter(path);
             try {
                 sw.Write(content);
             } finally {

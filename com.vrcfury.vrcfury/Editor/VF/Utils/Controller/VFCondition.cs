@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Animations;
 using VF.Builder;
 
@@ -30,21 +31,11 @@ namespace VF.Utils.Controller {
         }
 
         public static VFCondition All(IEnumerable<VFCondition> inputs) {
-            VFCondition output = null;
-            foreach (var p in inputs) {
-                if (output == null) output = p;
-                else output = output.And(p);
-            }
-            return output;
+            return inputs.Aggregate<VFCondition, VFCondition>(null, (current, p) => current == null ? p : current.And(p));
         }
         
         public static VFCondition Any(IEnumerable<VFCondition> inputs) {
-            VFCondition output = null;
-            foreach (var p in inputs) {
-                if (output == null) output = p;
-                else output = output.Or(p);
-            }
-            return output;
+            return inputs.Aggregate<VFCondition, VFCondition>(null, (current, p) => current == null ? p : current.Or(p));
         }
     }
 }

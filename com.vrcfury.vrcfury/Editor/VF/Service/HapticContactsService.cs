@@ -19,8 +19,8 @@ namespace VF.Service {
         public VFAFloat AddReceiver(
             Transform obj,
             Vector3 pos,
-            String paramName,
-            String objName,
+            string paramName,
+            string objName,
             float radius,
             string[] tags,
             HapticUtils.ReceiverParty party,
@@ -43,18 +43,19 @@ namespace VF.Service {
             }
 
             var suffixes = new List<string>();
-            if (party == HapticUtils.ReceiverParty.Others) {
-                suffixes.Add("");
-            } else if (party == HapticUtils.ReceiverParty.Self) {
-                if (isOnHips) {
-                    suffixes.Add("_SelfNotOnHips");
-                } else {
+            switch (party) {
+                case HapticUtils.ReceiverParty.Others:
                     suffixes.Add("");
-                }
-            } else if (party == HapticUtils.ReceiverParty.Both) {
-                suffixes.Add("");
-            } else {
-                throw new Exception("Unknown ReceiverParty");
+                    break;
+                case HapticUtils.ReceiverParty.Self when isOnHips:
+                    suffixes.Add("_SelfNotOnHips");
+                    break;
+                case HapticUtils.ReceiverParty.Self:
+                case HapticUtils.ReceiverParty.Both:
+                    suffixes.Add("");
+                    break;
+                default:
+                    throw new Exception("Unknown ReceiverParty");
             }
 
             tags = tags.SelectMany(tag => {
@@ -78,11 +79,10 @@ namespace VF.Service {
                 receiver.height = height;
                 receiver.rotation = rotation;
             }
-            if (worldScale) {
-                receiver.position /= child.worldScale.x;
-                receiver.radius /= child.worldScale.x;
-                receiver.height /= child.worldScale.x;
-            }
+            if (!worldScale) return param;
+            receiver.position /= child.worldScale.x;
+            receiver.radius /= child.worldScale.x;
+            receiver.height /= child.worldScale.x;
             return param;
         }
     }

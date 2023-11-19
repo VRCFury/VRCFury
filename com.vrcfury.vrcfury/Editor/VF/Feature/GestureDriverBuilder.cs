@@ -56,19 +56,27 @@ namespace VF.Feature {
             }
 
             void MakeHand(bool right, ref VFCondition aggCondition, ref VFAFloat aggWeight) {
-                if (hand == GestureDriver.Hand.LEFT && right) return;
-                if (hand == GestureDriver.Hand.RIGHT && !right) return;
+                switch (hand) {
+                    case GestureDriver.Hand.LEFT when right:
+                    case GestureDriver.Hand.RIGHT when !right:
+                        return;
+                }
                 var sign = (right && hand == GestureDriver.Hand.COMBO) ? gesture.comboSign : gesture.sign;
 
                 var myCondition = (right ? fx.GestureRight() : fx.GestureLeft()).IsEqualTo((int)sign);
                 if (aggCondition == null) aggCondition = myCondition;
-                else if (hand == GestureDriver.Hand.EITHER) aggCondition = aggCondition.Or(myCondition);
-                else if (hand == GestureDriver.Hand.COMBO) aggCondition = aggCondition.And(myCondition);
+                else switch (hand) {
+                    case GestureDriver.Hand.EITHER:
+                        aggCondition = aggCondition.Or(myCondition);
+                        break;
+                    case GestureDriver.Hand.COMBO:
+                        aggCondition = aggCondition.And(myCondition);
+                        break;
+                }
 
                 if (sign == GestureDriver.HandSign.FIST && gesture.enableWeight) {
                     var myWeight = right ? fx.GestureRightWeight() : fx.GestureLeftWeight();
-                    if (aggWeight == null) aggWeight = myWeight;
-                    else aggWeight = math.Max(aggWeight, myWeight);
+                    aggWeight = aggWeight == null ? myWeight : math.Max(aggWeight, myWeight);
                 }
             }
 
@@ -162,9 +170,12 @@ namespace VF.Feature {
             hand.style.flexBasis = 70;
             row.Add(hand);
             var handSigns = VRCFuryEditorUtils.RefreshOnChange(() => {
-                var w = new VisualElement();
-                w.style.flexDirection = FlexDirection.Row;
-                w.style.alignItems = Align.Center;
+                var w = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.Center
+                    }
+                };
                 var leftBox = VRCFuryEditorUtils.Prop(signProp);
                 var rightBox = VRCFuryEditorUtils.Prop(comboSignProp);
                 if ((GestureDriver.Hand)handProp.enumValueIndex == GestureDriver.Hand.COMBO) {

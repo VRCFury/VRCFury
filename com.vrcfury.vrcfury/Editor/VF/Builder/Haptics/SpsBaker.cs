@@ -34,11 +34,7 @@ namespace VF.Builder.Haptics {
                 baked.WriteVector3(vertices[i]);
 
                 if (tpsCompatibility) {
-                    if (GetActive(i) == 0) {
-                        baked.WriteVector3(new Vector3(0,0,0));
-                    } else {
-                        baked.WriteVector3(normals[i]);
-                    }
+                    baked.WriteVector3(GetActive(i) == 0 ? new Vector3(0, 0, 0) : normals[i]);
                 } else {
                     baked.WriteVector3(normals[i]);
                     baked.WriteFloat(GetActive(i));

@@ -49,10 +49,7 @@ namespace VF.Builder {
 
             string RewriteParam(string name) {
                 if (string.IsNullOrEmpty(name)) return name;
-                if (rewrites.TryGetValue(name, out string rewritten)) {
-                    return rewritten;
-                }
-                return name;
+                return rewrites.TryGetValue(name, out var rewritten) ? rewritten : name;
             }
             RewriteInAll(RewriteParam);
         }

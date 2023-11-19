@@ -41,17 +41,17 @@ namespace VF.Feature {
                     .Where(c => c.Item2 != null);
                 var analysis = FixWriteDefaultsBuilder.DetectExistingWriteDefaults(avatarControllers);
 
-                var output = new List<string>();
-                output.Add($"Auto mode = {(analysis.shouldBeOnIfWeAreInControl ? "WD on" : "WD off")}");
-                output.Add($"Disabled compliance mode = {(analysis.shouldBeOnIfWeAreNotInControl ? "WD on" : "WD off")}");
-                output.Add($"");
-                output.Add($"Debug info: {analysis.debugInfo}");
-                if (analysis.isBroken) {
-                    output.Add("");
-                    output.Add("Avatar base has broken mixed write defaults!");
-                    output.Add("Here are the states that don't match:");
-                    output.Add(string.Join("\n", analysis.weirdStates));
-                }
+                var output = new List<string> {
+                    $"Auto mode = {(analysis.shouldBeOnIfWeAreInControl ? "WD on" : "WD off")}",
+                    $"Disabled compliance mode = {(analysis.shouldBeOnIfWeAreNotInControl ? "WD on" : "WD off")}",
+                    "",
+                    $"Debug info: {analysis.debugInfo}"
+                };
+                if (!analysis.isBroken) return string.Join("\n", output);
+                output.Add("");
+                output.Add("Avatar base has broken mixed write defaults!");
+                output.Add("Here are the states that don't match:");
+                output.Add(string.Join("\n", analysis.weirdStates));
                 return string.Join("\n", output);
             }));
             

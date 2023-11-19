@@ -123,20 +123,14 @@ namespace VF.Builder {
         public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool allManaged = true) {
             // Merge Layers
             other.layers = other.layers.Select((layer, i) => {
-                if (allManaged) {
-                    layer.name = NewLayerName(layer.name);
-                    managedLayers.Add(layer.stateMachine);
-                    layerOwners[layer.stateMachine] = currentFeatureNameProvider();
-                }
+                if (!allManaged) return layer;
+                layer.name = NewLayerName(layer.name);
+                managedLayers.Add(layer.stateMachine);
+                layerOwners[layer.stateMachine] = currentFeatureNameProvider();
                 return layer;
             }).ToArray();
 
-            if (putOnTop) {
-                ctrl.layers = other.layers.Concat(ctrl.layers).ToArray();
-            } else {
-                ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
-            }
-
+            ctrl.layers = putOnTop ? other.layers.Concat(ctrl.layers).ToArray() : ctrl.layers.Concat(other.layers).ToArray();
             other.layers = new AnimatorControllerLayer[] { };
             
             // Merge Params
@@ -191,28 +185,28 @@ namespace VF.Builder {
         }
         public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = makeUniqueParamName(name);
-            if (synced) {
-                var param = new VRCExpressionParameters.Parameter();
-                param.name = name;
-                param.valueType = VRCExpressionParameters.ValueType.Bool;
-                param.saved = saved;
-                param.defaultValue = def ? 1 : 0;
-                if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
-                GetParamManager().AddSyncedParam(param);
-            }
+            if (!synced) return ctrl.NewBool(name, def);
+            var param = new VRCExpressionParameters.Parameter {
+                name = name,
+                valueType = VRCExpressionParameters.ValueType.Bool,
+                saved = saved,
+                defaultValue = def ? 1 : 0
+            };
+            if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
+            GetParamManager().AddSyncedParam(param);
             return ctrl.NewBool(name, def);
         }
         public VFAInteger NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = makeUniqueParamName(name);
-            if (synced) {
-                var param = new VRCExpressionParameters.Parameter();
-                param.name = name;
-                param.valueType = VRCExpressionParameters.ValueType.Int;
-                param.saved = saved;
-                param.defaultValue = def;
-                if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
-                GetParamManager().AddSyncedParam(param);
-            }
+            if (!synced) return ctrl.NewInt(name, def);
+            var param = new VRCExpressionParameters.Parameter {
+                name = name,
+                valueType = VRCExpressionParameters.ValueType.Int,
+                saved = saved,
+                defaultValue = def
+            };
+            if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
+            GetParamManager().AddSyncedParam(param);
             return ctrl.NewInt(name, def);
         }
         public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
@@ -220,14 +214,15 @@ namespace VF.Builder {
                 name = Regex.Replace(name, @"^VF\d+_", "");
                 name = makeUniqueParamName(name);
             }
-            if (synced) {
-                var param = new VRCExpressionParameters.Parameter();
-                param.name = name;
-                param.valueType = VRCExpressionParameters.ValueType.Float;
-                param.saved = saved;
-                param.defaultValue = def;
-                GetParamManager().AddSyncedParam(param);
-            }
+
+            if (!synced) return ctrl.NewFloat(name, def);
+            var param = new VRCExpressionParameters.Parameter {
+                name = name,
+                valueType = VRCExpressionParameters.ValueType.Float,
+                saved = saved,
+                defaultValue = def
+            };
+            GetParamManager().AddSyncedParam(param);
             return ctrl.NewFloat(name, def);
         }
 
@@ -266,10 +261,7 @@ namespace VF.Builder {
         }
 
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
-            if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
-                return null;
-            }
-            return layerOwner;
+            return !layerOwners.TryGetValue(stateMachine, out var layerOwner) ? null : layerOwner;
         }
 
         public bool IsOwnerBaseAvatar(AnimatorStateMachine stateMachine) {

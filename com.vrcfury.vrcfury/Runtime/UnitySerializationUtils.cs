@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -92,25 +93,14 @@ namespace VF {
         }
 
         private static bool SerializionEnters(object obj) {
-            if (obj == null || obj is Object || obj is string || obj.GetType().IsValueType) {
-                return false;
-            }
-            return true;
+            return obj != null && !(obj is Object) && !(obj is string) && !obj.GetType().IsValueType;
         }
 
         private static IEnumerable<FieldInfo> GetAllSerializableFields(Type objType) {
-            var output = new List<FieldInfo>();
-            foreach (var field in objType.GetFields()) {
-                if (field.IsInitOnly) continue;
-                output.Add(field);
-            }
+            var output = objType.GetFields().Where(field => !field.IsInitOnly).ToList();
             for (var current = objType; current != null; current = current.BaseType) {
                 var privateFields = current.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
-                foreach (var field in privateFields) {
-                    if (field.IsInitOnly) continue;
-                    if (field.GetCustomAttribute<SerializeField>() == null) continue;
-                    output.Add(field);
-                }
+                output.AddRange(privateFields.Where(field => !field.IsInitOnly).Where(field => field.GetCustomAttribute<SerializeField>() != null));
             }
             return output;
         }

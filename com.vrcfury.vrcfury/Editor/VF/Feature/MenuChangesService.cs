@@ -29,11 +29,10 @@ namespace VF.Feature {
                 foreach (var iconChange in iconChanges.ToArray()) {
                     var icon = iconChange.icon.Get();
                     var result = manager.GetMenu().SetIcon(iconChange.path, icon);
-                    if (result) {
-                        var filePath = icon != null ? AssetDatabase.GetAssetPath(icon) : "";
-                        Debug.Log($"Changed icon of {iconChange.path} to {filePath}");
-                        iconChanges.Remove(iconChange);
-                    }
+                    if (!result) continue;
+                    var filePath = icon != null ? AssetDatabase.GetAssetPath(icon) : "";
+                    Debug.Log($"Changed icon of {iconChange.path} to {filePath}");
+                    iconChanges.Remove(iconChange);
                 }
             }
 

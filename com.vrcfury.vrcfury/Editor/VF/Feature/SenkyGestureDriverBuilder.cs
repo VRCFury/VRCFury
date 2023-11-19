@@ -89,7 +89,7 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
 
     private State WithBlinkingDisabled(State input) {
         var clip = actionClipService.LoadState("senkygesture", input);
-        return new State() {
+        return new State {
             actions = {
                 new AnimationClipAction { clip = clip },
                 new BlockBlinkingAction()

@@ -116,26 +116,30 @@ namespace VF.Builder {
                 if (rule.parameter != other.parameter) continue;
                 switch (rule.mode) {
                     case AnimatorConditionMode.Equals:
-                        if (other.mode == AnimatorConditionMode.Greater && other.threshold >= rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Equals && other.threshold != rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Less && other.threshold <= rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.NotEqual && other.threshold == rule.threshold)
-                            return true;
+                        switch (other.mode) {
+                            case AnimatorConditionMode.Greater when other.threshold >= rule.threshold:
+                            case AnimatorConditionMode.Equals when other.threshold != rule.threshold:
+                            case AnimatorConditionMode.Less when other.threshold <= rule.threshold:
+                            case AnimatorConditionMode.NotEqual when other.threshold == rule.threshold:
+                                return true;
+                        }
+
                         break;
                     case AnimatorConditionMode.Greater:
-                        if (other.mode == AnimatorConditionMode.Equals && other.threshold <= rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Less && other.threshold <= rule.threshold)
-                            return true;
+                        switch (other.mode) {
+                            case AnimatorConditionMode.Equals when other.threshold <= rule.threshold:
+                            case AnimatorConditionMode.Less when other.threshold <= rule.threshold:
+                                return true;
+                        }
+
                         break;
                     case AnimatorConditionMode.Less:
-                        if (other.mode == AnimatorConditionMode.Equals && other.threshold >= rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Greater && other.threshold >= rule.threshold)
-                            return true;
+                        switch (other.mode) {
+                            case AnimatorConditionMode.Equals when other.threshold >= rule.threshold:
+                            case AnimatorConditionMode.Greater when other.threshold >= rule.threshold:
+                                return true;
+                        }
+
                         break;
                     case AnimatorConditionMode.NotEqual:
                         if (other.mode == AnimatorConditionMode.Equals && other.threshold == rule.threshold)
@@ -156,24 +160,29 @@ namespace VF.Builder {
                 if (rule.parameter != other.parameter) continue;
                 switch (rule.mode) {
                     case AnimatorConditionMode.Greater:
-                        if (other.mode == AnimatorConditionMode.Greater && other.threshold > rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Equals && other.threshold > rule.threshold)
-                            return true;
+                        switch (other.mode) {
+                            case AnimatorConditionMode.Greater when other.threshold > rule.threshold:
+                            case AnimatorConditionMode.Equals when other.threshold > rule.threshold:
+                                return true;
+                        }
+
                         break;
                     case AnimatorConditionMode.Less:
-                        if (other.mode == AnimatorConditionMode.Less && other.threshold < rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Equals && other.threshold < rule.threshold)
-                            return true;
+                        switch (other.mode) {
+                            case AnimatorConditionMode.Less when other.threshold < rule.threshold:
+                            case AnimatorConditionMode.Equals when other.threshold < rule.threshold:
+                                return true;
+                        }
+
                         break;
                     case AnimatorConditionMode.NotEqual:
-                        if (other.mode == AnimatorConditionMode.Greater && other.threshold >= rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Equals && other.threshold != rule.threshold)
-                            return true;
-                        if (other.mode == AnimatorConditionMode.Less && other.threshold <= rule.threshold)
-                            return true;
+                        switch (other.mode) {
+                            case AnimatorConditionMode.Greater when other.threshold >= rule.threshold:
+                            case AnimatorConditionMode.Equals when other.threshold != rule.threshold:
+                            case AnimatorConditionMode.Less when other.threshold <= rule.threshold:
+                                return true;
+                        }
+
                         break;
                 }
             }

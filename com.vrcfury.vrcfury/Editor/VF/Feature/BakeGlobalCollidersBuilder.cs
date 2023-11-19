@@ -112,8 +112,7 @@ namespace VF.Feature {
 
         private bool IsFingerUsed(HumanBodyBones bone, VRCAvatarDescriptor.ColliderConfig config) {
             if (config.state == VRCAvatarDescriptor.ColliderConfig.State.Disabled) return false;
-            if (VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone) == null) return false;
-            return true;
+            return VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone) != null;
         }
     }
 }

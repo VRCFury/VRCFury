@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
@@ -12,15 +13,7 @@ namespace VF.Inspector {
         private object _userData;
         
         public List<SearchTreeEntry> CreateSearchTree(SearchWindowContext context) {
-            if (_staticSearchEntries == null) {
-                return _onCreateSearchTree?.Invoke();
-            }
-            
-            var entries = new List<SearchTreeEntry>();
-            foreach (var entry in _staticSearchEntries) {
-                entries.Add(new SearchTreeEntry(new GUIContent(entry)));
-            }
-            return entries;
+            return _staticSearchEntries == null ? _onCreateSearchTree?.Invoke() : _staticSearchEntries.Select(entry => new SearchTreeEntry(new GUIContent(entry))).ToList();
         }
 
         public bool OnSelectEntry(SearchTreeEntry entry, SearchWindowContext context)

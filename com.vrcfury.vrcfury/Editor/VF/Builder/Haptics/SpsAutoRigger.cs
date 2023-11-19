@@ -18,12 +18,14 @@ namespace VF.Builder.Haptics {
             skin.sharedMesh = mesh;
 
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
-            var boneCount = 10;
-            var lastParent = skin.rootBone;
+            const int boneCount = 10;
+            var rootBone = skin.rootBone;
+            var lastParent = rootBone;
             var bones = new List<Transform>();
             var bindPoses = new List<Matrix4x4>();
-            var localLength = worldLength / skin.rootBone.lossyScale.z;
-            var localRadius = worldRadius / skin.rootBone.lossyScale.z;
+            var lossyScale = rootBone.lossyScale;
+            var localLength = worldLength / lossyScale.z;
+            var localRadius = worldRadius / lossyScale.z;
             for (var i = 0; i < boneCount; i++) {
                 var bone = GameObjects.Create("VrcFuryAutoRig" + i, lastParent);
                 var pos = bone.localPosition;
@@ -67,21 +69,21 @@ namespace VF.Builder.Haptics {
         }
 
         private static BoneWeight CalculateWeight(int closestBoneId, int otherBoneId, float distanceToOther) {
-            var overlap = 0.5f;
+            const float overlap = 0.5f;
             if (distanceToOther > overlap) {
                 return new BoneWeight() {
                     weight0 = 1,
                     boneIndex0 = closestBoneId,
                 };
-            } else {
-                var weightOfOther = (1 - (distanceToOther / overlap)) * 0.5f;
-                return new BoneWeight() {
-                    weight0 = 1-weightOfOther,
-                    boneIndex0 = closestBoneId,
-                    weight1 = weightOfOther,
-                    boneIndex1 = otherBoneId
-                };
             }
+
+            var weightOfOther = (1 - (distanceToOther / overlap)) * 0.5f;
+            return new BoneWeight() {
+                weight0 = 1-weightOfOther,
+                boneIndex0 = closestBoneId,
+                weight1 = weightOfOther,
+                boneIndex1 = otherBoneId
+            };
         }
     }
 }

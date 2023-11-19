@@ -144,9 +144,8 @@ namespace VF.Service {
                     targets.ToArray()
                 );
 
-                var result = unsmoothed;
-                cache[allowSelf] = result;
-                return result;
+                cache[allowSelf] = unsmoothed;
+                return unsmoothed;
             }
 
             var actionNum = 0;

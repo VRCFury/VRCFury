@@ -18,7 +18,7 @@ using VRC.SDKBase;
 namespace VF.Feature {
     public class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
         
-        static string logOutput = "";
+        private static string logOutput = "";
         
         public override string GetEditorTitle() {
             return "Blendshape Optimizer";
@@ -57,8 +57,7 @@ namespace VF.Feature {
 
                 bool ShouldKeepName(string name) {
                     if (animatedBlendshapes.Contains(name)) return true;
-                    if (keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body") return true;
-                    return false;
+                    return keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body";
                 }
 
                 var blendshapeIdsToKeep = Enumerable.Range(0, blendshapeCount)
@@ -101,18 +100,17 @@ namespace VF.Feature {
                 var newId = 0;
                 for (var id = 0; id < blendshapeCount; id++) {
                     var keep = blendshapeIdsToKeep.Contains(id);
-                    if (keep) {
-                        skin.SetBlendShapeWeight(newId, savedWeights[id]);
-                        if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
-                            for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
-                                if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
-                                    avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
-                                    VRCFuryEditorUtils.MarkDirty(avatar);
-                                }
+                    if (!keep) continue;
+                    skin.SetBlendShapeWeight(newId, savedWeights[id]);
+                    if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
+                        for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
+                            if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
+                                avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
+                                VRCFuryEditorUtils.MarkDirty(avatar);
                             }
                         }
-                        newId++;
                     }
+                    newId++;
                 }
             }
             Debug.Log($"Blendshape Optimizer Actions:\n{logOutput}");
@@ -161,9 +159,9 @@ namespace VF.Feature {
                         var (fw1, fv1, fn1, ft1) = frames[beforeFrame-1];
                         var (fw2, fv2, fn2, ft2) = frames[beforeFrame];
                         var fraction = (weight100 - fw1) / (fw2 - fw1);
-                        var dv = Enumerable.Zip(fv1, fv2, (a, b) => a + (b - a) * fraction).ToArray();
-                        var dn = Enumerable.Zip(fn1, fn2, (a, b) => a + (b - a) * fraction).ToArray();
-                        var dt = Enumerable.Zip(ft1, ft2, (a, b) => a + (b - a) * fraction).ToArray();
+                        var dv = fv1.Zip(fv2, (a, b) => a + (b - a) * fraction).ToArray();
+                        var dn = fn1.Zip(fn2, (a, b) => a + (b - a) * fraction).ToArray();
+                        var dt = ft1.Zip(ft2, (a, b) => a + (b - a) * fraction).ToArray();
                         BakeTo(mesh, dv, dn, dt);
                     }
                 }
@@ -253,14 +251,17 @@ namespace VF.Feature {
                 }
             }
 
-            if (skin == avatar.VisemeSkinnedMesh) {
-                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape) {
-                    animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
-                }
+            if (skin == avatar.VisemeSkinnedMesh){
+                switch (avatar.lipSync){
+                    case VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape:
+                        animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
+                        break;
+                    case VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape: {
+                        foreach (var b in avatar.VisemeBlendShapes) {
+                            animatedBlendshapes.Add(b);
+                        }
 
-                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
-                    foreach (var b in avatar.VisemeBlendShapes) {
-                        animatedBlendshapes.Add(b);
+                        break;
                     }
                 }
             }

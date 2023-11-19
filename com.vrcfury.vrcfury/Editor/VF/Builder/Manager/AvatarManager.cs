@@ -61,27 +61,26 @@ namespace VF.Builder {
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
-            if (!_controllers.TryGetValue(type, out var output)) {
-                var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
-                VFController ctrl;
-                if (existingController != null) {
-                    ctrl = VFController.CopyAndLoadController(existingController, type);
-                } else {
-                    ctrl = new AnimatorController();
-                }
-                output = new ControllerManager(
-                    ctrl,
-                    GetParams,
-                    type,
-                    currentFeatureNumProvider,
-                    currentFeatureNameProvider,
-                    currentFeatureClipPrefixProvider,
-                    MakeUniqueParamName,
-                    treatAsManaged: isDefault
-                );
-                _controllers[type] = output;
-                VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
+            if (_controllers.TryGetValue(type, out var output)) return output;
+            var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
+            VFController ctrl;
+            if (existingController != null) {
+                ctrl = VFController.CopyAndLoadController(existingController, type);
+            } else {
+                ctrl = new AnimatorController();
             }
+            output = new ControllerManager(
+                ctrl,
+                GetParams,
+                type,
+                currentFeatureNumProvider,
+                currentFeatureNameProvider,
+                currentFeatureClipPrefixProvider,
+                MakeUniqueParamName,
+                treatAsManaged: isDefault
+            );
+            _controllers[type] = output;
+            VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
             return output;
         }
         public ControllerManager GetFx() {
@@ -121,16 +120,12 @@ namespace VF.Builder {
         public VFGameObject CurrentComponentObject => currentComponentObject();
 
         public bool IsParamUsed(string name) {
-            if (GetParams().GetRaw().FindParameter(name) != null) return true;
-            foreach (var c in GetAllUsedControllers()) {
-                if (c.GetRaw().GetParam(name) != null) return true;
-            }
-            return false;
+            return GetParams().GetRaw().FindParameter(name) != null || GetAllUsedControllers().Any(c => c.GetRaw().GetParam(name) != null);
         }
         public string MakeUniqueParamName(string name) {
             name = "VF" + currentFeatureNumProvider() + "_" + name;
 
-            int offset = 1;
+            var offset = 1;
             while (true) {
                 var attempt = name + ((offset == 1) ? "" : offset+"");
                 if (!IsParamUsed(attempt)) return attempt;

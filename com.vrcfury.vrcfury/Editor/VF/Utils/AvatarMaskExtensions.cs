@@ -106,7 +106,7 @@ namespace VF.Utils {
             return mask.transformCount == 0;
         }
 
-        private static ICollection<string> WithParents(ICollection<string> paths) {
+        private static ICollection<string> WithParents(IEnumerable<string> paths) {
             var all = new HashSet<string>();
             foreach (var path in paths) {
                 var split = path.Split('/');

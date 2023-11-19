@@ -24,11 +24,10 @@ namespace VF.Menu {
                     var handled = false;
                     foreach (var scene in Enumerable.Range(0, SceneManager.sceneCount)
                                  .Select(SceneManager.GetSceneAt)) {
-                        if (scene.path == path) {
-                            handled = true;
-                            if (!scene.isLoaded) {
-                                unloadScenes.Add(EditorSceneManager.OpenScene(path, OpenSceneMode.Additive));
-                            }
+                        if (scene.path != path) continue;
+                        handled = true;
+                        if (!scene.isLoaded) {
+                            unloadScenes.Add(EditorSceneManager.OpenScene(path, OpenSceneMode.Additive));
                         }
                     }
                     if (!handled) {
@@ -76,11 +75,10 @@ namespace VF.Menu {
             }
 
             foreach (var path in AssetDatabase.GetAllAssetPaths()) {
-                if (typeof(SceneAsset) != AssetDatabase.GetMainAssetTypeAtPath(path)) {
-                    foreach (var c in AssetDatabase.LoadAllAssetsAtPath(path)) {
-                        if (c is T t) {
-                            list.Add(t);
-                        }
+                if (typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path)) continue;
+                foreach (var c in AssetDatabase.LoadAllAssetsAtPath(path)) {
+                    if (c is T t) {
+                        list.Add(t);
                     }
                 }
             }

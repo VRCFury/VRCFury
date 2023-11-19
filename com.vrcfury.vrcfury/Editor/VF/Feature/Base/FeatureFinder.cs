@@ -117,9 +117,9 @@ public static class FeatureFinder {
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
             featureInstance.avatarObjectOverride = avatarObject;
             featureInstance.featureBaseObject = gameObject;
-            var startBracket = prop.propertyPath.IndexOf("[");
-            var endBracket = prop.propertyPath.IndexOf("]");
-            var index = Int32.Parse(prop.propertyPath.Substring(startBracket + 1, endBracket - startBracket - 1));
+            var startBracket = prop.propertyPath.IndexOf("[", StringComparison.Ordinal);
+            var endBracket = prop.propertyPath.IndexOf("]", StringComparison.Ordinal);
+            var index = int.Parse(prop.propertyPath.Substring(startBracket + 1, endBracket - startBracket - 1));
             featureInstance.GetType().GetField("model").SetValue(featureInstance, component.config.features[index]);
 
             title = featureInstance.GetEditorTitle() ?? title;

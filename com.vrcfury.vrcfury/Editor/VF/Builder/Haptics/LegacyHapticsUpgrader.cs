@@ -50,13 +50,12 @@ namespace VF.Builder.Haptics {
                 "Ok"
             );
 
-            SceneView sv = EditorWindow.GetWindow<SceneView>();
+            var sv = EditorWindow.GetWindow<SceneView>();
             if (sv != null) sv.drawGizmos = true;
         }
 
         public static bool Check() {
-            if (Selection.activeGameObject == null) return false;
-            return true;
+            return Selection.activeGameObject != null;
         }
 
         private static bool IsHapticContact(UnityEngine.Component c, List<string> collisionTags) {
@@ -151,20 +150,19 @@ namespace VF.Builder.Haptics {
 
                     var socket = AddSocket(t);
                     addedSocketNames[t] = name;
-                    if (socket != null) {
-                        socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
-                            * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
-                        socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
-                        socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
-                        socket.addMenuItem = true;
-                        //t.name = "Haptic Socket";
+                    if (socket == null) continue;
+                    socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
+                        * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
+                    socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
+                    socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
+                    socket.addMenuItem = true;
+                    //t.name = "Haptic Socket";
                         
-                        if (name.ToLower().Contains("vag")) {
-                            AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
-                        }
-                        if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
-                            AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
-                        }
+                    if (name.ToLower().Contains("vag")) {
+                        AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
+                    }
+                    if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
+                        AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
                     }
                 }
             }
@@ -181,8 +179,9 @@ namespace VF.Builder.Haptics {
                     if (p) {
                         var size = info.Find("size");
                         if (size) {
-                            p.length = size.localScale.x;
-                            p.radius = size.localScale.y;
+                            var localScale = size.localScale;
+                            p.length = localScale.x;
+                            p.radius = localScale.y;
                         }
                         p.name = GetNameFromBakeInfo(info);
                     }
@@ -217,10 +216,9 @@ namespace VF.Builder.Haptics {
             // Auto-add sockets from DPS
             foreach (var light in avatarObject.GetComponentsInSelfAndChildren<Light>()) {
                 var parent = light.transform.parent;
-                if (parent) {
-                    if (VRCFuryHapticSocketEditor.GetInfoFromLights(parent, true) != null)
-                        AddSocket(parent);
-                }
+                if (!parent) continue;
+                if (VRCFuryHapticSocketEditor.GetInfoFromLights(parent, true) != null)
+                    AddSocket(parent);
             }
             
             // Upgrade old OGB markers to components
@@ -250,18 +248,17 @@ namespace VF.Builder.Haptics {
             // Claim lights on all OGB components
             foreach (var transform in hasExistingSocket.Concat(addedSocket)) {
                 if (!dryRun) {
-                    foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
-                        if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                            var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
-                            if (info != null) {
-                                var type = info.Item1;
-                                var position = info.Item2;
-                                var rotation = info.Item3;
-                                socket.addLight = type;
-                                socket.position = position;
-                                socket.rotation = rotation.eulerAngles;
-                            }
-                        }
+                    foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>())
+                    {
+                        if (socket.addLight != VRCFuryHapticSocket.AddLight.None) continue;
+                        var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
+                        if (info == null) continue;
+                        var type = info.Item1;
+                        var position = info.Item2;
+                        var rotation = info.Item3;
+                        socket.addLight = type;
+                        socket.position = position;
+                        socket.rotation = rotation.eulerAngles;
                     }
                 }
 
@@ -274,47 +271,45 @@ namespace VF.Builder.Haptics {
             var deletions = AvatarCleaner.Cleanup(
                 avatarObject,
                 perform: !dryRun,
-                ShouldRemoveObj: obj => {
-                    return obj.name == "GUIDES_DELETE" 
-                           || objectsToDelete.Contains(obj.transform);
-                },
+                ShouldRemoveObj: obj => obj.name == "GUIDES_DELETE" || objectsToDelete.Contains(obj.transform),
                 ShouldRemoveAsset: asset => {
                     if (asset == null) return false;
                     var path = AssetDatabase.GetAssetPath(asset);
                     if (path == null) return false;
                     var lower = path.ToLower();
-                    if (lower.Contains("dps_attach")) return true;
-                    return false;
+                    return lower.Contains("dps_attach");
                 },
                 ShouldRemoveLayer: layer => {
                     var lower = layer.ToLower();
-                    if (foundParentConstraint && lower.Contains("tps") && lower.Contains("orifice")) {
-                        return true;
+                    switch (foundParentConstraint) {
+                        case true when lower.Contains("tps") && lower.Contains("orifice"):
+                        case true when layer == "EZDPS Orifices":
+                            return true;
+                        default:
+                            return layer == "DPS_Holes"
+                                   || layer == "DPS_Rings"
+                                   || layer == "HotDog"
+                                   || layer == "DPS Orifice"
+                                   || layer == "Orifice Position";
                     }
-                    if (foundParentConstraint && layer == "EZDPS Orifices") {
-                        return true;
-                    }
-                    return layer == "DPS_Holes"
-                           || layer == "DPS_Rings"
-                           || layer == "HotDog"
-                           || layer == "DPS Orifice"
-                           || layer == "Orifice Position";
                 },
-                ShouldRemoveParam: param => {
-                    return param == "DPS_Hole"
-                           || param == "DPS_Ring"
-                           || param == "HotDog"
-                           || param == "fluff/dps/orifice"
-                           || param == "EZDPS/Orifice"
-                           || (param.StartsWith("TPS") && param.Contains("/VF"))
-                           || param.StartsWith("OGB/")
-                           || param.StartsWith("Nsfw/Ori/");
-                },
+                ShouldRemoveParam: param => param == "DPS_Hole"
+                                            || param == "DPS_Ring"
+                                            || param == "HotDog"
+                                            || param == "fluff/dps/orifice"
+                                            || param == "EZDPS/Orifice"
+                                            || (param.StartsWith("TPS") && param.Contains("/VF"))
+                                            || param.StartsWith("OGB/")
+                                            || param.StartsWith("Nsfw/Ori/"),
                 ShouldRemoveComponent: component => {
-                    if (component is VRCContactSender sender && IsHapticContact(sender, sender.collisionTags)) return true;
-                    if (component is VRCContactReceiver rcv && IsHapticContact(rcv, rcv.collisionTags)) return true;
-                    if (componentsToDelete.Contains(component)) return true;
-                    return false;
+                    switch (component)
+                    {
+                        case VRCContactSender sender when IsHapticContact(sender, sender.collisionTags):
+                        case VRCContactReceiver rcv when IsHapticContact(rcv, rcv.collisionTags):
+                            return true;
+                    }
+
+                    return componentsToDelete.Contains(component);
                 }
             );
 
@@ -338,8 +333,7 @@ namespace VF.Builder.Haptics {
             if (alreadyExists.Count > 0)
                 parts.Add("Haptics already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
 
-            if (parts.Count == 0) return "";
-            return string.Join("\n\n", parts);
+            return parts.Count == 0 ? "" : string.Join("\n\n", parts);
         }
 
         private static string GetNameFromBakeInfo(VFGameObject marker) {
@@ -365,11 +359,7 @@ namespace VF.Builder.Haptics {
             }
 
             // For some reason, on some avatars, this one doesn't have child lights even though it's supposed to
-            if (obj.name == "__dps_lightobject") {
-                return Tuple.Create(VRCFuryHapticSocket.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0));
-            }
-
-            return null;
+            return obj.name == "__dps_lightobject" ? Tuple.Create(VRCFuryHapticSocket.AddLight.Ring, Vector3.zero, Quaternion.Euler(90, 0, 0)) : null;
         }
 
         private static void AddBlendshapeIfPresent(
@@ -395,13 +385,7 @@ namespace VF.Builder.Haptics {
         }
         private static bool HasBlendshape(VFGameObject avatarObject, string name) {
             var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>();
-            foreach (var skin in skins) {
-                if (!skin.sharedMesh) continue;
-                var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(name);
-                if (blendShapeIndex < 0) continue;
-                return true;
-            }
-            return false;
+            return (from skin in skins where skin.sharedMesh select skin.sharedMesh.GetBlendShapeIndex(name)).Any(blendShapeIndex => blendShapeIndex >= 0);
         }
     }
 }

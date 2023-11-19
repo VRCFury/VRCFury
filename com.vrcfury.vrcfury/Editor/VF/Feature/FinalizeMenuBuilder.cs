@@ -20,7 +20,7 @@ namespace VF.Feature {
 
             var iconsTooLarge = new HashSet<string>();
 
-            void CheckIcon(Texture2D icon) {
+            void CheckIcon(Texture icon) {
                 if (icon == null) return;
 
                 var path = AssetDatabase.GetAssetPath(icon);
@@ -29,7 +29,7 @@ namespace VF.Feature {
                 }
                 var settings = importer.GetDefaultPlatformTextureSettings();
 
-                var MAX_ACTION_TEXTURE_SIZE = 256;
+                const int MAX_ACTION_TEXTURE_SIZE = 256;
                 if ((icon.width > MAX_ACTION_TEXTURE_SIZE || icon.height > MAX_ACTION_TEXTURE_SIZE) && settings.maxTextureSize > MAX_ACTION_TEXTURE_SIZE) {
                     iconsTooLarge.Add(path);
                     return;
@@ -38,7 +38,6 @@ namespace VF.Feature {
                 //Compression
                 if (settings.textureCompression == TextureImporterCompression.Uncompressed) {
                     iconsTooLarge.Add(path);
-                    return;
                 }
             }
             

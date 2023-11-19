@@ -52,8 +52,7 @@ namespace VF.Feature {
                 ShouldRemoveAsset: obj => {
                     if (obj == null) return false;
                     var path = AssetDatabase.GetAssetPath(obj);
-                    if (path == null) return false;
-                    return path.Contains("_VRCFury/");
+                    return path != null && path.Contains("_VRCFury/");
                 },
                 ShouldRemoveLayer: name => name.StartsWith("[VRCFury]"),
                 ShouldRemoveParam: s => s.StartsWith("Senky") || s.StartsWith("VRCFury__")

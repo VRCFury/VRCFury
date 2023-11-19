@@ -45,12 +45,9 @@ namespace VF.Builder {
                 var next = dependsOn
                     .Where(pair => pair.Value.Count == 0)
                     .Select(pair => pair.Key)
-                    .FirstOrDefault();
-                if (next == null) {
                     // There's a loop in the asset dependencies???
                     // Just... pick one I guess
-                    next = dependsOn.First().Key;
-                }
+                    .FirstOrDefault() ?? dependsOn.First().Key;
 
                 reloadOrder.Add(next);
                 dependsOn.Remove(next);

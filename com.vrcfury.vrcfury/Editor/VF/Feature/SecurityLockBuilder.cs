@@ -14,8 +14,7 @@ namespace VF.Feature {
 public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
     private VFABool _unlockedParam = null;
     private VFABool GetUnlockedParam() {
-        if (_unlockedParam == null) _unlockedParam = GetFx().NewBool("SecurityLockSync", synced: true);
-        return _unlockedParam;
+        return _unlockedParam ?? (_unlockedParam = GetFx().NewBool("SecurityLockSync", synced: true));
     }
     public VFCondition GetEnabled() {
         return GetUnlockedParam().IsTrue();
@@ -23,7 +22,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
     
     [FeatureBuilderAction]
     public void Apply() {
-        if (allFeaturesInRun.Where(m => m is SecurityLock).Count() > 1) {
+        if (allFeaturesInRun.Count(m => m is SecurityLock) > 1) {
             throw new VRCFBuilderException("Cannot have more than one SecurityLock feature on avatar.");
         }
         
@@ -37,13 +36,12 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         if (digits.Length > 10) {
             throw new VRCFBuilderException("Security lock must contain at most 10 digits");
         }
-        foreach (var digit in digits) {
-            if (digit < 1 || digit > 7) {
-                throw new VRCFBuilderException("Security lock contains digit outside allowed bounds (1-7)");
-            }
+        if (digits.Any(digit => digit < 1 || digit > 7))
+        {
+            throw new VRCFBuilderException("Security lock contains digit outside allowed bounds (1-7)");
         }
         var numDigits = digits.Length;
-        var numDigitSlots = 10;
+        const int numDigitSlots = 10;
 
         var fx = GetFx();
         var paramSecuritySync = GetUnlockedParam();
@@ -98,7 +96,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         var unlocked = layer.NewState("Unlocked").Move(1,-1);
         var digitsReversed = digits.Reverse().ToArray();
         var unlockCondition = digitParams[0].IsEqualTo(digitsReversed[0]);
-        for (int i = 1; i < numDigits; i++) {
+        for (var i = 1; i < numDigits; i++) {
             unlockCondition = unlockCondition.And(digitParams[i].IsEqualTo(digitsReversed[i]));
         }
         check.TransitionsTo(unlocked).When(unlockCondition);

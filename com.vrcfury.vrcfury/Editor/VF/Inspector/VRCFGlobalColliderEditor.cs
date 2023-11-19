@@ -9,8 +9,9 @@ namespace VF.Inspector {
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryGlobalCollider collider, GizmoType gizmoType) {
             var transform = collider.GetTransform();
-            var worldHeight = collider.height * transform.lossyScale.x;
-            var worldRadius = collider.radius * transform.lossyScale.x;
+            var lossyScale = transform.lossyScale;
+            var worldHeight = collider.height * lossyScale.x;
+            var worldRadius = collider.radius * lossyScale.x;
 
             VRCFuryGizmoUtils.DrawCapsule(
                 transform.position,

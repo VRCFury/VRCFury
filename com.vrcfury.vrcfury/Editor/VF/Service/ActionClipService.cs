@@ -34,12 +34,15 @@ namespace VF.Service {
             }
 
             var actions = state.actions.Where(action => {
-                if (action.desktopActive || action.androidActive) {
-                    var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
-                    if (isAndroid && !action.androidActive) return false;
-                    if (!isAndroid && !action.desktopActive) return false;
+                if (!action.desktopActive && !action.androidActive) return true;
+                var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
+                switch (isAndroid) {
+                    case true when !action.androidActive:
+                    case false when !action.desktopActive:
+                        return false;
+                    default:
+                        return true;
                 }
-                return true;
             }).ToArray();
             if (actions.Length == 0) {
                 return new AnimationClip();
@@ -157,10 +160,13 @@ namespace VF.Service {
                         }
 
                         var onState = true;
-                        if (toggle.mode == ObjectToggleAction.Mode.TurnOff) {
-                            onState = false;
-                        } else if (toggle.mode == ObjectToggleAction.Mode.Toggle) {
-                            onState = !toggle.obj.activeSelf;
+                        switch (toggle.mode) {
+                            case ObjectToggleAction.Mode.TurnOff:
+                                onState = false;
+                                break;
+                            case ObjectToggleAction.Mode.Toggle:
+                                onState = !toggle.obj.activeSelf;
+                                break;
                         }
 
                         clipBuilder.Enable(offClip, toggle.obj, !onState);
@@ -262,11 +268,9 @@ namespace VF.Service {
                     "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
             }
 
-            if (onClip.GetFloatBindings().Any(b =>
-                    b.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.Other)) {
-                var trigger = fullBodyEmoteService.AddClip(onClip);
-                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
-            }
+            if (onClip.GetFloatBindings().All(b => b.GetMuscleBindingType() != EditorCurveBindingExtensions.MuscleBindingType.Other)) return onClip;
+            var trigger = fullBodyEmoteService.AddClip(onClip);
+            onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
 
             return onClip;
         }

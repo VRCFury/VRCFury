@@ -54,18 +54,16 @@ namespace VF.Service {
                 foreach (var binding in clip.GetFloatBindings()) {
                     if (!IsScaleBinding(binding)) continue;
                     if (!pathToParam.TryGetValue(binding.path, out var param)) continue;
-                    var newBinding = new EditorCurveBinding();
-                    newBinding.type = typeof(Animator);
-                    newBinding.path = "";
-                    newBinding.propertyName = param.Name();
+                    var newBinding = new EditorCurveBinding {
+                        type = typeof(Animator),
+                        path = "",
+                        propertyName = param.Name()
+                    };
                     clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
                 }
             }
 
-            float handledScale = 1;
-            foreach (var path in animatedParentPaths) {
-                handledScale *= manager.AvatarObject.transform.Find(path).localScale.z;
-            }
+            var handledScale = animatedParentPaths.Aggregate<string, float>(1, (current, path) => current * manager.AvatarObject.transform.Find(path).localScale.z);
 
             if (directTree == null) {
                 Debug.Log("Creating direct layer");

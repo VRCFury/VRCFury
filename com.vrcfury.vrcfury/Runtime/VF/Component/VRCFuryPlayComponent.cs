@@ -12,11 +12,14 @@ namespace VF.Component {
         public Quaternion rot;
         public bool show = true;
 
-        bool lastShow = false;
+        private bool lastShow;
 
         private void Update() {
             if (show && !lastShow) {
-                try { EnableSceneLighting?.Invoke(); } catch (Exception e) {}
+                try { EnableSceneLighting?.Invoke(); }
+                catch (Exception) {
+                    // ignored
+                }
             }
             lastShow = show;
         }

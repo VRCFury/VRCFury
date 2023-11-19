@@ -12,7 +12,7 @@ namespace VF {
             EditorApplication.update += OnUpdate;
         }
 
-        private static bool hooked = false;
+        private static bool hooked;
 
         private static void OnUpdate() {
             if (!EditorApplication.isPlaying) {

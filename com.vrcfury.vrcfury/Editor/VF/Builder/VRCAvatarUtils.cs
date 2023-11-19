@@ -70,12 +70,15 @@ namespace VF.Builder {
         
         private static AnimatorController GetDefaultController(VRCAvatarDescriptor.AnimLayerType type) {
             string guid = null;
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                // vrc_AvatarV3HandsLayer2
-                guid = "5ecf8b95a27552840aef66909bdf588f";
-            } else if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
-                // vrc_AvatarV3ActionLayer
-                guid = "3e479eeb9db24704a828bffb15406520";
+            switch (type) {
+                case VRCAvatarDescriptor.AnimLayerType.Gesture:
+                    // vrc_AvatarV3HandsLayer2
+                    guid = "5ecf8b95a27552840aef66909bdf588f";
+                    break;
+                case VRCAvatarDescriptor.AnimLayerType.Action:
+                    // vrc_AvatarV3ActionLayer
+                    guid = "3e479eeb9db24704a828bffb15406520";
+                    break;
             }
             if (guid == null) return null;
             var path = AssetDatabase.GUIDToAssetPath(guid);
@@ -101,10 +104,9 @@ namespace VF.Builder {
             var found = matching[0];
             if (found.isDefault) {
                 var def = GetDefaultController(type);
-                if (def != null) {
-                    found.set(def);
-                    return (true,def);
-                }
+                if (def == null) return (false, found.controller);
+                found.set(def);
+                return (true,def);
             }
 
             return (false,found.controller);
@@ -113,10 +115,9 @@ namespace VF.Builder {
         public static void SetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type, RuntimeAnimatorController controller) {
             var setOne = false;
             foreach (var layer in GetAllControllers(avatar)) {
-                if (layer.type == type) {
-                    setOne = true;
-                    layer.set(controller);
-                }
+                if (layer.type != type) continue;
+                setOne = true;
+                layer.set(controller);
             }
 
             if (!setOne) {
@@ -148,14 +149,12 @@ namespace VF.Builder {
 
         [CanBeNull]
         public static VFGameObject GuessAvatarObject(VFGameObject obj) {
-            if (obj == null) return null;
-            return obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
+            return obj == null ? null : obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
         }
         
         [CanBeNull]
         public static VFGameObject GuessAvatarObject(UnityEngine.Component c) {
-            if (c == null) return null;
-            return GuessAvatarObject(c.owner());
+            return c == null ? null : GuessAvatarObject(c.owner());
         }
     }
 }

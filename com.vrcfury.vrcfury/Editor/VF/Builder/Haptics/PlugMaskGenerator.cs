@@ -10,12 +10,17 @@ namespace VF.Builder.Haptics {
         // Returns 1 if active, 0 if ignored
         public static float[] GetMask(Renderer renderer, VRCFuryHapticPlug plug) {
             Mesh mesh = null;
-            if (renderer is SkinnedMeshRenderer s) {
-                mesh = s.sharedMesh;
-            } else if (renderer is MeshRenderer r) {
-                var meshFilter = r.owner().GetComponent<MeshFilter>();
-                if (meshFilter) {
-                    mesh = meshFilter.sharedMesh;
+            switch (renderer) {
+                case SkinnedMeshRenderer s:
+                    mesh = s.sharedMesh;
+                    break;
+                case MeshRenderer r: {
+                    var meshFilter = r.owner().GetComponent<MeshFilter>();
+                    if (meshFilter) {
+                        mesh = meshFilter.sharedMesh;
+                    }
+
+                    break;
                 }
             }
             if (mesh == null) {
@@ -29,7 +34,7 @@ namespace VF.Builder.Haptics {
 
             ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
             if (plug.useBoneMask && renderer is SkinnedMeshRenderer skin) {
-                VFGameObject firstBone = plug.owner();
+                var firstBone = plug.owner();
                 while (firstBone != null) {
                     if (skin.bones.Contains((Transform)firstBone)) {
                         break;
@@ -44,7 +49,7 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            float[] output = new float[vertices.Length];
+            var output = new float[vertices.Length];
             for (var i = 0; i < vertices.Length; i++) {
                 var activeByWeight = 1f;
                 if (boneWeights.Length > 0) {
@@ -87,9 +92,9 @@ namespace VF.Builder.Haptics {
                 RenderTextureFormat.Default,
                 RenderTextureReadWrite.Linear);
             Graphics.Blit(texture, tmp);
-            RenderTexture previous = RenderTexture.active;
+            var previous = RenderTexture.active;
             RenderTexture.active = tmp;
-            Texture2D myTexture2D = new Texture2D(texture.width, texture.height);
+            var myTexture2D = new Texture2D(texture.width, texture.height);
             myTexture2D.ReadPixels(new Rect(0, 0, tmp.width, tmp.height), 0, 0);
             myTexture2D.Apply();
             RenderTexture.active = previous;

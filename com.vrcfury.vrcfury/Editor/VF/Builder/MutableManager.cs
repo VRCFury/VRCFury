@@ -69,10 +69,9 @@ namespace VF.Builder {
                 prop.objectReferenceValue = newValue;
                 changed = true;
             });
-            if (changed) {
-                serialized.ApplyModifiedPropertiesWithoutUndo();
-                VRCFuryEditorUtils.MarkDirty(obj);
-            }
+            if (!changed) return;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            VRCFuryEditorUtils.MarkDirty(obj);
         }
 
         /** For some reason, unity occasionally breaks and return non-Objects from objectReferenceValue somehow. */
@@ -118,18 +117,17 @@ namespace VF.Builder {
             // If this isn't here, default states and state machine transitions involving child machines can disappear
             // because unity throws them away if they were invalid (because the child wasn't rewritten yet) when they were rewritten above
             foreach (var (original,mutable) in originalToMutable.Select(x => (x.Key, x.Value))) {
-                if (original is AnimatorStateMachine originalSm && mutable is AnimatorStateMachine mutableSm) {
-                    mutableSm.defaultState = RewriteObject(originalSm.defaultState, originalToMutable);
-                    foreach (var sm in mutableSm.stateMachines.Select(child => child.stateMachine)) {
-                        var originalTransitions =
-                            originalSm.GetStateMachineTransitions(RewriteObject(sm, mutableToOriginal));
-                        var rewrittenTransitions = originalTransitions
-                            .Select(a => RewriteObject(a, originalToMutable))
-                            .ToArray();
-                        mutableSm.SetStateMachineTransitions(sm, rewrittenTransitions);
-                    }
-                    VRCFuryEditorUtils.MarkDirty(mutable);
+                if (!(original is AnimatorStateMachine originalSm) || !(mutable is AnimatorStateMachine mutableSm)) continue;
+                mutableSm.defaultState = RewriteObject(originalSm.defaultState, originalToMutable);
+                foreach (var sm in mutableSm.stateMachines.Select(child => child.stateMachine)) {
+                    var originalTransitions =
+                        originalSm.GetStateMachineTransitions(RewriteObject(sm, mutableToOriginal));
+                    var rewrittenTransitions = originalTransitions
+                        .Select(a => RewriteObject(a, originalToMutable))
+                        .ToArray();
+                    mutableSm.SetStateMachineTransitions(sm, rewrittenTransitions);
                 }
+                VRCFuryEditorUtils.MarkDirty(mutable);
             }
 
             return rootCopy;
@@ -169,11 +167,10 @@ namespace VF.Builder {
                 var enter = visit(o);
                 if (!enter) continue;
                 Iterate(new SerializedObject(o), prop => {
-                    if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                        var objectReferenceValue = GetObjectReferenceValueSafe(prop);
-                        if (objectReferenceValue != null) {
-                            stack.Push(objectReferenceValue);
-                        }
+                    if (prop.propertyType != SerializedPropertyType.ObjectReference) return;
+                    var objectReferenceValue = GetObjectReferenceValueSafe(prop);
+                    if (objectReferenceValue != null) {
+                        stack.Push(objectReferenceValue);
                     }
                 });
             }

@@ -21,8 +21,7 @@ namespace VF.Utils {
                 var (path,menu) = stack.Pop();
                 if (menu == null || seen.Contains(menu)) continue;
                 seen.Add(menu);
-                if (ForEachMenu != null)
-                    ForEachMenu(menu, path);
+                ForEachMenu?.Invoke(menu, path);
                 for (var i = 0; i < menu.controls.Count; i++) {
                     var item = menu.controls[i];
                     var itemPath = new List<string>();
@@ -33,13 +32,17 @@ namespace VF.Utils {
                     var recurse = true;
                     if (ForEachItem != null) {
                         var result = ForEachItem(item, itemPathArr);
-                        if (result == ForEachMenuItemResult.Skip) {
-                            recurse = false;
-                        } else if (result == ForEachMenuItemResult.Delete) {
-                            menu.controls.RemoveAt(i);
-                            i--;
-                            VRCFuryEditorUtils.MarkDirty(menu);
-                            recurse = false;
+                        switch (result)
+                        {
+                            case ForEachMenuItemResult.Skip:
+                                recurse = false;
+                                break;
+                            case ForEachMenuItemResult.Delete:
+                                menu.controls.RemoveAt(i);
+                                i--;
+                                VRCFuryEditorUtils.MarkDirty(menu);
+                                recurse = false;
+                                break;
                         }
                     }
                     if (recurse && item.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
@@ -58,14 +61,14 @@ namespace VF.Utils {
 
         public static void RewriteParameters(this VRCExpressionsMenu root, Func<string,string> each) {
             root.ForEachMenu(ForEachItem: (item,path) => {
-                if (item.parameter != null && item.parameter.name != null) {
+                if (item.parameter?.name != null) {
                     item.parameter.name = each(item.parameter.name);
                 }
-                if (item.subParameters != null) {
-                    foreach (var p in item.subParameters) {
-                        if (p != null && p.name != null) {
-                            p.name = each(p.name);
-                        }
+
+                if (item.subParameters == null) return ForEachMenuItemResult.Continue;
+                foreach (var p in item.subParameters) {
+                    if (p?.name != null) {
+                        p.name = each(p.name);
                     }
                 }
                 return ForEachMenuItemResult.Continue;

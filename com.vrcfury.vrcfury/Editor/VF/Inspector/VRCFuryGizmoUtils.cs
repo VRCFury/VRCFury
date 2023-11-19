@@ -54,9 +54,12 @@ namespace VF.Inspector {
             bool worldSize = false,
             bool left = false
         ) {
-            var style = new GUIStyle(GUI.skin.label);
-            style.alignment = left ? TextAnchor.UpperLeft : TextAnchor.UpperCenter;
-            style.normal.textColor = color;
+            var style = new GUIStyle(GUI.skin.label) {
+                alignment = left ? TextAnchor.UpperLeft : TextAnchor.UpperCenter,
+                normal = {
+                    textColor = color
+                }
+            };
             //style.fontSize = 12;
             if (worldSize) {
                 style.fontSize = (int)(1.5 / HandleUtility.GetHandleSize(worldPos));

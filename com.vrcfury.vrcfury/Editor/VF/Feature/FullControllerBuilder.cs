@@ -65,8 +65,8 @@ namespace VF.Feature {
             // Record the offsets so we can fix them later
             animatorLayerControlManager.RegisterControllerSet(toMerge);
 
-            foreach (var (type, from) in toMerge) {
-                var targetController = manager.GetController(type);
+             foreach (var (layerType, from) in toMerge) {
+                var targetController = manager.GetController(layerType);
                 Merge(from, targetController);
             }
 
@@ -117,17 +117,16 @@ namespace VF.Feature {
 
         private void CheckMenuParams(VRCExpressionsMenu menu) {
             var failedParams = new List<string>();
-            void CheckParam(string param, IList<string> path) {
+            void CheckParam(string param, IEnumerable<string> path) {
                 if (string.IsNullOrEmpty(param)) return;
                 if (manager.GetParams().GetParam(RewriteParamName(param)) != null) return;
                 failedParams.Add($"{param} (used by {string.Join("/", path)})");
             }
             menu.ForEachMenu(ForEachItem: (item, path) => {
                 CheckParam(item.parameter?.name, path);
-                if (item.subParameters != null) {
-                    foreach (var p in item.subParameters) {
-                        CheckParam(p?.name, path);
-                    }
+                if (item.subParameters == null) return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                foreach (var p in item.subParameters) {
+                    CheckParam(p?.name, path);
                 }
                 return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
             });
@@ -204,11 +203,9 @@ namespace VF.Feature {
 
         private string RewritePath(string path) {
             foreach (var rewrite in model.rewriteBindings) {
-                var from = rewrite.from;
-                if (from == null) from = "";
+                var from = rewrite.from ?? "";
                 while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
-                var to = rewrite.to;
-                if (to == null) to = "";
+                var to = rewrite.to ?? "";
                 while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
 
                 if (from == "") {

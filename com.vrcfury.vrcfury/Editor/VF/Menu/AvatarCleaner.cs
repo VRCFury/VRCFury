@@ -31,14 +31,12 @@ namespace VF.Menu {
             if (ShouldRemoveAsset != null) {
                 var animators = avatarObj.GetComponentsInSelfAndChildren<Animator>();
                 foreach (var animator in animators) {
-                    if (animator.runtimeAnimatorController != null &&
-                        ShouldRemoveAsset(animator.runtimeAnimatorController)) {
-                        removeItems.Add("Animator Controller at path " + GetPath(animator.gameObject));
-                        if (perform) {
-                            animator.runtimeAnimatorController = null;
-                            VRCFuryEditorUtils.MarkDirty(animator);
-                        }
-                    }
+                    if (animator.runtimeAnimatorController == null ||
+                        !ShouldRemoveAsset(animator.runtimeAnimatorController)) continue;
+                    removeItems.Add("Animator Controller at path " + GetPath(animator.gameObject));
+                    if (!perform) continue;
+                    animator.runtimeAnimatorController = null;
+                    VRCFuryEditorUtils.MarkDirty(animator);
                 }
             }
 
@@ -69,17 +67,15 @@ namespace VF.Menu {
                     } else {
                         if (ShouldRemoveComponent != null) {
                             foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
-                                if (component != null && !(component is Transform) && ShouldRemoveComponent(component)) {
-                                    removeItems.Add(component.GetType().Name + " on " + GetPath(obj));
-                                    if (perform) RemoveComponent(component);
-                                }
+                                if (component == null || component is Transform || !ShouldRemoveComponent(component)) continue;
+                                removeItems.Add(component.GetType().Name + " on " + GetPath(obj));
+                                if (perform) RemoveComponent(component);
                             }
                         }
 
                         // Make sure RemoveComponent didn't remove this object!
-                        if (t) {
-                            foreach (Transform t2 in t) checkStack.Push(t2);
-                        }
+                        if (!t) continue;
+                        foreach (Transform t2 in t) checkStack.Push(t2);
                     }
                 }
             }
@@ -101,10 +97,9 @@ namespace VF.Menu {
                                 if (!ShouldRemoveLayer(layer.name)) continue;
                                 removeItems.Add(typeName + " Layer: " + layer.name);
                                 removedLayers.Add(layer.stateMachine);
-                                if (perform) {
-                                    controller.RemoveLayer(i);
-                                    i--;
-                                }
+                                if (!perform) continue;
+                                controller.RemoveLayer(i);
+                                i--;
                             }
                         }
 
@@ -119,10 +114,9 @@ namespace VF.Menu {
                                 if (prmUsed) continue;
 
                                 removeItems.Add(typeName + " Parameter: " + prm);
-                                if (perform) {
-                                    controller.RemoveParameter(i);
-                                    i--;
-                                }
+                                if (!perform) continue;
+                                controller.RemoveParameter(i);
+                                i--;
                             }
                         }
 
@@ -138,13 +132,11 @@ namespace VF.Menu {
                     } else {
                         var prms = new List<VRCExpressionParameters.Parameter>(syncParams.parameters);
                         for (var i = 0; i < prms.Count; i++) {
-                            if (ShouldRemoveParam != null && ShouldRemoveParam(prms[i].name)) {
-                                removeItems.Add("Synced Param: " + prms[i].name);
-                                if (perform) {
-                                    prms.RemoveAt(i);
-                                    i--;
-                                }
-                            }
+                            if (ShouldRemoveParam == null || !ShouldRemoveParam(prms[i].name)) continue;
+                            removeItems.Add("Synced Param: " + prms[i].name);
+                            if (!perform) continue;
+                            prms.RemoveAt(i);
+                            i--;
                         }
 
                         if (perform) {
@@ -188,25 +180,20 @@ namespace VF.Menu {
                                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
                                 }
 
-                                if (ShouldRemoveMenuItem(item)) {
-                                    removeControls.Add(item);
-                                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
-                                }
-
-                                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                                if (!ShouldRemoveMenuItem(item)) return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                                removeControls.Add(item);
+                                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
                             });
                             var endRemoveCount = removeControls.Count;
                             if (startRemoveCount == endRemoveCount) break;
                         }
 
                         m.ForEachMenu(ForEachItem: (item, path) => {
-                            if (removeControls.Contains(item)) {
-                                removeItems.Add("Menu Item: " + string.Join("/", path));
-                                return perform
-                                    ? VRCExpressionsMenuExtensions.ForEachMenuItemResult.Delete
-                                    : VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
-                            }
-                            return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                            if (!removeControls.Contains(item)) return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                            removeItems.Add("Menu Item: " + string.Join("/", path));
+                            return perform
+                                ? VRCExpressionsMenuExtensions.ForEachMenuItemResult.Delete
+                                : VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
                         });
                     }
                 }

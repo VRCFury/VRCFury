@@ -209,23 +209,21 @@ public class VRCFuryBuilder {
                 throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
             }
             var config = vrcFury.config;
-            if (config.features != null) {
-                var debugLogString = $"Importing {config.features.Count} features from {configObject.name}";
-                foreach (var feature in config.features) {
-                    AddModel(feature, configObject);
-                    debugLogString += $"\n{feature.GetType()}";
-                }
-                Debug.Log(debugLogString);
+            if (config.features == null) continue;
+            var debugLogString = $"Importing {config.features.Count} features from {configObject.name}";
+            foreach (var feature in config.features) {
+                AddModel(feature, configObject);
+                debugLogString += $"\n{feature.GetType()}";
             }
+            Debug.Log(debugLogString);
         }
 
-        foreach (var type in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()) {
-            var buildersOfType = collectedBuilders.Where(builder => builder.GetType() == type).ToArray();
-            if (buildersOfType[0].OnlyOneAllowed() && buildersOfType.Length > 1) {
+            foreach (var buildersOfType in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()
+                         .Select(type => collectedBuilders.Where(builder => builder.GetType() == type).ToArray())
+                         .Where(buildersOfType => buildersOfType[0].OnlyOneAllowed() && buildersOfType.Length > 1)) {
                 throw new Exception(
                     $"This avatar contains multiple VRCFury '{buildersOfType[0].GetEditorTitle()}' components, but only one is allowed.");
             }
-        }
 
         AddModel(new DirectTreeOptimizer { managedOnly = true }, avatarObject);
 

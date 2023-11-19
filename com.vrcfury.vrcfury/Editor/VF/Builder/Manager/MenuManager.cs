@@ -120,9 +120,9 @@ namespace VF.Builder {
         ) {
             string Normalize(string a) =>
                 Regex.Replace(Regex.Replace(a.ToLower(), @"<.*?>", ""), @"\s\s+", " ").Trim();
-            string[] GetSlugs(string a) => Regex.Replace(a, @"<.*?>", "`")
+            IEnumerable<string> GetSlugs(string a) => Regex.Replace(a, @"<.*?>", "`")
                 .Split('`')
-                .Select(slug => Normalize(slug))
+                .Select(Normalize)
                 .Where(slug => !string.IsNullOrWhiteSpace(slug))
                 .ToArray();
             var nameMatchMethods = new Func<string,string,bool>[] {
@@ -157,10 +157,10 @@ namespace VF.Builder {
             var current = GetRaw();
             for (var i = 0; i < path.Count; i++) {
                 var folderName = path[i];
-                var dupIndex = folderName.IndexOf(".dup.");
+                var dupIndex = folderName.IndexOf(".dup.", StringComparison.Ordinal);
                 var offset = 0;
                 if (dupIndex >= 0) {
-                    offset = Int32.Parse(folderName.Substring(dupIndex + 5));
+                    offset = int.Parse(folderName.Substring(dupIndex + 5));
                     folderName = folderName.Substring(0, dupIndex);
                 }
                 var folderControls = FindControlsWithName(current, folderName, c => c.type == VRCExpressionsMenu.Control.ControlType.SubMenu);
@@ -218,10 +218,12 @@ namespace VF.Builder {
         public void NewMenuPuppet(string path, VFAFloat x, VFAFloat y, Texture2D icon = null) {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
-            var menuParamX = new VRCExpressionsMenu.Control.Parameter();
-            menuParamX.name = (x != null) ? x.Name() : "";
-            var menuParamY = new VRCExpressionsMenu.Control.Parameter();
-            menuParamY.name = (y != null) ? y.Name() : "";
+            var menuParamX = new VRCExpressionsMenu.Control.Parameter {
+                name = x != null ? x.Name() : ""
+            };
+            var menuParamY = new VRCExpressionsMenu.Control.Parameter {
+                name = y != null ? y.Name() : ""
+            };
             control.subParameters = new[]{menuParamX, menuParamY};
             control.icon = icon;
         }
@@ -270,7 +272,7 @@ namespace VF.Builder {
                         to.controls.Add(toControl);
                     } else {
                         var submenuDupId = GetNextSubmenuDupId(fromControl.name);
-                        var prefix2 = new List<string>(prefix);
+                        var prefix2 = new List<string>(prefix) { fromControl.name + (submenuDupId > 0 ? (".dup." + submenuDupId) : "") };
                         prefix2.Add(fromControl.name + (submenuDupId > 0 ? (".dup." + submenuDupId) : ""));
                         GetSubmenu(prefix2.ToArray(), createFromControl: fromControl);
                         MergeMenu(prefix2.ToArray(), fromControl.subMenu, seen);

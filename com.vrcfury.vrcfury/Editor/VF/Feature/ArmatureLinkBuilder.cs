@@ -68,12 +68,11 @@ namespace VF.Feature {
                 // We fix this by ignoring types of animations on those bones
                 var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).ToImmutableHashSet();
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
-                    if (avatarHumanoidBones.Contains(avatarBone)) {
-                        anim.positionIsAnimated.Remove(propBone);
-                        anim.rotationIsAnimated.Remove(propBone);
-                        anim.physboneChild.Remove(propBone);
-                        anim.physboneRoot.Remove(propBone);
-                    }
+                    if (!avatarHumanoidBones.Contains(avatarBone)) continue;
+                    anim.positionIsAnimated.Remove(propBone);
+                    anim.rotationIsAnimated.Remove(propBone);
+                    anim.physboneChild.Remove(propBone);
+                    anim.physboneRoot.Remove(propBone);
                 }
 
                 var doNotMerge = new HashSet<Transform>();
@@ -113,7 +112,7 @@ namespace VF.Feature {
                         if (skin.sharedMesh) {
                             skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
                             var mesh = skin.sharedMesh;
-                            mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
+                            mesh.bindposes = skin.bones.Zip(mesh.bindposes, (a,b) => (a,b))
                                 .Select(boneAndBindPose => {
                                     VFGameObject bone = boneAndBindPose.a;
                                     var bindPose = boneAndBindPose.b;
@@ -132,8 +131,7 @@ namespace VF.Feature {
                             .Select(b => {
                                 if (b == null) return b;
                                 if (doNotRebindSkins.Contains(b)) return b;
-                                if (skinRewriteMapping.TryGetValue(b, out var to)) return to;
-                                return b;
+                                return skinRewriteMapping.TryGetValue(b, out var to) ? to : b;
                             })
                             .ToArray();
                         
@@ -143,22 +141,22 @@ namespace VF.Feature {
                     // Update skin to use root bone from the original avatar (updating bounds if needed)
                     {
                         var oldRootBone = HapticUtils.GetMeshRoot(skin);
-                        if (skinRewriteMapping.TryGetValue(oldRootBone, out var newRootBone) && !doNotRebindSkins.Contains(oldRootBone)) {
-                            var b = skin.localBounds;
-                            b.center = new Vector3(
-                                b.center.x * oldRootBone.lossyScale.x / newRootBone.lossyScale.x,
-                                b.center.y * oldRootBone.lossyScale.y / newRootBone.lossyScale.y,
-                                b.center.z * oldRootBone.lossyScale.z / newRootBone.lossyScale.z
-                            );
-                            b.extents = new Vector3(
-                                b.extents.x * oldRootBone.lossyScale.x / newRootBone.lossyScale.x,
-                                b.extents.y * oldRootBone.lossyScale.y / newRootBone.lossyScale.y,
-                                b.extents.z * oldRootBone.lossyScale.z / newRootBone.lossyScale.z
-                            );
-                            skin.localBounds = b;
+                        if (!skinRewriteMapping.TryGetValue(oldRootBone, out var newRootBone) || doNotRebindSkins.Contains(oldRootBone)) continue;
+                        var b = skin.localBounds;
+                        var lossyScale = oldRootBone.lossyScale;
+                        b.center = new Vector3(
+                            b.center.x * lossyScale.x / newRootBone.lossyScale.x,
+                            b.center.y * lossyScale.y / newRootBone.lossyScale.y,
+                            b.center.z * lossyScale.z / newRootBone.lossyScale.z
+                        );
+                        b.extents = new Vector3(
+                            b.extents.x * lossyScale.x / newRootBone.lossyScale.x,
+                            b.extents.y * lossyScale.y / newRootBone.lossyScale.y,
+                            b.extents.z * lossyScale.z / newRootBone.lossyScale.z
+                        );
+                        skin.localBounds = b;
 
-                            skin.rootBone = newRootBone;
-                        }
+                        skin.rootBone = newRootBone;
                     }
                 }
 
@@ -261,17 +259,15 @@ namespace VF.Feature {
             var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
             var scalingFactor = model.skinRewriteScalingFactor;
 
-            if (scalingFactor <= 0) {
-                scalingFactor = propMainScale / avatarMainScale;
-                if (model.scalingFactorPowersOf10Only) {
-                    var log = Math.Log10(scalingFactor);
-                    double Mod(double a, double n) => (a % n + n) % n;
-                    log = (Mod(log, 1) > 0.75) ? Math.Ceiling(log) : Math.Floor(log);
-                    scalingFactor = (float)Math.Pow(10, log);
-                }
-            }
+            if (!(scalingFactor <= 0)) return (avatarMainScale, propMainScale, scalingFactor);
+            scalingFactor = propMainScale / avatarMainScale;
+            if (!model.scalingFactorPowersOf10Only) return (avatarMainScale, propMainScale, scalingFactor);
+            var log = Math.Log10(scalingFactor);
+            log = Mod(log, 1) > 0.75 ? Math.Ceiling(log) : Math.Floor(log);
+            scalingFactor = (float)Math.Pow(10, log);
 
             return (avatarMainScale, propMainScale, scalingFactor);
+            double Mod(double a, double n) => (a % n + n) % n;
         }
 
         private bool IsTransformUsed(Transform transform) {
@@ -282,13 +278,10 @@ namespace VF.Feature {
                 if (s.bones.Contains(transform)) return true;
                 if (s.rootBone == transform) return true;
             }
-            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<IConstraint>()) {
-                if (Enumerable.Range(0, c.sourceCount)
-                    .Select(i => c.GetSource(i))
-                    .Any(source => source.sourceTransform == transform)
-                ) {
-                    return true;
-                }
+            if (avatarObject.GetComponentsInSelfAndChildren<IConstraint>().Any(c => Enumerable.Range(0, c.sourceCount)
+                    .Select(c.GetSource)
+                    .Any(source => source.sourceTransform == transform))) {
+                return true;
             }
 
             if (avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()
@@ -299,47 +292,42 @@ namespace VF.Feature {
                 .Any(b => b.GetRootTransform() == transform)) {
                 return true;
             }
-            if (avatarObject.GetComponentsInSelfAndChildren<ContactBase>()
-                .Any(b => b.GetRootTransform() == transform)) {
-                return true;
-            }
-
-            return false;
+            return avatarObject.GetComponentsInSelfAndChildren<ContactBase>()
+                .Any(b => b.GetRootTransform() == transform);
         }
 
         private ArmatureLink.ArmatureLinkMode GetLinkMode() {
-            if (model.linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
-                var usesBonesFromProp = false;
-                var propRoot = model.propBone;
-                if (propRoot != null) {
-                    foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                        if (skin.transform.IsChildOf(propRoot.transform)) continue;
-                        usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(propRoot.transform);
-                        usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(propRoot.transform));
-                    }
+            if (model.linkMode != ArmatureLink.ArmatureLinkMode.Auto) return model.linkMode;
+            var usesBonesFromProp = false;
+            var propRoot = model.propBone;
+            if (propRoot != null) {
+                foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                    if (skin.transform.IsChildOf(propRoot.transform)) continue;
+                    usesBonesFromProp |= skin.rootBone && skin.rootBone.IsChildOf(propRoot.transform);
+                    usesBonesFromProp |= skin.bones.Any(bone => bone && bone.IsChildOf(propRoot.transform));
                 }
-
-                return usesBonesFromProp
-                    ? ArmatureLink.ArmatureLinkMode.SkinRewrite
-                    : ArmatureLink.ArmatureLinkMode.ReparentRoot;
             }
 
-            return model.linkMode;
+            return usesBonesFromProp
+                ? ArmatureLink.ArmatureLinkMode.SkinRewrite
+                : ArmatureLink.ArmatureLinkMode.ReparentRoot;
         }
 
         private string GetRootName(Transform rootBone) {
-            if (rootBone == null) return "Unknown";
+            while (true) {
+                if (rootBone == null) return "Unknown";
 
-            var isBone = false;
-            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                isBone |= skin.rootBone == rootBone;
-                isBone |= skin.bones.Contains(rootBone);
+                var isBone = false;
+                foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                    isBone |= skin.rootBone == rootBone;
+                    isBone |= skin.bones.Contains(rootBone);
+                }
+
+                isBone |= rootBone.name.ToLower().Trim() == "armature";
+
+                if (!isBone) return rootBone.name;
+                rootBone = rootBone.parent;
             }
-            isBone |= rootBone.name.ToLower().Trim() == "armature";
-
-            if (isBone) return GetRootName(rootBone.parent);
-
-            return rootBone.name;
         }
 
         private bool GetKeepBoneOffsets(ArmatureLink.ArmatureLinkMode linkMode) {
@@ -370,13 +358,12 @@ namespace VF.Feature {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
-            foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject)) {
-                if (b.IsChildOf(propBone)) {
-                    throw new VRCFBuilderException(
-                        "Link From is part of the avatar's armature." +
-                        " The object dragged into Armature Link should not be a bone from the avatar's armature." +
-                        " If you are linking clothes, be sure to drag in the main bone from the clothes' armature instead!");
-                }
+            if (VRCFArmatureUtils.GetAllBones(avatarObject).Any(b => b.IsChildOf(propBone)))
+            {
+                throw new VRCFBuilderException(
+                    "Link From is part of the avatar's armature." +
+                    " The object dragged into Armature Link should not be a bone from the avatar's armature." +
+                    " If you are linking clothes, be sure to drag in the main bone from the clothes' armature instead!");
             }
 
             VFGameObject avatarBone = null;
@@ -403,10 +390,12 @@ namespace VF.Feature {
 
             var removeBoneSuffix = model.removeBoneSuffix;
             if (string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
-                var avatarBoneName = avatarBone.name;
-                var propBoneName = propBone.name;
-                if (propBoneName.Contains(avatarBoneName) && propBoneName != avatarBoneName) {
-                    removeBoneSuffix = propBoneName.Replace(avatarBoneName, "");
+                if (avatarBone != null) {
+                    var avatarBoneName = avatarBone.name;
+                    var propBoneName = propBone.name;
+                    if (propBoneName.Contains(avatarBoneName) && propBoneName != avatarBoneName) {
+                        removeBoneSuffix = propBoneName.Replace(avatarBoneName, "");
+                    }
                 }
             }
             
@@ -462,8 +451,7 @@ namespace VF.Feature {
                 .Any(t => t.name.ToLower().Contains("marshmallow"));
             if (!scaleTargetInMarshmallow) return null;
             var child = orig.transform.Find(orig.name);
-            if (!child) return null;
-            return child.gameObject;
+            return !child ? null : child.gameObject;
         }
 
         public override string GetEditorTitle() {

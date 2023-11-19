@@ -23,8 +23,7 @@ namespace VF.Builder {
                 }
                 return;
             }
-            var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters);
-            syncedParamsList.Add(param);
+            var syncedParamsList = new List<VRCExpressionParameters.Parameter>(syncedParams.parameters) { param };
             syncedParams.parameters = syncedParamsList.ToArray();
             VRCFuryEditorUtils.MarkDirty(syncedParams);
         }

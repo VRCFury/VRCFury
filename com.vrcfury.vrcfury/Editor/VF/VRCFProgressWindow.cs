@@ -39,17 +39,21 @@ namespace VF {
             root.Add(infoBox);
             VRCFuryEditorUtils.Padding(infoBox, 20);
             
-            progress = new ProgressBar();
-            progress.value = 50;
+            progress = new ProgressBar
+            {
+                value = 50
+            };
             infoBox.Add(progress);
             
             label = new Label("");
             infoBox.Add(label);
             label.AddToClassList("label");
 
-            var logo = new Image();
-            logo.image = VRCFuryEditorUtils.GetResource<Texture>("logo.png");
-            logo.scaleMode = ScaleMode.ScaleToFit;
+            var logo = new Image
+            {
+                image = VRCFuryEditorUtils.GetResource<Texture>("logo.png"),
+                scaleMode = ScaleMode.ScaleToFit
+            };
             root.Add(logo);
         }
 
@@ -63,7 +67,7 @@ namespace VF {
         }
 
         private void RepaintNow() {
-            GetType().GetMethod("RepaintImmediately", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Invoke(this, new object[]{});
+            GetType().GetMethod("RepaintImmediately", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)?.Invoke(this, new object[]{});
         }
     }
 }
