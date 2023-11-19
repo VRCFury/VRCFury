@@ -21,7 +21,7 @@ namespace VF.Feature {
         }
         
         private void ApplyFixes() {
-            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            var avatar = manager.Avatar;
 
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
             // to update it with our newly-added states

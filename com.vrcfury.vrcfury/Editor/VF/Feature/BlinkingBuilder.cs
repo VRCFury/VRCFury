@@ -20,7 +20,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+        var avatar = manager.Avatar;
         avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
 
         var fx = GetFx();
@@ -118,8 +118,8 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
         return c;
     }
     
-    public override bool AvailableOnProps() {
-        return false;
+    public override bool AvailableOnRootOnly() {
+        return true;
     }
 }
 

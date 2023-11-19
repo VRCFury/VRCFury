@@ -33,8 +33,8 @@ namespace VF.Feature {
             return content;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
         }
         
         public override bool OnlyOneAllowed() {
@@ -96,20 +96,18 @@ namespace VF.Feature {
                 }
                 VRCFuryEditorUtils.MarkDirty(meshCopy);
 
-                var avatars = avatarObject.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>();
+                var avatar = manager.Avatar;
 
                 var newId = 0;
                 for (var id = 0; id < blendshapeCount; id++) {
                     var keep = blendshapeIdsToKeep.Contains(id);
                     if (keep) {
                         skin.SetBlendShapeWeight(newId, savedWeights[id]);
-                        foreach (var avatar in avatars) {
-                            if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
-                                for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
-                                    if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
-                                        avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
-                                        VRCFuryEditorUtils.MarkDirty(avatar);
-                                    }
+                        if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
+                            for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
+                                if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
+                                    avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
+                                    VRCFuryEditorUtils.MarkDirty(avatar);
                                 }
                             }
                         }
@@ -244,26 +242,25 @@ namespace VF.Feature {
                 }
             }
 
-            foreach (var avatar in avatarObject.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
-                if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
-                    if (skin == avatar.customEyeLookSettings.eyelidsSkinnedMesh) {
-                        foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {
-                            if (b >= 0 && b < blendshapeNames.Count) {
-                                animatedBlendshapes.Add(blendshapeNames[b]);
-                            }
+            var avatar = manager.Avatar;
+            if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
+                if (skin == avatar.customEyeLookSettings.eyelidsSkinnedMesh) {
+                    foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {
+                        if (b >= 0 && b < blendshapeNames.Count) {
+                            animatedBlendshapes.Add(blendshapeNames[b]);
                         }
                     }
                 }
+            }
 
-                if (skin == avatar.VisemeSkinnedMesh) {
-                    if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape) {
-                        animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
-                    }
+            if (skin == avatar.VisemeSkinnedMesh) {
+                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape) {
+                    animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
+                }
 
-                    if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
-                        foreach (var b in avatar.VisemeBlendShapes) {
-                            animatedBlendshapes.Add(b);
-                        }
+                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
+                    foreach (var b in avatar.VisemeBlendShapes) {
+                        animatedBlendshapes.Add(b);
                     }
                 }
             }

@@ -153,7 +153,16 @@ public class VRCFuryBuilder {
         void AddModel(FeatureModel model, VFGameObject configObject) {
             collectedModels.Add(model);
 
-            var builder = FeatureFinder.GetBuilder(model, configObject, injector);
+            FeatureBuilder builder;
+            try {
+                builder = FeatureFinder.GetBuilder(model, configObject, injector, avatarObject);
+            } catch (Exception e) {
+                throw new ExceptionWithCause(
+                    $"Failed to load VRCFury component on object {configObject.GetPath(avatarObject)}",
+                    e
+                );
+            }
+
             if (builder == null) return;
             AddActionsFromObject(builder, configObject);
         }
