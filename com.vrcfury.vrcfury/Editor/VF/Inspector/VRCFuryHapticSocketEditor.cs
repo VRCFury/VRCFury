@@ -142,7 +142,17 @@ namespace VF.Inspector {
         }
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
+        [InitializeOnLoad]
         public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
+            static VRCFuryHapticPlaySocketEditor() {
+                VRCFurySocketGizmo.EnableSceneLighting = () => {
+                    SceneView sv = EditorWindow.GetWindow<SceneView>();
+                    if (sv != null) {
+                        sv.sceneLighting = true;
+                        sv.drawGizmos = true;
+                    }
+                };
+            }
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
                 if (!gizmo.show) return;

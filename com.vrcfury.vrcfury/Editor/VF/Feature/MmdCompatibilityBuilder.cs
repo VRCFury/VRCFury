@@ -24,8 +24,8 @@ namespace VF.Feature {
             return true;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
         }
 
         [FeatureBuilderAction(FeatureOrder.AvoidMmdLayers)]

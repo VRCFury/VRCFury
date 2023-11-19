@@ -33,8 +33,8 @@ public class ToesBuilder : FeatureBuilder<Toes> {
         return content;
     }
     
-    public override bool AvailableOnProps() {
-        return false;
+    public override bool AvailableOnRootOnly() {
+        return true;
     }
 }
 

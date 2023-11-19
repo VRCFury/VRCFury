@@ -248,7 +248,7 @@ namespace VF.Builder.Haptics {
 
         public static bool IsChildOfBone(VFGameObject obj, HumanBodyBones bone, bool followConstraints = true) {
             try {
-                VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
+                VFGameObject avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj, obj, followConstraints);

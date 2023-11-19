@@ -129,8 +129,8 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         return content;
     }
     
-    public override bool AvailableOnProps() {
-        return false;
+    public override bool AvailableOnRootOnly() {
+        return true;
     }
 }
 

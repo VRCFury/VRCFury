@@ -69,10 +69,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
     private static VisualElement RenderInner(SerializedProperty prop) {
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
         
-        var avatarObject = (prop.serializedObject.targetObject as UnityEngine.Component)?
-            .owner()
-            .GetComponentInSelfOrParent<VRCAvatarDescriptor>()?
-            .owner();
+        var avatarObject = VRCAvatarUtils.GuessAvatarObject(prop.serializedObject.targetObject as UnityEngine.Component);
 
         string GetPath(VFGameObject obj) {
             return avatarObject == null ? obj.name : obj.GetPath(avatarObject);

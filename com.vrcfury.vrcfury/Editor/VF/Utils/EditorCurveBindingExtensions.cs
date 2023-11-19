@@ -39,7 +39,7 @@ namespace VF.Utils {
             if (_humanMuscleList != null) return _humanMuscleList;
             _humanMuscleList = new HashSet<string>();
             _humanMuscleList.UnionWith(HumanTrait.MuscleName);
-            foreach (var bone in new[] { "Root", "LeftFoot", "RightFoot", "Left", "Right" }) {
+            foreach (var bone in new[] { "Root", "Motion", "LeftFoot", "RightFoot", "Left", "Right" }) {
                 _humanMuscleList.Add($"{bone}T x");
                 _humanMuscleList.Add($"{bone}T y");
                 _humanMuscleList.Add($"{bone}T z");

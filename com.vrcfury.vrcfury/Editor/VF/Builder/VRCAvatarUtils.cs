@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -143,6 +144,18 @@ namespace VF.Builder {
             avatar.customExpressions = true;
             avatar.expressionParameters = prms;
             VRCFuryEditorUtils.MarkDirty(avatar);
+        }
+
+        [CanBeNull]
+        public static VFGameObject GuessAvatarObject(VFGameObject obj) {
+            if (obj == null) return null;
+            return obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
+        }
+        
+        [CanBeNull]
+        public static VFGameObject GuessAvatarObject(UnityEngine.Component c) {
+            if (c == null) return null;
+            return GuessAvatarObject(c.owner());
         }
     }
 }

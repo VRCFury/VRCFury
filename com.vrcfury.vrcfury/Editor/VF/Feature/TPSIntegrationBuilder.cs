@@ -25,8 +25,8 @@ namespace VF.Feature {
             return content;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
         }
     }
 }

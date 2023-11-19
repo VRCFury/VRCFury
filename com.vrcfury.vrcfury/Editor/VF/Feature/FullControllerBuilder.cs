@@ -234,10 +234,7 @@ namespace VF.Feature {
             // Check for gogoloco
             foreach (var p in from.parameters) {
                 if (p.name == "Go/Locomotion") {
-                    var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-                    if (avatar) {
-                        avatar.autoLocomotion = false;
-                    }
+                    manager.Avatar.autoLocomotion = false;
                 }
             }
 
