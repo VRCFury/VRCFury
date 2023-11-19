@@ -248,35 +248,8 @@ namespace VF.Service {
                     case SetGlobalParamAction globalParamAction: {
                         if (string.IsNullOrWhiteSpace(globalParamAction.param))
                             break;
-                        if (string.IsNullOrWhiteSpace(globalParamAction.value))
-                            break;
 
-                        string checkValue = "";
-
-                        switch(globalParamAction.paramType) {
-                            case SetGlobalParamAction.ParamType.boolParam:
-                                fx.NewBool(globalParamAction.param, synced: false, saved: false, def: false, usePrefix: false);
-                                if (globalParamAction.value.ToLower().Contains("t")) checkValue = "1";
-                                else if (globalParamAction.value.ToLower().Contains("f")) checkValue = "0";
-                                else checkValue = globalParamAction.value;
-                                break;
-                            case SetGlobalParamAction.ParamType.intParam:
-                                fx.NewInt(globalParamAction.param, synced: false, saved: false, def: 0, usePrefix: false);
-                                checkValue = globalParamAction.value;
-                                break;
-                            case SetGlobalParamAction.ParamType.floatParam:
-                                fx.NewFloat(globalParamAction.param, synced: false, saved: false, def: 0, usePrefix: false);
-                                checkValue = globalParamAction.value;
-                                break;
-                        }
-                        try {
-                            var value = float.Parse(checkValue);
-                            onClip.SetConstant(EditorCurveBinding.FloatCurve("__vrcf_global_param", typeof(Animator), globalParamAction.param), value);
-                        } catch {
-                            var e = new Exception($"Failed to parse global paramter value for {globalParamAction.param}.");
-                            Debug.LogError(e);
-                            throw e;
-                        }
+                        onClip.SetConstant(EditorCurveBinding.FloatCurve("__vrcf_global_param", typeof(Animator), globalParamAction.param), globalParamAction.value);
                         break;
                     }
                 }

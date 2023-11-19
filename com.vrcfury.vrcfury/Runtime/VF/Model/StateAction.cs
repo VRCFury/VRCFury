@@ -111,7 +111,7 @@ namespace VF.Model.StateAction {
     [Serializable]
     public class SetGlobalParamAction: Action {
         public string param;
-        public string value;
+        public float value;
         public ParamType paramType;
         public enum ParamType {
         boolParam,
