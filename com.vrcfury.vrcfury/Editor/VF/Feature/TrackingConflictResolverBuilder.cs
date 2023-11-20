@@ -19,6 +19,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly DirectBlendTreeService directTreeService;
         [VFAutowired] private readonly MathService mathService;
+        [VFAutowired] private readonly FrameTimeService frameTimeService;
 
         private VFMultimap<TrackingControlType, VFAFloat> inhibitors =
             new VFMultimap<TrackingControlType, VFAFloat>();
@@ -97,7 +98,12 @@ namespace VF.Feature {
                 type => fx.NewInt("TC_current_" + type.fieldName));
             
             var refresh = layer.NewState("Refresh");
+            // Periodically just re-trigger all the tracking control behaviors
+            // In case vrchat lost its mind and forgot about them, or an MMD dance messed with them
             idle.TransitionsTo(refresh).WithTransitionExitTime(3).When();
+            // Aggressively re-trigger the behaviors immediately after the avatar is loaded,
+            // because vrchat doesn't respect the setting for a short duration after avatar load
+            idle.TransitionsTo(refresh).WithTransitionExitTime(0.2f).When(frameTimeService.GetTimeSinceLoad().IsLessThan(5));
             refresh.TransitionsToExit().When(fx.Always());
             var refreshDriver = refresh.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
             foreach (var type in typesUsed) {
