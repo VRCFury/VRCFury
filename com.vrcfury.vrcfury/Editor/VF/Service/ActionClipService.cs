@@ -262,9 +262,8 @@ namespace VF.Service {
                     "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
             }
 
-            if (onClip.GetFloatBindings().Any(b =>
-                    b.GetMuscleBindingType() == EditorCurveBindingExtensions.MuscleBindingType.Other)) {
-                var trigger = fullBodyEmoteService.AddClip(onClip);
+            foreach (var muscleType in onClip.GetMuscleBindingTypes()) {
+                var trigger = fullBodyEmoteService.AddClip(onClip, muscleType);
                 onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
             }
 
