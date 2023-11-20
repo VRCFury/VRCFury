@@ -132,6 +132,9 @@ namespace VF.Feature {
                         triggerWhen = triggerWhen.And(isAlreadyActive.Not());
                     //}
 
+                    // Don't ever touch tracking control if we're in an MMD station
+                    triggerWhen = triggerWhen.And(fx.IsMmd().Not());
+
                     if (addTransitionFromIdle) {
                         idle.TransitionsToExit().When(triggerWhen);
                     }

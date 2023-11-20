@@ -264,6 +264,10 @@ namespace VF.Builder {
         public VFABool IsLocal() {
             return NewBool("IsLocal", usePrefix: false);
         }
+        public VFCondition IsMmd() {
+            return NewBool("Seated", usePrefix: false).IsFalse()
+                .And(NewBool("InStation", usePrefix: false).IsTrue());
+        }
 
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
             if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {

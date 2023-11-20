@@ -48,8 +48,7 @@ namespace VF.Feature {
                     var handsActiveLayer = fx.NewLayer("MMD Hands Deactivator");
                     var active = handsActiveLayer.NewState("Active").Drives(handsActive, 1);
                     var inactive = handsActiveLayer.NewState("Inactive").Drives(handsActive, 0);
-                    var inactiveWhen = fx.NewBool("Seated", usePrefix: false).IsFalse()
-                        .And(fx.NewBool("InStation", usePrefix: false).IsTrue());
+                    var inactiveWhen = fx.IsMmd();
                     active.TransitionsTo(inactive).When(inactiveWhen);
                     inactive.TransitionsTo(active).When(inactiveWhen.Not());
                 }
