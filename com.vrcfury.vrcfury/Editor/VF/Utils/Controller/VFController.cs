@@ -217,7 +217,7 @@ namespace VF.Utils.Controller {
             var baseMask = layer0.mask;
             foreach (var layer in GetLayers()) {
                 var useBaseMask = baseMask;
-                if (isFx && useBaseMask == null && HasMuscles(layer)) {
+                if (isFx && useBaseMask == null && (HasMuscles(layer) || layer.mask != null)) {
                     useBaseMask = AvatarMaskExtensions.Empty();
                     useBaseMask.AllowAllTransforms();
                 }
