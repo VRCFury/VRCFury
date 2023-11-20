@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -105,6 +106,18 @@ namespace VF.Utils.Controller {
 
         public AnimatorStateMachine GetRawStateMachine() {
             return _stateMachine;
+        }
+
+        public void Move(int newIndex) {
+            var layers = ctrl.layers;
+            var myLayer = layers
+                .First(l => l.stateMachine == stateMachine);
+
+            var newList = layers
+                .Where(l => l.stateMachine != stateMachine)
+                .ToList();
+            newList.Insert(newIndex, myLayer);
+            ctrl.layers = newList.ToArray();
         }
     }
 }
