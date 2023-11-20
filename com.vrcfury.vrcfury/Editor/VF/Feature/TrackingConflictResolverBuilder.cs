@@ -109,6 +109,12 @@ namespace VF.Feature {
             foreach (var type in typesUsed) {
                 refreshDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type].Name(), value = -1 });
             }
+            
+            // Lock into this trap state and don't allow anything to touch tracking control
+            // while we're in an MMD station
+            var mmd = layer.NewState("MMD");
+            mmd.TransitionsFromEntry().When(fx.IsMmd());
+            mmd.TransitionsTo(refresh).When(fx.IsMmd().Not());
 
             void AddStates(
                 string modeName,
@@ -131,9 +137,6 @@ namespace VF.Feature {
                         var isAlreadyActive = VFCondition.All(types.Select(type => isCurrentlyActive(currentSettingDict[type])));
                         triggerWhen = triggerWhen.And(isAlreadyActive.Not());
                     //}
-
-                    // Don't ever touch tracking control if we're in an MMD station
-                    triggerWhen = triggerWhen.And(fx.IsMmd().Not());
 
                     if (addTransitionFromIdle) {
                         idle.TransitionsToExit().When(triggerWhen);
