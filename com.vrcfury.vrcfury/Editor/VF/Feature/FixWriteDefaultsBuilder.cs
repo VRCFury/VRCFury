@@ -31,16 +31,24 @@ namespace VF.Feature {
                 }
             }
         }
-        
+
+        private VFLayer _defaultLayer = null;
         private AnimationClip _defaultClip = null;
         private AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
                 var fx = GetFx();
                 _defaultClip = fx.NewClip("Defaults");
-                var defaultLayer = fx.NewLayer("Defaults", 0);
-                defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
+                _defaultLayer = fx.NewLayer("Defaults", 0);
+                _defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             }
             return _defaultClip;
+        }
+
+        [FeatureBuilderAction(FeatureOrder.PositionDefaultsLayer)]
+        public void PositionDefaultsLayer() {
+            if (_defaultLayer != null) {
+                _defaultLayer.Move(0);
+            }
         }
 
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
@@ -129,7 +137,10 @@ namespace VF.Feature {
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
-            if (fixSetting != null) {
+
+            if (allFeaturesInRun.OfType<MmdCompatibility>().Any()) {
+                mode = FixWriteDefaults.FixWriteDefaultsMode.ForceOn;
+            } else if (fixSetting != null) {
                 mode = fixSetting.mode;
             } else if (analysis.isBroken) {
                 var ask = EditorUtility.DisplayDialogComplex("VRCFury",

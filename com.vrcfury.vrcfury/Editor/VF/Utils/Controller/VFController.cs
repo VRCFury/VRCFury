@@ -32,18 +32,13 @@ namespace VF.Utils.Controller {
             name = name.Replace(".", "");
 
             ctrl.AddLayer(name);
-            var layers = ctrl.layers;
-            var layer = layers.Last();
+            var layer = new VFLayer(this, ctrl.layers.Last().stateMachine);
             if (insertAt >= 0) {
-                for (var i = layers.Length-1; i > insertAt; i--) {
-                    layers[i] = layers[i - 1];
-                }
-                layers[insertAt] = layer;
+                layer.Move(insertAt);
             }
-            layer.defaultWeight = 1;
+            layer.weight = 1;
             layer.stateMachine.anyStatePosition = VFState.MovePos(layer.stateMachine.entryPosition, 0, 1);
-            ctrl.layers = layers;
-            return new VFLayer(this, layer.stateMachine);
+            return layer;
         }
     
         public void RemoveLayer(int i) {
@@ -217,7 +212,7 @@ namespace VF.Utils.Controller {
             var baseMask = layer0.mask;
             foreach (var layer in GetLayers()) {
                 var useBaseMask = baseMask;
-                if (isFx && useBaseMask == null && HasMuscles(layer)) {
+                if (isFx && useBaseMask == null && (HasMuscles(layer) || layer.mask != null)) {
                     useBaseMask = AvatarMaskExtensions.Empty();
                     useBaseMask.AllowAllTransforms();
                 }

@@ -768,7 +768,6 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class MmdCompatibility : NewFeatureModel {
-        public bool useNewHandDisabler;
     }
 
 }
