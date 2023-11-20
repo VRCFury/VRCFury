@@ -137,7 +137,10 @@ namespace VF.Feature {
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
-            if (fixSetting != null) {
+
+            if (allFeaturesInRun.OfType<MmdCompatibility>().Any()) {
+                mode = FixWriteDefaults.FixWriteDefaultsMode.ForceOn;
+            } else if (fixSetting != null) {
                 mode = fixSetting.mode;
             } else if (analysis.isBroken) {
                 var ask = EditorUtility.DisplayDialogComplex("VRCFury",

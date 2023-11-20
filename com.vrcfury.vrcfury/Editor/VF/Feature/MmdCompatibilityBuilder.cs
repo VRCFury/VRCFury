@@ -23,7 +23,6 @@ namespace VF.Feature {
             c.Add(VRCFuryEditorUtils.Info(
                 "This component will improve MMD compatibility for your avatar, by maintaining MMD" +
                 " blendshapes, and avoiding usage of layers that MMD worlds are known to interfere with."));
-            c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useNewHandDisabler"), "Use new hand disable logic (beta)"));
             return c;
         }
 
@@ -42,7 +41,7 @@ namespace VF.Feature {
                 return;
             }
 
-            if (model.useNewHandDisabler) {
+            {
                 var handsActive = fx.NewFloat("HandsActive", def: 1);
                 {
                     var handsActiveLayer = fx.NewLayer("MMD Hands Deactivator");
@@ -60,20 +59,6 @@ namespace VF.Feature {
                         tree.Add(handsActive, state.motion);
                         state.motion = tree;
                         state.writeDefaultValues = true;
-                    }
-                }
-            } else {
-                // Change any states using proxy_hands_idle to empty, so that when users aren't doing a hand gesture,
-                // it will fall through to the dance's hand gestures.
-                foreach (var layer in fx.GetLayers()) {
-                    foreach (var state in new AnimatorIterator.States().From(layer)) {
-                        if (!(state.motion is AnimationClip ac)) continue;
-                        var hasIdle = ac.CollapseProxyBindings()
-                            .Select(p => p.Item1)
-                            .Any(proxy => AssetDatabase.GetAssetPath(proxy).Contains("proxy_hands_idle"));
-                        if (hasIdle) {
-                            state.motion = null;
-                        }
                     }
                 }
             }
