@@ -114,10 +114,10 @@ namespace VF.Model.StateAction {
         public float value;
         public ParamType paramType;
         public enum ParamType {
-        boolParam,
-        intParam,
-        floatParam
-    }
+            boolParam,
+            intParam,
+            floatParam
+        }
     }
 
 }
