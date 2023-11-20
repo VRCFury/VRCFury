@@ -56,7 +56,7 @@ namespace VF.Feature {
                 foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
                     if (new AnimatorIterator.Clips().From(state)
                         .SelectMany(clip => clip.GetFloatBindings())
-                        .Any(b => b.IsMuscle())) {
+                        .Any(b => b.IsMuscle() || b.IsProxyBinding())) {
                         var tree = mathService.MakeDirect("WhenHandsActive");
                         tree.Add(handsActive, state.motion);
                         state.motion = tree;
