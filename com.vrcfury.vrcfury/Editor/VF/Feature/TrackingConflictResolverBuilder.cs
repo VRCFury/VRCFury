@@ -19,6 +19,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly DirectBlendTreeService directTreeService;
         [VFAutowired] private readonly MathService mathService;
+        [VFAutowired] private readonly FrameTimeService frameTimeService;
 
         private VFMultimap<TrackingControlType, VFAFloat> inhibitors =
             new VFMultimap<TrackingControlType, VFAFloat>();
@@ -45,9 +46,9 @@ namespace VF.Feature {
             var fx = manager.GetFx();
 
             foreach (var controller in manager.GetAllUsedControllers()) {
-                foreach (var layer in controller.GetLayers()) {
-                    var layerOwner = controller.GetLayerOwner(layer);
-                    AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
+                foreach (var l in controller.GetLayers()) {
+                    var layerOwner = controller.GetLayerOwner(l);
+                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
                         if (b is VRCAnimatorTrackingControl trackingControl) {
                             var driver = (VRCAvatarParameterDriver)add(typeof(VRCAvatarParameterDriver));
                             foreach (var type in allTypes) {
@@ -76,76 +77,96 @@ namespace VF.Feature {
             }
 
             var typesUsed = inhibitors.GetKeys().ToArray();
-            if (typesUsed.Length > 0) {
-                var whenAnimatedDict = new Dictionary<TrackingControlType, VFCondition>();
-                {
-                    foreach (var type in typesUsed) {
-                        var merged = fx.NewFloat("TC_merged_" + type.fieldName);
-                        var setter = mathService.MakeSetter(merged, 1);
-                        foreach (var input in inhibitors.Get(type)) {
-                            directTreeService.Add(input, setter);
-                        }
-                        whenAnimatedDict[type] = merged.IsGreaterThan(0.5f);
+            if (typesUsed.Length == 0) return;
+
+            var whenAnimatedDict = new Dictionary<TrackingControlType, VFCondition>();
+            {
+                foreach (var type in typesUsed) {
+                    var merged = fx.NewFloat("TC_merged_" + type.fieldName);
+                    var setter = mathService.MakeSetter(merged, 1);
+                    foreach (var input in inhibitors.Get(type)) {
+                        directTreeService.Add(input, setter);
                     }
+                    whenAnimatedDict[type] = merged.IsGreaterThan(0.5f);
                 }
-
-                var layer = fx.NewLayer("VRCF Tracking Control Actor");
-                var idle = layer.NewState("Idle");
-
-                var currentSettingDict = typesUsed.ToDictionary(type => type,
-                    type => fx.NewBool("TC_current_" + type.fieldName));
-
-                void AddStates(
-                    string modeName,
-                    VRC_AnimatorTrackingControl.TrackingType controlValue,
-                    int driveValue,
-                    Func<VFCondition, VFCondition> mutator
-                ) {
-                    void AddState(
-                        string stateName,
-                        IList<TrackingControlType> types,
-                        bool addTransitionFromIdle = false,
-                        bool checkAlreadyActive = true
-                    ) {
-                        if (types.Count == 0) return;
-
-                        var state = layer.NewState($"{stateName} - {modeName}");
-                        var triggerWhen = VFCondition.All(types.Select(type => mutator(whenAnimatedDict[type])));
-                        if (checkAlreadyActive) {
-                            var isAlreadyActive = VFCondition.All(types.Select(type => mutator(currentSettingDict[type].IsTrue())));
-                            triggerWhen = triggerWhen.And(isAlreadyActive.Not());
-                        }
-
-                        if (addTransitionFromIdle) {
-                            idle.TransitionsToExit().When(triggerWhen);
-                        }
-
-                        state.TransitionsFromEntry().When(triggerWhen);
-                        if (checkAlreadyActive) {
-                            state.TransitionsToExit().When(fx.Always());
-                        } else {
-                            state.TransitionsToExit().When(triggerWhen.Not());
-                        }
-
-                        var control = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
-                        var driver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                    
-                        foreach (var type in types) {
-                            type.SetValue(control, controlValue);
-                            driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type].Name(), value = driveValue });
-                        }
-                    }
-                    
-                    AddState("All", typesUsed, checkAlreadyActive: false);
-                    AddState("NoFace", typesUsed.Where(t => !t.isFace).ToArray());
-                    foreach (var type in typesUsed) {
-                        AddState(type.fieldName, new [] { type }, addTransitionFromIdle: true);
-                    }
-                }
-
-                AddStates("Tracking", VRC_AnimatorTrackingControl.TrackingType.Tracking, 0, c => c.Not());
-                AddStates("Animated", VRC_AnimatorTrackingControl.TrackingType.Animation, 1, c => c);
             }
+
+            var layer = fx.NewLayer("VRCF Tracking Control Actor");
+            var idle = layer.NewState("Idle");
+
+            var currentSettingDict = typesUsed.ToDictionary(type => type,
+                type => fx.NewInt("TC_current_" + type.fieldName));
+            
+            var refresh = layer.NewState("Refresh");
+            // Periodically just re-trigger all the tracking control behaviors
+            // In case vrchat lost its mind and forgot about them, or an MMD dance messed with them
+            idle.TransitionsTo(refresh).WithTransitionExitTime(3).When();
+            // Aggressively re-trigger the behaviors immediately after the avatar is loaded,
+            // because vrchat doesn't respect the setting for a short duration after avatar load
+            idle.TransitionsTo(refresh).WithTransitionExitTime(0.2f).When(frameTimeService.GetTimeSinceLoad().IsLessThan(5));
+            refresh.TransitionsToExit().When(fx.Always());
+            var refreshDriver = refresh.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            foreach (var type in typesUsed) {
+                refreshDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type].Name(), value = -1 });
+            }
+            
+            // Lock into this trap state and don't allow anything to touch tracking control
+            // while we're in an MMD station
+            var mmd = layer.NewState("MMD");
+            mmd.TransitionsFromEntry().When(fx.IsMmd());
+            mmd.TransitionsTo(refresh).When(fx.IsMmd().Not());
+
+            void AddStates(
+                string modeName,
+                VRC_AnimatorTrackingControl.TrackingType controlValue,
+                int driveValue,
+                Func<VFCondition, VFCondition> shouldBeActive,
+                Func<VFAInteger, VFCondition> isCurrentlyActive
+            ) {
+                void AddState(
+                    string stateName,
+                    IList<TrackingControlType> types,
+                    bool addTransitionFromIdle = false,
+                    bool checkAlreadyActive = true
+                ) {
+                    if (types.Count == 0) return;
+
+                    var state = layer.NewState($"{stateName} - {modeName}");
+                    var triggerWhen = VFCondition.All(types.Select(type => shouldBeActive(whenAnimatedDict[type])));
+                    //if (checkAlreadyActive) {
+                        var isAlreadyActive = VFCondition.All(types.Select(type => isCurrentlyActive(currentSettingDict[type])));
+                        triggerWhen = triggerWhen.And(isAlreadyActive.Not());
+                    //}
+
+                    if (addTransitionFromIdle) {
+                        idle.TransitionsToExit().When(triggerWhen);
+                    }
+
+                    state.TransitionsFromEntry().When(triggerWhen);
+                    //if (checkAlreadyActive) {
+                        state.TransitionsToExit().When(fx.Always());
+                    //} else {
+                    //    state.TransitionsToExit().When(triggerWhen.Not());
+                    //}
+
+                    var control = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
+                    var driver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                
+                    foreach (var type in types) {
+                        type.SetValue(control, controlValue);
+                        driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type].Name(), value = driveValue });
+                    }
+                }
+                
+                AddState("All", typesUsed, checkAlreadyActive: false);
+                AddState("NoFace", typesUsed.Where(t => !t.isFace).ToArray());
+                foreach (var type in typesUsed) {
+                    AddState(type.fieldName, new [] { type }, addTransitionFromIdle: true);
+                }
+            }
+
+            AddStates("Tracking", VRC_AnimatorTrackingControl.TrackingType.Tracking, 0, c => c.Not(), i => i.IsEqualTo(0));
+            AddStates("Animated", VRC_AnimatorTrackingControl.TrackingType.Animation, 1, c => c, i => i.IsEqualTo(1));
         }
 
         public class TrackingControlType {
