@@ -16,7 +16,7 @@ namespace VF.Component {
 
         private void Update() {
             if (show && !lastShow) {
-                try { EnableSceneLighting?.Invoke(); } catch (Exception e) {}
+                try { EnableSceneLighting?.Invoke(); } catch (Exception) {}
             }
             lastShow = show;
         }
