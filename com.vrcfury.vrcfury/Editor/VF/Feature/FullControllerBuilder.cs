@@ -446,10 +446,6 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
 
-
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Smoothed Parameters:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
-
             content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameters in this list will have their name kept as is, allowing you to interact with " +
@@ -468,6 +464,14 @@ namespace VF.Feature {
                 text = "Advanced Options",
                 value = false
             };
+
+            var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                "Smooth Parameters",
+                "All parameters listed here that are found in FX controllers listed above will have their " +
+                "values smoothed. The number represents how many seconds it should take to reach 90% of the target value.");
+            adv.Add(a);
+            adv.Add(b);
+            adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
             
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
