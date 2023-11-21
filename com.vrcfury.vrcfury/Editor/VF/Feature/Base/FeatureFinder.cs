@@ -81,6 +81,14 @@ public static class FeatureFinder {
             .Select(tuple => tuple.Item2);
     }
 
+    public static FeatureModel GetFeature(SerializedProperty prop) {
+        var component = (VRCFury)prop.serializedObject.targetObject;
+        var startBracket = prop.propertyPath.IndexOf("[");
+        var endBracket = prop.propertyPath.IndexOf("]");
+        var index = Int32.Parse(prop.propertyPath.Substring(startBracket + 1, endBracket - startBracket - 1));
+        return component.config.features[index];
+    }
+
     public static VisualElement RenderFeatureEditor(SerializedProperty prop) {
         string title = "???";
         
@@ -117,10 +125,7 @@ public static class FeatureFinder {
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
             featureInstance.avatarObjectOverride = avatarObject;
             featureInstance.featureBaseObject = gameObject;
-            var startBracket = prop.propertyPath.IndexOf("[");
-            var endBracket = prop.propertyPath.IndexOf("]");
-            var index = Int32.Parse(prop.propertyPath.Substring(startBracket + 1, endBracket - startBracket - 1));
-            featureInstance.GetType().GetField("model").SetValue(featureInstance, component.config.features[index]);
+            featureInstance.GetType().GetField("model").SetValue(featureInstance, GetFeature(prop));
 
             title = featureInstance.GetEditorTitle() ?? title;
 

@@ -29,6 +29,7 @@ namespace VF.Feature {
 
     public class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        [VFAutowired] private readonly SmoothingService smoothingService;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -252,12 +253,6 @@ namespace VF.Feature {
                 ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
             ));
 
-            // Parameter smoothing
-            foreach (var smoothedParam in model.smoothedPrms) {
-                toMain.Smooth(RewriteParamName(smoothedParam.name),
-                    smoothedParam.smoothingDuration);
-            }
-
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             ((AnimatorController)from).RewriteParameters(RewriteParamName);
@@ -273,8 +268,32 @@ namespace VF.Feature {
                 }
             }
 
+            var myLayers = from.GetLayers();
+
             // Merge Layers
             toMain.TakeOwnershipOf(from);
+
+            // Parameter smoothing
+            if (type == VRCAvatarDescriptor.AnimLayerType.FX && model.smoothedPrms.Count > 0) {
+                var smoothedDict = new Dictionary<string, string>();
+                foreach (var smoothedParam in model.smoothedPrms) {
+                    var rewritten = RewriteParamName(smoothedParam.name);
+                    if (smoothedDict.ContainsKey(rewritten)) continue;
+                    var exists = toMain.GetRaw().GetParam(rewritten);
+                    if (exists.type != AnimatorControllerParameterType.Float) continue;
+                    var target = new VFAFloat(exists);
+                    var smoothed = smoothingService.Smooth($"{rewritten}/Smoothed", target,
+                        smoothedParam.smoothingDuration);
+                    smoothedDict[rewritten] = smoothed.Name();
+                }
+
+                ((AnimatorController)toMain.GetRaw()).RewriteParameters(name => {
+                    if (smoothedDict.TryGetValue(name, out var smoothed)) {
+                        return smoothed;
+                    }
+                    return name;
+                }, false, myLayers.Select(l => l.stateMachine).ToArray());
+            }
         }
 
         VFGameObject GetBaseObject() {
@@ -354,6 +373,62 @@ namespace VF.Feature {
             }
         }
 
+        [CustomPropertyDrawer(typeof(FullController.SmoothParamEntry))]
+        public class SmoothParamDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var wrapper = new VisualElement();
+                wrapper.style.flexDirection = FlexDirection.Row;
+                SerializedProperty nameProp = prop.FindPropertyRelative("name");
+                var a = VRCFuryEditorUtils.Prop(nameProp);
+                a.style.flexBasis = 0;
+                a.style.flexGrow = 2;
+                wrapper.Add(a);
+                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration"));
+                b.style.flexBasis = 0;
+                b.style.flexGrow = 1;
+                wrapper.Add(b);
+
+                void SelectButtonPress() {
+                    var menu = new GenericMenu();
+                    
+                    var model = FeatureFinder.GetFeature(prop) as FullController;
+                    if (model == null) return;
+                    var alreadySmoothedParams = model.smoothedPrms
+                        .Select(s => s.name)
+                        .ToImmutableHashSet();
+
+                    var paramNames = model.controllers
+                        .Where(c => c.type == VRCAvatarDescriptor.AnimLayerType.FX)
+                        .Select(c => c.controller.Get() as AnimatorController)
+                        .Where(c => c != null)
+                        .SelectMany(c => c.parameters)
+                        .Where(p => p.type == AnimatorControllerParameterType.Float)
+                        .Select(p => p.name)
+                        .Except(alreadySmoothedParams)
+                        .OrderBy(name => name)
+                        .ToList();
+
+                    if (paramNames.Count > 0) {
+                        foreach (var paramName in paramNames) {
+                            menu.AddItem(new GUIContent(paramName.Replace("/", "\u2215")), false, () => {
+                                nameProp.stringValue = paramName;
+                                nameProp.serializedObject.ApplyModifiedProperties();
+                            });
+                        }
+                    } else {
+                        menu.AddDisabledItem(new GUIContent("No more parameters found"));
+                    }
+
+                    menu.ShowAsContext();
+                }
+
+                var selectButton = new Button(SelectButtonPress) { text = "Select" };
+                wrapper.Add(selectButton);
+
+                return wrapper;
+            }
+        }
+
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             
@@ -373,71 +448,8 @@ namespace VF.Feature {
 
 
             content.Add(VRCFuryEditorUtils.WrappedLabel("Smoothed Parameters:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms"),
-                (i, el) =>
-                {
-                    var wrapper = new VisualElement();
-                    wrapper.style.flexDirection = FlexDirection.Row;
-                    SerializedProperty nameProp = el.FindPropertyRelative("name");
-                    var a = VRCFuryEditorUtils.Prop(nameProp);
-                    a.style.flexBasis = 0;
-                    a.style.flexGrow = 2;
-                    wrapper.Add(a);
-                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("smoothingDuration"));
-                    b.style.flexBasis = 0;
-                    b.style.flexGrow = 1;
-                    wrapper.Add(b);
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
 
-                    System.Action selectButtonPress = () =>
-                    {
-                        var menu = new GenericMenu();
-                        var paramNames = new SortedSet<string>();
-                        var alreadySmoothedParams = new HashSet<string>();
-                        foreach (SerializedProperty alreadySmoothedParam in prop.FindPropertyRelative("smoothedPrms")) 
-                        {
-                            alreadySmoothedParams.Add(alreadySmoothedParam.FindPropertyRelative("name").stringValue);
-                        }
-
-                        var controllers = prop.FindPropertyRelative("controllers");
-                        foreach (SerializedProperty paramEntry in controllers)
-                        {
-                            var guid = paramEntry.FindPropertyRelative("controller.id");
-                            var value = (UnityEditor.Animations.AnimatorController) 
-                                    VrcfObjectId.IdToObject<RuntimeAnimatorController>(guid.stringValue);
-
-                            foreach (var param in value.parameters)
-                            {
-                                if (param.type ==  AnimatorControllerParameterType.Float)
-                                {
-                                   paramNames.Add(param.name);
-                                }
-                            }
-                        }
-                        paramNames.ExceptWith(alreadySmoothedParams);
-                        if (paramNames.Count > 0)
-                        {
-                            foreach (var paramName in paramNames)
-                            {
-                                menu.AddItem(new GUIContent(paramName.Replace("/", "\u2215")), false, () =>
-                                {
-                                    nameProp.stringValue = paramName;
-                                    nameProp.serializedObject.ApplyModifiedProperties();
-                                });
-                            }
-                        } 
-                        else
-                        {
-                            menu.AddDisabledItem(new GUIContent("No more parameters found"));
-                        }
-                        menu.ShowAsContext();
-                    };
-
-                    var selectButton = new Button(selectButtonPress) { text = "Select" };
-                    wrapper.Add(selectButton);
-
-                    return wrapper;
-                }));
-            
             content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameters in this list will have their name kept as is, allowing you to interact with " +
