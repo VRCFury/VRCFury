@@ -82,6 +82,7 @@ For more information, please refer to <https://unlicense.org>
   * Improved log outputs from exception handling
   * Contributed SPS support for legacy DPS channel 1 (unused)
   * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
+  * Added version number to vrcfury components
 * TheLastRar
   * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
   * Added scaling of legacy DPS tip light intensity
