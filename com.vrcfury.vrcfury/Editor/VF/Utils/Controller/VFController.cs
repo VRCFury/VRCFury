@@ -160,6 +160,14 @@ namespace VF.Utils.Controller {
             }
 
             var output = new VFController(ac);
+            
+            // Make sure all masks are unique, so we don't modify one and affect another
+            foreach (var layer in output.GetLayers()) {
+                if (layer.mask != null) {
+                    layer.mask = MutableManager.CopyRecursive(layer.mask, false);
+                }
+            }
+            
             output.FixNullStateMachines();
             output.FixLayer0Weight();
             output.ApplyBaseMask(type);
@@ -203,25 +211,16 @@ namespace VF.Utils.Controller {
             var layer0 = GetLayer(0);
             if (layer0 == null) return;
 
-            bool HasMuscles(VFLayer layer) {
-                return new AnimatorIterator.Clips().From(layer)
-                    .SelectMany(clip => clip.GetFloatBindings())
-                    .Any(binding => binding.IsMuscle() || binding.IsProxyBinding());
-            }
-
             var baseMask = layer0.mask;
+            if (isFx && baseMask == null) {
+                baseMask = AvatarMaskExtensions.DefaultFxMask();
+            }
             foreach (var layer in GetLayers()) {
-                var useBaseMask = baseMask;
-                if (isFx && useBaseMask == null && (HasMuscles(layer) || layer.mask != null)) {
-                    useBaseMask = AvatarMaskExtensions.Empty();
-                    useBaseMask.AllowAllTransforms();
-                }
-                if (layer.mask == useBaseMask) continue;
+                if (layer.mask == baseMask) continue;
                 if (layer.mask == null) {
-                    layer.mask = AvatarMaskExtensions.Empty();
-                    layer.mask.UnionWith(useBaseMask);
+                    layer.mask = MutableManager.CopyRecursive(baseMask, false);
                 } else {
-                    layer.mask.IntersectWith(useBaseMask);
+                    layer.mask.IntersectWith(baseMask);
                 }
             }
         }

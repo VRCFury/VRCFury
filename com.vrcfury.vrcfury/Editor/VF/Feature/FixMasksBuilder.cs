@@ -7,6 +7,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
@@ -34,6 +35,18 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.FixMasks)]
         public void FixMasks() {
+            foreach (var layer in GetFx().GetLayers()) {
+                // For any layers we added to FX without masks, give them the default FX mask
+                if (layer.mask == null) {
+                    layer.mask = AvatarMaskExtensions.DefaultFxMask();
+                }
+                
+                // Remove redundant FX masks if they're not needed
+                if (layer.mask.AllowsAllTransforms() && !layer.HasMuscles()) {
+                    layer.mask = null;
+                }
+            }
+
             foreach (var c in manager.GetAllUsedControllers()) {
                 var ctrl = c.GetRaw();
 
@@ -82,8 +95,7 @@ namespace VF.Feature {
          */
         private AvatarMask GetFxMask(ControllerManager fx) {
             if (DoesFxControlHands()) {
-                var mask = AvatarMaskExtensions.Empty();
-                mask.AllowAllTransforms();
+                var mask = AvatarMaskExtensions.DefaultFxMask();
                 mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
                 mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
                 return mask;

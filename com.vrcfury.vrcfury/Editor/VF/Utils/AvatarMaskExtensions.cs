@@ -117,6 +117,12 @@ namespace VF.Utils {
             return all;
         }
 
+        public static AvatarMask DefaultFxMask() {
+            var mask = Empty();
+            mask.AllowAllTransforms();
+            return mask;
+        }
+
         /**
          * If the transform list is empty, unity assumes you mean "all transforms", which is totally
          * not what we want.
