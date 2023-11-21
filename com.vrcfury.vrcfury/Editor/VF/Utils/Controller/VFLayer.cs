@@ -119,5 +119,9 @@ namespace VF.Utils.Controller {
             newList.Insert(newIndex, myLayer);
             ctrl.layers = newList.ToArray();
         }
+
+        public bool HasMuscles() {
+            return new AnimatorIterator.Clips().From(this).Any(clip => clip.HasMuscles());
+        }
     }
 }
