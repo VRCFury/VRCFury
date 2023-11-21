@@ -109,6 +109,7 @@ namespace VF.Model.Feature {
         public List<ControllerEntry> controllers = new List<ControllerEntry>();
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
+        public List<SmoothParamEntry> smoothedPrms = new List<SmoothParamEntry>();
         public List<string> globalParams = new List<string>();
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
@@ -151,6 +152,13 @@ namespace VF.Model.Feature {
             public string from;
             public string to;
             public bool delete = false;
+            public bool ResetMePlease2;
+        }
+
+        [Serializable]
+        public class SmoothParamEntry {
+            public string name;
+            public float smoothingDuration = 0.2f;
             public bool ResetMePlease2;
         }
 
@@ -768,7 +776,6 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class MmdCompatibility : NewFeatureModel {
-        
     }
 
 }

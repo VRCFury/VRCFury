@@ -81,10 +81,14 @@ namespace VF.Builder {
                 if (root == null) return ImmutableHashSet<T>.Empty;
                 return From(root.stateMachine);
             }
+            
+            public IImmutableSet<T> From(IEnumerable<AnimatorControllerLayer> layers) {
+                return layers.SelectMany(From).ToImmutableHashSet();
+            }
 
             public IImmutableSet<T> From(AnimatorController root) {
                 if (root == null) return ImmutableHashSet<T>.Empty;
-                return root.layers.SelectMany(From).ToImmutableHashSet();
+                return From(root.layers);
             }
         }
 

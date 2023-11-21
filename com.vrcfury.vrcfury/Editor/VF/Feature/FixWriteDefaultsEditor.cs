@@ -58,8 +58,8 @@ namespace VF.Feature {
             return container;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
         }
         
         public override bool OnlyOneAllowed() {

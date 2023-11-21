@@ -140,5 +140,10 @@ namespace VF.Utils {
                 .Where(type => type != EditorCurveBindingExtensions.MuscleBindingType.None)
                 .ToImmutableHashSet();
         }
+
+        public static bool HasMuscles(this AnimationClip clip) {
+            return clip.GetFloatBindings()
+                .Any(binding => binding.IsMuscle() || binding.IsProxyBinding());
+        }
     }
 }

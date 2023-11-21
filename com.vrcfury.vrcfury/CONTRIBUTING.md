@@ -70,6 +70,7 @@ For more information, please refer to <https://unlicense.org>
 * Morghus
   * Created numerous setup prefabs
   * Fix DirectTreeOptimizer for clips with partial keyframes
+  * Added parameter smoothing to Full Controller
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
   * Prevented SPS toggle from disabling SPS autorig physbone

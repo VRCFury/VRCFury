@@ -117,6 +117,7 @@ namespace VF.Builder {
         }
 
         public VFGameObject AvatarObject => avatarObject;
+        public VRCAvatarDescriptor Avatar => avatar;
         public VFGameObject CurrentComponentObject => currentComponentObject();
 
         public bool IsParamUsed(string name) {

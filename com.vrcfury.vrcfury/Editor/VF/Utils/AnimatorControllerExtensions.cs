@@ -8,6 +8,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Inspector;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
@@ -28,9 +29,13 @@ namespace VF.Utils {
             }
         }
 
-        public static void RewriteParameters(this AnimatorController c, Func<string, string> rewriteParamName, bool includeWrites = true) {
+        public static void RewriteParameters(this AnimatorController c, Func<string, string> rewriteParamName, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
+            var layers = c.layers
+                .Where(l => limitToLayers == null || limitToLayers.Contains(l.stateMachine))
+                .ToArray();
+            
             // Params
-            if (includeWrites) {
+            if (includeWrites && limitToLayers == null) {
                 var prms = c.parameters;
                 foreach (var p in prms) {
                     p.name = rewriteParamName(p.name);
@@ -40,7 +45,7 @@ namespace VF.Utils {
             }
 
             // States
-            foreach (var state in new AnimatorIterator.States().From(c)) {
+            foreach (var state in new AnimatorIterator.States().From(layers)) {
                 state.speedParameter = rewriteParamName(state.speedParameter);
                 state.cycleOffsetParameter = rewriteParamName(state.cycleOffsetParameter);
                 state.mirrorParameter = rewriteParamName(state.mirrorParameter);
@@ -50,7 +55,7 @@ namespace VF.Utils {
 
             // Parameter Drivers
             if (includeWrites) {
-                foreach (var b in new AnimatorIterator.Behaviours().From(c)) {
+                foreach (var b in new AnimatorIterator.Behaviours().From(layers)) {
                     if (b is VRCAvatarParameterDriver oldB) {
                         foreach (var p in oldB.parameters) {
                             p.name = rewriteParamName(p.name);
@@ -65,7 +70,7 @@ namespace VF.Utils {
 
             // Parameter Animations
             if (includeWrites) {
-                foreach (var clip in new AnimatorIterator.Clips().From(c)) {
+                foreach (var clip in new AnimatorIterator.Clips().From(layers)) {
                     clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                         if (binding.path != "") return binding;
                         if (binding.type != typeof(Animator)) return binding;
@@ -77,12 +82,12 @@ namespace VF.Utils {
             }
 
             // Blend trees
-            foreach (var tree in new AnimatorIterator.Trees().From(c)) {
+            foreach (var tree in new AnimatorIterator.Trees().From(layers)) {
                 tree.RewriteParameters(rewriteParamName);
             }
 
             // Transitions
-            foreach (var transition in new AnimatorIterator.Transitions().From(c)) {
+            foreach (var transition in new AnimatorIterator.Transitions().From(layers)) {
                 transition.RewriteConditions(cond => {
                     cond.parameter = rewriteParamName(cond.parameter);
                     return cond;

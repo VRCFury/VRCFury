@@ -75,7 +75,7 @@ namespace VF.Feature {
                 }
 
                 var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
-                    .Any(clip => !ClipBuilderService.IsStaticMotion(clip));
+                    .Any(clip => !clip.IsStatic());
 
                 var usedBindings = bindingsByLayer[layer];
                 if (usedBindings.Any(b => b.propertyName.ToLower().Contains("localeulerangles"))) {
@@ -246,8 +246,8 @@ namespace VF.Feature {
                 var tree = fx.NewBlendTree("Optimized Toggles");
                 tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
-                    var offEmpty = ClipBuilderService.IsEmptyMotion(toggle.offState, avatarObject);
-                    var onEmpty = ClipBuilderService.IsEmptyMotion(toggle.onState, avatarObject);
+                    var offEmpty = !toggle.offState.HasValidBinding(avatarObject);
+                    var onEmpty = !toggle.onState.HasValidBinding(avatarObject);
                     if (offEmpty && onEmpty) continue;
                     string param;
                     Motion motion;
@@ -337,8 +337,8 @@ namespace VF.Feature {
             return content;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
         }
         
         public override bool OnlyOneAllowed() {

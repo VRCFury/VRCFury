@@ -79,6 +79,7 @@ namespace VF.Feature.Base {
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         RemoveDefaultedAdditiveLayer,
         FixUnsetPlayableLayers,
+        PositionDefaultsLayer, // Needs to be right before FixMasks so it winds up at the top of FX, right under the base mask
         FixMasks,
         LocomotionConflictResolver,
         ActionConflictResolver,

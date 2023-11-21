@@ -81,7 +81,7 @@ namespace VF.Builder {
 
             GetSubmenuAndItem(to, true, out var toPath, out var toPrefix, out var toName, out var toMenu);
             foreach (var control in fromControls) {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     GetSubmenu(toPath, createFromControl: control);
                     MergeMenu(toPath, control.subMenu);
                 } else {

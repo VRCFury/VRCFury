@@ -234,9 +234,5 @@ namespace VF.Feature {
             
             return wrapper;
         }
-
-        public override bool AvailableOnProps() {
-            return false;
-        }
     }
 }

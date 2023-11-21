@@ -26,7 +26,7 @@ namespace VF.Service {
             return output;
         }
         
-        public Motion Smooth(VFAFloat target, VFAFloat output, float smoothingSeconds, bool useAcceleration = true, string prefix = "") {
+        private Motion Smooth(VFAFloat target, VFAFloat output, float smoothingSeconds, bool useAcceleration = true, string prefix = "") {
             if (smoothingSeconds <= 0) return math.MakeCopier(target, output);
             if (smoothingSeconds > 10) smoothingSeconds = 10;
             var speed = GetSpeed(smoothingSeconds, useAcceleration);
