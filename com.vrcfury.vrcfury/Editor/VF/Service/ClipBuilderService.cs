@@ -118,36 +118,6 @@ namespace VF.Service {
             return gameObject.GetPath(baseObject);
         }
 
-        public static bool IsEmptyMotion(Motion motion, VFGameObject avatarRoot) {
-            return new AnimatorIterator.Clips().From(motion)
-                .All(clip => IsEmptyClip(clip, avatarRoot));
-        }
-
-        private static bool IsEmptyClip(AnimationClip clip, VFGameObject avatarRoot) {
-            return clip.GetAllBindings()
-                .All(binding => !binding.IsValid(avatarRoot));
-        }
-
-        public static bool IsStaticMotion(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion).All(IsStaticClip);
-        }
-
-        private static bool IsStaticClip(AnimationClip clip) {
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (binding.IsProxyBinding()) return false;
-                if (curve.IsFloat) {
-                    var keys = curve.FloatCurve.keys;
-                    if (keys.All(key => key.time != 0)) return false;
-                    if (keys.Select(k => k.value).Distinct().Count() > 1) return false;
-                } else {
-                    var keys = curve.ObjectCurve;
-                    if (keys.All(key => key.time != 0)) return false;
-                    if (keys.Select(k => k.value).Distinct().Count() > 1) return false;
-                }
-            }
-            return true;
-        }
-
         public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(Motion motion) {
             if (!(motion is AnimationClip clip)) return null;
             var times = new HashSet<float>();

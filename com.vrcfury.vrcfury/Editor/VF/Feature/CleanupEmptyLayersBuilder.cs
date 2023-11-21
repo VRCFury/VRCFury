@@ -50,7 +50,7 @@ namespace VF.Feature {
                 // Delete empty layers
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
-                        .Any(clip => !ClipBuilderService.IsEmptyMotion(clip, avatarObject));
+                        .Any(clip => clip.HasValidBinding(avatarObject));
                     var hasBehaviour = new AnimatorIterator.Behaviours().From(layer)
                         .Any();
 
