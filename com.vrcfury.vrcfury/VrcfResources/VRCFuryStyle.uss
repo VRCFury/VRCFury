@@ -92,7 +92,9 @@ PropertyField.VrcFuryEditorProp > .unity-base-field {
     border-bottom-width: 1px;
     border-bottom-color: black;
 }
-versionLabel {
-    align-content: flex-end;
-    align-self: flex-end;
+.vfVersionLabel {
+    position: absolute;
+    top: -20px;
+    right: 55px;
+    color: rgba(255,255,255,0.3);
 }

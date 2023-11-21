@@ -185,6 +185,11 @@ namespace VF.Inspector {
             var container = new VisualElement();
             container.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
 
+            var versionLabel = new Label(VRCFPackageUtils.Version);
+            versionLabel.AddToClassList("vfVersionLabel");
+            versionLabel.pickingMode = PickingMode.Ignore;
+            container.Add(versionLabel);
+
             container.Add(CreateOverrideLabel());
 
             if (isInstance) {
@@ -224,11 +229,6 @@ namespace VF.Inspector {
                 body = CreateEditor(serializedObject, v);
                 container.Add(body);
             }
-
-            // TODO: make this look nicer
-            var versionLabel = new Label($"VRCFury - version: {VRCFPackageUtils.Version}");
-            versionLabel.name = "versionLabel";
-            container.Add(versionLabel);
 
             /*
             el.RegisterCallback<AttachToPanelEvent>(e => {
