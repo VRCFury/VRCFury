@@ -267,7 +267,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (weight != null) {
             inState = onState = layer.NewState(onName);
-            if (ClipBuilderService.IsStaticMotion(clip)) {
+            if (clip.IsStatic()) {
                 var tree = fx.NewBlendTree($"{onName} Tree");
                 tree.blendType = BlendTreeType.Simple1D;
                 tree.useAutomaticThresholds = false;
@@ -304,11 +304,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             inState = layer.NewState(onName + " In").WithAnimation(inClip);
             onState = layer.NewState(onName).WithAnimation(clip);
-            inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.length > 0 ? 1 : -1).WithTransitionDurationSeconds(inTime);
+            inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.IsEmptyOrZeroLength() ? -1 : 1).WithTransitionDurationSeconds(inTime);
 
             var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
-            outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.length > 0 ? 1 : -1);
+            outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);

@@ -8,6 +8,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Service {
@@ -82,7 +83,7 @@ namespace VF.Service {
                 var on = layer.NewState("On");
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, plugOwner);
-                if (ClipBuilderService.IsStaticMotion(clip)) {
+                if (clip.IsStatic()) {
                     var tree = fx.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
@@ -173,7 +174,7 @@ namespace VF.Service {
                 var on = layer.NewState("On");
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, socketOwner);
-                if (ClipBuilderService.IsStaticMotion(clip)) {
+                if (clip.IsStatic()) {
                     var tree = fx.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
