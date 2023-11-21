@@ -12,16 +12,22 @@ namespace VF {
 
         public static string Version {
             get {
-                if (version == null) {
-                    var assetPath = AssetDatabase.GUIDToAssetPath(PackageJsonGuid);
-                    if(string.IsNullOrEmpty(assetPath))
-                        version = "???";
-                    else
-                        version = JsonUtility.FromJson<PackageManifestData>(File.ReadAllText(Path.GetFullPath(assetPath))).version;
-                }
-
+                if (version == null) version = LoadVersion();
                 return version;
             }
+        }
+
+        private static string LoadVersion() {
+            try {
+                var assetPath = AssetDatabase.GUIDToAssetPath(PackageJsonGuid);
+                if (!string.IsNullOrEmpty(assetPath)) {
+                    var text = File.ReadAllText(assetPath);
+                    return JsonUtility.FromJson<PackageManifestData>(text).version;
+                }
+            } catch (Exception) {
+                // ignored
+            }
+            return "???";
         }
 
         private class PackageManifestData {
