@@ -11,6 +11,7 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model;
+using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -83,12 +84,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return primaryExclusive;
     }
 
-    private (bool, int) CheckExclusives() {
+    private (bool, int, bool, int) CheckExclusives() {
         var targetTag = GetPrimaryExclusive();
-        if (targetTag == "") return (false, -1);
+        if (targetTag == "") return (false, -1, false, 0);
         
         var tagCount = 1;
         var tagIndex = 0;
+        var savedParam = false;
+        var tagDefault = 0;
        
         foreach (var toggle in allBuildersInRun
                     .OfType<ToggleBuilder>()) {
@@ -97,6 +100,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tagIndex = tagCount;
             }
             if (!toggle.model.exclusiveOffState && toggle.GetPrimaryExclusive() == targetTag) {
+                if (toggle.model.saved) savedParam = true;
+                if (toggle.model.defaultOn) tagDefault = tagCount;
                 tagCount++;
             }
         }
@@ -106,9 +111,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (tagCount > 8) {
-            return (true, tagIndex);
+            return (true, tagIndex, savedParam, tagDefault);
         }
-        return (false, -1);
+        return (false, -1, false, 0);
     }
 
     private void SetStartState(VFLayer layer, AnimatorState state) {
@@ -146,7 +151,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         var (paramName, usePrefixOnParam) = GetParamName();
-        var (useInt, intTarget) = CheckExclusives();
+        var (useInt, intTarget, intSaved, intDefault) = CheckExclusives();
         VFCondition onCase;
         VFAFloat weight = null;
         if (model.slider) {
@@ -177,7 +182,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 exclusiveParam = boolParam;
                 onCase = boolParam.IsTrue();
                 if (addMenuItem) {
-                    var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: model.saved, def: model.defaultOn ? intTarget : 0, usePrefix: false);
+                    var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: intSaved, def: intDefault, usePrefix: false);
                     var aliasLayer = fx.NewLayer(layerName + "_Alias");
                     var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
                     var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true);
@@ -266,7 +271,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (weight != null) {
             inState = onState = layer.NewState(onName);
-            if (ClipBuilderService.IsStaticMotion(clip)) {
+            if (clip.IsStatic()) {
                 var tree = fx.NewBlendTree($"{onName} Tree");
                 tree.blendType = BlendTreeType.Simple1D;
                 tree.useAutomaticThresholds = false;
@@ -303,11 +308,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
             inState = layer.NewState(onName + " In").WithAnimation(inClip);
             onState = layer.NewState(onName).WithAnimation(clip);
-            inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.length > 0 ? 1 : -1).WithTransitionDurationSeconds(inTime);
+            inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.IsEmptyOrZeroLength() ? -1 : 1).WithTransitionDurationSeconds(inTime);
 
             var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
-            outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.length > 0 ? 1 : -1);
+            outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
@@ -676,6 +681,32 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             holdButtonProp,
             hasExitTimeProp
         ));
+
+        var toggleOffWarning = VRCFuryEditorUtils.Error(
+            "You cannot use Turn Off for an object that another Toggle Turns On! Turn Off should only be used for objects which are not controlled by their own toggle.\n\n" +
+            "1. You do not need a dedicated 'Turn Off' toggle. Turning off the other toggle will turn off the object.\n\n" +
+            "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
+        toggleOffWarning.style.display = DisplayStyle.None;
+        content.Add(toggleOffWarning);
+        VRCFuryEditorUtils.RefreshOnInterval(toggleOffWarning, () => {
+            var turnsOff = model.state.actions
+                .OfType<ObjectToggleAction>()
+                .Where(a => a.mode == ObjectToggleAction.Mode.TurnOff)
+                .Select(a => a.obj)
+                .Where(o => o != null)
+                .ToImmutableHashSet();
+            var othersTurnOn = avatarObject.GetComponentsInSelfAndChildren<VRCFury>()
+                .SelectMany(vf => vf.config.features)
+                .OfType<Toggle>()
+                .SelectMany(toggle => toggle.state.actions)
+                .OfType<ObjectToggleAction>()
+                .Where(a => a.mode == ObjectToggleAction.Mode.TurnOn)
+                .Select(a => a.obj)
+                .Where(o => o != null)
+                .ToImmutableHashSet();
+            var overlap = turnsOff.Intersect(othersTurnOn);
+            toggleOffWarning.style.display = overlap.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+        });
 
         return content;
     }
