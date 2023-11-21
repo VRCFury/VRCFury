@@ -1,3 +1,9 @@
+.vfTooltip.vfTooltipHidden {
+    display: none;
+}
+
+/* Progress dialog */
+
 .VRCFProgressWindow ProgressBar {
     padding-bottom: 10px;
 }
@@ -21,6 +27,8 @@
     height: 250px;
 }
 
+/* Props */
+
 PropertyField.VrcFuryEditorProp > .unity-base-field > Label {
     display: none;
 }
@@ -30,6 +38,57 @@ PropertyField.VrcFuryEditorProp > .unity-base-field {
 .VrcFuryEditorProp.unity-base-field {
     margin: 0;
 }
-.vfTooltip.vfTooltipHidden {
-    display: none;
+
+/* 2022 lists */
+
+.unity-list-view__reorderable-item__container {
+    padding-left: 2px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+.unity-scroll-view--scroll {
+    padding: 0;
+}
+.unity-list-view__item:hover {
+    background-color: initial;
+}
+.unity-collection-view__item--selected, .unity-collection-view__item--selected:hover {
+    background-color: rgba(0,128,255,0.2);
+}
+.unity-collection-view__item--alternative-background, .unity-collection-view__item--alternative-background:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+.unity-list-view__reorderable-handle {
+    padding-top: 9px;
+}
+
+/* 2019 lists */
+
+.vfList2019__buttons {
+    flex-grow: 0;
+    border-left-color: black;
+    border-right-color: black;
+    border-bottom-color: black;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    flex-direction: row;
+}
+.vfList2019__button {
+    margin: 2px;
+    padding: 3px 6px;
+    padding-top: 0px;
+    font-size: 16px;
+    border-radius: 3px;
+    width: 25px;
+    -unity-text-align: middle-center;
+}
+.vfList2019__button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.vfList2019__notLastItem {
+    border-bottom-width: 1px;
+    border-bottom-color: black;
 }

@@ -14,7 +14,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         
-        [FeatureBuilderAction]
+        [FeatureBuilderAction(FeatureOrder.ShowInFirstPersonBuilder)]
         public void Apply() {
             var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
             mover.Move(featureBaseObject, head);

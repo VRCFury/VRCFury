@@ -28,5 +28,23 @@ namespace VF.Utils.Controller {
         public static VFCondition Never() {
             return new VFCondition();
         }
+
+        public static VFCondition All(IEnumerable<VFCondition> inputs) {
+            VFCondition output = null;
+            foreach (var p in inputs) {
+                if (output == null) output = p;
+                else output = output.And(p);
+            }
+            return output;
+        }
+        
+        public static VFCondition Any(IEnumerable<VFCondition> inputs) {
+            VFCondition output = null;
+            foreach (var p in inputs) {
+                if (output == null) output = p;
+                else output = output.Or(p);
+            }
+            return output;
+        }
     }
 }

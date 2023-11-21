@@ -19,7 +19,7 @@ namespace VF.Feature {
 
             var globalContacts = avatarObject.GetComponentsInSelfAndChildren<VRCFuryGlobalCollider>();
             if (globalContacts.Length == 0) return;
-            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            var avatar = manager.Avatar;
 
             var fingers = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)> {
                 ( HumanBodyBones.LeftRingIntermediate, avatar.collider_fingerRingL, c => avatar.collider_fingerRingL = c ),

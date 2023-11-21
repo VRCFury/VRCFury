@@ -111,28 +111,33 @@ namespace VF.Builder {
 
         public int childCount => transform.childCount;
         
+        // Components can sometimes be null for some reason. Perhaps when they're corrupt?
+        private static bool NotNull<T>(T obj) => obj != null;
+        
         public UnityEngine.Component GetComponent(Type t) {
-            return gameObject.GetComponent(t);
+            return GetComponents(t).FirstOrDefault();
         }
-        
         public T GetComponent<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponent<T>();
+            return GetComponents<T>().FirstOrDefault();
         }
         
+        public UnityEngine.Component[] GetComponents(Type t) {
+            return gameObject.GetComponents(t).Where(NotNull).ToArray();
+        }
         public T[] GetComponents<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponents<T>();
+            return gameObject.GetComponents<T>().Where(NotNull).ToArray();
         }
         
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponentInParent<T>();
+            return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
-            return gameObject.GetComponentsInChildren<T>(true);
+            return gameObject.GetComponentsInChildren<T>(true).Where(NotNull).ToArray();
         }
         
         public T[] GetComponentsInSelfAndParents<T>() {
-            return gameObject.GetComponentsInParent<T>(true);
+            return gameObject.GetComponentsInParent<T>(true).Where(NotNull).ToArray();
         }
 
         public T AddComponent<T>() where T : UnityEngine.Component {

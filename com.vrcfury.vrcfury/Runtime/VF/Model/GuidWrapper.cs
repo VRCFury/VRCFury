@@ -11,57 +11,57 @@ namespace VF.Model {
     [Serializable]
     public class GuidAnimationClip : GuidWrapper<AnimationClip> {
         public static implicit operator GuidAnimationClip(AnimationClip d) => new GuidAnimationClip {
-            objOverride = d
+            setter = d
         };
     }
     
     [Serializable]
     public class GuidMaterial : GuidWrapper<Material> {
         public static implicit operator GuidMaterial(Material d) => new GuidMaterial {
-            objOverride = d
+            setter = d
         };
     }
     
     [Serializable]
     public class GuidTexture2d : GuidWrapper<Texture2D> {
         public static implicit operator GuidTexture2d(Texture2D d) => new GuidTexture2d {
-            objOverride = d
+            setter = d
         };
     }
     
     [Serializable]
     public class GuidController : GuidWrapper<RuntimeAnimatorController> {
         public static implicit operator GuidController(RuntimeAnimatorController d) => new GuidController {
-            objOverride = d
+            setter = d
         };
     }
     
     [Serializable]
     public class GuidMenu : GuidWrapper<VRCExpressionsMenu> {
         public static implicit operator GuidMenu(VRCExpressionsMenu d) => new GuidMenu {
-            objOverride = d
+            setter = d
         };
     }
     
     [Serializable]
     public class GuidParams : GuidWrapper<VRCExpressionParameters> {
         public static implicit operator GuidParams(VRCExpressionParameters d) => new GuidParams {
-            objOverride = d
+            setter = d
         };
     }
 
     [Serializable]
-    public class GuidWrapper<T> : GuidWrapper {
+    public class GuidWrapper<T> : GuidWrapper where T : Object {
         // This field is only here for scripts to use temporarily. It's not saved.
-        [NonSerialized] public T objOverride;
-    }
+        [NonSerialized] public T typeDetector;
 
-    [Serializable]
-    public class GuidWrapper : VrcfUpgradeable {
-        [Obsolete] [SerializeField] private long fileID;
-        [Obsolete] [SerializeField] private string guid;
-        [SerializeField] public string id;
-        [SerializeField] public Object objRef; // This is only here so that unity will export dependencies properly
+        protected T setter {
+            set {
+                objRef = value;
+                id = "";
+                Sync();
+            }
+        }
         
 #pragma warning disable 0612
         public override bool Upgrade(int fromVersion) {
@@ -71,15 +71,31 @@ namespace VF.Model {
                 if (guid != "") id = guid + ":" + fileID;
             }
 
-            if (UpdateIdIfPossible != null) {
-                changed |= UpdateIdIfPossible(this);
-            }
+            changed |= Sync();
 
             return changed;
         }
 #pragma warning restore 0612
 
-        public static Func<GuidWrapper,bool> UpdateIdIfPossible;
+        // We sync in preserialize to ensure that if an asset "reappeared" recently, and objRef is still null,
+        // that this asset will still show up in the export dialog when the user exports their prefab
+        protected override void PreSerialize() {
+            Sync();
+        }
+
+        private bool Sync() {
+            return SyncExt != null && SyncExt(this, typeof(T));
+        }
+    }
+
+    [Serializable]
+    public class GuidWrapper : VrcfUpgradeable {
+        [Obsolete] [SerializeField] protected long fileID;
+        [Obsolete] [SerializeField] protected string guid;
+        [SerializeField] public string id;
+        [SerializeField] public Object objRef;
+        
+        public static Func<GuidWrapper,Type,bool> SyncExt;
 
         public override int GetLatestVersion() {
             return 1;

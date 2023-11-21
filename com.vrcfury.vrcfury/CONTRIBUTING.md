@@ -47,16 +47,24 @@ For more information, please refer to <https://unlicense.org>
 
 ## Special Thanks to the contributors!
 
-* AirGamer
-  * Added scaling of legacy DPS tip light intensity
 * anatawa12
   * Improvements to VRCFury/Av3Emu compatibility
+* babo4d
+  * Added bone radius to SPS autorig physbone
 * CobaltSpace
   * Ensured that gogoloco params are always global
 * GameGeek720
   * Added Toggle enhancements for transitions and the local player
+  * Fixed Toggle sliders always adding a menu option, even if the menu path was empty
+  * Made toggles usable by specifying only a transition in and no main clip
+  * Made toggles support driving multiple parameters
+  * Made toggles not add a synchronized parameter when using vrchat built-in parameters
+  * Fixed toggles possibly being in the wrong state for one frame upon loading
+  * Added ability for toggles to "play to completion"
+  * Added transition time support to Toggles
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
+  * Made colliders merge properly within Armature Link (unused)
 * lyuma
   * Improvements to VRCFury/Av3Emu compatibility
 * Morghus
@@ -65,6 +73,7 @@ For more information, please refer to <https://unlicense.org>
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
   * Prevented SPS toggle from disabling SPS autorig physbone
+  * Set the Editor Test Copy's Animator controller to the generated FX layer
 * Raphiiko
   * Added global parameters for Toggles
 * TayouVR
@@ -74,6 +83,9 @@ For more information, please refer to <https://unlicense.org>
   * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
 * TheLastRar
   * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
+  * Added scaling of legacy DPS tip light intensity
+  * Add option for using local space for socket units
+  * Add option for exact matching in BlendShapeLink
 * Toys0125
   * Added Poiyomi UV Tile action type
 * wholesomevr

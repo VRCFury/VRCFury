@@ -45,59 +45,51 @@ namespace VF.Utils {
         }
 
         public static void SetCurves(this AnimationClip clip, IEnumerable<(EditorCurveBinding,FloatOrObjectCurve)> curves) {
-            var changedOne = false;
+            var floatCurves = new List<(EditorCurveBinding, AnimationCurve)>();
+            var objectCurves = new List<(EditorCurveBinding, ObjectReferenceKeyframe[])>();
+
             foreach (var (binding, curve) in curves) {
                 if (curve == null) {
                     // If we don't check if it exists first, unity throws a "Can't assign curve because the
                     // type does not inherit from Component" if type is a GameObject
                     if (clip.GetFloatCurve(binding) != null)
-                        clip.SetFloatCurveNoSync(binding, null);
+                        floatCurves.Add((binding, null));
                     if (clip.GetObjectCurve(binding) != null)
-                        clip.SetObjectCurveNoSync(binding, null);
+                        objectCurves.Add((binding, null));
                 } else if (curve.IsFloat) {
-                    clip.SetFloatCurveNoSync(binding, curve.FloatCurve);
+                    floatCurves.Add((binding, curve.FloatCurve));
                 } else {
-                    clip.SetObjectCurveNoSync(binding, curve.ObjectCurve);
+                    objectCurves.Add((binding, curve.ObjectCurve));
                 }
-                changedOne = true;
             }
-            if (changedOne) {
-                clip.Sync();
-            }
-        }
 
-        // TODO: Replace this with calls to AnimationUtility.SetEditorCurves / SetObjectReferenceCurves once in unity 2020+
-        // Warning: Using these previously resulted in some bindings just... not getting saved.
-        // This was apparent because the empty layer optimizer was removing unused bindings which should have been rewritten
-        //private static readonly Type animUtil = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationUtility");
-        //private static readonly MethodInfo setFloatNoSync = animUtil.GetMethod("SetEditorCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        //private static readonly MethodInfo setObjNoSync = animUtil.GetMethod("SetObjectReferenceCurveNoSync", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        //private static readonly MethodInfo triggerSync = animUtil.GetMethod("SyncEditorCurves", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        private static void SetFloatCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
-            //setFloatNoSync.Invoke(null, new object[] { clip, binding, curve });
-            clip.SetFloatCurve(binding, curve);
-        }
-        private static void SetObjectCurveNoSync(this AnimationClip clip, EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
-            //setObjNoSync.Invoke(null, new object[] { clip, binding, curve });
-            clip.SetObjectCurve(binding, curve);
-        }
-        private static void Sync(this AnimationClip clip) {
-            //triggerSync.Invoke(null, new object[] { clip });
+#if UNITY_2022_1_OR_NEWER
+            if (floatCurves.Count > 0) {
+                AnimationUtility.SetEditorCurves(
+                    clip,
+                    floatCurves.Select(p => p.Item1).ToArray(),
+                    floatCurves.Select(p => p.Item2).ToArray()
+                );
+            }
+            if (objectCurves.Count > 0) {
+                AnimationUtility.SetObjectReferenceCurves(
+                    clip,
+                    objectCurves.Select(p => p.Item1).ToArray(),
+                    objectCurves.Select(p => p.Item2).ToArray()
+                );
+            }
+#else
+            foreach (var pair in floatCurves) {
+                AnimationUtility.SetEditorCurve(clip, pair.Item1, pair.Item2);
+            }
+            foreach (var pair in objectCurves) {
+                AnimationUtility.SetObjectReferenceCurve(clip, pair.Item1, pair.Item2);
+            }
+#endif
         }
 
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
-            if (curve == null) {
-                // If we don't check if it exists first, unity throws a "Can't assign curve because the
-                // type does not inherit from Component" if type is a GameObject
-                if (clip.GetFloatCurve(binding) != null)
-                    clip.SetFloatCurve(binding, null);
-                if (clip.GetObjectCurve(binding) != null)
-                    clip.SetObjectCurve(binding, null);
-            } else if (curve.IsFloat) {
-                clip.SetFloatCurve(binding, curve.FloatCurve);
-            } else {
-                clip.SetObjectCurve(binding, curve.ObjectCurve);
-            }
+            clip.SetCurves(new [] { (binding,curve) });
         }
 
         public static void SetFloatCurve(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
@@ -122,6 +114,13 @@ namespace VF.Utils {
 
         public static void CopyFrom(this AnimationClip clip, AnimationClip other) {
             clip.SetCurves(other.GetAllCurves());
+        }
+
+        public static void CopyFromLast(this AnimationClip clip, AnimationClip other) {
+            foreach (var c in other.GetAllCurves()) {
+                var val = c.Item2.GetLast();
+                clip.SetConstant(c.Item1, val);
+            }
         }
 
         public static bool IsLooping(this AnimationClip clip) {

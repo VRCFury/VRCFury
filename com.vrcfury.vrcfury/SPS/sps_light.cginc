@@ -1,61 +1,46 @@
 #include "UnityShaderVariables.cginc"
 #include "sps_globals.cginc"
-
-#define SPS_PI float(3.14159265359)
+#include "sps_utils.cginc"
 
 // Type: 0=invalid 1=hole 2=ring 3=front
-void sps_parse_light(float range, half4 color, out int type, int myChannel) {
+void sps_light_parse(float range, half4 color, out int type) {
 	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
 		type = 0;
 		return;
 	}
-
-	int legacyRange = round((range % 0.1) * 100);
-
-	int channel = 0;
-	// if (((alpha >> 6) & 3) == 2) {
-	// 	if (0.451 < range && range < 0.485) {
-	// 		channel = round((range - 0.452) / 0.002) + 1;
-	// 	} else {
-	// 		channel = 0;
-	// 	}
-	// 	type = ((alpha >> 4) & 3) + 1;
-	// 	if (type == 4) {
-	// 		type = 0;
-	// 	}
-	// } else {
-		if (legacyRange == 1) type = 1;
-		if (legacyRange == 2) type = 2;
-		if (legacyRange == 5) type = 3;
-	// }
-
-	if (channel != myChannel) {
-		type = 0;
-		return;
+	if (_SPS_Target_LL_Lights < 0.5) {
+		const float thousandths = range % 0.001;
+		if (thousandths > 0.0001 && thousandths < 0.0003) {
+			// Legacy light coming from a lightless SPS socket
+			type = 0;
+			return;
+		}
 	}
+
+	const int legacyRange = round((range % 0.1) * 100);
+
+	if (legacyRange == 1) type = 1;
+	if (legacyRange == 2) type = 2;
+	if (legacyRange == 5) type = 3;
 }
-float3 sps_toLocal(float3 v) { return mul(unity_WorldToObject, float4(v, 1)); }
-float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)); }
-// https://forum.unity.com/threads/point-light-in-v-f-shader.499717/#post-3250460
-float sps_attenToRange(float atten) { return (0.005 * sqrt(1000000.0 - atten)) / sqrt(atten); }
 
 // Find nearby socket lights
-bool sps_search(
-	out float3 rootLocal,
-	out bool isRing,
-	out float3 rootNormal,
-	inout float4 color
+void sps_light_search(
+	inout bool ioFound,
+	inout float3 ioRootLocal,
+	inout bool ioIsRing,
+	inout float3 ioRootNormal,
+	inout float4 ioColor
 ) {
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)
 	int lightType[4];
-	const int myChannel = 0; // _SPS_Channel;
 	float3 lightWorldPos[4];
 	float3 lightLocalPos[4];
 	{
 		for(int i = 0; i < 4; i++) {
 	 		const float range = sps_attenToRange(unity_4LightAtten0[i]);
-			sps_parse_light(range, unity_LightColor[i], lightType[i], myChannel);
+			sps_light_parse(range, unity_LightColor[i], lightType[i]);
 	 		lightWorldPos[i] = float3(unity_4LightPosX0[i], unity_4LightPosY0[i], unity_4LightPosZ0[i]);
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}
@@ -109,18 +94,14 @@ bool sps_search(
 		frontFound = false;
 	}
 
-	if (rootFound) {
-		rootLocal = lightLocalPos[rootIndex];
-		isRing = lightType[rootIndex] != 1;
-		rootNormal = frontFound
-			? lightLocalPos[frontIndex] - lightLocalPos[rootIndex]
-			: -1 * lightLocalPos[rootIndex];
-		rootNormal = sps_normalize(rootNormal);
-	} else {
-	 	rootLocal = float3(0,0,0);
-	 	isRing = false;
-	 	rootNormal = float3(0,0,0);
-	}
-	
-	return rootFound;
+	if (!rootFound) return;
+	if (ioFound && length(lightLocalPos[rootIndex]) >= length(ioRootLocal)) return;
+
+	ioFound = true;
+	ioRootLocal = lightLocalPos[rootIndex];
+	ioIsRing = lightType[rootIndex] != 1;
+	ioRootNormal = frontFound
+		? lightLocalPos[frontIndex] - lightLocalPos[rootIndex]
+		: -1 * lightLocalPos[rootIndex];
+	ioRootNormal = sps_normalize(ioRootNormal);
 }

@@ -18,6 +18,33 @@ namespace VF.Feature {
             return "BlendShape Link";
         }
 
+        [CustomPropertyDrawer(typeof(BlendShapeLink.Exclude))]
+        public class ExcludeDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty exclude) {
+                return VRCFuryEditorUtils.Prop(exclude.FindPropertyRelative("name"));
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(BlendShapeLink.Include))]
+        public class IncludeDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty include) {
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row
+                    }
+                };
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase"), style: s => {
+                    s.flexBasis = 0;
+                    s.flexGrow = 1;
+                }));
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked"), style: s => {
+                    s.flexBasis = 0;
+                    s.flexGrow = 1;
+                }));
+                return row;
+            }
+        }
+
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             
@@ -40,15 +67,15 @@ namespace VF.Feature {
 
             var includeAll = prop.FindPropertyRelative("includeAll");
             var excludes = prop.FindPropertyRelative("excludes");
+            var exactMatch = prop.FindPropertyRelative("exactMatch");
 
             adv.Add(VRCFuryEditorUtils.Prop(includeAll, "Include all blendshapes from base"));
+            adv.Add(VRCFuryEditorUtils.Prop(exactMatch, "Link blendshapes with exact names only"));
             adv.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var o = new VisualElement();
                 if (includeAll.boolValue) {
                     o.Add(VRCFuryEditorUtils.WrappedLabel("Exclude blendshapes:"));
-                    o.Add(VRCFuryEditorUtils.List(excludes, (i, exclude) =>
-                        VRCFuryEditorUtils.Prop(exclude.FindPropertyRelative("name"))
-                    ));
+                    o.Add(VRCFuryEditorUtils.List(excludes));
                 }
                 
                 o.Add(VRCFuryEditorUtils.WrappedLabel(includeAll.boolValue ? "Additional linked blendshapes:" : "Linked blendshapes:"));
@@ -67,22 +94,7 @@ namespace VF.Feature {
                 }));
                 o.Add(header);
                 
-                o.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("includes"), (i, include) => {
-                    var row = new VisualElement {
-                        style = {
-                            flexDirection = FlexDirection.Row
-                        }
-                    };
-                    row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase"), style: s => {
-                        s.flexBasis = 0;
-                        s.flexGrow = 1;
-                    }));
-                    row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked"), style: s => {
-                        s.flexBasis = 0;
-                        s.flexGrow = 1;
-                    }));
-                    return row;
-                }));
+                o.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("includes")));
                 
                 return o;
             }, includeAll));
@@ -98,7 +110,7 @@ namespace VF.Feature {
 
                 var linkSkins = GetLinkSkins();
                 var mappingsWithSkin = linkSkins
-                    .SelectMany(s => GetMappings(baseSkin, s).Select(m => (s, (m.Key, m.Value))))
+                    .SelectMany(s => GetMappings(baseSkin, s, exactMatch.boolValue).Select(m => (s, (m.Key, m.Value))))
                     .ToImmutableHashSet();
                 var allMappings = mappingsWithSkin
                     .Select(tuple => tuple.Item2)
@@ -194,12 +206,16 @@ namespace VF.Feature {
             }
         }
 
-        private Dictionary<string, string> GetMappings(SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin) {
-            var normalizers = new Normalizer[] {
-                s => s,
-                s => Regex.Replace(s.ToLower(), @"\s", ""),
-                s => Regex.Replace(s.ToLower(), @"[^a-z0-9]", "")
-            };
+        private Dictionary<string, string> GetMappings(SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin, bool exact) {
+            Normalizer[] normalizers;
+            if (exact) {
+                normalizers = new Normalizer[] { s => s };
+            } else {
+                normalizers = new Normalizer[] {
+                    s => s,
+                    s => Regex.Replace(s.ToLower(), @"\s", ""),
+                };
+            }
 
             var baseBlendshapes = GetBlendshapesInSkin(baseSkin);
             var baseBlendshapesLookup = new FuzzyFinder(baseBlendshapes, normalizers);
@@ -249,7 +265,7 @@ namespace VF.Feature {
             var linkSkins = GetLinkSkins();
 
             foreach (var linked in linkSkins) {
-                var baseToLinkedMapping = GetMappings(baseSkin, linked);
+                var baseToLinkedMapping = GetMappings(baseSkin, linked, model.exactMatch);
                 foreach (var (baseName,linkedName) in baseToLinkedMapping.Select(x => (x.Key, x.Value))) {
                     var baseI = baseSkin.sharedMesh.GetBlendShapeIndex(baseName);
                     var linkedI = linked.sharedMesh.GetBlendShapeIndex(linkedName);

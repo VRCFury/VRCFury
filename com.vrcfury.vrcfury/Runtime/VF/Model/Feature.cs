@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Model.StateAction;
 using VF.Upgradeable;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 // Notes for the future:
 // Don't ever remove a class -- it will break the entire list of SerializedReferences that contained it
@@ -243,7 +245,7 @@ namespace VF.Model.Feature {
     [Serializable]
     public class Toggle : LegacyFeatureModel2 {
         public string name;
-        public State state;
+        public State state = new State();
         public bool saved;
         public bool slider;
         public bool securityEnabled;
@@ -252,11 +254,12 @@ namespace VF.Model.Feature {
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
-        public List<GameObject> resetPhysbones = new List<GameObject>();
+        [Obsolete] public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
+        public bool hasExitTime = false;
         public bool enableIcon;
         public GuidTexture2d icon;
         public bool enableDriveGlobalParam;
@@ -266,8 +269,12 @@ namespace VF.Model.Feature {
         public bool hasTransition;
         public State transitionStateIn;
         public State transitionStateOut;
+        public float transitionTimeIn = 0;
+        public float transitionTimeOut = 0;
         public State localTransitionStateIn;
         public State localTransitionStateOut;
+        public float localTransitionTimeIn = 0;
+        public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
         public float defaultSliderValue = 1;
         public bool useGlobalParam;
@@ -277,6 +284,26 @@ namespace VF.Model.Feature {
         public override void CreateNewInstance(GameObject obj) {
             var n = obj.AddComponent<VRCFuryToggle>();
             // TODO
+        }
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                if (resetPhysbones != null) {
+                    foreach (var obj in resetPhysbones) {
+                        if (obj == null) continue;
+                        var physBone = obj.GetComponent<VRCPhysBone>();
+                        if (physBone == null) continue;
+                        state.actions.Add(new ResetPhysboneAction { physBone = physBone });
+                    }
+                }
+            }
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
         }
     }
 
@@ -381,17 +408,18 @@ namespace VF.Model.Feature {
         public string bonePathOnAvatar;
         public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public string removeBoneSuffix;
-        public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
         
         // legacy
-        public bool useOptimizedUpload;
-        public bool useBoneMerging;
-        public bool keepBoneOffsets;
+        [Obsolete] public bool useOptimizedUpload;
+        [Obsolete] public bool useBoneMerging;
+        [Obsolete] public bool keepBoneOffsets;
+        [Obsolete] public bool physbonesOnAvatarBones;
         
         public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
             if (fromVersion < 1) {
                 if (useBoneMerging) {
                     linkMode = ArmatureLinkMode.SkinRewrite;
@@ -416,6 +444,7 @@ namespace VF.Model.Feature {
                 }
             }
             return false;
+#pragma warning restore 0612
         }
         public override int GetLatestVersion() {
             return 5;
@@ -537,11 +566,22 @@ namespace VF.Model.Feature {
                     fromPath = "Sockets" + fromPath.Substring(5);
                 }
             }
+            if (fromVersion < 2) {
+                if (fromPath.StartsWith("Sockets/") || fromPath == "Sockets") {
+                    fromPath = "SPS" + fromPath.Substring(7);
+                }
+            }
+
+            if (fromVersion < 3) {
+                if (toPath.StartsWith("Sockets/") || toPath == "Sockets") {
+                    toPath = "SPS" + toPath.Substring(7);
+                }
+            }
             return false;
         }
 
         public override int GetLatestVersion() {
-            return 1;
+            return 3;
         }
     }
     
@@ -550,12 +590,12 @@ namespace VF.Model.Feature {
         public List<Gesture> gestures = new List<Gesture>();
         
         [Serializable]
-        public class Gesture {
+        public class Gesture : VrcfUpgradeable {
             public Hand hand;
             public HandSign sign;
             public HandSign comboSign;
-            public State state;
-            public bool disableBlinking;
+            public State state = new State();
+            [Obsolete] public bool disableBlinking;
             public bool customTransitionTime;
             public float transitionTime = 0;
             public bool enableLockMenuItem;
@@ -565,6 +605,21 @@ namespace VF.Model.Feature {
             public bool enableWeight;
             
             public bool ResetMePlease2;
+            
+            public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+                if (fromVersion < 1) {
+                    if (disableBlinking && !state.actions.Any(a => a is BlockBlinkingAction)) {
+                        state.actions.Add(new BlockBlinkingAction());
+                    }
+                }
+                return false;
+#pragma warning restore 0612
+            }
+
+            public override int GetLatestVersion() {
+                return 1;
+            }
         }
 
         public enum Hand {
@@ -612,10 +667,20 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
+    public class DeleteDuringUpload : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class ApplyDuringUpload : NewFeatureModel {
+        public State action;
+    }
+
+    [Serializable]
     public class BlendShapeLink : NewFeatureModel {
         public List<GameObject> objs;
         public string baseObj;
         public bool includeAll = true;
+        public bool exactMatch = false;
         public List<Exclude> excludes = new List<Exclude>();
         public List<Include> includes = new List<Include>();
         
@@ -636,6 +701,19 @@ namespace VF.Model.Feature {
     public class SetIcon : NewFeatureModel {
         public string path;
         public GuidTexture2d icon;
+        
+        public override bool Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                if (path.StartsWith("Sockets/") || path == "Sockets") {
+                    path = "SPS" + path.Substring(7);
+                }
+            }
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]
@@ -667,9 +745,9 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BlendshapeOptimizer : NewFeatureModel {
-        public bool keepMmdShapes;
+        [Obsolete] public bool keepMmdShapes;
     }
-    
+
     [Serializable]
     public class Slot4Fix : NewFeatureModel {
     }
@@ -686,6 +764,18 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class ShowInFirstPerson : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class SpsOptions : NewFeatureModel {
+        public GuidTexture2d menuIcon;
+        public string menuPath;
+        public bool enableLightlessToggle2 = false;
+        public bool saveSockets = false;
+    }
+
+    [Serializable]
+    public class MmdCompatibility : NewFeatureModel {
     }
 
 }

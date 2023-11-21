@@ -21,8 +21,7 @@ public class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Feature list is missing? This is a bug."));
         } else {
 
-            var featureList = VRCFuryEditorUtils.List(features, 
-                renderElement: (i, prop) => renderFeature(target.config.features[i], prop, target.gameObject),
+            var featureList = VRCFuryEditorUtils.List(features,
                 onPlus: () => OnPlus(features, target.gameObject),
                 onEmpty: () => {
                     var c = new VisualElement();
@@ -55,8 +54,11 @@ public class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
         return container;
     }
 
-    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, GameObject gameObject) {
-        return FeatureFinder.RenderFeatureEditor(prop, model, gameObject);
+    [CustomPropertyDrawer(typeof(VF.Model.Feature.FeatureModel))]
+    public class FeatureDrawer : PropertyDrawer {
+        public override VisualElement CreatePropertyGUI(SerializedProperty property) {
+            return FeatureFinder.RenderFeatureEditor(property);
+        }
     }
 
     private void OnPlus(SerializedProperty listProp, GameObject gameObject) {

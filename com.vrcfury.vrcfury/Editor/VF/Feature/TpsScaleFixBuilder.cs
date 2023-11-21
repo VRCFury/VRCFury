@@ -59,7 +59,7 @@ namespace VF.Feature {
 
                     if (!isTps && !isSps) return mat;
 
-                    mat = mutableManager.MakeMutable(mat, renderer.owner());
+                    mat = MutableManager.MakeMutable(mat);
                     if (isTps) {
                         if (TpsConfigurer.IsLocked(mat)) {
                             throw new VRCFBuilderException(
@@ -136,8 +136,12 @@ namespace VF.Feature {
             return c;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
+        }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
         }
     }
 }

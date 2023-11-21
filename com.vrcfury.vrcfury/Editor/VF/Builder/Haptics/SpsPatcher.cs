@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -52,12 +53,19 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
-            Replace(
-                @"((?:^|\n)\s*Properties\s*{)",
-                $"$1\n{propertiesContent}\n",
-                1
-            );
+            if (contents.Contains("_SPS_Bake")) {
+                throw new Exception("Shader appears to already be patched, which should be impossible");
+            }
+
+            if (parentHash == null) {
+                var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
+                Replace(
+                    @"((?:^|\n)\s*Properties\s*{)",
+                    $"$1\n{propertiesContent}\n",
+                    1
+                );
+                contents = GetRegex(@"\n\s+CustomEditor [^\n]+").Replace(contents, "");
+            }
 
             string spsMain;
             if (keepImports) {
@@ -67,7 +75,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "2";
+            var hashContent = contents + spsMain + "5";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -201,8 +209,8 @@ namespace VF.Builder.Haptics {
             string newInputParams;
             string newPassParams;
             string mainParamName;
-            string searchForOldStruct;
-            bool useStructExtends;
+            string searchForOldStruct = flattenedPass;
+            bool useStructExtends = !isSurfaceShader;
             if (oldVertFunction != null) {
                 var foundOldVert = GetRegex(Regex.Escape(oldVertFunction) + @"\s*\(([^\);]*)\)\s*\{")
                     .Matches(flattenedPass)
@@ -259,16 +267,12 @@ namespace VF.Builder.Haptics {
                 var rewrittenPassParams = RewriteParamList(paramList, stripTypes: true,
                     rewriteFirstParamNameTo: $"({firstParamType}){mainParamName}");
                 newPassParams = rewrittenPassParams.rewritten;
-                searchForOldStruct = flattenedPass;
-                useStructExtends = true;
             } else {
                 oldStructType = "appdata_full";
-                searchForOldStruct = ReadAndFlattenContent("#include \"UnityCG.cginc\"", includeLibraryFiles: true);
                 returnType = "void";
                 newInputParams = "inout SpsInputs input";
                 mainParamName = "input";
                 newPassParams = null;
-                useStructExtends = false;
             }
 
             var oldStructBody = "";
@@ -300,11 +304,14 @@ namespace VF.Builder.Haptics {
             var colorParam = FindParam("COLOR", "spsColor", "float4");
             
             var newHeader = new List<string>();
-            // Special case for liltoon
+            // Enable appdata features in shaders where they may be controlled by preprocessor defines
+            // liltoon
             newHeader.Add("#define LIL_APP_POSITION");
             newHeader.Add("#define LIL_APP_NORMAL");
             newHeader.Add("#define LIL_APP_VERTEXID");
             newHeader.Add("#define LIL_APP_COLOR");
+            // UnlitWF
+            newHeader.Add("#define _V2F_HAS_VERTEXCOLOR");
             
             var newBody = new List<string>();
             newBody.Add(spsMain);
@@ -460,21 +467,33 @@ namespace VF.Builder.Haptics {
         }
 
         private static string WithEachInclude(string contents, string filePath, Func<string, string> with, bool includeLibraryFiles = false) {
-            return GetRegex(@"(\s*#include\s"")([^""]+)("")").Replace(contents, match => {
+            return GetRegex(@"(?:^|\n)(\s*#include\s"")([^""]+)("")").Replace(contents, match => {
                 var before = match.Groups[1].ToString();
                 var path = match.Groups[2].ToString();
                 var after = match.Groups[3].ToString();
                 if (path.StartsWith("/")) path = path.Substring(1);
                 string fullPath;
+                var attempts = new List<string>();
+                var isLib = false;
                 if (filePath == null) {
                     fullPath = path;
+                    attempts.Add(fullPath);
                 } else {
-                    fullPath = ClipRewriter.Join(Path.GetDirectoryName(filePath).Replace('\\', '/'), path);
+                    fullPath = Path.Combine(filePath, "..", path);
+                    attempts.Add(fullPath);
                 }
-                if (includeLibraryFiles && !path.Contains("..") && !File.Exists(fullPath)) {
-                    fullPath = ClipRewriter.Join(EditorApplication.applicationPath.Replace('\\', '/'), "../Data/CGIncludes/" + path);
+                if (!path.Contains("..") && !File.Exists(fullPath)) {
+                    fullPath = Path.Combine(EditorApplication.applicationContentsPath, "CGIncludes", path);
+                    attempts.Add(fullPath);
+                    isLib = true;
                 }
-                if (!File.Exists(fullPath)) return match.Groups[0].ToString();
+                if (!File.Exists(fullPath)) {
+                    Debug.LogWarning("Failed to find include at " + string.Join(" or ", attempts));
+                    return match.Groups[0].ToString();
+                }
+                if (!includeLibraryFiles && isLib) {
+                    return match.Groups[0].ToString();
+                }
                 return "\n" + with(fullPath) + "\n";
             });
         }
@@ -490,11 +509,13 @@ namespace VF.Builder.Haptics {
         }
         private static string ReadAndFlattenContent(string content, HashSet<string> included = null, bool includeLibraryFiles = false) {
             var output = new List<string>();
-            // if (includeLibraryFiles && content.Contains("CGPROGRAM")) {
-            //     content = "#include \"HLSLSupport.cginc\"\n"
-            //         + "#include \"UnityShaderVariables.cginc\"\n"
-            //         + content;
-            // }
+            if (includeLibraryFiles && content.Contains("CGPROGRAM")) {
+                content = "#include \"HLSLSupport.cginc\"\n" + content;
+                content = "#include \"UnityShaderVariables.cginc\"\n" + content;
+                if (content.Contains("#pragma surface ")) {
+                    content = "#include \"Lighting.cginc\"\n" + content;
+                }
+            }
             content = WithEachInclude(content, null, includePath => {
                 return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
             }, includeLibraryFiles);
@@ -528,13 +549,22 @@ namespace VF.Builder.Haptics {
             return ReadFile(path);
         }
         private static string ReadFile(string path) {
-            StreamReader sr = new StreamReader(path);
             string content;
-            try {
-                content = sr.ReadToEnd();
-            } finally {
-                sr.Close();
+            if (path.EndsWith("lilcontainer")) {
+                var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
+                var unpackMethod = lilShaderContainer.GetMethods().First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
+                content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
+                var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                content = content.Replace("\"Includes", "\"" + shaderLibsPath);
+            } else {
+                StreamReader sr = new StreamReader(path);
+                try {
+                    content = sr.ReadToEnd();
+                } finally {
+                    sr.Close();
+                }
             }
+
             content = WithEachInclude(content, path, includePath => {
                 return $"#include \"{includePath}\"";
             });

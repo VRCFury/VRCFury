@@ -21,7 +21,7 @@ namespace VF.Feature {
                 return;
             }
 
-            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            var avatar = manager.Avatar;
             if (!avatar.enableEyeLook) return;
             var eyeLeft = avatar.customEyeLookSettings.leftEye;
             var eyeRight = avatar.customEyeLookSettings.rightEye;
@@ -65,8 +65,12 @@ namespace VF.Feature {
             );
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
+        }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
         }
     }
 }

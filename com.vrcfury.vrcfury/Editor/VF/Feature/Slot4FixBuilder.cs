@@ -27,8 +27,12 @@ namespace VF.Feature {
             return content;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
+        }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
         }
         
         [FeatureBuilderAction(FeatureOrder.Slot4Fix)]
@@ -72,7 +76,7 @@ namespace VF.Feature {
                 foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                     if (mesh != oldMesh) continue;
                     
-                    var newMesh = mutableManager.MakeMutable(oldMesh, renderer.gameObject);
+                    var newMesh = MutableManager.MakeMutable(oldMesh);
                     var submesh = newMesh.GetSubMesh(4);
                     newMesh.SetSubMesh(4, new SubMeshDescriptor());
                     newMesh.subMeshCount++;

@@ -75,16 +75,21 @@ namespace VF.Feature {
                 }
 
                 var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
-                    .Any(clip => !ClipBuilderService.IsStaticMotion(clip));
+                    .Any(clip => !clip.IsStatic());
 
                 var usedBindings = bindingsByLayer[layer];
+                if (usedBindings.Any(b => b.propertyName.ToLower().Contains("localeulerangles"))) {
+                    AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
+                    continue;
+                }
+                
                 var otherLayersAnimateTheSameThing = bindingsByLayer
                     .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
                     .Select(pair => pair.Key)
                     .ToArray();
                 if (otherLayersAnimateTheSameThing.Length > 0) {
                     var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => l.name));
-                    AddDebug($"Not optimizing (shares animations with other layer: {names}");
+                    AddDebug($"Not optimizing (shares animations with other layer: {names})");
                     continue;
                 }
 
@@ -110,10 +115,8 @@ namespace VF.Feature {
 
                         offClip = dualState.Item1;
                         offClip.name = state.motion.name + " (OFF)";
-                        AssetDatabase.AddObjectToAsset(offClip, state.motion);
                         onClip = dualState.Item2;
                         onClip.name = state.motion.name + " (ON)";
-                        AssetDatabase.AddObjectToAsset(onClip, state.motion);
                         param = state.timeParameter;
                     } else {
                         offClip = null;
@@ -190,7 +193,6 @@ namespace VF.Feature {
                             else if (Mathf.Approximately(s.speed, 0)) single = dualState.Item1;
                             else return null;
                             single.name = $"{clip.name} (speed={s.speed} end state)";
-                            AssetDatabase.AddObjectToAsset(single, clip);
                             return single;
                         }
 
@@ -217,6 +219,16 @@ namespace VF.Feature {
                     AddDebug($"Not optimizing (parameter used in some other layer)");
                     continue;
                 }
+                
+                var paramType = fx.GetRaw().parameters
+                    .Where(p => p.name == param)
+                    .Select(p => p.type)
+                    .DefaultIfEmpty(AnimatorControllerParameterType.Float)
+                    .First();
+                if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
+                    AddDebug($"Not optimizing (using an int VRC built-in, which means >1 is likely)");
+                    continue;
+                }
 
                 eligibleLayers.Add(new EligibleLayer {
                     offState = offClip,
@@ -234,8 +246,8 @@ namespace VF.Feature {
                 var tree = fx.NewBlendTree("Optimized Toggles");
                 tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
-                    var offEmpty = ClipBuilderService.IsEmptyMotion(toggle.offState, avatarObject);
-                    var onEmpty = ClipBuilderService.IsEmptyMotion(toggle.onState, avatarObject);
+                    var offEmpty = !toggle.offState.HasValidBinding(avatarObject);
+                    var onEmpty = !toggle.onState.HasValidBinding(avatarObject);
                     if (offEmpty && onEmpty) continue;
                     string param;
                     Motion motion;
@@ -325,8 +337,12 @@ namespace VF.Feature {
             return content;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
+        }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
         }
     }
 }

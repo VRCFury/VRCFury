@@ -2,15 +2,15 @@ using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using UnityEditor.Experimental.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
+using VF.Model;
 
 namespace VF.Inspector {
-    public class VRCFuryComponentEditor<T> : Editor where T : VRCFuryComponent {
+    public class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
 
         /*
         public override bool UseDefaultMargins() {
@@ -191,30 +191,39 @@ namespace VF.Inspector {
                 // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
                 // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
                 // will just be thrown out randomly, and unity will dump a bunch of errors.
-                var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(v);
-                container.Add(CreatePrefabInstanceLabel(baseFury));
+                container.Add(CreatePrefabInstanceLabel(v));
             }
 
             VisualElement body;
             if (isInstance) {
                 var copy = CopyComponent(v);
-                copy.Upgrade();
+                try {
+                    VRCFury.RunningFakeUpgrade = true;
+                    copy.Upgrade();
+                } finally {
+                    VRCFury.RunningFakeUpgrade = false;
+                }
                 copy.gameObjectOverride = v.gameObject;
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy);
                 body.SetEnabled(false);
-                // We have to delay this by a frame, because unity automatically calls Bind on this visualelement
-                // right after we return from this function
-                EditorApplication.delayCall += () => {
-                    body.Bind(copySo);
-                };
+                // We have to delay adding the editor to the inspector, because otherwise unity will call Bind()
+                // on this visual element immediately after we return from this method, binding it back
+                // to the original (non-temporary-upgraded) object
+                var added = false;
+                container.RegisterCallback<AttachToPanelEvent>(e => {
+                    if (!added) {
+                        added = true;
+                        container.Add(body);
+                        body.Bind(copySo);
+                    }
+                });
             } else {
                 v.Upgrade();
                 serializedObject.Update();
                 body = CreateEditor(serializedObject, v);
+                container.Add(body);
             }
-            
-            container.Add(body);
 
             /*
             el.RegisterCallback<AttachToPanelEvent>(e => {
@@ -276,15 +285,11 @@ namespace VF.Inspector {
             return overrideLabel;
         }
 
-        private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component parent) {
+        private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component component) {
             void Open() {
-                var open = typeof(PrefabStageUtility).GetMethod("OpenPrefab",
-                    BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
-                    null,
-                    new[] { typeof(string), typeof(GameObject) },
-                    null
-                );
-                open.Invoke(null, new object[] { AssetDatabase.GetAssetPath(parent), parent.gameObject });
+                var componentInBasePrefab = PrefabUtility.GetCorrespondingObjectFromOriginalSource(component);
+                var prefabPath = AssetDatabase.GetAssetPath(componentInBasePrefab);
+                UnityCompatUtils.OpenPrefab(prefabPath, component.gameObject);
             }
             var label = new Button(Open) {
                 text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",

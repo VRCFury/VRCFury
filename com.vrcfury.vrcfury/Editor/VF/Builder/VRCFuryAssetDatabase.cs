@@ -63,6 +63,9 @@ namespace VF.Builder {
             }
 
             var fullPath = GetUniquePath(dir, filename, ext);
+            // If object was already part of another asset, or was recently deleted, we MUST
+            // call this first, or unity will throw an exception
+            AssetDatabase.RemoveObjectFromAsset(obj);
             AssetDatabase.CreateAsset(obj, fullPath);
         }
 

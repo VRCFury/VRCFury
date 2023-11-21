@@ -10,19 +10,19 @@ namespace VF.Builder {
         public static BakedMesh BakeMesh(Renderer renderer, Transform origin = null, bool applyScale = false) {
             Mesh mesh;
             if (renderer is SkinnedMeshRenderer skin) {
+                var temporaryMesh = new Mesh();
+                skin.BakeMesh(temporaryMesh);
+
                 // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
-                // So we have to skip calling BakeMesh, because otherwise we'd apply the inverse scale inappropriately and it would be too small.
+                // So we have to skip rescaling, otherwise we'd apply the inverse scale inappropriately and it would be too small.
                 var actuallySkinned = skin.sharedMesh && skin.sharedMesh.boneWeights.Length > 0;
                 if (actuallySkinned) {
-                    var temporaryMesh = new Mesh();
-                    skin.BakeMesh(temporaryMesh);
                     var scale = skin.transform.lossyScale;
                     var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
                     ApplyScale(temporaryMesh, inverseScale);
-                    mesh = temporaryMesh;
-                } else {
-                    mesh = skin.sharedMesh;
                 }
+
+                mesh = temporaryMesh;
             } else {
                 var meshFilter = renderer.GetComponent<MeshFilter>();
                 mesh = meshFilter ? meshFilter.sharedMesh : null;

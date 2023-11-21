@@ -1,3 +1,4 @@
+using Editor.VF.Utils;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine.UIElements;
@@ -21,25 +22,22 @@ namespace VF.Feature {
         
         private void AdjustTransition(ControllerManager controller, AnimatorTransitionBase transition) {
             var tru = controller.NewBool("True", def: true);
-            var conds = transition.conditions;
-            for (var i = 0; i < conds.Length; i++) {
-                var c = conds[i];
+            transition.RewriteConditions(c => {
                 if (c.parameter != "GestureLeft" && c.parameter != "GestureRight" &&
                     c.parameter != "GestureLeftWeight" && c.parameter != "GestureRightWeight") {
-                    continue;
+                    return c;
                 }
+
                 var forceTrue = false;
                 if (c.mode == AnimatorConditionMode.Less) forceTrue = c.threshold > 0;
                 if (c.mode == AnimatorConditionMode.Greater) forceTrue = c.threshold < 0;
                 if (c.mode == AnimatorConditionMode.Equals) forceTrue = c.threshold == 0;
                 if (c.mode == AnimatorConditionMode.NotEqual) forceTrue = c.threshold != 0;
-                conds[i] = new AnimatorCondition {
+                return new AnimatorCondition {
                     parameter = tru.Name(),
                     mode = forceTrue ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot
                 };
-            }
-            transition.conditions = conds;
-            VRCFuryEditorUtils.MarkDirty(transition);
+            });
         }
 
         public override string GetEditorTitle() {
@@ -53,8 +51,12 @@ namespace VF.Feature {
                 " with the stock controllers.");
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
+        }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
         }
     }
 }

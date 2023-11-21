@@ -33,14 +33,14 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
             var missingAssets = new List<GuidWrapper>();
-            
+
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
                 if (!prms) {
                     missingAssets.Add(p.parameters);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(prms);
+                var copy = MutableManager.CopyRecursive(prms);
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -53,26 +53,14 @@ namespace VF.Feature {
 
             var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, VFController)>();
             foreach (var c in model.controllers) {
-                var type = c.type;
                 var source = c.controller.Get();
                 if (source == null) {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(source, saveFilename: "tmp");
-                while (copy is AnimatorOverrideController ov) {
-                    if (ov.runtimeAnimatorController is AnimatorController ac2) {
-                        AnimatorIterator.ReplaceClips(ac2, clip => ov[clip]);
-                    }
-                    RuntimeAnimatorController newCopy = null;
-                    if (ov.runtimeAnimatorController != null) {
-                        newCopy = mutableManager.CopyRecursive(ov.runtimeAnimatorController, saveFilename: "tmp", addPrefix: false);
-                    }
-                    AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(copy));
-                    copy = newCopy;
-                }
-                if (copy is AnimatorController ac) {
-                    toMerge.Add((type, ac));
+                var copy = VFController.CopyAndLoadController(source, c.type);
+                if (copy) {
+                    toMerge.Add((c.type, copy));
                 }
             }
 
@@ -90,7 +78,10 @@ namespace VF.Feature {
                     missingAssets.Add(m.menu);
                     continue;
                 }
-                var copy = mutableManager.CopyRecursive(menu);
+
+                CheckMenuParams(menu);
+
+                var copy = MutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
                 manager.GetMenu().MergeMenu(prefix, copy);
@@ -126,6 +117,29 @@ namespace VF.Feature {
             }
         }
 
+        private void CheckMenuParams(VRCExpressionsMenu menu) {
+            var failedParams = new List<string>();
+            void CheckParam(string param, IList<string> path) {
+                if (string.IsNullOrEmpty(param)) return;
+                if (manager.GetParams().GetParam(RewriteParamName(param)) != null) return;
+                failedParams.Add($"{param} (used by {string.Join("/", path)})");
+            }
+            menu.ForEachMenu(ForEachItem: (item, path) => {
+                CheckParam(item.parameter?.name, path);
+                if (item.subParameters != null) {
+                    foreach (var p in item.subParameters) {
+                        CheckParam(p?.name, path);
+                    }
+                }
+                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+            });
+            if (failedParams.Count > 0) {
+                throw new Exception(
+                    "The merged menu uses parameters that aren't in the merged parameters file:\n\n" +
+                    string.Join("\n", failedParams));
+            }
+        }
+
         [FeatureBuilderAction(FeatureOrder.FullControllerToggle)]
         public void ApplyOldToggle() {
             if (string.IsNullOrWhiteSpace(model.toggleParam)) {
@@ -139,19 +153,11 @@ namespace VF.Feature {
                 .Where(param => param.valueType == VRCExpressionParameters.ValueType.Int)
                 .Any(param => param.name == model.toggleParam);
 
-            addOtherFeature(new ObjectState {
-                states = {
-                    new ObjectState.ObjState {
-                        action = ObjectState.Action.DEACTIVATE,
-                        obj = GetBaseObject()
-                    }
-                }
-            });
             var toggleParam = RewriteParamName(model.toggleParam);
             addOtherFeature(new Toggle {
                 name = toggleParam,
                 state = new State {
-                    actions = { new ObjectToggleAction { obj = GetBaseObject() } }
+                    actions = { new ObjectToggleAction { obj = GetBaseObject(), mode = ObjectToggleAction.Mode.TurnOn} }
                 },
                 securityEnabled = model.useSecurityForToggle,
                 addMenuItem = false,
@@ -230,10 +236,7 @@ namespace VF.Feature {
             // Check for gogoloco
             foreach (var p in from.parameters) {
                 if (p.name == "Go/Locomotion") {
-                    var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-                    if (avatar) {
-                        avatar.autoLocomotion = false;
-                    }
+                    manager.Avatar.autoLocomotion = false;
                 }
             }
 
@@ -246,15 +249,7 @@ namespace VF.Feature {
                     rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
                 ),
                 ClipRewriter.AdjustRootScale(avatarObject),
-                ClipRewriter.AnimatorBindingsAlwaysTargetRoot(),
-                AnimationRewriter.RewriteBinding(binding => {
-                    if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                        if (binding.IsMuscle() || binding.IsProxyBinding()) {
-                            return null;
-                        }
-                    }
-                    return binding;
-                }, false)
+                ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
             ));
 
             // Parameter smoothing
@@ -267,31 +262,15 @@ namespace VF.Feature {
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             ((AnimatorController)from).RewriteParameters(RewriteParamName);
 
-            // Merge base mask
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture && from.layers.Length > 0) {
-                var mask = from.layers[0].avatarMask;
-                if (mask == null) {
+            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                var layer0 = from.GetLayer(0);
+                if (layer0 != null && layer0.mask == null) {
                     throw new VRCFBuilderException(
                         "A VRCFury full controller is configured to merge in a Gesture controller," +
                         " but the controller does not have a Base Mask set. Beware that Gesture controllers" +
                         " should typically be used for animating FINGERS ONLY. If your controller animates" +
                         " non-humanoid transforms, they should typically be merged into FX instead!");
                 }
-                toMain.UnionBaseMask(mask);
-            }
-
-            // Merge Params
-            foreach (var p in from.parameters) {
-                to.NewParam(p.name, p.type, n => {
-                    n.defaultBool = p.defaultBool;
-                    n.defaultFloat = p.defaultFloat;
-                    n.defaultInt = p.defaultInt;
-                });
-            }
-
-            var layer0 = from.GetLayer(0);
-            if (layer0 != null) {
-                layer0.weight = 1;
             }
 
             // Merge Layers
@@ -306,6 +285,74 @@ namespace VF.Feature {
         public override string GetEditorTitle() {
             return "Full Controller";
         }
+        
+        [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
+        public class ControllerEntryDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var wrapper = new VisualElement();
+                wrapper.style.flexDirection = FlexDirection.Row;
+                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller"));
+                a.style.flexBasis = 0;
+                a.style.flexGrow = 1;
+                wrapper.Add(a);
+                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type"));
+                b.style.flexBasis = 0;
+                b.style.flexGrow = 1;
+                wrapper.Add(b);
+                return wrapper;
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(FullController.MenuEntry))]
+        public class MenuEntryDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var wrapper = new VisualElement();
+                wrapper.style.flexDirection = FlexDirection.Row;
+                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu"));
+                a.style.flexBasis = 0;
+                a.style.flexGrow = 1;
+                wrapper.Add(a);
+                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix"));
+                b.style.flexBasis = 0;
+                b.style.flexGrow = 1;
+                wrapper.Add(b);
+                return wrapper;
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(FullController.ParamsEntry))]
+        public class ParamsEntryDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                return VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("parameters"));
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(FullController.BindingRewrite))]
+        public class BindingRewriteDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty rewrite) {
+
+                var row = new VisualElement();
+                row.Add(VRCFuryEditorUtils.WrappedLabel("If animated path has this prefix:"));
+                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => s.paddingLeft = 15));
+                row.Add(VRCFuryEditorUtils.WrappedLabel("Then:"));
+                var deleteProp = rewrite.FindPropertyRelative("delete");
+                var selector = new PopupField<string>(new List<string>{ "Rewrite the prefix to", "Delete it" }, deleteProp.boolValue ? 1 : 0);
+                selector.style.paddingLeft = 15;
+                row.Add(selector);
+                var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to"), style: s => s.paddingLeft = 15);
+                row.Add(to);
+
+                void Update() {
+                    deleteProp.boolValue = selector.index == 1;
+                    deleteProp.serializedObject.ApplyModifiedProperties();
+                    to.style.display = deleteProp.boolValue ? DisplayStyle.None : DisplayStyle.Flex;
+                }
+                selector.RegisterValueChangedCallback(str => Update());
+                Update();
+                
+                return row;
+            }
+        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
@@ -315,42 +362,16 @@ namespace VF.Feature {
                 " during the upload process."));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers"),
-                (i, el) => {
-                    var wrapper = new VisualElement();
-                    wrapper.style.flexDirection = FlexDirection.Row;
-                    var a = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("controller"));
-                    a.style.flexBasis = 0;
-                    a.style.flexGrow = 1;
-                    wrapper.Add(a);
-                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("type"));
-                    b.style.flexBasis = 0;
-                    b.style.flexGrow = 1;
-                    wrapper.Add(b);
-                    return wrapper;
-                }));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
 
             content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel("(If prefix is left empty, menu will be merged into avatar's root menu)"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus"),
-                (i, el) => {
-                    var wrapper = new VisualElement();
-                    wrapper.style.flexDirection = FlexDirection.Row;
-                    var a = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("menu"));
-                    a.style.flexBasis = 0;
-                    a.style.flexGrow = 1;
-                    wrapper.Add(a);
-                    var b = VRCFuryEditorUtils.Prop(el.FindPropertyRelative("prefix"));
-                    b.style.flexBasis = 0;
-                    b.style.flexGrow = 1;
-                    wrapper.Add(b);
-                    return wrapper;
-                }));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms"),
-                (i, el) => VRCFuryEditorUtils.Prop(el.FindPropertyRelative("parameters"))));
-            
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
+
+
             content.Add(VRCFuryEditorUtils.WrappedLabel("Smoothed Parameters:"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms"),
                 (i, el) =>
@@ -416,8 +437,7 @@ namespace VF.Feature {
 
                     return wrapper;
                 }));
-
-
+            
             content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameters in this list will have their name kept as is, allowing you to interact with " +
@@ -430,28 +450,7 @@ namespace VF.Feature {
                 "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
                 " in the controller were originally written to be based from a specific avatar root," +
                 " but you are now trying to use as a re-usable VRCFury prop."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings"), (i, rewrite) => {
-                var row = new VisualElement();
-                row.Add(VRCFuryEditorUtils.WrappedLabel("If animated path has this prefix:"));
-                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => s.paddingLeft = 15));
-                row.Add(VRCFuryEditorUtils.WrappedLabel("Then:"));
-                var deleteProp = rewrite.FindPropertyRelative("delete");
-                var selector = new PopupField<string>(new List<string>{ "Rewrite the prefix to", "Delete it" }, deleteProp.boolValue ? 1 : 0);
-                selector.style.paddingLeft = 15;
-                row.Add(selector);
-                var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to"), style: s => s.paddingLeft = 15);
-                row.Add(to);
-
-                void Update() {
-                    deleteProp.boolValue = selector.index == 1;
-                    deleteProp.serializedObject.ApplyModifiedProperties();
-                    to.style.display = deleteProp.boolValue ? DisplayStyle.None : DisplayStyle.Flex;
-                }
-                selector.RegisterValueChangedCallback(str => Update());
-                Update();
-                
-                return row;
-            }));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings")));
 
             var adv = new Foldout {
                 text = "Advanced Options",
@@ -476,10 +475,15 @@ namespace VF.Feature {
 
                 var missingPaths = new HashSet<string>();
                 var usesWdOff = false;
+                var usesAdditive = false;
                 foreach (var c in model.controllers) {
-                    var rc = c.controller.Get();
-                    var controller = rc as AnimatorController;
-                    if (controller == null) continue;
+                    var c1 = c.controller?.Get() as AnimatorController;
+                    if (c1 == null) continue;
+                    var controller = (VFController)c1;
+                    if (c.type == VRCAvatarDescriptor.AnimLayerType.Additive) usesAdditive = true;
+                    foreach (var layer in controller.GetLayers()) {
+                        if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) usesAdditive = true;
+                    }
                     foreach (var state in new AnimatorIterator.States().From(controller)) {
                         if (!state.writeDefaultValues) {
                             usesWdOff = true;
@@ -494,10 +498,17 @@ namespace VF.Feature {
 
                 if (usesWdOff) {
                     text.Add(
-                        "These controllers use WD off!" +
+                        "This controller uses WD off!" +
                         " If you want this prop to be reusable, you should use WD on." +
                         " VRCFury will automatically convert the WD on or off to match the client's avatar," +
                         " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
+                    text.Add("");
+                }
+                if (usesAdditive) {
+                    text.Add(
+                        "This controller contains an Additive layer! Beware that this will likely TOTALLY DESTROY the animations" +
+                        " of any avatar using WD off, even animations unrelated to your prop. Avoid using Additive layers at all costs!"
+                    );
                     text.Add("");
                 }
                 if (missingPaths.Count > 0) {
@@ -521,7 +532,7 @@ namespace VF.Feature {
             return content;
         }
         
-        private static HashSet<string> VRChatGlobalParams = new HashSet<string> {
+        public static HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
             "Voice",

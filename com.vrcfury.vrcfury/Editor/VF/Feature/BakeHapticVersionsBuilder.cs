@@ -5,12 +5,14 @@ using VF.Component;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Service;
 
 namespace VF.Builder.Haptics {
     /** Adds a parameter to the avatar so OGB can pick up what version of haptics are available */
     [VFService]
     public class BakeHapticVersionsBuilder : FeatureBuilder {
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
+        [VFAutowired] private readonly HapticContactsService hapticContacts;
         
         // Bump when plug senders or receivers are changed
         private const int LocalVersion = 9;
@@ -18,7 +20,7 @@ namespace VF.Builder.Haptics {
         // Bump when any senders are changed
         private const int BeaconVersion = 7;
 
-        [FeatureBuilderAction(FeatureOrder.BakeHapticVersions)]
+        [FeatureBuilderAction]
         public void Apply() {
             if (!avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
                 && !avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any()) {
@@ -37,22 +39,21 @@ namespace VF.Builder.Haptics {
                          ?? avatarObject;
             var beaconRoot = GameObjects.Create("vfh_versionbeacon", parent);
             var versionBeaconTag = "VFH_VERSION_" + BeaconVersion;
-            HapticUtils.AddSender(beaconRoot, Vector3.zero, "VersionBeacon", 0.01f, versionBeaconTag);
+            HapticUtils.AddSender(beaconRoot, Vector3.zero, "VersionBeacon", 0.01f, new [] { versionBeaconTag });
 
             var receiveTags = new List<string>() { versionBeaconTag };
             if (BeaconVersion == 7) receiveTags.Add("OGB_VERSION_6");
-            var beaconReceiver = HapticUtils.AddReceiver(
+            hapticContacts.AddReceiver(
                 beaconRoot,
                 Vector3.zero,
                 "VFH/Beacon",
                 "BeaconReceiver",
                 3f, // this is the max radius that vrc will allow
                 receiveTags.ToArray(),
-                allowSelf: false,
+                party: HapticUtils.ReceiverParty.Others,
+                usePrefix: false,
                 localOnly: true
             );
-            beaconReceiver.SetActive(false);
-            _forceStateInAnimatorService.ForceEnableLocal(beaconReceiver.transform);
         }
     }
 }

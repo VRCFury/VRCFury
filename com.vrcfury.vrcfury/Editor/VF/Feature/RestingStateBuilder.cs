@@ -65,6 +65,11 @@ namespace VF.Feature {
         public void ApplyPendingClips3() {
             ApplyPendingClips();
         }
+        [FeatureBuilderAction(FeatureOrder.ApplyRestState4)]
+        public void ApplyPendingClips4() {
+            ApplyPendingClips();
+        }
+
 
         public IEnumerable<AnimationClip> GetPendingClips() {
             return pendingClips.Select(pending => pending.clip);
@@ -107,7 +112,7 @@ namespace VF.Feature {
             if (!renderer) return;
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                 if (!mat.HasProperty(propName)) return mat;
-                mat = mutableManager.MakeMutable(mat, renderer.owner());
+                mat = MutableManager.MakeMutable(mat);
                 mat.SetFloat(propName, val.GetFloat());
                 return mat;
             }).ToArray();

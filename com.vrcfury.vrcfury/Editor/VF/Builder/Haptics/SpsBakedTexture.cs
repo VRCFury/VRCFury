@@ -29,6 +29,7 @@ namespace VF.Builder.Haptics {
             var width = tpsCompatibility ? 8190 : 8192;
             var height = (int)(bakeArray.LongCount() / width) + 1;
             var tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
+            tex.name = "SPS Data";
             var texArray = tex.GetPixels32();
             for (var i = 0; i < bakeArray.Count; i++) {
                 texArray[i] = bakeArray[i];

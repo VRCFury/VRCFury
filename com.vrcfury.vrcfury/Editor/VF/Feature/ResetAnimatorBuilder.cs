@@ -42,7 +42,10 @@ namespace VF.Feature {
             applyRootMotion = animator.applyRootMotion;
             updateMode = animator.updateMode;
             cullingMode = animator.cullingMode;
-            animator.WriteDefaultValues();
+            // In unity 2022, calling this when the animator hasn't called Update recently (meaning outside of play mode,
+            // just entered play mode, object not enabled, etc) can make it write defaults that are NOT the proper resting state.
+            // However, we probably don't even need this anymore since we initialize before the Animator would ever run now.
+            // animator.WriteDefaultValues();
             VRCFArmatureUtils.ClearCache();
             VRCFArmatureUtils.WarmupCache(avatarObject);
             Object.DestroyImmediate(animator);
@@ -55,8 +58,10 @@ namespace VF.Feature {
             animator.applyRootMotion = applyRootMotion;
             animator.updateMode = updateMode;
             animator.cullingMode = cullingMode;
-            animator.runtimeAnimatorController = controller;
             animator.avatar = avatar;
+            if (controller != null) {
+                animator.runtimeAnimatorController = GetFx().GetRaw();
+            }
         }
     }
 }

@@ -23,6 +23,8 @@ namespace VF.Inspector {
         public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
+            container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject, true));
+            
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
             
             var addLightProp = serializedObject.FindProperty("addLight");
@@ -57,6 +59,7 @@ namespace VF.Inspector {
                 if (!addMenuItemProp.boolValue) return new VisualElement();
                 var toggles = VRCFuryEditorUtils.Section("Menu Toggle", "A menu item will be created for this socket");
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?", tooltip: "If checked, this socket will be eligible to be chosen during 'Auto Mode', which is an option in your menu which will automatically enable the socket nearest to a plug."));
+                toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
                 return toggles;
             }, addMenuItemProp));
 
@@ -74,23 +77,15 @@ namespace VF.Inspector {
                     "If you provide a non-static (moving) animation clip, the clip will run from start " +
                     "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
                 
-                da.Add(VRCFuryEditorUtils.Info(
+                var unscaledUnitsProp = serializedObject.FindProperty("unitsInMeters");
+                da.Add(VRCFuryEditorUtils.RefreshOnChange(() => VRCFuryEditorUtils.Info(
                     "Distance = 0 : Tip of plug is touching socket\n" +
                     "Distance > 0 : Tip of plug is outside socket\n" +
                     "Distance < 0 = Tip of plug is inside socket\n" +
-                    "1 Unit is 1 Meter (~3 feet)"
-                ));
+                    (unscaledUnitsProp.boolValue ? "1 Unit is 1 Meter (~3.28 feet)" : $"1 Unit is {target.transform.lossyScale.z} Meter(s) (~{Math.Round(target.transform.lossyScale.z * 3.28, 2)} feet)")
+                ), unscaledUnitsProp));
 
-                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions"), (i, prop) => {
-                    var c = new VisualElement();
-
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                    c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                    return c;
-                }));
+                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions")));
                 return da;
             }, enableDepthAnimationsProp));
             
@@ -126,15 +121,38 @@ namespace VF.Inspector {
                 value = false,
             };
             container.Add(adv);
+            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
-            //adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("channel"), "Channel"));
 
             return container;
         }
+        
+        [CustomPropertyDrawer(typeof(VRCFuryHapticSocket.DepthAction))]
+        public class DepthActionDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var c = new VisualElement();
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
+                return c;
+            }
+        }
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
-        public class VRCFuryHapticPlaySocketEditor : Editor {
+        [InitializeOnLoad]
+        public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
+            static VRCFuryHapticPlaySocketEditor() {
+                VRCFurySocketGizmo.EnableSceneLighting = () => {
+                    SceneView sv = EditorWindow.GetWindow<SceneView>();
+                    if (sv != null) {
+                        sv.sceneLighting = true;
+                        sv.drawGizmos = true;
+                    }
+                };
+            }
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
                 if (!gizmo.show) return;
@@ -231,20 +249,12 @@ namespace VF.Inspector {
             DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
-        public static Tuple<string,VFGameObject> Bake(VRCFuryHapticSocket socket, List<string> usedNames = null, bool onlySenders = false) {
+        public static VFGameObject Bake(VRCFuryHapticSocket socket) {
             var transform = socket.transform;
             HapticUtils.RemoveTPSSenders(transform);
-            
             HapticUtils.AssertValidScale(transform, "socket");
 
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
-            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
-            var capsuleRotation = Quaternion.Euler(90,0,0);
-
-            var name = GetName(socket);
-            if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
-
-            Debug.Log("Baking haptic component in " + transform + " as " + name);
 
             var bakeRoot = GameObjects.Create("BakedHapticSocket", transform);
             bakeRoot.localPosition = localPosition;
@@ -253,49 +263,16 @@ namespace VF.Inspector {
             var senders = GameObjects.Create("Senders", bakeRoot);
 
             // Senders
-            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, HapticUtils.CONTACT_ORF_MAIN);
-            HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f, HapticUtils.CONTACT_ORF_NORM);
-            if (lightType != VRCFuryHapticSocket.AddLight.None) {
-                HapticUtils.AddSender(
-                    senders,
-                    Vector3.zero,
-                    "Type",
-                    0.001f,
-                    lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.CONTACT_ORF_IsRing : HapticUtils.CONTACT_ORF_IsHole
-                );
-            }
-            
-            var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
-
-            if (onlySenders) {
-                var info = GameObjects.Create("Info", bakeRoot);
-                if (!string.IsNullOrWhiteSpace(socket.name)) {
-                    var nameObj = GameObjects.Create("name=" + socket.name, info);
+            {
+                var rootTags = new List<string>();
+                rootTags.Add(HapticUtils.TagTpsOrfRoot);
+                rootTags.Add(HapticUtils.TagSpsSocketRoot);
+                if (lightType != VRCFuryHapticSocket.AddLight.None) {
+                    rootTags.Add(lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole);
                 }
-            } else {
-                // Receivers
-                var handTouchZoneSize = GetHandTouchZoneSize(socket);
-                var receivers = GameObjects.Create("Receivers", bakeRoot);
-                if (handTouchZoneSize != null) {
-                    var oscDepth = handTouchZoneSize.Item1;
-                    var closeRadius = handTouchZoneSize.Item2;
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, HapticUtils.SelfContacts, allowOthers:false, localOnly:true);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, HapticUtils.SelfContacts, allowOthers:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, HapticUtils.BodyContacts, allowSelf:false, localOnly:true);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, HapticUtils.BodyContacts, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    // Legacy non-upgraded TPS detection
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant);
-                    
-                    var frotRadius = 0.1f;
-                    var frotPos = 0.05f;
-                    HapticUtils.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.CONTACT_ORF_MAIN}, allowSelf:false, localOnly:true);
-                }
-                
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, allowOthers:false, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowOthers:false, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, allowSelf:false, localOnly:true);
-                HapticUtils.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, allowSelf:false, localOnly:true);
+                HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray());
+                HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
+                    new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront });
             }
 
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
@@ -310,7 +287,7 @@ namespace VF.Inspector {
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
-                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.42f : 0.41f;
+                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.4202f : 0.4102f;
                     mainLight.shadows = LightShadows.None;
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -319,7 +296,7 @@ namespace VF.Inspector {
                     var frontLight = front.AddComponent<Light>();
                     frontLight.type = LightType.Point;
                     frontLight.color = Color.black;
-                    frontLight.range = 0.45f;
+                    frontLight.range = 0.4502f;
                     frontLight.shadows = LightShadows.None;
                     frontLight.renderMode = LightRenderMode.ForceVertex;
                 }
@@ -339,10 +316,10 @@ namespace VF.Inspector {
                 }
             }
 
-            return Tuple.Create(name, bakeRoot);
+            return bakeRoot;
         }
 
-        private static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
+        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
             bool enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
@@ -352,7 +329,7 @@ namespace VF.Inspector {
             if (!enableHandTouchZone) {
                 return null;
             }
-            var length = socket.length;
+            var length = socket.length * (socket.unitsInMeters ? 1f : socket.transform.lossyScale.z); ;
             if (length <= 0) length = 0.25f;
             var radius = length / 2.5f;
             return Tuple.Create(length, radius);
@@ -439,18 +416,8 @@ namespace VF.Inspector {
             return Tuple.Create(isRing ? VRCFuryHapticSocket.AddLight.Ring : VRCFuryHapticSocket.AddLight.Hole, position, rotation);
         }
 
-        private static bool IsDirectChildOfHips(VRCFuryHapticSocket socket) {
-            return IsChildOfBone(socket, HumanBodyBones.Hips)
-                && !IsChildOfBone(socket, HumanBodyBones.Chest)
-                && !IsChildOfBone(socket, HumanBodyBones.Spine)
-                && !IsChildOfBone(socket, HumanBodyBones.LeftUpperArm)
-                && !IsChildOfBone(socket, HumanBodyBones.LeftUpperLeg)
-                && !IsChildOfBone(socket, HumanBodyBones.RightUpperArm)
-                && !IsChildOfBone(socket, HumanBodyBones.RightUpperLeg);
-        }
-
         public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
-            if (IsDirectChildOfHips(socket)) {
+            if (HapticUtils.IsDirectChildOfHips(socket.owner())) {
                 var name = GetName(socket).ToLower();
                 if (name.Contains("rubbing") || name.Contains("job")) {
                     return false;
@@ -459,53 +426,16 @@ namespace VF.Inspector {
             }
             return false;
         }
-        
-        public static bool IsChildOfHead(VRCFuryHapticSocket socket) {
-            return IsChildOfBone(socket, HumanBodyBones.Head, false);
-        }
-        
+
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
-            if (IsChildOfBone(socket, HumanBodyBones.Head)) return true;
+            if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.Head)) return true;
             return ShouldProbablyHaveTouchZone(socket);
         }
 
-        private static bool IsChildOfBone(VRCFuryHapticSocket socket, HumanBodyBones bone, bool followConstraints = true) {
-            try {
-                VFGameObject obj = socket.owner();
-                VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
-                if (!avatarObject) return false;
-                var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
-                return boneObj && IsChildOf(boneObj.transform, socket.transform, followConstraints);
-            } catch (Exception) {
-                return false;
-            }
-        }
-
-        private static string GetName(VRCFuryHapticSocket socket) {
+        public static string GetName(VRCFuryHapticSocket socket) {
             var name = socket.name;
             if (!string.IsNullOrWhiteSpace(name)) return name;
             return HapticUtils.GetName(socket.owner());
-        }
-
-        private static bool IsChildOf(Transform parent, Transform child, bool followConstraints) {
-            var alreadyChecked = new HashSet<Transform>();
-            var current = child;
-            while (current != null) {
-                alreadyChecked.Add(current);
-                if (current == parent) return true;
-                if (followConstraints) {
-                    var constraint = current.GetComponent<IConstraint>();
-                    if (constraint != null && constraint.sourceCount > 0) {
-                        var source = constraint.GetSource(0).sourceTransform;
-                        if (source != null && !alreadyChecked.Contains(source)) {
-                            current = source;
-                            continue;
-                        }
-                    }
-                }
-                current = current.parent;
-            }
-            return false;
         }
     }
 }

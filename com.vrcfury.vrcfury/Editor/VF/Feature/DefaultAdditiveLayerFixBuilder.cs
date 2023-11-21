@@ -14,7 +14,7 @@ namespace VF.Feature {
     public class DefaultAdditiveLayerFixBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.RemoveDefaultedAdditiveLayer)]
         public void Apply() {
-            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            var avatar = manager.Avatar;
             foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
                 if (c.type == VRCAvatarDescriptor.AnimLayerType.Additive && c.isDefault) {
                     c.set(null);

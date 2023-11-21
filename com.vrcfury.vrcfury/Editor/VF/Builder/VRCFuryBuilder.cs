@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -132,20 +133,16 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(DefaultAdditiveLayerFixBuilder));
         AddBuilder(typeof(FixWriteDefaultsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
-        AddBuilder(typeof(ControllerConflictBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
         AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
         AddBuilder(typeof(ResetAnimatorBuilder));
-        AddBuilder(typeof(ParameterSmoothingBuilder));
         AddBuilder(typeof(FixBadVrcParameterNamesBuilder));
         AddBuilder(typeof(FinalizeMenuBuilder));
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(FixMaterialSwapWithMaskBuilder));
         AddBuilder(typeof(RestingStateBuilder));
-        AddBuilder(typeof(PullMusclesOutOfFxBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
         AddBuilder(typeof(FixEmptyMotionBuilder));
 
@@ -156,7 +153,16 @@ public class VRCFuryBuilder {
         void AddModel(FeatureModel model, VFGameObject configObject) {
             collectedModels.Add(model);
 
-            var builder = FeatureFinder.GetBuilder(model, configObject, injector);
+            FeatureBuilder builder;
+            try {
+                builder = FeatureFinder.GetBuilder(model, configObject, injector, avatarObject);
+            } catch (Exception e) {
+                throw new ExceptionWithCause(
+                    $"Failed to load VRCFury component on object {configObject.GetPath(avatarObject)}",
+                    e
+                );
+            }
+
             if (builder == null) return;
             AddActionsFromObject(builder, configObject);
         }
@@ -210,6 +216,14 @@ public class VRCFuryBuilder {
                     debugLogString += $"\n{feature.GetType()}";
                 }
                 Debug.Log(debugLogString);
+            }
+        }
+
+        foreach (var type in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()) {
+            var buildersOfType = collectedBuilders.Where(builder => builder.GetType() == type).ToArray();
+            if (buildersOfType[0].OnlyOneAllowed() && buildersOfType.Length > 1) {
+                throw new Exception(
+                    $"This avatar contains multiple VRCFury '{buildersOfType[0].GetEditorTitle()}' components, but only one is allowed.");
             }
         }
 

@@ -20,7 +20,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
     
     [FeatureBuilderAction]
     public void Apply() {
-        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+        var avatar = manager.Avatar;
         if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.Default) {
             avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
         }

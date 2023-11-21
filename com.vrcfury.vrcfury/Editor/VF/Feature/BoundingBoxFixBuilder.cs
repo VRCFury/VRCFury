@@ -55,10 +55,7 @@ namespace VF.Feature {
             }
         }
 
-        public static void AdjustBoundingBox(SkinnedMeshRenderer skin) {
-            var avatarObject = skin.owner().GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.gameObject;
-            if (avatarObject == null) return;
-
+        private void AdjustBoundingBox(SkinnedMeshRenderer skin) {
             var startBounds = CalculateFullBounds(avatarObject);
 
             //var debug = skin.gameObject.name == "Body";
@@ -139,8 +136,12 @@ namespace VF.Feature {
             return bounds;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
+        }
+        
+        public override bool OnlyOneAllowed() {
+            return true;
         }
         
         public override string GetEditorTitle() {

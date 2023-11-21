@@ -15,7 +15,7 @@ namespace VF.Inspector {
             var output = new VisualElement();
 
             var objField = new ObjectField();
-            var type = fieldInfo.FieldType.GetField("objOverride").FieldType;
+            var type = fieldInfo.FieldType.GetField("typeDetector").FieldType;
             objField.objectType = type;
             objField.SetValueWithoutNotify(VrcfObjectId.IdToObject<Object>(id.stringValue));
             output.Add(objField);

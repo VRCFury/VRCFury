@@ -20,7 +20,7 @@ namespace VF.Builder {
             Texture2D nextIcon = null;
             if (menuSettings != null) {
                 if (!string.IsNullOrEmpty(menuSettings.nextText)) nextText = menuSettings.nextText;
-                if (menuSettings.nextIcon != null) nextIcon = menuSettings.nextIcon.Get();
+                nextIcon = menuSettings.nextIcon?.Get();
             }
             var maxControlsPerPage = GetMaxControlsPerPage();
             root.ForEachMenu((menu, path) => {
@@ -29,7 +29,6 @@ namespace VF.Builder {
                 while (page.controls.Count > maxControlsPerPage) {
                     var nextPage = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                     nextPage.name = $"{menu.name} (Page {pageNum++})";
-                    AssetDatabase.AddObjectToAsset(nextPage, root);
                     while (page.controls.Count > maxControlsPerPage - 1) {
                         nextPage.controls.Insert(0, page.controls[page.controls.Count - 1]);
                         page.controls.RemoveAt(page.controls.Count - 1);
