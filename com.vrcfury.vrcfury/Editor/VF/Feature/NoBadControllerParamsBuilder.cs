@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Linq;
+using Editor.VF.Utils;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -21,13 +22,20 @@ namespace VF.Feature {
                 var paramTypes = c.GetRaw().parameters
                     .ToImmutableDictionary(p => p.name, p => p.type);
                 foreach (var transition in new AnimatorIterator.Transitions().From(c.GetRaw())) {
-                    transition.conditions = transition.conditions.Select(condition => {
+                    transition.RewriteConditions(condition => {
                         var mode = condition.mode;
                         var valid = true;
                         if (paramTypes.TryGetValue(condition.parameter, out var type)) {
                             if (type == AnimatorControllerParameterType.Bool ||
                                 type == AnimatorControllerParameterType.Trigger) {
                                 valid = mode == AnimatorConditionMode.If || mode == AnimatorConditionMode.IfNot;
+
+                                // When you use a bool with an incorrect mode, the editor just always says "True",
+                                // so let's just actually make it do that instead of converting it to InvalidParamType
+                                if (!valid) {
+                                    condition.mode = AnimatorConditionMode.If;
+                                    valid = true;
+                                }
                             }
 
                             if (type == AnimatorControllerParameterType.Int) {
@@ -50,7 +58,7 @@ namespace VF.Feature {
                         }
 
                         return condition;
-                    }).ToArray();
+                    });
                 }
             }
         }

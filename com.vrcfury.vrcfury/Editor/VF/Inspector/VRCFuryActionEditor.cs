@@ -19,13 +19,57 @@ public class VRCFuryActionDrawer : PropertyDrawer {
     }
 
     private static VisualElement Render(SerializedProperty prop) {
+        var col = new VisualElement();
+        
+        var el = RenderInner(prop);
+        col.Add(el);
+        
+        var desktopActive = prop.FindPropertyRelative("desktopActive");
+        var androidActive = prop.FindPropertyRelative("androidActive");
+        col.AddManipulator(new ContextualMenuManipulator(e => {
+            if (e.menu.MenuItems().Count > 0) {
+                e.menu.AppendSeparator();
+            }
+            e.menu.AppendAction("Desktop Only", a => {
+                desktopActive.boolValue = !desktopActive.boolValue;
+                androidActive.boolValue = false;
+                prop.serializedObject.ApplyModifiedProperties();
+            }, desktopActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
+            e.menu.AppendAction("Android Only", a => {
+                androidActive.boolValue = !androidActive.boolValue;
+                desktopActive.boolValue = false;
+                prop.serializedObject.ApplyModifiedProperties();
+            }, androidActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
+        }));
+        
+        col.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var row = new VisualElement();
+            row.style.flexWrap = Wrap.Wrap;
+            row.style.flexDirection = FlexDirection.Row;
 
+            void AddFlag(string tag) {
+                var flag = new Label(tag);
+                flag.style.width = StyleKeyword.Auto;
+                flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+                flag.style.borderTopRightRadius = 5;
+                flag.style.marginRight = 5;
+                VRCFuryEditorUtils.Padding(flag, 2, 4);
+                row.Add(flag);
+            }
+            
+            if (desktopActive.boolValue) AddFlag("Desktop Only");
+            if (androidActive.boolValue) AddFlag("Android Only");
+
+            return row;
+        }, desktopActive, androidActive));
+        
+        return col;
+    }
+    
+    private static VisualElement RenderInner(SerializedProperty prop) {
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
         
-        var avatarObject = (prop.serializedObject.targetObject as UnityEngine.Component)?
-            .owner()
-            .GetComponentInSelfOrParent<VRCAvatarDescriptor>()?
-            .owner();
+        var avatarObject = VRCAvatarUtils.GuessAvatarObject(prop.serializedObject.targetObject as UnityEngine.Component);
 
         string GetPath(VFGameObject obj) {
             return avatarObject == null ? obj.name : obj.GetPath(avatarObject);
@@ -402,17 +446,21 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     }
                 };
 
-                var label = new Label("Object Toggle") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
+                row.Add(VRCFuryEditorUtils.Prop(
+                    prop.FindPropertyRelative("mode"),
+                    formatEnum: str => {
+                        if (str == "Toggle") return "Flip State (Deprecated)";
+                        return str;
+                    },
+                    style: s => {
+                        s.flexGrow = 0;
+                        s.flexBasis = 100;
+                    }));
 
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
+                row.Add(VRCFuryEditorUtils.Prop(
+                    prop.FindPropertyRelative("obj"),
+                    style: s => s.flexGrow = 1
+                ));
 
                 return row;
             }
@@ -548,6 +596,34 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 row.Add(label);
 
                 var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip"));
+                propField.style.flexGrow = 1;
+                row.Add(propField);
+
+                return row;
+            }
+            case nameof(BlockBlinkingAction): {
+                return new Label {
+                    text = "Disable Blinking"
+                };
+            }
+            case nameof(ResetPhysboneAction): {
+                var row = new VisualElement {
+                    style = {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.FlexStart
+                    }
+                };
+
+                var label = new Label {
+                    text = "Reset Physbone",
+                    style = {
+                        flexGrow = 0,
+                        flexBasis = 100
+                    }
+                };
+                row.Add(label);
+
+                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physBone"));
                 propField.style.flexGrow = 1;
                 row.Add(propField);
 

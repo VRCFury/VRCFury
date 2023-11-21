@@ -12,12 +12,10 @@ public class ToesBuilder : FeatureBuilder<Toes> {
         var toes = new Puppet {
             name = "Toes"
         };
-        if (StateExists(model.down)) toes.stops.Add(new Puppet.Stop(0,-1,model.down));
-        if (StateExists(model.up)) toes.stops.Add(new Puppet.Stop(0,1,model.up));
-        if (StateExists(model.splay)) {
-            toes.stops.Add(new Puppet.Stop(-1,0,model.splay));
-            toes.stops.Add(new Puppet.Stop(1,0,model.splay));
-        }
+        toes.stops.Add(new Puppet.Stop(0,-1,model.down));
+        toes.stops.Add(new Puppet.Stop(0,1,model.up));
+        toes.stops.Add(new Puppet.Stop(-1,0,model.splay));
+        toes.stops.Add(new Puppet.Stop(1,0,model.splay));
         if (toes.stops.Count > 0) {
             addOtherFeature(toes);
         }
@@ -35,8 +33,8 @@ public class ToesBuilder : FeatureBuilder<Toes> {
         return content;
     }
     
-    public override bool AvailableOnProps() {
-        return false;
+    public override bool AvailableOnRootOnly() {
+        return true;
     }
 }
 

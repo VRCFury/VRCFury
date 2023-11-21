@@ -79,7 +79,7 @@ namespace VF.Service {
         }
         public void Enable(AnimationClip clip, VFGameObject obj, bool active = true) {
             var path = GetPath(obj);
-            var binding = EditorCurveBinding.DiscreteCurve(path, typeof(GameObject), "m_IsActive");
+            var binding = EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive");
             clip.SetConstant(binding, active ? 1 : 0);
         }
         public void Scale(AnimationClip clip, VFGameObject obj, Vector3 scale) {
@@ -116,36 +116,6 @@ namespace VF.Service {
 
         public string GetPath(VFGameObject gameObject) {
             return gameObject.GetPath(baseObject);
-        }
-
-        public static bool IsEmptyMotion(Motion motion, VFGameObject avatarRoot) {
-            return new AnimatorIterator.Clips().From(motion)
-                .All(clip => IsEmptyClip(clip, avatarRoot));
-        }
-
-        private static bool IsEmptyClip(AnimationClip clip, VFGameObject avatarRoot) {
-            return clip.GetAllBindings()
-                .All(binding => !binding.IsValid(avatarRoot));
-        }
-
-        public static bool IsStaticMotion(Motion motion) {
-            return new AnimatorIterator.Clips().From(motion).All(IsStaticClip);
-        }
-
-        private static bool IsStaticClip(AnimationClip clip) {
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (binding.IsProxyBinding()) return false;
-                if (curve.IsFloat) {
-                    var keys = curve.FloatCurve.keys;
-                    if (keys.All(key => key.time != 0)) return false;
-                    if (keys.Select(k => k.value).Distinct().Count() > 1) return false;
-                } else {
-                    var keys = curve.ObjectCurve;
-                    if (keys.All(key => key.time != 0)) return false;
-                    if (keys.Select(k => k.value).Distinct().Count() > 1) return false;
-                }
-            }
-            return true;
         }
 
         public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(Motion motion) {

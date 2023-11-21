@@ -4,12 +4,15 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Component;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
@@ -40,20 +43,37 @@ public static class FeatureFinder {
         return allFeatures;
     }
 
-    private static bool AllowAvatarFeatures(VFGameObject gameObject) {
-        return gameObject.GetComponent<VRCAvatarDescriptor>() || gameObject.name == "AvatarVrcFuryFeatures";
+    private static bool AllowRootFeatures(VFGameObject gameObject, [CanBeNull] VFGameObject avatarObject) {
+        if (gameObject == avatarObject) {
+            return true;
+        }
+
+        VFGameObject checkRoot;
+        if (avatarObject == null) {
+            checkRoot = gameObject.root;
+        } else {
+            checkRoot = gameObject.GetSelfAndAllParents()
+                .First(o => o.parent == avatarObject);
+        }
+
+        if (checkRoot == null) {
+            return false;
+        }
+
+        return checkRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()
+            .All(c => c is VRCFuryComponent || c is Transform);
     }
 
     public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(GameObject gameObject) {
-        var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
+        var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
+        var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
         return GetAllFeatures()
             .Select(e => {
                 var impl = (FeatureBuilder)Activator.CreateInstance(e.Value);
                 var title = impl.GetEditorTitle();
                 if (title == null) return null;
                 if (!impl.ShowInMenu()) return null;
-                var allowedOnObject = allowAvatarFeatures ? impl.AvailableOnAvatar() : impl.AvailableOnProps();
-                if (!allowedOnObject) return null;
+                if (!allowRootFeatures && impl.AvailableOnRootOnly()) return null;
                 return Tuple.Create(title, e);
             })
             .Where(tuple => tuple != null)
@@ -61,17 +81,36 @@ public static class FeatureFinder {
             .Select(tuple => tuple.Item2);
     }
 
-    public static VisualElement RenderFeatureEditor(SerializedProperty prop, FeatureModel model, VFGameObject gameObject) {
+    public static FeatureModel GetFeature(SerializedProperty prop) {
+        var component = (VRCFury)prop.serializedObject.targetObject;
+        var startBracket = prop.propertyPath.IndexOf("[");
+        var endBracket = prop.propertyPath.IndexOf("]");
+        var index = Int32.Parse(prop.propertyPath.Substring(startBracket + 1, endBracket - startBracket - 1));
+        return component.config.features[index];
+    }
+
+    public static VisualElement RenderFeatureEditor(SerializedProperty prop) {
         string title = "???";
         
         try {
-            if (model == null) {
+            var component = (VRCFury)prop.serializedObject.targetObject;
+
+            VFGameObject gameObject = component.gameObject;
+            if (gameObject == null) {
+                return RenderFeatureEditor(
+                    title,
+                    VRCFuryEditorUtils.Error("Failed to find game object")
+                );
+            }
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
+
+            var modelType = VRCFuryEditorUtils.GetManagedReferenceType(prop);
+            if (modelType == null) {
                 return RenderFeatureEditor(
                     title,
                     VRCFuryEditorUtils.Error("VRCFury doesn't have code for this feature. Is your VRCFury up to date?")
                 );
             }
-            var modelType = model.GetType();
             title = modelType.Name;
             var found = GetAllFeatures().TryGetValue(modelType, out var implementationType);
             if (!found) {
@@ -84,18 +123,17 @@ public static class FeatureFinder {
                 );
             }
             var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
-            featureInstance.avatarObjectOverride = gameObject.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.gameObject;
+            featureInstance.avatarObjectOverride = avatarObject;
             featureInstance.featureBaseObject = gameObject;
-            featureInstance.GetType().GetField("model").SetValue(featureInstance, model);
+            featureInstance.GetType().GetField("model").SetValue(featureInstance, GetFeature(prop));
 
             title = featureInstance.GetEditorTitle() ?? title;
 
             VisualElement body;
-            var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
-            if (!allowAvatarFeatures && !featureInstance.AvailableOnProps()) {
-                body = VRCFuryEditorUtils.Error("This feature is not available for props");
-            } else if (allowAvatarFeatures && !featureInstance.AvailableOnAvatar()) {
-                body = VRCFuryEditorUtils.Error("This feature is not available for avatars");
+            if (featureInstance.AvailableOnRootOnly() && !AllowRootFeatures(gameObject, avatarObject)) {
+                body = VRCFuryEditorUtils.Error(
+                    "To avoid abuse by prefab creators, this component can only be placed on the object containing the avatar descriptor.\n\n" +
+                    "Alternatively, it can be placed on a child object if the child contains ONLY vrcfury components.");
             } else {
                 body = featureInstance.CreateEditor(prop);
             }
@@ -129,9 +167,9 @@ public static class FeatureFinder {
     }
 
     [CanBeNull]
-    public static FeatureBuilder GetBuilder(FeatureModel model, GameObject gameObject, VRCFuryInjector injector) {
+    public static FeatureBuilder GetBuilder(FeatureModel model, VFGameObject gameObject, VRCFuryInjector injector, VFGameObject avatarObject) {
         if (model == null) {
-            throw new VRCFBuilderException(
+            throw new Exception(
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date? If you are still receiving this after updating, you may need to re-import the prop package which caused this issue.");
         }
         var modelType = model.GetType();
@@ -140,18 +178,12 @@ public static class FeatureFinder {
         }
 
         if (!GetAllFeatures().TryGetValue(modelType, out var builderType)) {
-            throw new VRCFBuilderException("Failed to find feature implementation for " + modelType.Name + " while building");
+            throw new Exception("Failed to find feature implementation for " + modelType.Name + " while building");
         }
 
         var builder = (FeatureBuilder)injector.CreateAndInject(builderType);
-        var allowAvatarFeatures = AllowAvatarFeatures(gameObject);
-        if (!allowAvatarFeatures && !builder.AvailableOnProps()) {
-            Debug.LogError("Found " + modelType.Name + " feature on a prop. Props are not allowed to have this feature.");
-            return null;
-        }
-        if (allowAvatarFeatures && !builder.AvailableOnAvatar()) {
-            Debug.LogError("Found " + modelType.Name + " feature on an avatar. Avatars are not allowed to have this feature.");
-            return null;
+        if (builder.AvailableOnRootOnly() && !AllowRootFeatures(gameObject, avatarObject)) {
+            throw new Exception($"This VRCFury component ({builder.GetEditorTitle()}) is only allowed on the root object of the avatar.");
         }
         
         builder.GetType().GetField("model").SetValue(builder, model);

@@ -10,25 +10,40 @@ namespace VF {
         [CanBeNull]
         public static T Get<T>(this GuidWrapper<T> wrapper) where T : Object {
             if (wrapper == null) return null;
-            if (wrapper.objOverride != null) return wrapper.objOverride;
+            if (wrapper.objRef is T t) return t;
             return VrcfObjectId.IdToObject<T>(wrapper.id);
         }
 
         static GuidWrapperExtensions() {
-            GuidWrapper.UpdateIdIfPossible = wrapper => {
+            GuidWrapper.SyncExt = (wrapper,type) => {
                 var changed = false;
                 
-                var obj = VrcfObjectId.IdToObject<Object>(wrapper.id);
-                if (obj != null) {
-                    if (obj != wrapper.objRef) {
-                        wrapper.objRef = obj;
-                        changed = true;
-                    }
-                    var newId = VrcfObjectId.ObjectToId(obj);
+                // Sometimes when assets disappear then reappear, objRef will be a UnityEngine.Object instead
+                // of the proper type. If this happens, we must throw it away, then restore from the ID.
+                if (wrapper.objRef != null && wrapper.objRef.GetType() == typeof(Object)) {
+                    wrapper.objRef = null;
+                    changed = true;
+                }
+
+                if (wrapper.objRef != null) {
+                    var newId = VrcfObjectId.ObjectToId(wrapper.objRef);
                     if (wrapper.id != newId) {
                         wrapper.id = newId;
                         changed = true;
                     }
+                } else {
+                    var newObjRef = VrcfObjectId.IdToObject<Object>(wrapper.id);
+                    if (newObjRef != wrapper.objRef) {
+                        wrapper.objRef = newObjRef;
+                        changed = true;
+                    }
+                }
+
+                if (wrapper.objRef != null && !type.IsInstanceOfType(wrapper.objRef)) {
+                    // objRef is the wrong type somehow
+                    wrapper.objRef = null;
+                    wrapper.id = "";
+                    changed = true;
                 }
 
                 return changed;

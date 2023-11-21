@@ -49,18 +49,28 @@ For more information, please refer to <https://unlicense.org>
 
 * anatawa12
   * Improvements to VRCFury/Av3Emu compatibility
+* babo4d
+  * Added bone radius to SPS autorig physbone
 * CobaltSpace
   * Ensured that gogoloco params are always global
 * GameGeek720
   * Added Toggle enhancements for transitions and the local player
   * Fixed Toggle sliders always adding a menu option, even if the menu path was empty
+  * Made toggles usable by specifying only a transition in and no main clip
+  * Made toggles support driving multiple parameters
+  * Made toggles not add a synchronized parameter when using vrchat built-in parameters
+  * Fixed toggles possibly being in the wrong state for one frame upon loading
+  * Added ability for toggles to "play to completion"
+  * Added transition time support to Toggles
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
+  * Made colliders merge properly within Armature Link (unused)
 * lyuma
   * Improvements to VRCFury/Av3Emu compatibility
 * Morghus
   * Created numerous setup prefabs
   * Fix DirectTreeOptimizer for clips with partial keyframes
+  * Added parameter smoothing to Full Controller
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
   * Prevented SPS toggle from disabling SPS autorig physbone

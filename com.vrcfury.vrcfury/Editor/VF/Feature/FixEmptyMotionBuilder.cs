@@ -41,10 +41,10 @@ namespace VF.Feature {
                 return;
             }
             foreach (var tree in new AnimatorIterator.Trees().From(state)) {
-                tree.children = tree.children.Select(child => {
+                tree.RewriteChildren(child => {
                     child.motion = child.motion == null ? noopClip : child.motion;
                     return child;
-                }).ToArray();
+                });
             }
         }
     }

@@ -79,7 +79,7 @@ namespace VF.Utils.Controller {
             Drives(param.Name(), local).value = value ? 1 : 0;
             return this;
         }
-        public VFState Drives(VFAInteger param, float value, bool local = false) {
+        public VFState Drives(VFAParam param, float value, bool local = false) {
             Drives(param.Name(), local).value = value;
             return this;
         }

@@ -21,13 +21,17 @@ namespace VF.Utils {
             if (binding.type != typeof(Animator)) return false;
 
             var name = binding.propertyName;
-            return GetHumanMuscleList().Contains(name)
-                   || name.EndsWith(" Stretched")
-                   || name.EndsWith(".Spread")
-                   || name.EndsWith(".x")
-                   || name.EndsWith(".y")
-                   || name.EndsWith(".z")
-                   || name.EndsWith(".w");
+            var muscleName = name.Replace("RightHand", "Right");
+            muscleName = muscleName.Replace("LeftHand", "Left");
+            muscleName = muscleName.Replace(".", " ");
+            if (GetHumanMuscleList().Contains(muscleName)) {
+                return true;
+            }
+            if (name.EndsWith("TDOF.x") || name.EndsWith("TDOF.y") || name.EndsWith("TDOF.z")) {
+                return true;
+            }
+
+            return false;
         }
 
         private static HashSet<string> _humanMuscleList;
@@ -35,6 +39,15 @@ namespace VF.Utils {
             if (_humanMuscleList != null) return _humanMuscleList;
             _humanMuscleList = new HashSet<string>();
             _humanMuscleList.UnionWith(HumanTrait.MuscleName);
+            foreach (var bone in new[] { "Root", "Motion", "LeftFoot", "RightFoot", "Left", "Right" }) {
+                _humanMuscleList.Add($"{bone}T x");
+                _humanMuscleList.Add($"{bone}T y");
+                _humanMuscleList.Add($"{bone}T z");
+                _humanMuscleList.Add($"{bone}Q w");
+                _humanMuscleList.Add($"{bone}Q x");
+                _humanMuscleList.Add($"{bone}Q y");
+                _humanMuscleList.Add($"{bone}Q z");
+            }
             return _humanMuscleList;
         }
 

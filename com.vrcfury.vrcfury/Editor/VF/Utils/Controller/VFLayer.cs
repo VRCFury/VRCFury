@@ -1,20 +1,27 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils.Controller {
     public class VFLayer {
-        private VFController ctrl;
-        private AnimatorStateMachine _stateMachine;
+        private readonly VFController ctrl;
+        private readonly AnimatorStateMachine _stateMachine;
         
-        public static implicit operator AnimatorStateMachine(VFLayer d) => d?._stateMachine;
-
         public VFLayer(VFController ctrl, AnimatorStateMachine stateMachine) {
             this.ctrl = ctrl;
             this._stateMachine = stateMachine;
         }
+        
+        public static implicit operator AnimatorStateMachine(VFLayer d) => d?._stateMachine;
+        public static bool operator ==(VFLayer a, VFLayer b) => a?._stateMachine == b?._stateMachine;
+        public static bool operator !=(VFLayer a, VFLayer b) => !(a == b);
+        public override bool Equals(object obj) => this == (VFLayer)obj;
+        public override int GetHashCode() => _stateMachine.GetHashCode();
+
+        public AnimatorStateMachine stateMachine => _stateMachine;
 
         public bool Exists() {
             return ctrl.ContainsLayer(_stateMachine);
@@ -49,21 +56,6 @@ namespace VF.Utils.Controller {
             get => ctrl.layers[GetLayerId()].avatarMask;
             set { WithLayer(l => l.avatarMask = value); }
         }
-        
-        public static bool operator ==(VFLayer a, VFLayer b) {
-            return a?._stateMachine == b?._stateMachine;
-        }
-        public static bool operator !=(VFLayer a, VFLayer b) {
-            return !(a == b);
-        }
-        public override bool Equals(object obj) {
-            return this == (VFLayer)obj;
-        }
-        public override int GetHashCode() {
-            return _stateMachine.GetHashCode();
-        }
-
-        public AnimatorStateMachine stateMachine => _stateMachine;
 
         private static string WrapStateName(string name, int attemptWrapAt = 35) {
             var lines = new List<string>();
@@ -114,6 +106,18 @@ namespace VF.Utils.Controller {
 
         public AnimatorStateMachine GetRawStateMachine() {
             return _stateMachine;
+        }
+
+        public void Move(int newIndex) {
+            var layers = ctrl.layers;
+            var myLayer = layers
+                .First(l => l.stateMachine == stateMachine);
+
+            var newList = layers
+                .Where(l => l.stateMachine != stateMachine)
+                .ToList();
+            newList.Insert(newIndex, myLayer);
+            ctrl.layers = newList.ToArray();
         }
     }
 }

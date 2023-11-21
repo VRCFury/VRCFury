@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -9,23 +10,39 @@ using VF.Injector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
     [VFService]
     public class ActionClipService {
+        [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MutableManager mutableManager;
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
+        [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
+        [VFAutowired] private readonly PhysboneResetService physboneResetService;
         
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
 
-            if (state == null || state.actions.Count == 0) {
-                return avatarManager.GetFx().GetEmptyClip();
+            if (state == null) {
+                // Don't use fx.GetEmptyClip(), since this clip may be mutated later
+                return new AnimationClip();
+            }
+
+            var actions = state.actions.Where(action => {
+                if (action.desktopActive || action.androidActive) {
+                    var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
+                    if (isAndroid && !action.androidActive) return false;
+                    if (!isAndroid && !action.desktopActive) return false;
+                }
+                return true;
+            }).ToArray();
+            if (actions.Length == 0) {
+                return new AnimationClip();
             }
 
             var rewriter = AnimationRewriter.Combine(
@@ -40,20 +57,21 @@ namespace VF.Service {
             var offClip = new AnimationClip();
             var onClip = fx.NewClip(name);
 
-            var firstClip = state.actions
+            var firstClip = actions
                 .OfType<AnimationClipAction>()
-                .Select(action => action.clip)
-                .FirstOrDefault()
-                .Get();
+                .Select(action => action.clip.Get())
+                .FirstOrDefault(clip => clip != null);
             if (firstClip) {
-                var copy = mutableManager.CopyRecursive(firstClip);
+                var copy = MutableManager.CopyRecursive(firstClip);
                 copy.Rewrite(rewriter);
                 var nameBak = onClip.name;
                 EditorUtility.CopySerialized(copy, onClip);
                 onClip.name = nameBak;
             }
 
-            foreach (var action in state.actions) {
+            var physbonesToReset = new HashSet<VFGameObject>();
+
+            foreach (var action in actions) {
                 switch (action) {
                     case FlipbookAction flipbook:
                         if (flipbook.obj != null) {
@@ -127,19 +145,28 @@ namespace VF.Service {
                     case AnimationClipAction clipAction:
                         var clipActionClip = clipAction.clip.Get();
                         if (clipActionClip && clipActionClip != firstClip) {
-                            var copy = mutableManager.CopyRecursive(clipActionClip);
+                            var copy = MutableManager.CopyRecursive(clipActionClip);
                             copy.Rewrite(rewriter);
                             onClip.CopyFrom(copy);
                         }
                         break;
-                    case ObjectToggleAction toggle:
+                    case ObjectToggleAction toggle: {
                         if (toggle.obj == null) {
                             Debug.LogWarning("Missing object in action: " + name);
-                        } else {
-                            clipBuilder.Enable(offClip, toggle.obj, toggle.obj.activeSelf);
-                            clipBuilder.Enable(onClip, toggle.obj, !toggle.obj.activeSelf);
+                            break;
                         }
+
+                        var onState = true;
+                        if (toggle.mode == ObjectToggleAction.Mode.TurnOff) {
+                            onState = false;
+                        } else if (toggle.mode == ObjectToggleAction.Mode.Toggle) {
+                            onState = !toggle.obj.activeSelf;
+                        }
+
+                        clipBuilder.Enable(offClip, toggle.obj, !onState);
+                        clipBuilder.Enable(onClip, toggle.obj, onState);
                         break;
+                    }
                     case BlendShapeAction blendShape:
                         var foundOne = false;
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
@@ -207,10 +234,38 @@ namespace VF.Service {
                         onClip.SetConstant(binding, fxFloatAction.value);
                         break;
                     }
+                    case BlockBlinkingAction blockBlinkingAction: {
+                        var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingEyes);
+                        onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        break;
+                    }
+                    case ResetPhysboneAction resetPhysbone: {
+                        if (resetPhysbone.physBone != null) {
+                            physbonesToReset.Add(resetPhysbone.physBone.gameObject);
+                        }
+                        break;
+                    }
                 }
             }
 
-            restingState.ApplyClipToRestingState(offClip);
+            if (physbonesToReset.Count > 0) {
+                var param = physboneResetService.CreatePhysBoneResetter(physbonesToReset, name);
+                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
+            }
+
+            if (applyOffClip) {
+                restingState.ApplyClipToRestingState(offClip);
+            }
+
+            if (onClip.CollapseProxyBindings().Count > 0) {
+                throw new Exception(
+                    "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
+            }
+
+            foreach (var muscleType in onClip.GetMuscleBindingTypes()) {
+                var trigger = fullBodyEmoteService.AddClip(onClip, muscleType);
+                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
+            }
 
             return onClip;
         }

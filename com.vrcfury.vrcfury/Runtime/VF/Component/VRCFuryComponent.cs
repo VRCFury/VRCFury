@@ -11,6 +11,12 @@ namespace VF.Component {
                 return base.gameObject;
             }
         }
+        public new Transform transform {
+            get {
+                if (gameObjectOverride != null) return gameObjectOverride.transform;
+                return base.transform;
+            }
+        }
         
         public override int GetLatestVersion() {
             return 1;

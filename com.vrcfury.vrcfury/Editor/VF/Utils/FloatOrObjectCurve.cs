@@ -34,5 +34,17 @@ namespace VF.Utils {
                 return new FloatOrObject(objectCurve[0].value);
             }
         }
+
+        public FloatOrObject GetLast() {
+            if (isFloat) {
+                if (floatCurve == null || floatCurve.keys.Length == 0) return new FloatOrObject(0);
+                var length = floatCurve.keys.Length;
+                return new FloatOrObject(floatCurve.keys[length - 1].value);
+            } else {
+                if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
+                var length = objectCurve.Length;
+                return new FloatOrObject(objectCurve[length - 1].value);
+            }
+        }
     }
 }

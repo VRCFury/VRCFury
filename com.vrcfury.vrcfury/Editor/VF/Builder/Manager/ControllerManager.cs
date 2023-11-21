@@ -22,12 +22,10 @@ namespace VF.Builder {
         private readonly Func<string> currentFeatureNameProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly Func<string, string> makeUniqueParamName;
-        private readonly string tmpDir;
         // These can't use AnimatorControllerLayer, because AnimatorControllerLayer is generated on request, not consistent
         private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
         private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
             new Dictionary<AnimatorStateMachine, string>();
-        private readonly List<AvatarMask> unionedBaseMasks = new List<AvatarMask>();
     
         public ControllerManager(
             VFController ctrl,
@@ -37,7 +35,6 @@ namespace VF.Builder {
             Func<string> currentFeatureNameProvider,
             Func<string> currentFeatureClipPrefixProvider,
             Func<string, string> makeUniqueParamName,
-            string tmpDir,
             bool treatAsManaged = false
         ) {
             this.ctrl = ctrl;
@@ -47,13 +44,6 @@ namespace VF.Builder {
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.makeUniqueParamName = makeUniqueParamName;
-            this.tmpDir = tmpDir;
-
-            var layer0 = ctrl.GetLayer(0);
-            if (layer0 != null) {
-                unionedBaseMasks.Add(layer0.mask);
-                layer0.weight = 1;
-            }
 
             foreach (var layer in ctrl.layers) {
                 layerOwners[layer.stateMachine] = BaseAvatarOwner;
@@ -107,7 +97,6 @@ namespace VF.Builder {
         }
         private AnimationClip _NewClip(string name) {
             var clip = new AnimationClip { name = name };
-            AssetDatabase.AddObjectToAsset(clip, ctrl);
             return clip;
         }
         public BlendTree NewBlendTree(string name) {
@@ -115,7 +104,6 @@ namespace VF.Builder {
         }
         private BlendTree _NewBlendTree(string name) {
             var tree = new BlendTree { name = name };
-            AssetDatabase.AddObjectToAsset(tree, ctrl);
             return tree;
         }
 
@@ -132,25 +120,44 @@ namespace VF.Builder {
          * The animator controller (and its sub-assets) should be owned by vrcfury, and should
          * be the ONLY THING in that file!!!
          */
-        public void TakeOwnershipOf(AnimatorController other) {
+        public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool allManaged = true) {
+            // Merge Layers
             other.layers = other.layers.Select((layer, i) => {
-                if (i == 0) layer.defaultWeight = 1;
-                layer.name = NewLayerName(layer.name);
-                managedLayers.Add(layer.stateMachine);
-                layerOwners[layer.stateMachine] = currentFeatureNameProvider();
+                if (allManaged) {
+                    layer.name = NewLayerName(layer.name);
+                    managedLayers.Add(layer.stateMachine);
+                    layerOwners[layer.stateMachine] = currentFeatureNameProvider();
+                }
                 return layer;
             }).ToArray();
-            ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
 
-            var path = AssetDatabase.GetAssetPath(other);
-            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path)) {
-                if (asset is Motion) asset.name = NewClipName(asset.name);
-                if (asset is AnimatorController) continue;
-                AssetDatabase.RemoveObjectFromAsset(asset);
-                AssetDatabase.AddObjectToAsset(asset, ctrl);
+            if (putOnTop) {
+                ctrl.layers = other.layers.Concat(ctrl.layers).ToArray();
+            } else {
+                ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
             }
+
+            other.layers = new AnimatorControllerLayer[] { };
             
-            AssetDatabase.DeleteAsset(path);
+            // Merge Params
+            foreach (var p in other.parameters) {
+                ctrl.NewParam(p.name, p.type, n => {
+                    n.defaultBool = p.defaultBool;
+                    n.defaultFloat = p.defaultFloat;
+                    n.defaultInt = p.defaultInt;
+                });
+            }
+
+            other.parameters = new AnimatorControllerParameter[] { };
+        }
+        public void TakeOwnershipOf(ControllerManager other, bool putOnTop = false) {
+            TakeOwnershipOf(other.ctrl, putOnTop: putOnTop, allManaged: false);
+            managedLayers.UnionWith(other.managedLayers);
+            foreach (var entry in other.layerOwners) {
+                layerOwners[entry.Key] = entry.Value;
+            }
+            other.managedLayers.Clear();
+            other.layerOwners.Clear();
         }
 
         public string NewLayerName(string name) {
@@ -257,12 +264,9 @@ namespace VF.Builder {
         public VFABool IsLocal() {
             return NewBool("IsLocal", usePrefix: false);
         }
-
-        public void UnionBaseMask(AvatarMask sourceMask) {
-            unionedBaseMasks.Add(sourceMask);
-        }
-        public List<AvatarMask> GetUnionBaseMasks() {
-            return unionedBaseMasks;
+        public VFCondition IsMmd() {
+            return NewBool("Seated", usePrefix: false).IsFalse()
+                .And(NewBool("InStation", usePrefix: false).IsTrue());
         }
 
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {

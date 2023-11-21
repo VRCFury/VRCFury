@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
@@ -12,6 +14,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
@@ -22,36 +25,92 @@ namespace VF.Feature {
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
+        [VFAutowired] private readonly TriangulationService _triangulationService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
+        [VFAutowired] private readonly HapticContactsService hapticContacts;
 
+        private Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
+            new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
+
+        /**
+         * We do mesh analysis early, and in a separate step from the rest, so that the post-bake action can be applied
+         * before things like toggles are built
+         */
         [FeatureBuilderAction(FeatureOrder.BakeHapticPlugs)]
-        public void Apply() {
-            var fx = GetFx();
-            var usedNames = new List<string>();
-            var plugRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
-
-            AnimationClip tipLightOnClip = null;
-
+        public void ApplyEarlyBake() {
+            var usedRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.transform);
                     var bakeInfo = VRCFuryHapticPlugEditor.Bake(
                         plug,
-                        usedNames,
-                        plugRenderers,
+                        usedRenderers,
                         mutableManager: mutableManager,
                         deferMaterialConfig: true
                     );
+                    if (bakeInfo == null) continue;
+                    bakeResults[plug] = bakeInfo;
+                    
+                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                    restingState.ApplyClipToRestingState(postBakeClip);
+                } catch (Exception e) {
+                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                }
+            }
+        }
 
+        [FeatureBuilderAction]
+        public void Apply() {
+            var fx = GetFx();
+            var usedNames = new List<string>();
+
+            AnimationClip tipLightOnClip = null;
+            AnimationClip triangulationOnClip = null;
+            var i = 0;
+
+            foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
+                try {
+                    var bakeInfo = bakeResults[plug];
                     if (bakeInfo == null) continue;
 
-                    var name = bakeInfo.name;
                     var bakeRoot = bakeInfo.bakeRoot;
                     var renderers = bakeInfo.renderers;
+                    var worldRadius = bakeInfo.worldRadius;
                     var worldLength = bakeInfo.worldLength;
                     foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                         _forceStateInAnimatorService.DisableDuringLoad(r.transform);
+                    }
+
+                    var name = plug.name;
+                    if (string.IsNullOrWhiteSpace(name)) {
+                        if (renderers.Count > 0) {
+                            name = HapticUtils.GetName(renderers.First().renderer.owner());
+                        } else {
+                            name = HapticUtils.GetName(plug.owner());
+                        }
+                    }
+                    if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
+                    Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
+                    
+                    // Haptic Receivers
+                    {
+                        var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
+                        var receivers = GameObjects.Create("Receivers", bakeRoot);
+                        var halfWay = Vector3.forward * (worldLength / 2);
+                        var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
+                        // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
+                        var extraRadiusForRub = 0.08f;
+                        // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+                        var capsuleRotation = Quaternion.Euler(90,0,0);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
                     }
 
                     if (plug.configureTps || plug.enableSps) {
@@ -64,9 +123,6 @@ namespace VF.Feature {
                         }
                     }
 
-                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                    restingState.ApplyClipToRestingState(postBakeClip);
-
                     if (plug.enableSps) {
                         foreach (var r in renderers) {
                             spsRewritesToDo.Add(new SpsRewriteToDo {
@@ -76,6 +132,76 @@ namespace VF.Feature {
                                 configureMaterial = r.configureMaterial,
                                 spsBlendshapes = r.spsBlendshapes
                             });
+                        }
+                    }
+
+                    if (spsOptions.GetOptions().enableLightlessToggle2 && plug.enableSps) {
+                        var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
+                        triRoot.active = false;
+                        triRoot.worldScale = Vector3.one;
+                        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                            var p = triRoot.AddComponent<ScaleConstraint>();
+                            p.AddSource(new ConstraintSource() {
+                                sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
+                                weight = 1
+                            });
+                            p.weight = 1;
+                            p.constraintActive = true;
+                            p.locked = true;
+
+                            for (var partyI = 0; partyI <= 1; partyI++) {
+                                var party = partyI == 0 ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others;
+                                var prefix = partyI == 0 ? "Self" : "Other";
+                                
+                                var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
+                                    new[] { HapticUtils.TagSpsSocketRoot }, party);
+                                var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
+                                    new[] { HapticUtils.TagSpsSocketFront }, party);
+                                var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                                    "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
+                                    party);
+                                var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
+                                    "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
+                                    party);
+                            
+                                foreach (var r in renderers) {
+                                    _triangulationService.SendToShader(tri, $"_SPS_Tri_{prefix}_Root", r.renderer);
+                                    _triangulationService.SendToShader(triFront, $"_SPS_Tri_{prefix}_Front", r.renderer);
+                                    _triangulationService.SendParamToShader(isHole, $"_SPS_Tri_{prefix}_IsHole", r.renderer);
+                                    _triangulationService.SendParamToShader(isRing, $"_SPS_Tri_{prefix}_IsRing", r.renderer);
+                                }
+                            }
+                        }
+                        
+                        if (triangulationOnClip == null) {
+                            var param = fx.NewBool("triangulationOn", synced: true);
+                            manager.GetMenu()
+                                .NewMenuToggle(
+                                    $"{spsOptions.GetOptionsPath()}/<b>SPSLL (Alpha)<\\/b>\n<size=20>Use contacts instead of lights - Experimental!",
+                                    param);
+                            triangulationOnClip = fx.NewClip("TriangulationOn");
+                            var layer = fx.NewLayer("Lightless SPS");
+                            var off = layer.NewState("Off");
+                            var on = layer.NewState("On").WithAnimation(triangulationOnClip);
+                            var whenOn = param.IsTrue();
+                            off.TransitionsTo(on).When(whenOn);
+                            on.TransitionsTo(off).When(whenOn.Not());
+                        }
+
+                        clipBuilder.Enable(triangulationOnClip, triRoot);
+                        foreach (var r in renderers) {
+                            triangulationOnClip.SetConstant(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
+                                1
+                            );
+                            triangulationOnClip.SetConstant(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Other_Enabled"),
+                                1
+                            );
+                            triangulationOnClip.SetConstant(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Target_LL_Lights"),
+                                0
+                            );
                         }
                     }
 
@@ -157,7 +283,9 @@ namespace VF.Feature {
                 );
 
                 void RewriteClip(AnimationClip clip) {
-                    foreach (var (binding,curve) in clip.GetAllCurves()) {
+                    foreach (var (_binding,curve) in clip.GetAllCurves()) {
+                        var binding = _binding;
+
                         if (curve.IsFloat) {
                             if (binding.path == pathToRenderer) {
                                 if (binding.propertyName == "material._TPS_AnimatedToggle") {
@@ -172,10 +300,11 @@ namespace VF.Feature {
                                 }
                             }
                         }
+
                         if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer)) {
-                            var b = binding;
-                            b.type = typeof(SkinnedMeshRenderer);
-                            clip.SetCurve(b, curve);
+                            clip.SetCurve(binding, null);
+                            binding.type = typeof(SkinnedMeshRenderer);
+                            clip.SetCurve(binding, curve);
                         }
 
                         if (curve.IsFloat && binding.path == pathToRenderer && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.")) {

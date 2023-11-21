@@ -8,6 +8,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Service {
@@ -20,6 +21,7 @@ namespace VF.Service {
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly AvatarManager avatarManager;
+        [VFAutowired] private readonly HapticContactsService hapticContacts;
 
         public void CreatePlugAnims(
             ICollection<VRCFuryHapticPlug.PlugDepthAction> actions,
@@ -81,7 +83,7 @@ namespace VF.Service {
                 var on = layer.NewState("On");
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, plugOwner);
-                if (ClipBuilderService.IsStaticMotion(clip)) {
+                if (clip.IsStatic()) {
                     var tree = fx.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
@@ -172,7 +174,7 @@ namespace VF.Service {
                 var on = layer.NewState("On");
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, socketOwner);
-                if (ClipBuilderService.IsStaticMotion(clip)) {
+                if (clip.IsStatic()) {
                     var tree = fx.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
@@ -196,33 +198,16 @@ namespace VF.Service {
         }
         private FrontBack CreateFrontBack(string paramName, VFGameObject parent, float radius, bool allowSelf, string contactTag, Vector3? _posOffset = null) {
             var posOffset = _posOffset.GetValueOrDefault(Vector3.zero);
-            var fx = avatarManager.GetFx();
-            var frontParam = fx.NewFloat($"{paramName}/FrontOthers");
-            HapticUtils.AddReceiver(parent, posOffset, frontParam.Name(),
-                "FrontOthers", radius, new[] { contactTag },
-                HapticUtils.ReceiverParty.Others);
-            var backParam = fx.NewFloat($"{paramName}/BackOthers");
-            HapticUtils.AddReceiver(parent, posOffset + Vector3.forward * -0.01f, backParam.Name(),
-                "BackOthers", radius, new[] { contactTag },
-                HapticUtils.ReceiverParty.Others);
-            
-            if (allowSelf) {
-                var frontSelfParam = fx.NewFloat($"{paramName}/FrontSelf");
-                HapticUtils.AddReceiver(parent, posOffset, frontSelfParam.Name(),
-                    "FrontSelf", radius, new[] { contactTag },
-                    HapticUtils.ReceiverParty.Self);
-                frontParam = math.Max(frontParam, frontSelfParam);
-                
-                var backSelfParam = fx.NewFloat($"{paramName}/BackSelf");
-                HapticUtils.AddReceiver(parent, posOffset + Vector3.forward * -0.01f, backSelfParam.Name(),
-                    "BackSelf", radius, new[] { contactTag },
-                    HapticUtils.ReceiverParty.Self);
-                backParam = math.Max(backParam, backSelfParam);
-            }
-            
+            var front = hapticContacts.AddReceiver(parent, posOffset, $"{paramName}/Front",
+                "Front", radius, new[] { contactTag },
+                allowSelf ? HapticUtils.ReceiverParty.Both : HapticUtils.ReceiverParty.Others);
+            var back = hapticContacts.AddReceiver(parent, posOffset + Vector3.forward * -0.01f, $"{paramName}/Back",
+                "Back", radius, new[] { contactTag },
+                allowSelf ? HapticUtils.ReceiverParty.Both : HapticUtils.ReceiverParty.Others);
+
             return new FrontBack {
-                front = frontParam,
-                back = backParam
+                front = front,
+                back = back
             };
         }
     }

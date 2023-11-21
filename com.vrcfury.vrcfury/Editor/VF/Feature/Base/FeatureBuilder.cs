@@ -50,13 +50,9 @@ namespace VF.Feature.Base {
         public virtual bool OnlyOneAllowed() {
             return false;
         }
-    
-        public virtual bool AvailableOnAvatar() {
-            return true;
-        }
 
-        public virtual bool AvailableOnProps() {
-            return true;
+        public virtual bool AvailableOnRootOnly() {
+            return false;
         }
         
         public virtual bool ShowInMenu() {
@@ -65,10 +61,6 @@ namespace VF.Feature.Base {
 
         public ControllerManager GetFx() {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
-        }
-
-        protected static bool StateExists(State state) {
-            return state != null;
         }
 
         public virtual string GetClipPrefix() {

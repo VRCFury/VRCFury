@@ -25,7 +25,7 @@ namespace VF.Utils {
                 return;
             }
             clip.Rewrite(AnimationRewriter.DeleteAllBindings());
-            clip.SetCurve(EditorCurveBinding.DiscreteCurve(
+            clip.SetCurve(EditorCurveBinding.FloatCurve(
                 ProxyClipMagicString,
                 typeof(GameObject),
                 path
