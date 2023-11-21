@@ -367,9 +367,7 @@ namespace VF.Inspector {
         public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(VRCFuryHapticSocket socket) {
             if (socket.addLight != VRCFuryHapticSocket.AddLight.None) {
                 var type = socket.addLight;
-                if (type == VRCFuryHapticSocket.AddLight.Auto)
-                    type = ShouldProbablyBeHole(socket) ? VRCFuryHapticSocket.AddLight.Hole :
-                        ShouldProbablyBeReversible(socket) ? VRCFuryHapticSocket.AddLight.RingBidirectional : VRCFuryHapticSocket.AddLight.Ring;
+                if (type == VRCFuryHapticSocket.AddLight.Auto) type = ShouldProbablyBeHole(socket) ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring;
                 var position = socket.position;
                 var rotation = Quaternion.Euler(socket.rotation);
                 return Tuple.Create(type, position, rotation);
@@ -448,12 +446,6 @@ namespace VF.Inspector {
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
             if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.Head)) return true;
             return ShouldProbablyHaveTouchZone(socket);
-        }
-
-        public static bool ShouldProbablyBeReversible(VRCFuryHapticSocket socket) {
-            if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.LeftHand)) return true;
-            if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.RightHand)) return true;
-            return false;
         }
 
         public static string GetName(VRCFuryHapticSocket socket) {
