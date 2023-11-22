@@ -29,7 +29,7 @@ namespace VF.Feature {
                 if (!singleOwnerTypes.Contains(type)) continue;
                 var uniqueOwners = new HashSet<string>();
                 foreach (var layer in controller.GetLayers()) {
-                    if (!controller.IsOwnerBaseAvatar(layer)) {
+                    if (!controller.IsSourceAvatarDescriptor(layer)) {
                         uniqueOwners.Add(controller.GetLayerOwner(layer));
                     }
                 }
@@ -45,7 +45,7 @@ namespace VF.Feature {
 
                 if (uniqueOwners.Count > 0) {
                     foreach (var layer in controller.GetLayers()) {
-                        if (controller.IsOwnerBaseAvatar(layer)) {
+                        if (controller.IsSourceAvatarDescriptor(layer)) {
                             controller.RemoveLayer(layer);
                         }
                     }

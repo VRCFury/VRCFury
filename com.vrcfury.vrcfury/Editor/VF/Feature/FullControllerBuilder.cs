@@ -30,6 +30,7 @@ namespace VF.Feature {
     public class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -271,6 +272,9 @@ namespace VF.Feature {
             var myLayers = from.GetLayers();
 
             // Merge Layers
+            foreach (var layer in from.GetLayers()) {
+                layerSourceService.SetSourceToCurrent(layer);
+            }
             toMain.TakeOwnershipOf(from);
 
             // Parameter smoothing
