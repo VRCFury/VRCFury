@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
@@ -14,6 +15,8 @@ using VF.Utils;
 
 namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
+        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
+        
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
             if (!IsFirst()) return;
@@ -44,6 +47,11 @@ namespace VF.Feature {
 
                 if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
                     AddDebug($"Not optimizing (layer is additive)");
+                    continue;
+                }
+                
+                if (layerControlBuilder.IsLayerTargeted(layer)) {
+                    AddDebug($"Not optimizing (layer is targeted by an Animator Layer Control)");
                     continue;
                 }
 
