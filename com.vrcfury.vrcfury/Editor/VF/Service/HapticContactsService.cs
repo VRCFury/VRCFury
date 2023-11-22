@@ -29,16 +29,17 @@ namespace VF.Service {
             float height = 0,
             Quaternion rotation = default,
             ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity,
-            bool worldScale = true
+            bool worldScale = true,
+            bool useHipAvoidance = true
         ) {
             var fx = manager.GetFx();
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return fx.Zero();
-            var isOnHips = HapticUtils.IsDirectChildOfHips(obj);
+            var isOnHips = HapticUtils.IsDirectChildOfHips(obj) && useHipAvoidance;
 
             if (party == HapticUtils.ReceiverParty.Both && isOnHips) {
                 if (!usePrefix) throw new Exception("Cannot create a 'Both' receiver without param prefix");
-                var others = AddReceiver(obj, pos, $"{paramName}/Others", $"{objName}Others", radius, tags, HapticUtils.ReceiverParty.Others, true, localOnly, height, rotation, type, worldScale);
-                var self = AddReceiver(obj, pos, $"{paramName}/Self", $"{objName}Self", radius, tags, HapticUtils.ReceiverParty.Self, true, localOnly, height, rotation, type, worldScale);
+                var others = AddReceiver(obj, pos, $"{paramName}/Others", $"{objName}Others", radius, tags, HapticUtils.ReceiverParty.Others, true, localOnly, height, rotation, type, worldScale, useHipAvoidance);
+                var self = AddReceiver(obj, pos, $"{paramName}/Self", $"{objName}Self", radius, tags, HapticUtils.ReceiverParty.Self, true, localOnly, height, rotation, type, worldScale, useHipAvoidance);
                 return math.Max(others, self);
             }
 
