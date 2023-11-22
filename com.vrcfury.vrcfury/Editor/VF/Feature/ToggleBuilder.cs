@@ -86,11 +86,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 paramName,
                 synced: synced,
                 saved: model.saved,
-                def: model.defaultOn ? model.defaultSliderValue : 0,
+                def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
             );
             exclusiveParam = param;
-            onCase = param.IsGreaterThan(0);
+            onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
             weight = param;
             if (addMenuItem) {
                 manager.GetMenu().NewMenuSlider(
@@ -352,7 +352,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 });
             }
 
-            if (defaultOnProp != null) {
+            if (defaultOnProp != null && !sliderProp.boolValue) {
                 advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
                     defaultOnProp.boolValue = !defaultOnProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
@@ -458,14 +458,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }, useGlobalParamProp));
         }
 
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var c = new VisualElement();
-            if (sliderProp.boolValue && defaultOnProp.boolValue) {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default Value"));
-            }
-            return c;
-        }, sliderProp, defaultOnProp));
-
         if (enableIconProp != null) {
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
@@ -536,16 +528,26 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return MakeTabbed("When toggle is enabled:", c);
         }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
 
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            if (sliderProp.boolValue) {
+                var sliderOptions = new VisualElement();
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default value"));
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Zero is 'Off' (Advanced)", tooltip: "" +
+                    "When checked, the toggle will be considered to be entirely 'off' when the slider is at 0, meaning that NOTHING will be animated at 0." +
+                    " It is unusual to check this, but is required if you want this slider to interact with Exclusive Tags or transitions."));
+                return MakeTabbed("This toggle is a slider", sliderOptions);
+            }
+            return new VisualElement();
+        }, sliderProp));
+
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var tags = new List<string>();
                 if (savedProp != null && savedProp.boolValue)
                     tags.Add("Saved");
-                if (sliderProp != null && sliderProp.boolValue)
-                    tags.Add("Slider");
                 if (securityEnabledProp != null && securityEnabledProp.boolValue)
                     tags.Add("Security");
-                if (defaultOnProp != null && defaultOnProp.boolValue)
+                if (defaultOnProp.boolValue && !sliderProp.boolValue)
                     tags.Add("Default On");
                 if (includeInRestProp != null && includeInRestProp.boolValue)
                     tags.Add("Shown in Rest Pose");
@@ -572,13 +574,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 return row;
             },
             savedProp,
-            sliderProp,
             securityEnabledProp,
             defaultOnProp,
             includeInRestProp,
             exclusiveOffStateProp,
             holdButtonProp,
-            hasExitTimeProp
+            hasExitTimeProp,
+            sliderProp
         ));
 
         var toggleOffWarning = VRCFuryEditorUtils.Error(
@@ -613,7 +615,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VisualElement MakeTabbed(string label, VisualElement child) {
         var output = new VisualElement();
         output.Add(VRCFuryEditorUtils.WrappedLabel(label, style: s => s.unityFontStyleAndWeight = FontStyle.Bold));
-        var tabbed = new VisualElement { style = { paddingLeft = 5 } };
+        var tabbed = new VisualElement { style = { paddingLeft = 10 } };
         tabbed.Add(child);
         output.Add(tabbed);
         return output;
