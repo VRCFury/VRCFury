@@ -369,10 +369,6 @@ namespace VF.Inspector {
                     try {
                         var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
 
-                        if (plug.enableSps && plug.spsAutorig) {
-                            SpsAutoRigger.AutoRig(skin, worldLength, worldRadius, mutableManager);
-                        }
-                        
                         var spsBlendshapes = plug.spsBlendshapes
                             .Where(b => skin.sharedMesh.HasBlendshape(b))
                             .Distinct()
@@ -380,6 +376,10 @@ namespace VF.Inspector {
                             .ToArray();
 
                         var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
+                        if (plug.enableSps && plug.spsAutorig) {
+                            SpsAutoRigger.AutoRig(skin, worldLength, worldRadius, activeFromMask);
+                        }
+
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false, spsBlendshapes) : null;
 
                         var finishedCopies = new HashSet<Material>();

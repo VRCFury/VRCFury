@@ -8,7 +8,11 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder.Haptics {
     public static class SpsAutoRigger {
-        public static void AutoRig(SkinnedMeshRenderer skin, float worldLength, float worldRadius, MutableManager mutableManager) {
+        public static void AutoRig(SkinnedMeshRenderer skin, float worldLength, float worldRadius, float[] activeFromMask) {
+            float GetActive(int i) {
+                return activeFromMask == null ? 1 : activeFromMask[i];
+            }
+
             if (skin.bones.Length != 1) {
                 return;
             }
@@ -49,7 +53,7 @@ namespace VF.Builder.Haptics {
                 closestBoneId = VrcfMath.Clamp(closestBoneId, 0, boneCount + boneOffset - 1);
                 otherBoneId = VrcfMath.Clamp(otherBoneId, 0, boneCount + boneOffset - 1);
 
-                weights[i] = CalculateWeight(closestBoneId, otherBoneId, distanceToOther);
+                weights[i] = CalculateWeight(closestBoneId, otherBoneId, distanceToOther, GetActive(i));
             }
 
             var physbone = skin.owner().AddComponent<VRCPhysBone>();
@@ -66,19 +70,19 @@ namespace VF.Builder.Haptics {
             mesh.boneWeights = weights;
         }
 
-        private static BoneWeight CalculateWeight(int closestBoneId, int otherBoneId, float distanceToOther) {
+        private static BoneWeight CalculateWeight(int closestBoneId, int otherBoneId, float distanceToOther, float activeFromMask) {
             var overlap = 0.5f;
             if (distanceToOther > overlap) {
                 return new BoneWeight() {
-                    weight0 = 1,
+                    weight0 = 1 * activeFromMask,
                     boneIndex0 = closestBoneId,
                 };
             } else {
                 var weightOfOther = (1 - (distanceToOther / overlap)) * 0.5f;
                 return new BoneWeight() {
-                    weight0 = 1-weightOfOther,
+                    weight0 = (1-weightOfOther) * activeFromMask,
                     boneIndex0 = closestBoneId,
-                    weight1 = weightOfOther,
+                    weight1 = weightOfOther * activeFromMask,
                     boneIndex1 = otherBoneId
                 };
             }
