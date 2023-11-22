@@ -156,12 +156,23 @@ namespace VF.Inspector {
         private GameObject dummyObject;
 
         public sealed override VisualElement CreateInspectorGUI() {
+            VisualElement content;
             try {
-                return CreateInspectorGUIUnsafe();
+                content = CreateInspectorGUIUnsafe();
             } catch (Exception e) {
                 Debug.LogException(new Exception("Failed to render editor", e));
-                return VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
+                content = VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
             }
+            
+            var versionLabel = new Label(VRCFPackageUtils.Version);
+            versionLabel.AddToClassList("vfVersionLabel");
+            versionLabel.pickingMode = PickingMode.Ignore;
+            
+            var contentWithVersion = new VisualElement();
+            contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
+            contentWithVersion.Add(versionLabel);
+            contentWithVersion.Add(content);
+            return contentWithVersion;
         }
 
         private VisualElement CreateInspectorGUIUnsafe() {
@@ -183,12 +194,6 @@ namespace VF.Inspector {
             var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);
 
             var container = new VisualElement();
-            container.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
-
-            var versionLabel = new Label(VRCFPackageUtils.Version);
-            versionLabel.AddToClassList("vfVersionLabel");
-            versionLabel.pickingMode = PickingMode.Ignore;
-            container.Add(versionLabel);
 
             container.Add(CreateOverrideLabel());
 
