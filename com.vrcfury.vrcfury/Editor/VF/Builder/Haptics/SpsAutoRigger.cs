@@ -23,13 +23,19 @@ namespace VF.Builder.Haptics {
 
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
             var boneCount = 10;
-            var lastParent = skin.rootBone;
+            VFGameObject lastParent = skin.rootBone;
+            var bonesAlreadyExist = lastParent.Find("VrcFuryAutoRig0") != null;
             var bones = new List<Transform>();
             var bindPoses = new List<Matrix4x4>();
             var localLength = worldLength / skin.rootBone.lossyScale.z;
             var localRadius = worldRadius / skin.rootBone.lossyScale.z;
             for (var i = 0; i < boneCount; i++) {
-                var bone = GameObjects.Create("VrcFuryAutoRig" + i, lastParent);
+                var bone = bonesAlreadyExist
+                    ? lastParent.Find("VrcFuryAutoRig" + i)
+                    : GameObjects.Create("VrcFuryAutoRig" + i, lastParent);
+                if (bone == null) {
+                    throw new Exception("Existing autorig bone was not found");
+                }
                 var pos = bone.localPosition;
                 pos.z = localLength / boneCount;
                 bone.localPosition = pos;
@@ -55,19 +61,20 @@ namespace VF.Builder.Haptics {
 
                 weights[i] = CalculateWeight(closestBoneId, otherBoneId, distanceToOther, GetActive(i));
             }
-
-            var physbone = skin.owner().AddComponent<VRCPhysBone>();
-            physbone.integrationType = VRCPhysBoneBase.IntegrationType.Advanced;
-            physbone.pull = 0.8f;
-            physbone.spring = 0.1f;
-            physbone.stiffness = 0.3f;
-            physbone.rootTransform = bones.First();
-
-            var radiusEnd = Mathf.Max(0.0f, 1.0f - localRadius / localLength);
-            physbone.radiusCurve = AnimationCurve.Linear(radiusEnd, 1.0f, 1.0f, 0.0f);
-            physbone.radius = localRadius;
-
             mesh.boneWeights = weights;
+
+            if (!bonesAlreadyExist) {
+                var physbone = skin.owner().AddComponent<VRCPhysBone>();
+                physbone.integrationType = VRCPhysBoneBase.IntegrationType.Advanced;
+                physbone.pull = 0.8f;
+                physbone.spring = 0.1f;
+                physbone.stiffness = 0.3f;
+                physbone.rootTransform = bones.First();
+
+                var radiusEnd = Mathf.Max(0.0f, 1.0f - localRadius / localLength);
+                physbone.radiusCurve = AnimationCurve.Linear(radiusEnd, 1.0f, 1.0f, 0.0f);
+                physbone.radius = localRadius;
+            }
         }
 
         private static BoneWeight CalculateWeight(int closestBoneId, int otherBoneId, float distanceToOther, float activeFromMask) {
