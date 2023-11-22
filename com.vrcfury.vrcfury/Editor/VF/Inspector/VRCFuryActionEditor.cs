@@ -524,8 +524,19 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 var propField = VRCFuryEditorUtils.Prop(blendshapeProp);
                 propField.style.flexGrow = 1;
                 row.Add(propField);
-            
-                var valueField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("blendShapeValue"));
+
+                var valueProp = prop.FindPropertyRelative("blendShapeValue");
+                var valueField = VRCFuryEditorUtils.Prop(valueProp);
+                valueField.RegisterCallback<ChangeEvent<float>>(e => {
+                    if (e.newValue < 0) {
+                        valueProp.floatValue = 0;
+                        valueProp.serializedObject.ApplyModifiedProperties();
+                    }
+                    if (e.newValue > 100) {
+                        valueProp.floatValue = 100;
+                        valueProp.serializedObject.ApplyModifiedProperties();
+                    }
+                });
                 valueField.style.flexGrow = 0;
                 valueField.style.flexBasis = 50;
                 row.Add(valueField);
