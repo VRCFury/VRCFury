@@ -188,7 +188,7 @@ namespace VF.Inspector {
             };
             container.Add(adv);
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Use hip avoidance",
-                tooltip: "If this component is placed on the hip bone, this prevent triggering or receiving haptics or depth animations from other sockets on the hip bone."));
+                tooltip: "If this plug is placed on the hip bone, this option will prevent triggering or receiving haptics or depth animations from other sockets on the hip bone."));
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
             adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
