@@ -2,6 +2,11 @@
     display: none;
 }
 
+/* Make various visual elements the same height so they line up */
+Button {
+    padding-bottom: 0;
+}
+
 /* Progress dialog */
 
 .VRCFProgressWindow ProgressBar {

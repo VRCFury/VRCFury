@@ -7,6 +7,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
@@ -67,7 +68,10 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             "This feature will allow you to use animations for your avatar's visemes."
         ));
         foreach (var name in visemeNames) {
-            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state_" + name), name, 50));
+            var row = new VisualElement().Row();
+            row.Add(new Label(name).FlexBasis(30));
+            row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state_" + name)).FlexGrow(1));
+            content.Add(row);
         }
         
         var adv = new Foldout {

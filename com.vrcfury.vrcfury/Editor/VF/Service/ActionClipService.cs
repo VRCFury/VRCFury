@@ -171,6 +171,7 @@ namespace VF.Service {
                     case BlendShapeAction blendShape:
                         var foundOne = false;
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                            if (!blendShape.allRenderers && blendShape.renderer != skin) continue;
                             if (!skin.sharedMesh) continue;
                             var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
                             if (blendShapeIndex < 0) continue;

@@ -40,7 +40,7 @@ public class VRCFuryStateEditor : PropertyDrawer {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialPropertyAction()); });
             menu.AddItem(new GUIContent("Scale"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ScaleAction()); });
-            menu.AddItem(new GUIContent("Material"), false,
+            menu.AddItem(new GUIContent("Material Swap"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialAction()); });
             menu.AddItem(new GUIContent("Enable SPS"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SpsOnAction()); });
@@ -66,7 +66,7 @@ public class VRCFuryStateEditor : PropertyDrawer {
             if (list.arraySize == 1) {
                 var first = list.GetArrayElementAtIndex(0);
                 var type = VRCFuryEditorUtils.GetManagedReferenceType(first);
-                if (type == typeof(ObjectToggleAction) || type == typeof(AnimationClipAction) || type == typeof(BlendShapeAction)) {
+                if (type == typeof(ObjectToggleAction) || type == typeof(AnimationClipAction)) {
                     singleLineEditor = VRCFuryEditorUtils.Prop(first);
                 }
             }

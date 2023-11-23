@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Model.StateAction;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
@@ -68,44 +69,31 @@ public class VRCFuryActionDrawer : PropertyDrawer {
     
     private static VisualElement RenderInner(SerializedProperty prop) {
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
-        
-        var avatarObject = VRCAvatarUtils.GuessAvatarObject(prop.serializedObject.targetObject as UnityEngine.Component);
 
+        var component = prop.serializedObject.targetObject as UnityEngine.Component;
+        var avatarObject = VRCAvatarUtils.GuessAvatarObject(component);
+        if (avatarObject == null) {
+            avatarObject = component.owner().root;
+        }
+
+        void Apply() {
+            prop.serializedObject.ApplyModifiedProperties();
+        }
+        void ApplyWithoutUndo() {
+            prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        }
         string GetPath(VFGameObject obj) {
             return avatarObject == null ? obj.name : obj.GetPath(avatarObject);
         }
 
         switch (type) {
             case nameof(MaterialAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Material") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField2 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"));
-                propField2.style.flexGrow = 0;
-                propField2.style.flexBasis = 50;
-                row.Add(propField2);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"));
-                propField3.style.flexGrow = 1;
-                row.Add(propField3);
-
-                return row;
+                var content = new VisualElement();
+                content.Add(new Label("Material Swap"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Renderer"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
+                return content;
             }
             case nameof(FlipbookAction): {
                 var output = new VisualElement();
@@ -142,113 +130,36 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 return content;
             }
             case nameof(MaterialPropertyAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
+                var content = new VisualElement();
 
-                var label = new Label("Material Property") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-
-                var col = new VisualElement
-                {
-                    style =
-                    {
-                        flexDirection = FlexDirection.Column,
-                        flexGrow = 1
-                    }
-                };
-                
-                row.Add(label);
-
-                var rendererRow = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.Center,
-                        marginBottom = 1
-                    }
-                };
+                content.Add(new Label("Material Property"));
 
                 var affectAllMeshesProp = prop.FindPropertyRelative("affectAllMeshes");
-                
                 var rendererProp = prop.FindPropertyRelative("renderer");
-                var propField = VRCFuryEditorUtils.Prop(rendererProp);
-                propField.style.flexGrow = 1;
-                propField.style.flexShrink = 1;
-                propField.SetEnabled(!affectAllMeshesProp.boolValue);
-                rendererRow.Add(propField);
-                
-                rendererRow.Add(new Label("All Meshes") {
-                    style = {
-                        marginLeft = 2,
-                        marginRight = 2,
-                        flexGrow = 1,
-                        flexBasis = 100,
-                        unityTextAlign = TextAnchor.MiddleRight
-                    }
-                });
-                
-                var propField4 = VRCFuryEditorUtils.RefreshOnChange(() => {
-                    propField.SetEnabled(!affectAllMeshesProp.boolValue);
-                    var field = VRCFuryEditorUtils.Prop(affectAllMeshesProp);
-                    return field;
-                }, affectAllMeshesProp);
-                propField4.style.flexGrow = 0;
-                propField4.style.flexShrink = 0;
-                propField4.style.flexBasis = 16;
-                rendererRow.Add(propField4);
-                
-                col.Add(rendererRow);
-                
-                var materialRow = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-            
+                content.Add(RendererSelector(
+                    affectAllMeshesProp,
+                    rendererProp
+                ));
+
                 var propertyNameProp = prop.FindPropertyRelative("propertyName");
-                var propField2 = VRCFuryEditorUtils.Prop(propertyNameProp);
-                propField2.style.flexGrow = 1;
-                propField2.tooltip = "Property Name";
-                materialRow.Add(propField2);
-                
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 60;
-                propField3.tooltip = "Property Value";
-                materialRow.Add(propField3);
-
-                var searchButton = new Button(SearchClick)
                 {
-                    text = "Search",
-                    style =
-                    {
-                        marginTop = 0,
-                        marginLeft = 0,
-                        marginRight = 0,
-                        marginBottom = 0
-                    }
-                };
-                materialRow.Add(searchButton);
-                col.Add(materialRow);
-                
-                row.Add(col);
+                    var row = new VisualElement().Row();
+                    row.Add(VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1));
+                    row.Add(new Button(SearchClick) { text = "Search" }.Margin(0));
+                    content.Add(row);
+                }
 
-                return row;
+                var valueProp = prop.FindPropertyRelative("value");
+                content.Add(VRCFuryEditorUtils.Prop(valueProp, "Value"));
+
+                return content;
 
                 void SearchClick() {
                     var searchWindow = new VrcfSearchWindow("Material Properties");
                     GetTreeEntries(searchWindow);
                     searchWindow.Open(value => {
                         propertyNameProp.stringValue = value;
-                        prop.serializedObject.ApplyModifiedProperties();
+                        Apply();
                     });
                 }
 
@@ -421,49 +332,48 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 return col;
             }
             case nameof(BlendShapeAction): {
+                var content = new VisualElement();
+
+                content.Add(new Label { text = "BlendShape" });
+
+                var allRenderersProp = prop.FindPropertyRelative("allRenderers");
+                var rendererProp = prop.FindPropertyRelative("renderer");
+                content.Add(RendererSelector(allRenderersProp, rendererProp));
+
                 var row = new VisualElement {
                     style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
+                        flexDirection = FlexDirection.Row
                     }
                 };
-
-                var label = new Label {
-                    text = "BlendShape",
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
                 var blendshapeProp = prop.FindPropertyRelative("blendShape");
-                var propField = VRCFuryEditorUtils.Prop(blendshapeProp);
-                propField.style.flexGrow = 1;
-                row.Add(propField);
+                row.Add(VRCFuryEditorUtils.Prop(blendshapeProp, "Blendshape", style: s => s.flexGrow = 1));
+                var selectButton = new Button(SelectButtonPress) { text = "Search" }.Margin(0);
+                row.Add(selectButton);
+                content.Add(row);
 
                 var valueProp = prop.FindPropertyRelative("blendShapeValue");
-                var valueField = VRCFuryEditorUtils.Prop(valueProp);
+                var valueField = VRCFuryEditorUtils.Prop(valueProp, "Value (0-100)");
                 valueField.RegisterCallback<ChangeEvent<float>>(e => {
                     if (e.newValue < 0) {
                         valueProp.floatValue = 0;
-                        valueProp.serializedObject.ApplyModifiedProperties();
+                        ApplyWithoutUndo();
                     }
                     if (e.newValue > 100) {
                         valueProp.floatValue = 100;
-                        valueProp.serializedObject.ApplyModifiedProperties();
+                        ApplyWithoutUndo();
                     }
                 });
-                valueField.style.flexGrow = 0;
-                valueField.style.flexBasis = 50;
-                row.Add(valueField);
+                content.Add(valueField);
 
                 void SelectButtonPress() {
                     var window = new VrcfSearchWindow("Blendshapes");
+                    var allRenderers = allRenderersProp.boolValue;
+                    var singleRenderer = rendererProp.objectReferenceValue as Renderer;
 
                     var shapes = new Dictionary<string, string>();
                     if (avatarObject != null) {
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                            if (!allRenderers && skin != singleRenderer) continue;
                             if (!skin.sharedMesh) continue;
                             for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
                                 var bs = skin.sharedMesh.GetBlendShapeName(i);
@@ -483,14 +393,11 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     
                     window.Open(value => {
                         blendshapeProp.stringValue = value;
-                        blendshapeProp.serializedObject.ApplyModifiedProperties();
+                        Apply();
                     });
                 }
 
-                var selectButton = new Button(SelectButtonPress) { text = "Select" };
-                row.Add(selectButton);
-
-                return row;
+                return content;
             }
             case nameof(AnimationClipAction): {
                 var row = new VisualElement {
@@ -564,6 +471,28 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         }
 
         return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
+    }
+
+    private static VisualElement RendererSelector(SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
+        var content = new VisualElement();
+
+        var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers");
+        content.Add(allRenderersField);
+
+        var rendererField = VRCFuryEditorUtils.Prop(rendererProp, "Renderer");
+        content.Add(rendererField);
+
+        void UpdateVisibility() {
+            var visible = !allRenderersProp.boolValue;
+            rendererField.SetVisible(visible);
+            if (!visible) {
+                rendererProp.objectReferenceValue = null;
+                rendererProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+        UpdateVisibility();
+        allRenderersField.RegisterCallback<ChangeEvent<bool>>(e => UpdateVisibility());
+        return content;
     }
 }
 
