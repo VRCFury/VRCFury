@@ -312,34 +312,20 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
         public class ControllerEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var wrapper = new VisualElement();
-                wrapper.style.flexDirection = FlexDirection.Row;
-                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller"));
-                a.style.flexBasis = 0;
-                a.style.flexGrow = 1;
-                wrapper.Add(a);
-                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type"));
-                b.style.flexBasis = 0;
-                b.style.flexGrow = 1;
-                wrapper.Add(b);
-                return wrapper;
+                var row = new VisualElement().Row();
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type")).FlexGrow(1));
+                return row;
             }
         }
         
         [CustomPropertyDrawer(typeof(FullController.MenuEntry))]
         public class MenuEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var wrapper = new VisualElement();
-                wrapper.style.flexDirection = FlexDirection.Row;
-                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu"));
-                a.style.flexBasis = 0;
-                a.style.flexGrow = 1;
-                wrapper.Add(a);
-                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix"));
-                b.style.flexBasis = 0;
-                b.style.flexGrow = 1;
-                wrapper.Add(b);
-                return wrapper;
+                var row = new VisualElement().Row();
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix")).FlexGrow(1));
+                return row;
             }
         }
         
@@ -380,17 +366,10 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.SmoothParamEntry))]
         public class SmoothParamDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var wrapper = new VisualElement();
-                wrapper.style.flexDirection = FlexDirection.Row;
+                var row = new VisualElement().Row();
                 SerializedProperty nameProp = prop.FindPropertyRelative("name");
-                var a = VRCFuryEditorUtils.Prop(nameProp);
-                a.style.flexBasis = 0;
-                a.style.flexGrow = 2;
-                wrapper.Add(a);
-                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration"));
-                b.style.flexBasis = 0;
-                b.style.flexGrow = 1;
-                wrapper.Add(b);
+                row.Add(VRCFuryEditorUtils.Prop(nameProp).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration")).FlexBasis(50));
 
                 void SelectButtonPress() {
                     var menu = new GenericMenu();
@@ -427,9 +406,9 @@ namespace VF.Feature {
                 }
 
                 var selectButton = new Button(SelectButtonPress) { text = "Select" };
-                wrapper.Add(selectButton);
+                row.Add(selectButton);
 
-                return wrapper;
+                return row;
             }
         }
 

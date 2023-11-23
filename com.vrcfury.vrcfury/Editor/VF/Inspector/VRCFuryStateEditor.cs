@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Model.StateAction;
+using VF.Utils;
 
 namespace VF.Inspector {
 
@@ -76,10 +77,8 @@ public class VRCFuryStateEditor : PropertyDrawer {
             var showList = singleLineEditor == null && list.arraySize > 0;
 
             if (showSingleLineEditor || showPlus) {
-                var segments = new VisualElement();
+                var segments = new VisualElement().Row();
                 body.Add(segments);
-                segments.style.flexDirection = FlexDirection.Row;
-                segments.style.alignItems = Align.FlexStart;
 
                 if (showSingleLineEditor) {
                     singleLineEditor.style.flexGrow = 1;

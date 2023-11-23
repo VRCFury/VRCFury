@@ -284,8 +284,6 @@ namespace VF.Model.Feature {
         public bool holdButton;
 
         public override void CreateNewInstance(GameObject obj) {
-            var n = obj.AddComponent<VRCFuryToggle>();
-            // TODO
         }
 
         public override bool Upgrade(int fromVersion) {

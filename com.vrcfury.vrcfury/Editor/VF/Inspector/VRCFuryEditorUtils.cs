@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
@@ -297,9 +298,7 @@ public static class VRCFuryEditorUtils {
                 return (WrappedLabel(label), null);
             }
 
-            labelBox = new VisualElement();
-            labelBox.style.flexGrow = 0;
-            labelBox.style.flexDirection = FlexDirection.Row;
+            labelBox = new VisualElement().Row();
             labelBox.Add(WrappedLabel(label));
             var im = new Image {
                 image = EditorGUIUtility.FindTexture("_Help"),
@@ -392,13 +391,8 @@ public static class VRCFuryEditorUtils {
         var wrapper = new VisualElement();
         var addFieldLast = false;
         if (isCheckbox && labelBox != null) {
-            var row = new VisualElement() {
-                style = {
-                    flexDirection = FlexDirection.Row
-                }
-            };
+            var row = new VisualElement().Row().FlexShrink(0);
             field.style.paddingRight = 3;
-            field.style.flexShrink = 0;
             row.Add(field);
             labelBox.style.flexShrink = 1;
             row.Add(labelBox);
@@ -409,9 +403,7 @@ public static class VRCFuryEditorUtils {
             }
             addFieldLast = true;
         } else {
-            var labelRow = new VisualElement();
-            labelRow.style.flexDirection = FlexDirection.Row;
-
+            var labelRow = new VisualElement().Row();
             labelBox.style.minWidth = labelWidth;
             labelBox.style.flexGrow = 0;
             labelRow.Add(labelBox);

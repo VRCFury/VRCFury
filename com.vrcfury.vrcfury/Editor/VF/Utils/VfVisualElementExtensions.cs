@@ -1,3 +1,4 @@
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace VF.Utils {
@@ -12,8 +13,18 @@ namespace VF.Utils {
             return el;
         }
         
+        public static T TextAlign<T>(this T el, TextAnchor v) where T : VisualElement {
+            el.style.unityTextAlign = v;
+            return el;
+        }
+        
         public static T FlexGrow<T>(this T el, StyleFloat v) where T : VisualElement {
             el.style.flexGrow = v;
+            return el;
+        }
+        
+        public static T FlexShrink<T>(this T el, StyleFloat v) where T : VisualElement {
+            el.style.flexShrink = v;
             return el;
         }
         
@@ -25,6 +36,11 @@ namespace VF.Utils {
         
         public static T AlignItems<T>(this T el, Align v) where T : VisualElement {
             el.style.alignItems = v;
+            return el;
+        }
+        
+        public static T FlexWrap<T>(this T el) where T : VisualElement {
+            el.style.flexWrap = Wrap.Wrap;
             return el;
         }
         

@@ -317,17 +317,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
 
-        var flex = new VisualElement {
-            style = {
-                flexDirection = FlexDirection.Row,
-                alignItems = Align.FlexStart
-            }
-        };
+        var flex = new VisualElement().Row();
         content.Add(flex);
 
-        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip);
-        name.style.flexGrow = 1;
-        flex.Add(name);
+        flex.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
 
         var button = VRCFuryEditorUtils.Button("Options", () => {
             var advMenu = new GenericMenu();
@@ -558,9 +551,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 if (hasExitTimeProp != null && hasExitTimeProp.boolValue)
                     tags.Add("Run to Completion");
 
-                var row = new VisualElement();
-                row.style.flexWrap = Wrap.Wrap;
-                row.style.flexDirection = FlexDirection.Row;
+                var row = new VisualElement().Row().FlexWrap();
                 foreach (var tag in tags) {
                     var flag = new Label(tag);
                     flag.style.width = StyleKeyword.Auto;

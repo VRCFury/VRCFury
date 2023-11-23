@@ -44,9 +44,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         }));
         
         col.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-            var row = new VisualElement();
-            row.style.flexWrap = Wrap.Wrap;
-            row.style.flexDirection = FlexDirection.Row;
+            var row = new VisualElement().Row().FlexWrap();
 
             void AddFlag(string tag) {
                 var flag = new Label(tag);
@@ -89,7 +87,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         switch (type) {
             case nameof(MaterialAction): {
                 var content = new VisualElement();
-                content.Add(new Label("Material Swap"));
+                content.Add(Title("Material Swap"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Renderer"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
@@ -97,14 +95,14 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             }
             case nameof(FlipbookAction): {
                 var output = new VisualElement();
-                output.Add(new Label("Poiyomi Flipbook Frame"));
+                output.Add(Title("Poiyomi Flipbook Frame"));
                 output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
                 output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("frame"), "Frame Number"));
                 return output;
             }
             case nameof(ShaderInventoryAction): {
                 var output = new VisualElement();
-                output.Add(new Label("SCSS Shader Inventory"));
+                output.Add(Title("SCSS Shader Inventory"));
                 output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
                 output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot"), "Slot Number"));
                 return output;
@@ -112,16 +110,13 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(PoiyomiUVTileAction): {
                 var content = new VisualElement();
 
-                content.Add(new Label("Poiyomi UV Tile"));
+                content.Add(Title("Poiyomi UV Tile"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("row"), "Row (0-3)"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("column"), "Column (0-3)"));
 
                 var adv = new Foldout {
                     text = "Advanced UV Tile Options",
-                    style = {
-                        flexDirection = FlexDirection.Column,
-                    },
                     value = false
                 };
                 adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolve"), "Use UV Tile Dissolve"));
@@ -132,7 +127,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(MaterialPropertyAction): {
                 var content = new VisualElement();
 
-                content.Add(new Label("Material Property"));
+                content.Add(Title("Material Property"));
 
                 var affectAllMeshesProp = prop.FindPropertyRelative("affectAllMeshes");
                 var rendererProp = prop.FindPropertyRelative("renderer");
@@ -225,106 +220,40 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 }
             }
             case nameof(ScaleAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Scale") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 50;
-                row.Add(propField3);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Scale").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj")).FlexGrow(1));
+                row.Add( VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale")).FlexBasis(50));
                 return row;
             }
             case nameof(ObjectToggleAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
+                var row = new VisualElement().Row();
 
                 row.Add(VRCFuryEditorUtils.Prop(
                     prop.FindPropertyRelative("mode"),
                     formatEnum: str => {
                         if (str == "Toggle") return "Flip State (Deprecated)";
                         return str;
-                    },
-                    style: s => {
-                        s.flexGrow = 0;
-                        s.flexBasis = 100;
-                    }));
+                    }
+                ).FlexBasis(100));
 
-                row.Add(VRCFuryEditorUtils.Prop(
-                    prop.FindPropertyRelative("obj"),
-                    style: s => s.flexGrow = 1
-                ));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj")).FlexGrow(1));
 
                 return row;
             }
             case nameof(SpsOnAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Enable SPS") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("target"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Enable SPS").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("target")).FlexGrow(1));
                 return row;
             }
             case nameof(FxFloatAction): {
                 var col = new VisualElement();
 
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Set an FX Float") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-                
-                var valueField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"));
-                valueField.style.flexBasis = 30;
-                row.Add(valueField);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Set an FX Float").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value")).FlexBasis(30));
                 col.Add(row);
                 
                 col.Add(VRCFuryEditorUtils.Warn("Warning: This will cause the FX parameter to be 'animated', which means it cannot be used in a menu or otherwise controlled by VRChat."));
@@ -334,20 +263,16 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(BlendShapeAction): {
                 var content = new VisualElement();
 
-                content.Add(new Label { text = "BlendShape" });
+                content.Add(Title("BlendShape"));
 
                 var allRenderersProp = prop.FindPropertyRelative("allRenderers");
                 var rendererProp = prop.FindPropertyRelative("renderer");
                 content.Add(RendererSelector(allRenderersProp, rendererProp));
 
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row
-                    }
-                };
+                var row = new VisualElement().Row();
                 var blendshapeProp = prop.FindPropertyRelative("blendShape");
                 row.Add(VRCFuryEditorUtils.Prop(blendshapeProp, "Blendshape", style: s => s.flexGrow = 1));
-                var selectButton = new Button(SelectButtonPress) { text = "Search" }.Margin(0);
+                var selectButton = new Button(SelectButtonPress) { text = "Search" };
                 row.Add(selectButton);
                 content.Add(row);
 
@@ -400,66 +325,26 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 return content;
             }
             case nameof(AnimationClipAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label {
-                    text = "Animation Clip",
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Animation Clip").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip")).FlexGrow(1));
                 return row;
             }
             case nameof(BlockBlinkingAction): {
-                return new Label {
-                    text = "Disable Blinking"
-                };
+                return Title("Disable Blinking");
             }
             case nameof(BlockVisemesAction): {
-                return new Label {
-                    text = "Disable Visemes"
-                };
+                return Title("Disable Visemes");
             }
             case nameof(ResetPhysboneAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label {
-                    text = "Reset Physbone",
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physBone"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Reset Physbone").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physBone")).FlexGrow(1));
                 return row;
             }
             case nameof(FlipBookBuilderAction): {
                 var output = new VisualElement();
-                output.Add(new Label {
-                    text = "Flipbook Builder"
-                });
+                output.Add(Title("Flipbook Builder"));
                 output.Add(VRCFuryEditorUtils.Info(
                     "This will create a clip made up of one frame per child action. This is mostly useful for" +
                     " VRCFury Toggles with 'Use Slider Wheel' enabled, as you can put various presets in these slots" +
@@ -471,6 +356,12 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         }
 
         return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
+    }
+
+    private static VisualElement Title(string title) {
+        var label = new Label(title);
+        label.style.unityFontStyleAndWeight = FontStyle.Bold;
+        return label;
     }
 
     private static VisualElement RendererSelector(SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
