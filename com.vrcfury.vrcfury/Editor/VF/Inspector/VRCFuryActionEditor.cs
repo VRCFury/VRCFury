@@ -603,6 +603,11 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     text = "Disable Blinking"
                 };
             }
+            case nameof(BlockVisemesAction): {
+                return new Label {
+                    text = "Disable Visemes"
+                };
+            }
             case nameof(ResetPhysboneAction): {
                 var row = new VisualElement {
                     style = {

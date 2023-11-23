@@ -102,6 +102,10 @@ namespace VF.Model.StateAction {
     [Serializable]
     public class BlockBlinkingAction : Action {
     }
+        
+    [Serializable]
+    public class BlockVisemesAction : Action {
+    }
     
     [Serializable]
     public class ResetPhysboneAction : Action {

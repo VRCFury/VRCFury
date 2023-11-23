@@ -239,6 +239,11 @@ namespace VF.Service {
                         onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
                         break;
                     }
+                    case BlockVisemesAction blockVisemesAction: {
+                        var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingMouth);
+                        onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        break;
+                    }
                     case ResetPhysboneAction resetPhysbone: {
                         if (resetPhysbone.physBone != null) {
                             physbonesToReset.Add(resetPhysbone.physBone.gameObject);

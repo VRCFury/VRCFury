@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
@@ -6,12 +7,14 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
 
 public class VisemesBuilder : FeatureBuilder<Visemes> {
+    [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
     [VFAutowired] private readonly ActionClipService actionClipService;
 
     private string[] visemeNames = {
@@ -41,6 +44,17 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             var name = visemeNames[i];
             addViseme(i, name, (State)model.GetType().GetField("state_" + name).GetValue(model));
         }
+
+        var blocked = visemes.NewState("Blocked");
+        trackingConflictResolverBuilder.WhenCollected(() => {
+            var inhibitors =
+                trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingMouth);
+            if (inhibitors.Count > 0) {
+                var blockedWhen = VFCondition.Any(inhibitors.Select(inhibitor => inhibitor.IsGreaterThan(0)));
+                blocked.TransitionsFromAny().When(blockedWhen);
+                blocked.TransitionsToExit().When(blockedWhen.Not());
+            }
+        });
     }
 
     public override string GetEditorTitle() {
