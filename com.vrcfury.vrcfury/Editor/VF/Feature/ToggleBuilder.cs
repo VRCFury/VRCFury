@@ -590,13 +590,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         toggleOffWarning.style.display = DisplayStyle.None;
         content.Add(toggleOffWarning);
         VRCFuryEditorUtils.RefreshOnInterval(toggleOffWarning, () => {
+            var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
+
             var turnsOff = model.state.actions
                 .OfType<ObjectToggleAction>()
                 .Where(a => a.mode == ObjectToggleAction.Mode.TurnOff)
                 .Select(a => a.obj)
                 .Where(o => o != null)
                 .ToImmutableHashSet();
-            var othersTurnOn = avatarObject.GetComponentsInSelfAndChildren<VRCFury>()
+            var othersTurnOn = baseObject.GetComponentsInSelfAndChildren<VRCFury>()
                 .SelectMany(vf => vf.config.features)
                 .OfType<Toggle>()
                 .SelectMany(toggle => toggle.state.actions)
