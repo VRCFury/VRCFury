@@ -278,7 +278,7 @@ namespace VF.Model.Feature {
         public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
         [Range(0,1)]
-        public float defaultSliderValue = 1;
+        public float defaultSliderValue = 0;
         public bool useGlobalParam;
         public string globalParam;
         public bool holdButton;

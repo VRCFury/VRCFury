@@ -108,109 +108,26 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 return row;
             }
             case nameof(FlipbookAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Flipbook Frame") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("frame"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 30;
-                row.Add(propField3);
-
-                return row;
+                var output = new VisualElement();
+                output.Add(new Label("Poiyomi Flipbook Frame"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("frame"), "Frame Number"));
+                return output;
             }
             case nameof(ShaderInventoryAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Shader Inventory") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 30;
-                row.Add(propField3);
-
-                return row;
+                var output = new VisualElement();
+                output.Add(new Label("SCSS Shader Inventory"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot"), "Slot Number"));
+                return output;
             }
             case nameof(PoiyomiUVTileAction): {
                 var content = new VisualElement();
-                var row = new VisualElement {
-                    style = {
-                        alignItems = Align.FlexStart,
-                        flexDirection = FlexDirection.Row,
-                    }
-                };
 
-                var label = new Label("Poiyomi UV Tile") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100,
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-
-                row.Add(new Label("Row") {
-                    style = {
-                        flexGrow = 0,
-                        flexShrink = 0,
-                        flexBasis = 30,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                    }
-                });
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("row"), style: s => {
-                    s.flexGrow = 0;
-                    s.flexShrink = 0;
-                    s.flexBasis = 20;
-                }));
-
-                row.Add(new Label("Col") {
-                    style = {
-                        flexGrow = 0,
-                        flexShrink = 0,
-                        flexBasis = 30,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                    }
-                });
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("column"), style: s => {
-                    s.flexGrow = 0;
-                    s.flexShrink = 0;
-                    s.flexBasis = 20;
-                }));
-
-                content.Add(row);
+                content.Add(new Label("Poiyomi UV Tile"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("row"), "Row (0-3)"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("column"), "Column (0-3)"));
 
                 var adv = new Foldout {
                     text = "Advanced UV Tile Options",
@@ -630,6 +547,19 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 row.Add(propField);
 
                 return row;
+            }
+            case nameof(FlipBookBuilderAction): {
+                var output = new VisualElement();
+                output.Add(new Label {
+                    text = "Flipbook Builder"
+                });
+                output.Add(VRCFuryEditorUtils.Info(
+                    "This will create a clip made up of one frame per child action. This is mostly useful for" +
+                    " VRCFury Toggles with 'Use Slider Wheel' enabled, as you can put various presets in these slots" +
+                    " and use the slider to select one of them."
+                ));
+                output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("states")));
+                return output;
             }
         }
 

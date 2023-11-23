@@ -5,7 +5,12 @@ using VF.Model.StateAction;
 
 namespace VF.Inspector {
 
-public class VRCFuryStateEditor {
+[CustomPropertyDrawer(typeof(VF.Model.State))]
+public class VRCFuryStateEditor : PropertyDrawer {
+    public override VisualElement CreatePropertyGUI(SerializedProperty property) {
+        return render(property);
+    }
+
     public static VisualElement render(
         SerializedProperty prop,
         string myLabel = null,
@@ -25,12 +30,12 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlendShapeAction()); });
             menu.AddItem(new GUIContent("Animation Clip"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new AnimationClipAction()); });
-            menu.AddItem(new GUIContent("Flipbook Frame"), false,
+            menu.AddItem(new GUIContent("Poiyomi Flipbook Frame"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FlipbookAction()); });
-            menu.AddItem(new GUIContent("Shader Inventory"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ShaderInventoryAction()); });
             menu.AddItem(new GUIContent("Poiyomi UV Tile"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new PoiyomiUVTileAction()); });
+            menu.AddItem(new GUIContent("SCSS Shader Inventory"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ShaderInventoryAction()); });
             menu.AddItem(new GUIContent("Material Property"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialPropertyAction()); });
             menu.AddItem(new GUIContent("Scale"), false,
@@ -47,6 +52,8 @@ public class VRCFuryStateEditor {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlockVisemesAction()); });
             menu.AddItem(new GUIContent("Reset Physbone"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ResetPhysboneAction()); });
+            menu.AddItem(new GUIContent("Flipbook Builder"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FlipBookBuilderAction()); });
             menu.ShowAsContext();
         }
 
