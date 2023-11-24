@@ -14,10 +14,6 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 // Don't mark a class as Obsolete or MovedFrom -- unity 2019 will go into an infinite loop and die
 
 namespace VF.Model.Feature {
-    
-    [AttributeUsage(AttributeTargets.Class)]
-    public class NoBuilder : Attribute {
-    }
 
     [Serializable]
     public abstract class FeatureModel {
@@ -512,7 +508,6 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class FixWriteDefaults : NewFeatureModel {
         public enum FixWriteDefaultsMode {
             Auto,
@@ -729,7 +724,6 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class OverrideMenuSettings : NewFeatureModel {
         public string nextText;
         public GuidTexture2d nextIcon;

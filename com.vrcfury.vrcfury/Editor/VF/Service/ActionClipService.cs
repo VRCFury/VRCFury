@@ -258,7 +258,7 @@ namespace VF.Service {
                         break;
                     }
                     case FlipBookBuilderAction sliderBuilderAction: {
-                        var states = sliderBuilderAction.states.ToList();
+                        var states = sliderBuilderAction.pages.Select(page => page.state).ToList();
                         if (states.Count == 0) break;
                         // Duplicate the last state so the last state still gets an entire frame
                         states.Add(states.Last());

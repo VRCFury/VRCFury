@@ -1,12 +1,16 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Model.StateAction;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
 
@@ -350,7 +354,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     " VRCFury Toggles with 'Use Slider Wheel' enabled, as you can put various presets in these slots" +
                     " and use the slider to select one of them."
                 ));
-                output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("states")));
+                output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("pages")));
                 return output;
             }
         }
@@ -384,6 +388,23 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         UpdateVisibility();
         allRenderersField.RegisterCallback<ChangeEvent<bool>>(e => UpdateVisibility());
         return content;
+    }
+
+    [CustomPropertyDrawer(typeof(FlipBookBuilderAction.FlipBookPage))]
+    public class FlipbookPageDrawer : PropertyDrawer {
+        public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+            var content = new VisualElement();
+            var match = Regex.Match(prop.propertyPath, @"\[(\d+)\]$");
+            string pageNum;
+            if (match.Success && Int32.TryParse(match.Groups[1].ToString(), out var num)) {
+                pageNum = (num + 1).ToString();
+            } else {
+                pageNum = "?";
+            }
+            content.Add(Title($"Page #{pageNum}"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
+            return content;
+        }
     }
 }
 
