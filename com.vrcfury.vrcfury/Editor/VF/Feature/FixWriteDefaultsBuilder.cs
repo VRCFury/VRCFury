@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
+using VF.PlayMode;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -156,11 +157,13 @@ namespace VF.Feature {
                 if (ask == 0) {
                     mode = FixWriteDefaults.FixWriteDefaultsMode.Auto;
                 }
-                if ((ask == 0 || ask == 2) && originalObject) {
-                    var newComponent = originalObject.AddComponent<VRCFury>();
-                    var newFeature = new FixWriteDefaults();
-                    if (ask == 2) newFeature.mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
-                    newComponent.config.features.Add(newFeature);
+                // Save the choice
+                if (ask == 0 || ask == 2) {
+                    if (Application.isPlaying) {
+                        FixWriteDefaultsLater.SaveLater(avatarObject, ask == 0);
+                    } else if (originalObject) {
+                        FixWriteDefaultsLater.SaveNow(originalObject, ask == 0);
+                    }
                 }
             }
 
