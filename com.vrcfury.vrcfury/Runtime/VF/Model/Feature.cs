@@ -251,7 +251,7 @@ namespace VF.Model.Feature {
         public bool sliderInactiveAtZero;
         public bool securityEnabled;
         public bool defaultOn;
-        public bool includeInRest;
+        [Obsolete] public bool includeInRest;
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
@@ -282,6 +282,7 @@ namespace VF.Model.Feature {
         public bool useGlobalParam;
         public string globalParam;
         public bool holdButton;
+        public bool invertRestLogic;
 
         public override void CreateNewInstance(GameObject obj) {
         }
