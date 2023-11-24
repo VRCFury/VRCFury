@@ -8,13 +8,25 @@ namespace VF.Utils {
         private bool isFloat;
         private AnimationCurve floatCurve;
         private ObjectReferenceKeyframe[] objectCurve;
+        
+        public static implicit operator FloatOrObjectCurve(AnimationCurve d) => new FloatOrObjectCurve(d);
+        public static implicit operator FloatOrObjectCurve(ObjectReferenceKeyframe[] d) => new FloatOrObjectCurve(d);
+        public static implicit operator FloatOrObjectCurve(float d) => (FloatOrObject)d;
+        public static implicit operator FloatOrObjectCurve(UnityEngine.Object d) => (FloatOrObject)d;
+        public static implicit operator FloatOrObjectCurve(FloatOrObject d) {
+            if (d.IsFloat()) {
+                return new FloatOrObjectCurve(AnimationCurve.Constant(0, 0, d.GetFloat()));
+            } else {
+                return new FloatOrObjectCurve(new [] { new ObjectReferenceKeyframe { time = 0, value = d.GetObject() } });
+            }
+        }
 
-        public FloatOrObjectCurve(AnimationCurve floatCurve) {
+        private FloatOrObjectCurve(AnimationCurve floatCurve) {
             this.isFloat = true;
             this.floatCurve = floatCurve;
         }
 
-        public FloatOrObjectCurve(ObjectReferenceKeyframe[] objectCurve) {
+        private FloatOrObjectCurve(ObjectReferenceKeyframe[] objectCurve) {
             this.isFloat = false;
             this.objectCurve = objectCurve;
         }
@@ -27,23 +39,23 @@ namespace VF.Utils {
 
         public FloatOrObject GetFirst() {
             if (isFloat) {
-                if (floatCurve == null || floatCurve.keys.Length == 0) return new FloatOrObject(0);
-                return new FloatOrObject(floatCurve.keys[0].value);
+                if (floatCurve == null || floatCurve.keys.Length == 0) return 0;
+                return floatCurve.keys[0].value;
             } else {
                 if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
-                return new FloatOrObject(objectCurve[0].value);
+                return objectCurve[0].value;
             }
         }
 
         public FloatOrObject GetLast() {
             if (isFloat) {
-                if (floatCurve == null || floatCurve.keys.Length == 0) return new FloatOrObject(0);
+                if (floatCurve == null || floatCurve.keys.Length == 0) return 0;
                 var length = floatCurve.keys.Length;
-                return new FloatOrObject(floatCurve.keys[length - 1].value);
+                return floatCurve.keys[length - 1].value;
             } else {
                 if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
                 var length = objectCurve.Length;
-                return new FloatOrObject(objectCurve[length - 1].value);
+                return objectCurve[length - 1].value;
             }
         }
     }

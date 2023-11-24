@@ -49,7 +49,7 @@ namespace VF.Feature {
             var handsActive = fx.NewFloat("HandsActive", def: 0);
             var handsActiveClip = new AnimationClip();
             // MMD worlds will disable this layer, setting HandsActive back to the default of 0
-            handsActiveClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), handsActive.Name()), 1);
+            handsActiveClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), handsActive.Name()), 1);
             layer1.NewState("Mmd Detector").WithAnimation(handsActiveClip);
 
             foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {

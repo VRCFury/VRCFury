@@ -304,12 +304,17 @@ namespace VF.Model.Feature {
                 }
                 sliderInactiveAtZero = true;
             }
+            if (fromVersion < 3) {
+                if (slider) {
+                    includeInRest = false;
+                }
+            }
             return false;
 #pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
 

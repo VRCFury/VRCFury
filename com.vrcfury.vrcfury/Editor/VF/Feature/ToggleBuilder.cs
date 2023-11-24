@@ -21,10 +21,11 @@ namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
+    [VFAutowired] private readonly RestingStateBuilder restingState;
 
     private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
-    private AnimationClip restingClip;
+    private AnimationClip savedRestingClip;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -81,6 +82,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var (paramName, usePrefixOnParam) = GetParamName();
         VFCondition onCase;
         VFAFloat weight = null;
+        bool defaultOn;
         if (model.slider) {
             var param = fx.NewFloat(
                 paramName,
@@ -91,6 +93,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             );
             exclusiveParam = param;
             onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+            defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
             weight = param;
             if (addMenuItem) {
                 manager.GetMenu().NewMenuSlider(
@@ -103,10 +106,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             exclusiveParam = param;
             onCase = param.IsNotEqualTo(0);
+            defaultOn = model.defaultOn;
         } else {
             var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             exclusiveParam = param;
             onCase = param.IsTrue();
+            defaultOn = model.defaultOn;
             if (addMenuItem) {
                 if (model.holdButton) {
                     manager.GetMenu().NewMenuButton(
@@ -133,10 +138,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-            Apply(fx, layer, off, onCase.And(isLocal), weight, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+            Apply(fx, layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
         } else {
-            Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+            Apply(fx, layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
         }
     }
 
@@ -146,6 +151,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFState off,
         VFCondition onCase,
         VFAFloat weight,
+        bool defaultOn,
         string onName,
         State action,
         State inAction,
@@ -168,6 +174,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFState inState;
         VFState onState;
 
+        AnimationClip restingClip;
         if (weight != null) {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
@@ -179,8 +186,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 tree.AddChild(clip, 1);
                 onState.WithAnimation(clip);
                 onState.WithAnimation(tree);
+                restingClip = clip.EvaluateBlend(avatarObject, model.defaultSliderValue);
             } else {
                 onState.WithAnimation(clip).MotionTime(weight);
+                restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
             }
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
@@ -197,11 +206,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             // if it's already on in the main clip.
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 if (!curve.IsFloat) {
-                    if (inClip.GetObjectCurve(binding) == null) inClip.SetConstant(binding, curve.GetFirst());
-                    if (outClip.GetObjectCurve(binding) == null) outClip.SetConstant(binding, curve.GetLast());
+                    if (inClip.GetObjectCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
+                    if (outClip.GetObjectCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
                 } else if (binding.type == typeof(GameObject)) {
-                    if (inClip.GetFloatCurve(binding) == null) inClip.SetConstant(binding, curve.GetFirst());
-                    if (outClip.GetFloatCurve(binding) == null) outClip.SetConstant(binding, curve.GetLast());
+                    if (inClip.GetFloatCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
+                    if (outClip.GetFloatCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
                 }
             }
 
@@ -212,9 +221,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
             outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
+            restingClip = clip;
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            restingClip = clip;
         }
 
         exclusiveTagTriggeringStates.Add(inState);
@@ -234,13 +245,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        if (model.defaultOn && !model.separateLocal && !model.securityEnabled) {
+        if (defaultOn && !model.separateLocal && !model.securityEnabled) {
             layer.GetRawStateMachine().defaultState = onState.GetRaw();
             off.TransitionsFromEntry().When();
         }
 
-        if (restingClip == null && model.includeInRest) {
-            restingClip = clip;
+        if (savedRestingClip == null && model.includeInRest) {
+            savedRestingClip = restingClip;
         }
     }
 
@@ -284,11 +295,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
     public void ApplyRestingState() {
-        if (restingClip != null) {
-            var restingStateBuilder = allBuildersInRun
-                .OfType<RestingStateBuilder>()
-                .First();
-            restingStateBuilder.ApplyClipToRestingState(restingClip, true);
+        if (savedRestingClip != null && savedRestingClip.IsStatic()) {
+            restingState.ApplyClipToRestingState(savedRestingClip, true);
         }
     }
 

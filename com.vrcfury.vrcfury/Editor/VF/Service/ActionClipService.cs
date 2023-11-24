@@ -87,7 +87,7 @@ namespace VF.Service {
                             typeof(SkinnedMeshRenderer),
                             "material._FlipbookCurrentFrame"
                         );
-                        onClip.SetConstant(binding, frameAnimNum);
+                        onClip.SetCurve(binding, frameAnimNum);
                         break;
                     }
                     case ShaderInventoryAction shaderInventoryAction: {
@@ -98,8 +98,8 @@ namespace VF.Service {
                             renderer.GetType(),
                             $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
                         );
-                        offClip.SetConstant(binding, 0);
-                        onClip.SetConstant(binding, 1);
+                        offClip.SetCurve(binding, 0);
+                        onClip.SetCurve(binding, 1);
                         break;
                     }
                     case PoiyomiUVTileAction poiyomiUVTileAction: {
@@ -117,8 +117,8 @@ namespace VF.Service {
                                 renderer.GetType(),
                                 $"material.{propertyName}"
                             );
-                            offClip.SetConstant(binding, 1f);
-                            onClip.SetConstant(binding, 0f);
+                            offClip.SetCurve(binding, 1f);
+                            onClip.SetCurve(binding, 0f);
                         }
                         break;
                     }
@@ -137,7 +137,7 @@ namespace VF.Service {
                             );
                             if (renderer.sharedMaterials.Any(mat =>
                                     mat != null && mat.HasProperty(materialPropertyAction.propertyName))) {
-                                onClip.SetConstant(binding, materialPropertyAction.value);
+                                onClip.SetCurve(binding, materialPropertyAction.value);
                             }
                             
                         }
@@ -177,7 +177,12 @@ namespace VF.Service {
                             if (blendShapeIndex < 0) continue;
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
-                            clipBuilder.BlendShape(onClip, skin, blendShape.blendShape, blendShape.blendShapeValue);
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(skin.gameObject),
+                                typeof(SkinnedMeshRenderer),
+                                "blendShape." + blendShape.blendShape
+                            );
+                            onClip.SetCurve(binding, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
                             Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);
@@ -215,8 +220,8 @@ namespace VF.Service {
                             typeof(VRCFuryHapticPlug),
                             "spsAnimatedEnabled"
                         );
-                        offClip.SetConstant(binding, 0);
-                        onClip.SetConstant(binding, 1);
+                        offClip.SetCurve(binding, 0);
+                        onClip.SetCurve(binding, 1);
                         break;
                     }
                     case FxFloatAction fxFloatAction: {
@@ -233,17 +238,17 @@ namespace VF.Service {
                             typeof(Animator),
                             fxFloatAction.name
                         );
-                        onClip.SetConstant(binding, fxFloatAction.value);
+                        onClip.SetCurve(binding, fxFloatAction.value);
                         break;
                     }
                     case BlockBlinkingAction blockBlinkingAction: {
                         var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingEyes);
-                        onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
                         break;
                     }
                     case BlockVisemesAction blockVisemesAction: {
                         var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingMouth);
-                        onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
                         break;
                     }
                     case ResetPhysboneAction resetPhysbone: {
@@ -282,7 +287,7 @@ namespace VF.Service {
 
             if (physbonesToReset.Count > 0) {
                 var param = physboneResetService.CreatePhysBoneResetter(physbonesToReset, name);
-                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
+                onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
 
             if (applyOffClip) {
@@ -296,7 +301,7 @@ namespace VF.Service {
 
             foreach (var muscleType in onClip.GetMuscleBindingTypes()) {
                 var trigger = fullBodyEmoteService.AddClip(onClip, muscleType);
-                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
+                onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
             }
 
             return onClip;

@@ -22,12 +22,12 @@ namespace VF.Feature {
             if (isFloat) {
                 if (GetDefaultClip().GetFloatCurve(binding) != null) return;
                 if (binding.GetFloatFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetConstant(binding, value);
+                    GetDefaultClip().SetCurve(binding, value);
                 }
             } else {
                 if (GetDefaultClip().GetObjectCurve(binding) != null) return;
                 if (binding.GetObjectFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetConstant(binding, value);
+                    GetDefaultClip().SetCurve(binding, value);
                 }
             }
         }

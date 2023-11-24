@@ -36,7 +36,7 @@ namespace VF.Service {
             var maxClip = fx.NewClip($"{shaderParam}_max");
             var path = renderer.owner().GetPath(manager.AvatarObject);
             var binding = EditorCurveBinding.FloatCurve(path, renderer.GetType(), $"material.{shaderParam}");
-            maxClip.SetConstant(binding, 1);
+            maxClip.SetCurve(binding, 1);
             directTree.Add(param, maxClip);
         }
 

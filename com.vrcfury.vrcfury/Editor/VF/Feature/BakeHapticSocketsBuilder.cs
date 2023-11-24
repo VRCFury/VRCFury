@@ -177,8 +177,9 @@ namespace VF.Feature {
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
                         if (gizmo != null) {
                             gizmo.show = false;
-                            clipBuilder.OneFrame(onLocalClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
-                            clipBuilder.OneFrame(onRemoteClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
+                            var path = clipBuilder.GetPath(obj);
+                            onLocalClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
+                            onRemoteClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
                         }
 
                         var holeOn = fx.NewBool(name, synced: true, saved: saved);

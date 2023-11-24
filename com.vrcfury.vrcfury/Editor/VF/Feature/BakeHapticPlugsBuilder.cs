@@ -190,15 +190,15 @@ namespace VF.Feature {
 
                         clipBuilder.Enable(triangulationOnClip, triRoot);
                         foreach (var r in renderers) {
-                            triangulationOnClip.SetConstant(
+                            triangulationOnClip.SetCurve(
                                 EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
                                 1
                             );
-                            triangulationOnClip.SetConstant(
+                            triangulationOnClip.SetCurve(
                                 EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Other_Enabled"),
                                 1
                             );
-                            triangulationOnClip.SetConstant(
+                            triangulationOnClip.SetCurve(
                                 EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Target_LL_Lights"),
                                 0
                             );
@@ -324,7 +324,7 @@ namespace VF.Feature {
                                 if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
                                 return frame;
                             }).ToArray();
-                            clip.SetCurve(binding, new FloatOrObjectCurve(newKeys));
+                            clip.SetCurve(binding, newKeys);
                         }
                     }
                 }
