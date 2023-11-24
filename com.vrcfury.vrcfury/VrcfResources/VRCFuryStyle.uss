@@ -2,6 +2,23 @@
     display: none;
 }
 
+/* Make various visual elements the same height so they line up */
+Label {
+    padding: 0;
+}
+Button {
+    padding-bottom: 0;
+    margin: 0;
+}
+ObjectField {
+    margin: 0;
+}
+
+/* Empty lists on 2022 look ugly for some reason */
+.unity-list-view__empty-label {
+    padding-left: 5px;
+}
+
 /* Progress dialog */
 
 .VRCFProgressWindow ProgressBar {
@@ -91,4 +108,10 @@ PropertyField.VrcFuryEditorProp > .unity-base-field {
 .vfList2019__notLastItem {
     border-bottom-width: 1px;
     border-bottom-color: black;
+}
+.vfVersionLabel {
+    position: absolute;
+    top: -20px;
+    right: 55px;
+    color: rgba(255,255,255,0.3);
 }

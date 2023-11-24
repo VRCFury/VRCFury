@@ -14,10 +14,6 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 // Don't mark a class as Obsolete or MovedFrom -- unity 2019 will go into an infinite loop and die
 
 namespace VF.Model.Feature {
-    
-    [AttributeUsage(AttributeTargets.Class)]
-    public class NoBuilder : Attribute {
-    }
 
     [Serializable]
     public abstract class FeatureModel {
@@ -248,9 +244,10 @@ namespace VF.Model.Feature {
         public State state = new State();
         public bool saved;
         public bool slider;
+        public bool sliderInactiveAtZero;
         public bool securityEnabled;
         public bool defaultOn;
-        public bool includeInRest;
+        [Obsolete] public bool includeInRest;
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
@@ -276,14 +273,14 @@ namespace VF.Model.Feature {
         public float localTransitionTimeIn = 0;
         public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
-        public float defaultSliderValue = 1;
+        [Range(0,1)]
+        public float defaultSliderValue = 0;
         public bool useGlobalParam;
         public string globalParam;
         public bool holdButton;
+        public bool invertRestLogic;
 
         public override void CreateNewInstance(GameObject obj) {
-            var n = obj.AddComponent<VRCFuryToggle>();
-            // TODO
         }
 
         public override bool Upgrade(int fromVersion) {
@@ -298,12 +295,23 @@ namespace VF.Model.Feature {
                     }
                 }
             }
+            if (fromVersion < 2) {
+                if (!defaultOn) {
+                    defaultSliderValue = 0;
+                }
+                sliderInactiveAtZero = true;
+            }
+            if (fromVersion < 3) {
+                if (slider) {
+                    includeInRest = false;
+                }
+            }
             return false;
 #pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
-            return 1;
+            return 3;
         }
     }
 
@@ -500,7 +508,6 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class FixWriteDefaults : NewFeatureModel {
         public enum FixWriteDefaultsMode {
             Auto,
@@ -717,7 +724,6 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class OverrideMenuSettings : NewFeatureModel {
         public string nextText;
         public GuidTexture2d nextIcon;

@@ -173,9 +173,6 @@ public static class FeatureFinder {
                 "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date? If you are still receiving this after updating, you may need to re-import the prop package which caused this issue.");
         }
         var modelType = model.GetType();
-        if (modelType.GetCustomAttribute<NoBuilder>() != null) {
-            return null;
-        }
 
         if (!GetAllFeatures().TryGetValue(modelType, out var builderType)) {
             throw new Exception("Failed to find feature implementation for " + modelType.Name + " while building");

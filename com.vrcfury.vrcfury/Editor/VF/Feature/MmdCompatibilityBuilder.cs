@@ -22,7 +22,8 @@ namespace VF.Feature {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Info(
                 "This component will improve MMD compatibility for your avatar, by maintaining MMD" +
-                " blendshapes, and avoiding usage of layers that MMD worlds are known to interfere with."));
+                " blendshapes, avoiding usage of layers that MMD worlds are known to interfere with, and disabling" +
+                " hand animations when MMD dances are active."));
             return c;
         }
 
@@ -40,31 +41,26 @@ namespace VF.Feature {
             if (fx.GetLayers().Count() <= 1) {
                 return;
             }
+            
+            // Ensure layer 1 and 2 are empty, since MMD worlds like to turn them off (but only sometimes)
+            var layer1 = fx.NewLayer("MMD Dummy Layer 1", 1);
+            var layer2 = fx.NewLayer("MMD Dummy Layer 2", 2);
 
-            {
-                var handsActive = fx.NewFloat("HandsActive", def: 1);
-                {
-                    var handsActiveLayer = fx.NewLayer("MMD Hands Deactivator");
-                    var active = handsActiveLayer.NewState("Active").Drives(handsActive, 1);
-                    var inactive = handsActiveLayer.NewState("Inactive").Drives(handsActive, 0);
-                    var inactiveWhen = fx.IsMmd();
-                    active.TransitionsTo(inactive).When(inactiveWhen);
-                    inactive.TransitionsTo(active).When(inactiveWhen.Not());
-                }
-                foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
-                    if (new AnimatorIterator.Clips().From(state)
-                        .Any(clip => clip.HasMuscles())) {
-                        var tree = mathService.MakeDirect("WhenHandsActive");
-                        tree.Add(handsActive, state.motion);
-                        state.motion = tree;
-                        state.writeDefaultValues = true;
-                    }
+            var handsActive = fx.NewFloat("HandsActive", def: 0);
+            var handsActiveClip = new AnimationClip();
+            // MMD worlds will disable this layer, setting HandsActive back to the default of 0
+            handsActiveClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), handsActive.Name()), 1);
+            layer1.NewState("Mmd Detector").WithAnimation(handsActiveClip);
+
+            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
+                if (new AnimatorIterator.Clips().From(state)
+                    .Any(clip => clip.HasMuscles())) {
+                    var tree = mathService.MakeDirect("WhenHandsActive");
+                    tree.Add(handsActive, state.motion);
+                    state.motion = tree;
+                    state.writeDefaultValues = true;
                 }
             }
-
-            // Ensure layer 1 and 2 are empty, since MMD worlds like to turn them off (but only sometimes)
-            fx.NewLayer("MMD Dummy Layer 1", 1);
-            fx.NewLayer("MMD Dummy Layer 2", 2);
         }
     }
 }

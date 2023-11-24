@@ -65,5 +65,8 @@ namespace VF.Feature {
         public override bool OnlyOneAllowed() {
             return true;
         }
+        
+        [FeatureBuilderAction]
+        public void Apply() { }
     }
 }

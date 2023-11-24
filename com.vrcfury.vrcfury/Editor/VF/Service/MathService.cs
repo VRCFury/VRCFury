@@ -187,7 +187,7 @@ namespace VF.Service {
         public AnimationClip MakeSetter(VFAFloat param, float value) {
             var fx = avatarManager.GetFx();
             var clip = fx.NewClip($"{CleanName(param)} = {value}");
-            clip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
+            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
             return clip;
         }
 

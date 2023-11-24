@@ -50,6 +50,7 @@ namespace VF.Feature {
             foreach (var pending in pendingClips) {
                 pending.clip.SampleAnimation(avatarObject, 0);
                 foreach (var (binding,curve) in pending.clip.GetAllCurves()) {
+                    HandleMaterialSwaps(binding, curve);
                     HandleMaterialProperties(binding, curve);
                     StoreBinding(binding, curve.GetFirst(), pending.owner);
                 }
@@ -98,6 +99,28 @@ namespace VF.Feature {
                 owner = owner,
                 value = value
             };
+        }
+
+        private void HandleMaterialSwaps(EditorCurveBinding binding, FloatOrObjectCurve curve) {
+            var val = curve.GetFirst();
+            if (val.IsFloat()) return;
+            var newMat = val.GetObject() as Material;
+            if (newMat == null) return;
+            if (!binding.propertyName.StartsWith("m_Materials.Array.data[")) return;
+
+            var start = "m_Materials.Array.data[".Length;
+            var end = binding.propertyName.Length - 1;
+            var str = binding.propertyName.Substring(start, end - start);
+            if (!Int32.TryParse(str, out var num)) return;
+            var transform = avatarObject.Find(binding.path);
+            if (!transform) return;
+            if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) return;
+            var renderer = transform.GetComponent(binding.type) as Renderer;
+            if (!renderer) return;
+            renderer.sharedMaterials = renderer.sharedMaterials
+                .Select((mat,i) => (i == num) ? newMat : mat)
+                .ToArray();
+            VRCFuryEditorUtils.MarkDirty(renderer);
         }
 
         private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObjectCurve curve) {

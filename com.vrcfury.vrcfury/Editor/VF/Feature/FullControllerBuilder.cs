@@ -30,6 +30,7 @@ namespace VF.Feature {
     public class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -271,6 +272,9 @@ namespace VF.Feature {
             var myLayers = from.GetLayers();
 
             // Merge Layers
+            foreach (var layer in from.GetLayers()) {
+                layerSourceService.SetSourceToCurrent(layer);
+            }
             toMain.TakeOwnershipOf(from);
 
             // Parameter smoothing
@@ -280,6 +284,7 @@ namespace VF.Feature {
                     var rewritten = RewriteParamName(smoothedParam.name);
                     if (smoothedDict.ContainsKey(rewritten)) continue;
                     var exists = toMain.GetRaw().GetParam(rewritten);
+                    if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
                     var target = new VFAFloat(exists);
                     var smoothed = smoothingService.Smooth($"{rewritten}/Smoothed", target,
@@ -308,34 +313,20 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
         public class ControllerEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var wrapper = new VisualElement();
-                wrapper.style.flexDirection = FlexDirection.Row;
-                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller"));
-                a.style.flexBasis = 0;
-                a.style.flexGrow = 1;
-                wrapper.Add(a);
-                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type"));
-                b.style.flexBasis = 0;
-                b.style.flexGrow = 1;
-                wrapper.Add(b);
-                return wrapper;
+                var row = new VisualElement().Row();
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type")).FlexGrow(1));
+                return row;
             }
         }
         
         [CustomPropertyDrawer(typeof(FullController.MenuEntry))]
         public class MenuEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var wrapper = new VisualElement();
-                wrapper.style.flexDirection = FlexDirection.Row;
-                var a = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu"));
-                a.style.flexBasis = 0;
-                a.style.flexGrow = 1;
-                wrapper.Add(a);
-                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix"));
-                b.style.flexBasis = 0;
-                b.style.flexGrow = 1;
-                wrapper.Add(b);
-                return wrapper;
+                var row = new VisualElement().Row();
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix")).FlexGrow(1));
+                return row;
             }
         }
         
@@ -352,19 +343,19 @@ namespace VF.Feature {
 
                 var row = new VisualElement();
                 row.Add(VRCFuryEditorUtils.WrappedLabel("If animated path has this prefix:"));
-                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => s.paddingLeft = 15));
+                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from")).PaddingLeft(15));
                 row.Add(VRCFuryEditorUtils.WrappedLabel("Then:"));
                 var deleteProp = rewrite.FindPropertyRelative("delete");
                 var selector = new PopupField<string>(new List<string>{ "Rewrite the prefix to", "Delete it" }, deleteProp.boolValue ? 1 : 0);
                 selector.style.paddingLeft = 15;
                 row.Add(selector);
-                var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to"), style: s => s.paddingLeft = 15);
+                var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to")).PaddingLeft(15);
                 row.Add(to);
 
                 void Update() {
                     deleteProp.boolValue = selector.index == 1;
                     deleteProp.serializedObject.ApplyModifiedProperties();
-                    to.style.display = deleteProp.boolValue ? DisplayStyle.None : DisplayStyle.Flex;
+                    to.SetVisible(!deleteProp.boolValue);
                 }
                 selector.RegisterValueChangedCallback(str => Update());
                 Update();
@@ -376,17 +367,10 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.SmoothParamEntry))]
         public class SmoothParamDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var wrapper = new VisualElement();
-                wrapper.style.flexDirection = FlexDirection.Row;
+                var row = new VisualElement().Row();
                 SerializedProperty nameProp = prop.FindPropertyRelative("name");
-                var a = VRCFuryEditorUtils.Prop(nameProp);
-                a.style.flexBasis = 0;
-                a.style.flexGrow = 2;
-                wrapper.Add(a);
-                var b = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration"));
-                b.style.flexBasis = 0;
-                b.style.flexGrow = 1;
-                wrapper.Add(b);
+                row.Add(VRCFuryEditorUtils.Prop(nameProp).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration")).FlexBasis(50));
 
                 void SelectButtonPress() {
                     var menu = new GenericMenu();
@@ -423,9 +407,9 @@ namespace VF.Feature {
                 }
 
                 var selectButton = new Button(SelectButtonPress) { text = "Select" };
-                wrapper.Add(selectButton);
+                row.Add(selectButton);
 
-                return wrapper;
+                return row;
             }
         }
 

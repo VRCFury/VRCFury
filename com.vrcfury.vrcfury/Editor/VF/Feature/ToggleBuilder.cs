@@ -21,10 +21,11 @@ namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
+    [VFAutowired] private readonly RestingStateBuilder restingState;
 
     private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
-    private AnimationClip restingClip;
+    private AnimationClip savedRestingClip;
 
     private string primaryExclusive = null;
 
@@ -154,16 +155,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var (useInt, intTarget, intSaved, intDefault) = CheckExclusives();
         VFCondition onCase;
         VFAFloat weight = null;
+        bool defaultOn;
         if (model.slider) {
             var param = fx.NewFloat(
                 paramName,
                 synced: synced,
                 saved: model.saved,
-                def: model.defaultOn ? model.defaultSliderValue : 0,
+                def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
             );
             exclusiveParam = param;
-            onCase = param.IsGreaterThan(0);
+            onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+            defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
             weight = param;
             if (addMenuItem) {
                 manager.GetMenu().NewMenuSlider(
@@ -177,10 +180,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 exclusiveParam = numParam;
                 onCase = numParam.IsNotEqualTo(0);
+                defaultOn = model.defaultOn;
             } else {
                 var boolParam = fx.NewBool(paramName, synced: false, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 exclusiveParam = boolParam;
                 onCase = boolParam.IsTrue();
+                defaultOn = model.defaultOn;
                 if (addMenuItem) {
                     var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: intSaved, def: intDefault, usePrefix: false);
                     var aliasLayer = fx.NewLayer(layerName + "_Alias");
@@ -212,6 +217,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             exclusiveParam = param;
             onCase = param.IsTrue();
+            defaultOn = model.defaultOn;
             if (addMenuItem) {
                 if (model.holdButton) {
                     manager.GetMenu().NewMenuButton(
@@ -234,10 +240,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
-            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-            Apply(fx, layer, off, onCase.And(isLocal), weight, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+            Apply(fx, layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
         } else {
-            Apply(fx, layer, off, onCase, weight, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+            Apply(fx, layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
         }
     }
 
@@ -247,6 +253,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFState off,
         VFCondition onCase,
         VFAFloat weight,
+        bool defaultOn,
         string onName,
         State action,
         State inAction,
@@ -269,20 +276,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         VFState inState;
         VFState onState;
 
+        AnimationClip restingClip;
         if (weight != null) {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
-                var tree = fx.NewBlendTree($"{onName} Tree");
-                tree.blendType = BlendTreeType.Simple1D;
-                tree.useAutomaticThresholds = false;
-                tree.blendParameter = weight.Name();
-                tree.AddChild(fx.GetEmptyClip(), 0);
-                tree.AddChild(clip, 1);
-                onState.WithAnimation(clip);
-                onState.WithAnimation(tree);
-            } else {
-                onState.WithAnimation(clip).MotionTime(weight);
+                clip = clipBuilder.MergeSingleFrameClips(
+                    (0, new AnimationClip()),
+                    (1, clip)
+                );
+                clip.UseLinearTangents();
             }
+            onState.WithAnimation(clip).MotionTime(weight);
+            restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
@@ -298,11 +303,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             // if it's already on in the main clip.
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 if (!curve.IsFloat) {
-                    if (inClip.GetObjectCurve(binding) == null) inClip.SetConstant(binding, curve.GetFirst());
-                    if (outClip.GetObjectCurve(binding) == null) outClip.SetConstant(binding, curve.GetLast());
+                    if (inClip.GetObjectCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
+                    if (outClip.GetObjectCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
                 } else if (binding.type == typeof(GameObject)) {
-                    if (inClip.GetFloatCurve(binding) == null) inClip.SetConstant(binding, curve.GetFirst());
-                    if (outClip.GetFloatCurve(binding) == null) outClip.SetConstant(binding, curve.GetLast());
+                    if (inClip.GetFloatCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
+                    if (outClip.GetFloatCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
                 }
             }
 
@@ -313,9 +318,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
             onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
             outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
+            restingClip = clip;
         } else {
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            restingClip = clip;
         }
 
         exclusiveTagTriggeringStates.Add(inState);
@@ -335,13 +342,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        if (model.defaultOn && !model.separateLocal && !model.securityEnabled) {
+        if (defaultOn && !model.separateLocal && !model.securityEnabled) {
             layer.GetRawStateMachine().defaultState = onState.GetRaw();
             off.TransitionsFromEntry().When();
         }
 
-        if (restingClip == null && model.includeInRest) {
-            restingClip = clip;
+        if (savedRestingClip == null) {
+            savedRestingClip = restingClip;
         }
     }
 
@@ -385,12 +392,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]
     public void ApplyRestingState() {
-        if (restingClip != null) {
-            var restingStateBuilder = allBuildersInRun
-                .OfType<RestingStateBuilder>()
-                .First();
-            restingStateBuilder.ApplyClipToRestingState(restingClip, true);
-        }
+        if (savedRestingClip == null) return;
+
+        var includeInRest = model.defaultOn || model.slider;
+        if (model.invertRestLogic) includeInRest = !includeInRest;
+        if (!includeInRest) return;
+
+        if (!savedRestingClip.IsStatic()) return;
+
+        restingState.ApplyClipToRestingState(savedRestingClip, true);
     }
 
     public override string GetEditorTitle() {
@@ -404,7 +414,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var sliderProp = prop.FindPropertyRelative("slider");
         var securityEnabledProp = prop.FindPropertyRelative("securityEnabled");
         var defaultOnProp = prop.FindPropertyRelative("defaultOn");
-        var includeInRestProp = prop.FindPropertyRelative("includeInRest");
+        var invertRestLogicProp = prop.FindPropertyRelative("invertRestLogic");
         var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
@@ -418,179 +428,131 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
 
-        var flex = new VisualElement {
-            style = {
-                flexDirection = FlexDirection.Row,
-                alignItems = Align.FlexStart
-            }
-        };
+        var flex = new VisualElement().Row();
         content.Add(flex);
 
-        var name = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip);
-        name.style.flexGrow = 1;
-        flex.Add(name);
+        flex.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
 
-        var button = VRCFuryEditorUtils.Button("Options", () => {
-            var advMenu = new GenericMenu();
-            if (savedProp != null) {
+        var button = new Button()
+            .Text("Options")
+            .OnClick(() => {
+                var advMenu = new GenericMenu();
+
                 advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
                     savedProp.boolValue = !savedProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (sliderProp != null) {
                 advMenu.AddItem(new GUIContent("Use Slider Wheel"), sliderProp.boolValue, () => {
                     sliderProp.boolValue = !sliderProp.boolValue;
+                    invertRestLogicProp.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (securityEnabledProp != null) {
                 advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
                     securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (defaultOnProp != null) {
-                advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
-                    defaultOnProp.boolValue = !defaultOnProp.boolValue;
+                if (!sliderProp.boolValue) {
+                    advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
+                        defaultOnProp.boolValue = !defaultOnProp.boolValue;
+                        invertRestLogicProp.boolValue = false;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                    
+                    advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
+                        hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                    
+                    advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
+                        holdButtonProp.boolValue = !holdButtonProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
+
+                advMenu.AddItem(new GUIContent((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled"), invertRestLogicProp.boolValue, () => {
+                    invertRestLogicProp.boolValue = !invertRestLogicProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (includeInRestProp != null) {
-                advMenu.AddItem(new GUIContent("Show in Rest Pose"), includeInRestProp.boolValue, () => {
-                    includeInRestProp.boolValue = !includeInRestProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
-
-            if (enableExclusiveTagProp != null) {
                 advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
                     enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (exclusiveOffStateProp != null) {
                 advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
                     exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (enableIconProp != null) {
                 advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
                     enableIconProp.boolValue = !enableIconProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (enableDriveGlobalParamProp != null) {
                 advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
                     enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (separateLocalProp != null)
-            {
                 advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
                     separateLocalProp.boolValue = !separateLocalProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (hasTransitionProp != null)
-            {
                 advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
                     hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (hasExitTimeProp != null)
-            {
-                advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
-                    hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
-
-            if (useGlobalParamProp != null) {
                 advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
                     useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-            }
 
-            if (holdButtonProp != null) {
-                advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
-                    holdButtonProp.boolValue = !holdButtonProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
-
-            advMenu.ShowAsContext();
-        });
-        button.style.flexGrow = 0;
+                advMenu.ShowAsContext();
+            });
         flex.Add(button);
-
-        if (enableExclusiveTagProp != null) {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (enableExclusiveTagProp.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("exclusiveTag"), "Exclusive Tags"));
-                }
-                return c;
-            }, enableExclusiveTagProp));
-        }
-
-        if (useGlobalParamProp != null) {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (useGlobalParamProp.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("globalParam"), "Global Parameter"));
-                }
-
-                return c;
-            }, useGlobalParamProp));
-        }
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var c = new VisualElement();
-            if (sliderProp.boolValue && defaultOnProp.boolValue) {
-                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default Value"));
+            if (enableExclusiveTagProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("exclusiveTag"), "Exclusive Tags"));
             }
             return c;
-        }, sliderProp, defaultOnProp));
+        }, enableExclusiveTagProp));
 
-        if (enableIconProp != null) {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (enableIconProp.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("icon"), "Menu Icon"));
-                }
-                return c;
-            }, enableIconProp));
-        }
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (useGlobalParamProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("globalParam"), "Global Parameter"));
+            }
 
-        if (enableDriveGlobalParamProp != null) {
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (enableDriveGlobalParamProp.boolValue) {
-                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("driveGlobalParam"), "Drive Global Param"));
-                    c.Add(VRCFuryEditorUtils.Warn(
-                        "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
-                        "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +
-                        "manually-created state transitions in your avatar. This should NEVER be used on vrcfury props, as any merged " +
-                        "full controllers will have their parameters rewritten."));
-                }
-                return c;
-            }, enableDriveGlobalParamProp));
-        }
+            return c;
+        }, useGlobalParamProp));
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (enableIconProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("icon"), "Menu Icon"));
+            }
+            return c;
+        }, enableIconProp));
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (enableDriveGlobalParamProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("driveGlobalParam"), "Drive Global Param"));
+                c.Add(VRCFuryEditorUtils.Warn(
+                    "Warning, Drive Global Param is an advanced feature. The driven parameter should not be placed in a menu " +
+                    "or controlled by any other driver or shared with any other toggle. It should only be used as an input to " +
+                    "manually-created state transitions in your avatar. This should NEVER be used on vrcfury props, as any merged " +
+                    "full controllers will have their parameters rewritten."));
+            }
+            return c;
+        }, enableDriveGlobalParamProp));
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
 
@@ -637,65 +599,76 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return MakeTabbed("When toggle is enabled:", c);
         }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
 
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            if (sliderProp.boolValue) {
+                var sliderOptions = new VisualElement();
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default value"));
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Zero is 'Off' (Advanced)", tooltip: "" +
+                    "When checked, the toggle will be considered to be entirely 'off' when the slider is at 0, meaning that NOTHING will be animated at 0." +
+                    " It is unusual to check this, but is required if you want this slider to interact with Exclusive Tags or transitions."));
+                return MakeTabbed("This toggle is a slider", sliderOptions);
+            }
+            return new VisualElement();
+        }, sliderProp));
+
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var tags = new List<string>();
-                if (savedProp != null && savedProp.boolValue)
+                if (savedProp.boolValue)
                     tags.Add("Saved");
-                if (sliderProp != null && sliderProp.boolValue)
-                    tags.Add("Slider");
-                if (securityEnabledProp != null && securityEnabledProp.boolValue)
+                if (securityEnabledProp.boolValue)
                     tags.Add("Security");
-                if (defaultOnProp != null && defaultOnProp.boolValue)
-                    tags.Add("Default On");
-                if (includeInRestProp != null && includeInRestProp.boolValue)
-                    tags.Add("Shown in Rest Pose");
-                if (exclusiveOffStateProp != null && exclusiveOffStateProp.boolValue)
+                if (!sliderProp.boolValue) {
+                    if (defaultOnProp.boolValue)
+                        tags.Add("Default On");
+                    if (holdButtonProp.boolValue)
+                        tags.Add("Hold Button");
+                    if (hasExitTimeProp.boolValue)
+                        tags.Add("Run to Completion");
+                }
+                if (invertRestLogicProp.boolValue)
+                    tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
+                if (exclusiveOffStateProp.boolValue)
                     tags.Add("This is the Exclusive Off State");
-                if (holdButtonProp != null && holdButtonProp.boolValue)
-                    tags.Add("Hold Button");
-                if (hasExitTimeProp != null && hasExitTimeProp.boolValue)
-                    tags.Add("Run to Completion");
 
-                var row = new VisualElement();
-                row.style.flexWrap = Wrap.Wrap;
-                row.style.flexDirection = FlexDirection.Row;
+                var row = new VisualElement().Row().FlexWrap();
                 foreach (var tag in tags) {
-                    var flag = new Label(tag);
+                    var flag = new Label(tag).Padding(2,4);
                     flag.style.width = StyleKeyword.Auto;
                     flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
                     flag.style.borderTopRightRadius = 5;
                     flag.style.marginRight = 5;
-                    VRCFuryEditorUtils.Padding(flag, 2, 4);
                     row.Add(flag);
                 }
 
                 return row;
             },
             savedProp,
-            sliderProp,
             securityEnabledProp,
             defaultOnProp,
-            includeInRestProp,
+            invertRestLogicProp,
             exclusiveOffStateProp,
             holdButtonProp,
-            hasExitTimeProp
+            hasExitTimeProp,
+            sliderProp
         ));
 
         var toggleOffWarning = VRCFuryEditorUtils.Error(
             "You cannot use Turn Off for an object that another Toggle Turns On! Turn Off should only be used for objects which are not controlled by their own toggle.\n\n" +
             "1. You do not need a dedicated 'Turn Off' toggle. Turning off the other toggle will turn off the object.\n\n" +
             "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
-        toggleOffWarning.style.display = DisplayStyle.None;
+        toggleOffWarning.SetVisible(false);
         content.Add(toggleOffWarning);
         VRCFuryEditorUtils.RefreshOnInterval(toggleOffWarning, () => {
+            var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
+
             var turnsOff = model.state.actions
                 .OfType<ObjectToggleAction>()
                 .Where(a => a.mode == ObjectToggleAction.Mode.TurnOff)
                 .Select(a => a.obj)
                 .Where(o => o != null)
                 .ToImmutableHashSet();
-            var othersTurnOn = avatarObject.GetComponentsInSelfAndChildren<VRCFury>()
+            var othersTurnOn = baseObject.GetComponentsInSelfAndChildren<VRCFury>()
                 .SelectMany(vf => vf.config.features)
                 .OfType<Toggle>()
                 .SelectMany(toggle => toggle.state.actions)
@@ -705,7 +678,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .Where(o => o != null)
                 .ToImmutableHashSet();
             var overlap = turnsOff.Intersect(othersTurnOn);
-            toggleOffWarning.style.display = overlap.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            toggleOffWarning.SetVisible(overlap.Count > 0);
         });
 
         return content;
@@ -713,8 +686,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     private VisualElement MakeTabbed(string label, VisualElement child) {
         var output = new VisualElement();
-        output.Add(VRCFuryEditorUtils.WrappedLabel(label, style: s => s.unityFontStyleAndWeight = FontStyle.Bold));
-        var tabbed = new VisualElement { style = { paddingLeft = 5 } };
+        output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
+        var tabbed = new VisualElement { style = { paddingLeft = 10 } };
         tabbed.Add(child);
         output.Add(tabbed);
         return output;

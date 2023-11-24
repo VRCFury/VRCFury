@@ -28,7 +28,7 @@ namespace VF.Inspector {
             var boneWarning = VRCFuryEditorUtils.Warn(
                 "WARNING: This renderer is rigged with bones, but you didn't put the Haptic Plug inside a bone! When SPS is used" +
                 " with rigged meshes, you should put the Haptic Plug inside the bone nearest the 'base'!");
-            boneWarning.style.display = DisplayStyle.None;
+            boneWarning.SetVisible(false);
             container.Add(boneWarning);
 
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in connected apps"));
@@ -37,7 +37,7 @@ namespace VF.Inspector {
             container.Add(sizeSection);
             
             var autoMesh = serializedObject.FindProperty("autoRenderer");
-            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(autoMesh, "Automatically find mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoMesh, "Automatically find mesh"));
             sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoMesh.boolValue) {
@@ -49,14 +49,14 @@ namespace VF.Inspector {
             sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!configureTps.boolValue && !enableSps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("autoPosition"),
+                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("autoPosition"),
                         "Detect position/rotation from mesh"));
                 }
                 return c;
             }, configureTps, enableSps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
-            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(autoLength, "Detect length from mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoLength, "Detect length from mesh"));
             sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoLength.boolValue) {
@@ -66,7 +66,7 @@ namespace VF.Inspector {
             }, autoLength));
 
             var autoRadius = serializedObject.FindProperty("autoRadius");
-            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(autoRadius, "Detect radius from mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoRadius, "Detect radius from mesh"));
             sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (!autoRadius.boolValue) {
@@ -75,7 +75,7 @@ namespace VF.Inspector {
                 return c;
             }, autoRadius));
             
-            sizeSection.Add(VRCFuryEditorUtils.BetterCheckbox(
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(
                 serializedObject.FindProperty("useBoneMask"),
                 "Automatically mask using bone weights"
             ));
@@ -98,21 +98,20 @@ namespace VF.Inspector {
                     .ToArray();
                 var isInsideBone = bones.Any(bone => target.transform.IsChildOf(bone));
                 var displayWarning = bones.Length > 0 && !isInsideBone;
-                boneWarning.style.display = displayWarning ? DisplayStyle.Flex : DisplayStyle.None;
+                boneWarning.SetVisible(displayWarning);
                 
                 return string.Join("\n", text);
             }));
             
-            container.Add(VRCFuryEditorUtils.BetterCheckbox(enableSps, "Enable SPS (Super Plug Shader)"));
+            container.Add(VRCFuryEditorUtils.BetterProp(enableSps, "Enable SPS (Super Plug Shader)"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableSps.boolValue) {
                     var spsBox = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
                     c.Add(spsBox);
-                    spsBox.Add(VRCFuryEditorUtils.BetterCheckbox(
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsAutorig"),
-                        "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)",
-                        style: style => { style.paddingBottom = 5; }
+                        "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)"
                     ));
                     
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
@@ -187,11 +186,13 @@ namespace VF.Inspector {
                 value = false
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Use hip avoidance",
+                tooltip: "If this plug is placed on the hip bone, this option will prevent triggering or receiving haptics or depth animations from other sockets on the hip bone."));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
 
             return container;
         }
@@ -219,11 +220,11 @@ namespace VF.Inspector {
                     : "") +
                 "\n\n" +
                 "Check out https://vrcfury.com/sps/constraints for details");
-            warning.style.display = DisplayStyle.None;
+            warning.SetVisible(false);
             output.Add(warning);
             VRCFuryEditorUtils.RefreshOnInterval(output, () => {
                 var found = obj.GetComponentsInSelfAndParents<IConstraint>().Length > 0;
-                warning.style.display = found ? DisplayStyle.Flex : DisplayStyle.None;
+                warning.SetVisible(found);
             });
             return output;
         }
@@ -345,10 +346,10 @@ namespace VF.Inspector {
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
             var senders = GameObjects.Create("Senders", bakeRoot);
-            HapticUtils.AddSender(senders, Vector3.zero, "Length", worldLength, new [] { HapticUtils.CONTACT_PEN_MAIN });
-            HapticUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH });
-            HapticUtils.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength);
-            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT });
+            HapticUtils.AddSender(senders, Vector3.zero, "Length", worldLength, new [] { HapticUtils.CONTACT_PEN_MAIN }, useHipAvoidance: plug.useHipAvoidance);
+            HapticUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH }, useHipAvoidance: plug.useHipAvoidance);
+            HapticUtils.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength, useHipAvoidance: plug.useHipAvoidance);
+            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT }, useHipAvoidance: plug.useHipAvoidance);
             
             // TODO: Check if there are 0 renderers,
             // or if there are 0 materials on any of the renderers
@@ -367,10 +368,6 @@ namespace VF.Inspector {
                     try {
                         var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
 
-                        if (plug.enableSps && plug.spsAutorig) {
-                            SpsAutoRigger.AutoRig(skin, worldLength, worldRadius, mutableManager);
-                        }
-                        
                         var spsBlendshapes = plug.spsBlendshapes
                             .Where(b => skin.sharedMesh.HasBlendshape(b))
                             .Distinct()
@@ -378,6 +375,10 @@ namespace VF.Inspector {
                             .ToArray();
 
                         var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
+                        if (plug.enableSps && plug.spsAutorig) {
+                            SpsAutoRigger.AutoRig(skin, worldLength, worldRadius, activeFromMask);
+                        }
+
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false, spsBlendshapes) : null;
 
                         var finishedCopies = new HashSet<Material>();
