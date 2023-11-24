@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -123,23 +124,36 @@ namespace VF.Service {
                         break;
                     }
                     case MaterialPropertyAction materialPropertyAction: {
-                        if (materialPropertyAction.renderer == null && !materialPropertyAction.affectAllMeshes) break;
-                        var renderers = new[] { materialPropertyAction.renderer };
-                        if (materialPropertyAction.affectAllMeshes) {
-                            renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
-                        }
+                        var (renderers,type) = MatPropLookup(
+                            materialPropertyAction.affectAllMeshes,
+                            materialPropertyAction.renderer,
+                            avatarObject,
+                            materialPropertyAction.propertyName
+                        );
 
                         foreach (var renderer in renderers) {
-                            var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(renderer.gameObject),
-                                renderer.GetType(),
-                                $"material.{materialPropertyAction.propertyName}"
-                            );
-                            if (renderer.sharedMaterials.Any(mat =>
-                                    mat != null && mat.HasProperty(materialPropertyAction.propertyName))) {
-                                onClip.SetCurve(binding, materialPropertyAction.value);
+                            void AddOne(string suffix, float value) {
+                                var binding = EditorCurveBinding.FloatCurve(
+                                    clipBuilder.GetPath(renderer.gameObject),
+                                    renderer.GetType(),
+                                    $"material.{materialPropertyAction.propertyName}{suffix}"
+                                );
+                                onClip.SetCurve(binding, value);
                             }
-                            
+
+                            if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range || type == ShaderUtil.ShaderPropertyType.Int) {
+                                AddOne("", materialPropertyAction.value);
+                            } else if (type == ShaderUtil.ShaderPropertyType.Color) {
+                                AddOne(".r", materialPropertyAction.valueColor.r);
+                                AddOne(".g", materialPropertyAction.valueColor.g);
+                                AddOne(".b", materialPropertyAction.valueColor.b);
+                                AddOne(".a", materialPropertyAction.valueColor.a);
+                            } else if (type == ShaderUtil.ShaderPropertyType.Vector) {
+                                AddOne(".x", materialPropertyAction.valueVector.x);
+                                AddOne(".y", materialPropertyAction.valueVector.y);
+                                AddOne(".z", materialPropertyAction.valueVector.z);
+                                AddOne(".w", materialPropertyAction.valueVector.w);
+                            }
                         }
                         break;
                     }
@@ -295,6 +309,39 @@ namespace VF.Service {
             }
 
             return onClip;
+        }
+
+        public static (IList<Renderer>, ShaderUtil.ShaderPropertyType? type) MatPropLookup(
+            bool allRenderers,
+            Renderer singleRenderer,
+            VFGameObject avatarObject,
+            [CanBeNull] string propName
+        ) {
+            IList<Renderer> renderers;
+            if (allRenderers) {
+                renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
+            } else {
+                renderers = new[] { singleRenderer };
+            }
+            renderers = renderers.NotNull().ToArray();
+            if (propName == null) {
+                return (renderers, null);
+            }
+
+            var found = renderers
+                .Select(r => (r, r.GetPropertyType(propName)))
+                .Where(pair => pair.Item2 != null)
+                .ToArray();
+            if (found.Length == 0) {
+                return (new Renderer[] {}, null);
+            }
+            // Limit to the material type of the first found renderer
+            var type = found[0].Item2;
+            renderers = found
+                .Where(pair => pair.Item2 == type)
+                .Select(pair => pair.Item1)
+                .ToArray();
+            return (renderers, type);
         }
     }
 }

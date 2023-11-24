@@ -88,6 +88,8 @@ namespace VF.Model.StateAction {
         public bool affectAllMeshes;
         public string propertyName;
         public float value;
+        public Vector4 valueVector;
+        public Color valueColor = Color.white;
     }
     
     [Serializable]
