@@ -266,17 +266,7 @@ namespace VF.Service {
                             .Select((substate,i) => ((float)i, LoadState("tmp", substate, animObjectOverride, false)))
                             .ToArray();
                         var built = clipBuilder.MergeSingleFrameClips(sources);
-
-                        // Mark all keyframes as broken, so they snap between stops
-                        built.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
-                            if (curve.IsFloat) {
-                                foreach (var i in Enumerable.Range(0, curve.FloatCurve.keys.Length)) {
-                                    AnimationUtility.SetKeyRightTangentMode(curve.FloatCurve, i, AnimationUtility.TangentMode.Constant);
-                                }
-                                return (binding, curve, true);
-                            }
-                            return (binding, curve, false);
-                        }));
+                        built.UseConstantTangents();
 
                         onClip.CopyFrom(built);
                         

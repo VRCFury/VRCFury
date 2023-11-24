@@ -158,10 +158,11 @@ namespace VF.Utils {
         }
         
         public static AnimationClip EvaluateBlend(this AnimationClip clip, VFGameObject root, float amount) {
+            if (amount < 0) amount = 0;
+            if (amount > 1) amount = 1;
+
             var output = MutableManager.CopyRecursive(clip);
             output.name = $"{clip.name} ({amount} blend)";
-            if (amount <= 0) return output;
-            if (amount > 1) amount = 1;
             output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                 if (curve.IsFloat) {
                     if (!binding.GetFloatFromGameObject(root, out float from)) {
@@ -175,6 +176,31 @@ namespace VF.Utils {
                 }
             }));
             return output;
+        }
+
+        public static void UseConstantTangents(this AnimationClip clip) {
+            clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                if (curve.IsFloat) {
+                    foreach (var i in Enumerable.Range(0, curve.FloatCurve.keys.Length)) {
+                        AnimationUtility.SetKeyRightTangentMode(curve.FloatCurve, i, AnimationUtility.TangentMode.Constant);
+                    }
+                    return (binding, curve, true);
+                }
+                return (binding, curve, false);
+            }));
+        }
+        
+        public static void UseLinearTangents(this AnimationClip clip) {
+            clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                if (curve.IsFloat) {
+                    foreach (var i in Enumerable.Range(0, curve.FloatCurve.keys.Length)) {
+                        AnimationUtility.SetKeyLeftTangentMode(curve.FloatCurve, i, AnimationUtility.TangentMode.Linear);
+                        AnimationUtility.SetKeyRightTangentMode(curve.FloatCurve, i, AnimationUtility.TangentMode.Linear);
+                    }
+                    return (binding, curve, true);
+                }
+                return (binding, curve, false);
+            }));
         }
     }
 }

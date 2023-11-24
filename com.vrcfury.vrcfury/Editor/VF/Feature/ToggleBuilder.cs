@@ -178,19 +178,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (weight != null) {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
-                var tree = fx.NewBlendTree($"{onName} Tree");
-                tree.blendType = BlendTreeType.Simple1D;
-                tree.useAutomaticThresholds = false;
-                tree.blendParameter = weight.Name();
-                tree.AddChild(fx.GetEmptyClip(), 0);
-                tree.AddChild(clip, 1);
-                onState.WithAnimation(clip);
-                onState.WithAnimation(tree);
-                restingClip = clip.EvaluateBlend(avatarObject, model.defaultSliderValue);
-            } else {
-                onState.WithAnimation(clip).MotionTime(weight);
-                restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
+                clip = clipBuilder.MergeSingleFrameClips(
+                    (0, new AnimationClip()),
+                    (1, clip)
+                );
+                clip.UseLinearTangents();
             }
+            onState.WithAnimation(clip).MotionTime(weight);
+            restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
