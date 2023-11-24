@@ -75,7 +75,7 @@ namespace VF.Utils {
         public string RewritePath(string input) {
             var rewritten = RewriteOne(
                 EditorCurveBinding.FloatCurve(input, typeof(Transform), "test"),
-                new FloatOrObjectCurve(AnimationCurve.Constant(0,0,0))
+                0
             );
             if (rewritten.Item2 == null) return null;
             return rewritten.Item1.path;

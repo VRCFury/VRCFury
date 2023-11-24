@@ -28,6 +28,7 @@ namespace VF.Component {
         public bool spsOverrun = true;
         public bool enableDepthAnimations = false;
         public List<PlugDepthAction> depthActions = new List<PlugDepthAction>();
+        public bool useHipAvoidance = true;
 
         [Obsolete] public bool configureSps = false;
         [Obsolete] public bool spsBoneMask = true;

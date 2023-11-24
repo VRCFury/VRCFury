@@ -54,9 +54,10 @@ namespace VF.Builder.Haptics {
             string[] tags,
             float height = 0,
             Quaternion rotation = default,
-            bool worldScale = true
+            bool worldScale = true,
+            bool useHipAvoidance = true
         ) {
-            var isOnHips = IsDirectChildOfHips(obj);
+            var isOnHips = IsDirectChildOfHips(obj) && useHipAvoidance;
             var suffixes = new List<string>();
             suffixes.Add("");
             if (!isOnHips) {

@@ -103,14 +103,14 @@ namespace VF.Feature {
                         var extraRadiusForRub = 0.08f;
                         // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
                         var capsuleRotation = Quaternion.Euler(90,0,0);
-                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
-                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true);
-                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
                     }
 
                     if (plug.configureTps || plug.enableSps) {
@@ -154,15 +154,15 @@ namespace VF.Feature {
                                 var prefix = partyI == 0 ? "Self" : "Other";
                                 
                                 var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
-                                    new[] { HapticUtils.TagSpsSocketRoot }, party);
+                                    new[] { HapticUtils.TagSpsSocketRoot }, party, useHipAvoidance: plug.useHipAvoidance);
                                 var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
-                                    new[] { HapticUtils.TagSpsSocketFront }, party);
+                                    new[] { HapticUtils.TagSpsSocketFront }, party, useHipAvoidance: plug.useHipAvoidance);
                                 var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
                                     "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
-                                    party);
+                                    party, useHipAvoidance: plug.useHipAvoidance);
                                 var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
                                     "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
-                                    party);
+                                    party, useHipAvoidance: plug.useHipAvoidance);
                             
                                 foreach (var r in renderers) {
                                     _triangulationService.SendToShader(tri, $"_SPS_Tri_{prefix}_Root", r.renderer);
@@ -190,15 +190,15 @@ namespace VF.Feature {
 
                         clipBuilder.Enable(triangulationOnClip, triRoot);
                         foreach (var r in renderers) {
-                            triangulationOnClip.SetConstant(
+                            triangulationOnClip.SetCurve(
                                 EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
                                 1
                             );
-                            triangulationOnClip.SetConstant(
+                            triangulationOnClip.SetCurve(
                                 EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Other_Enabled"),
                                 1
                             );
-                            triangulationOnClip.SetConstant(
+                            triangulationOnClip.SetCurve(
                                 EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Target_LL_Lights"),
                                 0
                             );
@@ -245,7 +245,8 @@ namespace VF.Feature {
                             plug.owner(),
                             animRoot,
                             name,
-                            worldLength
+                            worldLength,
+                            plug.useHipAvoidance
                         );
                     }
                 } catch (Exception e) {
@@ -323,7 +324,7 @@ namespace VF.Feature {
                                 if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
                                 return frame;
                             }).ToArray();
-                            clip.SetCurve(binding, new FloatOrObjectCurve(newKeys));
+                            clip.SetCurve(binding, newKeys);
                         }
                     }
                 }

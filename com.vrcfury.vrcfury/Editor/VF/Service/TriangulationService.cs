@@ -20,12 +20,12 @@ namespace VF.Service {
             public VFAFloat right;
         }
 
-        public Triangulator CreateTriangulator(VFGameObject parent, string prefix, string paramName, string[] tags, HapticUtils.ReceiverParty party) {
+        public Triangulator CreateTriangulator(VFGameObject parent, string prefix, string paramName, string[] tags, HapticUtils.ReceiverParty party, bool useHipAvoidance) {
             var tri = new Triangulator {
-                center = hapticContacts.AddReceiver(parent, Vector3.zero, $"{paramName}_center", $"{prefix}Center", 3f, tags, party),
-                up = hapticContacts.AddReceiver(parent, Vector3.up * 0.1f, $"{paramName}_up", $"{prefix}Up", 3f, tags, party),
-                forward = hapticContacts.AddReceiver(parent, Vector3.forward * 0.1f, $"{paramName}_forward", $"{prefix}Forward", 3f, tags, party),
-                right = hapticContacts.AddReceiver(parent, Vector3.right * 0.1f, $"{paramName}_right", $"{prefix}Right", 3f, tags, party)
+                center = hapticContacts.AddReceiver(parent, Vector3.zero, $"{paramName}_center", $"{prefix}Center", 3f, tags, party, useHipAvoidance: useHipAvoidance),
+                up = hapticContacts.AddReceiver(parent, Vector3.up * 0.1f, $"{paramName}_up", $"{prefix}Up", 3f, tags, party, useHipAvoidance: useHipAvoidance),
+                forward = hapticContacts.AddReceiver(parent, Vector3.forward * 0.1f, $"{paramName}_forward", $"{prefix}Forward", 3f, tags, party, useHipAvoidance: useHipAvoidance),
+                right = hapticContacts.AddReceiver(parent, Vector3.right * 0.1f, $"{paramName}_right", $"{prefix}Right", 3f, tags, party, useHipAvoidance: useHipAvoidance)
             };
 
             return tri;
@@ -36,7 +36,7 @@ namespace VF.Service {
             var maxClip = fx.NewClip($"{shaderParam}_max");
             var path = renderer.owner().GetPath(manager.AvatarObject);
             var binding = EditorCurveBinding.FloatCurve(path, renderer.GetType(), $"material.{shaderParam}");
-            maxClip.SetConstant(binding, 1);
+            maxClip.SetCurve(binding, 1);
             directTree.Add(param, maxClip);
         }
 

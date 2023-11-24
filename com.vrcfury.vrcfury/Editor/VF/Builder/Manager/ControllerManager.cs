@@ -4,9 +4,11 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -14,7 +16,6 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
     public class ControllerManager {
-        private const string BaseAvatarOwner = "Base Avatar";
         private readonly VFController ctrl;
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;
@@ -22,11 +23,8 @@ namespace VF.Builder {
         private readonly Func<string> currentFeatureNameProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly Func<string, string> makeUniqueParamName;
-        // These can't use AnimatorControllerLayer, because AnimatorControllerLayer is generated on request, not consistent
-        private readonly HashSet<AnimatorStateMachine> managedLayers = new HashSet<AnimatorStateMachine>();
-        private readonly Dictionary<AnimatorStateMachine, string> layerOwners =
-            new Dictionary<AnimatorStateMachine, string>();
-    
+        private readonly LayerSourceService layerSourceService;
+
         public ControllerManager(
             VFController ctrl,
             Func<ParamManager> paramManager,
@@ -35,7 +33,7 @@ namespace VF.Builder {
             Func<string> currentFeatureNameProvider,
             Func<string> currentFeatureClipPrefixProvider,
             Func<string, string> makeUniqueParamName,
-            bool treatAsManaged = false
+            LayerSourceService layerSourceService
         ) {
             this.ctrl = ctrl;
             this.paramManager = paramManager;
@@ -44,13 +42,7 @@ namespace VF.Builder {
             this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.makeUniqueParamName = makeUniqueParamName;
-
-            foreach (var layer in ctrl.layers) {
-                layerOwners[layer.stateMachine] = BaseAvatarOwner;
-                if (treatAsManaged) {
-                    managedLayers.Add(layer.stateMachine);
-                }
-            }
+            this.layerSourceService = layerSourceService;
         }
 
         public VFController GetRaw() {
@@ -66,19 +58,16 @@ namespace VF.Builder {
             if (oldLayer0 != null && oldLayer0.stateMachine.defaultState == null) {
                 return oldLayer0;
             }
-            var newLayer0 = NewLayer("Base Mask", insertAt: 0, hasOwner: false);
+            var newLayer0 = NewLayer("Base Mask", insertAt: 0);
             if (oldLayer0 != null) {
                 newLayer0.mask = oldLayer0.mask;
             }
             return newLayer0;
         }
 
-        public VFLayer NewLayer(string name, int insertAt = -1, bool hasOwner = true) {
+        public VFLayer NewLayer(string name, int insertAt = -1) {
             var newLayer = ctrl.NewLayer(NewLayerName(name), insertAt);
-            managedLayers.Add(newLayer.GetRawStateMachine());
-            if (hasOwner) {
-                layerOwners[newLayer.GetRawStateMachine()] = currentFeatureNameProvider();
-            }
+            layerSourceService.SetSourceToCurrent(newLayer);
             return newLayer;
         }
         
@@ -110,8 +99,6 @@ namespace VF.Builder {
         public void RemoveLayer(AnimatorStateMachine sm) {
             var layer = ctrl.GetLayer(sm);
             var id = layer.GetLayerId();
-            managedLayers.Remove(sm);
-            layerOwners.Remove(sm);
             ctrl.RemoveLayer(id);
         }
 
@@ -120,16 +107,14 @@ namespace VF.Builder {
          * The animator controller (and its sub-assets) should be owned by vrcfury, and should
          * be the ONLY THING in that file!!!
          */
-        public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool allManaged = true) {
+        public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool prefix = true) {
             // Merge Layers
-            other.layers = other.layers.Select((layer, i) => {
-                if (allManaged) {
+            if (prefix) {
+                other.layers = other.layers.Select((layer, i) => {
                     layer.name = NewLayerName(layer.name);
-                    managedLayers.Add(layer.stateMachine);
-                    layerOwners[layer.stateMachine] = currentFeatureNameProvider();
-                }
-                return layer;
-            }).ToArray();
+                    return layer;
+                }).ToArray();
+            }
 
             if (putOnTop) {
                 ctrl.layers = other.layers.Concat(ctrl.layers).ToArray();
@@ -150,15 +135,6 @@ namespace VF.Builder {
 
             other.parameters = new AnimatorControllerParameter[] { };
         }
-        public void TakeOwnershipOf(ControllerManager other, bool putOnTop = false) {
-            TakeOwnershipOf(other.ctrl, putOnTop: putOnTop, allManaged: false);
-            managedLayers.UnionWith(other.managedLayers);
-            foreach (var entry in other.layerOwners) {
-                layerOwners[entry.Key] = entry.Value;
-            }
-            other.managedLayers.Clear();
-            other.layerOwners.Clear();
-        }
 
         public string NewLayerName(string name) {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
@@ -175,7 +151,7 @@ namespace VF.Builder {
         }
 
         private bool IsManaged(AnimatorStateMachine layer) {
-            return managedLayers.Contains(layer);
+            return layerSourceService.GetSource(layer) != LayerSourceService.AvatarDescriptorSource;
         }
 
         private ParamManager GetParamManager() {
@@ -269,15 +245,13 @@ namespace VF.Builder {
                 .And(NewBool("InStation", usePrefix: false).IsTrue());
         }
 
+        [CanBeNull]
         public string GetLayerOwner(AnimatorStateMachine stateMachine) {
-            if (!layerOwners.TryGetValue(stateMachine, out var layerOwner)) {
-                return null;
-            }
-            return layerOwner;
+            return layerSourceService.GetSource(stateMachine);
         }
 
-        public bool IsOwnerBaseAvatar(AnimatorStateMachine stateMachine) {
-            return GetLayerOwner(stateMachine) == BaseAvatarOwner;
+        public bool IsSourceAvatarDescriptor(AnimatorStateMachine stateMachine) {
+            return GetLayerOwner(stateMachine) == LayerSourceService.AvatarDescriptorSource;
         }
 
         public void ForEachClip(Action<AnimationClip> action) {

@@ -89,16 +89,6 @@ public class VRCFuryBuilder {
         var currentModelClipPrefix = "?";
         var currentMenuSortPosition = 0;
         var currentComponentObject = avatarObject;
-        var manager = new AvatarManager(
-            avatarObject,
-            tmpDir,
-            () => currentModelNumber,
-            () => currentModelName,
-            () => currentModelClipPrefix,
-            () => currentMenuSortPosition,
-            () => currentComponentObject,
-            mutableManager
-        );
 
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
@@ -108,7 +98,6 @@ public class VRCFuryBuilder {
 
         var injector = new VRCFuryInjector();
         injector.RegisterService(mutableManager);
-        injector.RegisterService(manager);
         foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
             injector.RegisterService(serviceType);
         }
@@ -121,6 +110,11 @@ public class VRCFuryBuilder {
             allBuildersInRun = collectedBuilders,
             avatarObject = avatarObject,
             originalObject = originalObject,
+            currentFeatureNumProvider = () => currentModelNumber,
+            currentFeatureNameProvider = () => currentModelName,
+            currentFeatureClipPrefixProvider = () => currentModelClipPrefix,
+            currentMenuSortPosition = () => currentMenuSortPosition,
+            currentComponentObject = () => currentComponentObject,
         };
         injector.RegisterService(globals);
 

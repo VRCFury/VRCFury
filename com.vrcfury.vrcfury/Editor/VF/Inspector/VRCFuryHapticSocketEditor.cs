@@ -121,7 +121,9 @@ namespace VF.Inspector {
                 value = false,
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Use hip avoidance",
+                tooltip: "If this socket is placed on the hip bone, this option will prevent triggering or receiving haptics or depth animations from other plugs on the hip bone."));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
 
@@ -270,9 +272,9 @@ namespace VF.Inspector {
                 if (lightType != VRCFuryHapticSocket.AddLight.None) {
                     rootTags.Add(lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole);
                 }
-                HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray());
+                HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
                 HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
-                    new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront });
+                    new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront }, useHipAvoidance: socket.useHipAvoidance);
             }
 
             if (lightType != VRCFuryHapticSocket.AddLight.None) {

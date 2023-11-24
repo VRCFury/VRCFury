@@ -30,7 +30,7 @@ namespace VF.Feature {
             }
 
             var fx = manager.GetFx();
-            fx.TakeOwnershipOf(gesture, putOnTop: true);
+            fx.TakeOwnershipOf(gesture.GetRaw(), putOnTop: true);
         }
         
         [FeatureBuilderAction(FeatureOrder.FixMasks)]

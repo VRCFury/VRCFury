@@ -28,19 +28,9 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(BlendShapeLink.Include))]
         public class IncludeDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty include) {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row
-                    }
-                };
-                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase"), style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
-                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked"), style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
+                var row = new VisualElement().Row();
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked")).FlexGrow(1));
                 return row;
             }
         }
@@ -79,19 +69,9 @@ namespace VF.Feature {
                 }
                 
                 o.Add(VRCFuryEditorUtils.WrappedLabel(includeAll.boolValue ? "Additional linked blendshapes:" : "Linked blendshapes:"));
-                var header = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row
-                    }
-                };
-                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on base", style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
-                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on linked", style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
+                var header = new VisualElement().Row();
+                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on base").FlexGrow(1));
+                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on linked").FlexGrow(1));
                 o.Add(header);
                 
                 o.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("includes")));
