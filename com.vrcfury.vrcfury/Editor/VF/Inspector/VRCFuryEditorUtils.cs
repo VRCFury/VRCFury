@@ -219,76 +219,19 @@ public static class VRCFuryEditorUtils {
         return newEntry;
     }
 
-    public static void Margin(VisualElement el, float topbottom, float leftright) {
-        el.style.marginTop = el.style.marginBottom = topbottom;
-        el.style.marginLeft = el.style.marginRight = leftright;
-    }
-    public static void Margin(VisualElement el, float all) {
-        Margin(el, all, all);
-    }
-    public static void Padding(VisualElement el, float topbottom, float leftright) {
-        el.style.paddingTop = el.style.paddingBottom = topbottom;
-        el.style.paddingLeft = el.style.paddingRight = leftright;
-    }
-    public static void Padding(VisualElement el, float all) {
-        Padding(el, all, all);
-    }
-    public static void Border(VisualElement el, float topbottom, float leftright) {
-        el.style.borderTopWidth = el.style.borderBottomWidth = topbottom;
-        el.style.borderLeftWidth = el.style.borderRightWidth = leftright;
-    }
-    public static void Border(VisualElement el, float all) {
-        Border(el, all, all);
-    }
-    public static void BorderRadius(VisualElement el, float all) {
-        BorderRadius(el.style, all);
-    }
-    public static void BorderRadius(IStyle style, float all) {
-        style.borderTopLeftRadius = style.borderTopRightRadius =
-            style.borderBottomLeftRadius = style.borderBottomRightRadius = all;
-    }
-    public static void BorderColor(VisualElement el, Color topbottom, Color leftright) {
-        el.style.borderTopColor = el.style.borderBottomColor = topbottom;
-        el.style.borderLeftColor = el.style.borderRightColor = leftright;
-    }
-    public static void BorderColor(VisualElement el, Color all) {
-        BorderColor(el, all, all);
-    }
-    
-    public static Label WrappedLabel(string text, Action<IStyle> style = null) {
-        var field = new Label(text) {
-            style = {
-                whiteSpace = WhiteSpace.Normal
-            }
-        };
-        style?.Invoke(field.style);
-        return field;
-    }
-
-    public static VisualElement Button(string text, Action onPress) {
-        var b = new Button(onPress) {
-            text = text,
-        };
-        Margin(b, 0);
-        return b;
-    }
-
-    public static VisualElement BetterCheckbox(
-        SerializedProperty prop,
-        string label,
-        Action<IStyle> style = null
-    ) {
-        return BetterProp(prop, label, style: style);
+    public static Label WrappedLabel(string text) {
+        return new Label(text).TextWrap();
     }
     
     public static VisualElement BetterProp(
         SerializedProperty prop,
         string label = null,
-        Action<IStyle> style = null,
         string tooltip = null,
         VisualElement fieldOverride = null
     ) {
-        return Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride, style: style, better: true);
+        var el = Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride);
+        el.PaddingBottom(5);
+        return el;
     }
 
     public static (VisualElement, VisualElement) CreateTooltip(string label, string content) {
@@ -325,10 +268,8 @@ public static class VRCFuryEditorUtils {
         string label = null,
         int labelWidth = 100,
         Func<string,string> formatEnum = null,
-        Action<IStyle> style = null,
         string tooltip = null,
-        VisualElement fieldOverride = null,
-        bool better = false
+        VisualElement fieldOverride = null
     ) {
         VisualElement field = null;
         bool isCheckbox = false;
@@ -364,7 +305,7 @@ public static class VRCFuryEditorUtils {
 
         field.AddToClassList("VrcFuryEditorProp");
 
-        var output = AssembleProp(
+        return AssembleProp(
             label,
             tooltip,
             field,
@@ -372,11 +313,6 @@ public static class VRCFuryEditorUtils {
             false,
             labelWidth
         );
-        if (better) {
-            output.style.paddingBottom = 5;
-        }
-        style?.Invoke(output.style);
-        return output;
     }
 
     public static VisualElement AssembleProp(
@@ -442,7 +378,7 @@ public static class VRCFuryEditorUtils {
         if (prop.isArray) {
             var fakeField = new IntegerField();
             fakeField.bindingPath = prop.propertyPath+".Array.size";
-            fakeField.style.display = DisplayStyle.None;
+            fakeField.SetVisible(false);
             var oldValue = prop.arraySize;
             fakeField.RegisterValueChangedCallback(e => {
                 if (prop.arraySize == oldValue) return;
@@ -457,7 +393,7 @@ public static class VRCFuryEditorUtils {
     private static VisualElement _OnChange<T>(SerializedProperty prop, Func<T> getValue, Action changed, Func<T,T,bool> equals) {
         // The register events can sometimes randomly fire when binding / unbinding happens,
         // with the oldValue being "null", so we have to do our own change detection by caching the old value.
-        var fakeField = new PropertyField(prop) { style = { display = DisplayStyle.None } };
+        var fakeField = new PropertyField(prop).SetVisible(false);
     
         var oldValue = getValue();
         void Check() {
@@ -539,22 +475,14 @@ public static class VRCFuryEditorUtils {
                 marginTop = 5,
                 marginBottom = 10
             }
-        };
-        VRCFuryEditorUtils.Padding(section, 5);
-        VRCFuryEditorUtils.BorderRadius(section, 5);
+        }.Padding(5).BorderRadius(5);
 
         if (title != null) {
-            section.Add(VRCFuryEditorUtils.WrappedLabel(title, style => {
-                style.unityFontStyleAndWeight = FontStyle.Bold;
-                style.unityTextAlign = TextAnchor.MiddleCenter;
-            }));
+            section.Add(WrappedLabel(title).Bold().TextAlign(TextAnchor.MiddleCenter));
         }
 
         if (subtitle != null) {
-            section.Add(VRCFuryEditorUtils.WrappedLabel(subtitle, style => {
-                style.unityTextAlign = TextAnchor.MiddleCenter;
-                style.paddingBottom = 5;
-            }));
+            section.Add(WrappedLabel(subtitle).TextAlign(TextAnchor.MiddleCenter).PaddingBottom(5));
         }
 
         return section;
@@ -569,18 +497,12 @@ public static class VRCFuryEditorUtils {
                 flexDirection = FlexDirection.Row,
                 alignItems = Align.FlexStart
             }
-        };
-        Padding(el, 5);
-        BorderRadius(el, 5);
-        var im = new Image {
+        }.Padding(5).BorderRadius(5);
+        el.Add(new Image {
             image = EditorGUIUtility.FindTexture("_Help"),
             scaleMode = ScaleMode.ScaleToFit
-        };
-        el.Add(im);
-        var label = WrappedLabel(message);
-        label.style.flexGrow = 1;
-        label.style.flexBasis = 0;
-        el.Add(label);
+        });
+        el.Add(WrappedLabel(message).FlexGrow(1));
         return el;
     }
     
@@ -593,19 +515,14 @@ public static class VRCFuryEditorUtils {
                 flexDirection = FlexDirection.Row,
                 alignItems = Align.FlexStart
             }
-        };
-        Padding(el, 5);
-        BorderRadius(el, 5);
-        var im = new Image {
+        }.Padding(5).BorderRadius(5);
+        el.Add(new Image {
             image = EditorGUIUtility.FindTexture("d_Lighting"),
             scaleMode = ScaleMode.ScaleToFit
-        };
-        el.Add(im);
+        });
         var rightColumn = new VisualElement();
         el.Add(rightColumn);
-        var title = WrappedLabel("Debug Info");
-        title.style.unityFontStyleAndWeight = FontStyle.Bold;
-        rightColumn.Add(title);
+        rightColumn.Add(WrappedLabel("Debug Info").Bold());
 
         if (refreshElement != null) {
             var holder = new VisualElement();
@@ -623,7 +540,7 @@ public static class VRCFuryEditorUtils {
                     holder.Add(WrappedLabel($"Error: {e.Message}"));
                     show = true;
                 }
-                el.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+                el.SetVisible(show);
             }, interval);
         } else {
             var label = WrappedLabel(message);
@@ -638,7 +555,7 @@ public static class VRCFuryEditorUtils {
                         label.text = $"Error: {e.Message}";
                         show = true;
                     }
-                    el.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+                    el.SetVisible(show);
                 }, interval);
             }
         }
@@ -647,18 +564,14 @@ public static class VRCFuryEditorUtils {
     }
 
     public static VisualElement Error(string message) {
-        var i = Section();
+        var i = Section().BorderColor(Color.red).Border(2);
         i.Add(WrappedLabel(message));
-        BorderColor(i, Color.red);
-        Border(i, 2);
         return i;
     }
 
     public static VisualElement Warn(string message) {
-        var i = Section();
+        var i = Section().BorderColor(Color.yellow).Border(2);
         i.Add(WrappedLabel(message));
-        BorderColor(i, Color.yellow);
-        Border(i, 2);
         return i;
     }
     

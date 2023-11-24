@@ -284,6 +284,7 @@ namespace VF.Feature {
                     var rewritten = RewriteParamName(smoothedParam.name);
                     if (smoothedDict.ContainsKey(rewritten)) continue;
                     var exists = toMain.GetRaw().GetParam(rewritten);
+                    if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
                     var target = new VFAFloat(exists);
                     var smoothed = smoothingService.Smooth($"{rewritten}/Smoothed", target,
@@ -342,19 +343,19 @@ namespace VF.Feature {
 
                 var row = new VisualElement();
                 row.Add(VRCFuryEditorUtils.WrappedLabel("If animated path has this prefix:"));
-                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from"), style: s => s.paddingLeft = 15));
+                row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from")).PaddingLeft(15));
                 row.Add(VRCFuryEditorUtils.WrappedLabel("Then:"));
                 var deleteProp = rewrite.FindPropertyRelative("delete");
                 var selector = new PopupField<string>(new List<string>{ "Rewrite the prefix to", "Delete it" }, deleteProp.boolValue ? 1 : 0);
                 selector.style.paddingLeft = 15;
                 row.Add(selector);
-                var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to"), style: s => s.paddingLeft = 15);
+                var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to")).PaddingLeft(15);
                 row.Add(to);
 
                 void Update() {
                     deleteProp.boolValue = selector.index == 1;
                     deleteProp.serializedObject.ApplyModifiedProperties();
-                    to.style.display = deleteProp.boolValue ? DisplayStyle.None : DisplayStyle.Flex;
+                    to.SetVisible(!deleteProp.boolValue);
                 }
                 selector.RegisterValueChangedCallback(str => Update());
                 Update();

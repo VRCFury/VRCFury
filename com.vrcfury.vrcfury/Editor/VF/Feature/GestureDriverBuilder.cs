@@ -185,7 +185,7 @@ namespace VF.Feature {
             var exclusiveTagProp = gesture.FindPropertyRelative("exclusiveTag");
             var enableWeightProp = gesture.FindPropertyRelative("enableWeight");
 
-            var button = VRCFuryEditorUtils.Button("Options", () => {
+            row.Add(new Button().Text("Options").FlexBasis(70).OnClick(() => {
                 var advMenu = new GenericMenu();
                 advMenu.AddItem(new GUIContent("Customize transition time"), customTransitionTimeProp.boolValue, () => {
                     customTransitionTimeProp.boolValue = !customTransitionTimeProp.boolValue;
@@ -205,10 +205,7 @@ namespace VF.Feature {
                     gesture.serializedObject.ApplyModifiedProperties();
                 });
                 advMenu.ShowAsContext();
-            });
-            button.style.flexBasis = 70;
-
-            row.Add(button);
+            }));
             
             wrapper.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var w = new VisualElement();

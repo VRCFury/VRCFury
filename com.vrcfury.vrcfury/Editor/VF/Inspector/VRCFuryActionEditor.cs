@@ -52,7 +52,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
                 flag.style.borderTopRightRadius = 5;
                 flag.style.marginRight = 5;
-                VRCFuryEditorUtils.Padding(flag, 2, 4);
+                flag.Padding(2, 4);
                 row.Add(flag);
             }
             
@@ -271,7 +271,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 var row = new VisualElement().Row();
                 var blendshapeProp = prop.FindPropertyRelative("blendShape");
-                row.Add(VRCFuryEditorUtils.Prop(blendshapeProp, "Blendshape", style: s => s.flexGrow = 1));
+                row.Add(VRCFuryEditorUtils.Prop(blendshapeProp, "Blendshape").FlexGrow(1));
                 var selectButton = new Button(SelectButtonPress) { text = "Search" };
                 row.Add(selectButton);
                 content.Add(row);

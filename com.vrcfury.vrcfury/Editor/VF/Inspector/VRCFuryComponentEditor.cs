@@ -8,6 +8,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
 using VF.Model;
+using VF.Utils;
 
 namespace VF.Inspector {
     public class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
@@ -271,7 +272,7 @@ namespace VF.Inspector {
             var baseText = "The VRCFury features in this prefab are overridden on this instance. Please revert them!" +
                            " If you apply, it may corrupt data in the changed features.";
             var overrideLabel = VRCFuryEditorUtils.Error(baseText);
-            overrideLabel.style.display = DisplayStyle.None;
+            overrideLabel.SetVisible(false);
 
             double lastCheck = 0;
             void CheckOverride() {
@@ -282,7 +283,7 @@ namespace VF.Inspector {
                     lastCheck = now;
                     var mods = VRCFPrefabFixer.GetModifications(vrcf);
                     var isModified = mods.Count > 0;
-                    overrideLabel.style.display = isModified ? DisplayStyle.Flex : DisplayStyle.None;
+                    overrideLabel.SetVisible(isModified);
                     if (isModified) {
                         overrideLabel.Clear();
                         overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath))));
@@ -301,29 +302,28 @@ namespace VF.Inspector {
                 var prefabPath = AssetDatabase.GetAssetPath(componentInBasePrefab);
                 UnityCompatUtils.OpenPrefab(prefabPath, component.gameObject);
             }
-            var label = new Button(Open) {
-                text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
-                style = {
-                    paddingTop = 5,
-                    paddingBottom = 5,
-                    unityTextAlign = TextAnchor.MiddleCenter,
-                    whiteSpace = WhiteSpace.Normal,
-                    borderTopLeftRadius = 5,
-                    borderTopRightRadius = 5,
-                    borderBottomLeftRadius = 0,
-                    borderBottomRightRadius = 0,
-                    marginTop = 5,
-                    marginLeft = 20,
-                    marginRight = 20,
-                    marginBottom = 0,
-                    borderTopWidth = 1,
-                    borderLeftWidth = 1,
-                    borderRightWidth = 1,
-                    borderBottomWidth = 0
-                }
-            };
-            VRCFuryEditorUtils.Padding(label, 5);
-            VRCFuryEditorUtils.BorderColor(label, Color.black);
+
+            var label = new Button()
+                .OnClick(Open)
+                .Text("You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab")
+                .TextAlign(TextAnchor.MiddleCenter)
+                .TextWrap()
+                .Padding(5)
+                .BorderColor(Color.black);
+            label.style.paddingTop = 5;
+            label.style.paddingBottom = 5;
+            label.style.borderTopLeftRadius = 5;
+            label.style.borderTopRightRadius = 5;
+            label.style.borderBottomLeftRadius = 0;
+            label.style.borderBottomRightRadius = 0;
+            label.style.marginTop = 5;
+            label.style.marginLeft = 20;
+            label.style.marginRight = 20;
+            label.style.marginBottom = 0;
+            label.style.borderTopWidth = 1;
+            label.style.borderLeftWidth = 1;
+            label.style.borderRightWidth = 1;
+            label.style.borderBottomWidth = 0;
             return label;
         }
     }

@@ -322,112 +322,113 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         flex.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
 
-        var button = VRCFuryEditorUtils.Button("Options", () => {
-            var advMenu = new GenericMenu();
-            if (savedProp != null) {
-                advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
-                    savedProp.boolValue = !savedProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+        var button = new Button()
+            .Text("Options")
+            .OnClick(() => {
+                var advMenu = new GenericMenu();
+                if (savedProp != null) {
+                    advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
+                        savedProp.boolValue = !savedProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (sliderProp != null) {
-                advMenu.AddItem(new GUIContent("Use Slider Wheel"), sliderProp.boolValue, () => {
-                    sliderProp.boolValue = !sliderProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (sliderProp != null) {
+                    advMenu.AddItem(new GUIContent("Use Slider Wheel"), sliderProp.boolValue, () => {
+                        sliderProp.boolValue = !sliderProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (securityEnabledProp != null) {
-                advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
-                    securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (securityEnabledProp != null) {
+                    advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
+                        securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (defaultOnProp != null && !sliderProp.boolValue) {
-                advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
-                    defaultOnProp.boolValue = !defaultOnProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (defaultOnProp != null && !sliderProp.boolValue) {
+                    advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
+                        defaultOnProp.boolValue = !defaultOnProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (includeInRestProp != null) {
-                advMenu.AddItem(new GUIContent("Show in Rest Pose"), includeInRestProp.boolValue, () => {
-                    includeInRestProp.boolValue = !includeInRestProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (includeInRestProp != null) {
+                    advMenu.AddItem(new GUIContent("Show in Rest Pose"), includeInRestProp.boolValue, () => {
+                        includeInRestProp.boolValue = !includeInRestProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (enableExclusiveTagProp != null) {
-                advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
-                    enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (enableExclusiveTagProp != null) {
+                    advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
+                        enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (exclusiveOffStateProp != null) {
-                advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
-                    exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (exclusiveOffStateProp != null) {
+                    advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
+                        exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (enableIconProp != null) {
-                advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
-                    enableIconProp.boolValue = !enableIconProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (enableIconProp != null) {
+                    advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
+                        enableIconProp.boolValue = !enableIconProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (enableDriveGlobalParamProp != null) {
-                advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
-                    enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (enableDriveGlobalParamProp != null) {
+                    advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
+                        enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (separateLocalProp != null)
-            {
-                advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
-                    separateLocalProp.boolValue = !separateLocalProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (separateLocalProp != null)
+                {
+                    advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
+                        separateLocalProp.boolValue = !separateLocalProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (hasTransitionProp != null)
-            {
-                advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
-                    hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (hasTransitionProp != null)
+                {
+                    advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
+                        hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (hasExitTimeProp != null)
-            {
-                advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
-                    hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (hasExitTimeProp != null)
+                {
+                    advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
+                        hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (useGlobalParamProp != null) {
-                advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
-                    useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (useGlobalParamProp != null) {
+                    advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
+                        useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            if (holdButtonProp != null) {
-                advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
-                    holdButtonProp.boolValue = !holdButtonProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-            }
+                if (holdButtonProp != null) {
+                    advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
+                        holdButtonProp.boolValue = !holdButtonProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
-            advMenu.ShowAsContext();
-        });
-        button.style.flexGrow = 0;
+                advMenu.ShowAsContext();
+            });
         flex.Add(button);
 
         if (enableExclusiveTagProp != null) {
@@ -553,12 +554,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
                 var row = new VisualElement().Row().FlexWrap();
                 foreach (var tag in tags) {
-                    var flag = new Label(tag);
+                    var flag = new Label(tag).Padding(2,4);
                     flag.style.width = StyleKeyword.Auto;
                     flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
                     flag.style.borderTopRightRadius = 5;
                     flag.style.marginRight = 5;
-                    VRCFuryEditorUtils.Padding(flag, 2, 4);
                     row.Add(flag);
                 }
 
@@ -578,7 +578,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             "You cannot use Turn Off for an object that another Toggle Turns On! Turn Off should only be used for objects which are not controlled by their own toggle.\n\n" +
             "1. You do not need a dedicated 'Turn Off' toggle. Turning off the other toggle will turn off the object.\n\n" +
             "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
-        toggleOffWarning.style.display = DisplayStyle.None;
+        toggleOffWarning.SetVisible(false);
         content.Add(toggleOffWarning);
         VRCFuryEditorUtils.RefreshOnInterval(toggleOffWarning, () => {
             var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
@@ -599,7 +599,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .Where(o => o != null)
                 .ToImmutableHashSet();
             var overlap = turnsOff.Intersect(othersTurnOn);
-            toggleOffWarning.style.display = overlap.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            toggleOffWarning.SetVisible(overlap.Count > 0);
         });
 
         return content;
@@ -607,7 +607,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
     private VisualElement MakeTabbed(string label, VisualElement child) {
         var output = new VisualElement();
-        output.Add(VRCFuryEditorUtils.WrappedLabel(label, style: s => s.unityFontStyleAndWeight = FontStyle.Bold));
+        output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
         var tabbed = new VisualElement { style = { paddingLeft = 10 } };
         tabbed.Add(child);
         output.Add(tabbed);

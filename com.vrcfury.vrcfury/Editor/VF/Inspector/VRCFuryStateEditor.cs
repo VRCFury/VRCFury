@@ -83,18 +83,21 @@ public class VRCFuryStateEditor : PropertyDrawer {
                 if (showSingleLineEditor) {
                     singleLineEditor.style.flexGrow = 1;
                     segments.Add(singleLineEditor);
-                    var x = VRCFuryEditorUtils.Button("x", () => {
-                        list.DeleteArrayElementAtIndex(0);
-                        list.serializedObject.ApplyModifiedProperties();
-                    });
-                    x.style.flexGrow = 0;
-                    x.style.flexBasis = 20;
+                    var x = new Button()
+                        .Text("x")
+                        .OnClick(() => {
+                            list.DeleteArrayElementAtIndex(0);
+                            list.serializedObject.ApplyModifiedProperties();
+                        })
+                        .FlexBasis(20);
                     segments.Add(x);
                 }
                 if (showPlus) {
-                    var plus = VRCFuryEditorUtils.Button(singleLineEditor != null ? "+" : "Add Action +", OnPlus);
-                    plus.style.flexGrow = showSingleLineEditor ? 0 : 1;
-                    plus.style.flexBasis = 20;
+                    var plus = new Button()
+                        .Text(singleLineEditor != null ? "+" : "Add Action +")
+                        .OnClick(OnPlus)
+                        .FlexBasis(20)
+                        .FlexGrow(showSingleLineEditor ? 0 : 1);
                     segments.Add(plus);
                 }
             }
