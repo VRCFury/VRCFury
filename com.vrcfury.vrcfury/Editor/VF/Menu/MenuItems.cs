@@ -52,6 +52,7 @@ namespace VF.Menu {
             return LegacyHapticsUpgrader.Check();
         }
         
+        [MenuItem("GameObject/VRCFury/Create SPS Socket", priority = 40)]
         [MenuItem(createSocket, priority = createSocketPriority)]
         public static void RunSocket() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
@@ -59,6 +60,7 @@ namespace VF.Menu {
             });
         }
         
+        [MenuItem("GameObject/VRCFury/Create SPS Plug", priority = 41)]
         [MenuItem(createPlug, priority = createPlugPriority)]
         public static void RunPlug() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
