@@ -123,11 +123,11 @@ public static class VRCFuryEditorUtils {
         output.Add(listView);
         output.Add(footer);
 #else
-        var entriesContainer = new VisualElement();
+        var entriesContainer = new VisualElement()
+            .Border(1)
+            .BorderColor(Color.black)
+            .BorderRadius(5);
         output.Add(entriesContainer);
-        Border(entriesContainer, 1);
-        BorderColor(entriesContainer, Color.black);
-        BorderRadius(entriesContainer, 5);
         entriesContainer.style.backgroundColor = new Color(0,0,0,0.1f);
         entriesContainer.style.minHeight = 20;
 
@@ -149,9 +149,8 @@ public static class VRCFuryEditorUtils {
                 row.style.alignItems = Align.FlexStart;
                 entries.Add(row);
 
-                VisualElement data = Prop(el);
+                VisualElement data = Prop(el).Padding(5);
                 data.AddToClassList("vfListRowData");
-                Padding(data, 5);
                 data.style.flexGrow = 1;
                 row.Add(data);
 
@@ -164,9 +163,8 @@ public static class VRCFuryEditorUtils {
                 if (onEmpty != null) {
                     entries.Add(onEmpty());
                 } else {
-                    var label = WrappedLabel("This list is empty. Click + to add an entry.");
+                    var label = WrappedLabel("This list is empty. Click + to add an entry.").Padding(5);
                     label.style.unityTextAlign = TextAnchor.MiddleCenter;
-                    Padding(label, 5);
                     entries.Add(label);
                 }
             }
