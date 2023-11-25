@@ -278,6 +278,10 @@ public static class VRCFuryEditorUtils {
             field = WrappedLabel("Prop is null");
         } else {
             switch (prop.propertyType) {
+                case SerializedPropertyType.Vector4: {
+                    field = new Vector4Field { bindingPath = prop.propertyPath }.FlexShrink(1);
+                    break;
+                }
                 case SerializedPropertyType.Enum: {
                     field = new PopupField<string>(
                         prop.enumDisplayNames.ToList(),
