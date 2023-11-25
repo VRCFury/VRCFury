@@ -141,6 +141,7 @@ namespace VF.Model.StateAction {
         [Serializable]
         public class FlipBookPage {
             public State state;
+            public bool ResetMePlease2;
         }
 
         public override bool Upgrade(int fromVersion) {
