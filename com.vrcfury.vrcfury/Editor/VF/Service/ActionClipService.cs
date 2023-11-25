@@ -141,7 +141,7 @@ namespace VF.Service {
                                 onClip.SetCurve(binding, value);
                             }
 
-                            if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range || type == ShaderUtil.ShaderPropertyType.Int) {
+                            if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
                                 AddOne("", materialPropertyAction.value);
                             } else if (type == ShaderUtil.ShaderPropertyType.Color) {
                                 AddOne(".r", materialPropertyAction.valueColor.r);

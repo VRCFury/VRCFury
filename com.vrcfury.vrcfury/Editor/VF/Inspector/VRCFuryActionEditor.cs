@@ -217,12 +217,11 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                             for (var i = 0; i < count; i++) {
                                 var propertyName = ShaderUtil.GetPropertyName(shader, i);
                                 var readableName = ShaderUtil.GetPropertyDescription(shader, i);
-                                var type = ShaderUtil.GetPropertyType(shader, i);
-                                if (type != ShaderUtil.ShaderPropertyType.Float &&
-                                    type != ShaderUtil.ShaderPropertyType.Range &&
-                                    type != ShaderUtil.ShaderPropertyType.Int &&
-                                    type != ShaderUtil.ShaderPropertyType.Color &&
-                                    type != ShaderUtil.ShaderPropertyType.Vector) continue;
+                                var propType = ShaderUtil.GetPropertyType(shader, i);
+                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
+                                    propType != ShaderUtil.ShaderPropertyType.Range &&
+                                    propType != ShaderUtil.ShaderPropertyType.Color &&
+                                    propType != ShaderUtil.ShaderPropertyType.Vector) continue;
                                 var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
                                 if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
 
