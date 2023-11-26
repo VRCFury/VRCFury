@@ -29,7 +29,11 @@ namespace VF.Utils {
             }
         }
 
-        public static void RewriteParameters(this AnimatorController c, Func<string, string> rewriteParamName, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
+        public static void RewriteParameters(this AnimatorController c, Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
+            string RewriteParamName(string str) {
+                if (string.IsNullOrEmpty(str)) return str;
+                return rewriteParamNameNullUnsafe(str);
+            }
             var layers = c.layers
                 .Where(l => limitToLayers == null || limitToLayers.Contains(l.stateMachine))
                 .ToArray();
@@ -38,7 +42,7 @@ namespace VF.Utils {
             if (includeWrites && limitToLayers == null) {
                 var prms = c.parameters;
                 foreach (var p in prms) {
-                    p.name = rewriteParamName(p.name);
+                    p.name = RewriteParamName(p.name);
                 }
 
                 c.parameters = prms;
@@ -46,10 +50,10 @@ namespace VF.Utils {
 
             // States
             foreach (var state in new AnimatorIterator.States().From(layers)) {
-                state.speedParameter = rewriteParamName(state.speedParameter);
-                state.cycleOffsetParameter = rewriteParamName(state.cycleOffsetParameter);
-                state.mirrorParameter = rewriteParamName(state.mirrorParameter);
-                state.timeParameter = rewriteParamName(state.timeParameter);
+                state.speedParameter = RewriteParamName(state.speedParameter);
+                state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
+                state.mirrorParameter = RewriteParamName(state.mirrorParameter);
+                state.timeParameter = RewriteParamName(state.timeParameter);
                 VRCFuryEditorUtils.MarkDirty(state);
             }
 
@@ -58,10 +62,10 @@ namespace VF.Utils {
                 foreach (var b in new AnimatorIterator.Behaviours().From(layers)) {
                     if (b is VRCAvatarParameterDriver oldB) {
                         foreach (var p in oldB.parameters) {
-                            p.name = rewriteParamName(p.name);
+                            p.name = RewriteParamName(p.name);
                             var sourceField = p.GetType().GetField("source");
                             if (sourceField != null) {
-                                sourceField.SetValue(p, rewriteParamName((string)sourceField.GetValue(p)));
+                                sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
                             }
                         }
                     }
@@ -75,7 +79,7 @@ namespace VF.Utils {
                         if (binding.path != "") return binding;
                         if (binding.type != typeof(Animator)) return binding;
                         if (binding.IsMuscle()) return binding;
-                        binding.propertyName = rewriteParamName(binding.propertyName);
+                        binding.propertyName = RewriteParamName(binding.propertyName);
                         return binding;
                     }));
                 }
@@ -83,13 +87,13 @@ namespace VF.Utils {
 
             // Blend trees
             foreach (var tree in new AnimatorIterator.Trees().From(layers)) {
-                tree.RewriteParameters(rewriteParamName);
+                tree.RewriteParameters(RewriteParamName);
             }
 
             // Transitions
             foreach (var transition in new AnimatorIterator.Transitions().From(layers)) {
                 transition.RewriteConditions(cond => {
-                    cond.parameter = rewriteParamName(cond.parameter);
+                    cond.parameter = RewriteParamName(cond.parameter);
                     return cond;
                 });
                 VRCFuryEditorUtils.MarkDirty(transition);
