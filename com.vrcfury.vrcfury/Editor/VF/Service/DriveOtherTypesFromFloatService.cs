@@ -28,7 +28,7 @@ namespace VF.Service {
                 var off = layer.NewState($"{output} = 0");
                 off.TransitionsToExit().When(fx.Always());
                 var driver = off.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                var t = idle.TransitionsTo(off).When();
+                var t = idle.TransitionsTo(off).When(lastState_.IsGreaterThan(0));
                 driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
                     name = lastState_.Name(),
                     value = 0
