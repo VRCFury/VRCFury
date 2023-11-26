@@ -40,11 +40,12 @@ namespace VF.Service {
                 currentSettings[output] = (lastState_, 0, t);
             }
 
-            var (lastState, myNumber, offTransition) = currentSettings[output];
+            var (lastState, lastNumber, offTransition) = currentSettings[output];
+            var myNumber = lastNumber + 1;
             {
                 // Increment the usage number
                 var c = currentSettings[output];
-                c.Item2++;
+                c.Item2 = myNumber;
                 currentSettings[output] = c;
             }
 
