@@ -50,11 +50,14 @@ namespace VF.Service {
             var defaultValue = targets
                 .Where(target => target.Item2 == null || target.Item2.defaultIsTrue)
                 .Select(target => target.Item1.GetDefault())
+                .DefaultIfEmpty(0)
                 .First();
 
             var output = MakeZeroBasisFloat(name, def: defaultValue);
 
-            Motion elseTree = null;
+            // The "fall through" (if all conditions are false) is to maintain the current output value
+            var elseTree = MakeMaintainer(output);
+
             foreach (var (target, when) in targets.Reverse()) {
                 var doWhenTrue = MakeCopier(target, output);
 
