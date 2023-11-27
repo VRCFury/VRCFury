@@ -50,10 +50,18 @@ namespace VF.Utils {
 
             // States
             foreach (var state in new AnimatorIterator.States().From(layers)) {
-                state.speedParameter = RewriteParamName(state.speedParameter);
-                state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
-                state.mirrorParameter = RewriteParamName(state.mirrorParameter);
-                state.timeParameter = RewriteParamName(state.timeParameter);
+                if (state.speedParameterActive) {
+                    state.speedParameter = RewriteParamName(state.speedParameter);
+                }
+                if (state.cycleOffsetParameterActive) {
+                    state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
+                }
+                if (state.mirrorParameterActive) {
+                    state.mirrorParameter = RewriteParamName(state.mirrorParameter);
+                }
+                if (state.timeParameterActive) {
+                    state.timeParameter = RewriteParamName(state.timeParameter);
+                }
                 VRCFuryEditorUtils.MarkDirty(state);
             }
 
