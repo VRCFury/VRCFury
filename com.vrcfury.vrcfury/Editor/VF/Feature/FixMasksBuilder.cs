@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -6,13 +7,45 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class FixMasksBuilder : FeatureBuilder {
+        [FeatureBuilderAction(FeatureOrder.FixGestureFxConflict)]
+        public void FixGestureFxConflict() {
+            if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
+                // No customized gesture controller
+                return;
+            }
+            var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
+
+            var gestureContainsTransform = gesture.GetClips()
+                .SelectMany(clip => clip.GetAllBindings())
+                .Any(binding => binding.type == typeof(Transform));
+
+            var activateGestureToFxTransfer = gestureContainsTransform || DoesFxControlHands();
+            if (!activateGestureToFxTransfer) {
+                return;
+            }
+
+            var fx = manager.GetFx();
+            fx.TakeOwnershipOf(gesture.GetRaw(), putOnTop: true);
+        }
+        
         [FeatureBuilderAction(FeatureOrder.FixMasks)]
-        public void Apply() {
-            var allControllers = manager.GetAllUsedControllers().ToArray();
+        public void FixMasks() {
+            foreach (var layer in GetFx().GetLayers()) {
+                // For any layers we added to FX without masks, give them the default FX mask
+                if (layer.mask == null) {
+                    layer.mask = AvatarMaskExtensions.DefaultFxMask();
+                }
+                
+                // Remove redundant FX masks if they're not needed
+                if (layer.mask.AllowsAllTransforms() && !layer.HasMuscles()) {
+                    layer.mask = null;
+                }
+            }
 
             foreach (var c in manager.GetAllUsedControllers()) {
                 var ctrl = c.GetRaw();
@@ -21,71 +54,51 @@ namespace VF.Feature {
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                     expectedMask = GetGestureMask(c);
                 } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    expectedMask = GetFxMask(c, allControllers);
-                } else {
-                    expectedMask = null;
+                    expectedMask = GetFxMask(c);
                 }
 
                 var layer0 = ctrl.GetLayer(0);
                 // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a
-                // controller with no layers
-                if (layer0 == null || layer0.mask != expectedMask) {
+                //   controller with no layers
+                // On FX, ALWAYS make an empty base layer, because for some reason transition times can break
+                //   and animate immediately when performed within the base layer
+                if (layer0 == null || layer0.mask != expectedMask || c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
                     c.EnsureEmptyBaseLayer().mask = expectedMask;
                 }
             }
         }
 
         /**
-         * We build the gesture mask by unioning all the masks from the avatar base, plus any controllers
-         * we've merged in. We also add left and right fingers, to ensure they're allowed so VRCFury-added
-         * hand gestures can work.
+         * We build the gesture base mask by unioning all the masks from the other layers.
          */
         private AvatarMask GetGestureMask(ControllerManager gesture) {
             var mask = AvatarMaskExtensions.Empty();
-            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
-
-            foreach (var union in gesture.GetUnionBaseMasks()) {
-                if (union != null) {
-                    mask.UnionWith(union);
-                }
+            foreach (var layer in gesture.GetLayers()) {
+                if (layer.mask == null) throw new Exception("Gesture layer unexpectedly contains no mask");
+                mask.UnionWith(layer.mask);
             }
-            VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "gestureMask");
             return mask;
         }
 
-        private AvatarMask GetFxMask(ControllerManager fx, IEnumerable<ControllerManager> allControllers) {
-            var gestureContainsTransform = allControllers
-                .Where(c => c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture)
-                .SelectMany(c => c.GetClips())
-                .SelectMany(clip => clip.GetAllBindings())
-                .Any(binding => binding.type == typeof(Transform));
-            if (!gestureContainsTransform) return null;
+        private bool DoesFxControlHands() {
+            return manager.GetFx().GetLayers()
+                .Any(layer => layer.mask != null &&
+                              (layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers)
+                               || layer.mask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers)));
+        }
 
-            foreach (var layer in fx.GetLayers()) {
-                var oldMask = layer.mask;
-                
-                // Direct blendtree layers don't need a mask because they're always WD on
-                // and that doesn't break transforms on gesture because... unity reasons
-                var isOnlyDirectTree = new AnimatorIterator.States()
-                    .From(layer)
-                    .All(state => state.motion is BlendTree tree && tree.blendType == BlendTreeType.Direct);
-                if (isOnlyDirectTree) continue;
-
-                var transformedPaths = new AnimatorIterator.Clips().From(layer)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Where(binding => binding.type == typeof(Transform))
-                    .Select(binding => binding.path)
-                    .ToImmutableHashSet();
-
-                var mask = AvatarMaskExtensions.Empty();
-                mask.SetTransforms(transformedPaths);
-                if (oldMask != null) {
-                    mask.IntersectWith(oldMask);
-                }
-
-                VRCFuryAssetDatabase.SaveAsset(mask, tmpDir, "fxMaskForLayer" + layer.GetLayerId());
-                layer.mask = mask;
+        /**
+         * If a project uses WD off, and animates ANY muscle within a controller, that controller "claims ownership"
+         * of every muscle allowed by its mask. This means that it's very important that we only allow FX to
+         * have as few muscles as possible, because animating hands within FX would bust the entire rest of the avatar
+         * if the mask allowed it.
+         */
+        private AvatarMask GetFxMask(ControllerManager fx) {
+            if (DoesFxControlHands()) {
+                var mask = AvatarMaskExtensions.DefaultFxMask();
+                mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+                mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+                return mask;
             }
 
             return null;

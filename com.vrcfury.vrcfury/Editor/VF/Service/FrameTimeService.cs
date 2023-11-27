@@ -14,29 +14,38 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
-        private VFAFloat cached;
 
+        private VFAFloat cachedFrameTime;
         public VFAFloat GetFrameTime() {
-            if (cached != null) return cached;
+            if (cachedFrameTime != null) return cachedFrameTime;
 
             var fx = manager.GetFx();
-            var next = fx.NewFloat("frameTimeNext");
-            var previous = fx.NewFloat("frameTimePrev");
+            var timeSinceLoad = GetTimeSinceLoad();
+            var lastTimeSinceLoad = fx.NewFloat("lastTimeSinceLoad");
+            directTree.Add(math.MakeCopier(timeSinceLoad, lastTimeSinceLoad));
 
+            var diff = math.Subtract(timeSinceLoad, lastTimeSinceLoad, name: "frameTime");
+
+            cachedFrameTime = diff;
+            return diff;
+        }
+
+        private VFAFloat cachedLoadTime;
+        public VFAFloat GetTimeSinceLoad() {
+            if (cachedLoadTime != null) return cachedLoadTime;
+
+            var fx = manager.GetFx();
+            var timeSinceStart = fx.NewFloat("timeSinceLoad");
             var layer = fx.NewLayer("FrameTime Counter");
             var clip = fx.NewClip("FrameTime Counter");
             clip.SetCurve(
-                EditorCurveBinding.FloatCurve("", typeof(Animator), next.Name()),
-                new FloatOrObjectCurve(AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000))
+                EditorCurveBinding.FloatCurve("", typeof(Animator), timeSinceStart.Name()),
+                AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000)
             );
-            var state = layer.NewState("Count").WithAnimation(clip);
-            
-            directTree.Add(math.MakeCopier(next, previous));
+            layer.NewState("Time").WithAnimation(clip);
 
-            var diff = math.Subtract(next, previous, name: "frameTime");
-
-            cached = diff;
-            return diff;
+            cachedLoadTime = timeSinceStart;
+            return timeSinceStart;
         }
     }
 }

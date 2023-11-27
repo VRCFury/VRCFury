@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -24,7 +25,7 @@ namespace VF.Feature {
 
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
         [VFAutowired] private readonly ObjectMoveService mover;
-        [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
 
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
@@ -61,34 +62,64 @@ namespace VF.Feature {
             }
 
             if (linkMode == ArmatureLink.ArmatureLinkMode.SkinRewrite || linkMode == ArmatureLink.ArmatureLinkMode.MergeAsChildren || linkMode == ArmatureLink.ArmatureLinkMode.ParentConstraint) {
-                var rootName = GetRootName(links.propMain);
-                
-                var boneMapping = new Dictionary<Transform, Transform>();
+                var anim = findAnimatedTransformsService.Find();
+                // Some artists do a dumb thing and put a physbone on the clothing's hips (for things like a skirt), but don't
+                // ignore any transforms (which would cause our merger to avoid merging things like... the avatar's arms)
+                // We fix this by ignoring types of animations on those bones
+                var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).ToImmutableHashSet();
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
-                    boneMapping[propBone.transform] = avatarBone.transform;
+                    if (avatarHumanoidBones.Contains(avatarBone)) {
+                        anim.positionIsAnimated.Remove(propBone);
+                        anim.rotationIsAnimated.Remove(propBone);
+                        anim.physboneChild.Remove(propBone);
+                        anim.physboneRoot.Remove(propBone);
+                    }
                 }
 
-                var animatedTransforms = manager.GetAllUsedControllers()
-                    .SelectMany(c => c.GetClips())
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Where(binding => binding.type == typeof(Transform))
-                    .Select(binding => avatarObject.Find(binding.path).transform)
-                    .Where(transform => transform != null)
-                    .ToImmutableHashSet();
+                var doNotMerge = new HashSet<Transform>();
+                doNotMerge.UnionWith(anim.positionIsAnimated);
+                doNotMerge.UnionWith(anim.rotationIsAnimated);
+                doNotMerge.UnionWith(anim.physboneChild);
+                // Recursively add all children
+                doNotMerge.UnionWith(doNotMerge.ToArray().SelectMany(t => t.asVf().GetSelfAndAllChildren().Select(o => o.transform)));
+
+                var doNotRebindSkins = new HashSet<Transform>();
+                doNotRebindSkins.UnionWith(anim.scaleIsAnimated);
+                doNotRebindSkins.UnionWith(anim.physboneRoot); // (physbone roots can rotate)
+                doNotRebindSkins.UnionWith(doNotMerge);
+
+                var debugLog = "";
+                foreach (var (propBone,avatarBone) in links.mergeBones) {
+                    if (doNotRebindSkins.Contains(propBone)) {
+                        debugLog += propBone.GetPath(links.propMain) + ": " + string.Join(",", anim.GetDebugSources(propBone)) + "\n";
+                    }
+                }
+                if (debugLog != "") {
+                    Debug.LogWarning(
+                        "These bones would have been merged, but are not because they were impacted by animations:\n" +
+                        debugLog);
+                }
+                
+                var rootName = GetRootName(links.propMain);
+                
+                var skinRewriteMapping = new Dictionary<Transform, Transform>();
+                foreach (var (propBone, avatarBone) in links.mergeBones) {
+                    skinRewriteMapping[propBone.transform] = avatarBone.transform;
+                }
 
                 foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                     // Update skins to use bones and bind poses from the original avatar
-                    if (skin.bones.Any(b => b != null && boneMapping.ContainsKey(b))) {
+                    if (skin.bones.Any(b => b != null && skinRewriteMapping.ContainsKey(b))) {
                         if (skin.sharedMesh) {
-                            skin.sharedMesh = mutableManager.MakeMutable(skin.sharedMesh, skin.owner());
+                            skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
                             var mesh = skin.sharedMesh;
                             mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
                                 .Select(boneAndBindPose => {
                                     VFGameObject bone = boneAndBindPose.a;
                                     var bindPose = boneAndBindPose.b;
                                     if (bone == null) return bindPose;
-                                    if (animatedTransforms.Contains(bone)) return bindPose;
-                                    if (boneMapping.TryGetValue(bone, out var mergedTo)) {
+                                    if (doNotRebindSkins.Contains(bone)) return bindPose;
+                                    if (skinRewriteMapping.TryGetValue(bone, out var mergedTo)) {
                                         return mergedTo.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
                                     }
                                     return bindPose;
@@ -100,8 +131,8 @@ namespace VF.Feature {
                         skin.bones = skin.bones
                             .Select(b => {
                                 if (b == null) return b;
-                                if (animatedTransforms.Contains(b)) return b;
-                                if (boneMapping.TryGetValue(b, out var to)) return to;
+                                if (doNotRebindSkins.Contains(b)) return b;
+                                if (skinRewriteMapping.TryGetValue(b, out var to)) return to;
                                 return b;
                             })
                             .ToArray();
@@ -112,7 +143,7 @@ namespace VF.Feature {
                     // Update skin to use root bone from the original avatar (updating bounds if needed)
                     {
                         var oldRootBone = HapticUtils.GetMeshRoot(skin);
-                        if (boneMapping.TryGetValue(oldRootBone, out var newRootBone)) {
+                        if (skinRewriteMapping.TryGetValue(oldRootBone, out var newRootBone) && !doNotRebindSkins.Contains(oldRootBone)) {
                             var b = skin.localBounds;
                             b.center = new Vector3(
                                 b.center.x * oldRootBone.lossyScale.x / newRootBone.lossyScale.x,
@@ -132,7 +163,12 @@ namespace VF.Feature {
                 }
 
                 // Move over all the old components / children from the old location to a new child
+                var animLink = new VFMultimap<VFGameObject, VFGameObject>();
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
+                    if (doNotMerge.Contains(propBone) && doNotMerge.Contains(propBone.parent) && propBone != links.propMain) {
+                        continue;
+                    }
+
                     // Rip out parent constraints, since they were likely there from an old pre-vrcfury merge process
                     foreach (var c in propBone.GetComponents<ParentConstraint>()) {
                         Object.DestroyImmediate(c);
@@ -144,12 +180,67 @@ namespace VF.Feature {
                         continue;
                     }
 
+                    var animatedParents = new List<VFGameObject>();
+                    {
+                        var o = propBone.parent;
+                        var parents = new List<VFGameObject>();
+                        while (o != null && o != avatarObject && !avatarBone.IsChildOf(o)) {
+                            parents.Add(o);
+                            o = o.parent;
+                        }
+                        parents.Reverse();
+                        foreach (var parent in parents) {
+                            if (anim.activated.Contains(parent) || !parent.active) {
+                                animatedParents.Add(parent);
+                            }
+                        }
+                    }
+
                     // Move it on over
-                    mover.Move(
-                        propBone,
-                        avatarBone,
-                        $"vrcf_{uniqueModelNum}_{propBone.name} from {rootName}"
-                    );
+                    var newName = $"[VF{uniqueModelNum}] {propBone.name} from {rootName}";
+                    if (anim.physboneChild.Contains(propBone)) {
+                        newName += " (Child of PhysBone)";
+                    } else if (anim.positionIsAnimated.Contains(propBone)) {
+                        newName += " (Animated Position)";
+                    } else if (anim.physboneRoot.Contains(propBone)) {
+                        newName += " (Root of Physbone)";
+                    } else if (anim.rotationIsAnimated.Contains(propBone)) {
+                        newName += " (Animated Rotation)";
+                    } else if (anim.scaleIsAnimated.Contains(propBone)) {
+                        newName += " (Animated Scale)";
+                    } else if (propBone.Children().Any()) {
+                        newName += " (Added Children)";
+                    } else if (propBone.GetComponents<UnityEngine.Component>().Length > 1) {
+                        newName += " (Added Components)";
+                    } else {
+                        newName += " (Referenced Externally)";
+                    }
+
+                    if (animatedParents.Count == 0) {
+                        mover.Move(propBone, avatarBone, newName);
+                    } else {
+                        var current = GameObjects.Create(newName, avatarBone);
+                        foreach (var a in animatedParents) {
+                            current = GameObjects.Create($"Toggle From {a.name}", current);
+                            current.active = a.active;
+                            animLink.Put(a, current);
+                        }
+                        mover.Move(propBone, current, "Merged Object");
+                    }
+                }
+                
+                // Rewrite animations that turn off parents
+                foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
+                    foreach (var binding in clip.GetFloatBindings()) {
+                        if (binding.type != typeof(GameObject)) continue;
+                        var transform = avatarObject.Find(binding.path).transform;
+                        if (transform == null) continue;
+                        foreach (var other in animLink.Get(transform)) {
+                            var b = binding;
+                            b.path = other.GetPath(avatarObject);
+                            clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
+                        }
+                    }
                 }
             } else if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
                 var propBone = links.propMain;
@@ -160,7 +251,7 @@ namespace VF.Feature {
                 mover.Move(
                     propBone,
                     avatarBone,
-                    "vrcf_" + uniqueModelNum + "_" + propBone.name
+                    $"[VF{uniqueModelNum}] {propBone.name}"
                 );
             }
         }
@@ -279,6 +370,15 @@ namespace VF.Feature {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
+            foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject)) {
+                if (b.IsChildOf(propBone)) {
+                    throw new VRCFBuilderException(
+                        "Link From is part of the avatar's armature." +
+                        " The object dragged into Armature Link should not be a bone from the avatar's armature." +
+                        " If you are linking clothes, be sure to drag in the main bone from the clothes' armature instead!");
+                }
+            }
+
             VFGameObject avatarBone = null;
 
             if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
@@ -299,12 +399,6 @@ namespace VF.Feature {
                     throw new VRCFBuilderException(
                         "ArmatureLink failed to find " + model.bonePathOnAvatar + " bone on avatar.");
                 }
-            }
-
-            if (avatarBone == propBone) {
-                throw new VRCFBuilderException(
-                    "The object dragged into Armature Link should not be a bone from the avatar's armature." +
-                    " If you are linking clothes, be sure to drag in the main bone from the clothes' armature instead!");
             }
 
             var removeBoneSuffix = model.removeBoneSuffix;
@@ -338,6 +432,7 @@ namespace VF.Feature {
                         var marshmallowChild = GetMarshmallowChild(childAvatarBone);
                         if (marshmallowChild != null) childAvatarBone = marshmallowChild;
                     }
+
                     if (childAvatarBone != null) {
                         links.mergeBones.Push((childPropBone, childAvatarBone));
                         checkStack.Push((childPropBone, childAvatarBone));
@@ -382,21 +477,19 @@ namespace VF.Feature {
                 "This feature will link an armature in a prop to the armature on the avatar base." +
                 " It can also be used to link a single object in the prop to a certain bone on the avatar's armature."));
 
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Link From:",
-                style => style.unityFontStyleAndWeight = FontStyle.Bold));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Link From:").Bold());
             container.Add(VRCFuryEditorUtils.WrappedLabel(
                 "For clothing, this should be the Hips bone in the clothing's Armature (or the 'main' bone if it doesn't have Hips).\n" +
                 "For non-clothing objects (things that you just want to re-parent), this should be the object you want moved."));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Link To:",
-                style => style.unityFontStyleAndWeight = FontStyle.Bold));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Link To:").Bold());
             var rootBoneLabelWhenSkin = VRCFuryEditorUtils.WrappedLabel(
                 "Select the bone that matches the one you selected in the clothing above.");
             var rootBoneLabelWhenReparent = VRCFuryEditorUtils.WrappedLabel(
                 "Select the bone you want to attach this object to.");
-            rootBoneLabelWhenReparent.style.display = DisplayStyle.None;
+            rootBoneLabelWhenReparent.SetVisible(false);
             container.Add(rootBoneLabelWhenSkin);
             container.Add(rootBoneLabelWhenReparent);
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
@@ -463,8 +556,8 @@ namespace VF.Feature {
                 }
 
                 var linkMode = GetLinkMode();
-                rootBoneLabelWhenReparent.style.display = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
-                rootBoneLabelWhenSkin.style.display = linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
+                rootBoneLabelWhenReparent.SetVisible(linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot);
+                rootBoneLabelWhenSkin.SetVisible(linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot);
                 
                 var links = GetLinks();
                 if (links == null) {

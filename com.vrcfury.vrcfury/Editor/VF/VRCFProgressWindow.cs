@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Inspector;
+using VF.Utils;
 
 namespace VF {
     [InitializeOnLoad]
@@ -35,9 +36,8 @@ namespace VF {
             root.AddToClassList("VRCFProgressWindow");
             root.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
 
-            var infoBox = new VisualElement();
+            var infoBox = new VisualElement().Padding(20);
             root.Add(infoBox);
-            VRCFuryEditorUtils.Padding(infoBox, 20);
             
             progress = new ProgressBar();
             progress.value = 50;

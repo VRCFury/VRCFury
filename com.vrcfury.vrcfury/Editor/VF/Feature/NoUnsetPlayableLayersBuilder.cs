@@ -17,7 +17,7 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.FixUnsetPlayableLayers)]
         public void Apply() {
-            var avatar = manager.AvatarObject.GetComponent<VRCAvatarDescriptor>();
+            var avatar = manager.Avatar;
             foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
                 if (!c.isDefault && c.controller == null) {
                     manager.GetController(c.type);

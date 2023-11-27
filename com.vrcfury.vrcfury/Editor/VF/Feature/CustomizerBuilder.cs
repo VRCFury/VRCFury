@@ -10,6 +10,28 @@ namespace VF.Feature {
         public override string GetEditorTitle() {
             return "Customizer";
         }
+        
+        [CustomPropertyDrawer(typeof(Customizer.CustomizerItem))]
+        public class CustomizerItemDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
+                switch (type) {
+                    case nameof(Customizer.MenuItem): {
+                        var row = new VisualElement();
+                        row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("title"), "Title"));
+                        row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("path"), "Menu Path"));
+                        return row;
+                    }
+                    case nameof(Customizer.ClipItem): {
+                        var row = new VisualElement();
+                        row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("title"), "Title"));
+                        row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip"), "Animation Clip"));
+                        return row;
+                    }
+                }
+                return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
+            }
+        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var c = new VisualElement();
@@ -26,31 +48,8 @@ namespace VF.Feature {
                     () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new Customizer.ClipItem()); });
                 menu.ShowAsContext();
             }
-            c.Add(VRCFuryEditorUtils.List(
-                list,
-                (i,el) => RenderItem(el),
-                OnPlus
-            ));
+            c.Add(VRCFuryEditorUtils.List(list, OnPlus));
             return c;
-        }
-
-        private VisualElement RenderItem(SerializedProperty prop) {
-            var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
-            switch (type) {
-                case nameof(Customizer.MenuItem): {
-                    var row = new VisualElement();
-                    row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("title"), "Title"));
-                    row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("path"), "Menu Path"));
-                    return row;
-                }
-                case nameof(Customizer.ClipItem): {
-                    var row = new VisualElement();
-                    row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("title"), "Title"));
-                    row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip"), "Animation Clip"));
-                    return row;
-                }
-            }
-            return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
         }
 
         public override bool ShowInMenu() {

@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
@@ -21,16 +22,15 @@ public class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
             container.Add(VRCFuryEditorUtils.WrappedLabel("Feature list is missing? This is a bug."));
         } else {
 
-            var featureList = VRCFuryEditorUtils.List(features, 
-                renderElement: (i, prop) => renderFeature(target.config.features[i], prop, target.gameObject),
+            var featureList = VRCFuryEditorUtils.List(features,
                 onPlus: () => OnPlus(features, target.gameObject),
                 onEmpty: () => {
-                    var c = new VisualElement();
-                    VRCFuryEditorUtils.Padding(c, 10);
+                    var c = new VisualElement()
+                        .Padding(10)
+                        .TextAlign(TextAnchor.MiddleCenter);
                     var l = VRCFuryEditorUtils.WrappedLabel(
                         "You haven't added any VRCFury features yet.\n" + 
                         "Click the + to add your first one!");
-                    l.style.unityTextAlign = TextAnchor.MiddleCenter;
                     c.Add(l);
                     return c;
                 }
@@ -44,19 +44,22 @@ public class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
             box.style.marginTop = box.style.marginBottom = 10;
             container.Add(box);
 
-            var label = VRCFuryEditorUtils.WrappedLabel(
+            box.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Beware: VRCFury is non-destructive, which means these features will only be visible" +
-                " when you upload or if you enter the editor Play mode!");
-            VRCFuryEditorUtils.Padding(box, 5);
-            VRCFuryEditorUtils.BorderRadius(box, 5);
-            box.Add(label);
+                " when you upload or if you enter the editor Play mode!")
+                .Padding(5)
+                .BorderRadius(5)
+            );
         }
 
         return container;
     }
 
-    private VisualElement renderFeature(FeatureModel model, SerializedProperty prop, GameObject gameObject) {
-        return FeatureFinder.RenderFeatureEditor(prop, model, gameObject);
+    [CustomPropertyDrawer(typeof(VF.Model.Feature.FeatureModel))]
+    public class FeatureDrawer : PropertyDrawer {
+        public override VisualElement CreatePropertyGUI(SerializedProperty property) {
+            return FeatureFinder.RenderFeatureEditor(property);
+        }
     }
 
     private void OnPlus(SerializedProperty listProp, GameObject gameObject) {

@@ -16,6 +16,8 @@ namespace VF.Builder {
         private string tmpDir;
 
         private static readonly Type[] typesToMakeMutable = {
+            // This has to be here because animator override controllers
+            // can have other controllers as children
             typeof(RuntimeAnimatorController),
 
             // Animator Controller internals
@@ -37,13 +39,6 @@ namespace VF.Builder {
             typeof(AnimatorState),
             typeof(AnimatorTransitionBase),
             typeof(StateMachineBehaviour),
-        };
-        
-        private static readonly Type[] typesToNeverRevert = {
-            typeof(AnimatorController),
-            typeof(AnimatorStateMachine),
-            typeof(AnimatorState),
-            typeof(AnimatorTransitionBase)
         };
 
         public MutableManager(string tmpDir) {
@@ -88,34 +83,26 @@ namespace VF.Builder {
             return unityObj;
         }
 
-        public T CopyRecursive<T>(T obj, string saveFilename = null, Object saveParent = null, bool addPrefix = true) where T : Object {
+        public static T CopyRecursive<T>(T obj, bool addPrefix = true) where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
             T rootCopy = null;
 
+            // Make mutable copies of everything recursively
             ForEachChild(obj, original => {
                 if (originalToMutable.ContainsKey(original)) return false;
                 if (obj != original) {
                     if (!IsType(original, typesToMakeMutable)) return false;
                 }
 
-                var copy = SafeInstantiate(original);
+                var copy = MakeMutable(original, true);
                 if (obj == original) rootCopy = copy as T;
-                if (saveParent == null && saveFilename != null) {
-                    VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, saveFilename);
-                    saveParent = copy;
-                } else if (saveParent != null) {
-                    if (IsType(copy, hiddenTypes)) {
-                        copy.hideFlags |= HideFlags.HideInHierarchy;
-                    } else if (addPrefix) {
-                        copy.name = $"{obj.name}/{original.name}";
-                    }
-                    AssetDatabase.AddObjectToAsset(copy, saveParent);
-                }
 
-                if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
-                    copyClip.WriteProxyBinding(originalClip);
+                if (IsType(copy, hiddenTypes)) {
+                    copy.hideFlags |= HideFlags.HideInHierarchy;
+                } else if (addPrefix) {
+                    copy.name = $"{obj.name}/{original.name}";
                 }
 
                 originalToMutable[original] = copy;
@@ -123,6 +110,7 @@ namespace VF.Builder {
                 return true;
             });
 
+            // Connect the new copies to each other
             foreach (var mutable in originalToMutable.Values) {
                 RewriteInternals(mutable, originalToMutable);
             }
@@ -151,7 +139,7 @@ namespace VF.Builder {
         // AnimatorControllers, AnimatorStateMachines, AnimatorStates,
         // and other things that unity usually logs errors from when using
         // Object.Instantiate
-        public static T SafeInstantiate<T>(T original) where T : Object {
+        private static T SafeInstantiate<T>(T original) where T : Object {
             if (original is Material || original is Mesh) {
                 return Object.Instantiate(original);
             }
@@ -169,7 +157,8 @@ namespace VF.Builder {
             return copy;
         }
         
-        private void ForEachChild(Object obj, Func<Object,bool> visit) {
+        public static void ForEachChild(Object obj, Func<Object,bool> visit) {
+            if (obj == null) return;
             var visited = new HashSet<Object>();
             var stack = new Stack<Object>();
             stack.Push(obj);
@@ -189,122 +178,16 @@ namespace VF.Builder {
                 });
             }
         }
-        
-        // Make a fresh clone, because CopySerialized does make /some/ changes
-        // like wiping out editor cache values, so they might be slightly different
-        // for no good reason unless we do this.
-        private static SerializedObject GetCleanSo(Object obj) {
-            return new SerializedObject(SafeInstantiate(obj));
-        }
-        public static bool IsModified(Object a, Object b, Func<Object,Object> bToAChildMapper = null) {
-            var aProp = GetCleanSo(a).GetIterator();
-            var bProp = GetCleanSo(b).GetIterator();
-            while (true) {
-                bool match;
-                if (aProp.propertyType != bProp.propertyType) return true;
-                if (aProp.propertyPath != bProp.propertyPath) return true;
 
-                var type = aProp.propertyType;
-                if (bToAChildMapper != null
-                    && type == SerializedPropertyType.ObjectReference
-                    && aProp.objectReferenceValue != null
-                    && bProp.objectReferenceValue != null
-                    && bToAChildMapper(bProp.objectReferenceValue) == aProp.objectReferenceValue
-                ) {
-                    match = true;
-                } else if (type == SerializedPropertyType.Generic) {
-                    match = true;
-                } else {
-                    match = SerializedProperty.DataEquals(aProp, bProp);
-                }
-
-                if (!match) {
-                    Debug.Log("Failed on " + aProp.propertyPath);
-                    return true;
-                }
-                    
-                var enterChildren = type == SerializedPropertyType.Generic;
-                var aDone = !aProp.Next(enterChildren);
-                var bDone = !bProp.Next(enterChildren);
-                if (aDone || bDone) return aDone != bDone;
-            }
-        }
-
-        /*
-        public void RevertUnchanged() {
-            var reverseLookup = originalToMutable.ToDictionary(x => x.Value, x => x.Key);
-            
-            bool IsModified2(Object copy) {
-                if (!reverseLookup.TryGetValue(copy, out var original)) {
-                    return true;
-                }
-                return IsModified(original, copy, copyChild =>
-                    reverseLookup.TryGetValue(copyChild, out var originalChild) ? originalChild : copyChild);
-            }
-
-            var mutables = originalToMutable.Values
-                .Where(m => !IsType(m, typesToNeverRevert))
-                .ToArray();
-            var unmodifiedMutables = mutables
-                .Where(m => !IsModified2(m))
-                .ToImmutableHashSet();
-            
-            var cachedChildren = new Dictionary<Object, HashSet<Object>>(); 
-            HashSet<Object> GetChildren(Object obj) {
-                if (cachedChildren.TryGetValue(obj, out var cached)) return cached;
-                var children = new HashSet<Object>();
-                cachedChildren[obj] = children;
-                // TODO: When this was written ForEachChild didn't include the root. NOW IT DOES.
-                ForEachChild(obj, child => {
-                    if (mutables.Contains(child)) {
-                        children.Add(child);
-                        children.UnionWith(GetChildren(child));
-                    }
-                    return false;
-                });
-                return children;
-            }
-
-            var mutablesToRevert = unmodifiedMutables
-                .Where(m => GetChildren(m).All(child => unmodifiedMutables.Contains(child)))
-                .ToArray();
-
-            var revertMap = mutablesToRevert
-                .ToDictionary(m => m, m => reverseLookup[m]);
-
-            Debug.Log("Reverting");
-            RewriteAll(revertMap);
-            foreach (var mutable in mutablesToRevert) {
-                AssetDatabase.RemoveObjectFromAsset(mutable);
-                Object.DestroyImmediate(mutable);
-            }
-            Debug.Log($"Reverted {mutablesToRevert.Length} of {mutables.Length} assets");
-        }
-        */
-
-        private bool IsType(Object obj, Type[] types) =>
+        private static bool IsType(Object obj, Type[] types) =>
             types.Any(type => type.IsInstanceOfType(obj));
-        
-        
-        private readonly Dictionary<Object, GameObject> mutableOwners = new Dictionary<Object, GameObject>();
-        private readonly Dictionary<(Object, GameObject), Object> originalToMutable =
-            new Dictionary<(Object, GameObject), Object>();
-        public T MakeMutable<T>(T original, VFGameObject owner) where T : Object {
-            if (mutableOwners.TryGetValue(original, out var existingOwner)) {
-                // The original is already mutable
-                if (owner == existingOwner) {
-                    return original;
-                } else {
-                    throw new Exception(
-                        $"Mutable object attempted to take ownership of object that belonged to another owner, {original} {owner} {existingOwner}");
-                }
+
+        public static T MakeMutable<T>(T original, bool forceCopy = false) where T : Object {
+            if (!forceCopy && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(original))) {
+                // Already mutable
+                return original;
             }
 
-            if (originalToMutable.TryGetValue((original, owner), out var existingMutable)) {
-                // A mutable copy already exists
-                return existingMutable as T;
-            }
-            
             var copy = SafeInstantiate(original);
             copy.name = original.name;
             if (copy is Material copyMat) {
@@ -312,9 +195,9 @@ namespace VF.Builder {
                     copyMat.SetOverrideTag("thry_rename_suffix", Regex.Replace(original.name, "[^a-zA-Z0-9_]", ""));
                 }
             }
-            VRCFuryAssetDatabase.SaveAsset(copy, tmpDir, $"{copy.name} for {owner.name}");
-            mutableOwners[copy] = owner;
-            originalToMutable[(original, owner)] = copy;
+            if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
+                copyClip.WriteProxyBinding(originalClip);
+            }
             return copy;
         }
 

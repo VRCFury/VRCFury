@@ -11,6 +11,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -29,20 +30,11 @@ namespace VF.Feature {
                 "This feature will automatically bake all non-animated blendshapes into the mesh," +
                 " saving VRAM for free!"
             ));
-            
-            var adv = new Foldout {
-                text = "Advanced Options",
-                value = false
-            };
-            content.Add(adv);
-            
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("keepMmdShapes"), "Keep MMD Blendshapes"));
-            
             return content;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
         }
         
         public override bool OnlyOneAllowed() {
@@ -51,6 +43,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BlendshapeOptimizer)]
         public void Apply() {
+            var keepMmdShapes = allFeaturesInRun.Any(f => f is MmdCompatibility);
 
             foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
                 if (!(renderer is SkinnedMeshRenderer skin)) continue;
@@ -64,7 +57,7 @@ namespace VF.Feature {
 
                 bool ShouldKeepName(string name) {
                     if (animatedBlendshapes.Contains(name)) return true;
-                    if (model.keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body") return true;
+                    if (keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body") return true;
                     return false;
                 }
 
@@ -83,7 +76,7 @@ namespace VF.Feature {
                     .Select(id => new SavedBlendshape(mesh, id))
                     .ToArray();
 
-                var meshCopy = mutableManager.MakeMutable(mesh, renderer.owner());
+                var meshCopy = MutableManager.MakeMutable(mesh);
                 meshCopy.ClearBlendShapes();
                 skin.sharedMesh = meshCopy;
                 VRCFuryEditorUtils.MarkDirty(skin);
@@ -103,20 +96,18 @@ namespace VF.Feature {
                 }
                 VRCFuryEditorUtils.MarkDirty(meshCopy);
 
-                var avatars = avatarObject.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>();
+                var avatar = manager.Avatar;
 
                 var newId = 0;
                 for (var id = 0; id < blendshapeCount; id++) {
                     var keep = blendshapeIdsToKeep.Contains(id);
                     if (keep) {
                         skin.SetBlendShapeWeight(newId, savedWeights[id]);
-                        foreach (var avatar in avatars) {
-                            if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
-                                for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
-                                    if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
-                                        avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
-                                        VRCFuryEditorUtils.MarkDirty(avatar);
-                                    }
+                        if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
+                            for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
+                                if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
+                                    avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
+                                    VRCFuryEditorUtils.MarkDirty(avatar);
                                 }
                             }
                         }
@@ -198,7 +189,7 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, AnimatorController controller) {
+        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, VFController controller) {
             var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
 
             var clipsInController = new AnimatorIterator.Clips().From(controller);
@@ -214,8 +205,8 @@ namespace VF.Feature {
         }
 
         private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin, Mesh mesh) {
-            var animatedBindings = manager.GetAllUsedControllersRaw()
-                .Select(tuple => tuple.Item2)
+            var animatedBindings = manager.GetAllUsedControllers()
+                .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
                 .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
                     .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
@@ -251,26 +242,25 @@ namespace VF.Feature {
                 }
             }
 
-            foreach (var avatar in avatarObject.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
-                if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
-                    if (skin == avatar.customEyeLookSettings.eyelidsSkinnedMesh) {
-                        foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {
-                            if (b >= 0 && b < blendshapeNames.Count) {
-                                animatedBlendshapes.Add(blendshapeNames[b]);
-                            }
+            var avatar = manager.Avatar;
+            if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
+                if (skin == avatar.customEyeLookSettings.eyelidsSkinnedMesh) {
+                    foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {
+                        if (b >= 0 && b < blendshapeNames.Count) {
+                            animatedBlendshapes.Add(blendshapeNames[b]);
                         }
                     }
                 }
+            }
 
-                if (skin == avatar.VisemeSkinnedMesh) {
-                    if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape) {
-                        animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
-                    }
+            if (skin == avatar.VisemeSkinnedMesh) {
+                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape) {
+                    animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
+                }
 
-                    if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
-                        foreach (var b in avatar.VisemeBlendShapes) {
-                            animatedBlendshapes.Add(b);
-                        }
+                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
+                    foreach (var b in avatar.VisemeBlendShapes) {
+                        animatedBlendshapes.Add(b);
                     }
                 }
             }

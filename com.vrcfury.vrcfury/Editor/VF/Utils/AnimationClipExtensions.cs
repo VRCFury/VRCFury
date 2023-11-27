@@ -39,8 +39,8 @@ namespace VF.Utils {
         }
 
         public static (EditorCurveBinding,FloatOrObjectCurve)[] GetAllCurves(this AnimationClip clip) {
-            return clip.GetObjectBindings().Select(b => (b, new FloatOrObjectCurve(clip.GetObjectCurve(b))))
-                .Concat(clip.GetFloatBindings().Select(b => (b, new FloatOrObjectCurve(clip.GetFloatCurve(b)))))
+            return clip.GetObjectBindings().Select(b => (b, (FloatOrObjectCurve)clip.GetObjectCurve(b)))
+                .Concat(clip.GetFloatBindings().Select(b => (b, (FloatOrObjectCurve)clip.GetFloatCurve(b))))
                 .ToArray();
         }
 
@@ -99,14 +99,6 @@ namespace VF.Utils {
         public static void SetObjectCurve(this AnimationClip clip, EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
             AnimationUtility.SetObjectReferenceCurve(clip, binding, curve);
         }
-        
-        public static void SetConstant(this AnimationClip clip, EditorCurveBinding binding, FloatOrObject value) {
-            if (value.IsFloat()) {
-                clip.SetFloatCurve(binding, AnimationCurve.Constant(0, 0, value.GetFloat()));
-            } else {
-                clip.SetObjectCurve(binding, new [] { new ObjectReferenceKeyframe { time = 0, value = value.GetObject() }});
-            }
-        }
 
         public static int GetLengthInFrames(this AnimationClip clip) {
             return (int)Math.Round(clip.length * clip.frameRate);
@@ -114,6 +106,12 @@ namespace VF.Utils {
 
         public static void CopyFrom(this AnimationClip clip, AnimationClip other) {
             clip.SetCurves(other.GetAllCurves());
+        }
+
+        public static void CopyFromLast(this AnimationClip clip, AnimationClip other) {
+            foreach (var c in other.GetAllCurves()) {
+                clip.SetCurve(c.Item1, c.Item2.GetLast());
+            }
         }
 
         public static bool IsLooping(this AnimationClip clip) {
@@ -132,6 +130,78 @@ namespace VF.Utils {
                 .Select(binding => binding.GetMuscleBindingType())
                 .Where(type => type != EditorCurveBindingExtensions.MuscleBindingType.None)
                 .ToImmutableHashSet();
+        }
+
+        public static bool HasMuscles(this AnimationClip clip) {
+            return clip.GetFloatBindings()
+                .Any(binding => binding.IsMuscle() || binding.IsProxyBinding());
+        }
+
+        public static AnimationClip Evaluate(this AnimationClip clip, float time) {
+            var output = MutableManager.CopyRecursive(clip);
+            output.name = $"{clip.name} (sampled at {time})";
+            output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                if (curve.IsFloat) {
+                    return (binding, curve.FloatCurve.Evaluate(time), true);
+                } else {
+                    UnityEngine.Object val = curve.ObjectCurve.Length > 0 ? curve.ObjectCurve[0].value : null;
+                    foreach (var key in curve.ObjectCurve.Reverse()) {
+                        if (time >= key.time) {
+                            val = key.value;
+                            break;
+                        }
+                    }
+                    return (binding, val, true);
+                }
+            }));
+            return output;
+        }
+        
+        public static AnimationClip EvaluateBlend(this AnimationClip clip, VFGameObject root, float amount) {
+            if (amount < 0) amount = 0;
+            if (amount > 1) amount = 1;
+
+            var output = MutableManager.CopyRecursive(clip);
+            output.name = $"{clip.name} ({amount} blend)";
+            output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                // TODO: Animator parameters aren't handled here
+                if (curve.IsFloat) {
+                    if (!binding.GetFloatFromGameObject(root, out float from)) {
+                        return (binding, null, true);
+                    }
+                    var to = curve.GetFirst().GetFloat();
+                    var final = VrcfMath.Map(amount, 0, 1, from, to);
+                    return (binding, final, true);
+                } else {
+                    return (binding, curve.GetFirst(), true);
+                }
+            }));
+            return output;
+        }
+
+        public static void UseConstantTangents(this AnimationClip clip) {
+            clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                if (curve.IsFloat) {
+                    foreach (var i in Enumerable.Range(0, curve.FloatCurve.keys.Length)) {
+                        AnimationUtility.SetKeyRightTangentMode(curve.FloatCurve, i, AnimationUtility.TangentMode.Constant);
+                    }
+                    return (binding, curve, true);
+                }
+                return (binding, curve, false);
+            }));
+        }
+        
+        public static void UseLinearTangents(this AnimationClip clip) {
+            clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                if (curve.IsFloat) {
+                    foreach (var i in Enumerable.Range(0, curve.FloatCurve.keys.Length)) {
+                        AnimationUtility.SetKeyLeftTangentMode(curve.FloatCurve, i, AnimationUtility.TangentMode.Linear);
+                        AnimationUtility.SetKeyRightTangentMode(curve.FloatCurve, i, AnimationUtility.TangentMode.Linear);
+                    }
+                    return (binding, curve, true);
+                }
+                return (binding, curve, false);
+            }));
         }
     }
 }

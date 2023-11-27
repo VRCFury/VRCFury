@@ -1,18 +1,15 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
-using UnityEditorInternal.VersionControl;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
@@ -21,29 +18,122 @@ public static class VRCFuryEditorUtils {
 
     public static VisualElement List(
         SerializedProperty list,
-        Func<int, SerializedProperty, VisualElement> renderElement = null,
         Action onPlus = null,
         Func<VisualElement> onEmpty = null
     ) {
-        if (list == null) {
-            return new Label("List is null");
-        }
-        
-        var container = new VisualElement();
-        container.AddToClassList("vfList");
+        var output = new VisualElement();
+        output.AddToClassList("vfList");
 
-        var entriesContainer = new VisualElement();
-        container.Add(entriesContainer);
-        Border(entriesContainer, 1);
-        BorderColor(entriesContainer, Color.black);
-        BorderRadius(entriesContainer, 5);
+        if (list == null) {
+            return Error("List is null");
+        }
+        if (!list.isArray) {
+            return Error("List is not an array");
+        }
+
+        void OnClickPlus() {
+            if (onPlus != null) {
+                onPlus();
+            } else {
+                AddToList(list);
+            }
+        }
+
+        void OnClickMinus() {
+            EditorUtility.DisplayDialog("VRCFury", "Right click on the element you would like to remove", "Ok");
+        }
+
+        void Move(int offset, int pos) {
+            if (pos < 0 || pos >= list.arraySize) return;
+            list.MoveArrayElement(offset, pos);
+            list.serializedObject.ApplyModifiedProperties();
+            output.Bind(list.serializedObject);
+        }
+
+        void CreateRightClickMenu(VisualElement el) {
+            el.AddManipulator(new ContextualMenuManipulator(e => {
+                var offset = (int)el.userData;
+                if (e.menu.MenuItems().Count > 0) {
+                    e.menu.AppendSeparator();
+                }
+                e.menu.AppendAction("🗙 Remove Item", a => {
+                    list.DeleteArrayElementAtIndex(offset);
+                    list.serializedObject.ApplyModifiedProperties();
+                });
+                e.menu.AppendSeparator();
+                var disabledIfTop = offset == 0 ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal;
+                var disabledIfBottom = offset == list.arraySize - 1 ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal;
+                e.menu.AppendAction("🡱 Move up", a => {
+                    Move(offset, offset - 1);
+                }, disabledIfTop);
+                e.menu.AppendAction("🡳 Move down", a => {
+                    Move(offset, offset+1);
+                }, disabledIfBottom);
+                e.menu.AppendSeparator();
+                e.menu.AppendAction("🡱🡱 Move to top", a => {
+                    Move(offset, 0);
+                }, disabledIfTop);
+                e.menu.AppendAction("🡳🡳 Move to bottom", a => {
+                    Move(offset, list.arraySize-1);
+                }, disabledIfBottom);
+                e.StopPropagation();
+            }));
+        }
+
+#if UNITY_2022_1_OR_NEWER
+        var listView = new ListView();
+        listView.AddToClassList("vfList__listView");
+        listView.reorderable = true;
+        listView.reorderMode = ListViewReorderMode.Animated;
+        listView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
+        listView.showBorder = true;
+        listView.showAddRemoveFooter = false;
+        listView.bindingPath = list.propertyPath;
+        listView.showBoundCollectionSize = false;
+        listView.selectionType = SelectionType.None;
+        listView.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
+
+        listView.makeItem = () => {
+            var field = new PropertyField();
+            CreateRightClickMenu(field);
+            return field;
+        };
+        listView.bindItem = (element, i) => {
+            ((PropertyField)element).bindingPath = list.GetArrayElementAtIndex(i).propertyPath;
+            element.Bind(list.serializedObject);
+            element.userData = i;
+        };
+        listView.unbindItem = (element, i) => {
+            element.Unbind();
+        };
+
+        var footer = new VisualElement() {
+            name = BaseListView.footerUssClassName
+        };
+        footer.AddToClassList(BaseListView.footerUssClassName);
+        footer.Add(new Button(OnClickMinus) {
+            name = BaseListView.footerRemoveButtonName,
+            text = "-"
+        });
+        footer.Add(new Button(OnClickPlus) {
+            name = BaseListView.footerAddButtonName,
+            text = "+"
+        });
+
+        output.Add(listView);
+        output.Add(footer);
+#else
+        var entriesContainer = new VisualElement()
+            .Border(1)
+            .BorderColor(Color.black)
+            .BorderRadius(5);
+        output.Add(entriesContainer);
         entriesContainer.style.backgroundColor = new Color(0,0,0,0.1f);
         entriesContainer.style.minHeight = 20;
 
         entriesContainer.Add(RefreshOnChange(() => {
             var entries = new VisualElement();
             var size = list.arraySize;
-            var refreshAllElements = new List<Action>();
             for (var i = 0; i < size; i++) {
                 var offset = i;
                 var el = list.GetArrayElementAtIndex(i);
@@ -54,99 +144,27 @@ public static class VRCFuryEditorUtils {
                 };
                 row.AddToClassList("vfListRow");
                 if (offset != size - 1) {
-                    row.style.borderBottomWidth = 1;
-                    row.style.borderBottomColor = Color.black;
+                    row.AddToClassList("vfList2019__notLastItem");
                 }
                 row.style.alignItems = Align.FlexStart;
                 entries.Add(row);
 
-                VisualElement data = RefreshOnTrigger(
-                    () => renderElement != null ? renderElement(offset, el) : Prop(el),
-                    el.serializedObject,
-                    out var triggerRefresh
-                );
+                VisualElement data = Prop(el).Padding(5);
                 data.AddToClassList("vfListRowData");
-                refreshAllElements.Add(triggerRefresh);
-                Padding(data, 5);
                 data.style.flexGrow = 1;
                 row.Add(data);
 
-                var elButtons = new VisualElement();
-                elButtons.style.flexDirection = FlexDirection.ColumnReverse;
-                elButtons.style.flexGrow = 0;
-                elButtons.style.flexShrink = 0;
-                elButtons.style.flexBasis = 20;
-                row.Add(elButtons);
+                row.userData = i;
+                CreateRightClickMenu(row);
+
                 data.AddToClassList("vfListRowButtons");
-
-                var shownButton = false;
-
-                void Move(int pos) {
-                    if (pos < 0 || pos >= size) return;
-                    list.MoveArrayElement(offset, pos);
-                    list.serializedObject.ApplyModifiedProperties();
-                    foreach (var r in refreshAllElements) r();
-                }
-
-                if (offset != 0) {
-                    var move = new Label("↑");
-                    move.AddManipulator(new Clickable(e => {
-                        Move(offset - 1);
-                    }));
-                    move.AddManipulator(new Clickable(e => {
-                        Move(0);
-                    }) { activators = { new ManipulatorActivationFilter() { button = MouseButton.LeftMouse, modifiers = EventModifiers.Shift } } });
-                    move.style.flexGrow = 0;
-                    move.style.borderLeftColor = move.style.borderBottomColor = Color.black;
-                    move.style.borderLeftWidth = move.style.borderBottomWidth = 1;
-                    move.style.borderBottomLeftRadius = shownButton ? 0 : 5;
-                    move.style.paddingLeft = move.style.paddingRight = 5;
-                    move.style.paddingBottom = 3;
-                    move.style.unityTextAlign = TextAnchor.MiddleCenter;
-                    elButtons.Add(move);
-                    shownButton = true;
-                }
-                
-                if (offset != size - 1) {
-                    var move = new Label("↓");
-                    move.AddManipulator(new Clickable(e => {
-                        Move(offset + 1);
-                    }));
-                    move.AddManipulator(new Clickable(e => {
-                        Move(size - 1);
-                    }) { activators = { new ManipulatorActivationFilter() { button = MouseButton.LeftMouse, modifiers = EventModifiers.Shift } } });
-                    move.style.flexGrow = 0;
-                    move.style.borderLeftColor = move.style.borderBottomColor = Color.black;
-                    move.style.borderLeftWidth = move.style.borderBottomWidth = 1;
-                    move.style.borderBottomLeftRadius = shownButton ? 0 : 5;
-                    move.style.paddingLeft = move.style.paddingRight = 5;
-                    move.style.paddingBottom = 3;
-                    move.style.unityTextAlign = TextAnchor.MiddleCenter;
-                    elButtons.Add(move);
-                    shownButton = true;
-                }
-
-                var remove = new Label("✕");
-                remove.AddManipulator(new Clickable(e => {
-                    list.DeleteArrayElementAtIndex(offset);
-                    list.serializedObject.ApplyModifiedProperties();
-                }));
-                remove.style.flexGrow = 0;
-                remove.style.borderLeftColor = remove.style.borderBottomColor = Color.black;
-                remove.style.borderLeftWidth = remove.style.borderBottomWidth = 1;
-                remove.style.borderBottomLeftRadius = shownButton ? 0 : 5;
-                remove.style.paddingLeft = remove.style.paddingRight = 5;
-                remove.style.paddingBottom = 3;
-                remove.style.unityTextAlign = TextAnchor.MiddleCenter;
-                elButtons.Add(remove);
             }
             if (size == 0) {
                 if (onEmpty != null) {
                     entries.Add(onEmpty());
                 } else {
-                    var label = WrappedLabel("This list is empty. Click + to add an entry.");
+                    var label = WrappedLabel("This list is empty. Click + to add an entry.").Padding(5);
                     label.style.unityTextAlign = TextAnchor.MiddleCenter;
-                    Padding(label, 5);
                     entries.Add(label);
                 }
             }
@@ -155,7 +173,7 @@ public static class VRCFuryEditorUtils {
 
         var buttonRow = new VisualElement();
         buttonRow.style.flexDirection = FlexDirection.Row;
-        container.Add(buttonRow);
+        output.Add(buttonRow);
 
         var buttonSpacer = new VisualElement();
         buttonRow.Add(buttonSpacer);
@@ -163,24 +181,20 @@ public static class VRCFuryEditorUtils {
 
         entriesContainer.style.borderBottomRightRadius = 0;
         var buttons = new VisualElement();
+        buttons.AddToClassList("vfList2019__buttons");
         buttonRow.Add(buttons);
-        buttons.style.flexGrow = 0;
-        buttons.style.borderLeftColor = buttons.style.borderRightColor = buttons.style.borderBottomColor = Color.black;
-        buttons.style.borderLeftWidth = buttons.style.borderRightWidth = buttons.style.borderBottomWidth = 1;
-        buttons.style.borderBottomLeftRadius = buttons.style.borderBottomRightRadius = 5;
-        var add = new Label("+");
-        add.style.paddingLeft = add.style.paddingRight = 5;
-        add.style.paddingBottom = 3;
-        add.AddManipulator(new Clickable(e => {
-            if (onPlus != null) {
-                onPlus();
-            } else {
-                AddToList(list);
-            }
-        }));
-        buttons.Add(add);
 
-        return container;
+        var add = new Label("+");
+        add.AddToClassList("vfList2019__button");
+        add.AddManipulator(new Clickable(OnClickPlus));
+        buttons.Add(add);
+        
+        var subtract = new Label("-");
+        subtract.AddToClassList("vfList2019__button");
+        subtract.AddManipulator(new Clickable(OnClickMinus));
+        buttons.Add(subtract);
+#endif
+        return output;
     }
 
     public static SerializedProperty AddToList(SerializedProperty list, Action<SerializedProperty> doWith = null) {
@@ -203,76 +217,19 @@ public static class VRCFuryEditorUtils {
         return newEntry;
     }
 
-    public static void Margin(VisualElement el, float topbottom, float leftright) {
-        el.style.marginTop = el.style.marginBottom = topbottom;
-        el.style.marginLeft = el.style.marginRight = leftright;
-    }
-    public static void Margin(VisualElement el, float all) {
-        Margin(el, all, all);
-    }
-    public static void Padding(VisualElement el, float topbottom, float leftright) {
-        el.style.paddingTop = el.style.paddingBottom = topbottom;
-        el.style.paddingLeft = el.style.paddingRight = leftright;
-    }
-    public static void Padding(VisualElement el, float all) {
-        Padding(el, all, all);
-    }
-    public static void Border(VisualElement el, float topbottom, float leftright) {
-        el.style.borderTopWidth = el.style.borderBottomWidth = topbottom;
-        el.style.borderLeftWidth = el.style.borderRightWidth = leftright;
-    }
-    public static void Border(VisualElement el, float all) {
-        Border(el, all, all);
-    }
-    public static void BorderRadius(VisualElement el, float all) {
-        BorderRadius(el.style, all);
-    }
-    public static void BorderRadius(IStyle style, float all) {
-        style.borderTopLeftRadius = style.borderTopRightRadius =
-            style.borderBottomLeftRadius = style.borderBottomRightRadius = all;
-    }
-    public static void BorderColor(VisualElement el, Color topbottom, Color leftright) {
-        el.style.borderTopColor = el.style.borderBottomColor = topbottom;
-        el.style.borderLeftColor = el.style.borderRightColor = leftright;
-    }
-    public static void BorderColor(VisualElement el, Color all) {
-        BorderColor(el, all, all);
-    }
-    
-    public static Label WrappedLabel(string text, Action<IStyle> style = null) {
-        var field = new Label(text) {
-            style = {
-                whiteSpace = WhiteSpace.Normal
-            }
-        };
-        style?.Invoke(field.style);
-        return field;
-    }
-
-    public static VisualElement Button(string text, Action onPress) {
-        var b = new Button(onPress) {
-            text = text,
-        };
-        Margin(b, 0);
-        return b;
-    }
-
-    public static VisualElement BetterCheckbox(
-        SerializedProperty prop,
-        string label,
-        Action<IStyle> style = null
-    ) {
-        return BetterProp(prop, label, style: style);
+    public static Label WrappedLabel(string text) {
+        return new Label(text).TextWrap();
     }
     
     public static VisualElement BetterProp(
         SerializedProperty prop,
         string label = null,
-        Action<IStyle> style = null,
         string tooltip = null,
         VisualElement fieldOverride = null
     ) {
-        return Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride, style: style, better: true);
+        var el = Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride);
+        el.PaddingBottom(5);
+        return el;
     }
 
     public static (VisualElement, VisualElement) CreateTooltip(string label, string content) {
@@ -282,9 +239,7 @@ public static class VRCFuryEditorUtils {
                 return (WrappedLabel(label), null);
             }
 
-            labelBox = new VisualElement();
-            labelBox.style.flexGrow = 0;
-            labelBox.style.flexDirection = FlexDirection.Row;
+            labelBox = new VisualElement().Row();
             labelBox.Add(WrappedLabel(label));
             var im = new Image {
                 image = EditorGUIUtility.FindTexture("_Help"),
@@ -311,10 +266,8 @@ public static class VRCFuryEditorUtils {
         string label = null,
         int labelWidth = 100,
         Func<string,string> formatEnum = null,
-        Action<IStyle> style = null,
         string tooltip = null,
-        VisualElement fieldOverride = null,
-        bool better = false
+        VisualElement fieldOverride = null
     ) {
         VisualElement field = null;
         bool isCheckbox = false;
@@ -325,6 +278,10 @@ public static class VRCFuryEditorUtils {
             field = WrappedLabel("Prop is null");
         } else {
             switch (prop.propertyType) {
+                case SerializedPropertyType.Vector4: {
+                    field = new Vector4Field { bindingPath = prop.propertyPath }.FlexShrink(1);
+                    break;
+                }
                 case SerializedPropertyType.Enum: {
                     field = new PopupField<string>(
                         prop.enumDisplayNames.ToList(),
@@ -350,7 +307,7 @@ public static class VRCFuryEditorUtils {
 
         field.AddToClassList("VrcFuryEditorProp");
 
-        var output = AssembleProp(
+        return AssembleProp(
             label,
             tooltip,
             field,
@@ -358,11 +315,6 @@ public static class VRCFuryEditorUtils {
             false,
             labelWidth
         );
-        if (better) {
-            output.style.paddingBottom = 5;
-        }
-        style?.Invoke(output.style);
-        return output;
     }
 
     public static VisualElement AssembleProp(
@@ -377,13 +329,8 @@ public static class VRCFuryEditorUtils {
         var wrapper = new VisualElement();
         var addFieldLast = false;
         if (isCheckbox && labelBox != null) {
-            var row = new VisualElement() {
-                style = {
-                    flexDirection = FlexDirection.Row
-                }
-            };
+            var row = new VisualElement().Row().FlexShrink(0);
             field.style.paddingRight = 3;
-            field.style.flexShrink = 0;
             row.Add(field);
             labelBox.style.flexShrink = 1;
             row.Add(labelBox);
@@ -394,9 +341,7 @@ public static class VRCFuryEditorUtils {
             }
             addFieldLast = true;
         } else {
-            var labelRow = new VisualElement();
-            labelRow.style.flexDirection = FlexDirection.Row;
-
+            var labelRow = new VisualElement().Row();
             labelBox.style.minWidth = labelWidth;
             labelBox.style.flexGrow = 0;
             labelRow.Add(labelBox);
@@ -435,7 +380,7 @@ public static class VRCFuryEditorUtils {
         if (prop.isArray) {
             var fakeField = new IntegerField();
             fakeField.bindingPath = prop.propertyPath+".Array.size";
-            fakeField.style.display = DisplayStyle.None;
+            fakeField.SetVisible(false);
             var oldValue = prop.arraySize;
             fakeField.RegisterValueChangedCallback(e => {
                 if (prop.arraySize == oldValue) return;
@@ -450,7 +395,7 @@ public static class VRCFuryEditorUtils {
     private static VisualElement _OnChange<T>(SerializedProperty prop, Func<T> getValue, Action changed, Func<T,T,bool> equals) {
         // The register events can sometimes randomly fire when binding / unbinding happens,
         // with the oldValue being "null", so we have to do our own change detection by caching the old value.
-        var fakeField = new PropertyField(prop) { style = { display = DisplayStyle.None } };
+        var fakeField = new PropertyField(prop).SetVisible(false);
     
         var oldValue = getValue();
         void Check() {
@@ -532,22 +477,14 @@ public static class VRCFuryEditorUtils {
                 marginTop = 5,
                 marginBottom = 10
             }
-        };
-        VRCFuryEditorUtils.Padding(section, 5);
-        VRCFuryEditorUtils.BorderRadius(section, 5);
+        }.Padding(5).BorderRadius(5);
 
         if (title != null) {
-            section.Add(VRCFuryEditorUtils.WrappedLabel(title, style => {
-                style.unityFontStyleAndWeight = FontStyle.Bold;
-                style.unityTextAlign = TextAnchor.MiddleCenter;
-            }));
+            section.Add(WrappedLabel(title).Bold().TextAlign(TextAnchor.MiddleCenter));
         }
 
         if (subtitle != null) {
-            section.Add(VRCFuryEditorUtils.WrappedLabel(subtitle, style => {
-                style.unityTextAlign = TextAnchor.MiddleCenter;
-                style.paddingBottom = 5;
-            }));
+            section.Add(WrappedLabel(subtitle).TextAlign(TextAnchor.MiddleCenter).PaddingBottom(5));
         }
 
         return section;
@@ -562,18 +499,12 @@ public static class VRCFuryEditorUtils {
                 flexDirection = FlexDirection.Row,
                 alignItems = Align.FlexStart
             }
-        };
-        Padding(el, 5);
-        BorderRadius(el, 5);
-        var im = new Image {
+        }.Padding(5).BorderRadius(5);
+        el.Add(new Image {
             image = EditorGUIUtility.FindTexture("_Help"),
             scaleMode = ScaleMode.ScaleToFit
-        };
-        el.Add(im);
-        var label = WrappedLabel(message);
-        label.style.flexGrow = 1;
-        label.style.flexBasis = 0;
-        el.Add(label);
+        });
+        el.Add(WrappedLabel(message).FlexGrow(1));
         return el;
     }
     
@@ -586,41 +517,47 @@ public static class VRCFuryEditorUtils {
                 flexDirection = FlexDirection.Row,
                 alignItems = Align.FlexStart
             }
-        };
-        Padding(el, 5);
-        BorderRadius(el, 5);
-        var im = new Image {
+        }.Padding(5).BorderRadius(5);
+        el.Add(new Image {
             image = EditorGUIUtility.FindTexture("d_Lighting"),
             scaleMode = ScaleMode.ScaleToFit
-        };
-        el.Add(im);
+        });
         var rightColumn = new VisualElement();
         el.Add(rightColumn);
-        var title = WrappedLabel("Debug Info");
-        title.style.unityFontStyleAndWeight = FontStyle.Bold;
-        rightColumn.Add(title);
+        rightColumn.Add(WrappedLabel("Debug Info").Bold());
 
         if (refreshElement != null) {
             var holder = new VisualElement();
             rightColumn.Add(holder);
             RefreshOnInterval(el, () => {
                 holder.Clear();
+                var show = false;
                 try {
-                    holder.Add(refreshElement());
+                    var newContent = refreshElement();
+                    if (newContent != null) {
+                        holder.Add(newContent);
+                        show = true;
+                    }
                 } catch (Exception e) {
                     holder.Add(WrappedLabel($"Error: {e.Message}"));
+                    show = true;
                 }
+                el.SetVisible(show);
             }, interval);
         } else {
             var label = WrappedLabel(message);
             rightColumn.Add(label);
             if (refreshMessage != null) {
                 RefreshOnInterval(el, () => {
+                    var show = false;
                     try {
                         label.text = refreshMessage();
+                        show = !string.IsNullOrWhiteSpace(label.text);
                     } catch (Exception e) {
                         label.text = $"Error: {e.Message}";
+                        show = true;
                     }
+                    el.SetVisible(show);
                 }, interval);
             }
         }
@@ -629,18 +566,14 @@ public static class VRCFuryEditorUtils {
     }
 
     public static VisualElement Error(string message) {
-        var i = Section();
+        var i = Section().BorderColor(Color.red).Border(2);
         i.Add(WrappedLabel(message));
-        BorderColor(i, Color.red);
-        Border(i, 2);
         return i;
     }
 
     public static VisualElement Warn(string message) {
-        var i = Section();
+        var i = Section().BorderColor(Color.yellow).Border(2);
         i.Add(WrappedLabel(message));
-        BorderColor(i, Color.yellow);
-        Border(i, 2);
         return i;
     }
     

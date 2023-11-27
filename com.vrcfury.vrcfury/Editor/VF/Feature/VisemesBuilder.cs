@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
@@ -6,12 +7,15 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
 
 public class VisemesBuilder : FeatureBuilder<Visemes> {
+    [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
     [VFAutowired] private readonly ActionClipService actionClipService;
 
     private string[] visemeNames = {
@@ -20,7 +24,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
     
     [FeatureBuilderAction]
     public void Apply() {
-        var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+        var avatar = manager.Avatar;
         if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.Default) {
             avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
         }
@@ -41,6 +45,17 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             var name = visemeNames[i];
             addViseme(i, name, (State)model.GetType().GetField("state_" + name).GetValue(model));
         }
+
+        var blocked = visemes.NewState("Blocked");
+        trackingConflictResolverBuilder.WhenCollected(() => {
+            var inhibitors =
+                trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingMouth);
+            if (inhibitors.Count > 0) {
+                var blockedWhen = VFCondition.Any(inhibitors.Select(inhibitor => inhibitor.IsGreaterThan(0)));
+                blocked.TransitionsFromAny().When(blockedWhen);
+                blocked.TransitionsToExit().When(blockedWhen.Not());
+            }
+        });
     }
 
     public override string GetEditorTitle() {
@@ -53,7 +68,10 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             "This feature will allow you to use animations for your avatar's visemes."
         ));
         foreach (var name in visemeNames) {
-            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state_" + name), name, 50));
+            var row = new VisualElement().Row();
+            row.Add(new Label(name).FlexBasis(30));
+            row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state_" + name)).FlexGrow(1));
+            content.Add(row);
         }
         
         var adv = new Foldout {

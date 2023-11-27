@@ -25,10 +25,11 @@ namespace VF.Service {
         
         // A VFAFloat, but it's guaranteed to be 0 or 1
         public class VFAFloatBool {
-            public Func<Motion, Motion, Motion> create { private set; get; }
+            public delegate Motion CreateCallback(Motion whenTrue, Motion whenFalse);
+            public CreateCallback create { private set; get; }
             public bool defaultIsTrue { private set; get; }
 
-            public VFAFloatBool(Func<Motion, Motion, Motion> create, bool defaultIsTrue) {
+            public VFAFloatBool(CreateCallback create, bool defaultIsTrue) {
                 this.create = create;
                 this.defaultIsTrue = defaultIsTrue;
             }
@@ -159,7 +160,7 @@ namespace VF.Service {
             return Add(a, b, true, name: name);
         }
         
-        private VFAFloat Add(VFAFloatOrConst a, VFAFloatOrConst b, bool subtract = false, string name = null) {
+        public VFAFloat Add(VFAFloatOrConst a, VFAFloatOrConst b, bool subtract = false, string name = null) {
             var fx = avatarManager.GetFx();
             name = name ?? $"{CleanName(a)} {(subtract ? '-' : '+')} {CleanName(b)}";
             var output = MakeZeroBasisFloat(
@@ -186,7 +187,7 @@ namespace VF.Service {
         public AnimationClip MakeSetter(VFAFloat param, float value) {
             var fx = avatarManager.GetFx();
             var clip = fx.NewClip($"{CleanName(param)} = {value}");
-            clip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
+            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
             return clip;
         }
 
@@ -227,6 +228,12 @@ namespace VF.Service {
             return tree;
         }
         
+        public VFAFloat Buffer(VFAFloat val) {
+            var output = MakeZeroBasisFloat(val + "_buffer", val.GetDefault());
+            directTree.Add(MakeCopier(val, output));
+            return output;
+        }
+        
         /**
          * Only works on values > 0 !
          * Value MUST be defaulted to 0, or the copy will ADD to it
@@ -256,6 +263,13 @@ namespace VF.Service {
             return new VFAFloatBool(
                 (whenTrue, whenFalse) => a.create(b.create(whenTrue, whenFalse), whenFalse),
                 a.defaultIsTrue && b.defaultIsTrue
+            );
+        }
+        
+        public VFAFloatBool Xor(VFAFloatBool a, VFAFloatBool b, string name = null) {
+            return new VFAFloatBool(
+                (whenTrue, whenFalse) => a.create(b.create(whenFalse, whenTrue), b.create(whenTrue, whenFalse)),
+                a.defaultIsTrue ^ b.defaultIsTrue
             );
         }
         

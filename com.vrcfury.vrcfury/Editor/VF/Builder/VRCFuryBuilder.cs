@@ -89,16 +89,6 @@ public class VRCFuryBuilder {
         var currentModelClipPrefix = "?";
         var currentMenuSortPosition = 0;
         var currentComponentObject = avatarObject;
-        var manager = new AvatarManager(
-            avatarObject,
-            tmpDir,
-            () => currentModelNumber,
-            () => currentModelName,
-            () => currentModelClipPrefix,
-            () => currentMenuSortPosition,
-            () => currentComponentObject,
-            mutableManager
-        );
 
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
@@ -108,7 +98,6 @@ public class VRCFuryBuilder {
 
         var injector = new VRCFuryInjector();
         injector.RegisterService(mutableManager);
-        injector.RegisterService(manager);
         foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
             injector.RegisterService(serviceType);
         }
@@ -121,6 +110,11 @@ public class VRCFuryBuilder {
             allBuildersInRun = collectedBuilders,
             avatarObject = avatarObject,
             originalObject = originalObject,
+            currentFeatureNumProvider = () => currentModelNumber,
+            currentFeatureNameProvider = () => currentModelName,
+            currentFeatureClipPrefixProvider = () => currentModelClipPrefix,
+            currentMenuSortPosition = () => currentMenuSortPosition,
+            currentComponentObject = () => currentComponentObject,
         };
         injector.RegisterService(globals);
 
@@ -133,7 +127,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(DefaultAdditiveLayerFixBuilder));
         AddBuilder(typeof(FixWriteDefaultsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
-        AddBuilder(typeof(ControllerConflictBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
         AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
@@ -143,9 +136,7 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(FixMaterialSwapWithMaskBuilder));
         AddBuilder(typeof(RestingStateBuilder));
-        AddBuilder(typeof(PullMusclesOutOfFxBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
         AddBuilder(typeof(FixEmptyMotionBuilder));
 
@@ -156,7 +147,16 @@ public class VRCFuryBuilder {
         void AddModel(FeatureModel model, VFGameObject configObject) {
             collectedModels.Add(model);
 
-            var builder = FeatureFinder.GetBuilder(model, configObject, injector);
+            FeatureBuilder builder;
+            try {
+                builder = FeatureFinder.GetBuilder(model, configObject, injector, avatarObject);
+            } catch (Exception e) {
+                throw new ExceptionWithCause(
+                    $"Failed to load VRCFury component on object {configObject.GetPath(avatarObject)}",
+                    e
+                );
+            }
+
             if (builder == null) return;
             AddActionsFromObject(builder, configObject);
         }

@@ -91,5 +91,9 @@ namespace VF.Feature {
         public void Register(VRCAnimatorLayerControl control, AnimatorStateMachine targetSm) {
             mapping[control] = targetSm;
         }
+
+        public bool IsLayerTargeted(AnimatorStateMachine sm) {
+            return mapping.Values.Contains(sm);
+        }
     }
 }

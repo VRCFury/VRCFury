@@ -60,7 +60,6 @@ namespace VF.Builder.Haptics {
             }
 
             var tex = baked.Save();
-            VRCFuryAssetDatabase.SaveAsset(tex, tmpDir, $"SPS Info for {skin.owner().name}");
             return tex;
         }
     }

@@ -94,6 +94,13 @@ namespace VF.Utils {
         public static void AllowAllTransforms(this AvatarMask mask) {
             mask.transformCount = 0;
         }
+        
+        public static bool AllowsAnyMuscles(this AvatarMask mask) {
+            for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
+                if (mask.GetHumanoidBodyPartActive(bodyPart)) return true;
+            }
+            return false;
+        }
 
         public static bool AllowsAllTransforms(this AvatarMask mask) {
             return mask.transformCount == 0;
@@ -108,6 +115,12 @@ namespace VF.Utils {
                 }
             }
             return all;
+        }
+
+        public static AvatarMask DefaultFxMask() {
+            var mask = Empty();
+            mask.AllowAllTransforms();
+            return mask;
         }
 
         /**

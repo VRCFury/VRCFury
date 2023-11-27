@@ -11,7 +11,7 @@ using Action = VF.Model.StateAction.Action;
 namespace VF.Model {
     [HelpURL("https://vrcfury.com")]
     public class VRCFury : VRCFuryComponent {
-        [HideInInspector]
+
         public VRCFuryConfig config = new VRCFuryConfig();
 
         [Header("VRCFury failed to load")]
@@ -20,6 +20,7 @@ namespace VF.Model {
         public static bool RunningFakeUpgrade = false;
         
         public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
             var features = config.features;
             var didSomething = false;
             for (var i = 0; i < features.Count; i++) {
@@ -68,14 +69,29 @@ namespace VF.Model {
                     if (apply.action.actions.Count > 0) {
                         features.Insert(++i, apply);
                     }
+
+                    didSomething = true;
                 } else if (features[i] is LegacyFeatureModel legacy) {
                     features.RemoveAt(i--);
                     features.Insert(++i, legacy.CreateNewInstance());
                     didSomething = true;
+                } else if (features[i] is BlendshapeOptimizer opt) {
+                    if (opt.keepMmdShapes && !RunningFakeUpgrade) {
+                        var hasMmdCompat = gameObject.GetComponents<VRCFury>()
+                            .Where(c => c != null && c.config?.features != null)
+                            .SelectMany(c => c.config.features)
+                            .Any(feature => feature is MmdCompatibility);
+                        if (!hasMmdCompat) {
+                            features.Insert(++i, new MmdCompatibility());
+                        }
+                        opt.keepMmdShapes = false;
+                        didSomething = true;
+                    }
                 }
             }
 
             return didSomething;
+#pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
@@ -91,5 +107,6 @@ namespace VF.Model {
     [Serializable]
     public class State {
         [SerializeReference] public List<Action> actions = new List<Action>();
+        public bool ResetMePlease2;
     }
 }

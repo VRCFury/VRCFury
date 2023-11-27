@@ -1,12 +1,14 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
 
 namespace VF.Updater {
@@ -25,62 +27,71 @@ namespace VF.Updater {
 
         [MenuItem(updateName, priority = updatePriority)]
         public static void Upgrade() {
-            Task.Run(() => VRCFExceptionUtils.ErrorDialogBoundaryAsync(async () => {
-                if (!IsVrcfuryALocalPackage()) {
-                    throw new Exception(
-                        "VRCFury is not installed as a local package, and thus cannot update itself.");
-                }
-                
-                var url = "https://vrcfury.com/downloadRawZip";
-                var tempFile = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject) + ".zip";
-                try {
-                    using (var response = await HttpClient.GetAsync(url)) {
-                        response.EnsureSuccessStatusCode();
-                        using (var fs = new FileStream(tempFile, FileMode.CreateNew)) {
-                            await response.Content.CopyToAsync(fs);
-                        }
-                    }
-                } catch (Exception e) {
-                    throw new Exception($"Failed to download {url}\n{e.Message}", e);
-                }
+            Task.Run(() => VRCFExceptionUtils.ErrorDialogBoundaryAsync(UpgradeUnsafe));
+        }
 
-                var tmpDir = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject);
-                using (var stream = File.OpenRead(tempFile)) {
-                    using (var archive = new ZipArchive(stream)) {
-                        foreach (var entry in archive.Entries) {
-                            if (string.IsNullOrWhiteSpace(entry.Name)) continue;
-                            var outPath = tmpDir+"/"+entry.FullName;
-                            var outDir = Path.GetDirectoryName(outPath);
-                            if (!Directory.Exists(outDir)) Directory.CreateDirectory(outDir);
-                            using (var entryStream = entry.Open()) {
-                                using (var outFile = new FileStream(outPath, FileMode.Create, FileAccess.Write)) {
-                                    await entryStream.CopyToAsync(outFile);
-                                }
+        private static async Task UpgradeUnsafe() {
+            var vpmManifest = "Packages/vpm-manifest.json";
+            if (File.Exists(vpmManifest) && File.ReadLines(vpmManifest).Any(line => line.Contains("vrcfury"))) {
+                throw new Exception(
+                    "VRCFury was installed using the VRChat Creator Companion. " +
+                    "Please update VRCFury in the Creator Companion app, in the Manage Project section.");
+            }
+
+            if (!IsVrcfuryALocalPackage()) {
+                throw new Exception(
+                    "VRCFury is not installed as a local package, and thus cannot update itself.");
+            }
+            
+            var url = "https://vrcfury.com/downloadRawZip";
+            var tempFile = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject) + ".zip";
+            try {
+                using (var response = await HttpClient.GetAsync(url)) {
+                    response.EnsureSuccessStatusCode();
+                    using (var fs = new FileStream(tempFile, FileMode.CreateNew)) {
+                        await response.Content.CopyToAsync(fs);
+                    }
+                }
+            } catch (Exception e) {
+                throw new Exception($"Failed to download {url}\n{e.Message}", e);
+            }
+
+            var tmpDir = await AsyncUtils.InMainThread(FileUtil.GetUniqueTempPathInProject);
+            using (var stream = File.OpenRead(tempFile)) {
+                using (var archive = new ZipArchive(stream)) {
+                    foreach (var entry in archive.Entries) {
+                        if (string.IsNullOrWhiteSpace(entry.Name)) continue;
+                        var outPath = tmpDir+"/"+entry.FullName;
+                        var outDir = Path.GetDirectoryName(outPath);
+                        if (!Directory.Exists(outDir)) Directory.CreateDirectory(outDir);
+                        using (var entryStream = entry.Open()) {
+                            using (var outFile = new FileStream(outPath, FileMode.Create, FileAccess.Write)) {
+                                await entryStream.CopyToAsync(outFile);
                             }
                         }
                     }
                 }
+            }
 
-                await AsyncUtils.InMainThread(() => {
-                    Delete(AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
-                    Delete("Assets/VRCFury");
-                    Delete("Assets/VRCFury-installer");
-                    Delete("Packages/com.vrcfury.legacyprefabs.tgz");
-                    Delete("Packages/com.vrcfury.updater.tgz");
-                    Delete("Packages/com.vrcfury.vrcfury.tgz");
-                    Delete("Packages/com.vrcfury.legacyprefabs");
-                    Delete("Packages/com.vrcfury.updater");
-                    Delete("Packages/com.vrcfury.vrcfury");
-                    Delete("Packages/com.vrcfury.installer");
+            await AsyncUtils.InMainThread(() => {
+                Delete(AssetDatabase.GUIDToAssetPath("00b990f230095454f82c345d433841ae"));
+                Delete("Assets/VRCFury");
+                Delete("Assets/VRCFury-installer");
+                Delete("Packages/com.vrcfury.legacyprefabs.tgz");
+                Delete("Packages/com.vrcfury.updater.tgz");
+                Delete("Packages/com.vrcfury.vrcfury.tgz");
+                Delete("Packages/com.vrcfury.legacyprefabs");
+                Delete("Packages/com.vrcfury.updater");
+                Delete("Packages/com.vrcfury.vrcfury");
+                Delete("Packages/com.vrcfury.installer");
 
-                    var appRootDir = Path.GetDirectoryName(Application.dataPath);
-                    Directory.CreateDirectory(appRootDir + "/Temp/vrcfInstalling");
+                var appRootDir = Path.GetDirectoryName(Application.dataPath);
+                Directory.CreateDirectory(appRootDir + "/Temp/vrcfInstalling");
 
-                    Directory.Move(tmpDir, "Packages/com.vrcfury.vrcfury");
+                Directory.Move(tmpDir, "Packages/com.vrcfury.vrcfury");
 
-                    TmpFilePackage.ReresolvePackages();
-                });
-            }));
+                TmpFilePackage.ReresolvePackages();
+            });
         }
         
         private static void Delete(string path) {

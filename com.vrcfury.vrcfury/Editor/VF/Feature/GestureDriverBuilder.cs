@@ -10,6 +10,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
@@ -116,13 +117,6 @@ namespace VF.Feature {
                 }
             }
 
-            if (gesture.disableBlinking) {
-                var disableBlinkParam = fx.NewBool(uid + "_disableBlink");
-                off.Drives(disableBlinkParam, false);
-                on.Drives(disableBlinkParam, true);
-                addOtherFeature(new BlinkingBuilder.BlinkingPrevention { param = disableBlinkParam });
-            }
-
             off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
         }
@@ -146,52 +140,43 @@ namespace VF.Feature {
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"),
-                (i,el) => RenderGestureEditor(el));
+            return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"));
+        }
+        
+        [CustomPropertyDrawer(typeof(GestureDriver.Gesture))]
+        public class GestureDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                return RenderGestureEditor(prop);
+            }
         }
 
-        private VisualElement RenderGestureEditor(SerializedProperty gesture) {
+        private static VisualElement RenderGestureEditor(SerializedProperty gesture) {
             var wrapper = new VisualElement();
             
             var handProp = gesture.FindPropertyRelative("hand");
             var signProp = gesture.FindPropertyRelative("sign");
             var comboSignProp = gesture.FindPropertyRelative("comboSign");
 
-            var row = new VisualElement();
-            row.style.flexDirection = FlexDirection.Row;
-            var hand = VRCFuryEditorUtils.Prop(handProp);
-            hand.style.flexBasis = 70;
-            row.Add(hand);
+            var row = new VisualElement().Row();
+            row.Add(VRCFuryEditorUtils.Prop(handProp).FlexBasis(70));
             var handSigns = VRCFuryEditorUtils.RefreshOnChange(() => {
-                var w = new VisualElement();
-                w.style.flexDirection = FlexDirection.Row;
-                w.style.alignItems = Align.Center;
-                var leftBox = VRCFuryEditorUtils.Prop(signProp);
-                var rightBox = VRCFuryEditorUtils.Prop(comboSignProp);
+                var w = new VisualElement().Row().AlignItems(Align.Center);
                 if ((GestureDriver.Hand)handProp.enumValueIndex == GestureDriver.Hand.COMBO) {
-                    w.Add(new Label("L") { style = { flexBasis = 10 }});
-                    leftBox.style.flexGrow = 1;
-                    leftBox.style.flexShrink = 1;
-                    w.Add(leftBox);
-                    w.Add(new Label("R") { style = { flexBasis = 10 }});
-                    rightBox.style.flexGrow = 1;
-                    rightBox.style.flexShrink = 1;
-                    w.Add(rightBox);
+                    w.Add(new Label("L").FlexBasis(10).TextAlign(TextAnchor.MiddleCenter));
+                    w.Add(VRCFuryEditorUtils.Prop(signProp).FlexGrow(1).FlexShrink(1));
+                    w.Add(new Label("R").FlexBasis(10).TextAlign(TextAnchor.MiddleCenter));
+                    w.Add(VRCFuryEditorUtils.Prop(comboSignProp).FlexGrow(1).FlexShrink(1));
                 } else {
-                    leftBox.style.flexGrow = 1;
-                    leftBox.style.flexShrink = 1;
-                    w.Add(leftBox);
+                    w.Add(VRCFuryEditorUtils.Prop(signProp).FlexGrow(1).FlexShrink(1));
                 }
-
                 return w;
             }, handProp);
-            handSigns.style.flexGrow = 1;
+            handSigns.FlexGrow(1);
             row.Add(handSigns);
             wrapper.Add(row);
 
             wrapper.Add(VRCFuryStateEditor.render(gesture.FindPropertyRelative("state")));
 
-            var disableBlinkProp = gesture.FindPropertyRelative("disableBlinking");
             var customTransitionTimeProp = gesture.FindPropertyRelative("customTransitionTime");
             var transitionTimeProp = gesture.FindPropertyRelative("transitionTime");
             var enableLockMenuItemProp = gesture.FindPropertyRelative("enableLockMenuItem");
@@ -200,12 +185,8 @@ namespace VF.Feature {
             var exclusiveTagProp = gesture.FindPropertyRelative("exclusiveTag");
             var enableWeightProp = gesture.FindPropertyRelative("enableWeight");
 
-            var button = VRCFuryEditorUtils.Button("Options", () => {
+            row.Add(new Button().Text("Options").FlexBasis(70).OnClick(() => {
                 var advMenu = new GenericMenu();
-                advMenu.AddItem(new GUIContent("Disable blinking when active"), disableBlinkProp.boolValue, () => {
-                    disableBlinkProp.boolValue = !disableBlinkProp.boolValue;
-                    gesture.serializedObject.ApplyModifiedProperties();
-                });
                 advMenu.AddItem(new GUIContent("Customize transition time"), customTransitionTimeProp.boolValue, () => {
                     customTransitionTimeProp.boolValue = !customTransitionTimeProp.boolValue;
                     gesture.serializedObject.ApplyModifiedProperties();
@@ -224,26 +205,18 @@ namespace VF.Feature {
                     gesture.serializedObject.ApplyModifiedProperties();
                 });
                 advMenu.ShowAsContext();
-            });
-            button.style.flexBasis = 70;
-
-            row.Add(button);
+            }));
             
             wrapper.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var w = new VisualElement();
-                if (disableBlinkProp.boolValue) w.Add(VRCFuryEditorUtils.WrappedLabel("Blinking disabled when active"));
                 if (customTransitionTimeProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(transitionTimeProp, "Custom transition time (seconds)"));
                 if (enableLockMenuItemProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(lockMenuItemProp, "Lock menu item path"));
                 if (enableExclusiveTagProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(exclusiveTagProp, "Exclusive Tag"));
                 if (enableWeightProp.boolValue) w.Add(VRCFuryEditorUtils.WrappedLabel("Use gesture weight (fist only)"));
                 return w;
-            }, disableBlinkProp, customTransitionTimeProp, enableLockMenuItemProp, enableExclusiveTagProp, enableWeightProp));
+            }, customTransitionTimeProp, enableLockMenuItemProp, enableExclusiveTagProp, enableWeightProp));
             
             return wrapper;
-        }
-
-        public override bool AvailableOnProps() {
-            return false;
         }
     }
 }

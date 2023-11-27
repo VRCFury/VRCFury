@@ -81,7 +81,7 @@ namespace VF.Builder {
 
             GetSubmenuAndItem(to, true, out var toPath, out var toPrefix, out var toName, out var toMenu);
             foreach (var control in fromControls) {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     GetSubmenu(toPath, createFromControl: control);
                     MergeMenu(toPath, control.subMenu);
                 } else {
@@ -230,7 +230,6 @@ namespace VF.Builder {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             newMenu.name = string.Join(" » ", cleanPath);
-            AssetDatabase.AddObjectToAsset(newMenu, rootMenu);
             return newMenu;
         }
         private static string CleanTitleForFilename(string str) {

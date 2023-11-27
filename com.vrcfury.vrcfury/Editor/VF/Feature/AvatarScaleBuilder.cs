@@ -19,8 +19,8 @@ public class AvatarScaleBuilder : FeatureBuilder<AvatarScale2> {
             );
     }
 
-    public override bool AvailableOnProps() {
-        return false;
+    public override bool AvailableOnRootOnly() {
+        return true;
     }
 }
 

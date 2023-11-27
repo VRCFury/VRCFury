@@ -25,11 +25,11 @@ namespace VF.Utils {
                 return;
             }
             clip.Rewrite(AnimationRewriter.DeleteAllBindings());
-            clip.SetCurve(EditorCurveBinding.DiscreteCurve(
+            clip.SetCurve(EditorCurveBinding.FloatCurve(
                 ProxyClipMagicString,
                 typeof(GameObject),
                 path
-            ), new FloatOrObjectCurve(AnimationCurve.Constant(0,0,value)));
+            ), value);
         }
 
         public static List<(AnimationClip,bool)> CollapseProxyBindings(this AnimationClip clip, bool removeProxyBindings = false) {

@@ -54,9 +54,10 @@ namespace VF.Builder.Haptics {
             string[] tags,
             float height = 0,
             Quaternion rotation = default,
-            bool worldScale = true
+            bool worldScale = true,
+            bool useHipAvoidance = true
         ) {
-            var isOnHips = IsDirectChildOfHips(obj);
+            var isOnHips = IsDirectChildOfHips(obj) && useHipAvoidance;
             var suffixes = new List<string>();
             suffixes.Add("");
             if (!isOnHips) {
@@ -248,7 +249,7 @@ namespace VF.Builder.Haptics {
 
         public static bool IsChildOfBone(VFGameObject obj, HumanBodyBones bone, bool followConstraints = true) {
             try {
-                VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
+                VFGameObject avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj, obj, followConstraints);

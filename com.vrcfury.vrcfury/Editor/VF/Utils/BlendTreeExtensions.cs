@@ -42,5 +42,21 @@ namespace VF.Utils {
                 VRCFuryEditorUtils.MarkDirty(tree);
             }
         }
+
+        public static void RewriteParameters(this BlendTree tree, Func<string, string> rewriteParamName) {
+            if (tree.blendType != BlendTreeType.Direct) {
+                tree.blendParameter = rewriteParamName(tree.blendParameter);
+                if (tree.blendType != BlendTreeType.Simple1D) {
+                    tree.blendParameterY = rewriteParamName(tree.blendParameterY);
+                }
+            }
+            tree.RewriteChildren(child => {
+                if (tree.blendType == BlendTreeType.Direct) {
+                    child.directBlendParameter = rewriteParamName(child.directBlendParameter);
+                }
+                return child;
+            });
+            VRCFuryEditorUtils.MarkDirty(tree);
+        }
     }
 }

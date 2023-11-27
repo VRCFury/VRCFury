@@ -7,10 +7,10 @@ using VF.Inspector;
 namespace VF.Menu {
     public class HapticsMenuItem {
 
-        private const string DialogTitle = "VRCFury Haptics";
+        private const string DialogTitle = "VRCFury SPS";
 
         public static void Create(bool plug) {
-            var newObj = GameObjects.Create(plug ? "Haptic Plug" : "Haptic Socket", Selection.activeTransform);
+            var newObj = GameObjects.Create(plug ? "SPS Plug" : "SPS Socket", Selection.activeTransform);
 
             if (plug) {
                 newObj.AddComponent<VRCFuryHapticPlug>();
