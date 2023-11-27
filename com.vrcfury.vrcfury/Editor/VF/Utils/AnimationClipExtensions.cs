@@ -164,6 +164,7 @@ namespace VF.Utils {
             var output = MutableManager.CopyRecursive(clip);
             output.name = $"{clip.name} ({amount} blend)";
             output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                // TODO: Animator parameters aren't handled here
                 if (curve.IsFloat) {
                     if (!binding.GetFloatFromGameObject(root, out float from)) {
                         return (binding, null, true);

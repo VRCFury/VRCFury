@@ -63,7 +63,7 @@ namespace VF.Service {
                 myCond = enableParam.IsGreaterThan(0);
             } else {
                 var myParam = ctrl.NewBool(clip.name+" (Action)");
-                driveOtherTypesFromFloatService.Drive(enableParam, myParam, 0, 1);
+                driveOtherTypesFromFloatService.Drive(enableParam, myParam.Name(), 1);
                 myCond = myParam.IsTrue();
             }
             state.TransitionsFromEntry().When(myCond);

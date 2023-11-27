@@ -287,6 +287,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 clip.UseLinearTangents();
             }
             onState.WithAnimation(clip).MotionTime(weight);
+            onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction);

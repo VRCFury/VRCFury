@@ -39,6 +39,9 @@ namespace VF.Feature.Base {
         CollectToggleExclusiveTags,
         // Needs to run before ArmatureLinkBuilder, which reads active state of objects
         ApplyRestState3,
+        
+        // Needs to happen after all controller params (and their types) are in place
+        DriveNonFloatTypes,
 
         // Needs to happen after builders have scanned their prop children objects for any purpose (since this action
         // may move objects out of the props and onto the avatar base). One example is the FullController which

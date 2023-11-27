@@ -3,14 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Component;
 using VF.Feature;
+using VF.Feature.Base;
 using VF.Injector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
@@ -24,7 +28,10 @@ namespace VF.Service {
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
-        
+        [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+
+        private List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
+
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
@@ -247,12 +254,14 @@ namespace VF.Service {
                             throw new Exception("Set an FX Float cannot set built-in vrchat parameters");
                         }
 
+                        var myFloat = fx.NewFloat(name + "_paramDriver");
                         var binding = EditorCurveBinding.FloatCurve(
                             "",
                             typeof(Animator),
-                            fxFloatAction.name
+                            myFloat.Name()
                         );
                         onClip.SetCurve(binding, fxFloatAction.value);
+                        drivenParams.Add((myFloat, fxFloatAction.name, fxFloatAction.value));
                         break;
                     }
                     case BlockBlinkingAction blockBlinkingAction: {
@@ -342,6 +351,33 @@ namespace VF.Service {
                 .Select(pair => pair.Item1)
                 .ToArray();
             return (renderers, type);
+        }
+
+        [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
+        public void DriveNonFloatTypes() {
+            var nonFloatParams = new HashSet<string>();
+            foreach (var c in manager.GetAllUsedControllers()) {
+                nonFloatParams.UnionWith(c.GetRaw().parameters
+                    .Where(p => p.type != AnimatorControllerParameterType.Float || c.GetType() != VRCAvatarDescriptor.AnimLayerType.FX)
+                    .Select(p => p.name));
+            }
+
+            var rewrites = new Dictionary<string, string>();
+            foreach (var (floatParam,targetParam,onValue) in drivenParams) {
+                if (nonFloatParams.Contains(targetParam)) {
+                    driveOtherTypesFromFloatService.Drive(floatParam, targetParam, onValue);
+                } else {
+                    rewrites.Add(floatParam.Name(), targetParam);
+                }
+            }
+
+            if (rewrites.Count > 0) {
+                foreach (var c in manager.GetAllUsedControllers()) {
+                    ((AnimatorController)c.GetRaw()).RewriteParameters(from =>
+                        rewrites.TryGetValue(from, out var to) ? to : from
+                    );
+                }
+            }
         }
     }
 }
