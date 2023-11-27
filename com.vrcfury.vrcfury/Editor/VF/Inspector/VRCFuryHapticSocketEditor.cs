@@ -105,15 +105,6 @@ namespace VF.Inspector {
                 return activeBox;
             }, enableActiveAnimationProp));
 
-            var plugParams = VRCFuryEditorUtils.Section("Global Plug Parameters");
-            container.Add(plugParams);
-            var enablePlugLengthParameterProp = serializedObject.FindProperty("enablePlugLengthParameter");
-            var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length"));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Width"));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
-
             var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this socket by default");
             container.Add(haptics);
             haptics.Add(VRCFuryEditorUtils.BetterProp(
@@ -130,6 +121,16 @@ namespace VF.Inspector {
                 value = false,
             };
             container.Add(adv);
+            
+            var plugParams = VRCFuryEditorUtils.Section("Global Plug Parameters");
+            adv.Add(plugParams);
+            var enablePlugLengthParameterProp = serializedObject.FindProperty("enablePlugLengthParameter");
+            var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters)"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Width (meters)"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
+            
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Use hip avoidance",
                 tooltip: "If this socket is placed on the hip bone, this option will prevent triggering or receiving haptics or depth animations from other plugs on the hip bone."));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));

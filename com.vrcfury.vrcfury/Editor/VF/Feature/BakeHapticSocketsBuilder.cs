@@ -98,11 +98,7 @@ namespace VF.Feature {
                     Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
 
                     var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket);
-                    VFAFloat penTip = null;
-                    VFAFloat penRoot = null;
-                    VFAFloat penWidth = null;
-                    
-                    
+
                     // Haptic receivers
                     {
                         // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
@@ -133,16 +129,6 @@ namespace VF.Feature {
                         hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
                         hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
                         hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
-                        
-                        if (socket.IsValidPlugLength || socket.IsValidPlugWidth) {
-                            penTip = hapticContacts.AddReceiver(receivers, Vector3.zero, $"{name}/PenTip", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, HapticUtils.ReceiverParty.Both);
-                            if (socket.IsValidPlugLength) {
-                                penRoot = hapticContacts.AddReceiver(receivers, Vector3.zero, $"{name}/PenRoot", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, HapticUtils.ReceiverParty.Both);
-                            }
-                            if (socket.IsValidPlugWidth) {
-                                penWidth = hapticContacts.AddReceiver(receivers, Vector3.zero, $"{name}/PenWidth", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
-                            }
-                        }
                     }
 
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
@@ -253,27 +239,28 @@ namespace VF.Feature {
                         );
                     }
 
-                    if (socket.IsValidPlugLength) {
-                        // Calculate `Plug Length` using `TPS_Pen_Penetrating - TPS_Pen_Root + 0.01` 
-                        var lastPlugLength = fx.NewFloat("LastPlugLength");
-                        var plugLength = math.Subtract(penTip, penRoot);
-                        directTree.Add(math.MakeSetter(plugLength, 0.01f));
-                        var validWhen = math.And(math.GreaterThan(penRoot, 0.001f), math.LessThan(penTip, 0.999f));
-                        var plugLengthValid = math.SetValueWithConditions("ValidPlugLength", (plugLength, validWhen), (lastPlugLength, null));
-                        var plugLengthGlobal = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
-                        directTree.Add(math.MakeCopier(plugLengthValid, plugLengthGlobal));
-                        directTree.Add(math.MakeCopier(plugLengthValid, lastPlugLength));
-                    }
-                    if (socket.IsValidPlugWidth) {
-                        // Calculate `Plug Width` using `(TPS_Pen_Penetrating - TPS_Pen_Width)/2` 
-                        var lastPlugWidth = fx.NewFloat("LastPlugWidth");
-                        var doubleWidth = math.Subtract(penTip, penWidth);
-                        var plugWidth = math.Multiply(socket.plugWidthParameterName, doubleWidth, 0.5f);
-                        var validWhen = math.And(math.GreaterThan(penWidth, 0.001f), math.LessThan(penTip, 0.999f));
-                        var plugWidthValid = math.SetValueWithConditions("ValidPlugWidth", (plugWidth, validWhen), (lastPlugWidth, null));
-                        var plugWidthGlobal = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
-                        directTree.Add(math.MakeCopier(plugWidthValid, plugWidthGlobal));
-                        directTree.Add(math.MakeCopier(plugWidthValid, lastPlugWidth));
+                    if (socket.IsValidPlugLength || socket.IsValidPlugWidth) {
+                        var penTip = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenTip", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, HapticUtils.ReceiverParty.Both);
+                        if (socket.IsValidPlugLength) {
+                            var penRoot = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenRoot", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, HapticUtils.ReceiverParty.Both);
+                            // Calculate `Plug Length` using `TPS_Pen_Penetrating - TPS_Pen_Root + 0.01 (radius of root sender)`
+                            var plugLength = math.Subtract(penTip, penRoot);
+                            directTree.Add(math.MakeSetter(plugLength, 0.01f));
+                            var validWhen = math.And(math.GreaterThan(penRoot, 0), math.LessThan(penTip, 1));
+                            var plugLengthValid = math.SetValueWithConditions("ValidPlugLength", (plugLength, validWhen));
+                            var plugLengthGlobal = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
+                            directTree.Add(math.MakeCopier(plugLengthValid, plugLengthGlobal));
+                        }
+                        if (socket.IsValidPlugWidth) {
+                            var penWidth = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenWidth", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
+                            // Calculate `Plug Width` using `(TPS_Pen_Penetrating - TPS_Pen_Width)/2` 
+                            var doubleWidth = math.Subtract(penTip, penWidth);
+                            var plugWidth = math.Multiply(socket.plugWidthParameterName, doubleWidth, 0.5f);
+                            var validWhen = math.And(math.GreaterThan(penWidth, 0), math.LessThan(penTip, 1));
+                            var plugWidthValid = math.SetValueWithConditions("ValidPlugWidth", (plugWidth, validWhen));
+                            var plugWidthGlobal = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
+                            directTree.Add(math.MakeCopier(plugWidthValid, plugWidthGlobal));
+                        }
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Socket: {socket.owner().GetPath()}", e);
