@@ -48,6 +48,8 @@ namespace VF.Feature.Base {
         // scans the prop children for contact receivers.
         ArmatureLinkBuilder,
         ShowInFirstPersonBuilder,
+        
+        HapticContactsDetectPosiion,
 
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix,

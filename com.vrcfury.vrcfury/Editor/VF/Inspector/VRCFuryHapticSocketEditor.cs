@@ -13,6 +13,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Menu;
 using VF.Model;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -261,7 +262,7 @@ namespace VF.Inspector {
             DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
-        public static VFGameObject Bake(VRCFuryHapticSocket socket) {
+        public static VFGameObject Bake(VRCFuryHapticSocket socket, HapticContactsService hapticContactsService) {
             var transform = socket.transform;
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "socket");
@@ -282,8 +283,8 @@ namespace VF.Inspector {
                 if (lightType != VRCFuryHapticSocket.AddLight.None) {
                     rootTags.Add(lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole);
                 }
-                HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
-                HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
+                hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
+                hapticContactsService.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
                     new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront }, useHipAvoidance: socket.useHipAvoidance);
             }
 

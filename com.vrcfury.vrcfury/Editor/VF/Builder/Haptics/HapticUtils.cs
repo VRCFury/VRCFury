@@ -46,43 +46,6 @@ namespace VF.Builder.Haptics {
             return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
         }
 
-        public static void AddSender(
-            Transform obj,
-            Vector3 pos,
-            String objName,
-            float radius,
-            string[] tags,
-            float height = 0,
-            Quaternion rotation = default,
-            bool worldScale = true,
-            bool useHipAvoidance = true
-        ) {
-            var isOnHips = IsDirectChildOfHips(obj) && useHipAvoidance;
-            var suffixes = new List<string>();
-            suffixes.Add("");
-            if (!isOnHips) {
-                suffixes.Add("_SelfNotOnHips");
-            }
-            tags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToArray();
-
-            var child = GameObjects.Create(objName, obj);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return;
-            var sender = child.AddComponent<VRCContactSender>();
-            sender.position = pos;
-            sender.radius = radius;
-            sender.collisionTags = new List<string>(tags);
-            if (height > 0) {
-                sender.shapeType = ContactBase.ShapeType.Capsule;
-                sender.height = height;
-                sender.rotation = rotation;
-            }
-            if (worldScale) {
-                sender.position /= child.worldScale.x;
-                sender.radius /= child.worldScale.x;
-                sender.height /= child.worldScale.x;
-            }
-        }
-
         public enum ReceiverParty {
             Self,
             Others,

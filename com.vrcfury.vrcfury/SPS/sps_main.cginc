@@ -1,6 +1,6 @@
 #include "sps_bezier.cginc"
 #include "sps_light.cginc"
-#include "sps_tri.cginc"
+#include "sps_plus.cginc"
 #include "sps_bake.cginc"
 #include "sps_utils.cginc"
 
@@ -21,13 +21,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	bool isRing;
 	float3 frontNormal;
 	bool found = false;
-	{
-		sps_tri_GetData(Self, selfData)
-		sps_tri_search(selfData, found, rootPos, isRing, frontNormal, color);
-		sps_tri_GetData(Other, otherData)
-		sps_tri_search(otherData, found, rootPos, isRing, frontNormal, color);
-		sps_light_search(found, rootPos, isRing, frontNormal, color);
-	}
+	sps_light_search(found, rootPos, isRing, frontNormal, color);
 	if (!found) return;
 
 	float orfDistance = length(rootPos);

@@ -776,7 +776,6 @@ namespace VF.Model.Feature {
     public class SpsOptions : NewFeatureModel {
         public GuidTexture2d menuIcon;
         public string menuPath;
-        public bool enableLightlessToggle2 = false;
         public bool saveSockets = false;
     }
 
