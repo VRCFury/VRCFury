@@ -43,14 +43,17 @@ namespace VF.Inspector {
                 if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
                 var section = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
                 var modeField = new PopupField<string>(
-                    new List<string>() { "Auto", "Hole", "Ring", "Ring Bidirectional" },
-                    addLightProp.enumValueIndex == 3 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
+                    new List<string>() { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
+                    addLightProp.enumValueIndex == 4 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
                 );
                 modeField.RegisterValueChangedCallback(cb => {
-                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : cb.newValue == "Ring Bidirectional" ? 3 : 4;
+                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : cb.newValue == "One-Way Ring (Uncommon)" ? 4 : 3;
                     addLightProp.serializedObject.ApplyModifiedProperties();
                 });
-                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField, tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n'Bidirectional' will allow entry from either side using SPS. DPS & TPS will treat these as single sided"));
+                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField,
+                    tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n" +
+                             "'Rings' can be entered from either side using SPS, but TPS/DPS will only enter one side.\n" +
+                             "'One-Way Rings' can only be entered from one side."));
                 return section;
             }, addLightProp));
 
@@ -187,9 +190,9 @@ namespace VF.Inspector {
             } else if (type == VRCFuryHapticSocket.AddLight.Hole) {
                 text += " (Hole)\nPlug follows orange arrow";
             } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
-                text += " (Ring)\nPlug follows orange arrow";
-            } else if (type == VRCFuryHapticSocket.AddLight.RingBidirectional) {
-                text += " (Ring Bidirectional)\nPlug normally follows orange arrow";
+                text += " (Ring)\nSPS enters either direction\nDPS/TPS only follow orange arrow";
+            } else if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
+                text += " (One-Way Ring)\nPlug follows orange arrow";
             } else {
                 text += " (SPS disabled)";
                 discColor = Color.red;
@@ -204,11 +207,22 @@ namespace VF.Inspector {
                 Handles.color = discColor;
                 Handles.DrawWireDisc(worldPos, worldForward, 0.04f);
             });
-            if (type == VRCFuryHapticSocket.AddLight.Ring || type == VRCFuryHapticSocket.AddLight.RingBidirectional) {
+            if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos + worldForward * 0.05f,
                     worldPos + worldForward * -0.05f,
                     orange
+                );
+            } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
+                VRCFuryGizmoUtils.DrawArrow(
+                    worldPos,
+                    worldPos + worldForward * -0.05f,
+                    orange
+                );
+                VRCFuryGizmoUtils.DrawArrow(
+                    worldPos,
+                    worldPos + worldForward * 0.05f,
+                    Color.white
                 );
             } else {
                 VRCFuryGizmoUtils.DrawArrow(
@@ -287,9 +301,9 @@ namespace VF.Inspector {
                         case VRCFuryHapticSocket.AddLight.Ring:
                             rootTags.Add(HapticUtils.TagSpsSocketIsRing);
                             break;
-                        case VRCFuryHapticSocket.AddLight.RingBidirectional:
+                        case VRCFuryHapticSocket.AddLight.RingOneWay:
                             rootTags.Add(HapticUtils.TagSpsSocketIsRing);
-                            rootTags.Add(HapticUtils.TagSpsSocketIsBidirectional);
+                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
                             break;
                         default:
                             rootTags.Add(HapticUtils.TagSpsSocketIsHole);
@@ -313,8 +327,7 @@ namespace VF.Inspector {
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
                     mainLight.color = Color.black;
-                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.4202f :
-                        lightType == VRCFuryHapticSocket.AddLight.RingBidirectional ? 0.4203f : 0.4102f;
+                    mainLight.range = lightType == VRCFuryHapticSocket.AddLight.Ring ? 0.4202f : 0.4102f;
                     mainLight.shadows = LightShadows.None;
                     mainLight.renderMode = LightRenderMode.ForceVertex;
 

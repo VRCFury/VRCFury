@@ -27,7 +27,6 @@ namespace VF.Builder.Haptics {
         public static string TagSpsSocketFront = "SPSLL_Socket_Front";
         public static string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
         public static string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
-        public static string TagSpsSocketIsBidirectional = "SPSLL_Socket_Bidirectional";
 
         public static readonly string[] SelfContacts = {
             "Hand",

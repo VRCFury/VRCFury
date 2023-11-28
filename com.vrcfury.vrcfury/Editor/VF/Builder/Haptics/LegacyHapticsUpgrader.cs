@@ -242,8 +242,7 @@ namespace VF.Builder.Haptics {
                 var ringMarker = t.Find("OGB_Marker_Ring");
                 if (ringMarker) {
                     var o = AddSocket(t);
-                    // Upgrade rings to bidirectional
-                    if (o) o.addLight = VRCFuryHapticSocket.AddLight.RingBidirectional;
+                    if (o) o.addLight = VRCFuryHapticSocket.AddLight.Ring;
                     objectsToDelete.Add(ringMarker);
                 }
             }
@@ -258,11 +257,7 @@ namespace VF.Builder.Haptics {
                                 var type = info.Item1;
                                 var position = info.Item2;
                                 var rotation = info.Item3;
-                                if (type == VRCFuryHapticSocket.AddLight.Ring)
-                                    // Upgrade rings to bidirectional
-                                    socket.addLight = VRCFuryHapticSocket.AddLight.RingBidirectional;
-                                else
-                                    socket.addLight = type;
+                                socket.addLight = type;
                                 socket.position = position;
                                 socket.rotation = rotation.eulerAngles;
                             }

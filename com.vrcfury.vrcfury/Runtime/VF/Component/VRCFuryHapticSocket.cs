@@ -9,8 +9,8 @@ namespace VF.Component {
             None,
             Hole,
             Ring,
-            RingBidirectional,
-            Auto
+            Auto,
+            RingOneWay
         }
 
         public enum EnableTouchZone {
@@ -94,9 +94,6 @@ namespace VF.Component {
             if (fromVersion < 7) {
                 enableActiveAnimation = activeActions.actions.Count > 0;
             }
-            if (fromVersion < 8) {
-                if (addLight == AddLight.Ring) addLight = AddLight.RingBidirectional;
-            }
 #pragma warning restore 0612
             return false;
         }
@@ -118,7 +115,7 @@ namespace VF.Component {
         }
 
         public override int GetLatestVersion() {
-            return 8;
+            return 7;
         }
     }
 }

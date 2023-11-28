@@ -18,19 +18,17 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 	if (active == 0) return;
 
 	float3 rootPos;
-	bool isRing;
-	bool isReversible;
+	int type = SPS_TYPE_INVALID;
 	float3 frontNormal;
-	bool found = false;
-	sps_light_search(found, rootPos, isRing, frontNormal, color);
-	if (!found) return;
+	sps_light_search(type, rootPos, frontNormal, color);
+	if (type == SPS_TYPE_INVALID) return;
 
 	float orfDistance = length(rootPos);
 	float exitAngle = sps_angle_between(rootPos, float3(0,0,1));
 	float entranceAngle = SPS_PI - sps_angle_between(frontNormal, rootPos);
 
-	// Flip backward reversible rings
-	if (isReversible && entranceAngle > SPS_PI/2) {
+	// Flip backward bidirectional rings
+	if (type == SPS_TYPE_RING_TWOWAY && entranceAngle > SPS_PI/2) {
 		frontNormal *= -1;
 		entranceAngle = SPS_PI - entranceAngle;
 	}
@@ -47,13 +45,13 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 		applyLerp = min(applyLerp, 1-exitAngleTooSharp);
 
 		// Cancel if the entrance angle is too sharp
-		if (!isReversible) {
-			const float allowedEntranceAngle = isRing ? 0.5 : 0.8;
+		if (type != SPS_TYPE_RING_TWOWAY) {
+			const float allowedEntranceAngle = 0.8;
 			const float entranceAngleTooSharp = entranceAngle > SPS_PI*allowedEntranceAngle ? 1 : 0;
 			applyLerp = min(applyLerp, 1-entranceAngleTooSharp);
 		}
-		
-		if (!isReversible) {
+
+		if (type == SPS_TYPE_HOLE) {
 			// Uncancel if hilted in a hole
 			const float hiltedSphereRadius = 0.3;
 			const float inSphere = orfDistance > worldLength*hiltedSphereRadius ? 0 : 1;
@@ -105,7 +103,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 
 	// Handle holes and rings
 	float holeShrink = 1;
-	if (isRing) {
+	if (type == SPS_TYPE_RING_TWOWAY || type == SPS_TYPE_RING_ONEWAY) {
 		if (bakedVertex.z >= curveLength) {
 			// Straighten if past socket
 			bezierPos += (bakedVertex.z - curveLength) * bezierForward;
