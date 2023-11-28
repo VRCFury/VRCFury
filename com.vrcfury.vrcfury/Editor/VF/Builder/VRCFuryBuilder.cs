@@ -129,7 +129,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FixWriteDefaultsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
-        AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
         AddBuilder(typeof(ResetAnimatorBuilder));
         AddBuilder(typeof(FixBadVrcParameterNamesBuilder));
