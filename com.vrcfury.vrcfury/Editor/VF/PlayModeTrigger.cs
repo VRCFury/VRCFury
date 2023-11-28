@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Api;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
@@ -83,7 +84,29 @@ namespace VF {
                         continue;
                     }
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
-                    if (builder.SafeRun(obj)) {
+
+                    var failed = false;
+                    var failSuffix = "(VRCFury Failed)";
+                    foreach (var (source,callback) in VfBuildHooks.beforePlayModeBuildCallbacks) {
+                        try {
+                            callback(obj);
+                        } catch (Exception e) {
+                            Debug.LogException(e);
+                            EditorUtility.DisplayDialog(
+                                "Avatar Error",
+                                $"Pre-Build hook from '{source}' threw an exception:\n\n{e.Message}\n\nSee the console for full details.",
+                                "Ok"
+                            );
+                            failed = true;
+                            failSuffix = "(Pre-Build hooks failed)";
+                        }
+                    }
+
+                    if (!failed) {
+                        failed = !builder.SafeRun(obj);
+                    }
+
+                    if (!failed) {
                         VRCFuryBuilder.StripAllVrcfComponents(obj);
                         restartAudioLink = true;
                         if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
@@ -96,7 +119,7 @@ namespace VF {
                         }
                     } else {
                         var name = obj.name;
-                        var failMarker = new GameObject(name + " (VRCFury Failed)");
+                        var failMarker = new GameObject($"{name} {failSuffix}");
                         SceneManager.MoveGameObjectToScene(failMarker, obj.scene);
                         Object.DestroyImmediate(obj);
                     }

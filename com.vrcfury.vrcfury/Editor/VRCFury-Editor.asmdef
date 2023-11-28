@@ -2,6 +2,7 @@
     "name": "VRCFury-Editor",
     "references": [
         "VRCFury",
+        "VRCFury-Api",
         "VrcfEditorOnly",
         "VRC.SDKBase.Editor.BuildPipeline",
         "JsonComponent-Editor",
