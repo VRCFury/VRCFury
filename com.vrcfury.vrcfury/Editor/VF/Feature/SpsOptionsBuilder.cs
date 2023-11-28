@@ -14,7 +14,6 @@ namespace VF.Feature {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menuIcon"), "SPS Menu Icon Override"));
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menuPath"), "SPS Menu Path Override (Default: SPS)"));
-            c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableLightlessToggle2"), "Enable Experimental SPSLL Toggle"));
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("saveSockets"), "Save Sockets Between Worlds"));
             return c;
         }

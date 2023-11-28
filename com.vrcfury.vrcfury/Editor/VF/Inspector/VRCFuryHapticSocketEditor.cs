@@ -13,6 +13,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Menu;
 using VF.Model;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -121,9 +122,19 @@ namespace VF.Inspector {
                 value = false,
             };
             container.Add(adv);
+            
+            var plugParams = VRCFuryEditorUtils.Section("Global Plug Parameters");
+            adv.Add(plugParams);
+            var enablePlugLengthParameterProp = serializedObject.FindProperty("enablePlugLengthParameter");
+            var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters)"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Width (meters)"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
+            
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Use hip avoidance",
                 tooltip: "If this socket is placed on the hip bone, this option will prevent triggering or receiving haptics or depth animations from other plugs on the hip bone."));
-            adv.Add(VRCFuryEditorUtils.BetterCheckbox(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
 
@@ -253,7 +264,7 @@ namespace VF.Inspector {
             DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
-        public static VFGameObject Bake(VRCFuryHapticSocket socket) {
+        public static VFGameObject Bake(VRCFuryHapticSocket socket, HapticContactsService hapticContactsService) {
             var transform = socket.transform;
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "socket");
@@ -285,8 +296,8 @@ namespace VF.Inspector {
                             break;
                     }
                 }
-                HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
-                HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
+                hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
+                hapticContactsService.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
                     new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront }, useHipAvoidance: socket.useHipAvoidance);
             }
 

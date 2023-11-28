@@ -27,7 +27,7 @@ namespace VF.Feature.Base {
         [VFAutowired] private readonly GlobalsService globals;
         protected string tmpDirParent => globals.tmpDirParent;
         protected string tmpDir => globals.tmpDir;
-        protected VFGameObject avatarObject => avatarObjectOverride ?? globals.avatarObject;
+        protected VFGameObject avatarObject => avatarObjectOverride ?? globals?.avatarObject;
         protected VFGameObject originalObject => globals.originalObject;
         protected List<FeatureModel> allFeaturesInRun => globals.allFeaturesInRun;
         protected List<FeatureBuilder> allBuildersInRun => globals.allBuildersInRun;

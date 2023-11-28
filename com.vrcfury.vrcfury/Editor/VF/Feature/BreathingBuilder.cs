@@ -23,13 +23,16 @@ public class BreathingBuilder : FeatureBuilder<Breathing> {
         var outClip = actionClipService.LoadState("breatheOut", model.outState);
 
         var fx = GetFx();
+        
+        var built = clipBuilder.MergeSingleFrameClips(
+            (0f, outClip),
+            (2.5f, inClip),
+            (5f, outClip)
+        );
+
         var clip = fx.NewClip("Breathing");
         clip.SetLooping(true);
-        clipBuilder.MergeSingleFrameClips(clip,
-            Tuple.Create(0f, outClip),
-            Tuple.Create(2.5f, inClip),
-            Tuple.Create(5f, outClip)
-        );
+        clip.CopyFrom(built);
 
         var toggle = new Toggle {
             name = "Breathing",

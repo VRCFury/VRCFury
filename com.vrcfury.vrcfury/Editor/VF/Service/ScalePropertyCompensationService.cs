@@ -84,8 +84,14 @@ namespace VF.Service {
             foreach (var prop in properties) {
                 var objectPath = prop.obj.GetPath(manager.AvatarObject);
                 var lengthOffset = prop.InitialValue / handledScale;
-                scaleClip.SetCurve(objectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(lengthOffset));
-                zeroClip.SetCurve(objectPath, prop.ComponentType, prop.PropertyName, ClipBuilderService.OneFrame(0));
+                scaleClip.SetCurve(
+                    EditorCurveBinding.FloatCurve(objectPath, prop.ComponentType, prop.PropertyName),
+                    lengthOffset
+                );
+                zeroClip.SetCurve(
+                    EditorCurveBinding.FloatCurve(objectPath, prop.ComponentType, prop.PropertyName),
+                    0
+                );
             }
 
             pathToParam["nativeScale"] = scaleFactorService.Get();

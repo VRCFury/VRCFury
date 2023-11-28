@@ -1,15 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Component;
 using VF.Feature;
+using VF.Feature.Base;
 using VF.Injector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
@@ -23,7 +28,10 @@ namespace VF.Service {
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
-        
+        [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+
+        private List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
+
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
@@ -73,32 +81,33 @@ namespace VF.Service {
 
             foreach (var action in actions) {
                 switch (action) {
-                    case FlipbookAction flipbook:
-                        if (flipbook.obj != null) {
-                            // If we animate the frame to a flat number, unity can internally do some weird tweening
-                            // which can result in it being just UNDER our target, (say 0.999 instead of 1), resulting
-                            // in unity displaying frame 0 instead of 1. Instead, we target framenum+0.5, so there's
-                            // leniency around it.
-                            var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
-                            var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(flipbook.obj),
-                                typeof(SkinnedMeshRenderer),
-                                "material._FlipbookCurrentFrame"
-                            );
-                            onClip.SetConstant(binding, frameAnimNum);
-                        }
+                    case FlipbookAction flipbook: {
+                        var renderer = flipbook.renderer;
+                        if (renderer == null) break;
+
+                        // If we animate the frame to a flat number, unity can internally do some weird tweening
+                        // which can result in it being just UNDER our target, (say 0.999 instead of 1), resulting
+                        // in unity displaying frame 0 instead of 1. Instead, we target framenum+0.5, so there's
+                        // leniency around it.
+                        var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
+                        var binding = EditorCurveBinding.FloatCurve(
+                            clipBuilder.GetPath(renderer.gameObject),
+                            typeof(SkinnedMeshRenderer),
+                            "material._FlipbookCurrentFrame"
+                        );
+                        onClip.SetCurve(binding, frameAnimNum);
                         break;
+                    }
                     case ShaderInventoryAction shaderInventoryAction: {
                         var renderer = shaderInventoryAction.renderer;
-                        if (renderer != null) {
-                            var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(renderer.gameObject),
-                                renderer.GetType(),
-                                $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
-                            );
-                            offClip.SetConstant(binding, 0);
-                            onClip.SetConstant(binding, 1);
-                        }
+                        if (renderer == null) break;
+                        var binding = EditorCurveBinding.FloatCurve(
+                            clipBuilder.GetPath(renderer.gameObject),
+                            renderer.GetType(),
+                            $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
+                        );
+                        offClip.SetCurve(binding, 0);
+                        onClip.SetCurve(binding, 1);
                         break;
                     }
                     case PoiyomiUVTileAction poiyomiUVTileAction: {
@@ -116,29 +125,42 @@ namespace VF.Service {
                                 renderer.GetType(),
                                 $"material.{propertyName}"
                             );
-                            offClip.SetConstant(binding, 1f);
-                            onClip.SetConstant(binding, 0f);
+                            offClip.SetCurve(binding, 1f);
+                            onClip.SetCurve(binding, 0f);
                         }
                         break;
                     }
                     case MaterialPropertyAction materialPropertyAction: {
-                        if (materialPropertyAction.renderer == null && !materialPropertyAction.affectAllMeshes) break;
-                        var renderers = new[] { materialPropertyAction.renderer };
-                        if (materialPropertyAction.affectAllMeshes) {
-                            renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
-                        }
+                        var (renderers,type) = MatPropLookup(
+                            materialPropertyAction.affectAllMeshes,
+                            materialPropertyAction.renderer,
+                            avatarObject,
+                            materialPropertyAction.propertyName
+                        );
 
                         foreach (var renderer in renderers) {
-                            var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(renderer.gameObject),
-                                renderer.GetType(),
-                                $"material.{materialPropertyAction.propertyName}"
-                            );
-                            if (renderer.sharedMaterials.Any(mat =>
-                                    mat != null && mat.HasProperty(materialPropertyAction.propertyName))) {
-                                onClip.SetConstant(binding, materialPropertyAction.value);
+                            void AddOne(string suffix, float value) {
+                                var binding = EditorCurveBinding.FloatCurve(
+                                    clipBuilder.GetPath(renderer.gameObject),
+                                    renderer.GetType(),
+                                    $"material.{materialPropertyAction.propertyName}{suffix}"
+                                );
+                                onClip.SetCurve(binding, value);
                             }
-                            
+
+                            if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
+                                AddOne("", materialPropertyAction.value);
+                            } else if (type == ShaderUtil.ShaderPropertyType.Color) {
+                                AddOne(".r", materialPropertyAction.valueColor.r);
+                                AddOne(".g", materialPropertyAction.valueColor.g);
+                                AddOne(".b", materialPropertyAction.valueColor.b);
+                                AddOne(".a", materialPropertyAction.valueColor.a);
+                            } else if (type == ShaderUtil.ShaderPropertyType.Vector) {
+                                AddOne(".x", materialPropertyAction.valueVector.x);
+                                AddOne(".y", materialPropertyAction.valueVector.y);
+                                AddOne(".z", materialPropertyAction.valueVector.z);
+                                AddOne(".w", materialPropertyAction.valueVector.w);
+                            }
                         }
                         break;
                     }
@@ -170,12 +192,18 @@ namespace VF.Service {
                     case BlendShapeAction blendShape:
                         var foundOne = false;
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                            if (!blendShape.allRenderers && blendShape.renderer != skin) continue;
                             if (!skin.sharedMesh) continue;
                             var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
                             if (blendShapeIndex < 0) continue;
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
-                            clipBuilder.BlendShape(onClip, skin, blendShape.blendShape, blendShape.blendShapeValue);
+                            var binding = EditorCurveBinding.FloatCurve(
+                                clipBuilder.GetPath(skin.gameObject),
+                                typeof(SkinnedMeshRenderer),
+                                "blendShape." + blendShape.blendShape
+                            );
+                            onClip.SetCurve(binding, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
                             Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);
@@ -213,8 +241,8 @@ namespace VF.Service {
                             typeof(VRCFuryHapticPlug),
                             "spsAnimatedEnabled"
                         );
-                        offClip.SetConstant(binding, 0);
-                        onClip.SetConstant(binding, 1);
+                        offClip.SetCurve(binding, 0);
+                        onClip.SetCurve(binding, 1);
                         break;
                     }
                     case FxFloatAction fxFloatAction: {
@@ -226,17 +254,24 @@ namespace VF.Service {
                             throw new Exception("Set an FX Float cannot set built-in vrchat parameters");
                         }
 
+                        var myFloat = fx.NewFloat(name + "_paramDriver");
                         var binding = EditorCurveBinding.FloatCurve(
                             "",
                             typeof(Animator),
-                            fxFloatAction.name
+                            myFloat.Name()
                         );
-                        onClip.SetConstant(binding, fxFloatAction.value);
+                        onClip.SetCurve(binding, fxFloatAction.value);
+                        drivenParams.Add((myFloat, fxFloatAction.name, fxFloatAction.value));
                         break;
                     }
                     case BlockBlinkingAction blockBlinkingAction: {
                         var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingEyes);
-                        onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        break;
+                    }
+                    case BlockVisemesAction blockVisemesAction: {
+                        var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingMouth);
+                        onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
                         break;
                     }
                     case ResetPhysboneAction resetPhysbone: {
@@ -245,12 +280,27 @@ namespace VF.Service {
                         }
                         break;
                     }
+                    case FlipBookBuilderAction sliderBuilderAction: {
+                        var states = sliderBuilderAction.pages.Select(page => page.state).ToList();
+                        if (states.Count == 0) break;
+                        // Duplicate the last state so the last state still gets an entire frame
+                        states.Add(states.Last());
+                        var sources = states
+                            .Select((substate,i) => ((float)i, LoadState("tmp", substate, animObjectOverride, false)))
+                            .ToArray();
+                        var built = clipBuilder.MergeSingleFrameClips(sources);
+                        built.UseConstantTangents();
+
+                        onClip.CopyFrom(built);
+                        
+                        break;
+                    }
                 }
             }
 
             if (physbonesToReset.Count > 0) {
                 var param = physboneResetService.CreatePhysBoneResetter(physbonesToReset, name);
-                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
+                onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
 
             if (applyOffClip) {
@@ -264,10 +314,70 @@ namespace VF.Service {
 
             foreach (var muscleType in onClip.GetMuscleBindingTypes()) {
                 var trigger = fullBodyEmoteService.AddClip(onClip, muscleType);
-                onClip.SetConstant(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
+                onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
             }
 
             return onClip;
+        }
+
+        public static (IList<Renderer>, ShaderUtil.ShaderPropertyType? type) MatPropLookup(
+            bool allRenderers,
+            Renderer singleRenderer,
+            VFGameObject avatarObject,
+            [CanBeNull] string propName
+        ) {
+            IList<Renderer> renderers;
+            if (allRenderers) {
+                renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
+            } else {
+                renderers = new[] { singleRenderer };
+            }
+            renderers = renderers.NotNull().ToArray();
+            if (propName == null) {
+                return (renderers, null);
+            }
+
+            var found = renderers
+                .Select(r => (r, r.GetPropertyType(propName)))
+                .Where(pair => pair.Item2 != null)
+                .ToArray();
+            if (found.Length == 0) {
+                return (new Renderer[] {}, null);
+            }
+            // Limit to the material type of the first found renderer
+            var type = found[0].Item2;
+            renderers = found
+                .Where(pair => pair.Item2 == type)
+                .Select(pair => pair.Item1)
+                .ToArray();
+            return (renderers, type);
+        }
+
+        [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
+        public void DriveNonFloatTypes() {
+            var nonFloatParams = new HashSet<string>();
+            foreach (var c in manager.GetAllUsedControllers()) {
+                nonFloatParams.UnionWith(c.GetRaw().parameters
+                    .Where(p => p.type != AnimatorControllerParameterType.Float || c.GetType() != VRCAvatarDescriptor.AnimLayerType.FX)
+                    .Select(p => p.name));
+            }
+
+            var rewrites = new Dictionary<string, string>();
+            foreach (var (floatParam,targetParam,onValue) in drivenParams) {
+                if (nonFloatParams.Contains(targetParam)) {
+                    driveOtherTypesFromFloatService.Drive(floatParam, targetParam, onValue);
+                } else {
+                    rewrites.Add(floatParam.Name(), targetParam);
+                }
+            }
+
+            if (rewrites.Count > 0) {
+                foreach (var c in manager.GetAllUsedControllers()) {
+                    ((AnimatorController)c.GetRaw()).RewriteParameters(from =>
+                        rewrites.TryGetValue(from, out var to) ? to : from
+                    );
+                }
+            }
         }
     }
 }

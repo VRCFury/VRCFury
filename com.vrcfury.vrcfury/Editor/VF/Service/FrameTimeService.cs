@@ -40,7 +40,7 @@ namespace VF.Service {
             var clip = fx.NewClip("FrameTime Counter");
             clip.SetCurve(
                 EditorCurveBinding.FloatCurve("", typeof(Animator), timeSinceStart.Name()),
-                new FloatOrObjectCurve(AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000))
+                AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000)
             );
             layer.NewState("Time").WithAnimation(clip);
 

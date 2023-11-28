@@ -22,8 +22,11 @@ namespace VF.Builder {
             return result.ToArray();
         }
 
-        public static Rect GetEditorMainWindowPos()
-        {
+        public static Rect GetEditorMainWindowPos() {
+            if (Application.isBatchMode) {
+                return Rect.zero;
+            }
+            
             var containerWinType = GetAllDerivedTypes(System.AppDomain.CurrentDomain, typeof(ScriptableObject))
                 .Where(t => t.Name == "ContainerWindow")
                 .FirstOrDefault();

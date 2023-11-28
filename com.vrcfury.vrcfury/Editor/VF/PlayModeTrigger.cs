@@ -12,6 +12,7 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.PlayMode;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
@@ -20,10 +21,15 @@ namespace VF {
     [InitializeOnLoad]
     public class PlayModeTrigger {
         private static string tmpDir;
+        private static int nextPlayerId = 1;
 
         static PlayModeTrigger() {
             SceneManager.sceneLoaded += OnSceneLoaded;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            
+            if (ContactBase.OnValidatePlayers == null) {
+                ContactBase.OnValidatePlayers = (a, b) => true;
+            }
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
@@ -83,6 +89,11 @@ namespace VF {
                         if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
                             restartAv3Emulator = true;
                         }
+
+                        var playerId = nextPlayerId++;
+                        foreach (var contact in obj.GetComponentsInSelfAndChildren<ContactBase>()) {
+                            contact.playerId = playerId;
+                        }
                     } else {
                         var name = obj.name;
                         var failMarker = new GameObject(name + " (VRCFury Failed)");
@@ -99,7 +110,8 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        VRCFuryHapticSocketEditor.Bake(socket);
+                        var hapticContactsService = new HapticContactsService();
+                        VRCFuryHapticSocketEditor.Bake(socket, hapticContactsService);
                     });
                     Object.DestroyImmediate(socket);
                 }
@@ -111,8 +123,8 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        var mutableManager = new MutableManager(tmpDir);
-                        VRCFuryHapticPlugEditor.Bake(plug, mutableManager: mutableManager);
+                        var hapticContactsService = new HapticContactsService();
+                        VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
                     });
                     Object.DestroyImmediate(plug);
                 }

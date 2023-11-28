@@ -477,21 +477,19 @@ namespace VF.Feature {
                 "This feature will link an armature in a prop to the armature on the avatar base." +
                 " It can also be used to link a single object in the prop to a certain bone on the avatar's armature."));
 
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Link From:",
-                style => style.unityFontStyleAndWeight = FontStyle.Bold));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Link From:").Bold());
             container.Add(VRCFuryEditorUtils.WrappedLabel(
                 "For clothing, this should be the Hips bone in the clothing's Armature (or the 'main' bone if it doesn't have Hips).\n" +
                 "For non-clothing objects (things that you just want to re-parent), this should be the object you want moved."));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("propBone")));
 
             container.Add(new VisualElement { style = { paddingTop = 10 } });
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Link To:",
-                style => style.unityFontStyleAndWeight = FontStyle.Bold));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Link To:").Bold());
             var rootBoneLabelWhenSkin = VRCFuryEditorUtils.WrappedLabel(
                 "Select the bone that matches the one you selected in the clothing above.");
             var rootBoneLabelWhenReparent = VRCFuryEditorUtils.WrappedLabel(
                 "Select the bone you want to attach this object to.");
-            rootBoneLabelWhenReparent.style.display = DisplayStyle.None;
+            rootBoneLabelWhenReparent.SetVisible(false);
             container.Add(rootBoneLabelWhenSkin);
             container.Add(rootBoneLabelWhenReparent);
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
@@ -558,8 +556,8 @@ namespace VF.Feature {
                 }
 
                 var linkMode = GetLinkMode();
-                rootBoneLabelWhenReparent.style.display = linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
-                rootBoneLabelWhenSkin.style.display = linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot ? DisplayStyle.Flex : DisplayStyle.None;
+                rootBoneLabelWhenReparent.SetVisible(linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot);
+                rootBoneLabelWhenSkin.SetVisible(linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot);
                 
                 var links = GetLinks();
                 if (links == null) {

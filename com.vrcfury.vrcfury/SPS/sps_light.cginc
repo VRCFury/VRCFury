@@ -1,24 +1,26 @@
 #include "UnityShaderVariables.cginc"
 #include "sps_globals.cginc"
 #include "sps_utils.cginc"
+#include "sps_plus.cginc"
 
-// Type: 0=invalid 1=hole 2=ring 3=front
-// Root Subtype: 0=normal, 1=reversible (only valid when Type is non-zero)
-void sps_light_parse(float range, half4 color, out int type, out int subtype) {
+// Type: 0=invalid 1=hole 2=ring 3=front 4=SPS+
+void sps_light_parse(float range, half4 color, out int type) {
 	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
 		type = 0;
 		return;
 	}
-	if (_SPS_Target_LL_Lights < 0.5) {
-		const float thousandths = range % 0.001;
-		if (thousandths > 0.0001 && thousandths < 0.0003) {
-			// Legacy light coming from a lightless SPS socket
-			type = 0;
-			return;
-		}
-	}
 
 	const int legacyRange = round((range % 0.1) * 100);
+
+	if (_SPS_Plus_Enabled > 0.5) {
+		if (legacyRange == 1 || legacyRange == 2) {
+			const float thousandths = range % 0.001;
+			if (thousandths > 0.0001 && thousandths < 0.0003) {
+				type = 4;
+				return;
+			}
+		}
+	}
 
 	if (legacyRange == 1) type = 1;
 	if (legacyRange == 2) type = 2;
@@ -50,7 +52,41 @@ void sps_light_search(
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}
 	}
-	
+
+	// Fill in SPS light info from contacts
+	if (_SPS_Plus_Enabled > 0.5) {
+		float spsTriDistance;
+		int spsTriType;
+		sps_plus_search(spsTriDistance, spsTriType);
+		if (spsTriType > 0) {
+			bool spsLightFound = false;
+			int spsLightIndex = 0;
+			float spsMinError = 0;
+			for(int i = 0; i < 4; i++) {
+				if (lightType[i] != 4) continue;
+				const float3 myPos = lightLocalPos[i];
+				const float3 otherPos = lightLocalPos[spsLightIndex];
+				const float myError = abs(length(myPos) - spsTriDistance);
+				const float otherError = spsMinError;
+
+				bool imBetter = false;
+				if (!spsLightFound) imBetter = true;
+				else if (myError < 0.3 && myPos.z >= 0 && otherPos.z < 0) imBetter = true;
+				else if (otherError < 0.3 && otherPos.z >= 0 && myPos.z < 0) imBetter = false;
+				else if (myError < otherError) imBetter = true;
+
+				if (imBetter) {
+					spsLightFound = true;
+					spsLightIndex = i;
+					spsMinError = myError;
+				}
+			}
+			if (spsLightFound) {
+				lightType[spsLightIndex] = spsTriType;
+			}
+		}
+	}
+
 	// Find nearest socket root
 	int rootIndex = 0;
 	bool rootFound = false;
@@ -78,17 +114,6 @@ void sps_light_search(
 	 			frontFound = true;
 	 			frontIndex = i;
 	 			minDistance = distFromRoot;
-	 		}
-	 	}
-	} else {
-	 	// There were no root lights nearby. If we find a front light, use it as a root instead
-	 	float minDistance = -1;
-	 	for(int i = 0; i < 4; i++) {
-	 		const float distance = length(lightLocalPos[i]);
-	 		if (lightType[i] == 3 && (distance < minDistance || minDistance < 0)) {
-	 			rootFound = true;
-	 			rootIndex = i;
-	 			minDistance = distance;
 	 		}
 	 	}
 	}
