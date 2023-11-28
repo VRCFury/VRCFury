@@ -25,7 +25,6 @@ namespace VF.Builder.Haptics {
         public static SkinnedMeshRenderer NormalizeRenderer(
             Renderer renderer,
             Transform rootTransform,
-            MutableManager mutableManager,
             float worldLength
         ) {
             // Convert MeshRenderer to SkinnedMeshRenderer
@@ -90,7 +89,7 @@ namespace VF.Builder.Haptics {
             Material mat,
             float worldLength,
             float[] activeFromMask,
-            MutableManager mutableManager
+            string tmpDir
         ) {
             var shaderRotation = Quaternion.identity;
             if (IsLocked(mat)) {
@@ -113,7 +112,7 @@ namespace VF.Builder.Haptics {
             mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
             mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
-            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, true));
+            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, tmpDir, activeFromMask, true));
             VRCFuryEditorUtils.MarkDirty(mat);
         }
         

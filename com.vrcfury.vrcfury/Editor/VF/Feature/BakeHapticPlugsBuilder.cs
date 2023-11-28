@@ -14,6 +14,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
@@ -25,10 +26,11 @@ namespace VF.Feature {
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
-        [VFAutowired] private readonly TriangulationService _triangulationService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
 
         private Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
@@ -45,8 +47,9 @@ namespace VF.Feature {
                     PhysboneUtils.RemoveFromPhysbones(plug.transform);
                     var bakeInfo = VRCFuryHapticPlugEditor.Bake(
                         plug,
+                        hapticContacts,
+                        tmpDir,
                         usedRenderers,
-                        mutableManager: mutableManager,
                         deferMaterialConfig: true
                     );
                     if (bakeInfo == null) continue;
@@ -66,8 +69,7 @@ namespace VF.Feature {
             var usedNames = new List<string>();
 
             AnimationClip tipLightOnClip = null;
-            AnimationClip triangulationOnClip = null;
-            var i = 0;
+            AnimationClip spsPlusClip = null;
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
@@ -135,12 +137,12 @@ namespace VF.Feature {
                         }
                     }
 
-                    if (spsOptions.GetOptions().enableLightlessToggle2 && plug.enableSps) {
-                        var triRoot = GameObjects.Create("SpsTriangulator", bakeRoot);
-                        triRoot.active = false;
-                        triRoot.worldScale = Vector3.one;
+                    if (plug.enableSps && spsOptions.GetOptions().enableSpsPlusOption) {
+                        var plusRoot = GameObjects.Create("SpsPlus", bakeRoot);
+                        plusRoot.active = false;
+                        plusRoot.worldScale = Vector3.one;
                         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
-                            var p = triRoot.AddComponent<ScaleConstraint>();
+                            var p = plusRoot.AddComponent<ScaleConstraint>();
                             p.AddSource(new ConstraintSource() {
                                 sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
                                 weight = 1
@@ -149,58 +151,58 @@ namespace VF.Feature {
                             p.constraintActive = true;
                             p.locked = true;
 
-                            for (var partyI = 0; partyI <= 1; partyI++) {
-                                var party = partyI == 0 ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others;
-                                var prefix = partyI == 0 ? "Self" : "Other";
-                                
-                                var tri = _triangulationService.CreateTriangulator(triRoot, "Target", $"sps_tri_{i}",
-                                    new[] { HapticUtils.TagSpsSocketRoot }, party, useHipAvoidance: plug.useHipAvoidance);
-                                var triFront = _triangulationService.CreateTriangulator(triRoot, "Norm", $"sps_tri_{i}_front",
-                                    new[] { HapticUtils.TagSpsSocketFront }, party, useHipAvoidance: plug.useHipAvoidance);
-                                var isHole = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
-                                    "IsHole", 3f, new[] { HapticUtils.TagSpsSocketIsHole },
-                                    party, useHipAvoidance: plug.useHipAvoidance);
-                                var isRing = hapticContacts.AddReceiver(triRoot, Vector3.zero, $"sps_tri_{i}_lightMarker",
-                                    "IsRing", 3f, new[] { HapticUtils.TagSpsSocketIsRing },
-                                    party, useHipAvoidance: plug.useHipAvoidance);
-                            
-                                foreach (var r in renderers) {
-                                    _triangulationService.SendToShader(tri, $"_SPS_Tri_{prefix}_Root", r.renderer);
-                                    _triangulationService.SendToShader(triFront, $"_SPS_Tri_{prefix}_Front", r.renderer);
-                                    _triangulationService.SendParamToShader(isHole, $"_SPS_Tri_{prefix}_IsHole", r.renderer);
-                                    _triangulationService.SendParamToShader(isRing, $"_SPS_Tri_{prefix}_IsRing", r.renderer);
-                                }
+                            VFAFloat CreateReceiver(string tag, bool self) {
+                                return hapticContacts.AddReceiver(
+                                    plusRoot,
+                                    Vector3.zero,
+                                    $"spsll_{tag}_{(self ? "self" : "others")}",
+                                    $"{tag}{(self ? "Self" : "Others")}",
+                                    3f,
+                                    new[] { tag },
+                                    self ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others,
+                                    useHipAvoidance: plug.useHipAvoidance);
                             }
+                            void SendParam(string shaderParam, string tag) {
+                                var oneClip = fx.NewClip($"{shaderParam}_one");
+                                foreach (var r in renderers.Select(r => r.renderer)) {
+                                    var path = r.owner().GetPath(manager.AvatarObject);
+                                    var binding = EditorCurveBinding.FloatCurve(path, r.GetType(), $"material.{shaderParam}");
+                                    oneClip.SetCurve(binding, 1);
+                                }
+
+                                var self = CreateReceiver(tag, true);
+                                var selfBlend = math.MakeDirect("selfBlend");
+                                selfBlend.Add(self, oneClip);
+                                var others = CreateReceiver(tag, false);
+                                var othersBlend = math.MakeDirect("othersBlend");
+                                othersBlend.Add(others, oneClip);
+                                directTree.Add(math.GreaterThan(self, others).create(selfBlend, othersBlend));
+                            }
+
+                            SendParam("_SPS_Plus_Ring", HapticUtils.TagSpsSocketIsRing);
+                            SendParam("_SPS_Plus_Hole", HapticUtils.TagSpsSocketIsHole);
                         }
                         
-                        if (triangulationOnClip == null) {
-                            var param = fx.NewBool("triangulationOn", synced: true);
+                        if (spsPlusClip == null) {
+                            var param = fx.NewBool("spsPlus", synced: true);
                             manager.GetMenu()
                                 .NewMenuToggle(
-                                    $"{spsOptions.GetOptionsPath()}/<b>SPSLL (Alpha)<\\/b>\n<size=20>Use contacts instead of lights - Experimental!",
+                                    $"{spsOptions.GetOptionsPath()}/<b>SPS+ (Alpha)<\\/b>\n<size=20>Use contacts for additional data - Experimental!",
                                     param);
-                            triangulationOnClip = fx.NewClip("TriangulationOn");
-                            var layer = fx.NewLayer("Lightless SPS");
+                            spsPlusClip = fx.NewClip("SpsPlus");
+                            var layer = fx.NewLayer("SPS+");
                             var off = layer.NewState("Off");
-                            var on = layer.NewState("On").WithAnimation(triangulationOnClip);
+                            var on = layer.NewState("On").WithAnimation(spsPlusClip);
                             var whenOn = param.IsTrue();
                             off.TransitionsTo(on).When(whenOn);
                             on.TransitionsTo(off).When(whenOn.Not());
                         }
 
-                        clipBuilder.Enable(triangulationOnClip, triRoot);
+                        clipBuilder.Enable(spsPlusClip, plusRoot);
                         foreach (var r in renderers) {
-                            triangulationOnClip.SetCurve(
-                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Self_Enabled"),
+                            spsPlusClip.SetCurve(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Plus_Enabled"),
                                 1
-                            );
-                            triangulationOnClip.SetCurve(
-                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Tri_Other_Enabled"),
-                                1
-                            );
-                            triangulationOnClip.SetCurve(
-                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Target_LL_Lights"),
-                                0
                             );
                         }
                     }

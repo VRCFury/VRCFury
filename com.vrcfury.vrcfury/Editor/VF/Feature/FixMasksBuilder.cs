@@ -6,12 +6,20 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [VFService]
     public class FixMasksBuilder : FeatureBuilder {
+        private HashSet<AnimatorStateMachine> migratedFromGesture = new HashSet<AnimatorStateMachine>();
+
+        public bool IsMigratedFromGesture(AnimatorStateMachine sm) {
+            return migratedFromGesture.Contains(sm);
+        }
+
         [FeatureBuilderAction(FeatureOrder.FixGestureFxConflict)]
         public void FixGestureFxConflict() {
             if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
@@ -28,6 +36,8 @@ namespace VF.Feature {
             if (!activateGestureToFxTransfer) {
                 return;
             }
+
+            migratedFromGesture.UnionWith(gesture.GetRaw().GetLayers().Select(l => l.stateMachine));
 
             var fx = manager.GetFx();
             fx.TakeOwnershipOf(gesture.GetRaw(), putOnTop: true);

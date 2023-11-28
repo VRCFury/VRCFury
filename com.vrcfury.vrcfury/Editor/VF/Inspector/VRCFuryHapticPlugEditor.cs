@@ -12,6 +12,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
 
@@ -300,8 +301,9 @@ namespace VF.Inspector {
         [CanBeNull]
         public static BakeResult Bake(
             VRCFuryHapticPlug plug,
+            HapticContactsService hapticContactsService,
+            string tmpDir,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
-            MutableManager mutableManager = null,
             bool deferMaterialConfig = false
         ) {
             var transform = plug.transform;
@@ -346,17 +348,17 @@ namespace VF.Inspector {
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
             var senders = GameObjects.Create("Senders", bakeRoot);
-            HapticUtils.AddSender(senders, Vector3.zero, "Length", worldLength, new [] { HapticUtils.CONTACT_PEN_MAIN }, useHipAvoidance: plug.useHipAvoidance);
-            HapticUtils.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH }, useHipAvoidance: plug.useHipAvoidance);
-            HapticUtils.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength, useHipAvoidance: plug.useHipAvoidance);
-            HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT }, useHipAvoidance: plug.useHipAvoidance);
+            hapticContactsService.AddSender(senders, Vector3.zero, "Length", worldLength, new [] { HapticUtils.CONTACT_PEN_MAIN }, useHipAvoidance: plug.useHipAvoidance);
+            hapticContactsService.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH }, useHipAvoidance: plug.useHipAvoidance);
+            hapticContactsService.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength, useHipAvoidance: plug.useHipAvoidance);
+            hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT }, useHipAvoidance: plug.useHipAvoidance);
             
             // TODO: Check if there are 0 renderers,
             // or if there are 0 materials on any of the renderers
 
             RendererResult[] rendererResults;
 
-            if (mutableManager != null && (plug.configureTps || plug.enableSps)) {
+            if (plug.configureTps || plug.enableSps) {
                 var checkboxName = plug.enableSps ? "Enable SPS" : "Auto-Configure TPS";
                 if (renderers.Count == 0) {
                     throw new Exception(
@@ -366,7 +368,7 @@ namespace VF.Inspector {
                 rendererResults = renderers.Select(renderer => {
                     var owner = renderer.owner();
                     try {
-                        var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, mutableManager, worldLength);
+                        var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, worldLength);
 
                         var spsBlendshapes = plug.spsBlendshapes
                             .Where(b => skin.sharedMesh.HasBlendshape(b))
@@ -379,7 +381,7 @@ namespace VF.Inspector {
                             SpsAutoRigger.AutoRig(skin, worldLength, worldRadius, activeFromMask);
                         }
 
-                        var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, mutableManager.GetTmpDir(), activeFromMask, false, spsBlendshapes) : null;
+                        var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, tmpDir, activeFromMask, false, spsBlendshapes) : null;
 
                         var finishedCopies = new HashSet<Material>();
                         Material ConfigureMaterial(Material mat) {
@@ -393,7 +395,7 @@ namespace VF.Inspector {
                                     finishedCopies.Add(copy);
                                     SpsConfigurer.ConfigureSpsMaterial(skin, copy, worldLength,
                                         spsBaked,
-                                        mutableManager, plug, bakeRoot, spsBlendshapes);
+                                        plug, bakeRoot, spsBlendshapes);
                                     return copy;
                                 }
                                 if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
@@ -402,7 +404,7 @@ namespace VF.Inspector {
                                     finishedCopies.Add(copy);
                                     TpsConfigurer.ConfigureTpsMaterial(skin, copy, worldLength,
                                         activeFromMask,
-                                        mutableManager);
+                                        tmpDir);
                                     return copy;
                                 }
 

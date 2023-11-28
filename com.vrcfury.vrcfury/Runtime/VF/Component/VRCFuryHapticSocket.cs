@@ -9,7 +9,8 @@ namespace VF.Component {
             None,
             Hole,
             Ring,
-            Auto
+            Auto,
+            RingOneWay
         }
 
         public enum EnableTouchZone {

@@ -97,7 +97,7 @@ namespace VF.Feature {
                     name = HapticUtils.GetNextName(usedNames, name);
                     Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
 
-                    var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket);
+                    var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket, hapticContacts);
 
                     // Haptic receivers
                     {

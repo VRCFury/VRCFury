@@ -13,6 +13,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Menu;
 using VF.Model;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -42,14 +43,17 @@ namespace VF.Inspector {
                 if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
                 var section = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
                 var modeField = new PopupField<string>(
-                    new List<string>() { "Auto", "Hole", "Ring" },
-                    addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
+                    new List<string>() { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
+                    addLightProp.enumValueIndex == 4 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
                 );
                 modeField.RegisterValueChangedCallback(cb => {
-                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : 3;
+                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : cb.newValue == "One-Way Ring (Uncommon)" ? 4 : 3;
                     addLightProp.serializedObject.ApplyModifiedProperties();
                 });
-                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField, tooltip: "'Auto' will set to Hole if attached to hips or head bone."));
+                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField,
+                    tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n" +
+                             "'Rings' can be entered from either side using SPS, but TPS/DPS will only enter one side.\n" +
+                             "'One-Way Rings' can only be entered from one side."));
                 return section;
             }, addLightProp));
 
@@ -186,7 +190,9 @@ namespace VF.Inspector {
             } else if (type == VRCFuryHapticSocket.AddLight.Hole) {
                 text += " (Hole)\nPlug follows orange arrow";
             } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
-                text += " (Ring)\nPlug follows orange arrow";
+                text += " (Ring)\nSPS enters either direction\nDPS/TPS only follow orange arrow";
+            } else if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
+                text += " (One-Way Ring)\nPlug follows orange arrow";
             } else {
                 text += " (SPS disabled)";
                 discColor = Color.red;
@@ -201,11 +207,22 @@ namespace VF.Inspector {
                 Handles.color = discColor;
                 Handles.DrawWireDisc(worldPos, worldForward, 0.04f);
             });
-            if (type == VRCFuryHapticSocket.AddLight.Ring) {
+            if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos + worldForward * 0.05f,
                     worldPos + worldForward * -0.05f,
                     orange
+                );
+            } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
+                VRCFuryGizmoUtils.DrawArrow(
+                    worldPos,
+                    worldPos + worldForward * -0.05f,
+                    orange
+                );
+                VRCFuryGizmoUtils.DrawArrow(
+                    worldPos,
+                    worldPos + worldForward * 0.05f,
+                    Color.white
                 );
             } else {
                 VRCFuryGizmoUtils.DrawArrow(
@@ -261,7 +278,7 @@ namespace VF.Inspector {
             DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
-        public static VFGameObject Bake(VRCFuryHapticSocket socket) {
+        public static VFGameObject Bake(VRCFuryHapticSocket socket, HapticContactsService hapticContactsService) {
             var transform = socket.transform;
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "socket");
@@ -280,10 +297,21 @@ namespace VF.Inspector {
                 rootTags.Add(HapticUtils.TagTpsOrfRoot);
                 rootTags.Add(HapticUtils.TagSpsSocketRoot);
                 if (lightType != VRCFuryHapticSocket.AddLight.None) {
-                    rootTags.Add(lightType == VRCFuryHapticSocket.AddLight.Ring ? HapticUtils.TagSpsSocketIsRing : HapticUtils.TagSpsSocketIsHole);
+                    switch (lightType) {
+                        case VRCFuryHapticSocket.AddLight.Ring:
+                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
+                            break;
+                        case VRCFuryHapticSocket.AddLight.RingOneWay:
+                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
+                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
+                            break;
+                        default:
+                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
+                            break;
+                    }
                 }
-                HapticUtils.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
-                HapticUtils.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
+                hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
+                hapticContactsService.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
                     new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront }, useHipAvoidance: socket.useHipAvoidance);
             }
 
