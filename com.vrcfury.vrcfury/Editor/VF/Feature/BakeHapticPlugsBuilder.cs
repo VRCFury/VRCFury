@@ -137,7 +137,7 @@ namespace VF.Feature {
                         }
                     }
 
-                    if (plug.enableSps) {
+                    if (plug.enableSps && spsOptions.GetOptions().enableSpsPlusOption) {
                         var plusRoot = GameObjects.Create("SpsPlus", bakeRoot);
                         plusRoot.active = false;
                         plusRoot.worldScale = Vector3.one;
