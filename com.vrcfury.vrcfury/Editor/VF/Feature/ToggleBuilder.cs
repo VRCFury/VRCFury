@@ -307,8 +307,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     if (inClip.GetObjectCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
                     if (outClip.GetObjectCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
                 } else if (binding.type == typeof(GameObject)) {
-                    if (inClip.GetFloatCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
-                    if (outClip.GetFloatCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
+                    // Only expand gameobject "enabled" into intro and outro if we're turning something "on"
+                    // If we're turning it off, it probably shouldn't be off during the transition.
+                    var first = curve.GetFirst().GetFloat();
+                    var last = curve.GetLast().GetFloat();
+                    if (first > 0.99 && last > 0.99) {
+                        if (inClip.GetFloatCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
+                        if (outClip.GetFloatCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
+                    }
                 }
             }
 
