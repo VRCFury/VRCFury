@@ -60,6 +60,7 @@ namespace VF.Feature.Base {
         FakeHeadBuilder,
 
         // Needs to happen after toggles
+        HapticsCreateMenus,
         HapticsAnimationRewrites,
         
         // Needs to run after all TPS materials are done

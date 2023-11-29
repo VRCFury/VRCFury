@@ -33,7 +33,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
 
-        [FeatureBuilderAction]
+        [FeatureBuilderAction(FeatureOrder.HapticsCreateMenus)]
         public void Apply() {
             var fx = GetFx();
             var usedNames = new List<string>();
