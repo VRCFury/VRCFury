@@ -83,10 +83,10 @@ namespace VF.Feature {
                 return;
             }
 
-            var mmdDetector = fx.NewFloat("MMDDetector", def: 0);
+            var mmdDetector = fx.NewFloat("MMDDetector", def: 1);
             var mmdDetectorClip = new AnimationClip();
             // MMD worlds will disable this layer, setting HandsActive back to the default of 0
-            mmdDetectorClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), mmdDetector.Name()), 1);
+            mmdDetectorClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), mmdDetector.Name()), 0);
             layer1.NewState("Mmd Detector").WithAnimation(mmdDetectorClip);
             layer1.weight = 1;
 
