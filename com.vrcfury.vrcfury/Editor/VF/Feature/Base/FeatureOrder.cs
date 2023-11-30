@@ -39,6 +39,8 @@ namespace VF.Feature.Base {
         CollectToggleExclusiveTags,
         // Needs to run before ArmatureLinkBuilder, which reads active state of objects
         ApplyRestState3,
+        // Needs to happen after all other controller params for quest sync
+        HapticsCreateMenus,
         
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
@@ -60,7 +62,6 @@ namespace VF.Feature.Base {
         FakeHeadBuilder,
 
         // Needs to happen after toggles
-        HapticsCreateMenus,
         HapticsAnimationRewrites,
         
         // Needs to run after all TPS materials are done
