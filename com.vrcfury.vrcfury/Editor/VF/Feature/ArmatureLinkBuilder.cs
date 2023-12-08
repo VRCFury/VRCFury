@@ -98,16 +98,6 @@ namespace VF.Feature {
                     Object.DestroyImmediate(c);
                 }
 
-                if (ShouldReuseBone()) {
-                    RewriteSkins(propBone, avatarBone);
-                }
-
-                // If the transform isn't used and contains no children, we can just throw it away
-                if (!IsTransformUsed(propBone)) {
-                    propBone.Destroy();
-                    continue;
-                }
-
                 var animatedParents = new List<VFGameObject>();
                 {
                     var o = propBone.parent;
@@ -178,6 +168,16 @@ namespace VF.Feature {
                     propBone.worldRotation = avatarBone.worldRotation;
                     propBone.worldScale = avatarBone.worldScale * scalingFactor;
                 }
+                
+                if (ShouldReuseBone()) {
+                    RewriteSkins(propBone, avatarBone);
+                }
+
+                // If the transform isn't used and contains no children, we can just throw it away
+                if (!IsTransformUsed(propBone)) {
+                    propBone.Destroy();
+                    continue;
+                }
             }
 
             // Rewrite animations that turn off parents
@@ -199,7 +199,7 @@ namespace VF.Feature {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
                 if (skin.bones.Contains(fromBone)) {
-                    if (skin.sharedMesh) {
+                    if (skin.sharedMesh != null) {
                         skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
                         var mesh = skin.sharedMesh;
                         mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
