@@ -51,7 +51,7 @@ namespace VF.Feature {
             var doNotReparent = new HashSet<Transform>();
             doNotReparent.UnionWith(anim.positionIsAnimated.Children());
             doNotReparent.UnionWith(anim.rotationIsAnimated.Children());
-            doNotReparent.UnionWith(anim.physboneRoot.Children());
+            doNotReparent.UnionWith(anim.physboneChild);
             doNotReparent.UnionWith(doNotReparent.AllChildren().ToArray());
 
             var debugLog = "";
@@ -85,6 +85,7 @@ namespace VF.Feature {
                     if (anim.rotationIsAnimated.Contains(propBone)) return false;
                     if (anim.scaleIsAnimated.Contains(propBone)) return false;
                     if (anim.physboneRoot.Contains(propBone)) return false;
+                    if (anim.physboneChild.Contains(propBone)) return false;
                     return true;
                 }
 
@@ -146,15 +147,13 @@ namespace VF.Feature {
                     || anim.rotationIsAnimated.Contains(propBone)
                     || anim.scaleIsAnimated.Contains(propBone);
                 if (transformAnimated) {
-                    var wrapper = GameObjects.Create(propBone.name, propBone.parent, propBone);
-                    var outer = GameObjects.Create("Transform Maintainer", wrapper, propBone.parent);
+                    var wrapper = GameObjects.Create("Transform Maintainer", propBone.parent, propBone);
+                    var outer = GameObjects.Create("Inverted Transform", wrapper, propBone.parent);
                     mover.Move(propBone, outer);
                     wrapper.localPosition = Vector3.zero;
                     wrapper.localRotation = Quaternion.identity;
                     wrapper.localScale = Vector3.one;
-                    mover.Move(outer, propBone.parent);
-                    wrapper.Destroy();
-                    propBone = outer;
+                    propBone = wrapper;
                 }
                 
                 foreach (var a in animatedParents) {
