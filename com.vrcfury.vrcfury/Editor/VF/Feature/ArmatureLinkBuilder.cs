@@ -49,7 +49,7 @@ namespace VF.Feature {
             var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).ToImmutableHashSet();
 
             var doNotReparent = new HashSet<Transform>();
-            // We still reparent scale-animated things, because users take advantage of this to "scale to 0" every bone
+            // We still reparent scale-animated things, because some users take advantage of this to "scale to 0" every bone
             doNotReparent.UnionWith(anim.positionIsAnimated.Children());
             doNotReparent.UnionWith(anim.rotationIsAnimated.Children());
             doNotReparent.UnionWith(anim.physboneRoot.Children()); // Physbone roots are the same as rotation being animated
