@@ -40,28 +40,13 @@ namespace VF.Feature {
             }
 
             var linkMode = GetLinkMode();
-            
-            // Lock bones to avatar positions
-            {
-                var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
-                if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
-                    if (!keepBoneOffsets) {
-                        links.propMain.worldPosition = links.avatarMain.worldPosition;
-                        links.propMain.worldRotation = links.avatarMain.worldRotation;
-                        links.propMain.worldScale = links.avatarMain.worldScale;
-                    }
-                } else if (!keepBoneOffsets) {
-                    var (_, _, scalingFactor) = GetScalingFactor(links);
-                    Debug.Log("Detected scaling factor: " + scalingFactor);
-                    foreach (var (propBone, avatarBone) in links.mergeBones.Reverse()) {
-                        propBone.worldPosition = avatarBone.worldPosition;
-                        propBone.worldRotation = avatarBone.worldRotation;
-                        propBone.worldScale = avatarBone.worldScale * scalingFactor;
-                    }
-                }
-            }
+            var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
 
             if (linkMode == ArmatureLink.ArmatureLinkMode.SkinRewrite || linkMode == ArmatureLink.ArmatureLinkMode.MergeAsChildren || linkMode == ArmatureLink.ArmatureLinkMode.ParentConstraint) {
+
+                var (_, _, scalingFactor) = GetScalingFactor(links);
+                Debug.Log("Detected scaling factor: " + scalingFactor);
+
                 var anim = findAnimatedTransformsService.Find();
                 // Some artists do a dumb thing and put a physbone on the clothing's hips (for things like a skirt), but don't
                 // ignore any transforms (which would cause our merger to avoid merging things like... the avatar's arms)
@@ -105,6 +90,14 @@ namespace VF.Feature {
                 var skinRewriteMapping = new Dictionary<Transform, Transform>();
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
                     skinRewriteMapping[propBone.transform] = avatarBone.transform;
+                }
+                
+                foreach (var (propBone, avatarBone) in links.mergeBones.Reverse()) {
+                    if (!keepBoneOffsets) {
+                        propBone.worldPosition = avatarBone.worldPosition;
+                        propBone.worldRotation = avatarBone.worldRotation;
+                        propBone.worldScale = avatarBone.worldScale * scalingFactor;
+                    }
                 }
 
                 foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
@@ -243,6 +236,12 @@ namespace VF.Feature {
                     }
                 }
             } else if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+                if (!keepBoneOffsets) {
+                    links.propMain.worldPosition = links.avatarMain.worldPosition;
+                    links.propMain.worldRotation = links.avatarMain.worldRotation;
+                    links.propMain.worldScale = links.avatarMain.worldScale;
+                }
+                
                 var propBone = links.propMain;
                 var avatarBone = links.avatarMain;
                 foreach (var c in propBone.GetComponents<ParentConstraint>()) {
