@@ -42,16 +42,20 @@ namespace VF.Feature {
             var linkMode = GetLinkMode();
             var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
 
-            var (_, _, scalingFactor) = GetScalingFactor(links);
+            var (_, _, scalingFactor) = GetScalingFactor(links, linkMode);
             Debug.Log("Detected scaling factor: " + scalingFactor);
 
             var anim = findAnimatedTransformsService.Find();
             var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).ToImmutableHashSet();
 
             var doNotReparent = new HashSet<Transform>();
+            // We still reparent scale-animated things, because users take advantage of this to "scale to 0" every bone
             doNotReparent.UnionWith(anim.positionIsAnimated.Children());
             doNotReparent.UnionWith(anim.rotationIsAnimated.Children());
-            doNotReparent.UnionWith(anim.physboneChild);
+            doNotReparent.UnionWith(anim.physboneRoot.Children()); // Physbone roots are the same as rotation being animated
+            doNotReparent.UnionWith(anim.physboneChild); // Physbone children can't be reparented, because they must remain as children of the physbone root
+
+            // Expand the list to include all transitive children
             doNotReparent.UnionWith(doNotReparent.AllChildren().ToArray());
 
             var debugLog = "";
@@ -61,7 +65,7 @@ namespace VF.Feature {
                 debugLog += propBone.GetPath(links.propMain) + ": " + string.Join(",", sources) + "\n";
             }
             if (debugLog != "") {
-                Debug.LogWarning(
+                Debug.Log(
                     "Armature Link found animations targeting these bones:\n" +
                     debugLog);
             }
@@ -140,9 +144,6 @@ namespace VF.Feature {
                     var wrapper = GameObjects.Create("Transform Maintainer", propBone.parent, propBone);
                     var outer = GameObjects.Create("Inverted Transform", wrapper, propBone.parent);
                     mover.Move(propBone, outer);
-                    wrapper.localPosition = Vector3.zero;
-                    wrapper.localRotation = Quaternion.identity;
-                    wrapper.localScale = Vector3.one;
                     propBone = wrapper;
                 }
                 
@@ -153,7 +154,7 @@ namespace VF.Feature {
                     wrapper.active = a.active;
                     animLink.Put(a, wrapper);
                 }
-
+                
                 if (propBone != _propBone) {
                     var wrapper = GameObjects.Create(newName, propBone.parent, propBone);
                     mover.Move(propBone, wrapper);
@@ -242,18 +243,22 @@ namespace VF.Feature {
             }
         }
 
-        private (float, float, float) GetScalingFactor(Links links) {
+        private (float, float, float) GetScalingFactor(Links links, ArmatureLink.ArmatureLinkMode linkMode) {
             var avatarMainScale = Math.Abs(links.avatarMain.transform.lossyScale.x);
             var propMainScale = Math.Abs(links.propMain.transform.lossyScale.x);
             var scalingFactor = model.skinRewriteScalingFactor;
 
             if (scalingFactor <= 0) {
-                scalingFactor = propMainScale / avatarMainScale;
-                if (model.scalingFactorPowersOf10Only) {
-                    var log = Math.Log10(scalingFactor);
-                    double Mod(double a, double n) => (a % n + n) % n;
-                    log = (Mod(log, 1) > 0.75) ? Math.Ceiling(log) : Math.Floor(log);
-                    scalingFactor = (float)Math.Pow(10, log);
+                if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+                    scalingFactor = 1;
+                } else {
+                    scalingFactor = propMainScale / avatarMainScale;
+                    if (model.scalingFactorPowersOf10Only) {
+                        var log = Math.Log10(scalingFactor);
+                        double Mod(double a, double n) => (a % n + n) % n;
+                        log = (Mod(log, 1) > 0.75) ? Math.Ceiling(log) : Math.Floor(log);
+                        scalingFactor = (float)Math.Pow(10, log);
+                    }
                 }
             }
 
@@ -551,7 +556,7 @@ namespace VF.Feature {
                 }
                 var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
                 var text = new List<string>();
-                var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links);
+                var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links, linkMode);
                 text.Add($"Merging to bone: {links.avatarMain.GetPath(avatarObject)}");
                 text.Add($"Link Mode: {linkMode}");
                 text.Add($"Keep Bone Offsets: {keepBoneOffsets}");
