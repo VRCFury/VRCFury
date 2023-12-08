@@ -17,7 +17,6 @@ namespace VF.Service {
             public HashSet<Transform> positionIsAnimated = new HashSet<Transform>();
             public HashSet<Transform> rotationIsAnimated = new HashSet<Transform>();
             public HashSet<Transform> physboneRoot = new HashSet<Transform>();
-            public HashSet<Transform> physboneChild = new HashSet<Transform>();
             public HashSet<Transform> activated = new HashSet<Transform>();
             private Dictionary<Transform, List<string>> debugSources = new Dictionary<Transform, List<string>>();
 
@@ -46,15 +45,13 @@ namespace VF.Service {
                     .ToArray();
 
                 if (nonIgnoredChildren.Length > 1 && physBone.multiChildType == VRCPhysBoneBase.MultiChildType.Ignore) {
-                    // Root is ignored
+                    output.physboneRoot.UnionWith(nonIgnoredChildren.Select(o => o.transform));
+                    foreach (var r in nonIgnoredChildren) {
+                        output.AddDebugSource(r, $"Physbone on {path}");
+                    }
                 } else {
                     output.physboneRoot.Add(root);
                     output.AddDebugSource(root, $"Physbone on {path}");
-                }
-
-                output.physboneChild.UnionWith(nonIgnoredChildren.Select(o => o.transform));
-                foreach (var r in nonIgnoredChildren) {
-                    output.AddDebugSource(r, $"Physbone on {path}");
                 }
             }
 

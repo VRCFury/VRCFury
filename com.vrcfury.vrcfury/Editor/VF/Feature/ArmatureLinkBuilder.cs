@@ -46,24 +46,13 @@ namespace VF.Feature {
             Debug.Log("Detected scaling factor: " + scalingFactor);
 
             var anim = findAnimatedTransformsService.Find();
-            // Some artists do a dumb thing and put a physbone on the clothing's hips (for things like a skirt), but don't
-            // ignore any transforms (which would cause our merger to avoid merging things like... the avatar's arms)
-            // We fix this by ignoring types of animations on those bones
             var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).ToImmutableHashSet();
-            foreach (var (propBone, avatarBone) in links.mergeBones) {
-                if (avatarHumanoidBones.Contains(avatarBone)) {
-                    anim.positionIsAnimated.Remove(propBone);
-                    anim.rotationIsAnimated.Remove(propBone);
-                    anim.physboneChild.Remove(propBone);
-                    anim.physboneRoot.Remove(propBone);
-                }
-            }
 
-            var doNotMerge = new HashSet<Transform>();
-            doNotMerge.UnionWith(anim.positionIsAnimated.Children());
-            doNotMerge.UnionWith(anim.rotationIsAnimated.Children());
-            doNotMerge.UnionWith(anim.physboneChild);
-            doNotMerge.UnionWith(doNotMerge.AllChildren());
+            var doNotReparent = new HashSet<Transform>();
+            doNotReparent.UnionWith(anim.positionIsAnimated.Children());
+            doNotReparent.UnionWith(anim.rotationIsAnimated.Children());
+            doNotReparent.UnionWith(anim.physboneRoot.Children());
+            doNotReparent.UnionWith(doNotReparent.AllChildren().ToArray());
 
             var debugLog = "";
             foreach (var (propBone,avatarBone) in links.mergeBones) {
@@ -81,12 +70,14 @@ namespace VF.Feature {
 
             // Move over all the old components / children from the old location to a new child
             var animLink = new VFMultimap<VFGameObject, VFGameObject>();
-            foreach (var (propBone, avatarBone) in links.mergeBones) {
-                bool ShouldMerge() {
+            foreach (var (_propBone, avatarBone) in links.mergeBones) {
+                var propBone = _propBone;
+
+                bool ShouldReparent() {
                     if (propBone == links.propMain) return true;
                     if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) return false;
                     if (avatarHumanoidBones.Contains(avatarBone)) return true;
-                    if (doNotMerge.Contains(propBone)) return false;
+                    if (doNotReparent.Contains(propBone)) return false;
                     return true;
                 }
                 bool ShouldReuseBone() {
@@ -94,11 +85,10 @@ namespace VF.Feature {
                     if (anim.rotationIsAnimated.Contains(propBone)) return false;
                     if (anim.scaleIsAnimated.Contains(propBone)) return false;
                     if (anim.physboneRoot.Contains(propBone)) return false;
-                    if (anim.physboneChild.Contains(propBone)) return false;
                     return true;
                 }
 
-                if (!ShouldMerge()) {
+                if (!ShouldReparent()) {
                     continue;
                 }
 
@@ -136,9 +126,7 @@ namespace VF.Feature {
                 // Move it on over
                 var newName = $"[VF{uniqueModelNum}] {propBone.name}";
                 if (propBone.name != rootName) newName += $" from {rootName}";
-                if (anim.physboneChild.Contains(propBone)) {
-                    newName += " (Child of PhysBone)";
-                } else if (anim.positionIsAnimated.Contains(propBone)) {
+                if (anim.positionIsAnimated.Contains(propBone)) {
                     newName += " (Animated Position)";
                 } else if (anim.physboneRoot.Contains(propBone)) {
                     newName += " (Root of Physbone)";
@@ -154,18 +142,38 @@ namespace VF.Feature {
                     newName += " (Referenced Externally)";
                 }
 
-                if (animatedParents.Count == 0) {
-                    mover.Move(propBone, avatarBone, newName);
-                } else {
-                    var current = GameObjects.Create(newName, avatarBone);
-                    foreach (var a in animatedParents) {
-                        current = GameObjects.Create($"Toggle From {a.name}", current);
-                        current.active = a.active;
-                        animLink.Put(a, current);
-                    }
-                    mover.Move(propBone, current, "Merged Object");
+                var transformAnimated = anim.positionIsAnimated.Contains(propBone)
+                    || anim.rotationIsAnimated.Contains(propBone)
+                    || anim.scaleIsAnimated.Contains(propBone);
+                if (transformAnimated) {
+                    var wrapper = GameObjects.Create(propBone.name, propBone.parent, propBone);
+                    var outer = GameObjects.Create("Transform Maintainer", wrapper, propBone.parent);
+                    mover.Move(propBone, outer);
+                    wrapper.localPosition = Vector3.zero;
+                    wrapper.localRotation = Quaternion.identity;
+                    wrapper.localScale = Vector3.one;
+                    mover.Move(outer, propBone.parent);
+                    wrapper.Destroy();
+                    propBone = outer;
                 }
                 
+                foreach (var a in animatedParents) {
+                    var wrapper = GameObjects.Create($"Toggle From {a.name}", propBone.parent, propBone);
+                    mover.Move(propBone, wrapper);
+                    propBone = wrapper;
+                    wrapper.active = a.active;
+                    animLink.Put(a, wrapper);
+                }
+
+                if (propBone != _propBone) {
+                    var wrapper = GameObjects.Create(newName, propBone.parent, propBone);
+                    mover.Move(propBone, wrapper);
+                    propBone = wrapper;
+                    mover.Move(_propBone, newName: "Original Object");
+                }
+
+                mover.Move(propBone, avatarBone, newName);
+
                 if (!keepBoneOffsets) {
                     propBone.worldPosition = avatarBone.worldPosition;
                     propBone.worldRotation = avatarBone.worldRotation;
