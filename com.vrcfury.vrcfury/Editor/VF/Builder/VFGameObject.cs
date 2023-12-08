@@ -108,6 +108,12 @@ namespace VF.Builder {
                 .Select(Cast)
                 .ToArray();
         }
+        
+        public VFGameObject[] Parents() {
+            return GetSelfAndAllParents()
+                .Where(t => t != this)
+                .ToArray();
+        }
 
         public int childCount => transform.childCount;
         

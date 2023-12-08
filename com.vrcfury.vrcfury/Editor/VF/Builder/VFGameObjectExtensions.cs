@@ -24,7 +24,6 @@ namespace VF.Builder {
         public static IEnumerable<Transform> Children(this IEnumerable<Transform> source) {
             return source.AsVf().SelectMany(t => t.Children()).AsTransform();
         }
-
         public static IEnumerable<Transform> AllChildren(this IEnumerable<Transform> source) {
             return source.AsVf().SelectMany(t => t.GetSelfAndAllChildren()).AsTransform();
         }

@@ -62,46 +62,54 @@ namespace VF.Feature {
                 }
 
                 var doNotMerge = new HashSet<Transform>();
-                doNotMerge.UnionWith(anim.positionIsAnimated);
-                doNotMerge.UnionWith(anim.rotationIsAnimated);
+                doNotMerge.UnionWith(anim.positionIsAnimated.Children());
+                doNotMerge.UnionWith(anim.rotationIsAnimated.Children());
                 doNotMerge.UnionWith(anim.physboneChild);
-                // Recursively add all children
-                doNotMerge.UnionWith(doNotMerge.ToArray().SelectMany(t => t.asVf().GetSelfAndAllChildren().Select(o => o.transform)));
-
-                var doNotRebindSkins = new HashSet<Transform>();
-                doNotRebindSkins.UnionWith(anim.scaleIsAnimated);
-                doNotRebindSkins.UnionWith(anim.physboneRoot); // (physbone roots can rotate)
-                doNotRebindSkins.UnionWith(doNotMerge);
+                doNotMerge.UnionWith(doNotMerge.AllChildren());
 
                 var debugLog = "";
                 foreach (var (propBone,avatarBone) in links.mergeBones) {
-                    if (doNotRebindSkins.Contains(propBone)) {
-                        debugLog += propBone.GetPath(links.propMain) + ": " + string.Join(",", anim.GetDebugSources(propBone)) + "\n";
-                    }
+                    var sources = anim.GetDebugSources(propBone);
+                    if (sources.Count == 0) continue;
+                    debugLog += propBone.GetPath(links.propMain) + ": " + string.Join(",", sources) + "\n";
                 }
                 if (debugLog != "") {
                     Debug.LogWarning(
-                        "These bones would have been merged, but are not because they were impacted by animations:\n" +
+                        "Armature Link found animations targeting these bones:\n" +
                         debugLog);
                 }
                 
                 var rootName = GetRootName(links.propMain);
-                
-                var skinRewriteMapping = new Dictionary<Transform, Transform>();
-                foreach (var (propBone, avatarBone) in links.mergeBones) {
-                    skinRewriteMapping[propBone.transform] = avatarBone.transform;
-                }
-                
+
                 // Move over all the old components / children from the old location to a new child
                 var animLink = new VFMultimap<VFGameObject, VFGameObject>();
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
-                    if (doNotMerge.Contains(propBone) && doNotMerge.Contains(propBone.parent) && propBone != links.propMain) {
+                    bool ShouldMerge() {
+                        if (propBone == links.propMain) return true;
+                        if (avatarHumanoidBones.Contains(avatarBone)) return true;
+                        if (doNotMerge.Contains(propBone)) return false;
+                        return true;
+                    }
+                    bool ShouldReuseBone() {
+                        if (anim.positionIsAnimated.Contains(propBone)) return false;
+                        if (anim.rotationIsAnimated.Contains(propBone)) return false;
+                        if (anim.scaleIsAnimated.Contains(propBone)) return false;
+                        if (anim.physboneRoot.Contains(propBone)) return false;
+                        if (anim.physboneChild.Contains(propBone)) return false;
+                        return true;
+                    }
+
+                    if (!ShouldMerge()) {
                         continue;
                     }
 
                     // Rip out parent constraints, since they were likely there from an old pre-vrcfury merge process
                     foreach (var c in propBone.GetComponents<ParentConstraint>()) {
                         Object.DestroyImmediate(c);
+                    }
+
+                    if (ShouldReuseBone()) {
+                        RewriteSkins(propBone, avatarBone);
                     }
 
                     // If the transform isn't used and contains no children, we can just throw it away
@@ -165,61 +173,6 @@ namespace VF.Feature {
                     }
                 }
 
-                foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                    // Update skins to use bones and bind poses from the original avatar
-                    if (skin.bones.Any(b => b != null && skinRewriteMapping.ContainsKey(b))) {
-                        if (skin.sharedMesh) {
-                            skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
-                            var mesh = skin.sharedMesh;
-                            mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
-                                .Select(boneAndBindPose => {
-                                    VFGameObject bone = boneAndBindPose.a;
-                                    var bindPose = boneAndBindPose.b;
-                                    if (bone == null) return bindPose;
-                                    if (doNotRebindSkins.Contains(bone)) return bindPose;
-                                    if (skinRewriteMapping.TryGetValue(bone, out var mergedTo)) {
-                                        return mergedTo.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
-                                    }
-                                    return bindPose;
-                                }) 
-                                .ToArray();
-                            VRCFuryEditorUtils.MarkDirty(mesh);
-                        }
-
-                        skin.bones = skin.bones
-                            .Select(b => {
-                                if (b == null) return b;
-                                if (doNotRebindSkins.Contains(b)) return b;
-                                if (skinRewriteMapping.TryGetValue(b, out var to)) return to;
-                                return b;
-                            })
-                            .ToArray();
-                        
-                        VRCFuryEditorUtils.MarkDirty(skin);
-                    }
-                    
-                    // Update skin to use root bone from the original avatar (updating bounds if needed)
-                    {
-                        var oldRootBone = HapticUtils.GetMeshRoot(skin);
-                        if (skinRewriteMapping.TryGetValue(oldRootBone, out var newRootBone) && !doNotRebindSkins.Contains(oldRootBone)) {
-                            var b = skin.localBounds;
-                            b.center = new Vector3(
-                                b.center.x * oldRootBone.lossyScale.x / newRootBone.lossyScale.x,
-                                b.center.y * oldRootBone.lossyScale.y / newRootBone.lossyScale.y,
-                                b.center.z * oldRootBone.lossyScale.z / newRootBone.lossyScale.z
-                            );
-                            b.extents = new Vector3(
-                                b.extents.x * oldRootBone.lossyScale.x / newRootBone.lossyScale.x,
-                                b.extents.y * oldRootBone.lossyScale.y / newRootBone.lossyScale.y,
-                                b.extents.z * oldRootBone.lossyScale.z / newRootBone.lossyScale.z
-                            );
-                            skin.localBounds = b;
-
-                            skin.rootBone = newRootBone;
-                        }
-                    }
-                }
-
                 // Rewrite animations that turn off parents
                 foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
                     foreach (var binding in clip.GetFloatBindings()) {
@@ -250,6 +203,53 @@ namespace VF.Feature {
                     avatarBone,
                     $"[VF{uniqueModelNum}] {propBone.name}"
                 );
+            }
+        }
+
+        private void RewriteSkins(Transform fromBone, Transform toBone) {
+            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                // Update skins to use bones and bind poses from the original avatar
+                if (skin.bones.Contains(fromBone)) {
+                    if (skin.sharedMesh) {
+                        skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
+                        var mesh = skin.sharedMesh;
+                        mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
+                            .Select(boneAndBindPose => {
+                                VFGameObject bone = boneAndBindPose.a;
+                                var bindPose = boneAndBindPose.b;
+                                if (bone != fromBone) return bindPose;
+                                return toBone.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
+                            }) 
+                            .ToArray();
+                        VRCFuryEditorUtils.MarkDirty(mesh);
+                    }
+
+                    skin.bones = skin.bones
+                        .Select(b => b == fromBone ? toBone : b)
+                        .ToArray();
+                    VRCFuryEditorUtils.MarkDirty(skin);
+                }
+                
+                // Update skin to use root bone from the original avatar (updating bounds if needed)
+                {
+                    var oldRootBone = HapticUtils.GetMeshRoot(skin);
+                    if (oldRootBone == fromBone) {
+                        var b = skin.localBounds;
+                        b.center = new Vector3(
+                            b.center.x * oldRootBone.lossyScale.x / toBone.lossyScale.x,
+                            b.center.y * oldRootBone.lossyScale.y / toBone.lossyScale.y,
+                            b.center.z * oldRootBone.lossyScale.z / toBone.lossyScale.z
+                        );
+                        b.extents = new Vector3(
+                            b.extents.x * oldRootBone.lossyScale.x / toBone.lossyScale.x,
+                            b.extents.y * oldRootBone.lossyScale.y / toBone.lossyScale.y,
+                            b.extents.z * oldRootBone.lossyScale.z / toBone.lossyScale.z
+                        );
+                        skin.localBounds = b;
+
+                        skin.rootBone = toBone;
+                    }
+                }
             }
         }
 
