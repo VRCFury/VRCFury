@@ -92,14 +92,6 @@ namespace VF.Feature {
                     skinRewriteMapping[propBone.transform] = avatarBone.transform;
                 }
                 
-                foreach (var (propBone, avatarBone) in links.mergeBones.Reverse()) {
-                    if (!keepBoneOffsets) {
-                        propBone.worldPosition = avatarBone.worldPosition;
-                        propBone.worldRotation = avatarBone.worldRotation;
-                        propBone.worldScale = avatarBone.worldScale * scalingFactor;
-                    }
-                }
-                
                 // Move over all the old components / children from the old location to a new child
                 var animLink = new VFMultimap<VFGameObject, VFGameObject>();
                 foreach (var (propBone, avatarBone) in links.mergeBones) {
@@ -164,6 +156,12 @@ namespace VF.Feature {
                             animLink.Put(a, current);
                         }
                         mover.Move(propBone, current, "Merged Object");
+                    }
+                    
+                    if (!keepBoneOffsets) {
+                        propBone.worldPosition = avatarBone.worldPosition;
+                        propBone.worldRotation = avatarBone.worldRotation;
+                        propBone.worldScale = avatarBone.worldScale * scalingFactor;
                     }
                 }
 
