@@ -298,7 +298,6 @@ namespace VF.Inspector {
             return renderers;
         }
 
-        [CanBeNull]
         public static BakeResult Bake(
             VRCFuryHapticPlug plug,
             HapticContactsService hapticContactsService,
@@ -310,13 +309,7 @@ namespace VF.Inspector {
             HapticUtils.RemoveTPSSenders(transform);
             HapticUtils.AssertValidScale(transform, "plug");
 
-            PlugSizeDetector.SizeResult size;
-            try {
-                size = PlugSizeDetector.GetWorldSize(plug);
-            } catch (Exception) {
-                return null;
-            }
-
+            var size = PlugSizeDetector.GetWorldSize(plug);
             var renderers = size.renderers;
             var worldLength = size.worldLength;
             var worldRadius = size.worldRadius;

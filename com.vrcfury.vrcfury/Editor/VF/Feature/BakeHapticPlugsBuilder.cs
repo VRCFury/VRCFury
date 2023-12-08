@@ -52,9 +52,8 @@ namespace VF.Feature {
                         usedRenderers,
                         deferMaterialConfig: true
                     );
-                    if (bakeInfo == null) continue;
                     bakeResults[plug] = bakeInfo;
-                    
+
                     var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(postBakeClip);
                 } catch (Exception e) {
@@ -137,7 +136,7 @@ namespace VF.Feature {
                         }
                     }
 
-                    if (plug.enableSps && spsOptions.GetOptions().enableSpsPlusOption) {
+                    if (plug.enableSps) {
                         var plusRoot = GameObjects.Create("SpsPlus", bakeRoot);
                         plusRoot.active = false;
                         plusRoot.worldScale = Vector3.one;
@@ -184,11 +183,16 @@ namespace VF.Feature {
                         }
                         
                         if (spsPlusClip == null) {
-                            var param = fx.NewBool("spsPlus", synced: true);
-                            manager.GetMenu()
-                                .NewMenuToggle(
-                                    $"{spsOptions.GetOptionsPath()}/<b>SPS+ (Alpha)<\\/b>\n<size=20>Use contacts for additional data - Experimental!",
-                                    param);
+                            VFABool param;
+                            if (spsOptions.GetOptions().enableSpsPlusOption) {
+                                param = fx.NewBool("spsPlus", synced: true, def: true);
+                                manager.GetMenu()
+                                    .NewMenuToggle(
+                                        $"{spsOptions.GetOptionsPath()}/<b>SPS+ (Beta)<\\/b>\n<size=20>Use contacts for additional data",
+                                        param);
+                            } else {
+                                param = fx.True();
+                            }
                             spsPlusClip = fx.NewClip("SpsPlus");
                             var layer = fx.NewLayer("SPS+");
                             var off = layer.NewState("Off");
