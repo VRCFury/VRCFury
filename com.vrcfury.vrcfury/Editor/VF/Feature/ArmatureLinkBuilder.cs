@@ -85,6 +85,7 @@ namespace VF.Feature {
                     return true;
                 }
                 bool ShouldReuseBone() {
+                    if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) return false; // See note below why we don't do this for ReparentRoot
                     if (anim.positionIsAnimated.Contains(propBone)) return false;
                     if (anim.rotationIsAnimated.Contains(propBone)) return false;
                     if (anim.scaleIsAnimated.Contains(propBone)) return false;
@@ -221,6 +222,14 @@ namespace VF.Feature {
                 }
                 
                 // Update skin to use root bone from the original avatar (updating bounds if needed)
+                // NOTE: Technically this is unsafe, because it has side effects. Root bones have two purposes:
+                // 1) They define the origin of the bounds
+                // 2) They define the origin for verts that are not weight painted (unusual)
+                // While we handle #1 here, we do not handle #2, meaning that if the root bone moves,
+                // any unpainted verts will move as well. So far, this has not been an issue for actually merged
+                // armatures, however it HAS been a problem for ReparentRoot, where a SkinnedMeshRenderer without a root bone
+                // is being moved somewhere else, and the code here decides to update its root bone to the parent transform.
+                // That's why we never call this method during ReparentRoot.
                 {
                     var oldRootBone = HapticUtils.GetMeshRoot(skin);
                     if (oldRootBone == fromBone) {
