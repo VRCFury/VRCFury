@@ -32,7 +32,7 @@ namespace VF.Builder {
                 output += "Detected error:\n";
                 output += errors.First();
             } else {
-                output += "No errors were detected. You may need to restart unity.";
+                output += "Press Ctrl+Shift+C, click clear, then look at the errors that remain.";
             }
 
             output += "\n\n";
