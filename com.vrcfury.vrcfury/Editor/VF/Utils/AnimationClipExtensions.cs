@@ -63,29 +63,16 @@ namespace VF.Utils {
                 }
             }
 
-#if UNITY_2022_1_OR_NEWER
-            if (floatCurves.Count > 0) {
-                AnimationUtility.SetEditorCurves(
-                    clip,
-                    floatCurves.Select(p => p.Item1).ToArray(),
-                    floatCurves.Select(p => p.Item2).ToArray()
-                );
-            }
-            if (objectCurves.Count > 0) {
-                AnimationUtility.SetObjectReferenceCurves(
-                    clip,
-                    objectCurves.Select(p => p.Item1).ToArray(),
-                    objectCurves.Select(p => p.Item2).ToArray()
-                );
-            }
-#else
+            // SetEditorCurves is STILL BROKEN on unity 2022 :(
+            // (For instance, if we add and remove a curve in one call, the removal will just be ignored)
+            // So, we continue doing them one by one which is kinda slow.
+
             foreach (var pair in floatCurves) {
                 AnimationUtility.SetEditorCurve(clip, pair.Item1, pair.Item2);
             }
             foreach (var pair in objectCurves) {
                 AnimationUtility.SetObjectReferenceCurve(clip, pair.Item1, pair.Item2);
             }
-#endif
         }
 
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
