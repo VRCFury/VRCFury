@@ -63,6 +63,7 @@ void sps_light_search(
 				const float3 myPos = lightLocalPos[i];
 				const float3 otherPos = lightLocalPos[spsLightIndex];
 				const float myError = abs(length(myPos) - spsPlusDistance);
+				if (myError > 0.2) continue;
 				const float otherError = spsMinError;
 
 				bool imBetter = false;
