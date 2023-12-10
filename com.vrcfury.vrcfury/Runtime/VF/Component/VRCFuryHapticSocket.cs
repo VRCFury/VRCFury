@@ -9,7 +9,8 @@ namespace VF.Component {
             None,
             Hole,
             Ring,
-            Auto
+            Auto,
+            RingOneWay
         }
 
         public enum EnableTouchZone {
@@ -35,6 +36,15 @@ namespace VF.Component {
         public State activeActions;
         public bool useHipAvoidance = true;
 
+        public bool enablePlugLengthParameter;
+        public string plugLengthParameterName;
+        public bool enablePlugWidthParameter;
+        public string plugWidthParameterName;
+        public bool IsValidPlugLength => enablePlugLengthParameter &&
+                                         !string.IsNullOrWhiteSpace(plugLengthParameterName);
+        public bool IsValidPlugWidth => enablePlugWidthParameter &&
+                                         !string.IsNullOrWhiteSpace(plugWidthParameterName);
+        
         [Serializable]
         public class DepthAction {
             public State state;

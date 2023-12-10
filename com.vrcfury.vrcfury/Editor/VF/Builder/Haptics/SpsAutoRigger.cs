@@ -81,16 +81,15 @@ namespace VF.Builder.Haptics {
             var overlap = 0.5f;
             if (distanceToOther > overlap) {
                 return new BoneWeight() {
-                    weight0 = 1 * activeFromMask,
-                    boneIndex0 = closestBoneId,
+                    weight0 = activeFromMask, boneIndex0 = closestBoneId, // closest bone
+                    weight1 = 1 - activeFromMask, boneIndex1 = 0, // root bone
                 };
             } else {
                 var weightOfOther = (1 - (distanceToOther / overlap)) * 0.5f;
                 return new BoneWeight() {
-                    weight0 = (1-weightOfOther) * activeFromMask,
-                    boneIndex0 = closestBoneId,
-                    weight1 = weightOfOther * activeFromMask,
-                    boneIndex1 = otherBoneId
+                    weight0 = (1-weightOfOther) * activeFromMask, boneIndex0 = closestBoneId, // closest bone
+                    weight1 = weightOfOther * activeFromMask, boneIndex1 = otherBoneId, // other bone
+                    weight2 = 1 - activeFromMask, boneIndex2 = 0, // root bone
                 };
             }
         }

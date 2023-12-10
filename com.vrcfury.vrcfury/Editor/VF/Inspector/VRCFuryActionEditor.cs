@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -8,6 +9,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Model.StateAction;
+using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
@@ -139,17 +141,37 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     affectAllMeshesProp,
                     rendererProp
                 ));
+                
+                var valueFloat = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"), "Value");
+                var valueVector = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector"), "Value");
+                var valueColor = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueColor"), "Value");
 
                 var propertyNameProp = prop.FindPropertyRelative("propertyName");
                 {
                     var row = new VisualElement().Row();
-                    row.Add(VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1));
+                    var propField = VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1);
+                    propField.RegisterCallback<ChangeEvent<string>>(e => UpdateValueType());
+                    row.Add(propField);
                     row.Add(new Button(SearchClick) { text = "Search" }.Margin(0));
                     content.Add(row);
                 }
 
-                var valueProp = prop.FindPropertyRelative("value");
-                content.Add(VRCFuryEditorUtils.Prop(valueProp, "Value"));
+                content.Add(valueFloat);
+                content.Add(valueVector);
+                content.Add(valueColor);
+                UpdateValueType();
+
+                void UpdateValueType() {
+                    var (_, valueType) = ActionClipService.MatPropLookup(
+                        affectAllMeshesProp.boolValue,
+                        rendererProp.objectReferenceValue as Renderer,
+                        avatarObject,
+                        propertyNameProp.stringValue
+                    );
+                    valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector);
+                    valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector);
+                    valueColor.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Color);
+                }
 
                 return content;
 
@@ -164,15 +186,12 @@ public class VRCFuryActionDrawer : PropertyDrawer {
 
                 void GetTreeEntries(VrcfSearchWindow searchWindow) {
                     var mainGroup = searchWindow.GetMainGroup();
-                    var renderers = new List<Renderer>();
-                    if (affectAllMeshesProp.boolValue) {
-                        if (avatarObject != null) {
-                            renderers.AddRange(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
-                        }
-                    } else {
-                        renderers.Add(rendererProp.objectReferenceValue as Renderer);
-                    }
-
+                    var (renderers,_) = ActionClipService.MatPropLookup(
+                        affectAllMeshesProp.boolValue,
+                        rendererProp.objectReferenceValue as Renderer,
+                        avatarObject,
+                        null
+                    );
                     if (renderers.Count == 0) return;
 
                     foreach (var renderer in renderers) {
@@ -195,18 +214,17 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                             
                             var count = ShaderUtil.GetPropertyCount(shader);
                             var materialProperties = MaterialEditor.GetMaterialProperties(new Object[]{ material });
-                            for (var i = 0; i < count; i++)
-                            {
+                            for (var i = 0; i < count; i++) {
                                 var propertyName = ShaderUtil.GetPropertyName(shader, i);
                                 var readableName = ShaderUtil.GetPropertyDescription(shader, i);
+                                var propType = ShaderUtil.GetPropertyType(shader, i);
+                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
+                                    propType != ShaderUtil.ShaderPropertyType.Range &&
+                                    propType != ShaderUtil.ShaderPropertyType.Color &&
+                                    propType != ShaderUtil.ShaderPropertyType.Vector) continue;
                                 var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
                                 if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
-                                            
-                                var propType = ShaderUtil.GetPropertyType(shader, i);
-                                
-                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
-                                    propType != ShaderUtil.ShaderPropertyType.Range) continue;
-                                
+
                                 var prioritizePropName = readableName.Length > 25f;
                                 var entryName = prioritizePropName ? propertyName : readableName;
                                 if (renderers.Count > 1) {
@@ -215,7 +233,6 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                                 if (sharedMaterials.Length > 1) {
                                     entryName += $" (Mat: {material.name})";
                                 }
-
                                 entryName += prioritizePropName ? $" ({readableName})" : $" ({propertyName})";
                                 matGroup.Add(entryName, propertyName);
                             }

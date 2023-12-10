@@ -22,6 +22,10 @@ namespace VF.Service {
             var output = new AnimationClip();
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetFloatBindings()).Distinct()) {
                 var exists = binding.GetFloatFromGameObject(baseObject, out var defaultValue);
+                if (!exists && binding.path == "" && binding.type == typeof(Animator)) {
+                    exists = true;
+                    defaultValue = 0;
+                }
                 if (!exists) continue;
                 var outputCurve = new AnimationCurve();
                 foreach (var (time,sourceClip) in sources) {

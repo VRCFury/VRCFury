@@ -52,6 +52,9 @@ PropertyField.VrcFuryEditorProp > .unity-base-field > Label {
 PropertyField.VrcFuryEditorProp > .unity-base-field {
     margin: 0;
 }
+Vector4Field.VrcFuryEditorProp > .unity-vector4-field__input {
+    flex-basis: 0;
+}
 .VrcFuryEditorProp.unity-base-field {
     margin: 0;
 }

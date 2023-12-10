@@ -88,6 +88,8 @@ namespace VF.Model.StateAction {
         public bool affectAllMeshes;
         public string propertyName;
         public float value;
+        public Vector4 valueVector;
+        public Color valueColor = Color.white;
     }
     
     [Serializable]
@@ -139,6 +141,7 @@ namespace VF.Model.StateAction {
         [Serializable]
         public class FlipBookPage {
             public State state;
+            public bool ResetMePlease2;
         }
 
         public override bool Upgrade(int fromVersion) {

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Api;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
@@ -21,7 +22,7 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    public bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+    internal bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
@@ -35,7 +36,7 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    public static bool ShouldRun(VFGameObject avatarObject) {
+    internal static bool ShouldRun(VFGameObject avatarObject) {
         return avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>().Length > 0;
     }
 
@@ -128,7 +129,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FixWriteDefaultsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
-        AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
         AddBuilder(typeof(ResetAnimatorBuilder));
         AddBuilder(typeof(FixBadVrcParameterNamesBuilder));

@@ -83,6 +83,10 @@ namespace VF.Utils.Controller {
             Drives(param.Name(), local).value = value;
             return this;
         }
+        public VFState Drives(string param, float value, bool local = false) {
+            Drives(param, local).value = value;
+            return this;
+        }
         public VFState DrivesRandom(VFAInteger param, float min, float max) {
             var p = Drives(param.Name(), true);
             p.type = VRC_AvatarParameterDriver.ChangeType.Random;

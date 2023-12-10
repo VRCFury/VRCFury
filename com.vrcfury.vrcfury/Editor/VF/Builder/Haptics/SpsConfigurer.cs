@@ -19,7 +19,6 @@ namespace VF.Builder.Haptics {
             Material original,
             float worldLength,
             Texture2D spsBaked,
-            MutableManager mutableManager,
             VRCFuryHapticPlug plug,
             VFGameObject bakeRoot,
             IList<string> spsBlendshapes

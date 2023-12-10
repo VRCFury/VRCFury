@@ -776,12 +776,20 @@ namespace VF.Model.Feature {
     public class SpsOptions : NewFeatureModel {
         public GuidTexture2d menuIcon;
         public string menuPath;
-        public bool enableLightlessToggle2 = false;
         public bool saveSockets = false;
+        public bool enableSpsPlusOption = true;
     }
 
     [Serializable]
     public class MmdCompatibility : NewFeatureModel {
+        public List<DisableLayer> disableLayers;
+        public string globalParam;
+
+        [Serializable]
+        public class DisableLayer {
+            public string name;
+            public bool ResetMePlease2;
+        }
     }
 
 }

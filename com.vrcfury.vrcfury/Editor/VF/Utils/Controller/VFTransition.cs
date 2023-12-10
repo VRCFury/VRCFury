@@ -80,5 +80,14 @@ namespace VF.Utils.Controller {
             };
             return this;
         }
+
+        public void AddCondition(VFCondition c) {
+            if (c.transitions.Count() != 1) {
+                throw new Exception("Cannot add 'or' conditions to an existing baked transition");
+            }
+            foreach (var t in createdTransitions) {
+                t.conditions = t.conditions.Concat(c.transitions.First()).ToArray();
+            }
+        }
     }
 }

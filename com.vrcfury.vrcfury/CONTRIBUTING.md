@@ -88,9 +88,11 @@ For more information, please refer to <https://unlicense.org>
   * Added scaling of legacy DPS tip light intensity
   * Add option for using local space for socket units
   * Add option for exact matching in BlendShapeLink
+  * Allow configuring whether ring sockets are bidirectional
 * Toys0125
   * Added Poiyomi UV Tile action type
 * wholesomevr
   * Made Armature Link work with Dynamic Bone Contacts
+  * Made plug length and width available as global parameters for sockets
 * Ximmer-VR
   * Made Toggle sliders work with global parameters

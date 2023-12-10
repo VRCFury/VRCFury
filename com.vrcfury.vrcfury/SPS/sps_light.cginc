@@ -1,34 +1,37 @@
 #include "UnityShaderVariables.cginc"
 #include "sps_globals.cginc"
 #include "sps_utils.cginc"
+#include "sps_plus.cginc"
 
-// Type: 0=invalid 1=hole 2=ring 3=front
 void sps_light_parse(float range, half4 color, out int type) {
+	type = SPS_TYPE_INVALID;
+
 	if (range >= 0.5 || (length(color.rgb) > 0 && color.a > 0)) {
-		type = 0;
+		// Outside of SPS range, or visible light
 		return;
 	}
-	if (_SPS_Target_LL_Lights < 0.5) {
-		const float thousandths = range % 0.001;
-		if (thousandths > 0.0001 && thousandths < 0.0003) {
-			// Legacy light coming from a lightless SPS socket
-			type = 0;
-			return;
+
+	const int secondDecimal = round((range % 0.1) * 100);
+
+	if (_SPS_Plus_Enabled > 0.5) {
+		if (secondDecimal == 1 || secondDecimal == 2) {
+			const int fourthDecimal = round((range % 0.001) * 10000);
+			if (fourthDecimal == 2) {
+				type = SPS_TYPE_SPSPLUS;
+				return;
+			}
 		}
 	}
 
-	const int legacyRange = round((range % 0.1) * 100);
-
-	if (legacyRange == 1) type = 1;
-	if (legacyRange == 2) type = 2;
-	if (legacyRange == 5) type = 3;
+	if (secondDecimal == 1) type = SPS_TYPE_HOLE;
+	if (secondDecimal == 2) type = SPS_TYPE_RING_TWOWAY;
+	if (secondDecimal == 5) type = SPS_TYPE_FRONT;
 }
 
 // Find nearby socket lights
 void sps_light_search(
-	inout bool ioFound,
+	inout int ioType,
 	inout float3 ioRootLocal,
-	inout bool ioIsRing,
 	inout float3 ioRootNormal,
 	inout float4 ioColor
 ) {
@@ -45,7 +48,42 @@ void sps_light_search(
 	 		lightLocalPos[i] = sps_toLocal(lightWorldPos[i]);
 	 	}
 	}
-	
+
+	// Fill in SPS light info from contacts
+	if (_SPS_Plus_Enabled > 0.5) {
+		float spsPlusDistance;
+		int spsPlusType;
+		sps_plus_search(spsPlusDistance, spsPlusType);
+		if (spsPlusType != SPS_TYPE_INVALID) {
+			bool spsLightFound = false;
+			int spsLightIndex = 0;
+			float spsMinError = 0;
+			for(int i = 0; i < 4; i++) {
+				if (lightType[i] != SPS_TYPE_SPSPLUS) continue;
+				const float3 myPos = lightLocalPos[i];
+				const float3 otherPos = lightLocalPos[spsLightIndex];
+				const float myError = abs(length(myPos) - spsPlusDistance);
+				if (myError > 0.2) continue;
+				const float otherError = spsMinError;
+
+				bool imBetter = false;
+				if (!spsLightFound) imBetter = true;
+				else if (myError < 0.3 && myPos.z >= 0 && otherPos.z < 0) imBetter = true;
+				else if (otherError < 0.3 && otherPos.z >= 0 && myPos.z < 0) imBetter = false;
+				else if (myError < otherError) imBetter = true;
+
+				if (imBetter) {
+					spsLightFound = true;
+					spsLightIndex = i;
+					spsMinError = myError;
+				}
+			}
+			if (spsLightFound) {
+				lightType[spsLightIndex] = spsPlusType;
+			}
+		}
+	}
+
 	// Find nearest socket root
 	int rootIndex = 0;
 	bool rootFound = false;
@@ -54,10 +92,12 @@ void sps_light_search(
 	 	for(int i = 0; i < 4; i++) {
 	 		const float distance = length(lightLocalPos[i]);
 	 		const int type = lightType[i];
-	 		if ((type == 1 || type == 2) && (distance < minDistance || minDistance < 0)) {
-	 			rootFound = true;
-	 			rootIndex = i;
-	 			minDistance = distance;
+	 		if (distance < minDistance || minDistance < 0) {
+	 			if (type == SPS_TYPE_HOLE || type == SPS_TYPE_RING_TWOWAY || type == SPS_TYPE_RING_ONEWAY) {
+	 				rootFound = true;
+	 				rootIndex = i;
+	 				minDistance = distance;
+	 			}
 	 		}
 	 	}
 	}
@@ -69,21 +109,10 @@ void sps_light_search(
 	 	float minDistance = 0.1;
 	 	for(int i = 0; i < 4; i++) {
 	 		const float distFromRoot = length(lightWorldPos[i] - lightWorldPos[rootIndex]);
-	 		if (lightType[i] == 3 && distFromRoot < minDistance) {
+	 		if (lightType[i] == SPS_TYPE_FRONT && distFromRoot < minDistance) {
 	 			frontFound = true;
 	 			frontIndex = i;
 	 			minDistance = distFromRoot;
-	 		}
-	 	}
-	} else {
-	 	// There were no root lights nearby. If we find a front light, use it as a root instead
-	 	float minDistance = -1;
-	 	for(int i = 0; i < 4; i++) {
-	 		const float distance = length(lightLocalPos[i]);
-	 		if (lightType[i] == 3 && (distance < minDistance || minDistance < 0)) {
-	 			rootFound = true;
-	 			rootIndex = i;
-	 			minDistance = distance;
 	 		}
 	 	}
 	}
@@ -95,11 +124,10 @@ void sps_light_search(
 	}
 
 	if (!rootFound) return;
-	if (ioFound && length(lightLocalPos[rootIndex]) >= length(ioRootLocal)) return;
+	if (ioType != SPS_TYPE_INVALID && length(lightLocalPos[rootIndex]) >= length(ioRootLocal)) return;
 
-	ioFound = true;
+	ioType = lightType[rootIndex];
 	ioRootLocal = lightLocalPos[rootIndex];
-	ioIsRing = lightType[rootIndex] != 1;
 	ioRootNormal = frontFound
 		? lightLocalPos[frontIndex] - lightLocalPos[rootIndex]
 		: -1 * lightLocalPos[rootIndex];
