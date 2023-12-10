@@ -28,6 +28,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private AnimationClip savedRestingClip;
 
     private string primaryExclusive = null;
+    private bool useInt = false;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -182,6 +183,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 onCase = numParam.IsNotEqualTo(0);
                 defaultOn = model.defaultOn;
             } else {
+                this.useInt = true;
                 var boolParam = fx.NewBool(paramName, synced: false, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 exclusiveParam = boolParam;
                 onCase = boolParam.IsTrue();
@@ -191,6 +193,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     var aliasLayer = fx.NewLayer(layerName + "_Alias");
                     var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
                     var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true);
+                    exclusiveTagTriggeringStates.Add(aliasState);
                     var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
                     startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
                     aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
@@ -332,7 +335,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             restingClip = clip;
         }
 
-        exclusiveTagTriggeringStates.Add(inState);
+        if (!useInt) {
+            exclusiveTagTriggeringStates.Add(inState);
+        }
         off.TransitionsTo(inState).When(onCase);
 
         if (model.enableDriveGlobalParam) {
