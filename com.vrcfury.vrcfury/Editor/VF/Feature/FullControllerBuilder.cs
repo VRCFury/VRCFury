@@ -565,6 +565,8 @@ namespace VF.Feature {
             "ScaleFactorInverse",
             "EyeHeightAsMeters",
             "EyeHeightAsPercent",
+            
+            "IsOnFriendsList",
         };
     }
 

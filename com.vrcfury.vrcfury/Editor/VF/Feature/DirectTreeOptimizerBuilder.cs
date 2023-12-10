@@ -228,6 +228,11 @@ namespace VF.Feature {
                     param = state0Condition.Value.parameter;
                 }
 
+                if (param == fx.True().Name()) {
+                    AddDebug($"Not optimizing (VF_True)");
+                    continue;
+                }
+
                 var paramUsedInOtherLayer = fx.GetLayers()
                     .Where(other => layer != other)
                     .SelectMany(other => new AnimatorIterator.Conditions().From(other))
