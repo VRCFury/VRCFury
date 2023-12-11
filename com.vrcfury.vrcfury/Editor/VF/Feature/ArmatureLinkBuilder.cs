@@ -144,13 +144,13 @@ namespace VF.Feature {
                 if (transformAnimated) {
                     var wrapper = GameObjects.Create("Transform Maintainer", propBone.parent, propBone);
                     var outer = GameObjects.Create("Inverted Transform", wrapper, propBone.parent);
-                    mover.Move(propBone, outer);
+                    mover.Move(propBone, outer, defer: true);
                     propBone = wrapper;
                 }
                 
                 foreach (var a in animatedParents) {
                     var wrapper = GameObjects.Create($"Toggle From {a.name}", propBone.parent, propBone);
-                    mover.Move(propBone, wrapper);
+                    mover.Move(propBone, wrapper, defer: true);
                     propBone = wrapper;
                     wrapper.active = a.active;
                     animLink.Put(a, wrapper);
@@ -158,12 +158,12 @@ namespace VF.Feature {
                 
                 if (propBone != _propBone) {
                     var wrapper = GameObjects.Create(newName, propBone.parent, propBone);
-                    mover.Move(propBone, wrapper);
+                    mover.Move(propBone, wrapper, defer: true);
                     propBone = wrapper;
-                    mover.Move(_propBone, newName: "Original Object");
+                    mover.Move(_propBone, newName: "Original Object", defer: true);
                 }
 
-                mover.Move(propBone, avatarBone, newName);
+                mover.Move(propBone, avatarBone, newName, defer: true);
 
                 if (!keepBoneOffsets) {
                     propBone.worldPosition = avatarBone.worldPosition;
@@ -181,6 +181,8 @@ namespace VF.Feature {
                     continue;
                 }
             }
+            
+            mover.ApplyDeferred();
 
             // Rewrite animations that turn off parents
             foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
