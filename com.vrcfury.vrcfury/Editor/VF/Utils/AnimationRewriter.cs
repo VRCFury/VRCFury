@@ -17,8 +17,12 @@ namespace VF.Utils {
             });
         }
         public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite, bool skipProxyBindings = true) {
+            var cache = new Dictionary<EditorCurveBinding, EditorCurveBinding?>();
             var output = RewriteCurve((binding, curve) => {
-                var newBinding = rewrite(binding);
+                if (!cache.TryGetValue(binding, out var newBinding)) {
+                    newBinding = rewrite(binding);
+                    cache[binding] = newBinding;
+                }
                 if (newBinding == null) return (binding, null, false);
                 return (newBinding.Value, curve, false);
             });
