@@ -684,7 +684,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class BlendShapeLink : NewFeatureModel {
-        public List<GameObject> objs;
+        public List<GameObject> objs = new List<GameObject>();
         public string baseObj;
         public bool includeAll = true;
         public bool exactMatch = false;
