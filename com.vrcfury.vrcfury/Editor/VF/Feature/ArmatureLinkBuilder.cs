@@ -74,9 +74,7 @@ namespace VF.Feature {
 
             // Move over all the old components / children from the old location to a new child
             var animLink = new VFMultimap<VFGameObject, VFGameObject>();
-            foreach (var (_propBone, avatarBone) in links.mergeBones) {
-                var propBone = _propBone;
-
+            foreach (var (propBone, avatarBone) in links.mergeBones) {
                 bool ShouldReparent() {
                     if (propBone == links.propMain) return true;
                     if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) return false;
@@ -137,49 +135,39 @@ namespace VF.Feature {
                 } else {
                     newName += " (Referenced Externally)";
                 }
+                
+                var addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
+                var current = addedObject;
 
-                var transformAnimated = anim.positionIsAnimated.Contains(propBone)
+                foreach (var a in animatedParents) {
+                    current = GameObjects.Create($"Toggle From {a.name}", current);
+                    current.active = a.active;
+                    animLink.Put(a, current);
+                }
+
+                var transformAnimated =
+                    anim.positionIsAnimated.Contains(propBone)
                     || anim.rotationIsAnimated.Contains(propBone)
                     || anim.scaleIsAnimated.Contains(propBone);
                 if (transformAnimated) {
-                    var wrapper = GameObjects.Create("Transform Maintainer", propBone.parent, propBone);
-                    var outer = GameObjects.Create("Inverted Transform", wrapper, propBone.parent);
-                    mover.Move(propBone, outer, defer: true);
-                    
+                    current = GameObjects.Create("Original Parent (Retained for transform animation)", current, propBone.parent);
+
                     // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
                     // to mark them as initially "hidden". In this case, we need to make sure that the transform maintainer
                     // doesn't just permanently set the scale to 0.
-                    if (outer.localScale.magnitude == 0 || wrapper.localScale.magnitude == 0) {
-                        outer.localScale = Vector3.one;
-                        wrapper.localScale = Vector3.one;
+                    if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
+                        current.localScale = Vector3.one;
                     }
-
-                    propBone = wrapper;
                 }
+
+                mover.Move(propBone, current, "Original Object", defer: true);
                 
-                foreach (var a in animatedParents) {
-                    var wrapper = GameObjects.Create($"Toggle From {a.name}", propBone.parent, propBone);
-                    mover.Move(propBone, wrapper, defer: true);
-                    propBone = wrapper;
-                    wrapper.active = a.active;
-                    animLink.Put(a, wrapper);
-                }
-                
-                if (propBone != _propBone) {
-                    var wrapper = GameObjects.Create(newName, propBone.parent, propBone);
-                    mover.Move(propBone, wrapper, defer: true);
-                    propBone = wrapper;
-                    mover.Move(_propBone, newName: "Original Object", defer: true);
-                }
-
-                mover.Move(propBone, avatarBone, newName, defer: true);
-
                 if (!keepBoneOffsets) {
-                    propBone.worldPosition = avatarBone.worldPosition;
-                    propBone.worldRotation = avatarBone.worldRotation;
-                    propBone.worldScale = avatarBone.worldScale * scalingFactor;
+                    addedObject.worldPosition = avatarBone.worldPosition;
+                    addedObject.worldRotation = avatarBone.worldRotation;
+                    addedObject.worldScale = avatarBone.worldScale * scalingFactor;
                 }
-                
+
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone);
                 }
