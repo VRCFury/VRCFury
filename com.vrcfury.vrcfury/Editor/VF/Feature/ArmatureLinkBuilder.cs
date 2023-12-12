@@ -145,6 +145,15 @@ namespace VF.Feature {
                     var wrapper = GameObjects.Create("Transform Maintainer", propBone.parent, propBone);
                     var outer = GameObjects.Create("Inverted Transform", wrapper, propBone.parent);
                     mover.Move(propBone, outer, defer: true);
+                    
+                    // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
+                    // to mark them as initially "hidden". In this case, we need to make sure that the transform maintainer
+                    // doesn't just permanently set the scale to 0.
+                    if (outer.localScale.magnitude == 0 || propBone.localScale.magnitude == 0) {
+                        outer.localScale = Vector3.one;
+                        propBone.localScale = Vector3.one;
+                    }
+
                     propBone = wrapper;
                 }
                 
