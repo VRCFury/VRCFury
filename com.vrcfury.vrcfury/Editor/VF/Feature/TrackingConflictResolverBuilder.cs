@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -59,6 +60,10 @@ namespace VF.Feature {
             }
 
             var useMerger = whenCollected.Any() || inhibitors.GetKeys().Any() || usedOwners.Count > 1;
+            Debug.Log("Tracking Control Conflict Report:\n"
+                      + "Consumers (vrcf blink / visemes): " + (whenCollected.Any() ? "Yes" : "No")
+                      + "Inhibitors (vrcf actions affecting tracking control): " + (inhibitors.GetKeys().Any() ? "Yes" : "No")
+                      + "Tracking Control Contributors: " + string.Join(",", usedOwners));
             if (!useMerger) {
                 return;
             }
