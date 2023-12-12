@@ -45,6 +45,24 @@ namespace VF.Feature {
             var trackingParamsCache = new Dictionary<(string, TrackingControlType), VFAFloat>();
             var fx = manager.GetFx();
 
+            var usedOwners = new HashSet<string>();
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                foreach (var l in controller.GetLayers()) {
+                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
+                        if (b is VRCAnimatorTrackingControl) {
+                            var layerOwner = controller.GetLayerOwner(l);
+                            usedOwners.Add(layerOwner);
+                        }
+                        return true;
+                    });
+                }
+            }
+
+            var useMerger = whenCollected.Any() || inhibitors.GetKeys().Any() || usedOwners.Count > 1;
+            if (!useMerger) {
+                return;
+            }
+
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(l);
