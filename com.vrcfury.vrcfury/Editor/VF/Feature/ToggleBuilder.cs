@@ -226,13 +226,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     manager.GetMenu().NewMenuButton(
                         model.name,
                         param,
-                        icon: model.icon?.Get()
+                        icon: model.enableIcon ? model.icon?.Get() : null
                     );
                 } else {
                     manager.GetMenu().NewMenuToggle(
                         model.name,
                         param,
-                        icon: model.icon?.Get()
+                        icon: model.enableIcon ? model.icon?.Get() : null
                     );
                 }
             }

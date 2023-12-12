@@ -684,7 +684,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class BlendShapeLink : NewFeatureModel {
-        public List<GameObject> objs;
+        public List<GameObject> objs = new List<GameObject>();
         public string baseObj;
         public bool includeAll = true;
         public bool exactMatch = false;
@@ -782,7 +782,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class MmdCompatibility : NewFeatureModel {
-        public List<DisableLayer> disableLayers;
+        public List<DisableLayer> disableLayers = new List<DisableLayer>();
         public string globalParam;
 
         [Serializable]

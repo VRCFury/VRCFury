@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
@@ -71,11 +72,6 @@ namespace VF.Utils.Controller {
         public AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
             var exists = GetParam(name);
             if (exists != null) {
-                if (exists.type != type) {
-                    throw new Exception(
-                        $"VRCF tried to create parameter {name} with type {type} in controller {ctrl.name}," +
-                        $" but parameter already exists with type {exists.type}");
-                }
                 return exists;
             }
             ctrl.AddParameter(name, type);
@@ -171,6 +167,7 @@ namespace VF.Utils.Controller {
             output.FixNullStateMachines();
             output.FixLayer0Weight();
             output.ApplyBaseMask(type);
+            NoBadControllerParamsBuilder.RemoveWrongParamTypes(output);
             return output;
         }
 
