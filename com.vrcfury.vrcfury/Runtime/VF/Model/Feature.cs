@@ -782,7 +782,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class MmdCompatibility : NewFeatureModel {
-        public List<DisableLayer> disableLayers;
+        public List<DisableLayer> disableLayers = new List<DisableLayer>();
         public string globalParam;
 
         [Serializable]
