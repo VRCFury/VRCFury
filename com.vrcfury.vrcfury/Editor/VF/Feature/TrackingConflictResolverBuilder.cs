@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -44,6 +45,28 @@ namespace VF.Feature {
 
             var trackingParamsCache = new Dictionary<(string, TrackingControlType), VFAFloat>();
             var fx = manager.GetFx();
+
+            var usedOwners = new HashSet<string>();
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                foreach (var l in controller.GetLayers()) {
+                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
+                        if (b is VRCAnimatorTrackingControl) {
+                            var layerOwner = controller.GetLayerOwner(l);
+                            usedOwners.Add(layerOwner);
+                        }
+                        return true;
+                    });
+                }
+            }
+
+            var useMerger = whenCollected.Any() || inhibitors.GetKeys().Any() || usedOwners.Count > 1;
+            Debug.Log("Tracking Control Conflict Report:\n"
+                      + "Consumers (vrcf blink / visemes): " + (whenCollected.Any() ? "Yes" : "No")
+                      + "Inhibitors (vrcf actions affecting tracking control): " + (inhibitors.GetKeys().Any() ? "Yes" : "No")
+                      + "Tracking Control Contributors: " + string.Join(",", usedOwners));
+            if (!useMerger) {
+                return;
+            }
 
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {

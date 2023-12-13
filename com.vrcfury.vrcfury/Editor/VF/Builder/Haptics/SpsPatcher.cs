@@ -75,7 +75,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "5";
+            var hashContent = contents + spsMain + "6";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -466,8 +466,8 @@ namespace VF.Builder.Haptics {
             throw new Exception("Failed to find matching closing bracket");
         }
 
-        private static string WithEachInclude(string contents, string filePath, Func<string, string> with, bool includeLibraryFiles = false) {
-            return GetRegex(@"(?:^|\n)(\s*#include\s"")([^""]+)("")").Replace(contents, match => {
+        private static string WithEachInclude(string contents, string filePath, Func<string, string> replacer = null, bool replaceWithFullPath = false, bool includeLibraryFiles = false) {
+            return GetRegex(@"(?:^|\n)(\s*#(?:include|include_with_pragmas)\s"")([^""]+)("")").Replace(contents, match => {
                 var before = match.Groups[1].ToString();
                 var path = match.Groups[2].ToString();
                 var after = match.Groups[3].ToString();
@@ -479,7 +479,7 @@ namespace VF.Builder.Haptics {
                     fullPath = path;
                     attempts.Add(fullPath);
                 } else {
-                    fullPath = Path.Combine(filePath, "..", path);
+                    fullPath = Path.Combine(Path.GetDirectoryName(filePath), path);
                     attempts.Add(fullPath);
                 }
                 if (!path.Contains("..") && !File.Exists(fullPath)) {
@@ -494,7 +494,14 @@ namespace VF.Builder.Haptics {
                 if (!includeLibraryFiles && isLib) {
                     return match.Groups[0].ToString();
                 }
-                return "\n" + with(fullPath) + "\n";
+
+                if (replacer != null) {
+                    return "\n" + replacer(fullPath) + "\n";
+                } else if (replaceWithFullPath) {
+                    return "\n" + before + fullPath + after + "\n";
+                } else {
+                    return "\n" + before + path + after + "\n";
+                }
             });
         }
 
@@ -518,7 +525,7 @@ namespace VF.Builder.Haptics {
             }
             content = WithEachInclude(content, null, includePath => {
                 return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
-            }, includeLibraryFiles);
+            }, includeLibraryFiles: includeLibraryFiles);
             output.Add(content);
             return string.Join("\n", output);
         }
@@ -565,9 +572,7 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            content = WithEachInclude(content, path, includePath => {
-                return $"#include \"{includePath}\"";
-            });
+            content = WithEachInclude(content, path, replaceWithFullPath: true);
             content = content.Replace("\r", "");
             return content;
         }
