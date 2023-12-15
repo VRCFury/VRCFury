@@ -30,11 +30,11 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
         }
 
         var fx = GetFx();
-        var visemes = fx.NewLayer("Visemes");
+        var layer = fx.NewLayer("Visemes");
         var VisemeParam = fx.Viseme();
         void addViseme(int index, string text, State clipState) {
             var clip = actionClipService.LoadState(text, clipState);
-            var state = visemes.NewState(text).WithAnimation(clip);
+            var state = layer.NewState(text).WithAnimation(clip);
             if (text == "sil") state.Move(0, -8);
             state.TransitionsFromEntry().When(VisemeParam.IsEqualTo(index));
             var transitionTime = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
@@ -46,8 +46,9 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             addViseme(i, name, (State)model.GetType().GetField("state_" + name).GetValue(model));
         }
 
-        var blocked = visemes.NewState("Blocked");
+        var blocked = layer.NewState("Blocked");
         trackingConflictResolverBuilder.WhenCollected(() => {
+            if (!layer.Exists()) return; // Deleted by empty layer builder
             var inhibitors =
                 trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingMouth);
             if (inhibitors.Count > 0) {
