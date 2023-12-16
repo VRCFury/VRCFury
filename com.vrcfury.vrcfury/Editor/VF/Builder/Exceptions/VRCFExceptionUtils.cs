@@ -67,7 +67,7 @@ namespace VF.Builder.Exceptions {
             }
             causes.Reverse();
             foreach (var cause in causes) {
-                foreach (var line in cause.StackTrace.Split("\n")) {
+                foreach (var line in cause.StackTrace.Split('\n')) {
                     if (line.Contains("VF")) {
                         return line.Trim();
                     }
