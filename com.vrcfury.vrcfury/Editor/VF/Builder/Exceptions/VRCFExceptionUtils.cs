@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEditor;
@@ -37,9 +39,15 @@ namespace VF.Builder.Exceptions {
                         "Ok"
                     );
                 } else {
+                    var message = GetGoodCause(e).Message.Trim();
+                    var closestLine = GetClosestVrcfuryLine(e);
+                    var output = new List<string>();
+                    output.Add("VRCFury encountered an error.");
+                    if (!string.IsNullOrWhiteSpace(message)) output.Add(message);
+                    if (!string.IsNullOrWhiteSpace(closestLine)) output.Add($"({e.GetBaseException().GetType().Name} {closestLine})");
                     EditorUtility.DisplayDialog(
                         "VRCFury Error",
-                        $"VRCFury encountered an error.\n\n{GetGoodCause(e).Message}",
+                        string.Join("\n\n", output),
                         "Ok"
                     );
                 }
@@ -48,6 +56,24 @@ namespace VF.Builder.Exceptions {
             }
 
             return true;
+        }
+
+        private static string GetClosestVrcfuryLine(Exception e) {
+            var causes = new List<Exception>();
+            var current = e;
+            while (current != null) {
+                causes.Add(current);
+                current = current.InnerException;
+            }
+            causes.Reverse();
+            foreach (var cause in causes) {
+                foreach (var line in cause.StackTrace.Split("\n")) {
+                    if (line.Contains("VF")) {
+                        return line.Trim();
+                    }
+                }
+            }
+            return "";
         }
     }
 }
