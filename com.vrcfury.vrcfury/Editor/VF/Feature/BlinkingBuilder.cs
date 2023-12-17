@@ -76,6 +76,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             waitTrue.TransitionsTo(checkActive).When(blinkTriggerSynced.IsFalse());
 
             trackingConflictResolverBuilder.WhenCollected(() => {
+                if (!layer.Exists()) return; // Deleted by empty layer builder
                 foreach (var inhibitorParam in trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingEyes)) {
                     checkActive.TransitionsTo(idle).When(inhibitorParam.IsGreaterThan(0));
                 }

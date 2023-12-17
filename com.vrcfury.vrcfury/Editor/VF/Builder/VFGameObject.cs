@@ -158,7 +158,7 @@ namespace VF.Builder {
             return transform.IsChildOf(other);
         }
 
-        public string GetPath(VFGameObject root = null) {
+        public string GetPath(VFGameObject root = null, bool prettyRoot = false) {
             if (root == null) {
                 root = transform.root;
                 if (this == root) {
@@ -168,6 +168,9 @@ namespace VF.Builder {
             }
             if (!IsChildOf(root)) {
                 throw new Exception($"{GetPath()} is not a child of {root.GetPath()}");
+            }
+            if (this == root && prettyRoot) {
+                return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
         }

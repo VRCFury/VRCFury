@@ -234,7 +234,7 @@ public class VRCFuryBuilder {
             }
 
             currentModelNumber = action.serviceNum;
-            var objectName = action.configObject.GetPath(avatarObject);
+            var objectName = action.configObject.GetPath(avatarObject, prettyRoot: true);
             currentModelName = $"{service.GetType().Name}.{action.GetName()} on {objectName}";
             currentModelClipPrefix = $"VF{currentModelNumber} {(service as FeatureBuilder)?.GetClipPrefix() ?? service.GetType().Name}";
             currentMenuSortPosition = action.menuSortOrder;
