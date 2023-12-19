@@ -96,12 +96,6 @@ namespace VF.Builder {
             return tree;
         }
 
-        public void RemoveLayer(AnimatorStateMachine sm) {
-            var layer = ctrl.GetLayer(sm);
-            var id = layer.GetLayerId();
-            ctrl.RemoveLayer(id);
-        }
-
         /**
          * BEWARE: This consumes the ENTIRE asset file containing "other"
          * The animator controller (and its sub-assets) should be owned by vrcfury, and should

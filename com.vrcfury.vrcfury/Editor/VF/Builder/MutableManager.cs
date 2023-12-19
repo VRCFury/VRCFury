@@ -83,7 +83,17 @@ namespace VF.Builder {
             return unityObj;
         }
 
+        public class CopyResults<T> {
+            public Dictionary<Object, Object> originalToCopy;
+            public Dictionary<Object, Object> copyToOriginal;
+            public T output;
+        }
+
         public static T CopyRecursive<T>(T obj, bool addPrefix = true) where T : Object {
+            return CopyRecursiveAdv(obj, addPrefix).output;
+        }
+
+        public static CopyResults<T> CopyRecursiveAdv<T>(T obj, bool addPrefix = true) where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
@@ -132,7 +142,11 @@ namespace VF.Builder {
                 }
             }
 
-            return rootCopy;
+            return new CopyResults<T>() {
+                originalToCopy = originalToMutable,
+                copyToOriginal = mutableToOriginal,
+                output = rootCopy,
+            };
         }
 
         // It's like Object.Instantiate, except it actually works with
