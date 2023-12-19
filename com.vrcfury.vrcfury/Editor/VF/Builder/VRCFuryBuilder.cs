@@ -23,6 +23,13 @@ namespace VF.Builder {
 public class VRCFuryBuilder {
 
     internal bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+        try {
+            NdmfFirstMenuItem.Run(avatarObject);
+        } catch (Exception e) {
+            Debug.LogException(e);
+            return false;
+        }
+
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
