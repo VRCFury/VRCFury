@@ -15,19 +15,13 @@ namespace VF.Menu {
 
         public const string testCopy = prefix + "Build an Editor Test Copy";
         public const int testCopyPriority = 1221;
-        public const string playMode = prefix + "Build during play mode";
-        public const int playModePriority = 1222;
-        public const string autoUpload = prefix + "Skip VRChat upload screen";
-        public const int autoUploadPriority = 1223;
-        
-        public const string createSocket = prefix + "Haptics/Create Socket";
+
+        public const string createSocket = prefix + "SPS/Create Socket";
         public const int createSocketPriority = 1301;
-        public const string createPlug = prefix + "Haptics/Create Plug";
+        public const string createPlug = prefix + "SPS/Create Plug";
         public const int createPlugPriority = 1302;
-        public const string upgradeLegacyHaptics = prefix + "Haptics/Upgrade legacy haptics";
+        public const string upgradeLegacyHaptics = prefix + "SPS/Upgrade legacy haptics";
         public const int upgradeLegacyHapticsPriority = 1303;
-        public const string bakeHaptic = prefix + "Haptics/Bake Haptic Component";
-        public const int bakeHapticPriority = 1304;
 
         public const string nukeZawoo = prefix + "Utilites/Nuke Zawoo";
         public const int nukeZawooPriority = 1311;
@@ -39,6 +33,11 @@ namespace VF.Menu {
         public const int detectDuplicatePhysbonesPriority = 1314;
         public const string reserialize = prefix + "Utilites/Reserialize All VRCFury Assets";
         public const int reserializePriority = 1315;
+        
+        public const string playMode = prefix + "Settings/Build during play mode";
+        public const int playModePriority = 1321;
+        public const string ndmfFirst = prefix + "Settings/Force NDMF to run before VRCF";
+        public const int ndmfFirstPriority = 1322;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {

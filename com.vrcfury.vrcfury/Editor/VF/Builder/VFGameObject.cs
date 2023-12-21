@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Utils;
 
 namespace VF.Builder {
     /**
@@ -116,10 +117,7 @@ namespace VF.Builder {
         }
 
         public int childCount => transform.childCount;
-        
-        // Components can sometimes be null for some reason. Perhaps when they're corrupt?
-        private static bool NotNull<T>(T obj) => obj != null;
-        
+
         public UnityEngine.Component GetComponent(Type t) {
             return GetComponents(t).FirstOrDefault();
         }
@@ -128,10 +126,11 @@ namespace VF.Builder {
         }
         
         public UnityEngine.Component[] GetComponents(Type t) {
-            return gameObject.GetComponents(t).Where(NotNull).ToArray();
+            // Components can sometimes be null for some reason. Perhaps when they're corrupt?
+            return gameObject.GetComponents(t).NotNull().ToArray();
         }
         public T[] GetComponents<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponents<T>().Where(NotNull).ToArray();
+            return gameObject.GetComponents<T>().NotNull().ToArray();
         }
         
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
@@ -139,11 +138,15 @@ namespace VF.Builder {
         }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
-            return gameObject.GetComponentsInChildren<T>(true).Where(NotNull).ToArray();
+            return gameObject.GetComponentsInChildren<T>(true).NotNull().ToArray();
         }
         
         public T[] GetComponentsInSelfAndParents<T>() {
-            return gameObject.GetComponentsInParent<T>(true).Where(NotNull).ToArray();
+            return gameObject.GetComponentsInParent<T>(true).NotNull().ToArray();
+        }
+        
+        public UnityEngine.Component AddComponent(Type type) {
+            return gameObject.AddComponent(type);
         }
 
         public T AddComponent<T>() where T : UnityEngine.Component {

@@ -123,5 +123,9 @@ namespace VF.Utils.Controller {
         public bool HasMuscles() {
             return new AnimatorIterator.Clips().From(this).Any(clip => clip.HasMuscles());
         }
+
+        public void Remove() {
+            ctrl.GetRaw().RemoveLayer(GetLayerId());
+        }
     }
 }

@@ -56,7 +56,7 @@ namespace VF.Feature {
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
                         Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");
-                        c.RemoveLayer(layer);
+                        layer.Remove();
                     }
                 }
             }
