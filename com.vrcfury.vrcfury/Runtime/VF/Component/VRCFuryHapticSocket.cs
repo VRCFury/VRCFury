@@ -22,7 +22,7 @@ namespace VF.Component {
         public AddLight addLight = AddLight.Auto;
         public new string name;
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
-        [Obsolete] public float length; // Used to store touch zone length
+        public float length;
         public bool unitsInMeters = true;
         public bool addMenuItem = true;
         public GuidTexture2d menuIcon;

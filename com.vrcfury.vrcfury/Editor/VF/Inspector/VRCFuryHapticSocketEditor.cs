@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -114,6 +115,10 @@ namespace VF.Inspector {
             haptics.Add(VRCFuryEditorUtils.BetterProp(
                 serializedObject.FindProperty("enableHandTouchZone2"),
                 "Enable hand touch zone? (Auto will add only if child of Hips)"
+            ));
+            haptics.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("length"),
+                "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not plug interaction."
             ));
             
             var adv = new Foldout {
@@ -248,14 +253,30 @@ namespace VF.Inspector {
             var handTouchZoneSize = GetHandTouchZoneSize(socket, VRCAvatarUtils.GuessAvatarObject(socket)?.GetComponent<VRCAvatarDescriptor>());
 
             var (lightType, localPosition, localRotation) = autoInfo;
-            var worldPos = transform.TransformPoint(localPosition);
+            var localForward = localRotation * Vector3.forward;
+            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+            var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
 
             if (handTouchZoneSize != null) {
-                var worldTouchRadius = handTouchZoneSize.Value;
-                VRCFuryGizmoUtils.DrawSphere(worldPos, worldTouchRadius, Color.red);
+                var worldLength = handTouchZoneSize.Item1;
+                var localLength = worldLength / socket.transform.lossyScale.x;
+                var worldRadius = handTouchZoneSize.Item2;
+                VRCFuryHapticPlugEditor.DrawCapsule(
+                    transform,
+                    localPosition + localForward * -(localLength / 2),
+                    localCapsuleRotation,
+                    worldLength,
+                    worldRadius
+                );
+                VRCFuryGizmoUtils.DrawText(
+                    transform.TransformPoint(localPosition + localForward * -(localLength / 2)),
+                    "Hand Touch Zone\n(should be INSIDE)",
+                    Color.red,
+                    true
+                );
             }
 
-            DrawGizmo(worldPos, transform.rotation * localRotation, lightType, GetName(socket));
+            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
         public static VFGameObject Bake(VRCFuryHapticSocket socket, HapticContactsService hapticContactsService) {
@@ -342,7 +363,7 @@ namespace VF.Inspector {
             return bakeRoot;
         }
 
-        public static float? GetHandTouchZoneSize(VRCFuryHapticSocket socket, VRCAvatarDescriptor avatar) {
+        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket, [CanBeNull] VRCAvatarDescriptor avatar) {
             bool enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
@@ -352,9 +373,13 @@ namespace VF.Inspector {
             if (!enableHandTouchZone) {
                 return null;
             }
-            
-            var eyeHeight = avatar.ViewPosition.y;
-            return eyeHeight * 0.05f;
+            var length = socket.length * (socket.unitsInMeters ? 1f : socket.transform.lossyScale.z); ;
+            if (length <= 0) {
+                if (avatar == null) return null;
+                length = avatar.ViewPosition.y * 0.05f;
+            }
+            var radius = length / 2.5f;
+            return Tuple.Create(length, radius);
         }
         
         public static bool IsHole(Light light) {
