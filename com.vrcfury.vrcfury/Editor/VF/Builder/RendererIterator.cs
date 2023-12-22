@@ -23,14 +23,15 @@ namespace VF.Builder {
                         })
                     ));
                 } else if (renderer is MeshRenderer) {
-                    var mesh = renderer.gameObject.GetComponent<MeshFilter>()?.sharedMesh;
+                    var owner = renderer.owner();
+                    var mesh = owner.GetComponent<MeshFilter>()?.sharedMesh;
                     if (mesh == null) continue;
                     output.Add(Tuple.Create(
                         renderer,
                         mesh,
                         (Action<Mesh>)(m => {
-                            var filter = renderer.gameObject.GetComponent<MeshFilter>();
-                            if (!filter) filter = renderer.gameObject.AddComponent<MeshFilter>();
+                            var filter = owner.GetComponent<MeshFilter>();
+                            if (!filter) filter = owner.AddComponent<MeshFilter>();
                             filter.sharedMesh = m;
                             VRCFuryEditorUtils.MarkDirty(filter);
                         })
