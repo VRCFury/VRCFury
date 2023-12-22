@@ -134,6 +134,7 @@ namespace VF.Feature {
             var renderer = transform.GetComponent(binding.type) as Renderer;
             if (!renderer) return;
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
+                if (mat == null) return mat;
                 if (!mat.HasProperty(propName)) return mat;
                 mat = MutableManager.MakeMutable(mat);
                 mat.SetFloat(propName, val.GetFloat());
