@@ -364,27 +364,33 @@ namespace VF.Feature {
             public readonly Stack<(VFGameObject, VFGameObject)> reparent
                 = new Stack<(VFGameObject, VFGameObject)>();
         }
-
+        
         private void GetDragTarget() {
             var bonePathOnAvatarDragTarget = model.bonePathOnAvatarDragTarget;
             if (bonePathOnAvatarDragTarget != null) {
                 var pathTarget = (VFGameObject)bonePathOnAvatarDragTarget;
-                // If the bone is a humanoid bone, just set the dropdown instead of setting the path
+                // Checking if the drag target is a bone on the avatar or attached to one
                 try {
-                    var humanoidBone = VRCFArmatureUtils.FindObjectAsBoneOrException(avatarObject, pathTarget);
-                    model.boneOnAvatar = humanoidBone;
-                    model.bonePathOnAvatar = null;
+                    var humanoidBone = VRCFArmatureUtils.FindClosestBoneOrException(avatarObject, pathTarget);
+                    // Found a bone attached to the prop, check if it's the drag target
+                    var boneObject = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, humanoidBone);
+
+                    if (boneObject.GetPath(avatarObject) == pathTarget.GetPath(avatarObject)) {
+                        model.boneOnAvatar = humanoidBone;
+                        model.bonePathOnAvatar = null;
+                        model.bonePathOnAvatarDragTarget = null;
+                    } else {
+                        model.boneOnAvatar = humanoidBone;
+                        model.bonePathOnAvatar = pathTarget.GetPath(boneObject);
+                        model.bonePathOnAvatarDragTarget = null;
+                    }
+                } catch {
+                    // Object wasn't attached to a humanoid bone! So just set the path absolutely.
+                    model.bonePathOnAvatar = pathTarget.GetPath(avatarObject);
                     model.bonePathOnAvatarDragTarget = null;
-                } catch (Exception) {
-                    // Did not find object in the humanoid descriptor in the original path.
-                    // So unless the user is renaming their humanoid bones, this should be safe to hard set the path
-                    var path = pathTarget.GetPath(avatarObject);
-                    model.bonePathOnAvatar = path;
-                    model.bonePathOnAvatarDragTarget = null;    
                 }
             }
         }
-        
         private Links GetLinks() {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
@@ -400,20 +406,29 @@ namespace VF.Feature {
 
             VFGameObject avatarBone = null;
 
-            if (string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
-                try {
-                    avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, model.boneOnAvatar);
-                } catch (Exception) {
-                    foreach (var fallback in model.fallbackBones) {
-                        avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, fallback);
-                        if (avatarBone) break;
-                    }
-                    if (!avatarBone) {
-                        throw;
-                    }
+            try {
+                avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, model.boneOnAvatar);
+            } catch (Exception) {
+                foreach (var fallback in model.fallbackBones) {
+                    avatarBone = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, fallback);
+                    if (avatarBone) break;
                 }
-            } else {
-                avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
+                if (!avatarBone) {
+                    throw new VRCFBuilderException(
+                        "Failed to find " + model.boneOnAvatar + " bone on avatar. " +
+                        "Did you rename one of your avatar's bones on accident?");
+                }
+            }
+            
+            if (!string.IsNullOrWhiteSpace(model.bonePathOnAvatar)) {
+                // Check for path within humanoid bone
+                // if nothing is there, check from avatar root instead
+                if (avatarBone?.transform.Find(model.bonePathOnAvatar)?.gameObject) {
+                    avatarBone = avatarBone?.transform.Find(model.bonePathOnAvatar)?.gameObject;
+                } else {
+                    avatarBone = avatarObject.transform.Find(model.bonePathOnAvatar)?.gameObject;
+                }
+
                 if (avatarBone == null) {
                     throw new VRCFBuilderException(
                         "ArmatureLink failed to find " + model.bonePathOnAvatar + " bone on avatar.");
@@ -514,10 +529,10 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("boneOnAvatar")));
 
             container.Add(VRCFuryEditorUtils.WrappedLabel(
-                "Or drag in the bone directly here:"));
+                "Or drag in the object/bone directly here:"));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatarDragTarget")));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("String path to bone on avatar:"));
-            container.Add(VRCFuryEditorUtils.WrappedLabel("If provided, humanoid bone dropdown will be ignored."));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Extra path to bone:"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Path from specified bone (or avatar root) to non-humanoid child bone."));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bonePathOnAvatar")));
             container.Add(new VisualElement { style = { paddingTop = 10 } });
             
