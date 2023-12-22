@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Utils;
 
 namespace VF.Builder {
     /**
@@ -108,35 +109,44 @@ namespace VF.Builder {
                 .Select(Cast)
                 .ToArray();
         }
+        
+        public VFGameObject[] Parents() {
+            return GetSelfAndAllParents()
+                .Where(t => t != this)
+                .ToArray();
+        }
 
         public int childCount => transform.childCount;
-        
+
         public UnityEngine.Component GetComponent(Type t) {
-            return gameObject.GetComponent(t);
+            return GetComponents(t).FirstOrDefault();
         }
-        
         public T GetComponent<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponent<T>();
+            return GetComponents<T>().FirstOrDefault();
         }
         
+        public UnityEngine.Component[] GetComponents(Type t) {
+            // Components can sometimes be null for some reason. Perhaps when they're corrupt?
+            return gameObject.GetComponents(t).NotNull().ToArray();
+        }
         public T[] GetComponents<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponents<T>();
+            return gameObject.GetComponents<T>().NotNull().ToArray();
         }
         
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
-            // GetComponentInParent<T> randomly returns null sometimes, even if the component actually exists :|
-            // This is especially common in editors (where the reference is gotten through prop.serializedObject)
-            // GetComponentsInParent works fine though? It's almost as if some hidden destroyed component is present.
-            //return gameObject.GetComponentInParent<T>();
             return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
-            return gameObject.GetComponentsInChildren<T>(true);
+            return gameObject.GetComponentsInChildren<T>(true).NotNull().ToArray();
         }
         
         public T[] GetComponentsInSelfAndParents<T>() {
-            return gameObject.GetComponentsInParent<T>(true);
+            return gameObject.GetComponentsInParent<T>(true).NotNull().ToArray();
+        }
+        
+        public UnityEngine.Component AddComponent(Type type) {
+            return gameObject.AddComponent(type);
         }
 
         public T AddComponent<T>() where T : UnityEngine.Component {
@@ -151,7 +161,7 @@ namespace VF.Builder {
             return transform.IsChildOf(other);
         }
 
-        public string GetPath(VFGameObject root = null) {
+        public string GetPath(VFGameObject root = null, bool prettyRoot = false) {
             if (root == null) {
                 root = transform.root;
                 if (this == root) {
@@ -161,6 +171,9 @@ namespace VF.Builder {
             }
             if (!IsChildOf(root)) {
                 throw new Exception($"{GetPath()} is not a child of {root.GetPath()}");
+            }
+            if (this == root && prettyRoot) {
+                return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
         }

@@ -1,6 +1,15 @@
 #ifndef SPS_GLOBALS
 #define SPS_GLOBALS
 
+#define SPS_PI float(3.14159265359)
+
+#define SPS_TYPE_INVALID 0
+#define SPS_TYPE_HOLE 1
+#define SPS_TYPE_RING_TWOWAY 2
+#define SPS_TYPE_SPSPLUS 3
+#define SPS_TYPE_RING_ONEWAY 4
+#define SPS_TYPE_FRONT 5
+
 #ifdef SHADER_TARGET_SURFACE_ANALYSIS
     #define SPS_TEX_DEFINE(name) float4 name##_TexelSize; sampler2D name;
     #define SPS_TEX_RAW_FLOAT4_XY(name,x,y) tex2Dlod(name, float4(uint2(x,y) * name##_TexelSize.xy, 0, 0))
@@ -38,5 +47,6 @@ float _SPS_BlendshapeCount;
 
 float _SPS_Enabled;
 float _SPS_Overrun;
+float _SPS_Target_LL_Lights;
 
 #endif

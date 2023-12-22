@@ -9,7 +9,8 @@ namespace VF.Component {
             None,
             Hole,
             Ring,
-            Auto
+            Auto,
+            RingOneWay
         }
 
         public enum EnableTouchZone {
@@ -33,14 +34,24 @@ namespace VF.Component {
         public List<DepthAction> depthActions = new List<DepthAction>();
         public bool enableActiveAnimation = false;
         public State activeActions;
+        public bool useHipAvoidance = true;
 
+        public bool enablePlugLengthParameter;
+        public string plugLengthParameterName;
+        public bool enablePlugWidthParameter;
+        public string plugWidthParameterName;
+        public bool IsValidPlugLength => enablePlugLengthParameter &&
+                                         !string.IsNullOrWhiteSpace(plugLengthParameterName);
+        public bool IsValidPlugWidth => enablePlugWidthParameter &&
+                                         !string.IsNullOrWhiteSpace(plugWidthParameterName);
+        
         [Serializable]
         public class DepthAction {
             public State state;
             public float startDistance = 0;
             public float endDistance = -0.25f;
             public bool enableSelf;
-            public float smoothingSeconds = 1f;
+            public float smoothingSeconds = 0.25f;
             public bool ResetMePlease2;
             
             [Obsolete] public float minDepth;
@@ -92,7 +103,7 @@ namespace VF.Component {
             return GetFramesRequired((float)(1 - Math.Pow(oldSmoothingVal, 0.1)), true) / 60f;
         }
         public static int GetFramesRequired(float fractionPerFrame, bool useAcceleration) {
-            var targetFraction = 0.7f; // Let's say 70% is enough to be considered "done"
+            var targetFraction = 0.9f; // Let's say 90% is enough to be considered "done"
             float target = useAcceleration ? 0 : 1;
             float position = 0;
             for (var frame = 1; frame < 1000; frame++) {

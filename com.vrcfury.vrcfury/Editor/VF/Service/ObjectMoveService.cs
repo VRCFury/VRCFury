@@ -20,9 +20,10 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly AvatarManager manager;
 
+        private readonly List<(string, string)> deferred = new List<(string, string)>();
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
-        public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true) {
+        public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true, bool defer = false) {
             var oldPath = clipBuilder.GetPath(obj);
             if (newParent != null)
                 obj.transform.SetParent(newParent.transform, worldPositionStays);
@@ -30,19 +31,18 @@ namespace VF.Service {
                 obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);
             PhysboneUtils.RemoveFromPhysbones(obj, true);
-            DirectRewrite(oldPath, newPath);
-        }
-
-        public void DirectRewrite(GameObject oldObj, GameObject newObj) {
-            var oldPath = clipBuilder.GetPath(oldObj);
-            var newPath = clipBuilder.GetPath(newObj);
-            DirectRewrite(oldPath, newPath);
+            deferred.Add((oldPath, newPath));
+            if (!defer) {
+                ApplyDeferred();
+            }
         }
         
-        private void DirectRewrite(string from, string to) {
+        public void ApplyDeferred() {
             var rewriter = AnimationRewriter.RewritePath(path => {
-                if (path.StartsWith(from + "/") || path == from) {
-                    path = to + path.Substring(from.Length);
+                foreach (var (from, to) in deferred) {
+                    if (path.StartsWith(from + "/") || path == from) {
+                        path = to + path.Substring(from.Length);
+                    }
                 }
                 return path;
             });
@@ -53,6 +53,7 @@ namespace VF.Service {
             foreach (var clip in additionalClips) {
                 clip.Rewrite(rewriter);
             }
+            deferred.Clear();
         }
 
         public void AddAdditionalManagedClip(AnimationClip clip) {

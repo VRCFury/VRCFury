@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
@@ -84,7 +85,7 @@ namespace VF.Builder {
             var skeletonIndexToBoneHash = GetSkeletonIndexToBoneHash(so);
             var boneHashToPath = GetBoneHashToPath(so);
             var output = new Dictionary<HumanBodyBones, string>();
-            for (HumanBodyBones bone = 0; bone < HumanBodyBones.LastBone; bone++) {
+            foreach (var bone in GetAllBones()) {
                 var skeletonIndex = GetSkeletonIndex(so, bone);
                 if (!skeletonIndexToBoneHash.TryGetValue(skeletonIndex, out var boneHash)) continue;
                 if (!boneHashToPath.TryGetValue(boneHash, out var path)) continue;
@@ -158,6 +159,19 @@ namespace VF.Builder {
                 output[hashProp.longValue] = pathProp.stringValue;
             }
             return output;
+        }
+
+        public static IList<HumanBodyBones> GetAllBones() {
+            return VRCFEnumUtils.GetValues<HumanBodyBones>()
+                .Where(bone => bone != HumanBodyBones.LastBone)
+                .ToArray();
+        }
+
+        public static IList<VFGameObject> GetAllBones(VFGameObject avatarObject) {
+            return GetAllBones()
+                .Select(bone => FindBoneOnArmatureOrNull(avatarObject, bone))
+                .Where(bone => bone != null)
+                .ToList();
         }
     }
 }

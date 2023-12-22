@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     /**
@@ -36,6 +38,22 @@ namespace VF.Builder {
                         i--;
                     }
                 }
+            }
+        }
+
+        public static void ForEachTransitionRW(
+            AnimatorStateMachine root,
+            Func<AnimatorTransitionBase,IEnumerable<AnimatorTransitionBase>> action
+        ) {
+            foreach (var sm in GetAllStateMachines(root)) {
+                sm.entryTransitions = sm.entryTransitions.SelectMany(action).OfType<AnimatorTransition>().ToArray();
+                sm.anyStateTransitions = sm.anyStateTransitions.SelectMany(action).OfType<AnimatorStateTransition>().ToArray();
+                foreach (var childSm in sm.stateMachines) {
+                    sm.SetStateMachineTransitions(childSm.stateMachine, sm.GetStateMachineTransitions(childSm.stateMachine).SelectMany(action).OfType<AnimatorTransition>().ToArray());
+                }
+            }
+            foreach (var state in new States().From(root)) {
+                state.transitions = state.transitions.SelectMany(action).OfType<AnimatorStateTransition>().ToArray();
             }
         }
 
@@ -79,14 +97,18 @@ namespace VF.Builder {
                 if (root == null) return ImmutableHashSet<T>.Empty;
                 return From(root.stateMachine);
             }
+            
+            public IImmutableSet<T> From(IEnumerable<AnimatorControllerLayer> layers) {
+                return layers.SelectMany(From).ToImmutableHashSet();
+            }
 
             public IImmutableSet<T> From(AnimatorController root) {
                 if (root == null) return ImmutableHashSet<T>.Empty;
-                return root.layers.SelectMany(From).ToImmutableHashSet();
+                return From(root.layers);
             }
         }
 
-        private static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) {
+        private static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) where T : Object {
             var all = new HashSet<T>();
             var stack = new Stack<T>();
             stack.Push(root);
@@ -95,7 +117,15 @@ namespace VF.Builder {
                 if (one == null) continue;
                 if (all.Contains(one)) continue;
                 all.Add(one);
-                getChildren(one).ToList().ForEach(stack.Push);
+                foreach (var child in getChildren(one)) {
+                    if (child != null && !(child is T)) {
+                        throw new Exception(
+                            $"{root.name} contains a child object that is not of type {typeof(T).Name}." +
+                            $" This should be impossible, and is usually a sign of cache memory corruption within unity. Try reimporting or renaming the file" +
+                            $" containing this resource. ({AssetDatabase.GetAssetPath(root)})");
+                    }
+                    stack.Push(child);
+                }
             }
             return all.ToImmutableHashSet();
         }

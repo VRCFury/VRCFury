@@ -1,11 +1,18 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Model.StateAction;
+using VF.Service;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
 
@@ -19,160 +26,103 @@ public class VRCFuryActionDrawer : PropertyDrawer {
     }
 
     private static VisualElement Render(SerializedProperty prop) {
-
-        var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
+        var col = new VisualElement();
         
-        var avatarObject = (prop.serializedObject.targetObject as UnityEngine.Component)?
-            .owner()
-            .GetComponentInSelfOrParent<VRCAvatarDescriptor>()?
-            .owner();
+        var el = RenderInner(prop);
+        col.Add(el);
+        
+        var desktopActive = prop.FindPropertyRelative("desktopActive");
+        var androidActive = prop.FindPropertyRelative("androidActive");
+        col.AddManipulator(new ContextualMenuManipulator(e => {
+            if (e.menu.MenuItems().Count > 0) {
+                e.menu.AppendSeparator();
+            }
+            e.menu.AppendAction("Desktop Only", a => {
+                desktopActive.boolValue = !desktopActive.boolValue;
+                androidActive.boolValue = false;
+                prop.serializedObject.ApplyModifiedProperties();
+            }, desktopActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
+            e.menu.AppendAction("Android Only", a => {
+                androidActive.boolValue = !androidActive.boolValue;
+                desktopActive.boolValue = false;
+                prop.serializedObject.ApplyModifiedProperties();
+            }, androidActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
+        }));
+        
+        col.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var row = new VisualElement().Row().FlexWrap();
 
+            void AddFlag(string tag) {
+                var flag = new Label(tag);
+                flag.style.width = StyleKeyword.Auto;
+                flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+                flag.style.borderTopRightRadius = 5;
+                flag.style.marginRight = 5;
+                flag.Padding(2, 4);
+                row.Add(flag);
+            }
+            
+            if (desktopActive.boolValue) AddFlag("Desktop Only");
+            if (androidActive.boolValue) AddFlag("Android Only");
+
+            return row;
+        }, desktopActive, androidActive));
+        
+        return col;
+    }
+    
+    private static VisualElement RenderInner(SerializedProperty prop) {
+        var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
+
+        var component = prop.serializedObject.targetObject as UnityEngine.Component;
+        var avatarObject = VRCAvatarUtils.GuessAvatarObject(component);
+        if (avatarObject == null) {
+            avatarObject = component.owner().root;
+        }
+
+        void Apply() {
+            prop.serializedObject.ApplyModifiedProperties();
+        }
+        void ApplyWithoutUndo() {
+            prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        }
         string GetPath(VFGameObject obj) {
             return avatarObject == null ? obj.name : obj.GetPath(avatarObject);
         }
 
         switch (type) {
             case nameof(MaterialAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Material") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField2 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"));
-                propField2.style.flexGrow = 0;
-                propField2.style.flexBasis = 50;
-                row.Add(propField2);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"));
-                propField3.style.flexGrow = 1;
-                row.Add(propField3);
-
-                return row;
+                var content = new VisualElement();
+                content.Add(Title("Material Swap"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Renderer"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
+                return content;
             }
             case nameof(FlipbookAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Flipbook Frame") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("frame"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 30;
-                row.Add(propField3);
-
-                return row;
+                var output = new VisualElement();
+                output.Add(Title("Poiyomi Flipbook Frame"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("frame"), "Frame Number"));
+                return output;
             }
             case nameof(ShaderInventoryAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Shader Inventory") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 30;
-                row.Add(propField3);
-
-                return row;
+                var output = new VisualElement();
+                output.Add(Title("SCSS Shader Inventory"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("slot"), "Slot Number"));
+                return output;
             }
             case nameof(PoiyomiUVTileAction): {
                 var content = new VisualElement();
-                var row = new VisualElement {
-                    style = {
-                        alignItems = Align.FlexStart,
-                        flexDirection = FlexDirection.Row,
-                    }
-                };
 
-                var label = new Label("Poiyomi UV Tile") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100,
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-
-                row.Add(new Label("Row") {
-                    style = {
-                        flexGrow = 0,
-                        flexShrink = 0,
-                        flexBasis = 30,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                    }
-                });
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("row"), style: s => {
-                    s.flexGrow = 0;
-                    s.flexShrink = 0;
-                    s.flexBasis = 20;
-                }));
-
-                row.Add(new Label("Col") {
-                    style = {
-                        flexGrow = 0,
-                        flexShrink = 0,
-                        flexBasis = 30,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                    }
-                });
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("column"), style: s => {
-                    s.flexGrow = 0;
-                    s.flexShrink = 0;
-                    s.flexBasis = 20;
-                }));
-
-                content.Add(row);
+                content.Add(Title("Poiyomi UV Tile"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("row"), "Row (0-3)"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("column"), "Column (0-3)"));
 
                 var adv = new Foldout {
                     text = "Advanced UV Tile Options",
-                    style = {
-                        flexDirection = FlexDirection.Column,
-                    },
                     value = false
                 };
                 adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolve"), "Use UV Tile Dissolve"));
@@ -181,289 +131,150 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 return content;
             }
             case nameof(MaterialPropertyAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
+                var content = new VisualElement();
 
-                var label = new Label("Material Property") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-
-                var col = new VisualElement
-                {
-                    style =
-                    {
-                        flexDirection = FlexDirection.Column,
-                        flexGrow = 1
-                    }
-                };
-                
-                row.Add(label);
-
-                var rendererRow = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.Center,
-                        marginBottom = 1
-                    }
-                };
+                content.Add(Title("Material Property"));
 
                 var affectAllMeshesProp = prop.FindPropertyRelative("affectAllMeshes");
-                
                 var rendererProp = prop.FindPropertyRelative("renderer");
-                var propField = VRCFuryEditorUtils.Prop(rendererProp);
-                propField.style.flexGrow = 1;
-                propField.style.flexShrink = 1;
-                propField.SetEnabled(!affectAllMeshesProp.boolValue);
-                rendererRow.Add(propField);
+                content.Add(RendererSelector(
+                    affectAllMeshesProp,
+                    rendererProp
+                ));
                 
-                rendererRow.Add(new Label("All Meshes") {
-                    style = {
-                        marginLeft = 2,
-                        marginRight = 2,
-                        flexGrow = 1,
-                        flexBasis = 100,
-                        unityTextAlign = TextAnchor.MiddleRight
-                    }
-                });
-                
-                var propField4 = VRCFuryEditorUtils.RefreshOnChange(() => {
-                    propField.SetEnabled(!affectAllMeshesProp.boolValue);
-                    var field = VRCFuryEditorUtils.Prop(affectAllMeshesProp);
-                    return field;
-                }, affectAllMeshesProp);
-                propField4.style.flexGrow = 0;
-                propField4.style.flexShrink = 0;
-                propField4.style.flexBasis = 16;
-                rendererRow.Add(propField4);
-                
-                col.Add(rendererRow);
-                
-                var materialRow = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-            
+                var valueFloat = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"), "Value");
+                var valueVector = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector"), "Value");
+                var valueColor = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueColor"), "Value");
+
                 var propertyNameProp = prop.FindPropertyRelative("propertyName");
-                var propField2 = VRCFuryEditorUtils.Prop(propertyNameProp);
-                propField2.style.flexGrow = 1;
-                propField2.tooltip = "Property Name";
-                materialRow.Add(propField2);
-                
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 60;
-                propField3.tooltip = "Property Value";
-                materialRow.Add(propField3);
-
-                var searchButton = new Button(SearchClick)
                 {
-                    text = "Search",
-                    style =
-                    {
-                        marginTop = 0,
-                        marginLeft = 0,
-                        marginRight = 0,
-                        marginBottom = 0
-                    }
-                };
-                materialRow.Add(searchButton);
-                col.Add(materialRow);
-                
-                row.Add(col);
-
-                return row;
-
-                void SearchClick() {
-                    var targetWidth = row.GetFirstAncestorOfType<UnityEditor.UIElements.InspectorElement>().worldBound
-                        .width;
-                    var searchContext = new UnityEditor.Experimental.GraphView.SearchWindowContext(GUIUtility.GUIToScreenPoint(Event.current.mousePosition), targetWidth, 300);
-                    var provider = ScriptableObject.CreateInstance<VRCFurySearchWindowProvider>();
-                    provider.InitProvider(GetTreeEntries, (entry, userData) => {
-                        propertyNameProp.stringValue = (string) entry.userData;
-                        prop.serializedObject.ApplyModifiedProperties();
-                        return true;
-                    });
-                    UnityEditor.Experimental.GraphView.SearchWindow.Open(searchContext, provider);
+                    var row = new VisualElement().Row();
+                    var propField = VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1);
+                    propField.RegisterCallback<ChangeEvent<string>>(e => UpdateValueType());
+                    row.Add(propField);
+                    row.Add(new Button(SearchClick) { text = "Search" }.Margin(0));
+                    content.Add(row);
                 }
 
-                List<UnityEditor.Experimental.GraphView.SearchTreeEntry> GetTreeEntries() {
-                    var entries = new List<UnityEditor.Experimental.GraphView.SearchTreeEntry> {
-                        new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Material Properties"))
-                    };
-                    var renderers = new List<Renderer>();
-                    if (affectAllMeshesProp.boolValue) {
-                        if (avatarObject != null) {
-                            renderers.AddRange(avatarObject.GetComponentsInSelfAndChildren<Renderer>());
-                        }
-                    } else {
-                        renderers.Add(rendererProp.objectReferenceValue as Renderer);
-                    }
+                content.Add(valueFloat);
+                content.Add(valueVector);
+                content.Add(valueColor);
+                UpdateValueType();
 
-                    if (renderers.Count == 0) return entries;
-                    
-                    var singleRenderer = renderers.Count == 1;
+                void UpdateValueType() {
+                    var (_, valueType) = ActionClipService.MatPropLookup(
+                        affectAllMeshesProp.boolValue,
+                        rendererProp.objectReferenceValue as Renderer,
+                        avatarObject,
+                        propertyNameProp.stringValue
+                    );
+                    valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector);
+                    valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector);
+                    valueColor.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Color);
+                }
+
+                return content;
+
+                void SearchClick() {
+                    var searchWindow = new VrcfSearchWindow("Material Properties");
+                    GetTreeEntries(searchWindow);
+                    searchWindow.Open(value => {
+                        propertyNameProp.stringValue = value;
+                        Apply();
+                    });
+                }
+
+                void GetTreeEntries(VrcfSearchWindow searchWindow) {
+                    var mainGroup = searchWindow.GetMainGroup();
+                    var (renderers,_) = ActionClipService.MatPropLookup(
+                        affectAllMeshesProp.boolValue,
+                        rendererProp.objectReferenceValue as Renderer,
+                        avatarObject,
+                        null
+                    );
+                    if (renderers.Count == 0) return;
+
                     foreach (var renderer in renderers) {
                         if (renderer == null) continue;
-                        var nest = 1;
                         var sharedMaterials = renderer.sharedMaterials;
-                        if (sharedMaterials.Length == 0) return entries;
-                        var singleMaterial = sharedMaterials.Length == 1;
-                        if (!singleRenderer) {
-                            entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Mesh: " + GetPath(renderer.owner())), nest));
-                        }
+                        if (sharedMaterials.Length == 0) continue;
+
+                        var rendererGroup = renderers.Count > 1
+                            ? mainGroup.AddGroup("Mesh: " + GetPath(renderer.owner()))
+                            : mainGroup;
                         foreach (var material in sharedMaterials) {
                             if (material == null) continue;
-                            
-                            nest = singleRenderer ? 1 : 2;
-                            if (!singleMaterial) {
-                                entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeGroupEntry(new GUIContent("Material: " + material.name),  nest));
-                                nest++;
-                            }
+
+                            var matGroup = sharedMaterials.Length > 1
+                                ? rendererGroup.AddGroup("Material: " + material.name)
+                                : rendererGroup;
                             var shader = material.shader;
                             
                             if (shader == null) continue;
                             
                             var count = ShaderUtil.GetPropertyCount(shader);
                             var materialProperties = MaterialEditor.GetMaterialProperties(new Object[]{ material });
-                            for (var i = 0; i < count; i++)
-                            {
+                            for (var i = 0; i < count; i++) {
                                 var propertyName = ShaderUtil.GetPropertyName(shader, i);
                                 var readableName = ShaderUtil.GetPropertyDescription(shader, i);
+                                var propType = ShaderUtil.GetPropertyType(shader, i);
+                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
+                                    propType != ShaderUtil.ShaderPropertyType.Range &&
+                                    propType != ShaderUtil.ShaderPropertyType.Color &&
+                                    propType != ShaderUtil.ShaderPropertyType.Vector) continue;
                                 var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
                                 if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
-                                            
-                                var propType = ShaderUtil.GetPropertyType(shader, i);
-                                
-                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
-                                    propType != ShaderUtil.ShaderPropertyType.Range) continue;
-                                
+
                                 var prioritizePropName = readableName.Length > 25f;
                                 var entryName = prioritizePropName ? propertyName : readableName;
-                                if (!singleRenderer) {
+                                if (renderers.Count > 1) {
                                     entryName += $" (Mesh: {GetPath(renderer.owner())})";
                                 }
-                                if (!singleMaterial) {
+                                if (sharedMaterials.Length > 1) {
                                     entryName += $" (Mat: {material.name})";
                                 }
-
                                 entryName += prioritizePropName ? $" ({readableName})" : $" ({propertyName})";
-                                entries.Add(new UnityEditor.Experimental.GraphView.SearchTreeEntry(new GUIContent(entryName))
-                                {
-                                    level = nest,
-                                    userData = propertyName
-                                });
+                                matGroup.Add(entryName, propertyName);
                             }
                         }    
                     }
-                    return entries;
                 }
             }
             case nameof(ScaleAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Scale") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var propField3 = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale"));
-                propField3.style.flexGrow = 0;
-                propField3.style.flexBasis = 50;
-                row.Add(propField3);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Scale").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj")).FlexGrow(1));
+                row.Add( VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale")).FlexBasis(50));
                 return row;
             }
             case nameof(ObjectToggleAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
+                var row = new VisualElement().Row();
 
-                var label = new Label("Object Toggle") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
+                row.Add(VRCFuryEditorUtils.Prop(
+                    prop.FindPropertyRelative("mode"),
+                    formatEnum: str => {
+                        if (str == "Toggle") return "Flip State (Deprecated)";
+                        return str;
                     }
-                };
-                row.Add(label);
+                ).FlexBasis(100));
 
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj")).FlexGrow(1));
 
                 return row;
             }
             case nameof(SpsOnAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Enable SPS") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("target"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Enable SPS").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("target")).FlexGrow(1));
                 return row;
             }
             case nameof(FxFloatAction): {
                 var col = new VisualElement();
 
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label("Set an FX Float") {
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-                
-                var valueField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"));
-                valueField.style.flexBasis = 30;
-                row.Add(valueField);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Set an FX Float").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value")).FlexBasis(30));
                 col.Add(row);
                 
                 col.Add(VRCFuryEditorUtils.Warn("Warning: This will cause the FX parameter to be 'animated', which means it cannot be used in a menu or otherwise controlled by VRChat."));
@@ -471,36 +282,44 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 return col;
             }
             case nameof(BlendShapeAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
+                var content = new VisualElement();
 
-                var label = new Label {
-                    text = "BlendShape",
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
+                content.Add(Title("BlendShape"));
 
+                var allRenderersProp = prop.FindPropertyRelative("allRenderers");
+                var rendererProp = prop.FindPropertyRelative("renderer");
+                content.Add(RendererSelector(allRenderersProp, rendererProp));
+
+                var row = new VisualElement().Row();
                 var blendshapeProp = prop.FindPropertyRelative("blendShape");
-                var propField = VRCFuryEditorUtils.Prop(blendshapeProp);
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-            
-                var valueField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("blendShapeValue"));
-                valueField.style.flexGrow = 0;
-                valueField.style.flexBasis = 50;
-                row.Add(valueField);
+                row.Add(VRCFuryEditorUtils.Prop(blendshapeProp, "Blendshape").FlexGrow(1));
+                var selectButton = new Button(SelectButtonPress) { text = "Search" };
+                row.Add(selectButton);
+                content.Add(row);
 
-                System.Action selectButtonPress = () => {
-                    var shapes = new Dictionary<string,string>();
+                var valueProp = prop.FindPropertyRelative("blendShapeValue");
+                var valueField = VRCFuryEditorUtils.Prop(valueProp, "Value (0-100)");
+                valueField.RegisterCallback<ChangeEvent<float>>(e => {
+                    if (e.newValue < 0) {
+                        valueProp.floatValue = 0;
+                        ApplyWithoutUndo();
+                    }
+                    if (e.newValue > 100) {
+                        valueProp.floatValue = 100;
+                        ApplyWithoutUndo();
+                    }
+                });
+                content.Add(valueField);
+
+                void SelectButtonPress() {
+                    var window = new VrcfSearchWindow("Blendshapes");
+                    var allRenderers = allRenderersProp.boolValue;
+                    var singleRenderer = rendererProp.objectReferenceValue as Renderer;
+
+                    var shapes = new Dictionary<string, string>();
                     if (avatarObject != null) {
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                            if (!allRenderers && skin != singleRenderer) continue;
                             if (!skin.sharedMesh) continue;
                             for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
                                 var bs = skin.sharedMesh.GetBlendShapeName(i);
@@ -513,49 +332,96 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                         }
                     }
 
-                    var menu = new GenericMenu();
+                    var mainGroup = window.GetMainGroup();
                     foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
-                        menu.AddItem(
-                            new GUIContent(entry.Key + " (" + entry.Value + ")"),
-                            false,
-                            () => {
-                                blendshapeProp.stringValue = entry.Key;
-                                blendshapeProp.serializedObject.ApplyModifiedProperties();
-                            });
+                        mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
                     }
-                    menu.ShowAsContext();
-                };
-                var selectButton = new Button(selectButtonPress) { text = "Select" };
-                row.Add(selectButton);
+                    
+                    window.Open(value => {
+                        blendshapeProp.stringValue = value;
+                        Apply();
+                    });
+                }
 
-                return row;
+                return content;
             }
             case nameof(AnimationClipAction): {
-                var row = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.FlexStart
-                    }
-                };
-
-                var label = new Label {
-                    text = "Animation Clip",
-                    style = {
-                        flexGrow = 0,
-                        flexBasis = 100
-                    }
-                };
-                row.Add(label);
-
-                var propField = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip"));
-                propField.style.flexGrow = 1;
-                row.Add(propField);
-
+                var row = new VisualElement().Row();
+                row.Add(Title("Animation Clip").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip")).FlexGrow(1));
                 return row;
+            }
+            case nameof(BlockBlinkingAction): {
+                return Title("Disable Blinking");
+            }
+            case nameof(BlockVisemesAction): {
+                return Title("Disable Visemes");
+            }
+            case nameof(ResetPhysboneAction): {
+                var row = new VisualElement().Row();
+                row.Add(Title("Reset Physbone").FlexBasis(100));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("physBone")).FlexGrow(1));
+                return row;
+            }
+            case nameof(FlipBookBuilderAction): {
+                var output = new VisualElement();
+                output.Add(Title("Flipbook Builder"));
+                output.Add(VRCFuryEditorUtils.Info(
+                    "This will create a clip made up of one frame per child action. This is mostly useful for" +
+                    " VRCFury Toggles with 'Use Slider Wheel' enabled, as you can put various presets in these slots" +
+                    " and use the slider to select one of them."
+                ));
+                output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("pages")));
+                return output;
             }
         }
 
         return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
+    }
+
+    private static VisualElement Title(string title) {
+        var label = new Label(title);
+        label.style.unityFontStyleAndWeight = FontStyle.Bold;
+        return label;
+    }
+
+    private static VisualElement RendererSelector(SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
+        var content = new VisualElement();
+
+        var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers");
+        content.Add(allRenderersField);
+
+        var rendererField = VRCFuryEditorUtils.Prop(rendererProp, "Renderer");
+        content.Add(rendererField);
+
+        void UpdateVisibility() {
+            var visible = !allRenderersProp.boolValue;
+            rendererField.SetVisible(visible);
+            if (!visible) {
+                rendererProp.objectReferenceValue = null;
+                rendererProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+        UpdateVisibility();
+        allRenderersField.RegisterCallback<ChangeEvent<bool>>(e => UpdateVisibility());
+        return content;
+    }
+
+    [CustomPropertyDrawer(typeof(FlipBookBuilderAction.FlipBookPage))]
+    public class FlipbookPageDrawer : PropertyDrawer {
+        public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+            var content = new VisualElement();
+            var match = Regex.Match(prop.propertyPath, @"\[(\d+)\]$");
+            string pageNum;
+            if (match.Success && Int32.TryParse(match.Groups[1].ToString(), out var num)) {
+                pageNum = (num + 1).ToString();
+            } else {
+                pageNum = "?";
+            }
+            content.Add(Title($"Page #{pageNum}"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
+            return content;
+        }
     }
 }
 

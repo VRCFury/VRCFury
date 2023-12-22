@@ -120,8 +120,8 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         return content;
     }
     
-    public override bool AvailableOnProps() {
-        return false;
+    public override bool AvailableOnRootOnly() {
+        return true;
     }
     
     public override bool OnlyOneAllowed() {

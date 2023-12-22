@@ -18,6 +18,23 @@ namespace VF.Feature {
             return "BlendShape Link";
         }
 
+        [CustomPropertyDrawer(typeof(BlendShapeLink.Exclude))]
+        public class ExcludeDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty exclude) {
+                return VRCFuryEditorUtils.Prop(exclude.FindPropertyRelative("name"));
+            }
+        }
+        
+        [CustomPropertyDrawer(typeof(BlendShapeLink.Include))]
+        public class IncludeDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty include) {
+                var row = new VisualElement().Row();
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked")).FlexGrow(1));
+                return row;
+            }
+        }
+
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             
@@ -48,43 +65,16 @@ namespace VF.Feature {
                 var o = new VisualElement();
                 if (includeAll.boolValue) {
                     o.Add(VRCFuryEditorUtils.WrappedLabel("Exclude blendshapes:"));
-                    o.Add(VRCFuryEditorUtils.List(excludes, (i, exclude) =>
-                        VRCFuryEditorUtils.Prop(exclude.FindPropertyRelative("name"))
-                    ));
+                    o.Add(VRCFuryEditorUtils.List(excludes));
                 }
                 
                 o.Add(VRCFuryEditorUtils.WrappedLabel(includeAll.boolValue ? "Additional linked blendshapes:" : "Linked blendshapes:"));
-                var header = new VisualElement {
-                    style = {
-                        flexDirection = FlexDirection.Row
-                    }
-                };
-                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on base", style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
-                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on linked", style: s => {
-                    s.flexBasis = 0;
-                    s.flexGrow = 1;
-                }));
+                var header = new VisualElement().Row();
+                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on base").FlexGrow(1));
+                header.Add(VRCFuryEditorUtils.WrappedLabel("Name on linked").FlexGrow(1));
                 o.Add(header);
                 
-                o.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("includes"), (i, include) => {
-                    var row = new VisualElement {
-                        style = {
-                            flexDirection = FlexDirection.Row
-                        }
-                    };
-                    row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase"), style: s => {
-                        s.flexBasis = 0;
-                        s.flexGrow = 1;
-                    }));
-                    row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked"), style: s => {
-                        s.flexBasis = 0;
-                        s.flexGrow = 1;
-                    }));
-                    return row;
-                }));
+                o.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("includes")));
                 
                 return o;
             }, includeAll));

@@ -1,53 +1,29 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Utils;
+using VF.Injector;
+using VF.Service;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
+    [VFService]
     public class AvatarManager {
-        private readonly VFGameObject avatarObject;
-        private readonly VRCAvatarDescriptor avatar;
-        private readonly string tmpDir;
-        private readonly Func<int> currentFeatureNumProvider;
-        private readonly Func<string> currentFeatureNameProvider;
-        private readonly Func<string> currentFeatureClipPrefixProvider;
-        private readonly Func<int> currentMenuSortPosition;
-        private readonly Func<VFGameObject> currentComponentObject;
-        private readonly MutableManager mutableManager;
+        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
-        public AvatarManager(
-            GameObject avatarObject,
-            string tmpDir,
-            Func<int> currentFeatureNumProvider,
-            Func<string> currentFeatureNameProvider,
-            Func<string> currentFeatureClipPrefixProvider,
-            Func<int> currentMenuSortPosition,
-            Func<VFGameObject> currentComponentObject,
-            MutableManager mutableManager
-        ) {
-            this.avatarObject = avatarObject;
-            this.avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-            this.tmpDir = tmpDir;
-            this.currentFeatureNumProvider = currentFeatureNumProvider;
-            this.currentFeatureNameProvider = currentFeatureNameProvider;
-            this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
-            this.currentMenuSortPosition = currentMenuSortPosition;
-            this.currentComponentObject = currentComponentObject;
-            this.mutableManager = mutableManager;
-        }
+        private VFGameObject avatarObject => globals.avatarObject;
+        private VRCAvatarDescriptor avatar => avatarObject.GetComponent<VRCAvatarDescriptor>();
+        public string tmpDir => globals.tmpDir;
 
         private MenuManager _menu;
         public MenuManager GetMenu() {
             if (_menu == null) {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                VRCFuryAssetDatabase.SaveAsset(menu, tmpDir, "VRCFury Menu for " + avatarObject.name);
                 var initializing = true;
-                _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : currentMenuSortPosition());
+                _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : globals.currentMenuSortPosition());
 
                 var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (origMenu != null) _menu.MergeMenu(origMenu);
@@ -63,25 +39,22 @@ namespace VF.Builder {
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             if (!_controllers.TryGetValue(type, out var output)) {
                 var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
-                var filename = "VRCFury " + type + " for " + avatarObject.name;
-                AnimatorController ctrl;
-                if (existingController != null) {
-                    ctrl = mutableManager.CopyRecursive(existingController, filename);
-                } else {
-                    ctrl = new AnimatorController();
-                    VRCFuryAssetDatabase.SaveAsset(ctrl, tmpDir, filename);
-                }
+                VFController ctrl = null;
+                if (existingController != null) ctrl = VFController.CopyAndLoadController(existingController, type);
+                if (ctrl == null) ctrl = new AnimatorController();
                 output = new ControllerManager(
                     ctrl,
                     GetParams,
                     type,
-                    currentFeatureNumProvider,
-                    currentFeatureNameProvider,
-                    currentFeatureClipPrefixProvider,
+                    globals.currentFeatureNumProvider,
+                    globals.currentFeatureNameProvider,
+                    globals.currentFeatureClipPrefixProvider,
                     MakeUniqueParamName,
-                    tmpDir,
-                    treatAsManaged: isDefault
+                    layerSourceService
                 );
+                foreach (var layer in ctrl.GetLayers()) {
+                    layerSourceService.SetSource(layer, isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
+                }
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
             }
@@ -96,24 +69,17 @@ namespace VF.Builder {
                 .Select(c => GetController(c.type))
                 .ToArray();
         }
-        public IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> GetAllUsedControllersRaw() {
-            return VRCAvatarUtils.GetAllControllers(avatar)
-                .Where(c => c.controller != null)
-                .Select(c => Tuple.Create(c.type, c.controller));
-        }
 
         private ParamManager _params;
         public ParamManager GetParams() {
             if (_params == null) {
                 var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
-                var filename = "VRCFury Params for " + avatarObject.name;
                 VRCExpressionParameters prms;
                 if (origParams != null) {
-                    prms = mutableManager.CopyRecursive(origParams, filename);
+                    prms = MutableManager.CopyRecursive(origParams);
                 } else {
                     prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
                     prms.parameters = new VRCExpressionParameters.Parameter[]{};
-                    VRCFuryAssetDatabase.SaveAsset(prms, tmpDir, filename);
                 }
                 VRCAvatarUtils.SetAvatarParams(avatar, prms);
                 _params = new ParamManager(prms);
@@ -122,11 +88,12 @@ namespace VF.Builder {
         }
 
         public string GetCurrentlyExecutingFeatureName() {
-            return currentFeatureNameProvider();
+            return globals.currentFeatureNameProvider();
         }
 
         public VFGameObject AvatarObject => avatarObject;
-        public VFGameObject CurrentComponentObject => currentComponentObject();
+        public VRCAvatarDescriptor Avatar => avatar;
+        public VFGameObject CurrentComponentObject => globals.currentComponentObject();
 
         public bool IsParamUsed(string name) {
             if (GetParams().GetRaw().FindParameter(name) != null) return true;
@@ -136,7 +103,7 @@ namespace VF.Builder {
             return false;
         }
         public string MakeUniqueParamName(string name) {
-            name = "VF" + currentFeatureNumProvider() + "_" + name;
+            name = "VF" + globals.currentFeatureNumProvider() + "_" + name;
 
             int offset = 1;
             while (true) {

@@ -20,10 +20,13 @@ namespace VF.Builder.Haptics {
         public static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
         public static string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
         public static string CONTACT_PEN_ROOT = "TPS_Pen_Root";
-        public static string CONTACT_ORF_MAIN = "TPS_Orf_Root";
-        public static string CONTACT_ORF_NORM = "TPS_Orf_Norm";
-        public static string CONTACT_ORF_IsRing = "SPS_Socket_Ring";
-        public static string CONTACT_ORF_IsHole = "SPS_Socket_Hole";
+        public static string TagTpsOrfRoot = "TPS_Orf_Root";
+        public static string TagTpsOrfFront = "TPS_Orf_Norm";
+
+        public static string TagSpsSocketRoot = "SPSLL_Socket_Root";
+        public static string TagSpsSocketFront = "SPSLL_Socket_Front";
+        public static string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
+        public static string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",
@@ -43,96 +46,10 @@ namespace VF.Builder.Haptics {
             return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
         }
 
-        public static void AddSender(
-            Transform obj,
-            Vector3 pos,
-            String objName,
-            float radius,
-            string[] tags,
-            float height = 0,
-            Quaternion rotation = default,
-            bool worldScale = true
-        ) {
-            var isOnHips = IsDirectChildOfHips(obj);
-            var suffixes = new List<string>();
-            suffixes.Add("");
-            if (!isOnHips) {
-                suffixes.Add("_SelfNotOnHips");
-            }
-            tags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToArray();
-
-            var child = GameObjects.Create(objName, obj);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return;
-            var sender = child.AddComponent<VRCContactSender>();
-            sender.position = pos;
-            sender.radius = radius;
-            sender.collisionTags = new List<string>(tags);
-            if (height > 0) {
-                sender.shapeType = ContactBase.ShapeType.Capsule;
-                sender.height = height;
-                sender.rotation = rotation;
-            }
-            if (worldScale) {
-                sender.position /= child.worldScale.x;
-                sender.radius /= child.worldScale.x;
-                sender.height /= child.worldScale.x;
-            }
-        }
-
         public enum ReceiverParty {
             Self,
-            Others
-        }
-
-        public static GameObject AddReceiver(
-            Transform obj,
-            Vector3 pos,
-            String param,
-            String objName,
-            float radius,
-            string[] tags,
-            ReceiverParty party,
-            bool localOnly = false,
-            float height = 0,
-            Quaternion rotation = default,
-            ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity,
-            bool worldScale = true
-        ) {
-            var isOnHips = IsDirectChildOfHips(obj);
-            var suffixes = new List<string>();
-            if (party == ReceiverParty.Others) {
-                suffixes.Add("");
-            } else if (party == ReceiverParty.Self) {
-                if (isOnHips) {
-                    suffixes.Add("_SelfNotOnHips");
-                } else {
-                    suffixes.Add("");
-                }
-            }
-            tags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToArray();
-
-            var child = GameObjects.Create(objName, obj);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return child;
-            var receiver = child.AddComponent<VRCContactReceiver>();
-            receiver.position = pos;
-            receiver.parameter = param;
-            receiver.radius = radius;
-            receiver.receiverType = type;
-            receiver.collisionTags = new List<string>(tags);
-            receiver.allowOthers = party == ReceiverParty.Others;
-            receiver.allowSelf = party == ReceiverParty.Self;
-            receiver.localOnly = localOnly;
-            if (height > 0) {
-                receiver.shapeType = ContactBase.ShapeType.Capsule;
-                receiver.height = height;
-                receiver.rotation = rotation;
-            }
-            if (worldScale) {
-                receiver.position /= child.worldScale.x;
-                receiver.radius /= child.worldScale.x;
-                receiver.height /= child.worldScale.x;
-            }
-            return child;
+            Others,
+            Both
         }
 
         public static void RemoveTPSSenders(Transform obj) {
@@ -158,8 +75,8 @@ namespace VF.Builder.Haptics {
         public static bool IsTPSSender(VRCContactSender c) {
             if (c.collisionTags.Any(t => t == CONTACT_PEN_MAIN)) return true;
             if (c.collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) return true;
-            if (c.collisionTags.Any(t => t == CONTACT_ORF_MAIN)) return true;
-            if (c.collisionTags.Any(t => t == CONTACT_ORF_NORM)) return true;
+            if (c.collisionTags.Any(t => t == TagTpsOrfRoot)) return true;
+            if (c.collisionTags.Any(t => t == TagTpsOrfFront)) return true;
             return false;
         }
 
@@ -245,6 +162,7 @@ namespace VF.Builder.Haptics {
             name = Regex.Replace(name, @"dps", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"gameobject", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"object", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"armature", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"tps", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"haptic", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"socket", "", RegexOptions.IgnoreCase);
@@ -294,7 +212,7 @@ namespace VF.Builder.Haptics {
 
         public static bool IsChildOfBone(VFGameObject obj, HumanBodyBones bone, bool followConstraints = true) {
             try {
-                VFGameObject avatarObject = obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
+                VFGameObject avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
                 if (!avatarObject) return false;
                 var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
                 return boneObj && IsChildOf(boneObj, obj, followConstraints);
@@ -310,13 +228,20 @@ namespace VF.Builder.Haptics {
                 alreadyChecked.Add(current);
                 if (current == parent) return true;
                 if (followConstraints) {
-                    var constraint = current.GetComponent<IConstraint>();
-                    if (constraint != null && constraint.sourceCount > 0) {
+                    Transform foundConstraint = null;
+                    foreach (var constraint in current.GetComponents<IConstraint>()) {
+                        if (!(constraint is ParentConstraint) && !(constraint is PositionConstraint)) continue;
+                        if (constraint.sourceCount == 0) continue;
                         var source = constraint.GetSource(0).sourceTransform;
                         if (source != null && !alreadyChecked.Contains(source)) {
-                            current = source;
-                            continue;
+                            foundConstraint = source;
+                            break;
                         }
+                    }
+
+                    if (foundConstraint) {
+                        current = foundConstraint;
+                        continue;
                     }
                 }
                 current = current.parent;

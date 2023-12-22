@@ -1,3 +1,26 @@
+.vfTooltip.vfTooltipHidden {
+    display: none;
+}
+
+/* Make various visual elements the same height so they line up */
+Label {
+    padding: 0;
+}
+Button {
+    padding-bottom: 0;
+    margin: 0;
+}
+ObjectField {
+    margin: 0;
+}
+
+/* Empty lists on 2022 look ugly for some reason */
+.unity-list-view__empty-label {
+    padding-left: 5px;
+}
+
+/* Progress dialog */
+
 .VRCFProgressWindow ProgressBar {
     padding-bottom: 10px;
 }
@@ -21,15 +44,80 @@
     height: 250px;
 }
 
+/* Props */
+
 PropertyField.VrcFuryEditorProp > .unity-base-field > Label {
     display: none;
 }
 PropertyField.VrcFuryEditorProp > .unity-base-field {
     margin: 0;
 }
+Vector4Field.VrcFuryEditorProp > .unity-vector4-field__input {
+    flex-basis: 0;
+}
 .VrcFuryEditorProp.unity-base-field {
     margin: 0;
 }
-.vfTooltip.vfTooltipHidden {
-    display: none;
+
+/* 2022 lists */
+
+.unity-list-view {
+    max-height: none;
+}
+.unity-list-view__reorderable-item__container {
+    padding-left: 2px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+.unity-scroll-view--scroll {
+    padding: 0;
+}
+.unity-list-view__item:hover {
+    background-color: initial;
+}
+.unity-collection-view__item--selected, .unity-collection-view__item--selected:hover {
+    background-color: rgba(0,128,255,0.2);
+}
+.unity-collection-view__item--alternative-background, .unity-collection-view__item--alternative-background:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+.unity-list-view__reorderable-handle {
+    padding-top: 9px;
+}
+
+/* 2019 lists */
+
+.vfList2019__buttons {
+    flex-grow: 0;
+    border-left-color: black;
+    border-right-color: black;
+    border-bottom-color: black;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    flex-direction: row;
+}
+.vfList2019__button {
+    margin: 2px;
+    padding: 3px 6px;
+    padding-top: 0px;
+    font-size: 16px;
+    border-radius: 3px;
+    width: 25px;
+    -unity-text-align: middle-center;
+}
+.vfList2019__button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.vfList2019__notLastItem {
+    border-bottom-width: 1px;
+    border-bottom-color: black;
+}
+.vfVersionLabel {
+    position: absolute;
+    top: -20px;
+    right: 55px;
+    color: rgba(255,255,255,0.3);
 }

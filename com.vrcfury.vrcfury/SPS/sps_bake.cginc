@@ -3,13 +3,13 @@
 void SpsApplyBlendshape(uint vertexId, inout float3 position, inout float3 normal, float blendshapeValue, int blendshapeId)
 {
     if (blendshapeId >= _SPS_BlendshapeCount) return;
-    int vertCount = (int)_SPS_BlendshapeVertCount;
-    uint bytesPerBlendshape = vertCount * 6 + 1;
-    uint blendshapeOffset = 1 + (vertCount * 7) + bytesPerBlendshape * blendshapeId;
-    uint vertexOffset = blendshapeOffset + 1 + (vertexId * 6);
-    float blendshapeValueAtBake = SPS_TEX_FLOAT(_SPS_Bake, blendshapeOffset);
-    float blendshapeValueNow = blendshapeValue;
-    float change = (blendshapeValueNow - blendshapeValueAtBake) * 0.01;
+    const int vertCount = (int)_SPS_BlendshapeVertCount;
+    const uint bytesPerBlendshape = vertCount * 6 + 1;
+    const uint blendshapeOffset = 1 + (vertCount * 7) + bytesPerBlendshape * blendshapeId;
+    const uint vertexOffset = blendshapeOffset + 1 + (vertexId * 6);
+    const float blendshapeValueAtBake = SPS_TEX_FLOAT(_SPS_Bake, blendshapeOffset);
+    const float blendshapeValueNow = blendshapeValue;
+    const float change = (blendshapeValueNow - blendshapeValueAtBake) * 0.01;
     position += SPS_TEX_FLOAT3(_SPS_Bake, vertexOffset) * change;
     normal += SPS_TEX_FLOAT3(_SPS_Bake, vertexOffset + 3) * change;
 }

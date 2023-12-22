@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Api;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
@@ -21,7 +22,14 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    public bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+    internal bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+        try {
+            NdmfFirstMenuItem.Run(avatarObject);
+        } catch (Exception e) {
+            Debug.LogException(e);
+            return false;
+        }
+
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
@@ -35,7 +43,7 @@ public class VRCFuryBuilder {
         return result;
     }
 
-    public static bool ShouldRun(VFGameObject avatarObject) {
+    internal static bool ShouldRun(VFGameObject avatarObject) {
         return avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>().Length > 0;
     }
 
@@ -89,16 +97,6 @@ public class VRCFuryBuilder {
         var currentModelClipPrefix = "?";
         var currentMenuSortPosition = 0;
         var currentComponentObject = avatarObject;
-        var manager = new AvatarManager(
-            avatarObject,
-            tmpDir,
-            () => currentModelNumber,
-            () => currentModelName,
-            () => currentModelClipPrefix,
-            () => currentMenuSortPosition,
-            () => currentComponentObject,
-            mutableManager
-        );
 
         var actions = new List<FeatureBuilderAction>();
         var totalActionCount = 0;
@@ -108,7 +106,6 @@ public class VRCFuryBuilder {
 
         var injector = new VRCFuryInjector();
         injector.RegisterService(mutableManager);
-        injector.RegisterService(manager);
         foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
             injector.RegisterService(serviceType);
         }
@@ -121,6 +118,11 @@ public class VRCFuryBuilder {
             allBuildersInRun = collectedBuilders,
             avatarObject = avatarObject,
             originalObject = originalObject,
+            currentFeatureNumProvider = () => currentModelNumber,
+            currentFeatureNameProvider = () => currentModelName,
+            currentFeatureClipPrefixProvider = () => currentModelClipPrefix,
+            currentMenuSortPosition = () => currentMenuSortPosition,
+            currentComponentObject = () => currentComponentObject,
         };
         injector.RegisterService(globals);
 
@@ -133,9 +135,7 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(DefaultAdditiveLayerFixBuilder));
         AddBuilder(typeof(FixWriteDefaultsBuilder));
         AddBuilder(typeof(BakeGlobalCollidersBuilder));
-        AddBuilder(typeof(ControllerConflictBuilder));
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
-        AddBuilder(typeof(FixMasksBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
         AddBuilder(typeof(ResetAnimatorBuilder));
         AddBuilder(typeof(FixBadVrcParameterNamesBuilder));
@@ -143,9 +143,7 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(FixMaterialSwapWithMaskBuilder));
         AddBuilder(typeof(RestingStateBuilder));
-        AddBuilder(typeof(PullMusclesOutOfFxBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
         AddBuilder(typeof(FixEmptyMotionBuilder));
 
@@ -156,7 +154,16 @@ public class VRCFuryBuilder {
         void AddModel(FeatureModel model, VFGameObject configObject) {
             collectedModels.Add(model);
 
-            var builder = FeatureFinder.GetBuilder(model, configObject, injector);
+            FeatureBuilder builder;
+            try {
+                builder = FeatureFinder.GetBuilder(model, configObject, injector, avatarObject);
+            } catch (Exception e) {
+                throw new ExceptionWithCause(
+                    $"Failed to load VRCFury component on object {configObject.GetPath(avatarObject)}",
+                    e
+                );
+            }
+
             if (builder == null) return;
             AddActionsFromObject(builder, configObject);
         }
@@ -234,7 +241,7 @@ public class VRCFuryBuilder {
             }
 
             currentModelNumber = action.serviceNum;
-            var objectName = action.configObject.GetPath(avatarObject);
+            var objectName = action.configObject.GetPath(avatarObject, prettyRoot: true);
             currentModelName = $"{service.GetType().Name}.{action.GetName()} on {objectName}";
             currentModelClipPrefix = $"VF{currentModelNumber} {(service as FeatureBuilder)?.GetClipPrefix() ?? service.GetType().Name}";
             currentMenuSortPosition = action.menuSortOrder;

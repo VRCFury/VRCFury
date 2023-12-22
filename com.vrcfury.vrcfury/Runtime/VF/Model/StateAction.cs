@@ -1,22 +1,47 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 using VF.Component;
+using VF.Upgradeable;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Model.StateAction {
     [Serializable]
-    public class Action {
+    public class Action : VrcfUpgradeable {
+        public bool desktopActive = false;
+        public bool androidActive = false;
     }
-    
+
     [Serializable]
     public class ObjectToggleAction : Action {
         public GameObject obj;
+        public Mode mode = Mode.TurnOn;
+
+        public override bool Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                mode = Mode.Toggle;
+            }
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
+
+        public enum Mode {
+            TurnOn,
+            TurnOff,
+            Toggle
+        }
     }
     
     [Serializable]
     public class BlendShapeAction : Action {
         public string blendShape;
         public float blendShapeValue = 100;
+        public Renderer renderer;
+        public bool allRenderers = true;
     }
     
     [Serializable]
@@ -63,18 +88,79 @@ namespace VF.Model.StateAction {
         public bool affectAllMeshes;
         public string propertyName;
         public float value;
+        public Vector4 valueVector;
+        public Color valueColor = Color.white;
     }
     
     [Serializable]
     public class FlipbookAction : Action {
-        public GameObject obj;
+        [Obsolete] public GameObject obj;
+        public Renderer renderer;
         public int frame;
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                if (obj != null) {
+                    renderer = obj.GetComponent<Renderer>();
+                }
+            }
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]
     public class ScaleAction : Action {
         public GameObject obj;
         public float scale = 1;
+    }
+    
+    [Serializable]
+    public class BlockBlinkingAction : Action {
+    }
+        
+    [Serializable]
+    public class BlockVisemesAction : Action {
+    }
+    
+    [Serializable]
+    public class ResetPhysboneAction : Action {
+        public VRCPhysBone physBone;
+    }
+    
+    [Serializable]
+    public class FlipBookBuilderAction : Action {
+        [Obsolete] public List<State> states;
+        public List<FlipBookPage> pages;
+
+        [Serializable]
+        public class FlipBookPage {
+            public State state;
+            public bool ResetMePlease2;
+        }
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                pages.Clear();
+                foreach (var state in states) {
+                    pages.Add(new FlipBookPage() { state = state });
+                }
+                states.Clear();
+            }
+
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
 
 }

@@ -17,8 +17,12 @@ namespace VF.Utils {
             });
         }
         public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite, bool skipProxyBindings = true) {
+            var cache = new Dictionary<EditorCurveBinding, EditorCurveBinding?>();
             var output = RewriteCurve((binding, curve) => {
-                var newBinding = rewrite(binding);
+                if (!cache.TryGetValue(binding, out var newBinding)) {
+                    newBinding = rewrite(binding);
+                    cache[binding] = newBinding;
+                }
                 if (newBinding == null) return (binding, null, false);
                 return (newBinding.Value, curve, false);
             });
@@ -74,8 +78,8 @@ namespace VF.Utils {
 
         public string RewritePath(string input) {
             var rewritten = RewriteOne(
-                EditorCurveBinding.DiscreteCurve(input, typeof(Transform), "test"),
-                new FloatOrObjectCurve(AnimationCurve.Constant(0,0,0))
+                EditorCurveBinding.FloatCurve(input, typeof(Transform), "test"),
+                0
             );
             if (rewritten.Item2 == null) return null;
             return rewritten.Item1.path;

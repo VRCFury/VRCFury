@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using Editor.VF.Utils;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Inspector;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
@@ -27,35 +29,51 @@ namespace VF.Utils {
             }
         }
 
-        public static void RewriteParameters(this AnimatorController c, Func<string, string> rewriteParamName, bool includeWrites = true) {
+        public static void RewriteParameters(this AnimatorController c, Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
+            string RewriteParamName(string str) {
+                if (string.IsNullOrEmpty(str)) return str;
+                return rewriteParamNameNullUnsafe(str);
+            }
+            var layers = c.layers
+                .Where(l => limitToLayers == null || limitToLayers.Contains(l.stateMachine))
+                .ToArray();
+            
             // Params
-            if (includeWrites) {
+            if (includeWrites && limitToLayers == null) {
                 var prms = c.parameters;
                 foreach (var p in prms) {
-                    p.name = rewriteParamName(p.name);
+                    p.name = RewriteParamName(p.name);
                 }
 
                 c.parameters = prms;
             }
 
             // States
-            foreach (var state in new AnimatorIterator.States().From(c)) {
-                state.speedParameter = rewriteParamName(state.speedParameter);
-                state.cycleOffsetParameter = rewriteParamName(state.cycleOffsetParameter);
-                state.mirrorParameter = rewriteParamName(state.mirrorParameter);
-                state.timeParameter = rewriteParamName(state.timeParameter);
+            foreach (var state in new AnimatorIterator.States().From(layers)) {
+                if (state.speedParameterActive) {
+                    state.speedParameter = RewriteParamName(state.speedParameter);
+                }
+                if (state.cycleOffsetParameterActive) {
+                    state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
+                }
+                if (state.mirrorParameterActive) {
+                    state.mirrorParameter = RewriteParamName(state.mirrorParameter);
+                }
+                if (state.timeParameterActive) {
+                    state.timeParameter = RewriteParamName(state.timeParameter);
+                }
                 VRCFuryEditorUtils.MarkDirty(state);
             }
 
             // Parameter Drivers
             if (includeWrites) {
-                foreach (var b in new AnimatorIterator.Behaviours().From(c)) {
+                foreach (var b in new AnimatorIterator.Behaviours().From(layers)) {
                     if (b is VRCAvatarParameterDriver oldB) {
                         foreach (var p in oldB.parameters) {
-                            p.name = rewriteParamName(p.name);
+                            p.name = RewriteParamName(p.name);
                             var sourceField = p.GetType().GetField("source");
                             if (sourceField != null) {
-                                sourceField.SetValue(p, rewriteParamName((string)sourceField.GetValue(p)));
+                                sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
                             }
                         }
                     }
@@ -64,33 +82,28 @@ namespace VF.Utils {
 
             // Parameter Animations
             if (includeWrites) {
-                foreach (var clip in new AnimatorIterator.Clips().From(c)) {
+                foreach (var clip in new AnimatorIterator.Clips().From(layers)) {
                     clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                         if (binding.path != "") return binding;
                         if (binding.type != typeof(Animator)) return binding;
                         if (binding.IsMuscle()) return binding;
-                        binding.propertyName = rewriteParamName(binding.propertyName);
+                        binding.propertyName = RewriteParamName(binding.propertyName);
                         return binding;
                     }));
                 }
             }
 
             // Blend trees
-            foreach (var tree in new AnimatorIterator.Trees().From(c)) {
-                tree.blendParameter = rewriteParamName(tree.blendParameter);
-                tree.blendParameterY = rewriteParamName(tree.blendParameterY);
-                tree.children = tree.children.Select(child => {
-                    child.directBlendParameter = rewriteParamName(child.directBlendParameter);
-                    return child;
-                }).ToArray();
+            foreach (var tree in new AnimatorIterator.Trees().From(layers)) {
+                tree.RewriteParameters(RewriteParamName);
             }
 
             // Transitions
-            foreach (var transition in new AnimatorIterator.Transitions().From(c)) {
-                transition.conditions = transition.conditions.Select(cond => {
-                    cond.parameter = rewriteParamName(cond.parameter);
+            foreach (var transition in new AnimatorIterator.Transitions().From(layers)) {
+                transition.RewriteConditions(cond => {
+                    cond.parameter = RewriteParamName(cond.parameter);
                     return cond;
-                }).ToArray();
+                });
                 VRCFuryEditorUtils.MarkDirty(transition);
             }
             

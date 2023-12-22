@@ -22,7 +22,7 @@ namespace VF.Service {
     [VFService]
     public class ScaleFactorService {
         [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly ParamSmoothingService smoothingService;
+        [VFAutowired] private readonly MathService smoothingService;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         

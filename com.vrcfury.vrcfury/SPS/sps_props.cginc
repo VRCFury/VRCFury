@@ -1,3 +1,4 @@
+[Header(SPS)]
 _SPS_Length("World length of mesh (m)", Float) = 0
 _SPS_BakedLength("World length of mesh when baked (m)", Float) = 0
 _SPS_Bake("Baked mesh info", 2D) = "white" {}
@@ -21,3 +22,7 @@ _SPS_Blendshape12("Blendshape 12", Float) = 0
 _SPS_Blendshape13("Blendshape 13", Float) = 0
 _SPS_Blendshape14("Blendshape 14", Float) = 0
 _SPS_Blendshape15("Blendshape 15", Float) = 0
+
+_SPS_Plus_Enabled("_SPS_Plus_Enabled", Float) = 0
+_SPS_Plus_Ring("_SPS_Plus_Ring", Float) = 0
+_SPS_Plus_Hole("_SPS_Plus_Hole", Float) = 0

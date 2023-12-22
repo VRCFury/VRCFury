@@ -14,11 +14,13 @@ namespace VF.Feature {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menuIcon"), "SPS Menu Icon Override"));
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menuPath"), "SPS Menu Path Override (Default: SPS)"));
+            c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("saveSockets"), "Save Sockets Between Worlds"));
+            c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("enableSpsPlusOption"), "Add SPS+ test to in-game menu"));
             return c;
         }
 
-        public override bool AvailableOnProps() {
-            return false;
+        public override bool AvailableOnRootOnly() {
+            return true;
         }
         
         public override bool OnlyOneAllowed() {

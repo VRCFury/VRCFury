@@ -9,6 +9,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
+using VF.PlayMode;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -22,29 +23,49 @@ namespace VF.Feature {
             if (isFloat) {
                 if (GetDefaultClip().GetFloatCurve(binding) != null) return;
                 if (binding.GetFloatFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetConstant(binding, value);
+                    GetDefaultClip().SetCurve(binding, value);
                 }
             } else {
                 if (GetDefaultClip().GetObjectCurve(binding) != null) return;
                 if (binding.GetObjectFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetConstant(binding, value);
+                    GetDefaultClip().SetCurve(binding, value);
                 }
             }
         }
-        
+
+        private VFLayer _defaultLayer = null;
         private AnimationClip _defaultClip = null;
         private AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
                 var fx = GetFx();
                 _defaultClip = fx.NewClip("Defaults");
-                var defaultLayer = fx.NewLayer("Defaults", 0);
-                defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
+                _defaultLayer = fx.NewLayer("Defaults", 0);
+                _defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             }
             return _defaultClip;
         }
 
+        [FeatureBuilderAction(FeatureOrder.PositionDefaultsLayer)]
+        public void PositionDefaultsLayer() {
+            if (_defaultLayer != null) {
+                _defaultLayer.Move(0);
+            }
+        }
+
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
         public void RecordAllDefaults() {
+            var propsInNonFx = new HashSet<EditorCurveBinding>();
+            foreach (var c in manager.GetAllUsedControllers()) {
+                if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) continue;
+                foreach (var clip in c.GetClips()) {
+                    foreach (var binding in clip.GetAllBindings()) {
+                        propsInNonFx.Add(binding.Normalize());
+                    }
+                }
+            }
+            
+            // Note to self: Never record defaults when WD is on, because a unity bug with WD on can cause the defaults to override lower layers
+            // even though the lower layers should be higher priority.
             var settings = GetBuildSettings();
             if (settings.useWriteDefaults) return;
 
@@ -53,9 +74,11 @@ namespace VF.Feature {
                     if (!state.writeDefaultValues) continue;
                     foreach (var clip in new AnimatorIterator.Clips().From(state)) {
                         foreach (var binding in clip.GetFloatBindings()) {
+                            if (propsInNonFx.Contains(binding.Normalize())) continue;
                             RecordDefaultNow(binding, true);
                         }
                         foreach (var binding in clip.GetObjectBindings()) {
+                            if (propsInNonFx.Contains(binding.Normalize())) continue;
                             RecordDefaultNow(binding, false);
                         }
                     }
@@ -67,6 +90,11 @@ namespace VF.Feature {
         public void AdjustWriteDefaults() {
             var settings = GetBuildSettings();
 
+            if (settings.ignoredBroken) {
+                var fx = manager.GetFx();
+                fx.NewBool($"VF/BrokenWd", usePrefix: false, synced: true, networkSynced: false);
+            }
+
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in GetMaintainedLayers(controller)) {
                     // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
@@ -74,9 +102,14 @@ namespace VF.Feature {
                     var useWriteDefaultsForLayer = settings.useWriteDefaults;
                     useWriteDefaultsForLayer |= new AnimatorIterator.Trees().From(layer)
                         .Any(tree => tree.blendType == BlendTreeType.Direct);
+                    useWriteDefaultsForLayer |= layer.blendingMode == AnimatorLayerBlendingMode.Additive
+                        || controller.GetType() == VRCAvatarDescriptor.AnimLayerType.Additive;
 
                     foreach (var state in new AnimatorIterator.States().From(layer)) {
-                        state.writeDefaultValues = useWriteDefaultsForLayer;
+                        // Avoid calling this if not needed, since it internally invalidates the controller cache every time
+                        if (state.writeDefaultValues != useWriteDefaultsForLayer) {
+                            state.writeDefaultValues = useWriteDefaultsForLayer;
+                        }
                     }
                 }
             }
@@ -85,6 +118,7 @@ namespace VF.Feature {
         private class BuildSettings {
             public bool applyToUnmanagedLayers;
             public bool useWriteDefaults;
+            public bool ignoredBroken;
         }
         private BuildSettings _buildSettings;
         private BuildSettings GetBuildSettings() {
@@ -97,11 +131,17 @@ namespace VF.Feature {
                 .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
 
-            var analysis = DetectExistingWriteDefaults(manager.GetAllUsedControllersRaw(), allManagedStateMachines);
+            var analysis = DetectExistingWriteDefaults(
+                manager.GetAllUsedControllers().Select(c => (c.GetType(), c.GetRaw())),
+                allManagedStateMachines
+            );
 
             var fixSetting = allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
-            if (fixSetting != null) {
+
+            if (allFeaturesInRun.OfType<MmdCompatibility>().Any()) {
+                mode = FixWriteDefaults.FixWriteDefaultsMode.ForceOn;
+            } else if (fixSetting != null) {
                 mode = fixSetting.mode;
             } else if (analysis.isBroken) {
                 var ask = EditorUtility.DisplayDialogComplex("VRCFury",
@@ -109,6 +149,7 @@ namespace VF.Feature {
                     " This may cause weird issues to happen with your animations," +
                     " such as toggles or animations sticking on or off forever.\n\n" +
                     "VRCFury can try to fix this for you automatically. Should it try?\n\n" +
+                    "You can easily undo this change by removing the 'Fix Write Defaults' component that will be added to your avatar root.\n\n" +
                     $"(Debug info: {analysis.debugInfo}, VRCF will try to convert to {(analysis.shouldBeOnIfWeAreInControl ? "ON" : "OFF")})",
                     "Auto-Fix",
                     "Skip",
@@ -116,11 +157,13 @@ namespace VF.Feature {
                 if (ask == 0) {
                     mode = FixWriteDefaults.FixWriteDefaultsMode.Auto;
                 }
-                if ((ask == 0 || ask == 2) && originalObject) {
-                    var newComponent = originalObject.AddComponent<VRCFury>();
-                    var newFeature = new FixWriteDefaults();
-                    if (ask == 2) newFeature.mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
-                    newComponent.config.features.Add(newFeature);
+                // Save the choice
+                if (ask == 0 || ask == 2) {
+                    if (Application.isPlaying) {
+                        FixWriteDefaultsLater.SaveLater(avatarObject, ask == 0);
+                    } else if (originalObject) {
+                        FixWriteDefaultsLater.SaveNow(originalObject, ask == 0);
+                    }
                 }
             }
 
@@ -150,7 +193,8 @@ namespace VF.Feature {
 
             _buildSettings = new BuildSettings {
                 applyToUnmanagedLayers = applyToUnmanagedLayers,
-                useWriteDefaults = useWriteDefaults
+                useWriteDefaults = useWriteDefaults,
+                ignoredBroken = analysis.isBroken && mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled
             };
             return _buildSettings;
         }
@@ -166,7 +210,8 @@ namespace VF.Feature {
             public List<string> offStates = new List<string>();
             public List<string> directOnStates = new List<string>();
             public List<string> directOffStates = new List<string>();
-            public List<string> additiveLayers = new List<string>();
+            public List<string> additiveOnStates = new List<string>();
+            public List<string> additiveOffStates = new List<string>();
         }
 
         public class DetectionResults {
@@ -179,7 +224,7 @@ namespace VF.Feature {
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
         public static DetectionResults DetectExistingWriteDefaults(
-            IEnumerable<Tuple<VRCAvatarDescriptor.AnimLayerType, VFController>> avatarControllers,
+            IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> avatarControllers,
             ISet<AnimatorStateMachine> stateMachinesToIgnore = null
         ) {
             var controllerInfos = avatarControllers.Select(tuple => {
@@ -190,18 +235,16 @@ namespace VF.Feature {
                     var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
                     if (!ignore) {
                         foreach (var state in new AnimatorIterator.States().From(layer)) {
-                            var hasDirect = new AnimatorIterator.Trees().From(state)
-                                .Any(tree => tree.blendType == BlendTreeType.Direct);
-
-                            var list = hasDirect
-                                ? (state.writeDefaultValues ? info.directOnStates : info.directOffStates)
-                                : (state.writeDefaultValues ? info.onStates : info.offStates);
+                            List<string> list;
+                            if (layer.blendingMode == AnimatorLayerBlendingMode.Additive || type == VRCAvatarDescriptor.AnimLayerType.Additive) {
+                                list = state.writeDefaultValues ? info.additiveOnStates : info.additiveOffStates;
+                            } else if (new AnimatorIterator.Trees().From(state).Any(tree => tree.blendType == BlendTreeType.Direct)) {
+                                list = state.writeDefaultValues ? info.directOnStates : info.directOffStates;
+                            } else {
+                                list = state.writeDefaultValues ? info.onStates : info.offStates;
+                            }
                             list.Add(layer.name + " | " + state.name);
                         }
-                    }
-                    
-                    if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
-                        info.additiveLayers.Add(layer.name);
                     }
                 }
 
@@ -215,7 +258,8 @@ namespace VF.Feature {
                 if (info.offStates.Count > 0) entries.Add(info.offStates.Count + " off");
                 if (info.directOnStates.Count > 0) entries.Add(info.directOnStates.Count + " direct-on");
                 if (info.directOffStates.Count > 0) entries.Add(info.directOffStates.Count + " direct-off");
-                if (info.additiveLayers.Count > 0) entries.Add(info.additiveLayers.Count + " additive");
+                if (info.additiveOnStates.Count > 0) entries.Add(info.additiveOnStates.Count + " additive-on");
+                if (info.additiveOffStates.Count > 0) entries.Add(info.additiveOffStates.Count + " additive-off");
                 if (entries.Count > 0) {
                     debugList.Add($"{info.type}:{string.Join("|",entries)}");
                 }
@@ -228,6 +272,7 @@ namespace VF.Feature {
             var onStates = Collect(info => info.onStates);
             var offStates = Collect(info => info.offStates);
             var directOffStates = Collect(info => info.directOffStates);
+            var additiveOffStates = Collect(info => info.additiveOffStates);
 
             var fxInfo = controllerInfos.Find(i => i.type == VRCAvatarDescriptor.AnimLayerType.FX);
             bool shouldBeOnIfWeAreNotInControl;
@@ -239,7 +284,7 @@ namespace VF.Feature {
 
             var shouldBeOnIfWeAreInControl = shouldBeOnIfWeAreNotInControl;
             
-            var weirdStates = (shouldBeOnIfWeAreNotInControl ? offStates : onStates).Concat(directOffStates).ToList();
+            var weirdStates = (shouldBeOnIfWeAreNotInControl ? offStates : onStates).Concat(directOffStates).Concat(additiveOffStates).ToList();
             var broken = weirdStates.Count > 0;
 
             return new DetectionResults {

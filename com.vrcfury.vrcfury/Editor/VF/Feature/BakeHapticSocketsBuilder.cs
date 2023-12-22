@@ -25,16 +25,19 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
-        [VFAutowired] private readonly ParamSmoothingService paramSmoothing;
+        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
+        [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
 
-        [FeatureBuilderAction(FeatureOrder.BakeHapticSockets)]
+        [FeatureBuilderAction]
         public void Apply() {
             var fx = GetFx();
             var usedNames = new List<string>();
+            var saved = spsOptions.GetOptions().saveSockets;
 
             var enableAuto = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
                 .Where(o => o.addMenuItem && o.enableAuto)
@@ -43,7 +46,7 @@ namespace VF.Feature {
             VFABool autoOn = null;
             AnimationClip autoOnClip = null;
             if (enableAuto) {
-                autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false);
+                autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false, saved: saved);
                 manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = fx.NewClip("EnableAutoReceivers");
                 var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
@@ -60,7 +63,7 @@ namespace VF.Feature {
                 .Length >= 1;
             VFABool stealthOn = null;
             if (enableStealth) {
-                stealthOn = fx.NewBool("stealth", synced: true);
+                stealthOn = fx.NewBool("stealth", synced: true, saved: saved);
                 manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
@@ -70,7 +73,7 @@ namespace VF.Feature {
                 .Length >= 2;
             VFABool multiOn = null;
             if (enableMulti) {
-                multiOn = fx.NewBool("multi", synced: true, networkSynced: false);
+                multiOn = fx.NewBool("multi", synced: true, networkSynced: false, saved: saved);
                 var multiFolder = $"{spsOptions.GetOptionsPath()}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active sockets";
                 manager.GetMenu().NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
                 manager.GetMenu().NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use SPS or TPS - NO DPS!");
@@ -89,7 +92,44 @@ namespace VF.Feature {
                         var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
                         mover.Move(socket.gameObject, head);
                     }
-                    var (name, bakeRoot) = VRCFuryHapticSocketEditor.Bake(socket, usedNames);
+                    
+                    var name = VRCFuryHapticSocketEditor.GetName(socket);
+                    name = HapticUtils.GetNextName(usedNames, name);
+                    Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
+
+                    var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket, hapticContacts);
+
+                    // Haptic receivers
+                    {
+                        // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+                        var capsuleRotation = Quaternion.Euler(90,0,0);
+                        
+                        var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
+                    
+                        // Receivers
+                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
+                        var receivers = GameObjects.Create("Receivers", bakeRoot);
+                        if (handTouchZoneSize != null) {
+                            var oscDepth = handTouchZoneSize.Item1;
+                            var closeRadius = handTouchZoneSize.Item2;
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: socket.useHipAvoidance);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: socket.useHipAvoidance);
+                            // Legacy non-upgraded TPS detection
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: socket.useHipAvoidance);
+                            
+                            var frotRadius = 0.1f;
+                            var frotPos = 0.05f;
+                            hapticContacts.AddReceiver(receivers, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                        }
+
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                    }
 
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                         _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
@@ -138,11 +178,12 @@ namespace VF.Feature {
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
                         if (gizmo != null) {
                             gizmo.show = false;
-                            clipBuilder.OneFrame(onLocalClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
-                            clipBuilder.OneFrame(onRemoteClip, obj, typeof(VRCFurySocketGizmo), "show", 1);
+                            var path = clipBuilder.GetPath(obj);
+                            onLocalClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
+                            onRemoteClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
                         }
 
-                        var holeOn = fx.NewBool(name, synced: true);
+                        var holeOn = fx.NewBool(name, synced: true, saved: saved);
                         var icon = socket.menuIcon?.Get();
                         manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", holeOn, icon: icon);
 
@@ -170,18 +211,19 @@ namespace VF.Feature {
                         exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
 
                         if (socket.enableAuto && autoOnClip) {
-                            var distParam = fx.NewFloat(name + "/AutoDistance");
-                            var distReceiver = HapticUtils.AddReceiver(
-                                bakeRoot,
+                            var autoReceiverObj = GameObjects.Create("AutoDistance", bakeRoot);
+                            var distParam = hapticContacts.AddReceiver(
+                                autoReceiverObj,
                                 Vector3.zero,
-                                distParam.Name(),
-                                "AutoDistance",
+                                name + "/AutoDistance",
+                                "Receiver",
                                 0.3f,
                                 new[] { HapticUtils.CONTACT_PEN_MAIN },
-                                party: HapticUtils.ReceiverParty.Others
+                                party: HapticUtils.ReceiverParty.Others,
+                                useHipAvoidance: socket.useHipAvoidance
                             );
-                            distReceiver.SetActive(false);
-                            clipBuilder.Enable(autoOnClip, distReceiver);
+                            autoReceiverObj.active = false;
+                            clipBuilder.Enable(autoOnClip, autoReceiverObj);
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                         }
                     }
@@ -192,8 +234,33 @@ namespace VF.Feature {
                             socket.owner(),
                             animRoot,
                             name,
-                            socket.unitsInMeters
+                            socket.unitsInMeters,
+                            socket.useHipAvoidance
                         );
+                    }
+
+                    if (socket.IsValidPlugLength || socket.IsValidPlugWidth) {
+                        var penTip = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenTip", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, HapticUtils.ReceiverParty.Both);
+                        if (socket.IsValidPlugLength) {
+                            var penRoot = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenRoot", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, HapticUtils.ReceiverParty.Both);
+                            // Calculate `Plug Length` using `TPS_Pen_Penetrating - TPS_Pen_Root + 0.01 (radius of root sender)`
+                            var plugLength = math.Subtract(penTip, penRoot);
+                            directTree.Add(math.MakeSetter(plugLength, 0.01f));
+                            var validWhen = math.And(math.GreaterThan(penRoot, 0), math.LessThan(penTip, 1));
+                            var plugLengthValid = math.SetValueWithConditions("ValidPlugLength", (plugLength, validWhen));
+                            var plugLengthGlobal = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
+                            directTree.Add(math.MakeCopier(plugLengthValid, plugLengthGlobal));
+                        }
+                        if (socket.IsValidPlugWidth) {
+                            var penWidth = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenWidth", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
+                            // Calculate `Plug Width` using `(TPS_Pen_Penetrating - TPS_Pen_Width)/2` 
+                            var doubleWidth = math.Subtract(penTip, penWidth);
+                            var plugWidth = math.Multiply(socket.plugWidthParameterName, doubleWidth, 0.5f);
+                            var validWhen = math.And(math.GreaterThan(penWidth, 0), math.LessThan(penTip, 1));
+                            var plugWidthValid = math.SetValueWithConditions("ValidPlugWidth", (plugWidth, validWhen));
+                            var plugWidthGlobal = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
+                            directTree.Add(math.MakeCopier(plugWidthValid, plugWidthGlobal));
+                        }
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake Haptic Socket: {socket.owner().GetPath()}", e);
@@ -209,7 +276,7 @@ namespace VF.Feature {
                 }
             }
 
-            if (autoOn != null) {
+            if (autoOn != null && autoSockets.Count > 0) {
                 var layer = fx.NewLayer("Auto Socket Mode");
                 var remoteTrap = layer.NewState("Remote trap");
                 var stopped = layer.NewState("Stopped");
@@ -240,9 +307,9 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = paramSmoothing.MakeDirect($"{aName} vs {bName}");
-                        tree.AddDirectChild(bDist.Name(), paramSmoothing.MakeSetter(vsParam, 1));
-                        tree.AddDirectChild(aDist.Name(), paramSmoothing.MakeSetter(vsParam, -1));
+                        var tree = math.MakeDirect($"{aName} vs {bName}");
+                        tree.Add(bDist, math.MakeSetter(vsParam, 1));
+                        tree.Add(aDist, math.MakeSetter(vsParam, -1));
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }

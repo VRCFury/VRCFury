@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Api;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
@@ -12,6 +13,7 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.PlayMode;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
@@ -20,10 +22,15 @@ namespace VF {
     [InitializeOnLoad]
     public class PlayModeTrigger {
         private static string tmpDir;
+        private static int nextPlayerId = 1;
 
         static PlayModeTrigger() {
             SceneManager.sceneLoaded += OnSceneLoaded;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            
+            if (ContactBase.OnValidatePlayers == null) {
+                ContactBase.OnValidatePlayers = (a, b) => true;
+            }
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
@@ -77,15 +84,42 @@ namespace VF {
                         continue;
                     }
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
-                    if (builder.SafeRun(obj)) {
+
+                    var failed = false;
+                    var failSuffix = "(VRCFury Failed)";
+                    foreach (var (source,callback) in VfBuildHooks.beforePlayModeBuildCallbacks) {
+                        try {
+                            callback(obj);
+                        } catch (Exception e) {
+                            Debug.LogException(e);
+                            EditorUtility.DisplayDialog(
+                                "Avatar Error",
+                                $"Pre-Build hook from '{source}' threw an exception:\n\n{e.Message}\n\nSee the console for full details.",
+                                "Ok"
+                            );
+                            failed = true;
+                            failSuffix = "(Pre-Build hooks failed)";
+                        }
+                    }
+
+                    if (!failed) {
+                        failed = !builder.SafeRun(obj);
+                    }
+
+                    if (!failed) {
                         VRCFuryBuilder.StripAllVrcfComponents(obj);
                         restartAudioLink = true;
                         if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
                             restartAv3Emulator = true;
                         }
+
+                        var playerId = nextPlayerId++;
+                        foreach (var contact in obj.GetComponentsInSelfAndChildren<ContactBase>()) {
+                            contact.playerId = playerId;
+                        }
                     } else {
                         var name = obj.name;
-                        var failMarker = new GameObject(name + " (VRCFury Failed)");
+                        var failMarker = new GameObject($"{name} {failSuffix}");
                         SceneManager.MoveGameObjectToScene(failMarker, obj.scene);
                         Object.DestroyImmediate(obj);
                     }
@@ -99,7 +133,8 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        VRCFuryHapticSocketEditor.Bake(socket, onlySenders: true);
+                        var hapticContactsService = new HapticContactsService();
+                        VRCFuryHapticSocketEditor.Bake(socket, hapticContactsService);
                     });
                     Object.DestroyImmediate(socket);
                 }
@@ -111,8 +146,8 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        var mutableManager = new MutableManager(tmpDir);
-                        VRCFuryHapticPlugEditor.Bake(plug, onlySenders: true, mutableManager: mutableManager);
+                        var hapticContactsService = new HapticContactsService();
+                        VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
                     });
                     Object.DestroyImmediate(plug);
                 }

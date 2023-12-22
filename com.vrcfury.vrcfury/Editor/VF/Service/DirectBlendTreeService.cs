@@ -11,7 +11,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         private BlendTree _tree;
 
-        private BlendTree GetTree() {
+        public BlendTree GetTree() {
             if (_tree == null) {
                 var fx = manager.GetFx();
                 var directLayer = fx.NewLayer("Direct Blend Tree Service");
@@ -27,7 +27,7 @@ namespace VF.Service {
         }
         
         public void Add(VFAFloat param, Motion motion) {
-            GetTree().AddDirectChild(param.Name(), motion);
+            GetTree().Add(param, motion);
         }
     }
 }

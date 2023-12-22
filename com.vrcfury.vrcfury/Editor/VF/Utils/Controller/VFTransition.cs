@@ -53,6 +53,7 @@ namespace VF.Utils.Controller {
             return this;
         }
         public VFTransition WithTransitionDurationSeconds(float time) {
+            if (time < 0f) return this; // don't even bother
             foreach (var t in createdTransitions) {
                 t.duration = time;
             }
@@ -65,6 +66,7 @@ namespace VF.Utils.Controller {
             return this;
         }
         public VFTransition WithTransitionExitTime(float time) {
+            if (time < 0f) return this; // don't even bother
             foreach (var t in createdTransitions) {
                 t.hasExitTime = true;
                 t.exitTime = time;
@@ -77,6 +79,15 @@ namespace VF.Utils.Controller {
                 return trans;
             };
             return this;
+        }
+
+        public void AddCondition(VFCondition c) {
+            if (c.transitions.Count() != 1) {
+                throw new Exception("Cannot add 'or' conditions to an existing baked transition");
+            }
+            foreach (var t in createdTransitions) {
+                t.conditions = t.conditions.Concat(c.transitions.First()).ToArray();
+            }
         }
     }
 }

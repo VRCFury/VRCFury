@@ -2,15 +2,16 @@ using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using UnityEditor.Experimental.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
+using VF.Model;
+using VF.Utils;
 
 namespace VF.Inspector {
-    public class VRCFuryComponentEditor<T> : Editor where T : VRCFuryComponent {
+    public class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
 
         /*
         public override bool UseDefaultMargins() {
@@ -156,12 +157,23 @@ namespace VF.Inspector {
         private GameObject dummyObject;
 
         public sealed override VisualElement CreateInspectorGUI() {
+            VisualElement content;
             try {
-                return CreateInspectorGUIUnsafe();
+                content = CreateInspectorGUIUnsafe();
             } catch (Exception e) {
                 Debug.LogException(new Exception("Failed to render editor", e));
-                return VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
+                content = VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
             }
+            
+            var versionLabel = new Label(VRCFPackageUtils.Version);
+            versionLabel.AddToClassList("vfVersionLabel");
+            versionLabel.pickingMode = PickingMode.Ignore;
+            
+            var contentWithVersion = new VisualElement();
+            contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
+            contentWithVersion.Add(versionLabel);
+            contentWithVersion.Add(content);
+            return contentWithVersion;
         }
 
         private VisualElement CreateInspectorGUIUnsafe() {
@@ -183,7 +195,6 @@ namespace VF.Inspector {
             var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);
 
             var container = new VisualElement();
-            container.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
 
             container.Add(CreateOverrideLabel());
 
@@ -191,30 +202,39 @@ namespace VF.Inspector {
                 // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
                 // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
                 // will just be thrown out randomly, and unity will dump a bunch of errors.
-                var baseFury = PrefabUtility.GetCorrespondingObjectFromOriginalSource(v);
-                container.Add(CreatePrefabInstanceLabel(baseFury));
+                container.Add(CreatePrefabInstanceLabel(v));
             }
 
             VisualElement body;
             if (isInstance) {
                 var copy = CopyComponent(v);
-                copy.Upgrade();
+                try {
+                    VRCFury.RunningFakeUpgrade = true;
+                    copy.Upgrade();
+                } finally {
+                    VRCFury.RunningFakeUpgrade = false;
+                }
                 copy.gameObjectOverride = v.gameObject;
                 var copySo = new SerializedObject(copy);
                 body = CreateEditor(copySo, copy);
                 body.SetEnabled(false);
-                // We have to delay this by a frame, because unity automatically calls Bind on this visualelement
-                // right after we return from this function
-                EditorApplication.delayCall += () => {
-                    body.Bind(copySo);
-                };
+                // We have to delay adding the editor to the inspector, because otherwise unity will call Bind()
+                // on this visual element immediately after we return from this method, binding it back
+                // to the original (non-temporary-upgraded) object
+                var added = false;
+                container.RegisterCallback<AttachToPanelEvent>(e => {
+                    if (!added) {
+                        added = true;
+                        container.Add(body);
+                        body.Bind(copySo);
+                    }
+                });
             } else {
                 v.Upgrade();
                 serializedObject.Update();
                 body = CreateEditor(serializedObject, v);
+                container.Add(body);
             }
-            
-            container.Add(body);
 
             /*
             el.RegisterCallback<AttachToPanelEvent>(e => {
@@ -252,7 +272,7 @@ namespace VF.Inspector {
             var baseText = "The VRCFury features in this prefab are overridden on this instance. Please revert them!" +
                            " If you apply, it may corrupt data in the changed features.";
             var overrideLabel = VRCFuryEditorUtils.Error(baseText);
-            overrideLabel.style.display = DisplayStyle.None;
+            overrideLabel.SetVisible(false);
 
             double lastCheck = 0;
             void CheckOverride() {
@@ -263,7 +283,7 @@ namespace VF.Inspector {
                     lastCheck = now;
                     var mods = VRCFPrefabFixer.GetModifications(vrcf);
                     var isModified = mods.Count > 0;
-                    overrideLabel.style.display = isModified ? DisplayStyle.Flex : DisplayStyle.None;
+                    overrideLabel.SetVisible(isModified);
                     if (isModified) {
                         overrideLabel.Clear();
                         overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath))));
@@ -276,39 +296,34 @@ namespace VF.Inspector {
             return overrideLabel;
         }
 
-        private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component parent) {
+        private VisualElement CreatePrefabInstanceLabel(UnityEngine.Component component) {
             void Open() {
-                var open = typeof(PrefabStageUtility).GetMethod("OpenPrefab",
-                    BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
-                    null,
-                    new[] { typeof(string), typeof(GameObject) },
-                    null
-                );
-                open.Invoke(null, new object[] { AssetDatabase.GetAssetPath(parent), parent.gameObject });
+                var componentInBasePrefab = PrefabUtility.GetCorrespondingObjectFromOriginalSource(component);
+                var prefabPath = AssetDatabase.GetAssetPath(componentInBasePrefab);
+                UnityCompatUtils.OpenPrefab(prefabPath, component.gameObject);
             }
-            var label = new Button(Open) {
-                text = "You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab",
-                style = {
-                    paddingTop = 5,
-                    paddingBottom = 5,
-                    unityTextAlign = TextAnchor.MiddleCenter,
-                    whiteSpace = WhiteSpace.Normal,
-                    borderTopLeftRadius = 5,
-                    borderTopRightRadius = 5,
-                    borderBottomLeftRadius = 0,
-                    borderBottomRightRadius = 0,
-                    marginTop = 5,
-                    marginLeft = 20,
-                    marginRight = 20,
-                    marginBottom = 0,
-                    borderTopWidth = 1,
-                    borderLeftWidth = 1,
-                    borderRightWidth = 1,
-                    borderBottomWidth = 0
-                }
-            };
-            VRCFuryEditorUtils.Padding(label, 5);
-            VRCFuryEditorUtils.BorderColor(label, Color.black);
+
+            var label = new Button()
+                .OnClick(Open)
+                .Text("You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab")
+                .TextAlign(TextAnchor.MiddleCenter)
+                .TextWrap()
+                .Padding(5)
+                .BorderColor(Color.black);
+            label.style.paddingTop = 5;
+            label.style.paddingBottom = 5;
+            label.style.borderTopLeftRadius = 5;
+            label.style.borderTopRightRadius = 5;
+            label.style.borderBottomLeftRadius = 0;
+            label.style.borderBottomRightRadius = 0;
+            label.style.marginTop = 5;
+            label.style.marginLeft = 20;
+            label.style.marginRight = 20;
+            label.style.marginBottom = 0;
+            label.style.borderTopWidth = 1;
+            label.style.borderLeftWidth = 1;
+            label.style.borderRightWidth = 1;
+            label.style.borderBottomWidth = 0;
             return label;
         }
     }

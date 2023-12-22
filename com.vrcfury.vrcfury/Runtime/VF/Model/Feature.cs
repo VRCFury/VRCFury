@@ -1,21 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Model.StateAction;
 using VF.Upgradeable;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 // Notes for the future:
 // Don't ever remove a class -- it will break the entire list of SerializedReferences that contained it
 // Don't mark a class as Obsolete or MovedFrom -- unity 2019 will go into an infinite loop and die
 
 namespace VF.Model.Feature {
-    
-    [AttributeUsage(AttributeTargets.Class)]
-    public class NoBuilder : Attribute {
-    }
 
     [Serializable]
     public abstract class FeatureModel {
@@ -107,6 +105,7 @@ namespace VF.Model.Feature {
         public List<ControllerEntry> controllers = new List<ControllerEntry>();
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
+        public List<SmoothParamEntry> smoothedPrms = new List<SmoothParamEntry>();
         public List<string> globalParams = new List<string>();
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
@@ -149,6 +148,13 @@ namespace VF.Model.Feature {
             public string from;
             public string to;
             public bool delete = false;
+            public bool ResetMePlease2;
+        }
+
+        [Serializable]
+        public class SmoothParamEntry {
+            public string name;
+            public float smoothingDuration = 0.2f;
             public bool ResetMePlease2;
         }
 
@@ -235,20 +241,22 @@ namespace VF.Model.Feature {
     [Serializable]
     public class Toggle : LegacyFeatureModel2 {
         public string name;
-        public State state;
+        public State state = new State();
         public bool saved;
         public bool slider;
+        public bool sliderInactiveAtZero;
         public bool securityEnabled;
         public bool defaultOn;
-        public bool includeInRest;
+        [Obsolete] public bool includeInRest;
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
-        public List<GameObject> resetPhysbones = new List<GameObject>();
+        [Obsolete] public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
         [NonSerialized] public string paramOverride = null;
         [NonSerialized] public bool useInt = false;
+        public bool hasExitTime = false;
         public bool enableIcon;
         public GuidTexture2d icon;
         public bool enableDriveGlobalParam;
@@ -258,17 +266,52 @@ namespace VF.Model.Feature {
         public bool hasTransition;
         public State transitionStateIn;
         public State transitionStateOut;
+        public float transitionTimeIn = 0;
+        public float transitionTimeOut = 0;
         public State localTransitionStateIn;
         public State localTransitionStateOut;
+        public float localTransitionTimeIn = 0;
+        public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
-        public float defaultSliderValue = 1;
+        [Range(0,1)]
+        public float defaultSliderValue = 0;
         public bool useGlobalParam;
         public string globalParam;
         public bool holdButton;
+        public bool invertRestLogic;
 
         public override void CreateNewInstance(GameObject obj) {
-            var n = obj.AddComponent<VRCFuryToggle>();
-            // TODO
+        }
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                if (resetPhysbones != null) {
+                    foreach (var obj in resetPhysbones) {
+                        if (obj == null) continue;
+                        var physBone = obj.GetComponent<VRCPhysBone>();
+                        if (physBone == null) continue;
+                        state.actions.Add(new ResetPhysboneAction { physBone = physBone });
+                    }
+                }
+            }
+            if (fromVersion < 2) {
+                if (!defaultOn) {
+                    defaultSliderValue = 0;
+                }
+                sliderInactiveAtZero = true;
+            }
+            if (fromVersion < 3) {
+                if (slider) {
+                    includeInRest = false;
+                }
+            }
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 3;
         }
     }
 
@@ -374,17 +417,18 @@ namespace VF.Model.Feature {
         public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public GameObject bonePathOnAvatarDragTarget;
         public string removeBoneSuffix;
-        public bool physbonesOnAvatarBones;
         public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
         
         // legacy
-        public bool useOptimizedUpload;
-        public bool useBoneMerging;
-        public bool keepBoneOffsets;
+        [Obsolete] public bool useOptimizedUpload;
+        [Obsolete] public bool useBoneMerging;
+        [Obsolete] public bool keepBoneOffsets;
+        [Obsolete] public bool physbonesOnAvatarBones;
         
         public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
             if (fromVersion < 1) {
                 if (useBoneMerging) {
                     linkMode = ArmatureLinkMode.SkinRewrite;
@@ -409,6 +453,7 @@ namespace VF.Model.Feature {
                 }
             }
             return false;
+#pragma warning restore 0612
         }
         public override int GetLatestVersion() {
             return 5;
@@ -464,7 +509,6 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class FixWriteDefaults : NewFeatureModel {
         public enum FixWriteDefaultsMode {
             Auto,
@@ -554,12 +598,12 @@ namespace VF.Model.Feature {
         public List<Gesture> gestures = new List<Gesture>();
         
         [Serializable]
-        public class Gesture {
+        public class Gesture : VrcfUpgradeable {
             public Hand hand;
             public HandSign sign;
             public HandSign comboSign;
-            public State state;
-            public bool disableBlinking;
+            public State state = new State();
+            [Obsolete] public bool disableBlinking;
             public bool customTransitionTime;
             public float transitionTime = 0;
             public bool enableLockMenuItem;
@@ -569,6 +613,21 @@ namespace VF.Model.Feature {
             public bool enableWeight;
             
             public bool ResetMePlease2;
+            
+            public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+                if (fromVersion < 1) {
+                    if (disableBlinking && !state.actions.Any(a => a is BlockBlinkingAction)) {
+                        state.actions.Add(new BlockBlinkingAction());
+                    }
+                }
+                return false;
+#pragma warning restore 0612
+            }
+
+            public override int GetLatestVersion() {
+                return 1;
+            }
         }
 
         public enum Hand {
@@ -616,8 +675,17 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
+    public class DeleteDuringUpload : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class ApplyDuringUpload : NewFeatureModel {
+        public State action;
+    }
+
+    [Serializable]
     public class BlendShapeLink : NewFeatureModel {
-        public List<GameObject> objs;
+        public List<GameObject> objs = new List<GameObject>();
         public string baseObj;
         public bool includeAll = true;
         public bool exactMatch = false;
@@ -657,7 +725,6 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    [NoBuilder]
     public class OverrideMenuSettings : NewFeatureModel {
         public string nextText;
         public GuidTexture2d nextIcon;
@@ -685,9 +752,9 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BlendshapeOptimizer : NewFeatureModel {
-        public bool keepMmdShapes;
+        [Obsolete] public bool keepMmdShapes;
     }
-    
+
     [Serializable]
     public class Slot4Fix : NewFeatureModel {
     }
@@ -710,6 +777,20 @@ namespace VF.Model.Feature {
     public class SpsOptions : NewFeatureModel {
         public GuidTexture2d menuIcon;
         public string menuPath;
+        public bool saveSockets = false;
+        public bool enableSpsPlusOption = true;
+    }
+
+    [Serializable]
+    public class MmdCompatibility : NewFeatureModel {
+        public List<DisableLayer> disableLayers = new List<DisableLayer>();
+        public string globalParam;
+
+        [Serializable]
+        public class DisableLayer {
+            public string name;
+            public bool ResetMePlease2;
+        }
     }
 
 }

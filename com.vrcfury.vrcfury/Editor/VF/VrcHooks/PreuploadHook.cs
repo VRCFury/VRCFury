@@ -4,12 +4,13 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Menu;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
 namespace VF.VrcHooks {
-    public class PreuploadHook : IVRCSDKPreprocessAvatarCallback {
+    internal class PreuploadHook : IVRCSDKPreprocessAvatarCallback {
         // This has to be before -1024 when VRCSDK deletes our components
         public int callbackOrder => -10000;
 
@@ -18,15 +19,6 @@ namespace VF.VrcHooks {
 
             if (!VRCFuryBuilder.ShouldRun(vrcCloneObject)) {
                 return true;
-            }
-            
-            if (EditorApplication.isPlaying) {
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "Something is causing VRCFury to build while play mode is still initializing. This may cause unity to crash!!\n\n" +
-                    "If you use Av3Emulator, consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.",
-                    "Ok"
-                );
             }
 
             // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
@@ -40,7 +32,7 @@ namespace VF.VrcHooks {
 
             // Clean up junk from the original avatar, in case it still has junk from way back when we used to
             // dirty the original
-            GameObject original = null;
+            VFGameObject original = null;
             {
                 foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
                     if (desc.owner().name + "(Clone)" == cloneObjectName && desc.gameObject.activeInHierarchy) {
@@ -48,6 +40,19 @@ namespace VF.VrcHooks {
                         break;
                     }
                 }
+            }
+            
+            if (EditorApplication.isPlaying) {
+                vrcCloneObject?.Destroy();
+                original?.Destroy();
+                EditorUtility.DisplayDialog(
+                    "VRCFury",
+                    "Something asked VRCFury to build while play mode is still initializing. This is an av3emu bug and would cause unity to crash.\n\n" +
+                    "Consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.\n\n" +
+                    "The avatar object has been removed from play mode to avoid crashing.",
+                    "Ok"
+                );
+                return false;
             }
 
             var builder = new VRCFuryBuilder();
@@ -58,6 +63,16 @@ namespace VF.VrcHooks {
             // before it gets uploaded
             VRCFuryBuilder.StripAllVrcfComponents(vrcCloneObject);
 
+            return true;
+        }
+    }
+
+    internal class NdmfCleanupHook : IVRCSDKPreprocessAvatarCallback {
+        // At the same time that the VRCSDK removes Editor Only components
+        public int callbackOrder => -1024;
+
+        public bool OnPreprocessAvatar(GameObject avatarGameObject) {
+            NdmfFirstMenuItem.Cleanup(avatarGameObject);
             return true;
         }
     }

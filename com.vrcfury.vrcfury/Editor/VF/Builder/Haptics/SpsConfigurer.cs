@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Component;
 using VF.Utils;
@@ -18,7 +19,6 @@ namespace VF.Builder.Haptics {
             Material original,
             float worldLength,
             Texture2D spsBaked,
-            MutableManager mutableManager,
             VRCFuryHapticPlug plug,
             VFGameObject bakeRoot,
             IList<string> spsBlendshapes
@@ -30,9 +30,18 @@ namespace VF.Builder.Haptics {
                     $" on the mesh instead.");
             }
 
-            var m = mutableManager.MakeMutable(original, skin.owner());
+            var m = MutableManager.MakeMutable(original);
             SpsPatcher.Patch(m, plug.spsKeepImports);
-            m.SetOverrideTag(SpsEnabled + "Animated", "1");
+            {
+                // Prevent poi from stripping our parameters
+                var count = ShaderUtil.GetPropertyCount(m.shader);
+                for (var i = 0; i < count; i++) {
+                    var propertyName = ShaderUtil.GetPropertyName(m.shader, i);
+                    if (propertyName.StartsWith("_SPS_")) {
+                       m.SetOverrideTag(propertyName + "Animated", "1");
+                    }
+                }
+            }
             m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
             m.SetFloat(SpsLength, worldLength);
@@ -46,7 +55,6 @@ namespace VF.Builder.Haptics {
                 if (skin.sharedMesh.HasBlendshape(name)) {
                     m.SetFloat("_SPS_Blendshape" + i, skin.GetBlendShapeWeight(name));
                 }
-                m.SetOverrideTag("_SPS_Blendshape" + i + "Animated", "1");
             }
         }
 

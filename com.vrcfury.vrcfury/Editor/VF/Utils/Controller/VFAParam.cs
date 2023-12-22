@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace VF.Utils.Controller {
-    public class VFAParam {
+    public abstract class VFAParam {
         protected readonly AnimatorControllerParameter param;
         protected VFAParam(AnimatorControllerParameter param) {
             this.param = param;
@@ -9,5 +9,6 @@ namespace VF.Utils.Controller {
         public string Name() {
             return param.name;
         }
+        public abstract VFCondition IsFalse();
     }
 }

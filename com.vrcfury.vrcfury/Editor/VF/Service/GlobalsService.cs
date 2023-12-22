@@ -16,5 +16,10 @@ namespace VF.Service {
         public Action<FeatureModel,VFGameObject> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
+        public Func<int> currentFeatureNumProvider;
+        public Func<string> currentFeatureNameProvider;
+        public Func<string> currentFeatureClipPrefixProvider;
+        public Func<int> currentMenuSortPosition;
+        public Func<VFGameObject> currentComponentObject;
     }
 }
