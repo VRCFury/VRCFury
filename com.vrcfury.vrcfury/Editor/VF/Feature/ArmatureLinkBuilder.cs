@@ -174,7 +174,7 @@ namespace VF.Feature {
 
                 // If the transform isn't used and contains no children, we can just throw it away
                 if (!IsTransformUsed(propBone)) {
-                    propBone.Destroy();
+                    addedObject.Destroy();
                     continue;
                 }
             }
