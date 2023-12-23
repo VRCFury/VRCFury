@@ -107,7 +107,7 @@ namespace VF.Feature {
                         var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
                     
                         // Receivers
-                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
+                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket, manager.Avatar);
                         var receivers = GameObjects.Create("Receivers", bakeRoot);
                         if (handTouchZoneSize != null) {
                             var oscDepth = handTouchZoneSize.Item1;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -249,7 +250,7 @@ namespace VF.Inspector {
             var transform = socket.transform;
 
             var autoInfo = GetInfoFromLightsOrComponent(socket);
-            var handTouchZoneSize = GetHandTouchZoneSize(socket);
+            var handTouchZoneSize = GetHandTouchZoneSize(socket, VRCAvatarUtils.GuessAvatarObject(socket)?.GetComponent<VRCAvatarDescriptor>());
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
@@ -362,7 +363,7 @@ namespace VF.Inspector {
             return bakeRoot;
         }
 
-        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
+        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket, [CanBeNull] VRCAvatarDescriptor avatar) {
             bool enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
@@ -373,7 +374,10 @@ namespace VF.Inspector {
                 return null;
             }
             var length = socket.length * (socket.unitsInMeters ? 1f : socket.transform.lossyScale.z); ;
-            if (length <= 0) length = 0.25f;
+            if (length <= 0) {
+                if (avatar == null) return null;
+                length = avatar.ViewPosition.y * 0.05f;
+            }
             var radius = length / 2.5f;
             return Tuple.Create(length, radius);
         }
