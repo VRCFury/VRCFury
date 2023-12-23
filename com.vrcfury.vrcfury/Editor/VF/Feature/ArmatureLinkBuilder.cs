@@ -188,6 +188,7 @@ namespace VF.Feature {
                     var transform = avatarObject.Find(binding.path).transform;
                     if (transform == null) continue;
                     foreach (var other in animLink.Get(transform)) {
+                        if (other == null) continue; // it got deleted because the propBone wasn't used
                         var b = binding;
                         b.path = other.GetPath(avatarObject);
                         clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
