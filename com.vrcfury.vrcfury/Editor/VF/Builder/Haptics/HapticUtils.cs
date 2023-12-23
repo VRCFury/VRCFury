@@ -98,7 +98,7 @@ namespace VF.Builder.Haptics {
             var scale = obj.localScale;
             return scale.x < 0 || scale.y < 0 || scale.z < 0;
         }
-        private static bool IsNonUniformScale(Transform obj) {
+        public static bool IsNonUniformScale(Transform obj) {
             var scale = obj.localScale;
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
