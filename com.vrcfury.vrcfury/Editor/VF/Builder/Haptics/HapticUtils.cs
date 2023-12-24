@@ -80,16 +80,6 @@ namespace VF.Builder.Haptics {
             return false;
         }
 
-        public static string GetNextName(List<string> usedNames, string prefix) {
-            for (int i = 0; ; i++) {
-                var next = prefix + (i == 0 ? "" : i+"");
-                if (!usedNames.Contains(next)) {
-                    usedNames.Add(next);
-                    return next;
-                }
-            }
-        }
-
         private static bool IsZeroScale(Transform obj) {
             var scale = obj.localScale;
             return scale.x == 0 || scale.y == 0 || scale.z == 0;
@@ -148,6 +138,9 @@ namespace VF.Builder.Haptics {
         public static string GetName(VFGameObject obj) {
             var current = obj;
             while (current != null) {
+                if (current.GetComponent<VRCAvatarDescriptor>() != null) {
+                    break;
+                }
                 var name = NormalizeName(current.name);
                 if (!string.IsNullOrWhiteSpace(name)) {
                     return name;
@@ -160,6 +153,7 @@ namespace VF.Builder.Haptics {
         private static string NormalizeName(string name) {
             name = Regex.Replace(name, @"ezdps_([a-z][a-z]?_?)?", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"dps", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"sps", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"gameobject", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"object", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"armature", "", RegexOptions.IgnoreCase);

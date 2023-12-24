@@ -104,11 +104,11 @@ namespace VF.Inspector {
                 return string.Join("\n", text);
             }));
             
-            container.Add(VRCFuryEditorUtils.BetterProp(enableSps, "Enable SPS (Super Plug Shader)"));
+            container.Add(VRCFuryEditorUtils.BetterProp(enableSps, "Enable Deformation"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableSps.boolValue) {
-                    var spsBox = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
+                    var spsBox = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
                     c.Add(spsBox);
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsAutorig"),
@@ -135,7 +135,7 @@ namespace VF.Inspector {
                         "Animated Toggle",
                         fieldOverride: animatedField,
                         tooltip: "You can ANIMATE this box on and off with an animation clip, in order to" +
-                                 " turn SPS off during certain situations."
+                                 " turn deformation off during certain situations."
                     ));
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsBlendshapes"),
@@ -352,10 +352,10 @@ namespace VF.Inspector {
             RendererResult[] rendererResults;
 
             if (plug.configureTps || plug.enableSps) {
-                var checkboxName = plug.enableSps ? "Enable SPS" : "Auto-Configure TPS";
+                var checkboxName = plug.enableSps ? "Enable Deformation" : "Auto-Configure TPS";
                 if (renderers.Count == 0) {
                     throw new Exception(
-                        $"VRCFury Haptic Plug has '{checkboxName}' checked, but no renderer was found.");
+                        $"VRCFury SPS Plug has '{checkboxName}' checked, but no renderer was found.");
                 }
 
                 rendererResults = renderers.Select(renderer => {

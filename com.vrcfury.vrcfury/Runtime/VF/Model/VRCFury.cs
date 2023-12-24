@@ -9,6 +9,7 @@ using VF.Upgradeable;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
+    [AddComponentMenu("VRCFury/VRCFury")]
     [HelpURL("https://vrcfury.com")]
     public class VRCFury : VRCFuryComponent {
 

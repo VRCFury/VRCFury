@@ -31,6 +31,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
 
         private Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
@@ -65,7 +66,6 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Apply() {
             var fx = GetFx();
-            var usedNames = new List<string>();
 
             AnimationClip tipLightOnClip = null;
             AnimationClip spsPlusClip = null;
@@ -91,7 +91,7 @@ namespace VF.Feature {
                             name = HapticUtils.GetName(plug.owner());
                         }
                     }
-                    if (usedNames != null) name = HapticUtils.GetNextName(usedNames, name);
+                    name = uniqueHapticNamesService.GetUniqueName(name);
                     Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
                     
                     // Haptic Receivers
