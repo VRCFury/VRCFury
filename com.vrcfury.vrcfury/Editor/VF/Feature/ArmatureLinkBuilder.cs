@@ -26,6 +26,7 @@ namespace VF.Feature {
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
+        [VFAutowired] private readonly FakeHeadService fakeHead;
 
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
@@ -170,6 +171,10 @@ namespace VF.Feature {
 
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone);
+                }
+
+                if (fakeHead.IsEligible(propBone)) {
+                    fakeHead.MarkEligible(addedObject);
                 }
 
                 // If the transform isn't used and contains no children, we can just throw it away
