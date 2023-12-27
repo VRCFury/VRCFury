@@ -50,6 +50,9 @@ namespace VF {
             }
             if (UnitySerializationUtils.ContainsNullsInList(c)) {
                 DelayReimport(c);
+                if (Application.unityVersion.StartsWith("2019")) {
+                    return "This VRCFury asset was created using Unity 2022, which means it cannot be used on Unity 2019.";
+                }
                 return "Found a null list on a child object";
             }
             return null;
