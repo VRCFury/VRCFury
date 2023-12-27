@@ -38,6 +38,8 @@ namespace VF.Menu {
         public const int playModePriority = 1321;
         public const string ndmfFirst = prefix + "Settings/Force NDMF to run before VRCF";
         public const int ndmfFirstPriority = 1322;
+        public const string constrainedProportions = prefix + "Settings/Automatically enable Constrained Proportions on objects";
+        public const int constrainedProportionsPriority = 1323;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {

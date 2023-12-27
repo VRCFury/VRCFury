@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -17,8 +16,6 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
-using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
@@ -26,6 +23,7 @@ namespace VF.Feature {
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
+        [VFAutowired] private readonly FakeHeadService fakeHead;
 
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
@@ -170,6 +168,10 @@ namespace VF.Feature {
 
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone);
+                }
+
+                if (fakeHead.IsEligible(propBone)) {
+                    fakeHead.MarkEligible(addedObject);
                 }
 
                 // If the transform isn't used and contains no children, we can just throw it away

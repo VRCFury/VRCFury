@@ -52,7 +52,13 @@ namespace VF {
         // This should absolutely always be false in play mode, but we check just in case
         private static bool ContainsAnyPrefabs(VFGameObject obj) {
             foreach (var t in obj.GetSelfAndAllChildren()) {
-                if (PrefabUtility.IsPartOfAnyPrefab(t)) {
+                // Don't use IsPartOfAnyPrefab because for some reason it randomly returns
+                // true in play mode on 2019, even if every other "IsPartOf..." returns false.
+                if (PrefabUtility.IsPartOfPrefabInstance(t)) {
+                    Debug.LogWarning(
+                        "VRCF is not running on " +
+                        obj.GetPath() +
+                        " while in play mode because it somehow contains a prefab instance");
                     return true;
                 }
             }

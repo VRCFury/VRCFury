@@ -39,10 +39,10 @@ namespace VF.Inspector {
                 else addLightProp.enumValueIndex = noneIndex;
                 addLightProp.serializedObject.ApplyModifiedProperties();
             });
-            container.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Enable SPS (Super Plug Shader)", fieldOverride: spsEnabledCheckbox));
+            container.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Enable Deformation", fieldOverride: spsEnabledCheckbox));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
-                var section = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
+                var section = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
                 var modeField = new PopupField<string>(
                     new List<string>() { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
                     addLightProp.enumValueIndex == 4 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0

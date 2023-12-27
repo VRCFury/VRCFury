@@ -201,14 +201,16 @@ namespace VF.Builder {
             return ctrl.NewFloat(name, def);
         }
 
+        private readonly int randomPrefix = (new System.Random()).Next(100_000_000, 999_999_999);
+
         public VFABool True() {
-            return NewBool("VF_True", def: true, usePrefix: false);
+            return NewBool($"VF_{randomPrefix}_True", def: true, usePrefix: false);
         }
         public VFAFloat One() {
-            return NewFloat("VF_One", def: 1f, usePrefix: false);
+            return NewFloat($"VF_{randomPrefix}_One", def: 1f, usePrefix: false);
         }
         public VFAFloat Zero() {
-            return NewFloat("VF_Zero", def: 0f, usePrefix: false);
+            return NewFloat($"VF_{randomPrefix}_Zero", def: 0f, usePrefix: false);
         }
         public VFCondition Always() {
             return True().IsTrue();

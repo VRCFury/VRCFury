@@ -37,6 +37,27 @@ namespace VF.Builder.Haptics {
             VRCFuryEditorUtils.MarkDirty(mat);
         }
 
+        public static void PoiLockdown(Material mat) {
+            try {
+                var optimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+                if (optimizer == null) return;
+                var lockMethod = optimizer.GetMethod(
+                    "SetLockedForAllMaterials",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+                );
+                if (lockMethod == null) return;
+                VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                    var result = (bool)ReflectionUtils.CallWithOptionalParams(lockMethod, null, new Material[] { mat }, 1);
+                    if (!result) {
+                        throw new Exception(
+                            "Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
+                    }
+                });
+            } catch (Exception e) {
+                throw new Exception("Failed to lockdown poi material", e);
+            }
+        }
+
         public class PatchResult {
             public Shader shader;
             public int patchedPasses;

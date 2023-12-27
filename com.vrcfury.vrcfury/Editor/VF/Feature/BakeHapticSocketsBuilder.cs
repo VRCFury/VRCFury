@@ -32,11 +32,11 @@ namespace VF.Feature {
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
 
         [FeatureBuilderAction(FeatureOrder.HapticsCreateMenus)]
         public void Apply() {
             var fx = GetFx();
-            var usedNames = new List<string>();
             var saved = spsOptions.GetOptions().saveSockets;
 
             var enableAuto = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
@@ -94,7 +94,7 @@ namespace VF.Feature {
                     }
                     
                     var name = VRCFuryHapticSocketEditor.GetName(socket);
-                    name = HapticUtils.GetNextName(usedNames, name);
+                    name = uniqueHapticNamesService.GetUniqueName(name);
                     Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
 
                     var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket, hapticContacts);

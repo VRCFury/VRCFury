@@ -65,7 +65,8 @@ namespace VF {
             "\"name\": \"com.vrcfury.temp\",\n" +
             "\"displayName\": \"VRCFury Temp Files\",\n" +
             "\"version\": \"0.0.0\",\n" +
-            "\"hideInEditor\": false\n" +
+            "\"hideInEditor\": false,\n" +
+            "\"author\": { \"name\": \"VRCFury\" }\n" +
             "}";
     }
 }

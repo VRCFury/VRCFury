@@ -52,7 +52,10 @@ namespace VF.Service {
             }
             
             void SetTags(params string[] suffixes) {
-                sender.collisionTags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToList();
+                sender.collisionTags = tags.SelectMany(tag => {
+                    if (!tag.StartsWith("SPSLL_") && !tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
+                    return suffixes.Select(suffix => tag + suffix);
+                }).ToList();
             }
             SetTags("");
             addTagsLater.Add(() => {
