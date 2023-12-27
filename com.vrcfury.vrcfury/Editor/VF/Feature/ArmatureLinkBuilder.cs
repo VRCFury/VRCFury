@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -17,8 +16,6 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
-using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
