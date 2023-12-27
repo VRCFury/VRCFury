@@ -94,7 +94,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(MaterialAction): {
                 var content = new VisualElement();
                 content.Add(Title("Material Swap"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Renderer"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
                 return content;
