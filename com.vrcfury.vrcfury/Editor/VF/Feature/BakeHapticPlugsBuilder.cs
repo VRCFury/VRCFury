@@ -11,6 +11,7 @@ using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Menu;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
@@ -94,24 +95,24 @@ namespace VF.Feature {
                     name = uniqueHapticNamesService.GetUniqueName(name);
                     Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
                     
-                    // Haptic Receivers
-                    {
+                    if (HapticsToggleMenuItem.Get()) {
+                        // Haptic Receivers
                         var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
-                        var receivers = GameObjects.Create("Receivers", bakeRoot);
+                        var haptics = GameObjects.Create("Haptics", bakeRoot);
                         var halfWay = Vector3.forward * (worldLength / 2);
                         var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
                         // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
                         var extraRadiusForRub = 0.08f;
                         // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
                         var capsuleRotation = Quaternion.Euler(90,0,0);
-                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
-                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
-                        hapticContacts.AddReceiver(receivers, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
-                        hapticContacts.AddReceiver(receivers, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, halfWay, paramPrefix + "/TouchSelfClose", "TouchSelfClose", worldRadius+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/TouchSelf", "TouchSelf", worldLength+extraRadiusForTouch, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, halfWay, paramPrefix + "/TouchOthersClose", "TouchOthersClose", worldRadius+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength+extraRadiusForTouch*2, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/TouchOthers", "TouchOthers", worldLength+extraRadiusForTouch, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/PenSelf", "PenSelf", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/PenOthers", "PenOthers", worldLength, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/FrotOthers", "FrotOthers", worldLength, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: plug.useHipAvoidance);
+                        hapticContacts.AddReceiver(haptics, halfWay, paramPrefix + "/FrotOthersClose", "FrotOthersClose", worldRadius+extraRadiusForRub, new []{HapticUtils.CONTACT_PEN_CLOSE}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, rotation: capsuleRotation, height: worldLength, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: plug.useHipAvoidance);
                     }
 
                     if (plug.configureTps || plug.enableSps) {

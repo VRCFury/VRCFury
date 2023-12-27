@@ -40,6 +40,8 @@ namespace VF.Menu {
         public const int ndmfFirstPriority = 1322;
         public const string constrainedProportions = prefix + "Settings/Automatically enable Constrained Proportions on objects";
         public const int constrainedProportionsPriority = 1323;
+        public const string hapticToggle = prefix + "Settings/Enable SPS Haptics";
+        public const int hapticTogglePriority = 1324;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
