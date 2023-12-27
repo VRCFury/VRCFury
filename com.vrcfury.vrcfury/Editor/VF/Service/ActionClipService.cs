@@ -219,17 +219,20 @@ namespace VF.Service {
                             clipBuilder.Scale(onClip, scaleAction.obj, newScale);
                         }
                         break;
-                    case MaterialAction matAction:
-                        if (matAction.obj == null) {
-                            Debug.LogWarning("Missing object in action: " + name);
-                            break;
-                        }
-                        if (matAction.mat?.Get() == null) {
-                            Debug.LogWarning("Missing material in action: " + name);
-                            break;
-                        }
-                        clipBuilder.Material(onClip, matAction.obj, matAction.materialIndex, matAction.mat.Get());
+                    case MaterialAction matAction: {
+                        var renderer = matAction.renderer;
+                        if (renderer == null) break;
+                        var mat = matAction.mat?.Get();
+                        if (mat == null) break;
+                        
+                        var binding = EditorCurveBinding.PPtrCurve(
+                            clipBuilder.GetPath(renderer.gameObject),
+                            renderer.GetType(),
+                            "m_Materials.Array.data[" + matAction.materialIndex + "]"
+                        );
+                        onClip.SetCurve(binding, mat);
                         break;
+                    }
                     case SpsOnAction spsAction: {
                         if (spsAction.target == null) {
                             Debug.LogWarning("Missing target in action: " + name);
