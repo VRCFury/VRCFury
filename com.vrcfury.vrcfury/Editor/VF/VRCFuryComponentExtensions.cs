@@ -46,12 +46,16 @@ namespace VF {
         public static string GetBrokenMessage(this VRCFuryComponent c) {
             if (IUpgradeableUtility.IsTooNew(c)) {
                 DelayReimport(c);
-                return $"This component was created with a newer version of VRCFury ({c.Version} > {c.GetLatestVersion()}";
+                return $"This component was created with a newer version of VRCFury";
             }
             if (UnitySerializationUtils.ContainsNullsInList(c)) {
                 DelayReimport(c);
                 if (Application.unityVersion.StartsWith("2019")) {
-                    return "This VRCFury asset was created using Unity 2022, which means it cannot be used on Unity 2019.";
+                    if (c.unityVersion != null && c.unityVersion.StartsWith("2022")) {
+                        return "This VRCFury asset was created using Unity 2022, which means it cannot be used on Unity 2019";
+                    } else {
+                        return "This VRCFury asset was probably created using Unity 2022, which means it cannot be used on Unity 2019";
+                    }
                 }
                 return "Found a null list on a child object";
             }
