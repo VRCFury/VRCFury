@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Builder.Haptics {
     /** Automatically finds the renderer to use for a plug */
@@ -66,8 +67,8 @@ namespace VF.Builder.Haptics {
 
         private static long GetVertsWeightedToBone(Renderer r, VFGameObject bone) {
             if (!(r is SkinnedMeshRenderer skin)) return 0;
-            var mesh = skin.sharedMesh;
-            if (!mesh) return 0;
+            var mesh = skin.GetMesh();
+            if (mesh == null) return 0;
             var children = bone.GetSelfAndAllChildren()
                 .ToImmutableHashSet();
             var childrenBoneIds = skin.bones.Select((b, i) => (b, i))

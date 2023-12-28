@@ -57,7 +57,7 @@ namespace VF.Builder {
                 return cached;
             }
 
-            var animator = avatarObject.GetComponent<Animator>();
+            var animator = avatarObject.owner().GetComponent<Animator>();
             if (!animator) {
                 return new Dictionary<HumanBodyBones, string>();
             }

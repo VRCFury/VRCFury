@@ -17,10 +17,7 @@ namespace VF.Builder.Haptics {
                 return;
             }
 
-            var mesh = skin.sharedMesh;
-            mesh = MutableManager.MakeMutable(mesh);
-            skin.sharedMesh = mesh;
-
+            var mesh = skin.GetMutableMesh();
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
             var boneCount = 10;
             VFGameObject lastParent = skin.rootBone;

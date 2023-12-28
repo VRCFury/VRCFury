@@ -1,5 +1,6 @@
 using System.Linq;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Builder {
     public static class MeshBaker {
@@ -8,14 +9,15 @@ namespace VF.Builder {
          * This is true even for skinned meshes (where in other places, the offsets are commonly in relation to the root bone)
          */
         public static BakedMesh BakeMesh(Renderer renderer, Transform origin = null, bool applyScale = false) {
-            Mesh mesh;
+            var mesh = renderer.GetMesh();
+
             if (renderer is SkinnedMeshRenderer skin) {
                 var temporaryMesh = new Mesh();
                 skin.BakeMesh(temporaryMesh);
 
                 // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms
                 // So we have to skip rescaling, otherwise we'd apply the inverse scale inappropriately and it would be too small.
-                var actuallySkinned = skin.sharedMesh && skin.sharedMesh.boneWeights.Length > 0;
+                var actuallySkinned = mesh != null && mesh.boneWeights.Length > 0;
                 if (actuallySkinned) {
                     var scale = skin.transform.lossyScale;
                     var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
@@ -23,12 +25,9 @@ namespace VF.Builder {
                 }
 
                 mesh = temporaryMesh;
-            } else {
-                var meshFilter = renderer.GetComponent<MeshFilter>();
-                mesh = meshFilter ? meshFilter.sharedMesh : null;
             }
 
-            if (!mesh) return null;
+            if (mesh == null) return null;
 
             Vector3[] vertices;
             Vector3[] normals;

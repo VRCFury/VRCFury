@@ -193,9 +193,7 @@ namespace VF.Service {
                         var foundOne = false;
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                             if (!blendShape.allRenderers && blendShape.renderer != skin) continue;
-                            if (!skin.sharedMesh) continue;
-                            var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
-                            if (blendShapeIndex < 0) continue;
+                            if (!skin.HasBlendshape(blendShape.blendShape)) continue;
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
                             var binding = EditorCurveBinding.FloatCurve(
@@ -206,7 +204,7 @@ namespace VF.Service {
                             onClip.SetCurve(binding, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
-                            Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);
+                            Debug.LogWarning("BlendShape not found: " + blendShape.blendShape);
                         }
                         break;
                     case ScaleAction scaleAction:

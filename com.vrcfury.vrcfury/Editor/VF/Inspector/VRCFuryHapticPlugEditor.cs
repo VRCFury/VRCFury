@@ -373,7 +373,7 @@ namespace VF.Inspector {
                         var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, worldLength);
 
                         var spsBlendshapes = plug.spsBlendshapes
-                            .Where(b => skin.sharedMesh.HasBlendshape(b))
+                            .Where(b => skin.HasBlendshape(b))
                             .Distinct()
                             .Take(16)
                             .ToArray();

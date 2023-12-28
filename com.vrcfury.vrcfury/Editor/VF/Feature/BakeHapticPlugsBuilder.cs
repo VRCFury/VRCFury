@@ -248,7 +248,6 @@ namespace VF.Feature {
                 var pathToPlug = rewrite.plugObject.GetPath(avatarObject);
                 var pathToRenderer = rewrite.skin.owner().GetPath(avatarObject);
                 var pathToBake = rewrite.bakeRoot.GetPath(avatarObject);
-                var mesh = rewrite.skin.sharedMesh;
                 var spsEnabledBinding = EditorCurveBinding.FloatCurve(
                     pathToRenderer,
                     typeof(SkinnedMeshRenderer),

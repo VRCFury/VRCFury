@@ -34,6 +34,13 @@ namespace VF.Feature {
                 return row;
             }
         }
+        
+        [CustomPropertyDrawer(typeof(BlendShapeLink.LinkSkin))]
+        public class LinkSkinDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                return VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"));
+            }
+        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
@@ -47,7 +54,7 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("baseObj")));
 
             content.Add(VRCFuryEditorUtils.WrappedLabel("Skinned meshes to link:"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("objs")));
+            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("linkSkins")));
             
             var adv = new Foldout {
                 text = "Advanced Options",
@@ -131,10 +138,9 @@ namespace VF.Feature {
         }
 
         private IList<SkinnedMeshRenderer> GetLinkSkins() {
-            return model.objs
-                .Where(obj => obj != null)
-                .SelectMany(obj => obj.GetComponents<SkinnedMeshRenderer>())
-                .Where(skin => skin.sharedMesh)
+            return model.linkSkins
+                .Select(link => link.renderer)
+                .NotNull()
                 .ToArray();
         }
 
@@ -142,17 +148,11 @@ namespace VF.Feature {
             return avatarObject.GetSelfAndAllChildren()
                 .Where(t => t.name == model.baseObj)
                 .Select(t => t.GetComponent<SkinnedMeshRenderer>())
-                .Where(skin => skin && skin.sharedMesh)
+                .NotNull()
                 .OrderBy(skin => AnimationUtility.CalculateTransformPath(skin.transform, avatarObject.transform).Length)
                 .FirstOrDefault();
         }
 
-        private ISet<String> GetBlendshapesInSkin(SkinnedMeshRenderer skin) {
-            return Enumerable.Range(0, skin.sharedMesh.blendShapeCount)
-                .Select(i => skin.sharedMesh.GetBlendShapeName(i))
-                .ToImmutableHashSet();
-        }
-        
         delegate string Normalizer(string input);
 
         private class FuzzyFinder {
@@ -197,9 +197,9 @@ namespace VF.Feature {
                 };
             }
 
-            var baseBlendshapes = GetBlendshapesInSkin(baseSkin);
+            var baseBlendshapes = baseSkin.GetBlendshapeNames();
             var baseBlendshapesLookup = new FuzzyFinder(baseBlendshapes, normalizers);
-            var linkBlendshapes = GetBlendshapesInSkin(linkSkin);
+            var linkBlendshapes = linkSkin.GetBlendshapeNames();
             var linkBlendshapesLookup = new FuzzyFinder(linkBlendshapes, normalizers);
             var outputMap = new Dictionary<string, string>();
 
@@ -237,7 +237,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations)]
         public void Apply() {
             var baseSkin = GetBaseSkin();
-            if (!baseSkin) {
+            if (baseSkin == null) {
                 Debug.LogWarning("Failed to find base skin on avatar");
                 return;
             }
@@ -247,8 +247,8 @@ namespace VF.Feature {
             foreach (var linked in linkSkins) {
                 var baseToLinkedMapping = GetMappings(baseSkin, linked, model.exactMatch);
                 foreach (var (baseName,linkedName) in baseToLinkedMapping.Select(x => (x.Key, x.Value))) {
-                    var baseI = baseSkin.sharedMesh.GetBlendShapeIndex(baseName);
-                    var linkedI = linked.sharedMesh.GetBlendShapeIndex(linkedName);
+                    var baseI = baseSkin.GetBlendShapeIndex(baseName);
+                    var linkedI = linked.GetBlendShapeIndex(linkedName);
                     if (baseI < 0 || linkedI < 0) continue;
                     var baseWeight = baseSkin.GetBlendShapeWeight(baseI);
                     linked.SetBlendShapeWeight(linkedI, baseWeight);
@@ -263,7 +263,7 @@ namespace VF.Feature {
                             var baseName = binding.propertyName.Substring(11);
                             if (!baseToLinkedMapping.TryGetValue(baseName, out var linkedName)) continue;
 
-                            var linkedI = linked.sharedMesh.GetBlendShapeIndex(linkedName);
+                            var linkedI = linked.GetBlendShapeIndex(linkedName);
                             if (linkedI < 0) continue;
                             var newBinding = binding;
                             newBinding.path =

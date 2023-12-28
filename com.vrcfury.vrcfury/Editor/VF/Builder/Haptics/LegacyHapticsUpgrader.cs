@@ -12,6 +12,7 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.Model.StateAction;
+using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
@@ -208,8 +209,7 @@ namespace VF.Builder.Haptics {
             }
             
             // Auto-add plugs from DPS and TPS
-            foreach (var tuple in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
-                var (renderer, _, _) = tuple;
+            foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (TpsConfigurer.HasDpsOrTpsMaterial(renderer) && PlugSizeDetector.GetAutoWorldSize(renderer) != null)
                     AddPlug(renderer.transform);
             }
@@ -394,14 +394,8 @@ namespace VF.Builder.Haptics {
             }
         }
         private static bool HasBlendshape(VFGameObject avatarObject, string name) {
-            var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>();
-            foreach (var skin in skins) {
-                if (!skin.sharedMesh) continue;
-                var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(name);
-                if (blendShapeIndex < 0) continue;
-                return true;
-            }
-            return false;
+            return avatarObject.GetComponentsInSelfAndChildren<Renderer>()
+                .Any(skin => skin.HasBlendshape(name));
         }
     }
 }

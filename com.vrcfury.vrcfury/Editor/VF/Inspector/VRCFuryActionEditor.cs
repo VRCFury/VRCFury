@@ -320,9 +320,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     if (avatarObject != null) {
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                             if (!allRenderers && skin != singleRenderer) continue;
-                            if (!skin.sharedMesh) continue;
-                            for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
-                                var bs = skin.sharedMesh.GetBlendShapeName(i);
+                            foreach (var bs in skin.GetBlendshapeNames()) {
                                 if (shapes.ContainsKey(bs)) {
                                     shapes[bs] += ", " + skin.owner().name;
                                 } else {
