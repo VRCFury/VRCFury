@@ -23,6 +23,6 @@ _SPS_Blendshape13("Blendshape 13", Float) = 0
 _SPS_Blendshape14("Blendshape 14", Float) = 0
 _SPS_Blendshape15("Blendshape 15", Float) = 0
 
-_SPS_Plus_Enabled("_SPS_Plus_Enabled", Float) = 0
+_SPS_Plus_Enabled("_SPS_Plus_Enabled", Float) = 1
 _SPS_Plus_Ring("_SPS_Plus_Ring", Float) = 0
 _SPS_Plus_Hole("_SPS_Plus_Hole", Float) = 0

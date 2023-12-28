@@ -777,7 +777,6 @@ namespace VF.Model.Feature {
         public GuidTexture2d menuIcon;
         public string menuPath;
         public bool saveSockets = false;
-        public bool enableSpsPlusOption = true;
     }
 
     [Serializable]

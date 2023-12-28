@@ -27,13 +27,15 @@ namespace VF.Service {
                 fromPath = "Sockets",
                 toPath = mainPath
             });
-            menuChanges.AddExtraAction(new MoveMenuItem {
-                fromPath = "SPS",
-                toPath = mainPath
-            });
-            
+            if (mainPath != "SPS") {
+                menuChanges.AddExtraAction(new MoveMenuItem {
+                    fromPath = "SPS",
+                    toPath = mainPath
+                });
+            }
+
             var icon = GetOptions().menuIcon?.Get()
-                ?? VRCFuryEditorUtils.GetResource<Texture2D>("sps_icon.png");
+                       ?? VRCFuryEditorUtils.GetResource<Texture2D>("sps_icon.png");
             menuChanges.AddExtraAction(new SetIcon {
                 path = mainPath,
                 icon = icon

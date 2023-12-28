@@ -69,7 +69,6 @@ namespace VF.Feature {
             var fx = GetFx();
 
             AnimationClip tipLightOnClip = null;
-            AnimationClip spsPlusClip = null;
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
@@ -139,7 +138,6 @@ namespace VF.Feature {
 
                     if (plug.enableSps) {
                         var plusRoot = GameObjects.Create("SpsPlus", bakeRoot);
-                        plusRoot.active = false;
                         plusRoot.worldScale = Vector3.one;
                         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                             var p = plusRoot.AddComponent<ScaleConstraint>();
@@ -181,34 +179,6 @@ namespace VF.Feature {
 
                             SendParam("_SPS_Plus_Ring", HapticUtils.TagSpsSocketIsRing);
                             SendParam("_SPS_Plus_Hole", HapticUtils.TagSpsSocketIsHole);
-                        }
-                        
-                        if (spsPlusClip == null) {
-                            VFABool param;
-                            if (spsOptions.GetOptions().enableSpsPlusOption) {
-                                param = fx.NewBool("spsPlus", synced: true, def: true);
-                                manager.GetMenu()
-                                    .NewMenuToggle(
-                                        $"{spsOptions.GetOptionsPath()}/<b>SPS+ (Beta)<\\/b>\n<size=20>Use contacts for additional data",
-                                        param);
-                            } else {
-                                param = fx.True();
-                            }
-                            spsPlusClip = fx.NewClip("SpsPlus");
-                            var layer = fx.NewLayer("SPS+");
-                            var off = layer.NewState("Off");
-                            var on = layer.NewState("On").WithAnimation(spsPlusClip);
-                            var whenOn = param.IsTrue();
-                            off.TransitionsTo(on).When(whenOn);
-                            on.TransitionsTo(off).When(whenOn.Not());
-                        }
-
-                        clipBuilder.Enable(spsPlusClip, plusRoot);
-                        foreach (var r in renderers) {
-                            spsPlusClip.SetCurve(
-                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Plus_Enabled"),
-                                1
-                            );
                         }
                     }
 
