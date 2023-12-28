@@ -69,6 +69,7 @@ namespace VF.Feature {
             var fx = GetFx();
 
             AnimationClip tipLightOnClip = null;
+            AnimationClip spsPlusClip = null;
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
@@ -138,6 +139,7 @@ namespace VF.Feature {
 
                     if (plug.enableSps) {
                         var plusRoot = GameObjects.Create("SpsPlus", bakeRoot);
+                        plusRoot.active = false;
                         plusRoot.worldScale = Vector3.one;
                         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                             var p = plusRoot.AddComponent<ScaleConstraint>();
@@ -179,6 +181,19 @@ namespace VF.Feature {
 
                             SendParam("_SPS_Plus_Ring", HapticUtils.TagSpsSocketIsRing);
                             SendParam("_SPS_Plus_Hole", HapticUtils.TagSpsSocketIsHole);
+                        }
+                        
+                        if (spsPlusClip == null) {
+                            spsPlusClip = fx.NewClip("SpsPlus");
+                            directTree.Add(spsPlusClip);
+                        }
+
+                        clipBuilder.Enable(spsPlusClip, plusRoot);
+                        foreach (var r in renderers) {
+                            spsPlusClip.SetCurve(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Plus_Enabled"),
+                                1
+                            );
                         }
                     }
 
