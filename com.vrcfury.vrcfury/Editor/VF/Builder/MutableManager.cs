@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Builder.Haptics;
 using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -200,6 +201,10 @@ namespace VF.Builder {
             if (!forceCopy && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(original))) {
                 // Already mutable
                 return original;
+            }
+
+            if (original is Material originalMat) {
+                SpsPatcher.PoiLockdown(originalMat);
             }
 
             var copy = SafeInstantiate(original);

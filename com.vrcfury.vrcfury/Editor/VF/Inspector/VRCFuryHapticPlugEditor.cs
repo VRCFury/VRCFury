@@ -392,7 +392,6 @@ namespace VF.Inspector {
                                 if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return mat;
 
                                 if (plug.enableSps) {
-                                    SpsPatcher.PoiLockdown(mat);
                                     var copy = MutableManager.MakeMutable(mat);
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
