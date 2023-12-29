@@ -441,7 +441,10 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "Parameters in this list will have their name kept as is, allowing you to interact with " +
                 "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
-                "parameters (such as gestures) are included by default."));
+                "parameters (such as gestures) are included by default. " +
+                "If you want to make all parameters global, you can use '*'. " +
+                "If you want to make all parameters global except for a few, you can mark specific parameters " +
+                "as not global by prefixing them with '!'."));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clips:"));
