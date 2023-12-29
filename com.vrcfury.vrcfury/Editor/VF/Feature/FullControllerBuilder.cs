@@ -200,7 +200,14 @@ namespace VF.Feature {
                 if (name.StartsWith("Go/")) return name;
                 return "Go/" + name;
             }
-            
+
+            //if in wildcard mode, check if the parameter is marked as not global
+            if (model.globalParams.Contains("*"))
+            {
+                //if so, make it unique
+                if (model.globalParams.Contains("!" + name)) return manager.MakeUniqueParamName(name);
+            }
+
             if (model.globalParams.Contains(name)) return name;
             if (model.globalParams.Contains("*")) return name;
             return manager.MakeUniqueParamName(name);
