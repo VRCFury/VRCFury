@@ -12,7 +12,7 @@ using VF.Builder.Exceptions;
 using VF.Inspector;
 
 namespace VF.Builder.Haptics {
-    public class SpsPatcher {
+    public static class SpsPatcher {
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
             try {

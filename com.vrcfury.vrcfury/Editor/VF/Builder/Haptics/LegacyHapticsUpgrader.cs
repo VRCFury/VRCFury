@@ -17,7 +17,7 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
     public static class LegacyHapticsUpgrader {
-        private static string dialogTitle = "VRCFury Legacy Haptics Upgrader";
+        private const string dialogTitle = "VRCFury Legacy Haptics Upgrader";
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();

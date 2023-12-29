@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     public class MutableManager {
-        private string tmpDir;
+        private readonly string tmpDir;
 
         private static readonly Type[] typesToMakeMutable = {
             // This has to be here because animator override controllers

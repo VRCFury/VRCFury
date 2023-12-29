@@ -116,7 +116,7 @@ namespace VF.Feature {
                 if (allMappings.Length > 0) {
                     string FormatMapping((string,string) pair) {
                         var (from, to) = pair;
-                        string skinListStr = "";
+                        var skinListStr = "";
                         if (linkSkins.Count > 1) {
                             var skinList = linkSkins
                                 .Where(s => mappingsWithSkin.Contains((s, pair)))
@@ -156,8 +156,8 @@ namespace VF.Feature {
         delegate string Normalizer(string input);
 
         private class FuzzyFinder {
-            private Normalizer[] normalizers;
-            private IDictionary<string, string>[] preNormalized;
+            private readonly Normalizer[] normalizers;
+            private readonly IDictionary<string, string>[] preNormalized;
 
             public FuzzyFinder(ICollection<string> names, params Normalizer[] normalizers) {
                 this.normalizers = normalizers;

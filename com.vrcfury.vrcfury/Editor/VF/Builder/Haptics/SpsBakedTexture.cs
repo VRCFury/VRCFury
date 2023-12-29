@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace VF.Builder.Haptics {
     public class SpsBakedTexture {
-        private List<Color32> bakeArray = new List<Color32>();
-        private bool tpsCompatibility;
+        private readonly List<Color32> bakeArray = new List<Color32>();
+        private readonly bool tpsCompatibility;
 
         public SpsBakedTexture(bool tpsCompatibility) {
             this.tpsCompatibility = tpsCompatibility;

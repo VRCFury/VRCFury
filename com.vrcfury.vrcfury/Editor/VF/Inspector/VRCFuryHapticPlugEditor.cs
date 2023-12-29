@@ -238,8 +238,8 @@ namespace VF.Inspector {
             });
             return output;
         }
-        
-        public class GizmoCache {
+
+        private class GizmoCache {
             public double time = 0;
             public PlugSizeDetector.SizeResult size;
             public string error;
@@ -247,7 +247,7 @@ namespace VF.Inspector {
             public Quaternion rotation;
         }
 
-        private static ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
+        private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
             = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]

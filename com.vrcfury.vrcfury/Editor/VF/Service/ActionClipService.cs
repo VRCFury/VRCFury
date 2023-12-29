@@ -30,7 +30,7 @@ namespace VF.Service {
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
 
-        private List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
+        private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();

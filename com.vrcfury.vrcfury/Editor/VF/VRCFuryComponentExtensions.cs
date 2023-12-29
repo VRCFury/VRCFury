@@ -6,7 +6,7 @@ using VF.Upgradeable;
 
 namespace VF {
     public static class VRCFuryComponentExtensions {
-        private static HashSet<string> reimported = new HashSet<string>();
+        private static readonly HashSet<string> reimported = new HashSet<string>();
 
         /**
          * 

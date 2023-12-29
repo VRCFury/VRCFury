@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace VF.Utils {
     public class VFMultimap<A,B> {
-        private Dictionary<A, List<B>> data = new Dictionary<A, List<B>>();
+        private readonly Dictionary<A, List<B>> data = new Dictionary<A, List<B>>();
         
         public IList<B> Get(A key) {
             return data.TryGetValue(key, out var list) ? list : new List<B>();

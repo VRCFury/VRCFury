@@ -14,7 +14,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Feature {
     [VFService]
     public class FixMasksBuilder : FeatureBuilder {
-        private HashSet<AnimatorStateMachine> migratedFromGesture = new HashSet<AnimatorStateMachine>();
+        private readonly HashSet<AnimatorStateMachine> migratedFromGesture = new HashSet<AnimatorStateMachine>();
 
         public bool IsMigratedFromGesture(AnimatorStateMachine sm) {
             return migratedFromGesture.Contains(sm);

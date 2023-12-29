@@ -70,11 +70,11 @@ namespace VF.PlayMode {
             EditorPrefs.SetString(Key, str);
         }
 
-        public class Data {
-            public List<Entry> entries = new List<Entry>();
+        private class Data {
+            public readonly List<Entry> entries = new List<Entry>();
         }
 
-        public class Entry {
+        private class Entry {
             public string name;
             public bool auto;
         }

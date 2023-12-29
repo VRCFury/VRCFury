@@ -7,7 +7,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Builder {
-    public class VRCFArmatureUtils {
+    public static class VRCFArmatureUtils {
         private static ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>> cache
             = new ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>>();
 

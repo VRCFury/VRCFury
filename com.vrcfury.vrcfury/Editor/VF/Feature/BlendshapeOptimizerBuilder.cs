@@ -120,8 +120,8 @@ namespace VF.Feature {
         }
 
         private class SavedBlendshape {
-            private string name;
-            private List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
+            private readonly string name;
+            private readonly List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
                 = new List<Tuple<float, Vector3[], Vector3[], Vector3[]>>();
             public SavedBlendshape(Mesh mesh, int id) {
                 name = mesh.GetBlendShapeName(id);

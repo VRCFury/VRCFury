@@ -131,7 +131,7 @@ namespace VF.Utils {
                 if (curve.IsFloat) {
                     return (binding, curve.FloatCurve.Evaluate(time), true);
                 } else {
-                    UnityEngine.Object val = curve.ObjectCurve.Length > 0 ? curve.ObjectCurve[0].value : null;
+                    var val = curve.ObjectCurve.Length > 0 ? curve.ObjectCurve[0].value : null;
                     foreach (var key in curve.ObjectCurve.Reverse()) {
                         if (time >= key.time) {
                             val = key.value;
@@ -153,7 +153,7 @@ namespace VF.Utils {
             output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                 // TODO: Animator parameters aren't handled here
                 if (curve.IsFloat) {
-                    if (!binding.GetFloatFromGameObject(root, out float from)) {
+                    if (!binding.GetFloatFromGameObject(root, out var from)) {
                         return (binding, null, true);
                     }
                     var to = curve.GetFirst().GetFloat();

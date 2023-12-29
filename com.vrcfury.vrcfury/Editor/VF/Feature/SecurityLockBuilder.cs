@@ -98,7 +98,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         var unlocked = layer.NewState("Unlocked").Move(1,-1);
         var digitsReversed = digits.Reverse().ToArray();
         var unlockCondition = digitParams[0].IsEqualTo(digitsReversed[0]);
-        for (int i = 1; i < numDigits; i++) {
+        for (var i = 1; i < numDigits; i++) {
             unlockCondition = unlockCondition.And(digitParams[i].IsEqualTo(digitsReversed[i]));
         }
         check.TransitionsTo(unlocked).When(unlockCondition);

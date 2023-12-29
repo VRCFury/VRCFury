@@ -47,7 +47,7 @@ namespace VF {
         }
 
         public static void ReresolvePackages() {
-            MethodInfo method = typeof(Client).GetMethod("Resolve",
+            var method = typeof(Client).GetMethod("Resolve",
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
                 null,
                 new Type[] {},

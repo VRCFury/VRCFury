@@ -12,7 +12,7 @@ using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
 
 namespace VF.Updater {
-    public class UpdateMenuItem {
+    public static class UpdateMenuItem {
         private const string updateName = "Tools/VRCFury/Update VRCFury";
         private const int updatePriority = 1000;
         private const string removeName = "Tools/VRCFury/Uninstall VRCFury";

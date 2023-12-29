@@ -34,7 +34,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
 
-        private Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
+        private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
 
         /**
@@ -254,8 +254,8 @@ namespace VF.Feature {
             public Func<Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
         }
-        private List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
-        private List<Light> dpsTipToDo = new List<Light>();
+        private readonly List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
+        private readonly List<Light> dpsTipToDo = new List<Light>();
 
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {

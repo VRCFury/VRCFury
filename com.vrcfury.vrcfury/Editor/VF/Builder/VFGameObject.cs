@@ -11,8 +11,8 @@ namespace VF.Builder {
      * everywhere, and providing helper methods that are commonly used.
      */
     public class VFGameObject {
-        private GameObject _gameObject;
-        public VFGameObject(GameObject gameObject) {
+        private readonly GameObject _gameObject;
+        private VFGameObject(GameObject gameObject) {
             _gameObject = gameObject;
         }
 
