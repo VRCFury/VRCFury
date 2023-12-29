@@ -136,6 +136,10 @@ namespace VF.Builder {
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
             return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
+        
+        public UnityEngine.Component[] GetComponentsInSelfAndChildren(Type type) {
+            return gameObject.GetComponentsInChildren(type, true).NotNull().ToArray();
+        }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
             return gameObject.GetComponentsInChildren<T>(true).NotNull().ToArray();

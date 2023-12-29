@@ -204,7 +204,7 @@ namespace VF.Builder {
             }
 
             if (original is Material originalMat) {
-                SpsPatcher.PoiLockdown(originalMat);
+                MaterialLocker.Lock(originalMat);
             }
 
             var copy = SafeInstantiate(original);
