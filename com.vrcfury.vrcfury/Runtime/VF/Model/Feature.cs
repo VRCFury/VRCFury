@@ -649,11 +649,46 @@ namespace VF.Model.Feature {
     }
     
     [Serializable]
-    public class Gizmo : NewFeatureModel {
+    public class Gizmo : NewFeatureModel
+    {
+        public enum GizmoDrawType
+        {
+            ARROW,
+            TEXT,
+            CUBE,
+            SPHERE,
+            MESH,
+            LINE,
+            ICON
+        }
+        #region General Information
+        /// <summary>
+        /// The type of gizmo to display
+        /// </summary>
+        public GizmoDrawType type;
+        /// <summary>
+        /// If to use wireframe mode, only applys to Cube, Sphere, and Mesh
+        /// </summary>
+        public bool wireMode;
+        public Transform parent;
+        public Vector3 positionOffset;
+        public Color color = Color.white;
+
+        /// <summary>
+        /// Flags to control when the gizmo is displayed
+        /// </summary>
+        public UnityEditor.GizmoType displayFlags = UnityEditor.GizmoType.Selected | UnityEditor.GizmoType.Active | UnityEditor.GizmoType.InSelectionHierarchy;
+        #endregion
         public Vector3 rotation;
         public string text;
-        public float sphereRadius;
-        public float arrowLength;
+        public int fontSize = 12;
+        public Mesh mesh;
+        public Texture2D texture;
+        public Vector3 scale = Vector3.one;
+        public float arrowLength = 0f;
+        public float sphereRadius = 0f;
+        public Vector3 lineStart;
+        public Vector3 lineEnd;
     }
     
     [Serializable]

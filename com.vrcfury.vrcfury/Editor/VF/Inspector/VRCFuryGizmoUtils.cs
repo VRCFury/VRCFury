@@ -57,14 +57,16 @@ namespace VF.Inspector {
             var style = new GUIStyle(GUI.skin.label);
             style.alignment = left ? TextAnchor.UpperLeft : TextAnchor.UpperCenter;
             style.normal.textColor = color;
-            //style.fontSize = 12;
-            if (worldSize) {
-                style.fontSize = (int)(1.5 / HandleUtility.GetHandleSize(worldPos));
+            style.fontSize = fontSize;
+            if (worldSize)
+            {
+                style.fontSize = (int)(1.5 / HandleUtility.GetHandleSize(worldPos)) * fontSize;
                 if (style.fontSize < 8) return;
                 if (style.fontSize > 40) style.fontSize = 40;
             }
-            WithHandles(() => {
-                Handles.Label(worldPos, text, style);                
+            WithHandles(() =>
+            {
+                Handles.Label(worldPos, text, style);
             });
         }
 
