@@ -362,7 +362,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var aliasLayer = fx.NewLayer(model.name + "_Alias");
             var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
             var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true);
-            exclusiveTagTriggeringStates.Add(aliasState);
             var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
             startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
             aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
