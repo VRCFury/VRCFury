@@ -17,7 +17,7 @@ namespace VF.Service {
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         
-        private Dictionary<EditorCurveBindingExtensions.MuscleBindingType, Func<AnimationClip,VFAFloat>> addCache
+        private readonly Dictionary<EditorCurveBindingExtensions.MuscleBindingType, Func<AnimationClip,VFAFloat>> addCache
             = new Dictionary<EditorCurveBindingExtensions.MuscleBindingType, Func<AnimationClip, VFAFloat>>();
 
         public VFAFloat AddClip(AnimationClip clip, EditorCurveBindingExtensions.MuscleBindingType type) {

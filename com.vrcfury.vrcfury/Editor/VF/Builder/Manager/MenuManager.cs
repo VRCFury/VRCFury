@@ -12,14 +12,12 @@ namespace VF.Builder {
 
     public class MenuManager {
         private readonly VRCExpressionsMenu rootMenu;
-        private readonly string tmpDir;
         private readonly Func<int> currentMenuSortPosition;
         private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions
             = new Dictionary<VRCExpressionsMenu.Control, int>();
 
-        public MenuManager(VRCExpressionsMenu menu, string tmpDir, Func<int> currentMenuSortPosition) {
+        public MenuManager(VRCExpressionsMenu menu, Func<int> currentMenuSortPosition) {
             rootMenu = menu;
-            this.tmpDir = tmpDir;
             this.currentMenuSortPosition = currentMenuSortPosition;
         }
 
@@ -51,6 +49,16 @@ namespace VF.Builder {
             var submenu = GetSubmenu(Slice(split, split.Count-1));
             submenu.controls.Add(control);
             return control;
+        }
+
+        private VRCExpressionsMenu.Control GetMenuItem(string path) {
+            var split = SplitPath(path);
+            if (split.Count == 0) split = new[] { "" };
+            var submenu = GetSubmenu(Slice(split, split.Count-1), false);
+            foreach (var c in submenu.controls) {
+                if (c.name == split[split.Count-1]) return c;
+            }
+            return null;
         }
 
         public bool SetIcon(string path, Texture2D icon) {
@@ -205,6 +213,15 @@ namespace VF.Builder {
             };
             control.value = value;
             control.icon = icon;
+        }
+        public void ReplaceMenuParam(string path, VFAParam param, float value = 1){
+            var control = GetMenuItem(path);
+            if (control != null) {
+                control.parameter = new VRCExpressionsMenu.Control.Parameter {
+                    name = param.Name()
+                };
+                control.value = value;
+            }
         }
         public void NewMenuSlider(string path, VFAFloat param, Texture2D icon = null) {
             var control = NewMenuItem(path);

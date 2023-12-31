@@ -11,8 +11,8 @@ namespace VF.Builder {
      * everywhere, and providing helper methods that are commonly used.
      */
     public class VFGameObject {
-        private GameObject _gameObject;
-        public VFGameObject(GameObject gameObject) {
+        private readonly GameObject _gameObject;
+        private VFGameObject(GameObject gameObject) {
             _gameObject = gameObject;
         }
 
@@ -135,6 +135,10 @@ namespace VF.Builder {
         
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
             return GetComponentsInSelfAndParents<T>().FirstOrDefault();
+        }
+        
+        public UnityEngine.Component[] GetComponentsInSelfAndChildren(Type type) {
+            return gameObject.GetComponentsInChildren(type, true).NotNull().ToArray();
         }
 
         public T[] GetComponentsInSelfAndChildren<T>() {

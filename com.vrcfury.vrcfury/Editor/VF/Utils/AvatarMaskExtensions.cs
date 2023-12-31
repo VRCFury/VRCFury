@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace VF.Utils {
     public static class AvatarMaskExtensions {
-        private static string MagicEverythingString = "__vrcf_everything";
+        private const string MagicEverythingString = "__vrcf_everything";
 
         public static AvatarMask Empty() {
             var mask = new AvatarMask();

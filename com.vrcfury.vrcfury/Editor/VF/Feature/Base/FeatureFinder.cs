@@ -90,7 +90,7 @@ public static class FeatureFinder {
     }
 
     public static VisualElement RenderFeatureEditor(SerializedProperty prop) {
-        string title = "???";
+        var title = "???";
         
         try {
             var component = (VRCFury)prop.serializedObject.targetObject;

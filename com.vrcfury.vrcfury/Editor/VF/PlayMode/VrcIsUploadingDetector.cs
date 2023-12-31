@@ -4,7 +4,7 @@ using VRC.SDKBase.Editor.BuildPipeline;
 namespace VF.PlayMode {
     [InitializeOnLoad]
     public class VrcIsUploadingDetector : IVRCSDKPostprocessAvatarCallback {
-        private static string AboutToUploadKey = "vrcf_vrcAboutToUpload";
+        private const string AboutToUploadKey = "vrcf_vrcAboutToUpload";
 
         public int callbackOrder => int.MaxValue;
         public void OnPostprocessAvatar() {

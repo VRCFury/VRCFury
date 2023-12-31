@@ -18,7 +18,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly AvatarManager manager;
 
-        private HashSet<GameObject> objectsEligibleForFakeHead = new HashSet<GameObject>();
+        private readonly HashSet<GameObject> objectsEligibleForFakeHead = new HashSet<GameObject>();
 
         public void MarkEligible(GameObject obj) {
             objectsEligibleForFakeHead.Add(obj);

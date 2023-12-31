@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace VF.Builder {
-    public class GameObjects {
+    public static class GameObjects {
         public static VFGameObject Create(
             string name,
             VFGameObject parent,

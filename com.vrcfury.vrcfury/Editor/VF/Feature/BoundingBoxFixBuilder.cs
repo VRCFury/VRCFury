@@ -128,7 +128,7 @@ namespace VF.Feature {
 
         private static Bounds CalculateFullBounds(VFGameObject avatarObject) {
             var bounds = new Bounds(avatarObject.transform.position, Vector3.zero);
-            foreach (Renderer renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+            foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) {
                     bounds.Encapsulate(renderer.bounds);
                 }

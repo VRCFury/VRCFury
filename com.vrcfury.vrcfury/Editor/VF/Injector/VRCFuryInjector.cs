@@ -11,9 +11,9 @@ namespace VF.Injector {
      * an entire DI library into VRCF.
      */
     public class VRCFuryInjector {
-        private Dictionary<Type, object> completedObjects = new Dictionary<Type, object>();
-        private HashSet<Type> availableTypes = new HashSet<Type>();
-        private HashSet<Type> typesInConstruction = new HashSet<Type>();
+        private readonly Dictionary<Type, object> completedObjects = new Dictionary<Type, object>();
+        private readonly HashSet<Type> availableTypes = new HashSet<Type>();
+        private readonly HashSet<Type> typesInConstruction = new HashSet<Type>();
 
         public void RegisterService(Type type) {
             if (availableTypes.Contains(type)) {

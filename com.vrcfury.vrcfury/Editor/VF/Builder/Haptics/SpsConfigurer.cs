@@ -49,10 +49,10 @@ namespace VF.Builder.Haptics {
             m.SetFloat(SpsOverrun, plug.spsOverrun ? 1 : 0);
             m.SetTexture(SpsBake, spsBaked);
             m.SetFloat("_SPS_BlendshapeCount", spsBlendshapes.Count);
-            m.SetFloat("_SPS_BlendshapeVertCount", skin.sharedMesh.vertexCount);
+            m.SetFloat("_SPS_BlendshapeVertCount", skin.GetVertexCount());
             for (var i = 0; i < spsBlendshapes.Count; i++) {
                 var name = spsBlendshapes[i];
-                if (skin.sharedMesh.HasBlendshape(name)) {
+                if (skin.HasBlendshape(name)) {
                     m.SetFloat("_SPS_Blendshape" + i, skin.GetBlendShapeWeight(name));
                 }
             }

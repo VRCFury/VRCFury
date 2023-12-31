@@ -17,7 +17,7 @@ namespace VF {
                 var brokenComponents = new HashSet<VRCFuryComponent>();
 
                 if (typeof(SceneAsset) == AssetDatabase.GetMainAssetTypeAtPath(path)) {
-                    for (int n = 0; n < SceneManager.sceneCount; ++n) {
+                    for (var n = 0; n < SceneManager.sceneCount; ++n) {
                         var scene = SceneManager.GetSceneAt(n);
                         if (scene.path == path) {
                             brokenComponents.UnionWith(VFGameObject.GetRoots(scene)

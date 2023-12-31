@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace VF.Builder {
-    public class VRCFEnumUtils {
+    public static class VRCFEnumUtils {
         public static string GetName(Enum enumval) {
             try {
                 return Enum.GetName(enumval.GetType(), enumval);

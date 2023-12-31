@@ -14,7 +14,7 @@ namespace VF.Service {
         private VFLayer layer;
         private VFState idle;
 
-        private Dictionary<string, (VFAInteger,int,VFTransition)> currentSettings = new Dictionary<string, (VFAInteger,int,VFTransition)>();
+        private readonly Dictionary<string, (VFAInteger,int,VFTransition)> currentSettings = new Dictionary<string, (VFAInteger,int,VFTransition)>();
 
         public void Drive(VFAFloat input, string output, float value) {
             var fx = manager.GetFx();

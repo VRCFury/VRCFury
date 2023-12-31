@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace VF.Utils {
     public class AnimationWindowUtils {
-        private static Type animationWindowState = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
+        private static readonly Type animationWindowState = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
         
-        private static PropertyInfo isRecordingProperty = animationWindowState.GetProperty(
+        private static readonly PropertyInfo isRecordingProperty = animationWindowState.GetProperty(
             "recording",
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
         );

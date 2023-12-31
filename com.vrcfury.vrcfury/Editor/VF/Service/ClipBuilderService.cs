@@ -72,20 +72,6 @@ namespace VF.Service {
             clip.SetCurve(binding, scale.z);
         }
 
-        public void Material(AnimationClip clip, VFGameObject obj, int matSlot, Material mat) {
-            foreach (var renderer in obj.GetComponents<Renderer>()) {
-                Material(clip, renderer, matSlot, mat);
-            }
-        }
-        private void Material(AnimationClip clip, Renderer renderer, int matSlot, Material mat) {
-            var binding = EditorCurveBinding.PPtrCurve(
-                GetPath(renderer.gameObject),
-                renderer.GetType(),
-                "m_Materials.Array.data[" + matSlot + "]"
-            );
-            clip.SetCurve(binding, mat);
-        }
-
         public string GetPath(VFGameObject gameObject) {
             return gameObject.GetPath(baseObject);
         }

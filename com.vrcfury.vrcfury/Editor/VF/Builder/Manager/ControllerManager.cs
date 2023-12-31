@@ -20,7 +20,6 @@ namespace VF.Builder {
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
-        private readonly Func<string> currentFeatureNameProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly Func<string, string> makeUniqueParamName;
         private readonly LayerSourceService layerSourceService;
@@ -30,7 +29,6 @@ namespace VF.Builder {
             Func<ParamManager> paramManager,
             VRCAvatarDescriptor.AnimLayerType type,
             Func<int> currentFeatureNumProvider,
-            Func<string> currentFeatureNameProvider,
             Func<string> currentFeatureClipPrefixProvider,
             Func<string, string> makeUniqueParamName,
             LayerSourceService layerSourceService
@@ -39,7 +37,6 @@ namespace VF.Builder {
             this.paramManager = paramManager;
             this.type = type;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
-            this.currentFeatureNameProvider = currentFeatureNameProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.makeUniqueParamName = makeUniqueParamName;
             this.layerSourceService = layerSourceService;
@@ -152,7 +149,7 @@ namespace VF.Builder {
             return paramManager.Invoke();
         }
 
-        private static FieldInfo networkSyncedField =
+        private static readonly FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
         
         public VFABool NewTrigger(string name, bool usePrefix = true) {
@@ -199,6 +196,9 @@ namespace VF.Builder {
                 GetParamManager().AddSyncedParam(param);
             }
             return ctrl.NewFloat(name, def);
+        }
+        public void UnsyncParam(string name){
+            GetParamManager().UnsyncSyncedParam(name);
         }
 
         private readonly int randomPrefix = (new System.Random()).Next(100_000_000, 999_999_999);

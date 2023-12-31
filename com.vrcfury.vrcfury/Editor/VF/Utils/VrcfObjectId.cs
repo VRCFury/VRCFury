@@ -24,7 +24,7 @@ namespace VF.Utils {
             if (split.Length >= 1) {
                 var split2 = split[0].Split(':');
                 if (split2.Length >= 1) output.guid = split2[0];
-                if (split2.Length >= 2 && long.TryParse(split2[1], out long fileId)) output.fileId = fileId;
+                if (split2.Length >= 2 && long.TryParse(split2[1], out var fileId)) output.fileId = fileId;
             }
             if (split.Length >= 2) output.fileName = split[1];
             if (split.Length >= 3) output.objectName = split[2];

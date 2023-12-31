@@ -13,13 +13,13 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         
         public class AnimatedTransforms {
-            public HashSet<Transform> scaleIsAnimated = new HashSet<Transform>();
-            public HashSet<Transform> positionIsAnimated = new HashSet<Transform>();
-            public HashSet<Transform> rotationIsAnimated = new HashSet<Transform>();
-            public HashSet<Transform> physboneRoot = new HashSet<Transform>();
-            public HashSet<Transform> physboneChild = new HashSet<Transform>();
-            public HashSet<Transform> activated = new HashSet<Transform>();
-            private Dictionary<Transform, List<string>> debugSources = new Dictionary<Transform, List<string>>();
+            public readonly HashSet<Transform> scaleIsAnimated = new HashSet<Transform>();
+            public readonly HashSet<Transform> positionIsAnimated = new HashSet<Transform>();
+            public readonly HashSet<Transform> rotationIsAnimated = new HashSet<Transform>();
+            public readonly HashSet<Transform> physboneRoot = new HashSet<Transform>();
+            public readonly HashSet<Transform> physboneChild = new HashSet<Transform>();
+            public readonly HashSet<Transform> activated = new HashSet<Transform>();
+            private readonly Dictionary<Transform, List<string>> debugSources = new Dictionary<Transform, List<string>>();
 
             public void AddDebugSource(Transform t, string source) {
                 if (debugSources.TryGetValue(t, out var list)) list.Add(source);

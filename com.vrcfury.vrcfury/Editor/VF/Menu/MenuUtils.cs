@@ -3,7 +3,7 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Menu {
-    public class MenuUtils {
+    public static class MenuUtils {
         public static GameObject GetSelectedAvatar() {
             var obj = Selection.activeGameObject;
             while (obj != null) {

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace VF.Utils {
     public static class ProxyClipExtensions {
-        private static string ProxyClipMagicString = "__vrchat_proxy_clip";
+        private const string ProxyClipMagicString = "__vrchat_proxy_clip";
 
         public static void WriteProxyBinding(this AnimationClip clip, AnimationClip original) {
             if (original == null) return;

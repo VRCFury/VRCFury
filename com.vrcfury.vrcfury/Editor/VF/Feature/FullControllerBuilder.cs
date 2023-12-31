@@ -368,7 +368,7 @@ namespace VF.Feature {
         public class SmoothParamDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
                 var row = new VisualElement().Row();
-                SerializedProperty nameProp = prop.FindPropertyRelative("name");
+                var nameProp = prop.FindPropertyRelative("name");
                 row.Add(VRCFuryEditorUtils.Prop(nameProp).FlexGrow(1));
                 row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration")).FlexBasis(50));
 
@@ -532,7 +532,7 @@ namespace VF.Feature {
             return content;
         }
         
-        public static HashSet<string> VRChatGlobalParams = new HashSet<string> {
+        public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
             "Voice",

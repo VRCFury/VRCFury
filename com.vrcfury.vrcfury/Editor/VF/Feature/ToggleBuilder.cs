@@ -23,12 +23,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateBuilder restingState;
 
-    private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
+    private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
     private AnimationClip savedRestingClip;
 
     private string primaryExclusive = null;
-    private bool useInt = false;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -118,10 +117,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (false, -1, false, 0);
     }
 
-    private void SetStartState(VFLayer layer, AnimatorState state) {
-        layer.GetRawStateMachine().defaultState = state;
-    }
-
     public VFAParam GetExclusiveParam() {
         return exclusiveParam;
     }
@@ -143,17 +138,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
 
-        var layerName = model.name;
-        if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
-        if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
-
         var synced = true;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
             synced = false;
         }
 
         var (paramName, usePrefixOnParam) = GetParamName();
-        var (useInt, intTarget, intSaved, intDefault) = CheckExclusives();
         VFCondition onCase;
         VFAFloat weight = null;
         bool defaultOn;
@@ -176,46 +166,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     icon: model.enableIcon ? model.icon?.Get() : null
                 );
             }
-        } else if (useInt) {
-           if (intTarget == -1) {
-                var numParam = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-                exclusiveParam = numParam;
-                onCase = numParam.IsNotEqualTo(0);
-                defaultOn = model.defaultOn;
-            } else {
-                this.useInt = true;
-                var boolParam = fx.NewBool(paramName, synced: false, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-                exclusiveParam = boolParam;
-                onCase = boolParam.IsTrue();
-                defaultOn = model.defaultOn;
-                if (addMenuItem) {
-                    var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: intSaved, def: intDefault, usePrefix: false);
-                    var aliasLayer = fx.NewLayer(layerName + "_Alias");
-                    var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
-                    var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true);
-                    exclusiveTagTriggeringStates.Add(aliasState);
-                    var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
-                    startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
-                    aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
-                    aliasState.TransitionsTo(intResetState).When(boolParam.IsFalse().And(intParam.IsEqualTo(intTarget)));
-                    intResetState.TransitionsTo(startState).When(fx.Always());
-                    if (model.holdButton) {
-                        manager.GetMenu().NewMenuButton(
-                            model.name,
-                            intParam,
-                            icon: model.icon?.Get(),
-                            value: intTarget
-                        );
-                    } else {
-                        manager.GetMenu().NewMenuToggle(
-                            model.name,
-                            intParam,
-                            icon: model.icon?.Get(),
-                            value: intTarget
-                        );
-                    }
-                }
-            }
+        } else if (model.useInt) {
+            var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+            exclusiveParam = param;
+            onCase = param.IsNotEqualTo(0);
+            defaultOn = model.defaultOn;
         } else {
             var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             exclusiveParam = param;
@@ -237,6 +192,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
             }
         }
+
+        var layerName = model.name;
+        if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
+        if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
 
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
@@ -335,9 +294,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             restingClip = clip;
         }
 
-        if (!useInt) {
-            exclusiveTagTriggeringStates.Add(inState);
-        }
+        exclusiveTagTriggeringStates.Add(inState);
         off.TransitionsTo(inState).When(onCase);
 
         if (model.enableDriveGlobalParam) {
@@ -396,6 +353,28 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(exclusiveParam.IsFalse()));
             on.Drives(exclusiveParam, 1);
         }
+
+        var (useInt, intTarget, intSaved, intDefault) = CheckExclusives();
+        var boolParam = GetExclusiveParam() as VFABool;
+
+        if (useInt && boolParam != null) {
+            var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: intSaved, def: intDefault, usePrefix: false);
+            var aliasLayer = fx.NewLayer(model.name + "_Alias");
+            var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
+            var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true);
+            var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
+            startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
+            aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
+            aliasState.TransitionsTo(intResetState).When(boolParam.IsFalse().And(intParam.IsEqualTo(intTarget)));
+            intResetState.TransitionsTo(startState).When(fx.Always());
+            manager.GetMenu().ReplaceMenuParam(
+                model.name,
+                intParam,
+                value: intTarget
+            );
+            fx.UnsyncParam(boolParam.Name());
+        }
+        
     }
 
     public override string GetClipPrefix() {

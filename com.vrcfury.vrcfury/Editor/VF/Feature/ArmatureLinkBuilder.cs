@@ -203,9 +203,8 @@ namespace VF.Feature {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
                 if (skin.bones.Contains(fromBone)) {
-                    if (skin.sharedMesh != null) {
-                        skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
-                        var mesh = skin.sharedMesh;
+                    var mesh = skin.GetMutableMesh();
+                    if (mesh != null) {
                         mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
                             .Select(boneAndBindPose => {
                                 VFGameObject bone = boneAndBindPose.a;
@@ -214,7 +213,6 @@ namespace VF.Feature {
                                 return toBone.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
                             }) 
                             .ToArray();
-                        VRCFuryEditorUtils.MarkDirty(mesh);
                     }
 
                     skin.bones = skin.bones

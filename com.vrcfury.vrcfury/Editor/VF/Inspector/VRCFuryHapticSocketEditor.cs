@@ -110,8 +110,9 @@ namespace VF.Inspector {
                 return activeBox;
             }, enableActiveAnimationProp));
 
-            var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this socket by default");
+            var haptics = VRCFuryHapticPlugEditor.GetHapticsSection();
             container.Add(haptics);
+
             haptics.Add(VRCFuryEditorUtils.BetterProp(
                 serializedObject.FindProperty("enableHandTouchZone2"),
                 "Enable hand touch zone? (Auto will add only if child of Hips)"
@@ -163,7 +164,7 @@ namespace VF.Inspector {
         public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
             static VRCFuryHapticPlaySocketEditor() {
                 VRCFurySocketGizmo.EnableSceneLighting = () => {
-                    SceneView sv = EditorWindow.GetWindow<SceneView>();
+                    var sv = EditorWindow.GetWindow<SceneView>();
                     if (sv != null) {
                         sv.sceneLighting = true;
                         sv.drawGizmos = true;
@@ -364,7 +365,7 @@ namespace VF.Inspector {
         }
 
         public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket, [CanBeNull] VRCAvatarDescriptor avatar) {
-            bool enableHandTouchZone = false;
+            var enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
             } else if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto) {

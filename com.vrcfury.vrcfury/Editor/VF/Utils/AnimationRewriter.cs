@@ -52,7 +52,7 @@ namespace VF.Utils {
             output.skipProxyBindings = false;
             return output;
         }
-        private CurveRewriter curveRewriter;
+        private readonly CurveRewriter curveRewriter;
         private bool skipProxyBindings = true;
         private AnimationRewriter(CurveRewriter curveRewriter) {
             this.curveRewriter = curveRewriter;

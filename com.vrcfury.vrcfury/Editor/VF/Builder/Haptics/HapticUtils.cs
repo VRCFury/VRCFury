@@ -15,18 +15,18 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using Random = System.Random;
 
 namespace VF.Builder.Haptics {
-    public class HapticUtils {
-        public static string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
-        public static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
-        public static string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
-        public static string CONTACT_PEN_ROOT = "TPS_Pen_Root";
-        public static string TagTpsOrfRoot = "TPS_Orf_Root";
-        public static string TagTpsOrfFront = "TPS_Orf_Norm";
+    public static class HapticUtils {
+        public const string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
+        public const string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
+        public const string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
+        public const string CONTACT_PEN_ROOT = "TPS_Pen_Root";
+        public const string TagTpsOrfRoot = "TPS_Orf_Root";
+        public const string TagTpsOrfFront = "TPS_Orf_Norm";
 
-        public static string TagSpsSocketRoot = "SPSLL_Socket_Root";
-        public static string TagSpsSocketFront = "SPSLL_Socket_Front";
-        public static string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
-        public static string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
+        public const string TagSpsSocketRoot = "SPSLL_Socket_Root";
+        public const string TagSpsSocketFront = "SPSLL_Socket_Front";
+        public const string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
+        public const string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",

@@ -45,19 +45,21 @@ namespace VF.Feature {
         public void Apply() {
             var keepMmdShapes = allFeaturesInRun.Any(f => f is MmdCompatibility);
 
-            foreach (var (renderer, mesh, setMesh) in RendererIterator.GetRenderersWithMeshes(avatarObject)) {
-                if (!(renderer is SkinnedMeshRenderer skin)) continue;
+            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                var mesh = skin.GetMesh();
+                if (mesh == null) continue;
                 var blendshapeCount = mesh.blendShapeCount;
                 if (blendshapeCount == 0) continue;
+                var path = skin.owner().GetPath(avatarObject);
 
                 // will print with ┬─ at the start, for nicer viewing in the console
-                logOutput += $"\n\u252c\u2500 Optimizing {renderer.transform.name}\n";
+                logOutput += $"\n\u252c\u2500 Optimizing {path}\n";
 
-                var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(skin, mesh);
+                var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(skin);
 
                 bool ShouldKeepName(string name) {
                     if (animatedBlendshapes.Contains(name)) return true;
-                    if (keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && renderer.owner().GetPath(avatarObject) == "Body") return true;
+                    if (keepMmdShapes && MmdUtils.IsMaybeMmdBlendshape(name) && path == "Body") return true;
                     return false;
                 }
 
@@ -78,9 +80,8 @@ namespace VF.Feature {
 
                 var meshCopy = MutableManager.MakeMutable(mesh);
                 meshCopy.ClearBlendShapes();
-                skin.sharedMesh = meshCopy;
-                VRCFuryEditorUtils.MarkDirty(skin);
-                
+                skin.SetMesh(meshCopy);
+
                 for (var id = 0; id < blendshapeCount; id++) {
                     var savedBlendshape = savedBlendshapes[id];
                     var keep = blendshapeIdsToKeep.Contains(id);
@@ -119,8 +120,8 @@ namespace VF.Feature {
         }
 
         private class SavedBlendshape {
-            private string name;
-            private List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
+            private readonly string name;
+            private readonly List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
                 = new List<Tuple<float, Vector3[], Vector3[], Vector3[]>>();
             public SavedBlendshape(Mesh mesh, int id) {
                 name = mesh.GetBlendShapeName(id);
@@ -204,7 +205,7 @@ namespace VF.Feature {
                 .ToList();
         }
 
-        private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin, Mesh mesh) {
+        private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin) {
             var animatedBindings = manager.GetAllUsedControllers()
                 .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
@@ -214,10 +215,7 @@ namespace VF.Feature {
 
             var skinPath = clipBuilder.GetPath(skin.transform);
 
-            var blendshapeNames = new List<string>();
-            for (var i = 0; i < mesh.blendShapeCount; i++) {
-                blendshapeNames.Add(mesh.GetBlendShapeName(i));
-            }
+            var blendshapeNames = skin.GetBlendshapeNames();
             
             var animatedBlendshapes = new HashSet<string>();
             foreach (var tuple in animatedBindings) {
@@ -226,10 +224,9 @@ namespace VF.Feature {
                 if (!binding.propertyName.StartsWith("blendShape.")) continue;
                 if (binding.path != skinPath) continue;
                 var blendshape = binding.propertyName.Substring(11);
-                var blendshapeId = mesh.GetBlendShapeIndex(blendshape);
                 var animatesToNondefaultValue = false;
-                if (blendshapeId >= 0) {
-                    var skinDefaultValue = skin.GetBlendShapeWeight(blendshapeId);
+                if (skin.HasBlendshape(blendshape)) {
+                    var skinDefaultValue = skin.GetBlendShapeWeight(blendshape);
                     foreach (var frameValue in curve.keys.Select(key => key.value)) {
                         if (!Mathf.Approximately(frameValue, skinDefaultValue)) {
                             animatesToNondefaultValue = true;
@@ -246,8 +243,9 @@ namespace VF.Feature {
             if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
                 if (skin == avatar.customEyeLookSettings.eyelidsSkinnedMesh) {
                     foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {
-                        if (b >= 0 && b < blendshapeNames.Count) {
-                            animatedBlendshapes.Add(blendshapeNames[b]);
+                        var name = skin.GetBlendshapeName(b);
+                        if (name != null) {
+                            animatedBlendshapes.Add(name);
                         }
                     }
                 }

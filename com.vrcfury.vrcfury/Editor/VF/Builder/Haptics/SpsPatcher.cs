@@ -12,7 +12,7 @@ using VF.Builder.Exceptions;
 using VF.Inspector;
 
 namespace VF.Builder.Haptics {
-    public class SpsPatcher {
+    public static class SpsPatcher {
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
             try {
@@ -35,27 +35,6 @@ namespace VF.Builder.Haptics {
             var newShader = PatchUnsafe(shader, keepImports);
             mat.shader = newShader.shader;
             VRCFuryEditorUtils.MarkDirty(mat);
-        }
-
-        public static void PoiLockdown(Material mat) {
-            try {
-                var optimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-                if (optimizer == null) return;
-                var lockMethod = optimizer.GetMethod(
-                    "SetLockedForAllMaterials",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-                );
-                if (lockMethod == null) return;
-                VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                    var result = (bool)ReflectionUtils.CallWithOptionalParams(lockMethod, null, new Material[] { mat }, 1);
-                    if (!result) {
-                        throw new Exception(
-                            "Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
-                    }
-                });
-            } catch (Exception e) {
-                throw new Exception("Failed to lockdown poi material", e);
-            }
         }
 
         public class PatchResult {

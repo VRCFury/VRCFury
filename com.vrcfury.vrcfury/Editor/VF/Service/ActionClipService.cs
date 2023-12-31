@@ -30,7 +30,7 @@ namespace VF.Service {
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
 
-        private List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
+        private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
             var fx = avatarManager.GetFx();
@@ -193,9 +193,7 @@ namespace VF.Service {
                         var foundOne = false;
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                             if (!blendShape.allRenderers && blendShape.renderer != skin) continue;
-                            if (!skin.sharedMesh) continue;
-                            var blendShapeIndex = skin.sharedMesh.GetBlendShapeIndex(blendShape.blendShape);
-                            if (blendShapeIndex < 0) continue;
+                            if (!skin.HasBlendshape(blendShape.blendShape)) continue;
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
                             var binding = EditorCurveBinding.FloatCurve(
@@ -206,7 +204,7 @@ namespace VF.Service {
                             onClip.SetCurve(binding, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
-                            Debug.LogWarning("BlendShape not found in avatar: " + blendShape.blendShape);
+                            Debug.LogWarning("BlendShape not found: " + blendShape.blendShape);
                         }
                         break;
                     case ScaleAction scaleAction:
@@ -219,17 +217,20 @@ namespace VF.Service {
                             clipBuilder.Scale(onClip, scaleAction.obj, newScale);
                         }
                         break;
-                    case MaterialAction matAction:
-                        if (matAction.obj == null) {
-                            Debug.LogWarning("Missing object in action: " + name);
-                            break;
-                        }
-                        if (matAction.mat?.Get() == null) {
-                            Debug.LogWarning("Missing material in action: " + name);
-                            break;
-                        }
-                        clipBuilder.Material(onClip, matAction.obj, matAction.materialIndex, matAction.mat.Get());
+                    case MaterialAction matAction: {
+                        var renderer = matAction.renderer;
+                        if (renderer == null) break;
+                        var mat = matAction.mat?.Get();
+                        if (mat == null) break;
+                        
+                        var binding = EditorCurveBinding.PPtrCurve(
+                            clipBuilder.GetPath(renderer.gameObject),
+                            renderer.GetType(),
+                            "m_Materials.Array.data[" + matAction.materialIndex + "]"
+                        );
+                        onClip.SetCurve(binding, mat);
                         break;
+                    }
                     case SpsOnAction spsAction: {
                         if (spsAction.target == null) {
                             Debug.LogWarning("Missing target in action: " + name);
