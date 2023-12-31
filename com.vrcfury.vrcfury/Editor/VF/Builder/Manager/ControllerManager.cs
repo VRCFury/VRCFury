@@ -197,6 +197,9 @@ namespace VF.Builder {
             }
             return ctrl.NewFloat(name, def);
         }
+        public void UnsyncParam(string name){
+            GetParamManager().UnsyncSyncedParam(name);
+        }
 
         private readonly int randomPrefix = (new System.Random()).Next(100_000_000, 999_999_999);
 

@@ -29,6 +29,21 @@ namespace VF.Builder {
             VRCFuryEditorUtils.MarkDirty(syncedParams);
         }
 
+        public void UnsyncSyncedParam(string name) {
+            var exists = GetParam(name);
+            if (exists == null) {
+                return;
+            }
+            for (int i = 0; i < syncedParams.parameters.Length; i++)
+            {
+                if (syncedParams.parameters[i] == exists) {
+                    syncedParams.parameters[i].networkSynced = false;
+                    break;
+                }
+            }
+            VRCFuryEditorUtils.MarkDirty(syncedParams);
+        }
+
         public VRCExpressionParameters.Parameter GetParam(string name) {
             return syncedParams.parameters.FirstOrDefault(p => p.name == name);
         }
