@@ -2,10 +2,15 @@
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using VF.Upgradeable;
 
 namespace VF {
-    public class VRCFPackageUtils {
-        
+    public static class VRCFPackageUtils {
+        [InitializeOnLoadMethod]
+        static void SendToComponents() {
+            VrcfUpgradeableMonoBehaviour.currentVrcfVersion = Version;
+        }
+
         // GUID for VRCFury package.json
         private const string PackageJsonGuid = "da4518ec79a04334b86a18805f1b8d24";
         private static string version;

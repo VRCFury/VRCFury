@@ -260,7 +260,7 @@ namespace VF.Feature {
                 });
 
                 AddDebug("OPTIMIZING");
-                fx.RemoveLayer(layer);
+                layer.Remove();
             }
             
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));

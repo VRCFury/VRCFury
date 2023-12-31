@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Utils;
 
 namespace VF.Builder {
     /**
@@ -10,8 +11,8 @@ namespace VF.Builder {
      * everywhere, and providing helper methods that are commonly used.
      */
     public class VFGameObject {
-        private GameObject _gameObject;
-        public VFGameObject(GameObject gameObject) {
+        private readonly GameObject _gameObject;
+        private VFGameObject(GameObject gameObject) {
             _gameObject = gameObject;
         }
 
@@ -116,10 +117,7 @@ namespace VF.Builder {
         }
 
         public int childCount => transform.childCount;
-        
-        // Components can sometimes be null for some reason. Perhaps when they're corrupt?
-        private static bool NotNull<T>(T obj) => obj != null;
-        
+
         public UnityEngine.Component GetComponent(Type t) {
             return GetComponents(t).FirstOrDefault();
         }
@@ -128,22 +126,31 @@ namespace VF.Builder {
         }
         
         public UnityEngine.Component[] GetComponents(Type t) {
-            return gameObject.GetComponents(t).Where(NotNull).ToArray();
+            // Components can sometimes be null for some reason. Perhaps when they're corrupt?
+            return gameObject.GetComponents(t).NotNull().ToArray();
         }
         public T[] GetComponents<T>() where T : UnityEngine.Component {
-            return gameObject.GetComponents<T>().Where(NotNull).ToArray();
+            return gameObject.GetComponents<T>().NotNull().ToArray();
         }
         
         public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
             return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
+        
+        public UnityEngine.Component[] GetComponentsInSelfAndChildren(Type type) {
+            return gameObject.GetComponentsInChildren(type, true).NotNull().ToArray();
+        }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
-            return gameObject.GetComponentsInChildren<T>(true).Where(NotNull).ToArray();
+            return gameObject.GetComponentsInChildren<T>(true).NotNull().ToArray();
         }
         
         public T[] GetComponentsInSelfAndParents<T>() {
-            return gameObject.GetComponentsInParent<T>(true).Where(NotNull).ToArray();
+            return gameObject.GetComponentsInParent<T>(true).NotNull().ToArray();
+        }
+        
+        public UnityEngine.Component AddComponent(Type type) {
+            return gameObject.AddComponent(type);
         }
 
         public T AddComponent<T>() where T : UnityEngine.Component {
@@ -158,7 +165,7 @@ namespace VF.Builder {
             return transform.IsChildOf(other);
         }
 
-        public string GetPath(VFGameObject root = null) {
+        public string GetPath(VFGameObject root = null, bool prettyRoot = false) {
             if (root == null) {
                 root = transform.root;
                 if (this == root) {
@@ -168,6 +175,9 @@ namespace VF.Builder {
             }
             if (!IsChildOf(root)) {
                 throw new Exception($"{GetPath()} is not a child of {root.GetPath()}");
+            }
+            if (this == root && prettyRoot) {
+                return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
         }

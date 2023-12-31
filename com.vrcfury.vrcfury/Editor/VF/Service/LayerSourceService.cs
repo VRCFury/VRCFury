@@ -11,7 +11,7 @@ namespace VF.Service {
         public const string AvatarDescriptorSource = "VRC Avatar Descriptor";
         public const string VrcDefaultSource = "VRC Default";
 
-        private Dictionary<AnimatorStateMachine, string> sources = new Dictionary<AnimatorStateMachine, string>();
+        private readonly Dictionary<AnimatorStateMachine, string> sources = new Dictionary<AnimatorStateMachine, string>();
 
         public void SetSource(AnimatorStateMachine sm, string source) {
             sources[sm] = source;

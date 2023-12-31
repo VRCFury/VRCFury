@@ -6,6 +6,7 @@ using UnityEngine.Animations;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 
 namespace VF.Service {
     /** This builder is responsible for creating a fake head bone, and moving
@@ -17,10 +18,14 @@ namespace VF.Service {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly AvatarManager manager;
 
-        private HashSet<GameObject> objectsEligibleForFakeHead = new HashSet<GameObject>();
+        private readonly HashSet<GameObject> objectsEligibleForFakeHead = new HashSet<GameObject>();
 
         public void MarkEligible(GameObject obj) {
             objectsEligibleForFakeHead.Add(obj);
+        }
+
+        public bool IsEligible(GameObject obj) {
+            return objectsEligibleForFakeHead.Contains(obj);
         }
 
         [FeatureBuilderAction(FeatureOrder.FakeHeadBuilder)]
@@ -33,6 +38,7 @@ namespace VF.Service {
             if (!head) return;
             
             var objectsForFakeHead = objectsEligibleForFakeHead
+                .NotNull()
                 .Where(obj => obj.transform.parent == head.transform)
                 .ToList();
             if (objectsForFakeHead.Count == 0) return;

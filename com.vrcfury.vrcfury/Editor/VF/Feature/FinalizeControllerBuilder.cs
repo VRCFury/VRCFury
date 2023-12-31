@@ -57,8 +57,8 @@ namespace VF.Feature {
 
                     //States
                     foreach (var state in stateMachine.states) {
-                        VRCAvatarDescriptor.DebugHash hash = new VRCAvatarDescriptor.DebugHash();
-                        string fullName = prefix + state.state.name;
+                        var hash = new VRCAvatarDescriptor.DebugHash();
+                        var fullName = prefix + state.state.name;
                         hash.hash = Animator.StringToHash(fullName);
                         hash.name = fullName.Remove(0, rootStateMachine.name.Length + 1);
                         avatar.animationHashSet.Add(hash);

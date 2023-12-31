@@ -4,23 +4,14 @@ using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
 using VF.Component;
+using VF.Utils;
 
 namespace VF.Builder.Haptics {
     public static class PlugMaskGenerator {
         // Returns 1 if active, 0 if ignored
         public static float[] GetMask(Renderer renderer, VRCFuryHapticPlug plug) {
-            Mesh mesh = null;
-            if (renderer is SkinnedMeshRenderer s) {
-                mesh = s.sharedMesh;
-            } else if (renderer is MeshRenderer r) {
-                var meshFilter = r.owner().GetComponent<MeshFilter>();
-                if (meshFilter) {
-                    mesh = meshFilter.sharedMesh;
-                }
-            }
-            if (mesh == null) {
-                return null;
-            }
+            var mesh = renderer.GetMesh();
+            if (mesh == null) return null;
             
             var boneWeights = mesh.boneWeights;
             var vertices = mesh.vertices;

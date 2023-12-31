@@ -61,6 +61,9 @@ Vector4Field.VrcFuryEditorProp > .unity-vector4-field__input {
 
 /* 2022 lists */
 
+.unity-list-view {
+    max-height: none;
+}
 .unity-list-view__reorderable-item__container {
     padding-left: 2px;
     padding-top: 5px;

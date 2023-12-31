@@ -44,7 +44,7 @@ namespace VF.Service {
             return tree;
         }
 
-        private Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
+        private readonly Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
         private VFAFloat GetSpeed(float seconds, bool useAcceleration) {
             var framerateForCalculation = 60; // closer to the in game framerate, the more technically accurate it will be
             var targetFrames = seconds * framerateForCalculation;

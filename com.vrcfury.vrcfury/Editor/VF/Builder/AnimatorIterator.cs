@@ -41,6 +41,22 @@ namespace VF.Builder {
             }
         }
 
+        public static void ForEachTransitionRW(
+            AnimatorStateMachine root,
+            Func<AnimatorTransitionBase,IEnumerable<AnimatorTransitionBase>> action
+        ) {
+            foreach (var sm in GetAllStateMachines(root)) {
+                sm.entryTransitions = sm.entryTransitions.SelectMany(action).OfType<AnimatorTransition>().ToArray();
+                sm.anyStateTransitions = sm.anyStateTransitions.SelectMany(action).OfType<AnimatorStateTransition>().ToArray();
+                foreach (var childSm in sm.stateMachines) {
+                    sm.SetStateMachineTransitions(childSm.stateMachine, sm.GetStateMachineTransitions(childSm.stateMachine).SelectMany(action).OfType<AnimatorTransition>().ToArray());
+                }
+            }
+            foreach (var state in new States().From(root)) {
+                state.transitions = state.transitions.SelectMany(action).OfType<AnimatorStateTransition>().ToArray();
+            }
+        }
+
         public static void ReplaceClips(AnimatorController controller, Func<AnimationClip, AnimationClip> replace) {
             foreach (var state in new States().From(controller)) {
                 var motions = new Stack<(Motion, Func<Motion,Motion>)>();

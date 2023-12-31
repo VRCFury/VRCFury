@@ -46,7 +46,7 @@ namespace VF.Feature {
                 if (uniqueOwners.Count > 0) {
                     foreach (var layer in controller.GetLayers()) {
                         if (controller.IsSourceAvatarDescriptor(layer)) {
-                            controller.RemoveLayer(layer);
+                            layer.Remove();
                         }
                     }
                 }

@@ -37,7 +37,7 @@ namespace VF.Builder {
             var safeFilename = MakeFilenameSafe(filename);
 
             string fullPath;
-            for (int i = 0;; i++) {
+            for (var i = 0;; i++) {
                 fullPath = dir
                            + "/"
                            + safeFilename + (i > 0 ? "_" + i : "")

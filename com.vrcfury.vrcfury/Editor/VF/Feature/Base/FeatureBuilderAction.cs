@@ -5,9 +5,9 @@ using VF.Builder;
 
 namespace VF.Feature.Base {
     public class FeatureBuilderAction : IComparable<FeatureBuilderAction> {
-        private FeatureBuilderActionAttribute attribute;
-        private MethodInfo method;
-        private object service;
+        private readonly FeatureBuilderActionAttribute attribute;
+        private readonly MethodInfo method;
+        private readonly object service;
         public int serviceNum { get; private set; }
         public int menuSortOrder { get; private set; }
         public VFGameObject configObject { get; private set; }

@@ -4,12 +4,13 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Menu;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
 namespace VF.VrcHooks {
-    public class PreuploadHook : IVRCSDKPreprocessAvatarCallback {
+    internal class PreuploadHook : IVRCSDKPreprocessAvatarCallback {
         // This has to be before -1024 when VRCSDK deletes our components
         public int callbackOrder => -10000;
 
@@ -62,6 +63,16 @@ namespace VF.VrcHooks {
             // before it gets uploaded
             VRCFuryBuilder.StripAllVrcfComponents(vrcCloneObject);
 
+            return true;
+        }
+    }
+
+    internal class NdmfCleanupHook : IVRCSDKPreprocessAvatarCallback {
+        // At the same time that the VRCSDK removes Editor Only components
+        public int callbackOrder => -1024;
+
+        public bool OnPreprocessAvatar(GameObject avatarGameObject) {
+            NdmfFirstMenuItem.Cleanup(avatarGameObject);
             return true;
         }
     }

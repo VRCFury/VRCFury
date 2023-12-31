@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
@@ -27,6 +28,10 @@ namespace VF.Utils.Controller {
         }
         public override int GetHashCode() => Tuple.Create(ctrl).GetHashCode();
 
+        public AnimatorController GetRaw() {
+            return ctrl;
+        }
+
         public VFLayer NewLayer(string name, int insertAt = -1) {
             // Unity breaks if name contains .
             name = name.Replace(".", "");
@@ -39,17 +44,6 @@ namespace VF.Utils.Controller {
             layer.weight = 1;
             layer.stateMachine.anyStatePosition = VFState.MovePos(layer.stateMachine.entryPosition, 0, 1);
             return layer;
-        }
-    
-        public void RemoveLayer(int i) {
-            // Due to some unity bug, removing any layer from a controller
-            // also removes ALL layers marked as synced for some reason.
-            // VRChat synced layers are broken anyways, so we can just turn them off.
-            ctrl.layers = ctrl.layers.Select(layer => {
-                layer.syncedLayerIndex = -1;
-                return layer;
-            }).ToArray();
-            ctrl.RemoveLayer(i);
         }
 
         public void RemoveParameter(int i) {
@@ -71,11 +65,6 @@ namespace VF.Utils.Controller {
         public AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
             var exists = GetParam(name);
             if (exists != null) {
-                if (exists.type != type) {
-                    throw new Exception(
-                        $"VRCF tried to create parameter {name} with type {type} in controller {ctrl.name}," +
-                        $" but parameter already exists with type {exists.type}");
-                }
                 return exists;
             }
             ctrl.AddParameter(name, type);
@@ -99,11 +88,16 @@ namespace VF.Utils.Controller {
         }
 
         public int GetLayerId(AnimatorStateMachine stateMachine) {
-            return ctrl.layers
+            var id = ctrl.layers
                 .Select((l, i) => (l, i))
                 .Where(tuple => tuple.Item1.stateMachine == stateMachine)
                 .Select(tuple => tuple.Item2)
+                .DefaultIfEmpty(-1)
                 .First();
+            if (id == -1) {
+                throw new Exception("Layer not found in controller. It may have been accessed after it was removed.");
+            }
+            return id;
         }
 
         [CanBeNull]
@@ -148,6 +142,10 @@ namespace VF.Utils.Controller {
                 return null;
             }
             
+            var output = new VFController(ac);
+            output.FixNullStateMachines();
+            output.ReplaceSyncedLayers();
+
             // Apply override controllers
             if (overrides.Count > 0) {
                 AnimatorIterator.ReplaceClips(ac, clip => {
@@ -159,8 +157,6 @@ namespace VF.Utils.Controller {
                 });
             }
 
-            var output = new VFController(ac);
-            
             // Make sure all masks are unique, so we don't modify one and affect another
             foreach (var layer in output.GetLayers()) {
                 if (layer.mask != null) {
@@ -168,9 +164,9 @@ namespace VF.Utils.Controller {
                 }
             }
             
-            output.FixNullStateMachines();
             output.FixLayer0Weight();
             output.ApplyBaseMask(type);
+            NoBadControllerParamsBuilder.RemoveWrongParamTypes(output);
             return output;
         }
 
@@ -223,6 +219,45 @@ namespace VF.Utils.Controller {
                     layer.mask.IntersectWith(baseMask);
                 }
             }
+        }
+
+        /**
+         * Synced layers are... "very" broken in unity and in vrchat. In unity, if you delete a layer higher than the synced
+         * layer, the synced layer is randomly deleted. In vrchat, synced layers don't really work properly at all.
+         * When dealing with write defaults issues, synced layers break everything because the motions in the synced layer may need
+         * a different WD setting than the states in the other layer.
+         * We can "sorta" work around this issue by just replacing the synced layer with an identical copy. This means that timing sync won't work,
+         * but it's better than nothing.
+         */
+        private void ReplaceSyncedLayers() {
+            layers = layers.Select((layer, id) => {
+                if (layer.syncedLayerIndex < 0 || layer.syncedLayerIndex == id) {
+                    layer.syncedLayerIndex = -1;
+                    return layer;
+                }
+                if (layer.syncedLayerIndex >= layers.Length) {
+                    layer.stateMachine = new AnimatorStateMachine {
+                        name = layer.name,
+                        hideFlags = HideFlags.HideInHierarchy
+                    };
+                    layer.syncedLayerIndex = -1;
+                    return layer;
+                }
+
+                var copy = MutableManager.CopyRecursiveAdv(layers[layer.syncedLayerIndex].stateMachine);
+                layer.syncedLayerIndex = -1;
+                layer.stateMachine = copy.output;
+                foreach (var state in new AnimatorIterator.States().From(layer.stateMachine)) {
+                    var originalState = (AnimatorState)copy.copyToOriginal[state];
+                    state.motion = layer.GetOverrideMotion(originalState);
+                    state.behaviours = layer.GetOverrideBehaviours(originalState);
+                    layer.SetOverrideMotion(originalState, null);
+                    layer.SetOverrideBehaviours(originalState, new StateMachineBehaviour[0]);
+                }
+
+                return layer;
+            }).ToArray();
+
         }
     }
 }

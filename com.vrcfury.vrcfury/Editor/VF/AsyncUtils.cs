@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using UnityEditor;
 
 namespace VF {
-    public class AsyncUtils {
+    public static class AsyncUtils {
         public static async Task InMainThread(Action fun) {
             await InMainThread<object>(() => { fun(); return null; });
         }

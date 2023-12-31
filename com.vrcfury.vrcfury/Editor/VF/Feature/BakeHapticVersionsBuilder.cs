@@ -15,7 +15,7 @@ namespace VF.Builder.Haptics {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         
         // Bump when plug senders or receivers are changed
-        private const int LocalVersion = 9;
+        private const int LocalVersion = 10;
         
         // Bump when any senders are changed
         private const int BeaconVersion = 7;

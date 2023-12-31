@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -21,7 +22,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
 
-        private VFMultimap<TrackingControlType, VFAFloat> inhibitors =
+        private readonly VFMultimap<TrackingControlType, VFAFloat> inhibitors =
             new VFMultimap<TrackingControlType, VFAFloat>();
 
         public VFAFloat AddInhibitor(string owner, TrackingControlType type) {
@@ -30,7 +31,7 @@ namespace VF.Feature {
             return param;
         }
 
-        private List<Action> whenCollected = new List<Action>();
+        private readonly List<Action> whenCollected = new List<Action>();
         public void WhenCollected(Action a) {
             whenCollected.Add(a);
         }
@@ -44,6 +45,28 @@ namespace VF.Feature {
 
             var trackingParamsCache = new Dictionary<(string, TrackingControlType), VFAFloat>();
             var fx = manager.GetFx();
+
+            var usedOwners = new HashSet<string>();
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                foreach (var l in controller.GetLayers()) {
+                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
+                        if (b is VRCAnimatorTrackingControl) {
+                            var layerOwner = controller.GetLayerOwner(l);
+                            usedOwners.Add(layerOwner);
+                        }
+                        return true;
+                    });
+                }
+            }
+
+            var useMerger = whenCollected.Any() || inhibitors.GetKeys().Any() || usedOwners.Count > 1;
+            Debug.Log("Tracking Control Conflict Report:\n"
+                      + "Consumers (vrcf blink / visemes): " + (whenCollected.Any() ? "Yes" : "No")
+                      + "Inhibitors (vrcf actions affecting tracking control): " + (inhibitors.GetKeys().Any() ? "Yes" : "No")
+                      + "Tracking Control Contributors: " + string.Join(",", usedOwners));
+            if (!useMerger) {
+                return;
+            }
 
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {
@@ -185,19 +208,18 @@ namespace VF.Feature {
             }
         }
 
-        public static TrackingControlType TrackingHead = new TrackingControlType { fieldName = "trackingHead" };
-        public static TrackingControlType TrackingLeftHand = new TrackingControlType { fieldName = "trackingLeftHand" };
-        public static TrackingControlType TrackingRightHand = new TrackingControlType { fieldName = "trackingRightHand" };
-        public static TrackingControlType TrackingHip = new TrackingControlType { fieldName = "trackingHip" };
-        public static TrackingControlType TrackingLeftFoot = new TrackingControlType { fieldName = "trackingLeftFoot" };
-        public static TrackingControlType TrackingRightFoot = new TrackingControlType { fieldName = "trackingRightFoot" };
-        public static TrackingControlType TrackingLeftFingers = new TrackingControlType { fieldName = "trackingLeftFingers" };
-        public static TrackingControlType TrackingRightFingers = new TrackingControlType { fieldName = "trackingRightFingers" };
-        public static TrackingControlType TrackingEyes = new TrackingControlType { fieldName = "trackingEyes", isFace = true };
-        public static TrackingControlType TrackingMouth = new TrackingControlType { fieldName = "trackingMouth", isFace = true };
-        
+        public static readonly TrackingControlType TrackingHead = new TrackingControlType { fieldName = "trackingHead" };
+        public static readonly TrackingControlType TrackingLeftHand = new TrackingControlType { fieldName = "trackingLeftHand" };
+        public static readonly TrackingControlType TrackingRightHand = new TrackingControlType { fieldName = "trackingRightHand" };
+        public static readonly TrackingControlType TrackingHip = new TrackingControlType { fieldName = "trackingHip" };
+        public static readonly TrackingControlType TrackingLeftFoot = new TrackingControlType { fieldName = "trackingLeftFoot" };
+        public static readonly TrackingControlType TrackingRightFoot = new TrackingControlType { fieldName = "trackingRightFoot" };
+        public static readonly TrackingControlType TrackingLeftFingers = new TrackingControlType { fieldName = "trackingLeftFingers" };
+        public static readonly TrackingControlType TrackingRightFingers = new TrackingControlType { fieldName = "trackingRightFingers" };
+        public static readonly TrackingControlType TrackingEyes = new TrackingControlType { fieldName = "trackingEyes", isFace = true };
+        public static readonly TrackingControlType TrackingMouth = new TrackingControlType { fieldName = "trackingMouth", isFace = true };
 
-        public static TrackingControlType[] allTypes = new [] {
+        public static readonly TrackingControlType[] allTypes = new [] {
             TrackingHead,
             TrackingLeftHand,
             TrackingRightHand,

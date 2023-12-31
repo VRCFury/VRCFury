@@ -17,12 +17,10 @@ namespace VF.Builder.Haptics {
                 return;
             }
 
-            var mesh = skin.sharedMesh;
-            mesh = MutableManager.MakeMutable(mesh);
-            skin.sharedMesh = mesh;
-
+            var mesh = skin.GetMutableMesh();
+            if (mesh == null) throw new Exception("Missing mesh");
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
-            var boneCount = 10;
+            const int boneCount = 10;
             VFGameObject lastParent = skin.rootBone;
             var bonesAlreadyExist = lastParent.Find("VrcFuryAutoRig0") != null;
             var bones = new List<Transform>();

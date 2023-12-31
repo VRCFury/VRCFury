@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -17,8 +16,6 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
-using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
@@ -26,6 +23,7 @@ namespace VF.Feature {
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
+        [VFAutowired] private readonly FakeHeadService fakeHead;
 
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
@@ -74,9 +72,7 @@ namespace VF.Feature {
 
             // Move over all the old components / children from the old location to a new child
             var animLink = new VFMultimap<VFGameObject, VFGameObject>();
-            foreach (var (_propBone, avatarBone) in links.mergeBones) {
-                var propBone = _propBone;
-
+            foreach (var (propBone, avatarBone) in links.mergeBones) {
                 bool ShouldReparent() {
                     if (propBone == links.propMain) return true;
                     if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) return false;
@@ -137,50 +133,55 @@ namespace VF.Feature {
                 } else {
                     newName += " (Referenced Externally)";
                 }
+                
+                var addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
+                var current = addedObject;
 
-                var transformAnimated = anim.positionIsAnimated.Contains(propBone)
+                foreach (var a in animatedParents) {
+                    current = GameObjects.Create($"Toggle From {a.name}", current);
+                    current.active = a.active;
+                    animLink.Put(a, current);
+                }
+
+                var transformAnimated =
+                    anim.positionIsAnimated.Contains(propBone)
                     || anim.rotationIsAnimated.Contains(propBone)
                     || anim.scaleIsAnimated.Contains(propBone);
                 if (transformAnimated) {
-                    var wrapper = GameObjects.Create("Transform Maintainer", propBone.parent, propBone);
-                    var outer = GameObjects.Create("Inverted Transform", wrapper, propBone.parent);
-                    mover.Move(propBone, outer);
-                    propBone = wrapper;
-                }
-                
-                foreach (var a in animatedParents) {
-                    var wrapper = GameObjects.Create($"Toggle From {a.name}", propBone.parent, propBone);
-                    mover.Move(propBone, wrapper);
-                    propBone = wrapper;
-                    wrapper.active = a.active;
-                    animLink.Put(a, wrapper);
-                }
-                
-                if (propBone != _propBone) {
-                    var wrapper = GameObjects.Create(newName, propBone.parent, propBone);
-                    mover.Move(propBone, wrapper);
-                    propBone = wrapper;
-                    mover.Move(_propBone, newName: "Original Object");
+                    current = GameObjects.Create("Original Parent (Retained for transform animation)", current, propBone.parent);
+
+                    // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
+                    // to mark them as initially "hidden". In this case, we need to make sure that the transform maintainer
+                    // doesn't just permanently set the scale to 0.
+                    if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
+                        current.localScale = Vector3.one;
+                    }
                 }
 
-                mover.Move(propBone, avatarBone, newName);
-
+                mover.Move(propBone, current, "Original Object", defer: true);
+                
                 if (!keepBoneOffsets) {
-                    propBone.worldPosition = avatarBone.worldPosition;
-                    propBone.worldRotation = avatarBone.worldRotation;
-                    propBone.worldScale = avatarBone.worldScale * scalingFactor;
+                    addedObject.worldPosition = avatarBone.worldPosition;
+                    addedObject.worldRotation = avatarBone.worldRotation;
+                    addedObject.worldScale = avatarBone.worldScale * scalingFactor;
                 }
-                
+
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone);
                 }
 
+                if (fakeHead.IsEligible(propBone)) {
+                    fakeHead.MarkEligible(addedObject);
+                }
+
                 // If the transform isn't used and contains no children, we can just throw it away
                 if (!IsTransformUsed(propBone)) {
-                    propBone.Destroy();
+                    addedObject.Destroy();
                     continue;
                 }
             }
+            
+            mover.ApplyDeferred();
 
             // Rewrite animations that turn off parents
             foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
@@ -189,6 +190,7 @@ namespace VF.Feature {
                     var transform = avatarObject.Find(binding.path).transform;
                     if (transform == null) continue;
                     foreach (var other in animLink.Get(transform)) {
+                        if (other == null) continue; // it got deleted because the propBone wasn't used
                         var b = binding;
                         b.path = other.GetPath(avatarObject);
                         clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
@@ -201,9 +203,8 @@ namespace VF.Feature {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
                 if (skin.bones.Contains(fromBone)) {
-                    if (skin.sharedMesh != null) {
-                        skin.sharedMesh = MutableManager.MakeMutable(skin.sharedMesh);
-                        var mesh = skin.sharedMesh;
+                    var mesh = skin.GetMutableMesh();
+                    if (mesh != null) {
                         mesh.bindposes = Enumerable.Zip(skin.bones, mesh.bindposes, (a,b) => (a,b))
                             .Select(boneAndBindPose => {
                                 VFGameObject bone = boneAndBindPose.a;
@@ -212,7 +213,6 @@ namespace VF.Feature {
                                 return toBone.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
                             }) 
                             .ToArray();
-                        VRCFuryEditorUtils.MarkDirty(mesh);
                     }
 
                     skin.bones = skin.bones
