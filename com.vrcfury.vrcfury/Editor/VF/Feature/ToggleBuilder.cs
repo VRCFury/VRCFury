@@ -28,7 +28,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private AnimationClip savedRestingClip;
 
     private string primaryExclusive = null;
-    private bool useInt = false;
 
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -118,10 +117,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (false, -1, false, 0);
     }
 
-    private void SetStartState(VFLayer layer, AnimatorState state) {
-        layer.GetRawStateMachine().defaultState = state;
-    }
-
     public VFAParam GetExclusiveParam() {
         return exclusiveParam;
     }
@@ -142,10 +137,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
-
-        var layerName = model.name;
-        if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
-        if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
 
         var synced = true;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
@@ -201,6 +192,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
             }
         }
+
+        var layerName = model.name;
+        if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
+        if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
 
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
@@ -299,9 +294,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             restingClip = clip;
         }
 
-        if (!useInt) {
-            exclusiveTagTriggeringStates.Add(inState);
-        }
+        exclusiveTagTriggeringStates.Add(inState);
         off.TransitionsTo(inState).When(onCase);
 
         if (model.enableDriveGlobalParam) {
