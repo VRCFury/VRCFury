@@ -49,12 +49,12 @@ namespace VF.Service {
                     // Root is ignored
                 } else {
                     output.physboneRoot.Add(root);
-                    output.AddDebugSource(root, $"Physbone on {path}");
+                    output.AddDebugSource(root, $"Physbone root in {path}");
                 }
 
                 output.physboneChild.UnionWith(nonIgnoredChildren.Select(o => o.transform));
                 foreach (var r in nonIgnoredChildren) {
-                    output.AddDebugSource(r, $"Physbone on {path}");
+                    output.AddDebugSource(r, $"Physbone child in {path}");
                 }
             }
 
@@ -71,7 +71,7 @@ namespace VF.Service {
                             output.rotationIsAnimated.Add(transform);
                         else if (lower.Contains("position"))
                             output.positionIsAnimated.Add(transform);
-                        output.AddDebugSource(transform, "Animation clip: " + clip.name);
+                        output.AddDebugSource(transform, "Transform animated in " + clip.name);
                     } else if (binding.type == typeof(GameObject)) {
                         var transform = avatarObject.Find(binding.path).transform;
                         if (transform == null) continue;
