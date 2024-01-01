@@ -12,14 +12,12 @@ namespace VF.Builder {
 
     public class MenuManager {
         private readonly VRCExpressionsMenu rootMenu;
-        private readonly string tmpDir;
         private readonly Func<int> currentMenuSortPosition;
         private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions
             = new Dictionary<VRCExpressionsMenu.Control, int>();
 
-        public MenuManager(VRCExpressionsMenu menu, string tmpDir, Func<int> currentMenuSortPosition) {
+        public MenuManager(VRCExpressionsMenu menu, Func<int> currentMenuSortPosition) {
             rootMenu = menu;
-            this.tmpDir = tmpDir;
             this.currentMenuSortPosition = currentMenuSortPosition;
         }
 

@@ -6,6 +6,7 @@ using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
 using VF.Inspector;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
@@ -29,9 +30,9 @@ namespace VF.Builder.Haptics {
         ) {
             // Convert MeshRenderer to SkinnedMeshRenderer
             if (renderer is MeshRenderer) {
-                var obj = renderer.gameObject;
+                var obj = renderer.owner();
+                var staticMesh = renderer.GetMesh();
                 var meshFilter = obj.GetComponent<MeshFilter>();
-                var mesh = meshFilter.sharedMesh;
                 var mats = renderer.sharedMaterials;
                 var anchor = renderer.probeAnchor;
 
@@ -39,28 +40,29 @@ namespace VF.Builder.Haptics {
                 Object.DestroyImmediate(meshFilter);
 
                 var newSkin = obj.AddComponent<SkinnedMeshRenderer>();
-                newSkin.sharedMesh = mesh;
+                newSkin.SetMesh(staticMesh);
                 newSkin.sharedMaterials = mats;
                 newSkin.probeAnchor = anchor;
                 renderer = newSkin;
             }
 
             var skin = renderer as SkinnedMeshRenderer;
-            if (!skin) {
-                throw new VRCFBuilderException("TPS material found on non-mesh renderer");
-            }
-            
+            if (skin == null) throw new VRCFBuilderException("Unknown renderer type");
+            var mesh = skin.GetMesh();
+            if (mesh == null) throw new Exception("Missing mesh");
+
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
-            if (skin.sharedMesh.boneWeights.Length == 0) {
+            if (mesh.boneWeights.Length == 0) {
                 var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.transform);
-                var meshCopy = MutableManager.MakeMutable(skin.sharedMesh);
+                var meshCopy = MutableManager.MakeMutable(mesh);
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 
                 };
                 VRCFuryEditorUtils.MarkDirty(meshCopy);
                 skin.bones = new Transform[] { mainBone };
-                skin.sharedMesh = meshCopy;
+                skin.SetMesh(meshCopy);
+                mesh = meshCopy;
                 VRCFuryEditorUtils.MarkDirty(skin);
             }
 

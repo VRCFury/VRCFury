@@ -47,7 +47,7 @@ namespace VF {
         }
 
         public static void ReresolvePackages() {
-            MethodInfo method = typeof(Client).GetMethod("Resolve",
+            var method = typeof(Client).GetMethod("Resolve",
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
                 null,
                 new Type[] {},
@@ -65,7 +65,8 @@ namespace VF {
             "\"name\": \"com.vrcfury.temp\",\n" +
             "\"displayName\": \"VRCFury Temp Files\",\n" +
             "\"version\": \"0.0.0\",\n" +
-            "\"hideInEditor\": false\n" +
+            "\"hideInEditor\": false,\n" +
+            "\"author\": { \"name\": \"VRCFury\" }\n" +
             "}";
     }
 }

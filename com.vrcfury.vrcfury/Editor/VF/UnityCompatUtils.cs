@@ -2,7 +2,7 @@
 using UnityEngine;
 
 namespace VF {
-    public class UnityCompatUtils {
+    public static class UnityCompatUtils {
         public static void OpenPrefab(string path, GameObject focus) {
 #if UNITY_2022_1_OR_NEWER
             UnityEditor.SceneManagement.PrefabStageUtility.OpenPrefab(path, focus);

@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Builder.Haptics;
 using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -13,7 +14,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     public class MutableManager {
-        private string tmpDir;
+        private readonly string tmpDir;
 
         private static readonly Type[] typesToMakeMutable = {
             // This has to be here because animator override controllers
@@ -200,6 +201,10 @@ namespace VF.Builder {
             if (!forceCopy && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(original))) {
                 // Already mutable
                 return original;
+            }
+
+            if (original is Material originalMat) {
+                MaterialLocker.Lock(originalMat);
             }
 
             var copy = SafeInstantiate(original);

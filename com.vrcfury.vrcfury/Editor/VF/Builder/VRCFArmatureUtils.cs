@@ -7,7 +7,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Builder {
-    public class VRCFArmatureUtils {
+    public static class VRCFArmatureUtils {
         private static ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>> cache
             = new ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>>();
 
@@ -75,7 +75,7 @@ namespace VF.Builder {
                 return cached;
             }
 
-            var animator = avatarObject.GetComponent<Animator>();
+            var animator = avatarObject.owner().GetComponent<Animator>();
             if (!animator) {
                 return new Dictionary<HumanBodyBones, string>();
             }

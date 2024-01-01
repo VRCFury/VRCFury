@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace VF.Utils {
     public class FloatOrObjectCurve {
-        private bool isFloat;
-        private AnimationCurve floatCurve;
-        private ObjectReferenceKeyframe[] objectCurve;
+        private readonly bool isFloat;
+        private readonly AnimationCurve floatCurve;
+        private readonly ObjectReferenceKeyframe[] objectCurve;
         
         public static implicit operator FloatOrObjectCurve(AnimationCurve d) => new FloatOrObjectCurve(d);
         public static implicit operator FloatOrObjectCurve(ObjectReferenceKeyframe[] d) => new FloatOrObjectCurve(d);

@@ -685,13 +685,19 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class BlendShapeLink : NewFeatureModel {
-        public List<GameObject> objs = new List<GameObject>();
+        [Obsolete] public List<GameObject> objs = new List<GameObject>();
+        public List<LinkSkin> linkSkins = new List<LinkSkin>();
         public string baseObj;
         public bool includeAll = true;
         public bool exactMatch = false;
         public List<Exclude> excludes = new List<Exclude>();
         public List<Include> includes = new List<Include>();
-        
+
+        [Serializable]
+        public class LinkSkin {
+            public SkinnedMeshRenderer renderer;
+            public bool ResetMePlease2;
+        }
         [Serializable]
         public class Exclude {
             public string name;
@@ -702,6 +708,24 @@ namespace VF.Model.Feature {
             public string nameOnBase;
             public string nameOnLinked;
             public bool ResetMePlease2;
+        }
+        
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                linkSkins.Clear();
+                foreach (var obj in objs) {
+                    if (obj != null) {
+                        linkSkins.Add(new LinkSkin { renderer = obj.GetComponent<SkinnedMeshRenderer>() });
+                    }
+                }
+            }
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
         }
     }
     
@@ -778,7 +802,6 @@ namespace VF.Model.Feature {
         public GuidTexture2d menuIcon;
         public string menuPath;
         public bool saveSockets = false;
-        public bool enableSpsPlusOption = true;
     }
 
     [Serializable]

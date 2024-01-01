@@ -16,7 +16,7 @@ namespace VF.Feature {
      * while doing other things.
      */
     public class AnimatorLayerControlOffsetBuilder : FeatureBuilder {
-        private Dictionary<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
+        private readonly Dictionary<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
             = new Dictionary<VRCAnimatorLayerControl, AnimatorStateMachine>();
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
@@ -66,7 +66,8 @@ namespace VF.Feature {
             }
         }
 
-        public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> set) {
+        public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> _set) {
+            var set = _set.ToArray();
             foreach (var (type, controller) in set) {
                 foreach (var layer in controller.layers) {
                     AnimatorIterator.ForEachBehaviourRW(layer.stateMachine, (b, add) => {

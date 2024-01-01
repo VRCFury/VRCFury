@@ -12,6 +12,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Menu;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
@@ -104,11 +105,11 @@ namespace VF.Inspector {
                 return string.Join("\n", text);
             }));
             
-            container.Add(VRCFuryEditorUtils.BetterProp(enableSps, "Enable SPS (Super Plug Shader)"));
+            container.Add(VRCFuryEditorUtils.BetterProp(enableSps, "Enable Deformation"));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableSps.boolValue) {
-                    var spsBox = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
+                    var spsBox = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
                     c.Add(spsBox);
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsAutorig"),
@@ -135,7 +136,7 @@ namespace VF.Inspector {
                         "Animated Toggle",
                         fieldOverride: animatedField,
                         tooltip: "You can ANIMATE this box on and off with an animation clip, in order to" +
-                                 " turn SPS off during certain situations."
+                                 " turn deformation off during certain situations."
                     ));
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsBlendshapes"),
@@ -179,8 +180,7 @@ namespace VF.Inspector {
                 return da;
             }, enableDepthAnimationsProp));
 
-            var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this plug by default");
-            container.Add(haptics);
+            container.Add(GetHapticsSection());
 
             var adv = new Foldout {
                 text = "Advanced Plug Options",
@@ -196,6 +196,15 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("spsKeepImports"), "(Developer) Do not flatten SPS imports"));
 
             return container;
+        }
+
+        public static VisualElement GetHapticsSection() {
+            if (HapticsToggleMenuItem.Get()) {
+                return VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this plug by default");
+            }
+            var el = VRCFuryEditorUtils.Section("Haptics");
+            el.Add(VRCFuryEditorUtils.Error("Haptics have been disabled in the VRCFury unity settings"));
+            return el;
         }
         
         [CustomPropertyDrawer(typeof(VRCFuryHapticPlug.PlugDepthAction))]
@@ -229,8 +238,8 @@ namespace VF.Inspector {
             });
             return output;
         }
-        
-        public class GizmoCache {
+
+        private class GizmoCache {
             public double time = 0;
             public PlugSizeDetector.SizeResult size;
             public string error;
@@ -238,7 +247,7 @@ namespace VF.Inspector {
             public Quaternion rotation;
         }
 
-        private static ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
+        private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
             = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
@@ -352,10 +361,10 @@ namespace VF.Inspector {
             RendererResult[] rendererResults;
 
             if (plug.configureTps || plug.enableSps) {
-                var checkboxName = plug.enableSps ? "Enable SPS" : "Auto-Configure TPS";
+                var checkboxName = plug.enableSps ? "Enable Deformation" : "Auto-Configure TPS";
                 if (renderers.Count == 0) {
                     throw new Exception(
-                        $"VRCFury Haptic Plug has '{checkboxName}' checked, but no renderer was found.");
+                        $"VRCFury SPS Plug has '{checkboxName}' checked, but no renderer was found.");
                 }
 
                 rendererResults = renderers.Select(renderer => {
@@ -364,7 +373,7 @@ namespace VF.Inspector {
                         var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, worldLength);
 
                         var spsBlendshapes = plug.spsBlendshapes
-                            .Where(b => skin.sharedMesh.HasBlendshape(b))
+                            .Where(b => skin.HasBlendshape(b))
                             .Distinct()
                             .Take(16)
                             .ToArray();

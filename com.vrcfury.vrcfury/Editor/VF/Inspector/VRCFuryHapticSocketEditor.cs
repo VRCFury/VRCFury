@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -38,10 +39,10 @@ namespace VF.Inspector {
                 else addLightProp.enumValueIndex = noneIndex;
                 addLightProp.serializedObject.ApplyModifiedProperties();
             });
-            container.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Enable SPS (Super Plug Shader)", fieldOverride: spsEnabledCheckbox));
+            container.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Enable Deformation", fieldOverride: spsEnabledCheckbox));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
-                var section = VRCFuryEditorUtils.Section("SPS (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
+                var section = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "SPS/TPS/DPS plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
                 var modeField = new PopupField<string>(
                     new List<string>() { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
                     addLightProp.enumValueIndex == 4 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
@@ -109,8 +110,9 @@ namespace VF.Inspector {
                 return activeBox;
             }, enableActiveAnimationProp));
 
-            var haptics = VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled on this socket by default");
+            var haptics = VRCFuryHapticPlugEditor.GetHapticsSection();
             container.Add(haptics);
+
             haptics.Add(VRCFuryEditorUtils.BetterProp(
                 serializedObject.FindProperty("enableHandTouchZone2"),
                 "Enable hand touch zone? (Auto will add only if child of Hips)"
@@ -162,7 +164,7 @@ namespace VF.Inspector {
         public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
             static VRCFuryHapticPlaySocketEditor() {
                 VRCFurySocketGizmo.EnableSceneLighting = () => {
-                    SceneView sv = EditorWindow.GetWindow<SceneView>();
+                    var sv = EditorWindow.GetWindow<SceneView>();
                     if (sv != null) {
                         sv.sceneLighting = true;
                         sv.drawGizmos = true;
@@ -249,7 +251,7 @@ namespace VF.Inspector {
             var transform = socket.transform;
 
             var autoInfo = GetInfoFromLightsOrComponent(socket);
-            var handTouchZoneSize = GetHandTouchZoneSize(socket);
+            var handTouchZoneSize = GetHandTouchZoneSize(socket, VRCAvatarUtils.GuessAvatarObject(socket)?.GetComponent<VRCAvatarDescriptor>());
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
@@ -362,8 +364,8 @@ namespace VF.Inspector {
             return bakeRoot;
         }
 
-        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
-            bool enableHandTouchZone = false;
+        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket, [CanBeNull] VRCAvatarDescriptor avatar) {
+            var enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
             } else if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto) {
@@ -373,7 +375,10 @@ namespace VF.Inspector {
                 return null;
             }
             var length = socket.length * (socket.unitsInMeters ? 1f : socket.transform.lossyScale.z); ;
-            if (length <= 0) length = 0.25f;
+            if (length <= 0) {
+                if (avatar == null) return null;
+                length = avatar.ViewPosition.y * 0.05f;
+            }
             var radius = length / 2.5f;
             return Tuple.Create(length, radius);
         }

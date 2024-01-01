@@ -26,7 +26,7 @@ namespace VF.Service {
         public void AddSender(
             Transform obj,
             Vector3 pos,
-            String objName,
+            string objName,
             float radius,
             string[] tags,
             float height = 0,
@@ -39,7 +39,6 @@ namespace VF.Service {
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
-            new List<string>(tags);
             if (height > 0) {
                 sender.shapeType = ContactBase.ShapeType.Capsule;
                 sender.height = height;
@@ -52,7 +51,10 @@ namespace VF.Service {
             }
             
             void SetTags(params string[] suffixes) {
-                sender.collisionTags = tags.SelectMany(tag => suffixes.Select(suffix => tag + suffix)).ToList();
+                sender.collisionTags = tags.SelectMany(tag => {
+                    if (!tag.StartsWith("SPSLL_") && !tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
+                    return suffixes.Select(suffix => tag + suffix);
+                }).ToList();
             }
             SetTags("");
             addTagsLater.Add(() => {
@@ -65,8 +67,8 @@ namespace VF.Service {
         public VFAFloat AddReceiver(
             Transform obj,
             Vector3 pos,
-            String paramName,
-            String objName,
+            string paramName,
+            string objName,
             float radius,
             string[] tags,
             HapticUtils.ReceiverParty party,

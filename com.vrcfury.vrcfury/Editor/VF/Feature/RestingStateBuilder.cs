@@ -111,7 +111,7 @@ namespace VF.Feature {
             var start = "m_Materials.Array.data[".Length;
             var end = binding.propertyName.Length - 1;
             var str = binding.propertyName.Substring(start, end - start);
-            if (!Int32.TryParse(str, out var num)) return;
+            if (!int.TryParse(str, out var num)) return;
             var transform = avatarObject.Find(binding.path);
             if (!transform) return;
             if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) return;

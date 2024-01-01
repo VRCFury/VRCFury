@@ -23,7 +23,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateBuilder restingState;
 
-    private List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
+    private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
     private AnimationClip savedRestingClip;
 

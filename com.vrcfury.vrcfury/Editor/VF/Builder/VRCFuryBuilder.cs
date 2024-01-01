@@ -16,6 +16,7 @@ using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -34,7 +35,12 @@ public class VRCFuryBuilder {
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
-                Run(avatarObject, originalObject);
+                try {
+                    MaterialLocker.avatarObject = avatarObject;
+                    Run(avatarObject, originalObject);
+                } finally {
+                    MaterialLocker.avatarObject = null;
+                }
             });
         });
 

@@ -1,7 +1,9 @@
 using System;
+using JetBrains.Annotations;
 
 namespace VF.Feature.Base {
     [AttributeUsage(AttributeTargets.Method)]
+    [MeansImplicitUse]
     public class FeatureBuilderActionAttribute : Attribute, IComparable<FeatureBuilderActionAttribute> {
         private readonly int priority;
         private readonly int priorityOffset;

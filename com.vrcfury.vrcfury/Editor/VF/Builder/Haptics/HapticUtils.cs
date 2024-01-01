@@ -15,18 +15,18 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using Random = System.Random;
 
 namespace VF.Builder.Haptics {
-    public class HapticUtils {
-        public static string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
-        public static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
-        public static string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
-        public static string CONTACT_PEN_ROOT = "TPS_Pen_Root";
-        public static string TagTpsOrfRoot = "TPS_Orf_Root";
-        public static string TagTpsOrfFront = "TPS_Orf_Norm";
+    public static class HapticUtils {
+        public const string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
+        public const string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
+        public const string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
+        public const string CONTACT_PEN_ROOT = "TPS_Pen_Root";
+        public const string TagTpsOrfRoot = "TPS_Orf_Root";
+        public const string TagTpsOrfFront = "TPS_Orf_Norm";
 
-        public static string TagSpsSocketRoot = "SPSLL_Socket_Root";
-        public static string TagSpsSocketFront = "SPSLL_Socket_Front";
-        public static string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
-        public static string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
+        public const string TagSpsSocketRoot = "SPSLL_Socket_Root";
+        public const string TagSpsSocketFront = "SPSLL_Socket_Front";
+        public const string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
+        public const string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",
@@ -80,16 +80,6 @@ namespace VF.Builder.Haptics {
             return false;
         }
 
-        public static string GetNextName(List<string> usedNames, string prefix) {
-            for (int i = 0; ; i++) {
-                var next = prefix + (i == 0 ? "" : i+"");
-                if (!usedNames.Contains(next)) {
-                    usedNames.Add(next);
-                    return next;
-                }
-            }
-        }
-
         private static bool IsZeroScale(Transform obj) {
             var scale = obj.localScale;
             return scale.x == 0 || scale.y == 0 || scale.z == 0;
@@ -98,7 +88,7 @@ namespace VF.Builder.Haptics {
             var scale = obj.localScale;
             return scale.x < 0 || scale.y < 0 || scale.z < 0;
         }
-        private static bool IsNonUniformScale(Transform obj) {
+        public static bool IsNonUniformScale(Transform obj) {
             var scale = obj.localScale;
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
@@ -148,6 +138,9 @@ namespace VF.Builder.Haptics {
         public static string GetName(VFGameObject obj) {
             var current = obj;
             while (current != null) {
+                if (current.GetComponent<VRCAvatarDescriptor>() != null) {
+                    break;
+                }
                 var name = NormalizeName(current.name);
                 if (!string.IsNullOrWhiteSpace(name)) {
                     return name;
@@ -160,6 +153,7 @@ namespace VF.Builder.Haptics {
         private static string NormalizeName(string name) {
             name = Regex.Replace(name, @"ezdps_([a-z][a-z]?_?)?", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"dps", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"sps", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"gameobject", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"object", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"armature", "", RegexOptions.IgnoreCase);

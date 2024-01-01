@@ -6,7 +6,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 
 namespace VF.Menu {
-    public class UnusedBoneCleaner {
+    public static class UnusedBoneCleaner {
         [MenuItem(MenuItems.unusedBones, priority = MenuItems.unusedBonesPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {

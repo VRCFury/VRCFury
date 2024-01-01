@@ -94,7 +94,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(MaterialAction): {
                 var content = new VisualElement();
                 content.Add(Title("Material Swap"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Renderer"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
                 return content;
@@ -320,9 +320,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     if (avatarObject != null) {
                         foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                             if (!allRenderers && skin != singleRenderer) continue;
-                            if (!skin.sharedMesh) continue;
-                            for (var i = 0; i < skin.sharedMesh.blendShapeCount; i++) {
-                                var bs = skin.sharedMesh.GetBlendShapeName(i);
+                            foreach (var bs in skin.GetBlendshapeNames()) {
                                 if (shapes.ContainsKey(bs)) {
                                     shapes[bs] += ", " + skin.owner().name;
                                 } else {
@@ -413,7 +411,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             var content = new VisualElement();
             var match = Regex.Match(prop.propertyPath, @"\[(\d+)\]$");
             string pageNum;
-            if (match.Success && Int32.TryParse(match.Groups[1].ToString(), out var num)) {
+            if (match.Success && int.TryParse(match.Groups[1].ToString(), out var num)) {
                 pageNum = (num + 1).ToString();
             } else {
                 pageNum = "?";
