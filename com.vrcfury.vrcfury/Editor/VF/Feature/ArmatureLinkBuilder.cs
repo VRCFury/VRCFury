@@ -12,6 +12,7 @@ using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
@@ -56,18 +57,6 @@ namespace VF.Feature {
             // Expand the list to include all transitive children
             doNotReparent.UnionWith(doNotReparent.AllChildren().ToArray());
 
-            var debugLog = "";
-            foreach (var (propBone,avatarBone) in links.mergeBones) {
-                var sources = anim.GetDebugSources(propBone);
-                if (sources.Count == 0) continue;
-                debugLog += propBone.GetPath(links.propMain) + ": " + string.Join(",", sources) + "\n";
-            }
-            if (debugLog != "") {
-                Debug.Log(
-                    "Armature Link found animations targeting these bones:\n" +
-                    debugLog);
-            }
-            
             var rootName = GetRootName(links.propMain);
 
             // Move over all the old components / children from the old location to a new child
@@ -118,22 +107,7 @@ namespace VF.Feature {
                 // Move it on over
                 var newName = $"[VF{uniqueModelNum}] {propBone.name}";
                 if (propBone.name != rootName) newName += $" from {rootName}";
-                if (anim.positionIsAnimated.Contains(propBone)) {
-                    newName += " (Animated Position)";
-                } else if (anim.physboneRoot.Contains(propBone)) {
-                    newName += " (Root of Physbone)";
-                } else if (anim.rotationIsAnimated.Contains(propBone)) {
-                    newName += " (Animated Rotation)";
-                } else if (anim.scaleIsAnimated.Contains(propBone)) {
-                    newName += " (Animated Scale)";
-                } else if (propBone.Children().Any()) {
-                    newName += " (Added Children)";
-                } else if (propBone.GetComponents<UnityEngine.Component>().Length > 1) {
-                    newName += " (Added Components)";
-                } else {
-                    newName += " (Referenced Externally)";
-                }
-                
+
                 var addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
                 var current = addedObject;
 
@@ -175,12 +149,18 @@ namespace VF.Feature {
                 }
 
                 // If the transform isn't used and contains no children, we can just throw it away
-                if (!IsTransformUsed(propBone)) {
+                var keepReasons = GetUsageReasons(propBone);
+                if (keepReasons.Count == 0) {
                     addedObject.Destroy();
                     continue;
                 }
+
+                keepReasons.UnionWith(anim.GetDebugSources(propBone));
+                var debugInfo = addedObject.AddComponent<VRCFuryDebugInfo>();
+                debugInfo.debugInfo = "VRCFury did not fully merge this object because:\n";
+                debugInfo.debugInfo += string.Join("\n", keepReasons.OrderBy(a => a));
             }
-            
+
             mover.ApplyDeferred();
 
             // Rewrite animations that turn off parents
@@ -220,35 +200,6 @@ namespace VF.Feature {
                         .ToArray();
                     VRCFuryEditorUtils.MarkDirty(skin);
                 }
-                
-                // Update skin to use root bone from the original avatar (updating bounds if needed)
-                // NOTE: Technically this is unsafe, because it has side effects. Root bones have two purposes:
-                // 1) They define the origin of the bounds
-                // 2) They define the origin for verts that are not weight painted (unusual)
-                // While we handle #1 here, we do not handle #2, meaning that if the root bone moves,
-                // any unpainted verts will move as well. So far, this has not been an issue for actually merged
-                // armatures, however it HAS been a problem for ReparentRoot, where a SkinnedMeshRenderer without a root bone
-                // is being moved somewhere else, and the code here decides to update its root bone to the parent transform.
-                // That's why we never call this method during ReparentRoot.
-                {
-                    var oldRootBone = HapticUtils.GetMeshRoot(skin);
-                    if (oldRootBone == fromBone) {
-                        var b = skin.localBounds;
-                        b.center = new Vector3(
-                            b.center.x * oldRootBone.lossyScale.x / toBone.lossyScale.x,
-                            b.center.y * oldRootBone.lossyScale.y / toBone.lossyScale.y,
-                            b.center.z * oldRootBone.lossyScale.z / toBone.lossyScale.z
-                        );
-                        b.extents = new Vector3(
-                            b.extents.x * oldRootBone.lossyScale.x / toBone.lossyScale.x,
-                            b.extents.y * oldRootBone.lossyScale.y / toBone.lossyScale.y,
-                            b.extents.z * oldRootBone.lossyScale.z / toBone.lossyScale.z
-                        );
-                        skin.localBounds = b;
-
-                        skin.rootBone = toBone;
-                    }
-                }
             }
         }
 
@@ -274,37 +225,56 @@ namespace VF.Feature {
             return (avatarMainScale, propMainScale, scalingFactor);
         }
 
-        private bool IsTransformUsed(Transform transform) {
-            if (transform.childCount > 0) return true;
-            if (transform.GetComponents<UnityEngine.Component>().Length > 1) return true;
-            
+        private HashSet<string> GetUsageReasons(Transform transform) {
+            var reasons = new HashSet<string>();
+
+            if (transform.childCount > 0) {
+                reasons.Add("Added children");
+            }
+            if (transform.GetComponents<UnityEngine.Component>().Length > 1) {
+                reasons.Add("Added components");
+            }
+
             foreach (var s in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                if (s.bones.Contains(transform)) return true;
-                if (s.rootBone == transform) return true;
+                if (s.bones.Contains(transform)) {
+                    reasons.Add("Bone in " + GetPath(s));
+                }
+                if (s.rootBone == transform) {
+                    reasons.Add("Root bone in " + GetPath(s));
+                }
             }
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<IConstraint>()) {
                 if (Enumerable.Range(0, c.sourceCount)
                     .Select(i => c.GetSource(i))
                     .Any(source => source.sourceTransform == transform)
                 ) {
-                    return true;
+                    reasons.Add("Target of constraint " + GetPath(c));
+                }
+            }
+            foreach (var b in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
+                if (b.GetRootTransform() == transform) {
+                    reasons.Add("Target of physbone " + GetPath(b));
+                }
+            }
+            foreach (var b in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()) {
+                if (b.GetRootTransform() == transform) {
+                    reasons.Add("Target of collider " + GetPath(b));
+                }
+            }
+            foreach (var b in avatarObject.GetComponentsInSelfAndChildren<ContactBase>()) {
+                if (b.GetRootTransform() == transform) {
+                    reasons.Add("Target of contact " + GetPath(b));
                 }
             }
 
-            if (avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()
-                .Any(b => b.GetRootTransform() == transform)) {
-                return true;
-            }
-            if (avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()
-                .Any(b => b.GetRootTransform() == transform)) {
-                return true;
-            }
-            if (avatarObject.GetComponentsInSelfAndChildren<ContactBase>()
-                .Any(b => b.GetRootTransform() == transform)) {
-                return true;
-            }
+            return reasons;
+        }
 
-            return false;
+        private string GetPath(object o) {
+            if (o is UnityEngine.Component c) {
+                return c.owner().GetPath(avatarObject);
+            }
+            return "";
         }
 
         private ArmatureLink.ArmatureLinkMode GetLinkMode() {

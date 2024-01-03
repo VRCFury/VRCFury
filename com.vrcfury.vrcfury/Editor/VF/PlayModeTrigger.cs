@@ -113,7 +113,7 @@ namespace VF {
                     }
 
                     if (!failed) {
-                        VRCFuryBuilder.StripAllVrcfComponents(obj);
+                        VRCFuryBuilder.StripAllVrcfComponents(obj, true);
                         restartAudioLink = true;
                         if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
                             restartAv3Emulator = true;

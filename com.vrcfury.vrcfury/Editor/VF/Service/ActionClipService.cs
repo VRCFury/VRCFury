@@ -92,7 +92,7 @@ namespace VF.Service {
                         var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
                         var binding = EditorCurveBinding.FloatCurve(
                             clipBuilder.GetPath(renderer.gameObject),
-                            typeof(SkinnedMeshRenderer),
+                            renderer.GetType(),
                             "material._FlipbookCurrentFrame"
                         );
                         onClip.SetCurve(binding, frameAnimNum);

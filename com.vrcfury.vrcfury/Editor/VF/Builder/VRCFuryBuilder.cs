@@ -50,11 +50,17 @@ public class VRCFuryBuilder {
     }
 
     internal static bool ShouldRun(VFGameObject avatarObject) {
-        return avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>().Length > 0;
+        return avatarObject
+            .GetComponentsInSelfAndChildren<VRCFuryComponent>()
+            .Where(c => !(c is VRCFuryDebugInfo))
+            .Any();
     }
 
-    public static void StripAllVrcfComponents(VFGameObject obj) {
+    public static void StripAllVrcfComponents(VFGameObject obj, bool keepDebugInfo = false) {
         foreach (var c in obj.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
+            if (c is VRCFuryDebugInfo && keepDebugInfo) {
+                continue;
+            }
             Object.DestroyImmediate(c);
         }
     }
