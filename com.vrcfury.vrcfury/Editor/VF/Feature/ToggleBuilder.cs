@@ -355,23 +355,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         var (useInt, intTarget, intSaved, intDefault) = CheckExclusives();
-        var boolParam = GetExclusiveParam() as VFABool;
+        var boolParam = exclusiveParam as VFABool;
 
         if (useInt && boolParam != null) {
             var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: intSaved, def: intDefault, usePrefix: false);
             var aliasLayer = fx.NewLayer(model.name + "_Alias");
             var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
-            var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true);
+            var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true).Drives(intParam, intTarget);
             var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
-            startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget));
+            startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget).Or(boolParam.IsTrue()));
             aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
             aliasState.TransitionsTo(intResetState).When(boolParam.IsFalse().And(intParam.IsEqualTo(intTarget)));
             intResetState.TransitionsTo(startState).When(fx.Always());
-            manager.GetMenu().ReplaceMenuParam(
-                model.name,
-                intParam,
-                value: intTarget
-            );
             fx.UnsyncParam(boolParam.Name());
         }
         
