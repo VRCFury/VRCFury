@@ -59,7 +59,7 @@ namespace VF.Builder {
 
         private void RewriteInAll(Func<string, string> each) {
             foreach (var c in manager.GetAllUsedControllers()) {
-                ((AnimatorController)c.GetRaw()).RewriteParameters(each);
+                c.GetRaw().RewriteParameters(each);
             }
             manager.GetMenu().GetRaw().RewriteParameters(each);
             manager.GetParams().GetRaw().RewriteParameters(each);

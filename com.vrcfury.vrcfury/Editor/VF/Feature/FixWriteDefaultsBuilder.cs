@@ -231,7 +231,7 @@ namespace VF.Feature {
                 var (type, controller) = tuple;
                 var info = new ControllerInfo();
                 info.type = type;
-                foreach (var layer in controller.layers) {
+                foreach (var layer in controller.GetLayers()) {
                     var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
                     if (!ignore) {
                         foreach (var state in new AnimatorIterator.States().From(layer)) {
