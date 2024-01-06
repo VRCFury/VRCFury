@@ -59,7 +59,7 @@ namespace VF.Feature {
                     var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(postBakeClip);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
@@ -242,7 +242,7 @@ namespace VF.Feature {
                         );
                     }
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }

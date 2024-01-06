@@ -265,7 +265,7 @@ namespace VF.Feature {
                         }
                     }
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Socket: {socket.owner().GetPath()}", e);
+                    throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);
                 }
             }
 

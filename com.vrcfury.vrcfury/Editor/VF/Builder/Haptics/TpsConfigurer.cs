@@ -96,11 +96,11 @@ namespace VF.Builder.Haptics {
             var shaderRotation = Quaternion.identity;
             if (IsLocked(mat)) {
                 throw new VRCFBuilderException(
-                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
+                    "VRCFury SPS Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
             }
             if (DpsConfigurer.IsDps(mat)) {
                 throw new VRCFBuilderException(
-                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material has both TPS and Raliv DPS enabled in the Poiyomi settings. Disable DPS to continue.");
+                    "VRCFury SPS Plug has 'auto-configure TPS' checked, but material has both TPS and Raliv DPS enabled in the Poiyomi settings. Disable DPS to continue.");
             }
 
             var localScale = skin.rootBone.lossyScale;

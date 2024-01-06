@@ -28,8 +28,8 @@ namespace VF.Inspector {
             container.Add(ConstraintWarning(target.gameObject));
             
             var boneWarning = VRCFuryEditorUtils.Warn(
-                "WARNING: This renderer is rigged with bones, but you didn't put the Haptic Plug inside a bone! When SPS is used" +
-                " with rigged meshes, you should put the Haptic Plug inside the bone nearest the 'base'!");
+                "WARNING: This renderer is rigged with bones, but you didn't put the SPS Plug inside a bone! When SPS is used" +
+                " with rigged meshes, you should put the SPS Plug inside the bone nearest the 'base'!");
             boneWarning.SetVisible(false);
             container.Add(boneWarning);
 
@@ -119,7 +119,7 @@ namespace VF.Inspector {
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("postBakeActions"),
                         "Post-Bake Actions",
-                        tooltip: "Haptic Plug meshes should be posed 'straight' so that length and pose calculations" +
+                        tooltip: "SPS Plug meshes should be posed 'straight' so that length and pose calculations" +
                                  " can be performed. If you'd like it to appear in a different way by default in game, you can add actions here" +
                                  " which will be applied to the avatar after the calculations are finished."
                     ));
@@ -330,7 +330,7 @@ namespace VF.Inspector {
                     var rendererObject = r.owner();
                     if (usedRenderers.TryGetValue(rendererObject, out var otherPlug)) {
                         throw new Exception(
-                            "Multiple VRCFury Haptic Plugs target the same renderer. This is probably a mistake. " +
+                            "Multiple SPS Plugs target the same renderer. This is probably a mistake. " +
                             "Maybe there was an extra created by accident?\n\n" +
                             $"Renderer: {r.owner().GetPath()}\n\n" +
                             $"Plug 1: {otherPlug.owner().GetPath()}\n\n" +

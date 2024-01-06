@@ -139,8 +139,12 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        var hapticContactsService = new HapticContactsService();
-                        VRCFuryHapticSocketEditor.Bake(socket, hapticContactsService);
+                        try {
+                            var hapticContactsService = new HapticContactsService();
+                            VRCFuryHapticSocketEditor.Bake(socket, hapticContactsService);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to bake detached SPS Socket: {socket.owner().GetPath()}", e);
+                        }
                     });
                     Object.DestroyImmediate(socket);
                 }
@@ -152,8 +156,12 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        var hapticContactsService = new HapticContactsService();
-                        VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
+                        try {
+                            var hapticContactsService = new HapticContactsService();
+                            VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
+                        }
                     });
                     Object.DestroyImmediate(plug);
                 }
