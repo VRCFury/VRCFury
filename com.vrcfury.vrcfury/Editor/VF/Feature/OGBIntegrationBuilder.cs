@@ -9,7 +9,7 @@ namespace VF.Feature {
     public class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
         [FeatureBuilderAction(FeatureOrder.UpgradeLegacyHaptics)]
         public void Apply() {
-            LegacyHapticsUpgrader.Apply(featureBaseObject, false);
+            SpsUpgrader.Apply(featureBaseObject, false, SpsUpgrader.Mode.AutomatedComponent);
         }
         
         public override bool ShowInMenu() {

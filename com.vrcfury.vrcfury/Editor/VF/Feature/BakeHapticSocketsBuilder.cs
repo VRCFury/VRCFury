@@ -99,8 +99,9 @@ namespace VF.Feature {
                     Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
 
                     var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket, hapticContacts);
+                    if (bakeRoot == null) continue;
                     
-                    if (HapticsToggleMenuItem.Get()) {
+                    if (HapticsToggleMenuItem.Get() && !socket.sendersOnly) {
                         // Haptic receivers
 
                         // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length

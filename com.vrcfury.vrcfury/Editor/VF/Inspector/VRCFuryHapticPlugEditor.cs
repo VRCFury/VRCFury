@@ -307,6 +307,7 @@ namespace VF.Inspector {
             return renderers;
         }
 
+        [CanBeNull]
         public static BakeResult Bake(
             VRCFuryHapticPlug plug,
             HapticContactsService hapticContactsService,
@@ -316,7 +317,9 @@ namespace VF.Inspector {
         ) {
             var transform = plug.transform;
             HapticUtils.RemoveTPSSenders(transform);
-            HapticUtils.AssertValidScale(transform, "plug");
+            if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.sendersOnly)) {
+                return null;
+            }
 
             var size = PlugSizeDetector.GetWorldSize(plug);
             var renderers = size.renderers;
@@ -343,7 +346,7 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var bakeRoot = GameObjects.Create("BakedHapticPlug", transform);
+            var bakeRoot = GameObjects.Create("BakedSpsPlug", transform);
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
 
