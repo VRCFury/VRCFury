@@ -33,9 +33,10 @@ public class VRCFuryBuilder {
         try {
             NdmfFirstMenuItem.Run(avatarObject);
         } catch (Exception e) {
+            var message = VRCFExceptionUtils.GetGoodCause(e).Message.Trim();
             EditorUtility.DisplayDialog(
                 "NDMF First",
-                "NDMF failed with an exception: " + e.Message,
+                "NDMF failed with an exception: " + message,
                 "Ok"
             );
             Debug.LogException(e);
