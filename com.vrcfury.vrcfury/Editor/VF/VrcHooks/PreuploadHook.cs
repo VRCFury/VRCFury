@@ -56,8 +56,8 @@ namespace VF.VrcHooks {
             }
 
             var builder = new VRCFuryBuilder();
-            var vrcFurySuccess = builder.SafeRun(vrcCloneObject, original);
-            if (!vrcFurySuccess) return false;
+            var vrcFuryStatus = builder.SafeRun(vrcCloneObject, original);
+            if (vrcFuryStatus != VRCFuryBuilder.Status.Success) return false;
 
             // Make absolutely positively certain that we've removed every non-standard component from the avatar
             // before it gets uploaded

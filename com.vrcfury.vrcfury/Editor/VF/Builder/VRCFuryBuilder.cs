@@ -23,12 +23,23 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    internal bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+    internal enum Status {
+        Success,
+        Failed,
+        FailedNdmf
+    }
+
+    internal Status SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
         try {
             NdmfFirstMenuItem.Run(avatarObject);
         } catch (Exception e) {
+            EditorUtility.DisplayDialog(
+                "NDMF First",
+                "NDMF failed with an exception: " + e.Message,
+                "Ok"
+            );
             Debug.LogException(e);
-            return false;
+            return Status.FailedNdmf;
         }
 
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
@@ -46,7 +57,7 @@ public class VRCFuryBuilder {
 
         AssetDatabase.SaveAssets();
 
-        return result;
+        return result ? Status.Success : Status.Failed;
     }
 
     internal static bool ShouldRun(VFGameObject avatarObject) {

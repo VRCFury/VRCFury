@@ -109,7 +109,13 @@ namespace VF {
                     }
 
                     if (!failed) {
-                        failed = !builder.SafeRun(obj);
+                        var status = builder.SafeRun(obj);
+                        if (status != VRCFuryBuilder.Status.Success) {
+                            failed = true;
+                            if (status == VRCFuryBuilder.Status.FailedNdmf) {
+                                failSuffix = "(NDMF failed)";
+                            }
+                        }
                     }
 
                     if (!failed) {
