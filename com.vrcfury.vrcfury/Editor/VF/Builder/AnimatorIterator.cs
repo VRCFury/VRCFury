@@ -22,6 +22,7 @@ namespace VF.Builder {
                 StateMachineBehaviour[] behaviours;
                 try {
                     behaviours = stateMachine.behaviours;
+                    if (behaviours.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
                 } catch (Exception e) {
                     throw new Exception(
                         $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour", e);
@@ -35,6 +36,7 @@ namespace VF.Builder {
                 StateMachineBehaviour[] behaviours;
                 try {
                     behaviours = state.behaviours;
+                    if (behaviours.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
                 } catch (Exception e) {
                     throw new Exception(
                         $"{layer.debugName} State `{state.name}` contains a corrupt behaviour", e);
