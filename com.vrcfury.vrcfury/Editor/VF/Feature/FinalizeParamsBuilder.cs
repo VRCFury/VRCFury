@@ -1,6 +1,11 @@
 using System;
+using System.Linq;
+using UnityEngine;
+using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Component;
 using VF.Feature.Base;
+using VRC.Dynamics;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
 
@@ -28,14 +33,26 @@ namespace VF.Feature {
                     "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param");
             }
 
-            var contacts = avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>().Length;
-            contacts += avatarObject.GetComponentsInSelfAndChildren<VRCContactSender>().Length;
+            var contacts = avatarObject.GetComponentsInSelfAndChildren<ContactBase>().ToArray();
             var contactLimit = 256;
-            if (contacts > contactLimit) {
+            if (contacts.Length > contactLimit) {
+                var contactPaths = contacts
+                    .Select(c => c.owner().GetPath(avatarObject))
+                    .OrderBy(path => path)
+                    .ToArray();
+                Debug.Log("Contact report:\n" + string.Join("\n", contactPaths));
+                var usesSps = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
+                              || avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();
+                if (usesSps) {
+                    throw new SneakyException(
+                        "Your avatar is using more than the allowed number of contacts! Used "
+                        + contacts + "/" + contactLimit
+                        + ". Delete some contacts or DPS/SPS items from your avatar.");
+                }
                 throw new SneakyException(
                     "Your avatar is using more than the allowed number of contacts! Used "
                     + contacts + "/" + contactLimit
-                    + ". Delete some contacts from your avatar, or remove some VRCFury haptics.");
+                    + ". Delete some contacts from your avatar.");
             }
         }
     }
