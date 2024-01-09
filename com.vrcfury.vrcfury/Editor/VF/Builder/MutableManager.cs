@@ -210,6 +210,13 @@ namespace VF.Builder {
             var copy = SafeInstantiate(original);
             copy.name = original.name;
             if (copy is Material copyMat) {
+                // Ensure the material is flattened (if it's a material variant)
+                // This way, things like SPS can change the shader
+#if UNITY_2022_1_OR_NEWER
+                copyMat.parent = null;
+#endif
+                
+                // Keep the thry suffix so if it's locked later, the renamed properties still use the same suffixes
                 if (string.IsNullOrWhiteSpace(copyMat.GetTag("thry_rename_suffix", false))) {
                     copyMat.SetOverrideTag("thry_rename_suffix", Regex.Replace(original.name, "[^a-zA-Z0-9_]", ""));
                 }

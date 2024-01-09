@@ -46,13 +46,13 @@ namespace VF.Menu {
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                LegacyHapticsUpgrader.Run();
+                SpsUpgrader.Run();
             });
         }
 
         [MenuItem(upgradeLegacyHaptics, true)]
         private static bool Check() {
-            return LegacyHapticsUpgrader.Check();
+            return SpsUpgrader.Check();
         }
         
         [MenuItem("GameObject/VRCFury/Create SPS Socket", priority = 40)]

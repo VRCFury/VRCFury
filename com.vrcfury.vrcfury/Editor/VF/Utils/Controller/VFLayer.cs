@@ -46,7 +46,9 @@ namespace VF.Utils.Controller {
             get => ctrl.layers[GetLayerId()].name;
             set { WithLayer(l => l.name = value); }
         }
-        
+
+        public string debugName => $"Controller `{ctrl.GetRaw().name}` Layer `{name}`";
+
         public AnimatorLayerBlendingMode blendingMode {
             get => ctrl.layers[GetLayerId()].blendingMode;
             set { WithLayer(l => l.blendingMode = value); }

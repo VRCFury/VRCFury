@@ -92,7 +92,7 @@ namespace VF.Service {
                         var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
                         var binding = EditorCurveBinding.FloatCurve(
                             clipBuilder.GetPath(renderer.gameObject),
-                            typeof(SkinnedMeshRenderer),
+                            renderer.GetType(),
                             "material._FlipbookCurrentFrame"
                         );
                         onClip.SetCurve(binding, frameAnimNum);
@@ -374,7 +374,7 @@ namespace VF.Service {
 
             if (rewrites.Count > 0) {
                 foreach (var c in manager.GetAllUsedControllers()) {
-                    ((AnimatorController)c.GetRaw()).RewriteParameters(from =>
+                    c.GetRaw().RewriteParameters(from =>
                         rewrites.TryGetValue(from, out var to) ? to : from
                     );
                 }

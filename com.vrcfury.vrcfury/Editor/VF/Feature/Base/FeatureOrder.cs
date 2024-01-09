@@ -25,7 +25,8 @@ namespace VF.Feature.Base {
         FullController,
         
         UpgradeLegacyHaptics,
-        
+        GiveEverythingSpsSenders,
+
         // Needs to run after all haptic components are in place
         // Needs to run before Toggles, because of its "After Bake" action
         ApplyRestState1,

@@ -557,7 +557,11 @@ namespace VF.Builder.Haptics {
         }
         private static string ReadFile(string path) {
             string content;
-            if (path.EndsWith("lilcontainer")) {
+            if (path.EndsWith("orlshader")) {
+                var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
+                if (sourceAsset == null) throw new Exception("Failed to find orlshader source");
+                content = sourceAsset.text;
+            } else if (path.EndsWith("lilcontainer")) {
                 var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
                 var unpackMethod = lilShaderContainer.GetMethods().First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
                 content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);

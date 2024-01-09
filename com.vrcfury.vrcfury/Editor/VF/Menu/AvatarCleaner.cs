@@ -7,6 +7,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Inspector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
@@ -87,23 +88,22 @@ namespace VF.Menu {
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
                 foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
-                    var controller = c.controller as AnimatorController;
-                    if (controller == null) continue;
+                    var controller_ = c.controller as AnimatorController;
+                    if (controller_ == null) continue;
+                    var controller = (VFController)(controller_);
                     var typeName = VRCFEnumUtils.GetName(c.type);
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {
                         removeItems.Add("Avatar Controller: " + typeName);
                         if (perform) c.setToDefault();
                     } else {
-                        var removedLayers = new HashSet<AnimatorStateMachine>();
+                        var removedLayers = new HashSet<VFLayer>();
                         if (ShouldRemoveLayer != null) {
-                            for (var i = 0; i < controller.layers.Length; i++) {
-                                var layer = controller.layers[i];
+                            foreach (var layer in controller.GetLayers()) {
                                 if (!ShouldRemoveLayer(layer.name)) continue;
                                 removeItems.Add(typeName + " Layer: " + layer.name);
-                                removedLayers.Add(layer.stateMachine);
+                                removedLayers.Add(layer);
                                 if (perform) {
-                                    controller.RemoveLayer(i);
-                                    i--;
+                                    layer.Remove();
                                 }
                             }
                         }
@@ -113,8 +113,8 @@ namespace VF.Menu {
                                 var prm = controller.parameters[i].name;
                                 if (!ShouldRemoveParam(prm)) continue;
 
-                                var prmUsed = controller.layers
-                                    .Where(layer => !removedLayers.Contains(layer.stateMachine))
+                                var prmUsed = controller.GetLayers()
+                                    .Where(layer => !removedLayers.Contains(layer))
                                     .Any(layer => IsParamUsed(layer, prm));
                                 if (prmUsed) continue;
 
@@ -234,7 +234,7 @@ namespace VF.Menu {
             }
         }
 
-        private static bool IsParamUsed(AnimatorControllerLayer layer, string param) {
+        private static bool IsParamUsed(VFLayer layer, string param) {
             var isUsed = false;
             isUsed |= new AnimatorIterator.Conditions().From(layer)
                 .Any(c => c.parameter == param);

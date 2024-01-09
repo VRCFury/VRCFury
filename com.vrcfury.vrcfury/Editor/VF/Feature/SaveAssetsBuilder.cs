@@ -44,6 +44,7 @@ namespace VF.Builder {
             var unsavedChildren = new List<Object>();
             MutableManager.ForEachChild(obj, asset => {
                 if (asset == obj) return true;
+                if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (IsSaved(asset)) return false;
                 unsavedChildren.Add(asset);
                 return recurse;
