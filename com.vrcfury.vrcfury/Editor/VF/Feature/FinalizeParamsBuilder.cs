@@ -46,12 +46,12 @@ namespace VF.Feature {
                 if (usesSps) {
                     throw new SneakyException(
                         "Your avatar is using more than the allowed number of contacts! Used "
-                        + contacts + "/" + contactLimit
+                        + contacts.Length + "/" + contactLimit
                         + ". Delete some contacts or DPS/SPS items from your avatar.");
                 }
                 throw new SneakyException(
                     "Your avatar is using more than the allowed number of contacts! Used "
-                    + contacts + "/" + contactLimit
+                    + contacts.Length + "/" + contactLimit
                     + ". Delete some contacts from your avatar.");
             }
         }
