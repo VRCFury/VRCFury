@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -16,8 +17,8 @@ namespace VF.Feature {
      * while doing other things.
      */
     public class AnimatorLayerControlOffsetBuilder : FeatureBuilder {
-        private readonly Dictionary<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
-            = new Dictionary<VRCAnimatorLayerControl, AnimatorStateMachine>();
+        private readonly VFMultimap<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
+            = new VFMultimap<VRCAnimatorLayerControl, AnimatorStateMachine>();
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
         public void RecordBase() {
@@ -42,35 +43,45 @@ namespace VF.Feature {
                 }
             }
 
+            var debugLog = new List<string>();
+
             foreach (var c in manager.GetAllUsedControllers()) {
                 foreach (var l in c.GetLayers()) {
                     AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
                         if (!(b is VRCAnimatorLayerControl control)) return true;
-                        if (!mapping.TryGetValue(control, out var targetSm)) {
-                            Debug.LogError("Removing invalid AnimatorLayerControl (not found in mapping??) " + b);
+                        var targetLayers = mapping.Get(control);
+                        if (targetLayers.Count == 0) {
+                            debugLog.Add("Removing invalid AnimatorLayerControl (not found in mapping??) " + b);
                             return false;
                         }
-                        if (!smToTypeAndNumber.TryGetValue(targetSm, out var pair)) {
-                            Debug.LogError("Removing invalid AnimatorLayerControl (target sm has disappeared) " + b);
-                            return false;
+                        foreach (var targetLayer in targetLayers) {
+                            if (!smToTypeAndNumber.TryGetValue(targetLayer, out var pair)) {
+                                debugLog.Add("Removing invalid AnimatorLayerControl (target sm has disappeared) " + b);
+                                continue;
+                            }
+
+                            var copy = (VRCAnimatorLayerControl)add(typeof(VRCAnimatorLayerControl));
+                            EditorUtility.CopySerialized(control, copy);
+                            var (newType, newI) = pair;
+                            var newCastedType = VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(
+                                VRCFEnumUtils.GetName(newType));
+                            debugLog.Add($"Rewriting {b} from {control.playable}:{control.layer} to {newCastedType}:{newI}");
+                            copy.playable = newCastedType;
+                            copy.layer = newI;
                         }
-                        var (newType, newI) = pair;
-                        var newCastedType = VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(
-                            VRCFEnumUtils.GetName(newType));
-                        Debug.LogWarning($"Rewriting {b} from {control.playable}:{control.layer} to {newCastedType}:{newI}");
-                        control.playable = newCastedType;
-                        control.layer = newI;
-                        return true;
+                        return false;
                     });
                 }
             }
+            
+            Debug.Log("Animator Layer Control Offset Builder Report:\n" + string.Join("\n", debugLog));
         }
 
         public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> _set) {
             var set = _set.ToArray();
             foreach (var (type, controller) in set) {
-                foreach (var layer in controller.layers) {
-                    AnimatorIterator.ForEachBehaviourRW(layer.stateMachine, (b, add) => {
+                foreach (var layer in controller.GetLayers()) {
+                    AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
                         if (b is VRCAnimatorLayerControl control) {
                             var targetController = set
                                 .Where(tuple =>
@@ -90,11 +101,11 @@ namespace VF.Feature {
         }
         
         public void Register(VRCAnimatorLayerControl control, AnimatorStateMachine targetSm) {
-            mapping[control] = targetSm;
+            mapping.Put(control, targetSm);
         }
 
         public bool IsLayerTargeted(AnimatorStateMachine sm) {
-            return mapping.Values.Contains(sm);
+            return mapping.ContainsValue(sm);
         }
     }
 }

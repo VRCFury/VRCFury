@@ -18,6 +18,7 @@ namespace VF.Component {
         public bool unitsInMeters = false;
         public bool configureTps = false;
         public bool enableSps = true;
+        [NonSerialized] public bool sendersOnly = false;
         public bool spsAutorig = true;
         public List<string> spsBlendshapes = new List<string>();
         public List<Renderer> configureTpsMesh = new List<Renderer>();

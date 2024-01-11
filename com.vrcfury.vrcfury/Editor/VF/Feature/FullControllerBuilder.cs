@@ -256,7 +256,7 @@ namespace VF.Feature {
 
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
-            ((AnimatorController)from).RewriteParameters(RewriteParamName);
+            from.RewriteParameters(RewriteParamName);
 
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                 var layer0 = from.GetLayer(0);
@@ -292,7 +292,7 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed.Name();
                 }
 
-                ((AnimatorController)toMain.GetRaw()).RewriteParameters(name => {
+                toMain.GetRaw().RewriteParameters(name => {
                     if (smoothedDict.TryGetValue(name, out var smoothed)) {
                         return smoothed;
                     }

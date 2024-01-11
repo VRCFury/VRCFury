@@ -374,7 +374,7 @@ namespace VF.Service {
 
             if (rewrites.Count > 0) {
                 foreach (var c in manager.GetAllUsedControllers()) {
-                    ((AnimatorController)c.GetRaw()).RewriteParameters(from =>
+                    c.GetRaw().RewriteParameters(from =>
                         rewrites.TryGetValue(from, out var to) ? to : from
                     );
                 }

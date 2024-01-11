@@ -22,7 +22,7 @@ namespace VF.Utils {
             try {
                 LockUnsafe(mat);
             } catch (Exception e) {
-                throw new Exception("Failed to lock material", e);
+                throw new Exception("Failed to lock material " + mat.name, e);
             }
         }
 
@@ -45,8 +45,20 @@ namespace VF.Utils {
         }
 
         private static void LockPoiyomi(Material mat) {
+            if (mat.shader == null) return;
+            if (mat.shader.name.StartsWith("Hidden/Locked/")) return;
+
             var optimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
             if (optimizer == null) return;
+
+            var usesMethod = optimizer.GetMethod(
+                "IsShaderUsingThryOptimizer",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+            );
+            if (usesMethod == null) return;
+            var usesPoi = (bool)ReflectionUtils.CallWithOptionalParams(usesMethod, null, mat.shader);
+            if (!usesPoi) return;
+
             var lockMethod = optimizer.GetMethod(
                 "SetLockedForAllMaterials",
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
@@ -60,6 +72,11 @@ namespace VF.Utils {
                         "Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
                 }
             });
+
+            if (!mat.shader.name.StartsWith("Hidden/Locked/")) {
+                throw new Exception(
+                    "Failed to lockdown poi material. Try unlocking and relocking the material manually. If that doesn't work, try updating poiyomi.");
+            }
         }
     }
 }

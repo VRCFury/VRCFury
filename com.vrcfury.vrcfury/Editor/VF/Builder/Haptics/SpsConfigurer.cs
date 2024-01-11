@@ -25,7 +25,7 @@ namespace VF.Builder.Haptics {
         ) {
             if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
                 throw new Exception(
-                    $"VRCFury haptic plug was asked to configure SPS on renderer," +
+                    $"VRCFury SPS plug was asked to use SPS deformation on renderer," +
                     $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
                     $" on the mesh instead.");
             }
