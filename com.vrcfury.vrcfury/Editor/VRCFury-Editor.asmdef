@@ -1,5 +1,6 @@
 {
     "name": "VRCFury-Editor",
+    "rootNamespace": "",
     "references": [
         "VRCFury",
         "VRCFury-Api",
@@ -37,6 +38,11 @@
             "name": "com.vrchat.base",
             "expression": "3.3.0",
             "define": "VRC_NEW_PUBLIC_SDK"
+        },
+        {
+            "name": "nadena.dev.ndmf",
+            "expression": "1.3.0-rc",
+            "define": "NDMF_HACK_NOT_REQUIRED"
         }
     ],
     "noEngineReferences": false

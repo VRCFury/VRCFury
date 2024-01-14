@@ -8,6 +8,9 @@ using Object = UnityEngine.Object;
 namespace VF.Menu {
     [InitializeOnLoad]
     public class NdmfFirstMenuItem {
+#if NDMF_HACK_NOT_REQUIRED
+        public static bool Get() => false;
+#else
         private const string EditorPref = "com.vrcfury.ndmfFirst";
 
         static NdmfFirstMenuItem() {
@@ -26,6 +29,7 @@ namespace VF.Menu {
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();
         }
+#endif
 
         private static Type GetAlreadyProcessedTagType() {
             return ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.runtime.AlreadyProcessedTag");
