@@ -41,19 +41,6 @@ namespace VF.VrcHooks {
                     }
                 }
             }
-            
-            if (EditorApplication.isPlaying) {
-                vrcCloneObject?.Destroy();
-                original?.Destroy();
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "Something asked VRCFury to build while play mode is still initializing. This is an av3emu bug and would cause unity to crash.\n\n" +
-                    "Consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.\n\n" +
-                    "The avatar object has been removed from play mode to avoid crashing.",
-                    "Ok"
-                );
-                return false;
-            }
 
             var builder = new VRCFuryBuilder();
             var vrcFuryStatus = builder.SafeRun(vrcCloneObject, original);

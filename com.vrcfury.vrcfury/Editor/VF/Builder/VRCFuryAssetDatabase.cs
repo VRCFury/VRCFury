@@ -62,7 +62,21 @@ namespace VF.Builder {
                 ext = "asset";
             }
 
-            var fullPath = GetUniquePath(dir, filename, ext);
+            string fullPath;
+#if !UNITY_2022_1_OR_NEWER // this editor crash bug is apparently fixed in Unity 2022
+            if (EditorApplication.isPlaying && false)
+            {
+                // Workaround crash issues when saving assets in play mode
+                fullPath = GetUniquePath(dir, filename, "asset");
+                var container = ScriptableObject.CreateInstance<VRCFuryAssetContainer>();
+                AssetDatabase.CreateAsset(container, fullPath);
+                AssetDatabase.RemoveObjectFromAsset(obj);
+                AssetDatabase.AddObjectToAsset(obj, container);
+                return;
+            }
+#endif
+
+            fullPath = GetUniquePath(dir, filename, ext);
             // If object was already part of another asset, or was recently deleted, we MUST
             // call this first, or unity will throw an exception
             AssetDatabase.RemoveObjectFromAsset(obj);
