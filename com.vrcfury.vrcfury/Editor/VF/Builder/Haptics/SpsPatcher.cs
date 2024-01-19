@@ -75,7 +75,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "6";
+            var hashContent = contents + spsMain + "7";
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -200,6 +200,16 @@ namespace VF.Builder.Haptics {
             }, 1);
             if (!foundPragma) {
                 throw new Exception($"Failed to find #pragma {pragmaKeyword}");
+            }
+
+            if (!isSurfaceShader) {
+                // If lightmode is unset (the default of "Always"), set it to ForwardBase
+                // so that we actually receive light data
+                if (!pass.Contains("\"LightMode\"")) {
+                    pass = GetRegex(@"\{").Replace(pass, match => {
+                        return match.Groups[0] + "\n    Tags { \"LightMode\" = \"ForwardBase\" }\n";
+                    }, 1);
+                }
             }
 
             var flattenedPass = ReadAndFlattenContent(pass, includeLibraryFiles: true);
