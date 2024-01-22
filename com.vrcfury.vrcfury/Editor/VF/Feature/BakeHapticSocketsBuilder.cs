@@ -250,7 +250,9 @@ namespace VF.Feature {
                             var plugLength = math.Subtract(penTip, penRoot);
                             directTree.Add(math.MakeSetter(plugLength, 0.01f));
                             var validWhen = math.And(math.GreaterThan(penRoot, 0), math.LessThan(penTip, 1));
-                            var plugLengthValid = math.SetValueWithConditions("ValidPlugLength", (plugLength, validWhen));
+                            // We have to delay the validWhen by 1 frame, because plugLength won't be ready til next frame
+                            var validWhenBuffered = math.Buffer(validWhen);
+                            var plugLengthValid = math.SetValueWithConditions("ValidPlugLength", (plugLength, validWhenBuffered));
                             var plugLengthGlobal = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
                             directTree.Add(math.MakeCopier(plugLengthValid, plugLengthGlobal));
                         }
@@ -260,7 +262,9 @@ namespace VF.Feature {
                             var doubleWidth = math.Subtract(penTip, penWidth);
                             var plugWidth = math.Multiply(socket.plugWidthParameterName, doubleWidth, 0.5f);
                             var validWhen = math.And(math.GreaterThan(penWidth, 0), math.LessThan(penTip, 1));
-                            var plugWidthValid = math.SetValueWithConditions("ValidPlugWidth", (plugWidth, validWhen));
+                            // We have to delay the validWhen by 1 frame, because plugLength won't be ready til next frame
+                            var validWhenBuffered = math.Buffer(validWhen);
+                            var plugWidthValid = math.SetValueWithConditions("ValidPlugWidth", (plugWidth, validWhenBuffered));
                             var plugWidthGlobal = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
                             directTree.Add(math.MakeCopier(plugWidthValid, plugWidthGlobal));
                         }

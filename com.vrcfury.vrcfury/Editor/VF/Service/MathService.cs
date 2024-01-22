@@ -237,6 +237,11 @@ namespace VF.Service {
             return output;
         }
         
+        public VFAFloatBool Buffer(VFAFloatBool val) {
+            var buffered = SetValueWithConditions(val + "_buffer", (1, val), (0, null));
+            return GreaterThan(buffered, 0.5f);
+        }
+        
         /**
          * Only works on values > 0 !
          * Value MUST be defaulted to 0, or the copy will ADD to it
