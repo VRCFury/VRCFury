@@ -80,6 +80,7 @@ namespace VF.Builder.Haptics {
             bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * -0.5f));
             bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * -0.5f));
             skin.localBounds = bounds;
+            skin.updateWhenOffscreen = false;
 
             if (EditorApplication.isPlaying) {
                 skin.owner().AddComponent<VRCFuryNoUpdateWhenOffscreen>();
