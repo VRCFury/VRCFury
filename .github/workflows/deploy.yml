@@ -17,8 +17,11 @@ jobs:
         unityImage:
           - unityci/editor:ubuntu-2019.4.31f1-windows-mono-2.0.0
           - unityci/editor:ubuntu-2019.4.31f1-android-2.0.0
-          - unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
-          - unityci/editor:ubuntu-2022.3.6f1-android-3.0.1
+        include:
+          - vrcsdkVersion: 3.5.0
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
+          - vrcsdkVersion: 3.5.0
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-android-3.0.1
     steps:
       - uses: actions/checkout@v2
 
