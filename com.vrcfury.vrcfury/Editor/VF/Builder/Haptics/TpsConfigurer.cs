@@ -75,8 +75,10 @@ namespace VF.Builder.Haptics {
             }
 
             var localLength = worldLength / rootTransform.lossyScale.z;
-            bounds.Encapsulate(new Vector3(localLength * 1.5f,localLength * 1.5f,localLength * 2.5f));
-            bounds.Encapsulate(new Vector3(localLength * -1.5f,localLength * -1.5f,localLength * 2.5f));
+            bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * 2.5f));
+            bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * 2.5f));
+            bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * -0.5f));
+            bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * -0.5f));
             skin.localBounds = bounds;
 
             if (EditorApplication.isPlaying) {
