@@ -63,7 +63,6 @@ namespace VF.Feature {
                             return b;
                         }, false));
                     }
-                    newFxLayers.Add(copyLayer);
                 } else {
                     layer.Remove();
                 }
