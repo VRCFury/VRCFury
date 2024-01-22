@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -313,7 +314,11 @@ namespace VF.Service {
                     "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
             }
 
-            foreach (var muscleType in onClip.GetMuscleBindingTypes()) {
+            var types = onClip.GetMuscleBindingTypes();
+            if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
+                types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Other);
+            }
+            foreach (var muscleType in types) {
                 var trigger = fullBodyEmoteService.AddClip(onClip, muscleType);
                 onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
             }
