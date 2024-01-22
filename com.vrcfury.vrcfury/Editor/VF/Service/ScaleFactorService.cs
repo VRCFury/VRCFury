@@ -1,4 +1,5 @@
 using System;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -25,20 +26,15 @@ namespace VF.Service {
         [VFAutowired] private readonly MathService smoothingService;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
-        
-        private VFAFloat cached;
-        public VFAFloat Get() {
-            if (cached == null) cached = Generate();
-            return cached;
-        }
 
-        private VFAFloat Generate() {
+        [CanBeNull]
+        public VFAFloat Get(VFGameObject obj) {
             var fx = manager.GetFx();
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
-                return fx.NewFloat("ScaleFactor", usePrefix: false, def: 1.0f);
+                return null;
             }
 
-            var holder = GameObjects.Create("vrcf_ScaleFactorFix", manager.AvatarObject);
+            var holder = GameObjects.Create("vrcf_ScaleDetector", obj);
             var senderObj = GameObjects.Create("Sender", holder);
             var sender = senderObj.AddComponent<VRCContactSender>();
             sender.radius = 0.001f / senderObj.worldScale.x;

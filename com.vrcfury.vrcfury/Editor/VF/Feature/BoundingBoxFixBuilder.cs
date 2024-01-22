@@ -84,6 +84,7 @@ namespace VF.Feature {
                     return false;
                 }
                 skin.localBounds = b;
+                skin.updateWhenOffscreen = false;
                 return true;
             }
 
