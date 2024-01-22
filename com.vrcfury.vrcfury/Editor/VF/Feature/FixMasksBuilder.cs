@@ -51,10 +51,16 @@ namespace VF.Feature {
                         defaultWeight = layer.weight
                     };
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
-                        clip.Rewrite(AnimationRewriter.RewriteBinding(b => IsMuscle(b) ? b : null, false));
+                        clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
+                            if (IsMuscle(b)) return b;
+                            return null;
+                        }, false));
                     }
                     foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null, copyLayer.stateMachine))) {
-                        clip.Rewrite(AnimationRewriter.RewriteBinding(b => IsMuscle(b) ? null : b, false));
+                        clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
+                            if (IsMuscle(b)) return null;
+                            return b;
+                        }, false));
                     }
                     newFxLayers.Add(copyLayer);
                 } else {
