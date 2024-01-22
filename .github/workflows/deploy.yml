@@ -67,6 +67,7 @@ jobs:
               /opt/project/.github/workflows/test_ci.sh
 
   deploy:
+    needs: test
     if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     environment: prod
