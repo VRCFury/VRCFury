@@ -41,24 +41,31 @@ namespace VF.Feature {
                     .Any(b => !IsMuscle(b));
 
                 if (!hasNonMuscle) continue;
-                
-                var copyLayer = new AnimatorControllerLayer {
-                    name = layer.name,
-                    stateMachine = MutableManager.CopyRecursive(layer.stateMachine, false),
-                    avatarMask = MutableManager.CopyRecursive(layer.mask, false),
-                    blendingMode = layer.blendingMode,
-                    defaultWeight = layer.weight
-                };
-                newFxLayers.Add(copyLayer);
 
                 if (hasMuscle) {
+                    var copyLayer = new AnimatorControllerLayer {
+                        name = layer.name,
+                        stateMachine = MutableManager.CopyRecursive(layer.stateMachine, false),
+                        avatarMask = MutableManager.CopyRecursive(layer.mask, false),
+                        blendingMode = layer.blendingMode,
+                        defaultWeight = layer.weight
+                    };
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
                         clip.Rewrite(AnimationRewriter.RewriteBinding(b => IsMuscle(b) ? b : null, false));
                     }
                     foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null, copyLayer.stateMachine))) {
                         clip.Rewrite(AnimationRewriter.RewriteBinding(b => IsMuscle(b) ? null : b, false));
                     }
+                    newFxLayers.Add(copyLayer);
                 } else {
+                    var copyLayer = new AnimatorControllerLayer {
+                        name = layer.name,
+                        stateMachine = layer.stateMachine,
+                        avatarMask = layer.mask,
+                        blendingMode = layer.blendingMode,
+                        defaultWeight = layer.weight
+                    };
+                    newFxLayers.Add(copyLayer);
                     layer.Remove();
                 }
             }
