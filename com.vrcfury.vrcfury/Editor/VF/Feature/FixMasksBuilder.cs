@@ -42,14 +42,15 @@ namespace VF.Feature {
 
                 if (!hasNonMuscle) continue;
 
+                var copyLayer = new AnimatorControllerLayer {
+                    name = layer.name,
+                    stateMachine = MutableManager.CopyRecursive(layer.stateMachine, false),
+                    avatarMask = MutableManager.CopyRecursive(layer.mask, false),
+                    blendingMode = layer.blendingMode,
+                    defaultWeight = layer.weight
+                };
+                newFxLayers.Add(copyLayer);
                 if (hasMuscle) {
-                    var copyLayer = new AnimatorControllerLayer {
-                        name = layer.name,
-                        stateMachine = MutableManager.CopyRecursive(layer.stateMachine, false),
-                        avatarMask = MutableManager.CopyRecursive(layer.mask, false),
-                        blendingMode = layer.blendingMode,
-                        defaultWeight = layer.weight
-                    };
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
                         clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
                             if (IsMuscle(b)) return b;
@@ -64,14 +65,6 @@ namespace VF.Feature {
                     }
                     newFxLayers.Add(copyLayer);
                 } else {
-                    var copyLayer = new AnimatorControllerLayer {
-                        name = layer.name,
-                        stateMachine = layer.stateMachine,
-                        avatarMask = layer.mask,
-                        blendingMode = layer.blendingMode,
-                        defaultWeight = layer.weight
-                    };
-                    newFxLayers.Add(copyLayer);
                     layer.Remove();
                 }
             }
