@@ -17,8 +17,8 @@ namespace VF.Feature {
      * while doing other things.
      */
     public class AnimatorLayerControlOffsetBuilder : FeatureBuilder {
-        private readonly VFMultimap<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
-            = new VFMultimap<VRCAnimatorLayerControl, AnimatorStateMachine>();
+        private readonly VFMultimapList<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
+            = new VFMultimapList<VRCAnimatorLayerControl, AnimatorStateMachine>();
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
         public void RecordBase() {
