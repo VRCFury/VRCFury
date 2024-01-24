@@ -37,7 +37,7 @@ namespace VF.Utils {
         public IEnumerator<KeyValuePair<KeyType, ValueType>> GetEnumerator() {
             using (var ie = data.GetEnumerator()) {
                 while (ie.MoveNext()) {
-                    var (key, collection) = ie.Current;
+                    var (key, collection) = (KeyValuePair<KeyType, CollectionType>)ie.Current;
                     foreach (var value in collection) {
                         yield return KeyValuePair.Create(key, value);
                     }
