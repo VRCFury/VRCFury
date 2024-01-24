@@ -27,6 +27,8 @@ namespace VF.Service {
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
+        private int scaleIndex = 0;
+
         [CanBeNull]
         public VFAFloat Get(VFGameObject obj) {
             var fx = manager.GetFx();
@@ -38,7 +40,7 @@ namespace VF.Service {
             var senderObj = GameObjects.Create("Sender", holder);
             var sender = senderObj.AddComponent<VRCContactSender>();
             sender.radius = 0.001f / senderObj.worldScale.x;
-            var tag = "VRCF_SCALEFACTORFIX_AA";
+            var tag = $"VRCF_SCALEFACTORFIX_AA_{scaleIndex++}";
             sender.collisionTags.Add(tag);
 
             var receiverObj = GameObjects.Create("Receiver", holder);
