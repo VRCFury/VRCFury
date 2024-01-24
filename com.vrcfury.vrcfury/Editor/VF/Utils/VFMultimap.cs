@@ -35,11 +35,12 @@ namespace VF.Utils {
         }
 
         public IEnumerator<KeyValuePair<KeyType, ValueType>> GetEnumerator() {
-            using var ie = data.GetEnumerator();
-            while (ie.MoveNext()) {
-                var (key, collection) = ie.Current;
-                foreach (var value in collection) {
-                    yield return KeyValuePair.Create(key, value);
+            using (var ie = data.GetEnumerator()) {
+                while (ie.MoveNext()) {
+                    var (key, collection) = ie.Current;
+                    foreach (var value in collection) {
+                        yield return KeyValuePair.Create(key, value);
+                    }
                 }
             }
         }
