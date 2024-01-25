@@ -13,6 +13,8 @@ using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public static class SpsPatcher {
+        private const string HashBuster = "8";
+        
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
             try {
@@ -75,7 +77,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "7";
+            var hashContent = contents + spsMain + HashBuster;
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -322,6 +324,8 @@ namespace VF.Builder.Haptics {
             newHeader.Add("#define LIL_APP_COLOR");
             // UnlitWF
             newHeader.Add("#define _V2F_HAS_VERTEXCOLOR");
+            // Filamented
+            newHeader.Add("#define HAS_ATTRIBUTE_COLOR");
             
             var newBody = new List<string>();
             newBody.Add(spsMain);
