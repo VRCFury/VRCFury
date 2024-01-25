@@ -238,23 +238,24 @@ namespace VF.Service {
         }
         
         /**
-         * When useDirect = true it only works on values > 0 !
+         * Only works on values > 0 !
          * Value MUST be defaulted to 0, or the copy will ADD to it
          */
-        public Motion MakeCopier(VFAFloatOrConst from, VFAFloat to, bool useDirect = true) {
+        public Motion MakeCopier(VFAFloatOrConst from, VFAFloat to) {
             if (from.param != null) {
-                if (useDirect) {
-                    var direct = MakeDirect($"{CleanName(to)} = {CleanName(from)}");
-                    direct.Add(from.param, MakeSetter(to, 1));
-                    return direct;
-                }
-                return Make1D($"{CleanName(to)} = {CleanName(from)}",
-                    from.param,
-                    (-1, MakeSetter(to, -1)),
-                    (1, MakeSetter(to, 1)));
+                var direct = MakeDirect($"{CleanName(to)} = {CleanName(from)}");
+                direct.Add(from.param, MakeSetter(to, 1));
+                return direct;
             } else {
                 return MakeSetter(to, from.constt);
             }
+        }
+
+        public Motion MakeCopierForNegativeValues(VFAFloatOrConst from, VFAFloat to) {
+            return Make1D($"{CleanName(to)} = {CleanName(from)}",
+                    from.param,
+                    (-1, MakeSetter(to, -1)),
+                    (1, MakeSetter(to, 1)));
         }
         
         public Motion MakeMaintainer(VFAFloat param) {

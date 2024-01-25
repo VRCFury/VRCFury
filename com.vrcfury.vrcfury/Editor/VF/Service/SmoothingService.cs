@@ -72,10 +72,10 @@ namespace VF.Service {
 
         private Motion Smooth_(VFAFloat target, VFAFloat output, VFAFloat speedParam) {
             // Maintain tree - keeps the current value
-            var maintainTree = math.MakeCopier(output, output, useDirect: false);
+            var maintainTree = math.MakeCopierForNegativeValues(output, output);
 
             // Target tree - uses the target (input) value
-            var targetTree = math.MakeCopier(target, output, useDirect: false);
+            var targetTree = math.MakeCopierForNegativeValues(target, output);
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
