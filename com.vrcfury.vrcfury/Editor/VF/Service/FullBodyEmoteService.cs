@@ -30,9 +30,9 @@ namespace VF.Service {
                     var idle = layer.NewState("Idle");
                     addCache[type] = c => AddClip(c, action, idle, layer, type);
                 } else {
-                    var fx = manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
+                    var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
                     var isLeft = type == EditorCurveBindingExtensions.MuscleBindingType.LeftHand;
-                    var layer = fx.NewLayer(
+                    var layer = gesture.NewLayer(
                         "VRCFury " +
                         (isLeft
                             ? "Left Hand"
@@ -42,7 +42,7 @@ namespace VF.Service {
                     layer.mask = AvatarMaskExtensions.Empty();
                     layer.mask.SetHumanoidBodyPartActive(isLeft ? AvatarMaskBodyPart.LeftFingers : AvatarMaskBodyPart.RightFingers, true);
                     var idle = layer.NewState("Idle");
-                    addCache[type] = c => AddClip(c, fx, idle, layer, type);
+                    addCache[type] = c => AddClip(c, gesture, idle, layer, type);
                 }
             }
 
