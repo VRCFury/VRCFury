@@ -60,7 +60,7 @@ namespace VF.Feature {
             var rootName = GetRootName(links.propMain);
 
             // Move over all the old components / children from the old location to a new child
-            var animLink = new VFMultimap<VFGameObject, VFGameObject>();
+            var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 bool ShouldReparent() {
                     if (propBone == links.propMain) return true;

@@ -186,7 +186,7 @@ namespace VF.Feature {
             }
         }
 
-        private Dictionary<string, string> GetMappings(SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin, bool exact) {
+        private VFMultimapSet<string, string> GetMappings(SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin, bool exact) {
             Normalizer[] normalizers;
             if (exact) {
                 normalizers = new Normalizer[] { s => s };
@@ -201,25 +201,25 @@ namespace VF.Feature {
             var baseBlendshapesLookup = new FuzzyFinder(baseBlendshapes, normalizers);
             var linkBlendshapes = linkSkin.GetBlendshapeNames();
             var linkBlendshapesLookup = new FuzzyFinder(linkBlendshapes, normalizers);
-            var outputMap = new Dictionary<string, string>();
+            var outputMap = new VFMultimapSet<string, string>();
 
-            void Attempt(string from, string to) {
+            void Attempt(string from, string to, bool allowDuplicates) {
                 from = baseBlendshapesLookup.Lookup(from);
                 if (from == null) return;
-                if (outputMap.ContainsKey(from)) return;
+                if (outputMap.ContainsKey(from) && !allowDuplicates) return;
                 to = linkBlendshapesLookup.Lookup(to);
                 if (to == null) return;
-                outputMap[from] = to;
+                outputMap.Put(from, to);
             }
             
             foreach (var include in model.includes) {
                 if (string.IsNullOrWhiteSpace(include.nameOnBase)) {
                     if (string.IsNullOrWhiteSpace(include.nameOnLinked)) continue;
-                    Attempt(include.nameOnLinked, include.nameOnLinked);
+                    Attempt(include.nameOnLinked, include.nameOnLinked, true);
                 } else if (string.IsNullOrWhiteSpace(include.nameOnLinked)) {
-                    Attempt(include.nameOnBase, include.nameOnBase);
+                    Attempt(include.nameOnBase, include.nameOnBase, true);
                 } else {
-                    Attempt(include.nameOnBase, include.nameOnLinked);
+                    Attempt(include.nameOnBase, include.nameOnLinked, true);
                 }
             }
             
@@ -227,7 +227,7 @@ namespace VF.Feature {
                 var excludes = model.excludes.Select(ex => ex.name).ToImmutableHashSet();
                 foreach (var name in baseBlendshapes) {
                     if (excludes.Contains(name)) continue;
-                    Attempt(name, name);
+                    Attempt(name, name, false);
                 }
             }
 
@@ -261,16 +261,17 @@ namespace VF.Feature {
                             if (binding.path != baseSkinPath) continue;
                             if (!binding.propertyName.StartsWith("blendShape.")) continue;
                             var baseName = binding.propertyName.Substring(11);
-                            if (!baseToLinkedMapping.TryGetValue(baseName, out var linkedName)) continue;
 
-                            var linkedI = linked.GetBlendShapeIndex(linkedName);
-                            if (linkedI < 0) continue;
-                            var newBinding = binding;
-                            newBinding.path =
-                                AnimationUtility.CalculateTransformPath(linked.transform, avatarObject.transform);
-                            newBinding.propertyName = "blendShape." + linkedName;
+                            foreach (var linkedName in baseToLinkedMapping.Get(baseName)) {
+                                var linkedI = linked.GetBlendShapeIndex(linkedName);
+                                if (linkedI < 0) continue;
+                                var newBinding = binding;
+                                newBinding.path =
+                                    AnimationUtility.CalculateTransformPath(linked.transform, avatarObject.transform);
+                                newBinding.propertyName = "blendShape." + linkedName;
 
-                            clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                            }
                         }
                     });
                 }

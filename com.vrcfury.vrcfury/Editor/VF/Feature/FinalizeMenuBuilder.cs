@@ -76,7 +76,7 @@ namespace VF.Feature {
             if (iconsTooLarge.Count > 0) {
                 throw new Exception(
                     "You have some VRCFury props that are using menu icons larger than the VRCSDK will allow. Find these icons, and make" +
-                    " sure the Max Size is set to 256:\n\n" + string.Join("\n", iconsTooLarge.OrderBy(n => n)));
+                    " sure the Max Size is set to 256 and compression is not set to None:\n\n" + string.Join("\n", iconsTooLarge.OrderBy(n => n)));
             }
         }
     }
