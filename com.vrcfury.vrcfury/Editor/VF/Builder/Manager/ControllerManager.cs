@@ -182,7 +182,7 @@ namespace VF.Builder {
             }
             return ctrl.NewInt(name, def);
         }
-        public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
+        public VFAFloat NewFloat(string name, bool synced = false, bool networkSynced = true, float def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) {
                 name = Regex.Replace(name, @"^VF\d+_", "");
                 name = makeUniqueParamName(name);
@@ -193,6 +193,7 @@ namespace VF.Builder {
                 param.valueType = VRCExpressionParameters.ValueType.Float;
                 param.saved = saved;
                 param.defaultValue = def;
+                if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
                 GetParamManager().AddSyncedParam(param);
             }
             return ctrl.NewFloat(name, def);
