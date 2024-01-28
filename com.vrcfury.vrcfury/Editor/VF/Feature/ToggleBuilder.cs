@@ -54,8 +54,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
         return new HashSet<string>(); 
     }
+    public bool IsEligableForInt() {
+        if (!model.enableExclusiveTag) return false; // no eclusive tags
+        if (model.slider) return false; // already uses float
+        if (string.IsNullOrEmpty(model.name)) return false; // no menu item
+        return true;
+    }
     public string GetPrimaryExclusive() {
-        if (!model.enableExclusiveTag || model.slider || string.IsNullOrEmpty(model.name)) return "";
+        if (!IsEligableForInt()) return "";
         if (primaryExclusive == null) {
             string targetTag = "";
             int targetMax = -1;
@@ -65,11 +71,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 foreach (var toggle in allBuildersInRun
                             .OfType<ToggleBuilder>()) {
 
-                    if (!toggle.model.exclusiveOffState && 
-                        toggle.exclusiveParam is VFABool && 
-                        !toggle.model.slider &&
-                        !string.IsNullOrEmpty(model.name) &&
-                        toggle.GetExclusiveTags().Contains(exclusiveTag)) {
+                    if (toggle.IsEligableForInt() && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
                         tagCount++;
                     }
                 }
@@ -111,7 +113,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             throw new Exception("Too many toggles for exclusive tag " + targetTag + ". Please reduce the number of toggles using this tag to below 255.");
         }
 
-        if (tagCount > 8) {
+        if (tagCount > 9) {
             return (true, tagIndex, savedParam, tagDefault);
         }
         return (false, -1, false, 0);
