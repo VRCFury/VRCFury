@@ -58,6 +58,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (!model.enableExclusiveTag) return false; // no eclusive tags
         if (model.slider) return false; // already uses float
         if (string.IsNullOrEmpty(model.name)) return false; // no menu item
+        if (model.networkUnsynced) return false; // network unscynced param
         return true;
     }
     public string GetPrimaryExclusive() {
