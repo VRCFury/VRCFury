@@ -13,6 +13,8 @@ using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public static class SpsPatcher {
+        private const string HashBuster = "8";
+        
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
             try {
@@ -75,7 +77,7 @@ namespace VF.Builder.Haptics {
             }
             
             var md5 = MD5.Create();
-            var hashContent = contents + spsMain + "6";
+            var hashContent = contents + spsMain + HashBuster;
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -202,6 +204,16 @@ namespace VF.Builder.Haptics {
                 throw new Exception($"Failed to find #pragma {pragmaKeyword}");
             }
 
+            if (!isSurfaceShader) {
+                // If lightmode is unset (the default of "Always"), set it to ForwardBase
+                // so that we actually receive light data
+                if (!pass.Contains("\"LightMode\"")) {
+                    pass = GetRegex(@"\{").Replace(pass, match => {
+                        return match.Groups[0] + "\n    Tags { \"LightMode\" = \"ForwardBase\" }\n";
+                    }, 1);
+                }
+            }
+
             var flattenedPass = ReadAndFlattenContent(pass, includeLibraryFiles: true);
 
             string oldStructType;
@@ -312,6 +324,8 @@ namespace VF.Builder.Haptics {
             newHeader.Add("#define LIL_APP_COLOR");
             // UnlitWF
             newHeader.Add("#define _V2F_HAS_VERTEXCOLOR");
+            // Filamented
+            newHeader.Add("#define HAS_ATTRIBUTE_COLOR");
             
             var newBody = new List<string>();
             newBody.Add(spsMain);
@@ -562,11 +576,18 @@ namespace VF.Builder.Haptics {
                 if (sourceAsset == null) throw new Exception("Failed to find orlshader source");
                 content = sourceAsset.text;
             } else if (path.EndsWith("lilcontainer")) {
-                var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
-                var unpackMethod = lilShaderContainer.GetMethods().First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
-                content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
-                var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
-                content = content.Replace("\"Includes", "\"" + shaderLibsPath);
+                var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
+                if (sourceAsset != null) {
+                    content = sourceAsset.text;
+                } else {
+                    var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
+                    var unpackMethod = lilShaderContainer.GetMethods()
+                        .First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
+                    content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
+                    var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                    content = content.Replace("\"Includes", "\"" + shaderLibsPath);
+                }
             } else {
                 StreamReader sr = new StreamReader(path);
                 try {

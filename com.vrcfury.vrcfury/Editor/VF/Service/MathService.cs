@@ -160,29 +160,41 @@ namespace VF.Service {
         }
 
         public VFAFloat Subtract(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
-            return Add(a, b, true, name: name);
+            name = name ?? $"{CleanName(a)} - {CleanName(b)}";
+            return Add(name, (a,1), (b,-1));
         }
         
-        public VFAFloat Add(VFAFloatOrConst a, VFAFloatOrConst b, bool subtract = false, string name = null) {
+        public VFAFloat Add(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
+            name = name ?? $"{CleanName(a)} + {CleanName(b)}";
+            return Add(name, (a,1), (b,1));
+        }
+        
+        public VFAFloat Add(string name, params (VFAFloatOrConst,float)[] components) {
             var fx = avatarManager.GetFx();
-            name = name ?? $"{CleanName(a)} {(subtract ? '-' : '+')} {CleanName(b)}";
+            float def = 0;
+            foreach (var (input,multiplier) in components) {
+                if (input.param != null) {
+                    def += input.param.GetDefault() * multiplier;
+                } else {
+                    def += input.constt * multiplier;
+                }
+            }
+
             var output = MakeZeroBasisFloat(
                 name,
-                def: subtract ? a.GetDefault() - b.GetDefault() : a.GetDefault() + b.GetDefault()
+                def: def
             );
 
             var tree = MakeDirect(name);
             directTree.Add(tree);
 
-            if (a.param != null)
-                tree.Add(a.param, MakeSetter(output, 1));
-            else
-                tree.Add(fx.One(), MakeSetter(output, a.constt));
-
-            if (b.param != null)
-                tree.Add(b.param, MakeSetter(output, subtract ? -1 : 1));
-            else
-                tree.Add(fx.One(), MakeSetter(output, (subtract ? -1 : 1) * a.constt));
+            foreach (var (input,multiplier) in components) {
+                if (input.param != null) {
+                    tree.Add(input.param, MakeSetter(output, multiplier));
+                } else {
+                    tree.Add(fx.One(), MakeSetter(output, input.constt * multiplier));
+                }
+            }
 
             return output;
         }
@@ -232,9 +244,14 @@ namespace VF.Service {
         }
         
         public VFAFloat Buffer(VFAFloat val) {
-            var output = MakeZeroBasisFloat(val + "_buffer", val.GetDefault());
+            var output = MakeZeroBasisFloat(val.Name() + "_buffer", val.GetDefault());
             directTree.Add(MakeCopier(val, output));
             return output;
+        }
+        
+        public VFAFloatBool Buffer(VFAFloatBool val, string name) {
+            var buffered = SetValueWithConditions(name, (1, val), (0, null));
+            return GreaterThan(buffered, 0.5f);
         }
         
         /**
@@ -283,8 +300,9 @@ namespace VF.Service {
             );
         }
 
-        public VFAFloat Max(VFAFloat a, VFAFloat b) {
-            return SetValueWithConditions($"MAX({CleanName(a)},{CleanName(b)})",
+        public VFAFloat Max(VFAFloat a, VFAFloat b, string name = null) {
+            name = name ?? $"MAX({CleanName(a)},{CleanName(b)})";
+            return SetValueWithConditions(name,
                 (a, GreaterThan(a, b)),
                 (b, null)
             );

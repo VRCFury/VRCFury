@@ -25,7 +25,7 @@ namespace VF.Builder {
                     if (behaviours.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
                 } catch (Exception e) {
                     throw new Exception(
-                        $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour", e);
+                        $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.", e);
                 }
                 foreach (var behaviour in behaviours) {
                     var keep = action(behaviour, type => stateMachine.VAddStateMachineBehaviour(type));
@@ -39,7 +39,7 @@ namespace VF.Builder {
                     if (behaviours.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
                 } catch (Exception e) {
                     throw new Exception(
-                        $"{layer.debugName} State `{state.name}` contains a corrupt behaviour", e);
+                        $"{layer.debugName} State `{state.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.", e);
                 }
                 foreach (var behaviour in behaviours) {
                     var keep = action(behaviour, type => state.VAddStateMachineBehaviour(type));

@@ -243,24 +243,35 @@ namespace VF.Feature {
                     }
 
                     if (socket.IsValidPlugLength || socket.IsValidPlugWidth) {
-                        var penTip = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenTip", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, HapticUtils.ReceiverParty.Both);
+                        var penTip = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/LengthSensor/TipContact", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, HapticUtils.ReceiverParty.Both);
                         if (socket.IsValidPlugLength) {
-                            var penRoot = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenRoot", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, HapticUtils.ReceiverParty.Both);
+                            var penRoot = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/LengthSensor/RootContact", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, HapticUtils.ReceiverParty.Both);
                             // Calculate `Plug Length` using `TPS_Pen_Penetrating - TPS_Pen_Root + 0.01 (radius of root sender)`
-                            var plugLength = math.Subtract(penTip, penRoot);
-                            directTree.Add(math.MakeSetter(plugLength, 0.01f));
+                            var plugLength = math.Add(
+                                $"{name}/LengthSensor/Detected",
+                                (penTip,1),
+                                (penRoot,-1),
+                                (0.01f, 1)
+                            );
                             var validWhen = math.And(math.GreaterThan(penRoot, 0), math.LessThan(penTip, 1));
-                            var plugLengthValid = math.SetValueWithConditions("ValidPlugLength", (plugLength, validWhen));
+                            // We have to delay the validWhen by 1 frame, because Add takes a frame
+                            var validWhenBuffered = math.Buffer(validWhen, $"{name}/LengthSensor/IsValid");
+                            var plugLengthValid = math.SetValueWithConditions($"{name}/LengthSensor/Stable", (plugLength, validWhenBuffered));
                             var plugLengthGlobal = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
                             directTree.Add(math.MakeCopier(plugLengthValid, plugLengthGlobal));
                         }
                         if (socket.IsValidPlugWidth) {
-                            var penWidth = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/PenWidth", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
+                            var penWidth = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/WidthSensor/WidthContact", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
                             // Calculate `Plug Width` using `(TPS_Pen_Penetrating - TPS_Pen_Width)/2` 
-                            var doubleWidth = math.Subtract(penTip, penWidth);
-                            var plugWidth = math.Multiply(socket.plugWidthParameterName, doubleWidth, 0.5f);
+                            var plugWidth = math.Add(
+                                $"{name}/WidthSensor/Detected",
+                                (penTip,0.5f),
+                                (penWidth,-0.5f)
+                            );
                             var validWhen = math.And(math.GreaterThan(penWidth, 0), math.LessThan(penTip, 1));
-                            var plugWidthValid = math.SetValueWithConditions("ValidPlugWidth", (plugWidth, validWhen));
+                            // We have to delay the validWhen by 1 frame, because Add takes a frame
+                            var validWhenBuffered = math.Buffer(validWhen, $"{name}/WidthSensor/IsValid");
+                            var plugWidthValid = math.SetValueWithConditions($"{name}/WidthSensor/Stable", (plugWidth, validWhenBuffered));
                             var plugWidthGlobal = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
                             directTree.Add(math.MakeCopier(plugWidthValid, plugWidthGlobal));
                         }
