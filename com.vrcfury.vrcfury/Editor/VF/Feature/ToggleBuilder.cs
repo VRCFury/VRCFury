@@ -87,7 +87,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var param = fx.NewFloat(
                 paramName,
                 synced: synced,
-                networkSynced: !model.unsynced,
+                networkSynced: !model.networkUnsynced,
                 saved: model.saved,
                 def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
@@ -109,7 +109,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = param.IsNotEqualTo(0);
             defaultOn = model.defaultOn;
         } else {
-            var param = fx.NewBool(paramName, synced: synced, networkSynced: !model.unsynced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var param = fx.NewBool(paramName, synced: synced, networkSynced: !model.networkUnsynced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             exclusiveParam = param;
             onCase = param.IsTrue();
             defaultOn = model.defaultOn;
@@ -333,7 +333,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
-        var unsyncedProp = prop.FindPropertyRelative("unsynced");
+        var networkUnsyncedProp = prop.FindPropertyRelative("networkUnsynced");
 
         var flex = new VisualElement().Row();
         content.Add(flex);
@@ -419,8 +419,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
-                advMenu.AddItem(new GUIContent("Use Unsynced Parameter"), unsyncedProp.boolValue, () => {
-                    unsyncedProp.boolValue = !unsyncedProp.boolValue;
+                advMenu.AddItem(new GUIContent("Use Unsynced Parameter"), networkUnsyncedProp.boolValue, () => {
+                    networkUnsyncedProp.boolValue = !networkUnsyncedProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
@@ -542,7 +542,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
                 if (exclusiveOffStateProp.boolValue)
                     tags.Add("This is the Exclusive Off State");
-                if (unsyncedProp.boolValue)
+                if (networkUnsyncedProp.boolValue)
                     tags.Add("Unsynced Param");
 
                 var row = new VisualElement().Row().FlexWrap();
@@ -565,7 +565,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             holdButtonProp,
             hasExitTimeProp,
             sliderProp,
-            unsyncedProp
+            networkUnsyncedProp
         ));
 
         var toggleOffWarning = VRCFuryEditorUtils.Error(
