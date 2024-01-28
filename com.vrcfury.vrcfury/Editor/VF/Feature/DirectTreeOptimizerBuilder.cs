@@ -12,6 +12,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
@@ -307,8 +308,8 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(AnimatorStateMachine sm) {
-            return new AnimatorIterator.Clips().From(sm)
+        private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(VFLayer layer) {
+            return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
                 .Where(binding => binding.IsValid(avatarObject))
                 .ToImmutableHashSet();

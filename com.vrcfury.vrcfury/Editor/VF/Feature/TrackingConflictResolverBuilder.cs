@@ -22,8 +22,8 @@ namespace VF.Feature {
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
 
-        private readonly VFMultimap<TrackingControlType, VFAFloat> inhibitors =
-            new VFMultimap<TrackingControlType, VFAFloat>();
+        private readonly VFMultimapList<TrackingControlType, VFAFloat> inhibitors =
+            new VFMultimapList<TrackingControlType, VFAFloat>();
 
         public VFAFloat AddInhibitor(string owner, TrackingControlType type) {
             var param = manager.GetFx().NewFloat($"TC_{owner}_{type.fieldName}");

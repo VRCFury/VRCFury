@@ -93,32 +93,35 @@ namespace VF.Builder.Haptics {
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
         }
-        public static void AssertValidScale(VFGameObject obj, string type) {
+        public static bool AssertValidScale(VFGameObject obj, string type, bool shouldThrow = true) {
             var current = obj;
             while (true) {
                 if (IsZeroScale(current)) {
-                    throw new Exception(
+                    if (shouldThrow) throw new Exception(
                         "A haptic component exists on an object with zero scale." +
                         " This object must not be zero scale or size calculation will fail.\n\n" +
                         "Component path: " + obj.GetPath() + "\n" +
                         "Offending object: " + current.GetPath());
+                    return false;
                 }
                 if (IsNegativeScale(current)) {
-                    throw new Exception(
+                    if (shouldThrow) throw new Exception(
                         "A haptic component exists on an object with negative scale." +
                         " This object must have a positive scale or size calculation will fail.\n\n" +
                         "Component path: " + obj.GetPath() + "\n" +
                         "Offending object: " + current.GetPath());
+                    return false;
                 }
                 if (IsNonUniformScale(current)) {
                     var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
                     if (!bypass) {
-                        throw new Exception(
+                        if (shouldThrow) throw new Exception(
                             "A haptic component exists on an object with a non-uniform scale." +
                             " This object (and all parents) must have an X, Y, and Z scale value that match" +
                             " each other, or size calculation will fail.\n\n" +
                             "Component path: " + obj.GetPath() + "\n" +
                             "Offending object: " + current.GetPath());
+                        return false;
                     }
                 }
 
@@ -126,6 +129,8 @@ namespace VF.Builder.Haptics {
                 if (parent == null) break;
                 current = parent;
             }
+
+            return true;
         }
 
         public static Transform GetMeshRoot(Renderer r) {

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -16,7 +14,7 @@ using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
-    public static class LegacyHapticsUpgrader {
+    public static class SpsUpgrader {
         private const string dialogTitle = "VRCFury Legacy Haptics Upgrader";
         
         public static void Run() {
@@ -26,7 +24,7 @@ namespace VF.Builder.Haptics {
                 while (avatarObject.transform.parent != null) avatarObject = avatarObject.transform.parent.gameObject;
             }
 
-            var messages = Apply(avatarObject, true);
+            var messages = Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {
                 EditorUtility.DisplayDialog(
                     dialogTitle,
@@ -44,7 +42,7 @@ namespace VF.Builder.Haptics {
             );
             if (!doIt) return;
 
-            Apply(avatarObject, false);
+            Apply(avatarObject, false, Mode.Manual);
             EditorUtility.DisplayDialog(
                 dialogTitle,
                 "Upgrade complete!",
@@ -67,7 +65,12 @@ namespace VF.Builder.Haptics {
             return false;
         }
 
-        public static string Apply(VFGameObject avatarObject, bool dryRun) {
+        public enum Mode {
+            Manual,
+            AutomatedComponent,
+            AutomatedForEveryone
+        }
+        public static string Apply(VFGameObject avatarObject, bool dryRun, Mode mode) {
             var objectsToDelete = new List<VFGameObject>();
             var componentsToDelete = new List<UnityEngine.Component>();
             var hasExistingSocket = new HashSet<VFGameObject>();
@@ -95,6 +98,7 @@ namespace VF.Builder.Haptics {
                 if (dryRun) return null;
                 var plug = obj.AddComponent<VRCFuryHapticPlug>();
                 plug.enableSps = false;
+                plug.sendersOnly = mode == Mode.AutomatedForEveryone;
                 return plug;
             }
             VRCFuryHapticSocket AddSocket(VFGameObject obj) {
@@ -104,6 +108,7 @@ namespace VF.Builder.Haptics {
                 var socket = obj.AddComponent<VRCFuryHapticSocket>();
                 socket.addLight = VRCFuryHapticSocket.AddLight.None;
                 socket.addMenuItem = false;
+                socket.sendersOnly = mode == Mode.AutomatedForEveryone;
                 return socket;
             }
 
@@ -118,58 +123,64 @@ namespace VF.Builder.Haptics {
             }
             
             // Upgrade "parent-constraint" DPS setups
-            foreach (var parent in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
-                var constraint = parent.gameObject.GetComponent<ParentConstraint>();
-                if (constraint == null) continue;
-                if (constraint.sourceCount < 2) continue;
-                var sourcesWithWeight = 0;
-                for (var i = 0; i < constraint.sourceCount; i++) {
-                    if (constraint.GetSource(i).weight > 0) sourcesWithWeight++;
-                }
-                if (sourcesWithWeight > 1) {
-                    // This is probably not a parent constraint socket, but rather an actual position splitter.
-                    // (used to position a socket between two bones)
-                    continue;
-                }
-                
-                var parentInfo = GetIsParent(parent);
-                if (parentInfo == null) continue;
+            if (mode == Mode.Manual) {
+                foreach (var parent in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
+                    var constraint = parent.gameObject.GetComponent<ParentConstraint>();
+                    if (constraint == null) continue;
+                    if (constraint.sourceCount < 2) continue;
+                    var sourcesWithWeight = 0;
+                    for (var i = 0; i < constraint.sourceCount; i++) {
+                        if (constraint.GetSource(i).weight > 0) sourcesWithWeight++;
+                    }
 
-                var parentLightType = parentInfo.Item1;
-                var parentPosition = parentInfo.Item2;
-                var parentRotation = parentInfo.Item3;
+                    if (sourcesWithWeight > 1) {
+                        // This is probably not a parent constraint socket, but rather an actual position splitter.
+                        // (used to position a socket between two bones)
+                        continue;
+                    }
 
-                foundParentConstraint = true;
-                objectsToDelete.Add(parent);
-                
-                for (var i = 0; i < constraint.sourceCount; i++) {
-                    var source = constraint.GetSource(i);
-                    var sourcePositionOffset = constraint.GetTranslationOffset(i);
-                    var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
-                    VFGameObject t = source.sourceTransform;
-                    if (t == null) continue;
-                    var name = HapticUtils.GetName(t);
+                    var parentInfo = GetIsParent(parent);
+                    if (parentInfo == null) continue;
 
-                    var socket = AddSocket(t);
-                    addedSocketNames[t] = name;
-                    if (socket != null) {
-                        socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
-                            * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
-                        socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
-                        socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
-                        socket.addMenuItem = true;
-                        //t.name = "Haptic Socket";
-                        
-                        if (name.ToLower().Contains("vag")) {
-                            AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
-                        }
-                        if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
-                            AddBlendshapeIfPresent(avatarObject.transform, socket, VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
+                    var parentLightType = parentInfo.Item1;
+                    var parentPosition = parentInfo.Item2;
+                    var parentRotation = parentInfo.Item3;
+
+                    foundParentConstraint = true;
+                    objectsToDelete.Add(parent);
+
+                    for (var i = 0; i < constraint.sourceCount; i++) {
+                        var source = constraint.GetSource(i);
+                        var sourcePositionOffset = constraint.GetTranslationOffset(i);
+                        var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
+                        VFGameObject t = source.sourceTransform;
+                        if (t == null) continue;
+                        var name = HapticUtils.GetName(t);
+
+                        var socket = AddSocket(t);
+                        addedSocketNames[t] = name;
+                        if (socket != null) {
+                            socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
+                                * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
+                            socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
+                            socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
+                            socket.addMenuItem = true;
+                            //t.name = "Haptic Socket";
+
+                            if (name.ToLower().Contains("vag")) {
+                                AddBlendshapeIfPresent(avatarObject.transform, socket,
+                                    VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
+                            }
+
+                            if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
+                                AddBlendshapeIfPresent(avatarObject.transform, socket,
+                                    VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
+                            }
                         }
                     }
                 }
             }
-            
+
             // Un-bake baked components
             foreach (var t in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
                 if (!t) continue; // this can happen if we're visiting one of the things we deleted below
@@ -203,9 +214,11 @@ namespace VF.Builder.Haptics {
                 UnbakePen(t.Find("OGB_Baked_Pen"));
                 UnbakePen(t.Find("BakedOGBPenetrator"));
                 UnbakePen(t.Find("BakedHapticPlug"));
+                UnbakePen(t.Find("BakedSpsPlug"));
                 UnbakeOrf(t.Find("OGB_Baked_Orf"));
                 UnbakeOrf(t.Find("BakedOGBOrifice"));
                 UnbakePen(t.Find("BakedHapticSocket"));
+                UnbakePen(t.Find("BakedSpsSocket"));
             }
             
             // Auto-add plugs from DPS and TPS
@@ -248,75 +261,82 @@ namespace VF.Builder.Haptics {
             }
             
             // Claim lights on all OGB components
-            foreach (var transform in hasExistingSocket.Concat(addedSocket)) {
-                if (!dryRun) {
-                    foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
-                        if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                            var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
-                            if (info != null) {
-                                var type = info.Item1;
-                                var position = info.Item2;
-                                var rotation = info.Item3;
-                                socket.addLight = type;
-                                socket.position = position;
-                                socket.rotation = rotation.eulerAngles;
+            if (mode == Mode.Manual || mode == Mode.AutomatedComponent) {
+                foreach (var transform in hasExistingSocket.Concat(addedSocket)) {
+                    if (!dryRun) {
+                        foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
+                            if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
+                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
+                                if (info != null) {
+                                    var type = info.Item1;
+                                    var position = info.Item2;
+                                    var rotation = info.Item3;
+                                    socket.addLight = type;
+                                    socket.position = position;
+                                    socket.rotation = rotation.eulerAngles;
+                                }
                             }
                         }
                     }
-                }
 
-                VRCFuryHapticSocketEditor.ForEachPossibleLight(transform, false, light => {
-                    componentsToDelete.Add(light);
-                });
+                    VRCFuryHapticSocketEditor.ForEachPossibleLight(transform, false,
+                        light => { componentsToDelete.Add(light); });
+                }
             }
 
             // Clean up
-            var deletions = AvatarCleaner.Cleanup(
-                avatarObject,
-                perform: !dryRun,
-                ShouldRemoveObj: obj => {
-                    return obj.name == "GUIDES_DELETE" 
-                           || objectsToDelete.Contains(obj.transform);
-                },
-                ShouldRemoveAsset: asset => {
-                    if (asset == null) return false;
-                    var path = AssetDatabase.GetAssetPath(asset);
-                    if (path == null) return false;
-                    var lower = path.ToLower();
-                    if (lower.Contains("dps_attach")) return true;
-                    return false;
-                },
-                ShouldRemoveLayer: layer => {
-                    var lower = layer.ToLower();
-                    if (foundParentConstraint && lower.Contains("tps") && lower.Contains("orifice")) {
-                        return true;
+            var deletions = new List<string>();
+            if (mode == Mode.Manual) {
+                deletions = AvatarCleaner.Cleanup(
+                    avatarObject,
+                    perform: !dryRun,
+                    ShouldRemoveObj: obj => {
+                        return obj.name == "GUIDES_DELETE"
+                               || objectsToDelete.Contains(obj.transform);
+                    },
+                    ShouldRemoveAsset: asset => {
+                        if (asset == null) return false;
+                        var path = AssetDatabase.GetAssetPath(asset);
+                        if (path == null) return false;
+                        var lower = path.ToLower();
+                        if (lower.Contains("dps_attach")) return true;
+                        return false;
+                    },
+                    ShouldRemoveLayer: layer => {
+                        var lower = layer.ToLower();
+                        if (foundParentConstraint && lower.Contains("tps") && lower.Contains("orifice")) {
+                            return true;
+                        }
+
+                        if (foundParentConstraint && layer == "EZDPS Orifices") {
+                            return true;
+                        }
+
+                        return layer == "DPS_Holes"
+                               || layer == "DPS_Rings"
+                               || layer == "HotDog"
+                               || layer == "DPS Orifice"
+                               || layer == "Orifice Position";
+                    },
+                    ShouldRemoveParam: param => {
+                        return param == "DPS_Hole"
+                               || param == "DPS_Ring"
+                               || param == "HotDog"
+                               || param == "fluff/dps/orifice"
+                               || param == "EZDPS/Orifice"
+                               || (param.StartsWith("TPS") && param.Contains("/VF"))
+                               || param.StartsWith("OGB/")
+                               || param.StartsWith("Nsfw/Ori/");
+                    },
+                    ShouldRemoveComponent: component => {
+                        if (component is VRCContactSender sender && IsHapticContact(sender, sender.collisionTags))
+                            return true;
+                        if (component is VRCContactReceiver rcv && IsHapticContact(rcv, rcv.collisionTags)) return true;
+                        if (componentsToDelete.Contains(component)) return true;
+                        return false;
                     }
-                    if (foundParentConstraint && layer == "EZDPS Orifices") {
-                        return true;
-                    }
-                    return layer == "DPS_Holes"
-                           || layer == "DPS_Rings"
-                           || layer == "HotDog"
-                           || layer == "DPS Orifice"
-                           || layer == "Orifice Position";
-                },
-                ShouldRemoveParam: param => {
-                    return param == "DPS_Hole"
-                           || param == "DPS_Ring"
-                           || param == "HotDog"
-                           || param == "fluff/dps/orifice"
-                           || param == "EZDPS/Orifice"
-                           || (param.StartsWith("TPS") && param.Contains("/VF"))
-                           || param.StartsWith("OGB/")
-                           || param.StartsWith("Nsfw/Ori/");
-                },
-                ShouldRemoveComponent: component => {
-                    if (component is VRCContactSender sender && IsHapticContact(sender, sender.collisionTags)) return true;
-                    if (component is VRCContactReceiver rcv && IsHapticContact(rcv, rcv.collisionTags)) return true;
-                    if (componentsToDelete.Contains(component)) return true;
-                    return false;
-                }
-            );
+                );
+            }
 
             var parts = new List<string>();
             var alreadyExists = hasExistingSocket

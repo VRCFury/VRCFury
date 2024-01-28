@@ -75,9 +75,12 @@ namespace VF.Builder.Haptics {
             }
 
             var localLength = worldLength / rootTransform.lossyScale.z;
-            bounds.Encapsulate(new Vector3(localLength * 1.5f,localLength * 1.5f,localLength * 2.5f));
-            bounds.Encapsulate(new Vector3(localLength * -1.5f,localLength * -1.5f,localLength * 2.5f));
+            bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * 2.5f));
+            bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * 2.5f));
+            bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * -0.5f));
+            bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * -0.5f));
             skin.localBounds = bounds;
+            skin.updateWhenOffscreen = false;
 
             if (EditorApplication.isPlaying) {
                 skin.owner().AddComponent<VRCFuryNoUpdateWhenOffscreen>();
@@ -96,11 +99,11 @@ namespace VF.Builder.Haptics {
             var shaderRotation = Quaternion.identity;
             if (IsLocked(mat)) {
                 throw new VRCFBuilderException(
-                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
+                    "VRCFury SPS Plug has 'auto-configure TPS' checked, but material is locked. Please unlock the material using TPS to use this feature.");
             }
             if (DpsConfigurer.IsDps(mat)) {
                 throw new VRCFBuilderException(
-                    "VRCFury Haptic Plug has 'auto-configure TPS' checked, but material has both TPS and Raliv DPS enabled in the Poiyomi settings. Disable DPS to continue.");
+                    "VRCFury SPS Plug has 'auto-configure TPS' checked, but material has both TPS and Raliv DPS enabled in the Poiyomi settings. Disable DPS to continue.");
             }
 
             var localScale = skin.rootBone.lossyScale;

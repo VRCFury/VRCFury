@@ -10,7 +10,11 @@ namespace VF {
         }
 
         public class PostProcessor : AssetPostprocessor {
-            static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths) {
+#if UNITY_2021_3_OR_NEWER
+            internal static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths, bool didDomainReload) {
+#else
+            internal static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths) {
+#endif
                 ScanAlways();
             }
         }

@@ -35,8 +35,8 @@ namespace VF.Menu {
 
             var builder = new VRCFuryBuilder();
             var result = builder.SafeRun(clone, originalObject);
-            if (result) {
-                VRCFuryBuilder.StripAllVrcfComponents(clone);
+            if (result == VRCFuryBuilder.Status.Success) {
+                VRCFuryBuilder.StripAllVrcfComponents(clone, true);
                 clone.AddComponent<VRCFuryTest>();
                 Selection.SetActiveObjectWithContext(clone, clone);
             } else {

@@ -54,12 +54,13 @@ namespace VF.Feature {
                         usedRenderers,
                         deferMaterialConfig: true
                     );
+                    if (bakeInfo == null) continue;
                     bakeResults[plug] = bakeInfo;
 
                     var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(postBakeClip);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
@@ -73,8 +74,7 @@ namespace VF.Feature {
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
-                    var bakeInfo = bakeResults[plug];
-                    if (bakeInfo == null) continue;
+                    if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
 
                     var bakeRoot = bakeInfo.bakeRoot;
                     var renderers = bakeInfo.renderers;
@@ -95,7 +95,7 @@ namespace VF.Feature {
                     name = uniqueHapticNamesService.GetUniqueName(name);
                     Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
                     
-                    if (HapticsToggleMenuItem.Get()) {
+                    if (HapticsToggleMenuItem.Get() && !plug.sendersOnly) {
                         // Haptic Receivers
                         var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
                         var haptics = GameObjects.Create("Haptics", bakeRoot);
@@ -242,7 +242,7 @@ namespace VF.Feature {
                         );
                     }
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }

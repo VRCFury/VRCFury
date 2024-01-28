@@ -30,9 +30,9 @@ namespace VF.Service {
                     var idle = layer.NewState("Idle");
                     addCache[type] = c => AddClip(c, action, idle, layer, type);
                 } else {
-                    var fx = manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
+                    var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
                     var isLeft = type == EditorCurveBindingExtensions.MuscleBindingType.LeftHand;
-                    var layer = fx.NewLayer(
+                    var layer = gesture.NewLayer(
                         "VRCFury " +
                         (isLeft
                             ? "Left Hand"
@@ -42,7 +42,7 @@ namespace VF.Service {
                     layer.mask = AvatarMaskExtensions.Empty();
                     layer.mask.SetHumanoidBodyPartActive(isLeft ? AvatarMaskBodyPart.LeftFingers : AvatarMaskBodyPart.RightFingers, true);
                     var idle = layer.NewState("Idle");
-                    addCache[type] = c => AddClip(c, fx, idle, layer, type);
+                    addCache[type] = c => AddClip(c, gesture, idle, layer, type);
                 }
             }
 
@@ -52,7 +52,10 @@ namespace VF.Service {
         private VFAFloat AddClip(AnimationClip clip, ControllerManager ctrl, VFState idle, VFLayer layer, EditorCurveBindingExtensions.MuscleBindingType type) {
             clip = MutableManager.CopyRecursive(clip, false);
             var nonActionBindings = clip.GetAllBindings()
-                .Where(b => b.GetMuscleBindingType() != type);
+                .Where(b => {
+                    if (type == EditorCurveBindingExtensions.MuscleBindingType.Other) return !b.IsMuscle();
+                    return b.GetMuscleBindingType() != type;
+                });
             clip.SetCurves(nonActionBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             var state = layer.NewState(clip.name).WithAnimation(clip);
 
@@ -103,8 +106,6 @@ namespace VF.Service {
                 } else {
                     if (trackingType == TrackingConflictResolverBuilder.TrackingEyes
                         || trackingType == TrackingConflictResolverBuilder.TrackingMouth
-                        || trackingType == TrackingConflictResolverBuilder.TrackingLeftFingers
-                        || trackingType == TrackingConflictResolverBuilder.TrackingRightFingers
                     ) {
                         continue;
                     }

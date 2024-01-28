@@ -23,12 +23,24 @@ namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    internal bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+    internal enum Status {
+        Success,
+        Failed,
+        FailedNdmf
+    }
+
+    internal Status SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
         try {
             NdmfFirstMenuItem.Run(avatarObject);
         } catch (Exception e) {
+            var message = VRCFExceptionUtils.GetGoodCause(e).Message.Trim();
+            EditorUtility.DisplayDialog(
+                "NDMF First",
+                "NDMF failed with an exception: " + message,
+                "Ok"
+            );
             Debug.LogException(e);
-            return false;
+            return Status.FailedNdmf;
         }
 
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
@@ -46,15 +58,21 @@ public class VRCFuryBuilder {
 
         AssetDatabase.SaveAssets();
 
-        return result;
+        return result ? Status.Success : Status.Failed;
     }
 
     internal static bool ShouldRun(VFGameObject avatarObject) {
-        return avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>().Length > 0;
+        return avatarObject
+            .GetComponentsInSelfAndChildren<VRCFuryComponent>()
+            .Where(c => !(c is VRCFuryDebugInfo))
+            .Any();
     }
 
-    public static void StripAllVrcfComponents(VFGameObject obj) {
+    public static void StripAllVrcfComponents(VFGameObject obj, bool keepDebugInfo = false) {
         foreach (var c in obj.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
+            if (c is VRCFuryDebugInfo && keepDebugInfo) {
+                continue;
+            }
             Object.DestroyImmediate(c);
         }
     }
@@ -241,7 +259,7 @@ public class VRCFuryBuilder {
             actions.Remove(action);
             var service = action.GetService();
             if (action.configObject == null) {
-                var statusSkipMessage = $"\n{service.GetType().Name} ({currentModelNumber}) Skipped\nObject does not exist (probably got deleted by previous stages)";
+                var statusSkipMessage = $"{service.GetType().Name} ({currentModelNumber}) Skipped (Object no longer exists)";
                 progress.Progress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
                 continue;
             }
@@ -253,7 +271,7 @@ public class VRCFuryBuilder {
             currentMenuSortPosition = action.menuSortOrder;
             currentComponentObject = action.configObject;
 
-            var statusMessage = $"{objectName}\n{service.GetType().Name} ({currentModelNumber})\n{action.GetName()}";
+            var statusMessage = $"{service.GetType().Name}.{action.GetName()} on {objectName} ({currentModelNumber})";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {
