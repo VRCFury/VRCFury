@@ -3,20 +3,22 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Menu;
 #if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
 #endif
 
-namespace VF.VrcHooks {
+namespace VF.Hooks {
     /**
      * This adds a hook before the VRCSDK creates its clone of the GameObject.
      * This allows us to do certain behaviours on the original object before all
      * prefab connections are lost.
      */
-    [InitializeOnLoad]
-    public class PreInstantiateHook {
+    public static class PrefabFixHook {
+
 #if VRC_NEW_PUBLIC_SDK
-        static PreInstantiateHook() {
+        [InitializeOnLoadMethod]
+        static void Init() {
             VRCSdkControlPanel.OnSdkPanelEnable += (sender, e) => {
                 if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder)) {
                     builder.OnSdkBuildStart += (sender2, target) => {
@@ -28,7 +30,8 @@ namespace VF.VrcHooks {
             };
         }
 #else
-        static PreInstantiateHook() {
+        [InitializeOnLoadMethod]
+        static void Init() {
             try {
                 PatchPreuploadMethod("RunExportAndTestAvatarBlueprint");
                 PatchPreuploadMethod("RunExportAndUploadAvatarBlueprint");
@@ -57,8 +60,21 @@ namespace VF.VrcHooks {
             }
         }
 #endif
+
         private static void PreInstantiate(GameObject obj) {
             VRCFPrefabFixer.Fix(new VFGameObject[] { obj });
+        }
+        
+        [InitializeOnLoadMethod]
+        static void InitPlayMode() {
+            EditorApplication.playModeStateChanged += state => {
+                if (state == PlayModeStateChange.ExitingEditMode) {
+                    if (PlayModeMenuItem.Get()) {
+                        var rootObjects = VFGameObject.GetRoots();
+                        VRCFPrefabFixer.Fix(rootObjects);
+                    }
+                }
+            };
         }
     }
 }

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using VF.Api;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
@@ -25,11 +24,14 @@ public class VRCFuryBuilder {
 
     internal enum Status {
         Success,
-        Failed,
-        FailedNdmf
+        Failed
     }
 
-    internal Status SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+    internal Status SafeRun(
+        VFGameObject avatarObject,
+        VFGameObject originalObject = null,
+        bool keepDebugInfo = false
+    ) {
         /*
          * We call SaveAssets here for two reasons:
          * 1. If the build crashes unity for some reason, the user won't lose changes
@@ -38,19 +40,6 @@ public class VRCFuryBuilder {
          *   followed by "Unable to import newly created asset..."
          */
         AssetDatabase.SaveAssets();
-        
-        try {
-            NdmfFirstMenuItem.Run(avatarObject);
-        } catch (Exception e) {
-            var message = VRCFExceptionUtils.GetGoodCause(e).Message.Trim();
-            EditorUtility.DisplayDialog(
-                "NDMF First",
-                "NDMF failed with an exception: " + message,
-                "Ok"
-            );
-            Debug.LogException(e);
-            return Status.FailedNdmf;
-        }
 
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
@@ -65,6 +54,10 @@ public class VRCFuryBuilder {
             });
         });
 
+        // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
+        StripAllVrcfComponents(avatarObject, keepDebugInfo);
+
+        // Make sure all new assets we've created have actually been saved to disk
         AssetDatabase.SaveAssets();
 
         return result ? Status.Success : Status.Failed;
