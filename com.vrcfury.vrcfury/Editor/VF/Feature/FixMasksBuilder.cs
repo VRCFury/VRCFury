@@ -48,7 +48,7 @@ namespace VF.Feature {
                     .Select(GetPropType)
                     .ToImmutableHashSet();
 
-                if (!propTypes.Contains(PropType.Fx)) continue;
+                if (!propTypes.Contains(PropType.Fx) && !propTypes.Contains(PropType.Aap)) continue;
 
                 var copyLayer = new AnimatorControllerLayer {
                     name = layer.name,
