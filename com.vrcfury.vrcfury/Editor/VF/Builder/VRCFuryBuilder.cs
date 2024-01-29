@@ -30,6 +30,15 @@ public class VRCFuryBuilder {
     }
 
     internal Status SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
+        /*
+         * We call SaveAssets here for two reasons:
+         * 1. If the build crashes unity for some reason, the user won't lose changes
+         * 2. If we don't call this here, the first time we call AssetDatabase.CreateAsset can randomly
+         *   fail with "Global asset import parameters have been changed during the import. Importing is restarted."
+         *   followed by "Unable to import newly created asset..."
+         */
+        AssetDatabase.SaveAssets();
+        
         try {
             NdmfFirstMenuItem.Run(avatarObject);
         } catch (Exception e) {
