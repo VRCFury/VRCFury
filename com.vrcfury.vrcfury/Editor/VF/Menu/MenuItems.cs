@@ -34,7 +34,7 @@ namespace VF.Menu {
         public const string reserialize = prefix + "Utilites/Reserialize All VRCFury Assets";
         public const int reserializePriority = 1315;
         
-        public const string playMode = prefix + "Settings/Build during play mode";
+        public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;
         public const string ndmfFirst = prefix + "Settings/Force NDMF to run before VRCF";
         public const int ndmfFirstPriority = 1322;

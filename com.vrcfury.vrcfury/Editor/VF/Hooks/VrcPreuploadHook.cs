@@ -3,18 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Menu;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
-namespace VF.VrcHooks {
-    internal class PreuploadHook : IVRCSDKPreprocessAvatarCallback {
+namespace VF.Hooks {
+    internal class VrcPreuploadHook : IVRCSDKPreprocessAvatarCallback {
         // This has to be before -1024 when VRCSDK deletes our components
         public int callbackOrder => -10000;
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
+            if (Application.isPlaying && !PlayModeMenuItem.Get()) return true;
+            
             VFGameObject vrcCloneObject = _vrcCloneObject;
 
             if (!VRCFuryBuilder.ShouldRun(vrcCloneObject)) {
@@ -41,39 +44,11 @@ namespace VF.VrcHooks {
                     }
                 }
             }
-            
-            if (EditorApplication.isPlaying) {
-                vrcCloneObject?.Destroy();
-                original?.Destroy();
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "Something asked VRCFury to build while play mode is still initializing. This is an av3emu bug and would cause unity to crash.\n\n" +
-                    "Consider using Gesture Manager instead, or uncheck 'Run Preprocess Avatar Hook' on the Av3 Emulator Control object.\n\n" +
-                    "The avatar object has been removed from play mode to avoid crashing.",
-                    "Ok"
-                );
-                return false;
-            }
 
             var builder = new VRCFuryBuilder();
-            var vrcFuryStatus = builder.SafeRun(vrcCloneObject, original);
-            if (vrcFuryStatus != VRCFuryBuilder.Status.Success) return false;
+            var vrcFuryStatus = builder.SafeRun(vrcCloneObject, original, keepDebugInfo: Application.isPlaying);
 
-            // Make absolutely positively certain that we've removed every non-standard component from the avatar
-            // before it gets uploaded
-            VRCFuryBuilder.StripAllVrcfComponents(vrcCloneObject);
-
-            return true;
-        }
-    }
-
-    internal class NdmfCleanupHook : IVRCSDKPreprocessAvatarCallback {
-        // At the same time that the VRCSDK removes Editor Only components
-        public int callbackOrder => -1024;
-
-        public bool OnPreprocessAvatar(GameObject avatarGameObject) {
-            NdmfFirstMenuItem.Cleanup(avatarGameObject);
-            return true;
+            return vrcFuryStatus == VRCFuryBuilder.Status.Success;
         }
     }
 }

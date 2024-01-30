@@ -40,6 +40,9 @@ namespace VF.Inspector {
             }
         }
 
+        private static bool ndmfPresent =
+            ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;
+
         public static string GetOutputString() {
             var output = "";
             
@@ -56,7 +59,7 @@ namespace VF.Inspector {
                 output += "H";
             }
 
-            if (!NdmfFirstMenuItem.Get()) {
+            if (ndmfPresent) {
                 output += "N";
             }
 
