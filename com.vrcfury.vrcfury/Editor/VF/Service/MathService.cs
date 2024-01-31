@@ -244,6 +244,7 @@ namespace VF.Service {
         public Motion MakeCopier(VFAFloatOrConst from, VFAFloat to) {
             if (from.param != null) {
                 var direct = MakeDirect($"{CleanName(to)} = {CleanName(from)}");
+                direct.Add(avatarManager.GetFx().One(), MakeSetter(to, 0));
                 direct.Add(from.param, MakeSetter(to, 1));
                 return direct;
             } else {
