@@ -80,9 +80,6 @@ namespace VF.Feature {
                     var renderers = bakeInfo.renderers;
                     var worldRadius = bakeInfo.worldRadius;
                     var worldLength = bakeInfo.worldLength;
-                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(r.transform);
-                    }
 
                     var name = plug.name;
                     if (string.IsNullOrWhiteSpace(name)) {
@@ -240,6 +237,10 @@ namespace VF.Feature {
                             worldLength,
                             plug.useHipAvoidance
                         );
+                    }
+                    
+                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                        _forceStateInAnimatorService.DisableDuringLoad(r.transform);
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);

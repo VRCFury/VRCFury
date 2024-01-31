@@ -134,10 +134,6 @@ namespace VF.Feature {
                         hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
                     }
 
-                    foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
-                    }
-
                     // This needs to be created before we make the menu item, because it turns this off.
                     var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
 
@@ -275,6 +271,10 @@ namespace VF.Feature {
                             var plugWidthGlobal = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
                             directTree.Add(math.MakeCopier(plugWidthValid, plugWidthGlobal));
                         }
+                    }
+                    
+                    foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                        _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);
