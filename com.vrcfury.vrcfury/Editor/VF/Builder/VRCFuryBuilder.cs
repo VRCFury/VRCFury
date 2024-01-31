@@ -66,7 +66,7 @@ public class VRCFuryBuilder {
     internal static bool ShouldRun(VFGameObject avatarObject) {
         return avatarObject
             .GetComponentsInSelfAndChildren<VRCFuryComponent>()
-            .Where(c => !(c is VRCFuryDebugInfo))
+            .Where(c => !(c is VRCFuryDebugInfo || c is VRCFuryTest))
             .Any();
     }
 

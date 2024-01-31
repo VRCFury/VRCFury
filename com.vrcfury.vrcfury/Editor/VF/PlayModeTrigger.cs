@@ -124,7 +124,7 @@ namespace VF {
             }
         }
 
-        private static bool IsAv3EmulatorClone(VFGameObject obj) {
+        public static bool IsAv3EmulatorClone(VFGameObject obj) {
             return obj.name.Contains("(ShadowClone)")
                    || obj.name.Contains("(MirrorReflection)");
         }
