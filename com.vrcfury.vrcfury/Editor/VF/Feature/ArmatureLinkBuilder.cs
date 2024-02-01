@@ -196,7 +196,7 @@ namespace VF.Feature {
                     }
 
                     skin.bones = skin.bones
-                        .Select(b => (Transform)(b == fromBone ? toBone : b))
+                        .Select(b => b == fromBone ? toBone.transform : b)
                         .ToArray();
                     VRCFuryEditorUtils.MarkDirty(skin);
                 }
