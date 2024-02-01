@@ -86,12 +86,12 @@ namespace VF.Feature {
             var exclusiveTriggers = new List<Tuple<VFABool, VFState>>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                 try {
-                    VFGameObject obj = socket.gameObject;
+                    VFGameObject obj = socket.owner();
                     PhysboneUtils.RemoveFromPhysbones(socket.transform);
-                    fakeHead.MarkEligible(socket.gameObject);
+                    fakeHead.MarkEligible(socket.owner());
                     if (HapticUtils.IsChildOfHead(socket.owner())) {
                         var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
-                        mover.Move(socket.gameObject, head);
+                        mover.Move(socket.owner(), head);
                     }
                     
                     var name = VRCFuryHapticSocketEditor.GetName(socket);
@@ -135,7 +135,7 @@ namespace VF.Feature {
                     }
 
                     // This needs to be created before we make the menu item, because it turns this off.
-                    var animRoot = GameObjects.Create("Animations", bakeRoot.transform);
+                    var animRoot = GameObjects.Create("Animations", bakeRoot);
 
                     if (socket.addMenuItem) {
                         obj.active = true;
@@ -274,7 +274,7 @@ namespace VF.Feature {
                     }
                     
                     foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(receiver.transform);
+                        _forceStateInAnimatorService.DisableDuringLoad(receiver.owner());
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);

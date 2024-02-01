@@ -492,7 +492,7 @@ namespace VF.Feature {
                             .SelectMany(clip => clip.GetAllBindings())
                             .Select(binding => RewritePath(binding.path))
                             .Where(path => path != null)
-                            .Where(path => baseObject.transform.Find(path) == null));
+                            .Where(path => baseObject.Find(path) == null));
                     }
                 }
 

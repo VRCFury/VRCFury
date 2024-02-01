@@ -300,7 +300,7 @@ namespace VF.Inspector {
             void Open() {
                 var componentInBasePrefab = PrefabUtility.GetCorrespondingObjectFromOriginalSource(component);
                 var prefabPath = AssetDatabase.GetAssetPath(componentInBasePrefab);
-                UnityCompatUtils.OpenPrefab(prefabPath, component.gameObject);
+                UnityCompatUtils.OpenPrefab(prefabPath, component.owner());
             }
 
             var label = new Button()

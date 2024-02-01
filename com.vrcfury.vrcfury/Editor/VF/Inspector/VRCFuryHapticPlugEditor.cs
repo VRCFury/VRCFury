@@ -316,7 +316,6 @@ namespace VF.Inspector {
             bool deferMaterialConfig = false
         ) {
             var transform = plug.transform;
-            HapticUtils.RemoveTPSSenders(transform);
             if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.sendersOnly)) {
                 return null;
             }

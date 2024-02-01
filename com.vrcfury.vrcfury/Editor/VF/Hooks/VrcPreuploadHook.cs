@@ -38,8 +38,8 @@ namespace VF.Hooks {
             VFGameObject original = null;
             {
                 foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
-                    if (desc.owner().name + "(Clone)" == cloneObjectName && desc.gameObject.activeInHierarchy) {
-                        original = desc.gameObject;
+                    if (desc.owner().name + "(Clone)" == cloneObjectName && desc.owner().activeInHierarchy) {
+                        original = desc.owner();
                         break;
                     }
                 }

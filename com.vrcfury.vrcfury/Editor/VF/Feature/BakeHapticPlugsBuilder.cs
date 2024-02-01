@@ -240,7 +240,7 @@ namespace VF.Feature {
                     }
                     
                     foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(r.transform);
+                        _forceStateInAnimatorService.DisableDuringLoad(r.owner());
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
@@ -336,7 +336,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.DpsTipScaleFix)]
         public void ApplyDpsTipScale() {
             foreach (var light in dpsTipToDo)
-                scaleCompensationService.AddScaledProp(light.gameObject,
+                scaleCompensationService.AddScaledProp(light.owner(),
                     new[] { (light.owner(), typeof(Light), "m_Intensity", light.intensity) });
         }
     }

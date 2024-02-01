@@ -633,7 +633,7 @@ public static class VRCFuryEditorUtils {
         if (obj is GameObject go) {
             MarkSceneDirty(go.scene);
         } else if (obj is UnityEngine.Component c) {
-            MarkSceneDirty(c.gameObject.scene);
+            MarkSceneDirty(c.owner().scene);
         }
     }
 

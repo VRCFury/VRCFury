@@ -92,7 +92,7 @@ namespace VF.Service {
                         // leniency around it.
                         var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
                         var binding = EditorCurveBinding.FloatCurve(
-                            clipBuilder.GetPath(renderer.gameObject),
+                            clipBuilder.GetPath(renderer.owner()),
                             renderer.GetType(),
                             "material._FlipbookCurrentFrame"
                         );
@@ -103,7 +103,7 @@ namespace VF.Service {
                         var renderer = shaderInventoryAction.renderer;
                         if (renderer == null) break;
                         var binding = EditorCurveBinding.FloatCurve(
-                            clipBuilder.GetPath(renderer.gameObject),
+                            clipBuilder.GetPath(renderer.owner()),
                             renderer.GetType(),
                             $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
                         );
@@ -122,7 +122,7 @@ namespace VF.Service {
                             if (poiyomiUVTileAction.renamedMaterial != "")
                                 propertyName += $"_{poiyomiUVTileAction.renamedMaterial}";
                             var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(renderer.gameObject),
+                                clipBuilder.GetPath(renderer.owner()),
                                 renderer.GetType(),
                                 $"material.{propertyName}"
                             );
@@ -142,7 +142,7 @@ namespace VF.Service {
                         foreach (var renderer in renderers) {
                             void AddOne(string suffix, float value) {
                                 var binding = EditorCurveBinding.FloatCurve(
-                                    clipBuilder.GetPath(renderer.gameObject),
+                                    clipBuilder.GetPath(renderer.owner()),
                                     renderer.GetType(),
                                     $"material.{materialPropertyAction.propertyName}{suffix}"
                                 );
@@ -198,7 +198,7 @@ namespace VF.Service {
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
                             var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(skin.gameObject),
+                                clipBuilder.GetPath(skin.owner()),
                                 typeof(SkinnedMeshRenderer),
                                 "blendShape." + blendShape.blendShape
                             );
@@ -225,7 +225,7 @@ namespace VF.Service {
                         if (mat == null) break;
                         
                         var binding = EditorCurveBinding.PPtrCurve(
-                            clipBuilder.GetPath(renderer.gameObject),
+                            clipBuilder.GetPath(renderer.owner()),
                             renderer.GetType(),
                             "m_Materials.Array.data[" + matAction.materialIndex + "]"
                         );
@@ -278,7 +278,7 @@ namespace VF.Service {
                     }
                     case ResetPhysboneAction resetPhysbone: {
                         if (resetPhysbone.physBone != null) {
-                            physbonesToReset.Add(resetPhysbone.physBone.gameObject);
+                            physbonesToReset.Add(resetPhysbone.physBone.owner());
                         }
                         break;
                     }

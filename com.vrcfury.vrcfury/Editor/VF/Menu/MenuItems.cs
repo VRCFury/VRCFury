@@ -102,7 +102,7 @@ namespace VF.Menu {
         [MenuItem(listComponents, priority = listComponentsPriority)]
         private static void ListChildComponents() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                VFGameObject obj = Selection.activeGameObject;
+                var obj = Selection.activeGameObject.asVf();
                 if (obj == null) return;
                 var list = new List<string>();
                 foreach (var c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {

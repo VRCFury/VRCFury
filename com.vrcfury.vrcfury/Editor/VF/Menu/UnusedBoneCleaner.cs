@@ -18,7 +18,7 @@ namespace VF.Menu {
             return MenuUtils.GetSelectedAvatar() != null;
         }
         
-        private static void Run(GameObject avatarObj) {
+        private static void Run(VFGameObject avatarObj) {
             var effects = Clean(avatarObj, false);
             if (effects.Count == 0) {
                 EditorUtility.DisplayDialog(
@@ -40,7 +40,7 @@ namespace VF.Menu {
         }
         
         private static List<string> Clean(VFGameObject avatarObj, bool perform = false) {
-            var usedBones = new HashSet<Transform>();
+            var usedBones = new HashSet<VFGameObject>();
             foreach (var s in avatarObj.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 foreach (var bone in s.bones) {
                     if (bone) usedBones.Add(bone);
@@ -66,9 +66,9 @@ namespace VF.Menu {
                     }
                     if (!name.Contains(parentName)) return false;
                     if (name == parentName + "_end") return false;
-                    if (obj.transform.childCount > 0) return false;
+                    if (obj.childCount > 0) return false;
                     if (obj.GetComponents<UnityEngine.Component>().Length > 1) return false;
-                    if (usedBones.Contains(obj.transform)) return false;
+                    if (usedBones.Contains(obj)) return false;
                     return true;
                 }
             );

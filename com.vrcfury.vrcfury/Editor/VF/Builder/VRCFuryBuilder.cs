@@ -79,7 +79,7 @@ public class VRCFuryBuilder {
         }
     }
 
-    private void Run(GameObject avatarObject, GameObject originalObject) {
+    private void Run(VFGameObject avatarObject, VFGameObject originalObject) {
         if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
