@@ -6,7 +6,9 @@ using UnityEngine;
 namespace VF.Builder {
     public static class VFGameObjectExtensions {
         public static VFGameObject owner(this UnityEngine.Component component) {
-            return component.gameObject;
+            // Some components (ahem VrcFury) override gameObject for some cases
+            dynamic d = component;
+            return d.gameObject;
         }
         public static VFGameObject asVf(this GameObject gameObject) {
             return gameObject;
