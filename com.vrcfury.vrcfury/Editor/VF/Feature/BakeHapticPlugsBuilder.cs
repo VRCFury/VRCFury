@@ -57,7 +57,7 @@ namespace VF.Feature {
                     if (bakeInfo == null) continue;
                     bakeResults[plug] = bakeInfo;
 
-                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner(), applyOffClip: false);
                     restingState.ApplyClipToRestingState(postBakeClip);
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
