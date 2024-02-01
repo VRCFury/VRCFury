@@ -253,8 +253,7 @@ namespace VF.Feature {
                             // We have to delay the validWhen by 1 frame, because Add takes a frame
                             var validWhenBuffered = math.Buffer(validWhen, $"{name}/LengthSensor/IsValid");
                             var plugLengthValid = math.SetValueWithConditions($"{name}/LengthSensor/Stable", (plugLength, validWhenBuffered));
-                            var plugLengthGlobal = fx.NewFloat(socket.plugLengthParameterName, usePrefix: false);
-                            directTree.Add(math.MakeCopier(plugLengthValid, plugLengthGlobal));
+                            math.Buffer(plugLengthValid, socket.plugLengthParameterName, usePrefix: false);
                         }
                         if (socket.IsValidPlugWidth) {
                             var penWidth = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/WidthSensor/WidthContact", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
@@ -268,8 +267,7 @@ namespace VF.Feature {
                             // We have to delay the validWhen by 1 frame, because Add takes a frame
                             var validWhenBuffered = math.Buffer(validWhen, $"{name}/WidthSensor/IsValid");
                             var plugWidthValid = math.SetValueWithConditions($"{name}/WidthSensor/Stable", (plugWidth, validWhenBuffered));
-                            var plugWidthGlobal = fx.NewFloat(socket.plugWidthParameterName, usePrefix: false);
-                            directTree.Add(math.MakeCopier(plugWidthValid, plugWidthGlobal));
+                            math.Buffer(plugWidthValid, socket.plugWidthParameterName, usePrefix: false);
                         }
                     }
                     
@@ -305,7 +303,7 @@ namespace VF.Feature {
                 }
                 stop.TransitionsTo(stopped).When(fx.Always());
 
-                var vsParam = fx.NewFloat("comparison");
+                var vsParam = math.MakeAap("comparison", animatedFromDefaultTree: false);
 
                 var states = new Dictionary<Tuple<int, int>, VFState>();
                 for (var i = 0; i < autoSockets.Count; i++) {
@@ -322,6 +320,7 @@ namespace VF.Feature {
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
                         var tree = math.MakeDirect($"{aName} vs {bName}");
+                        math.MakeAapSafe(tree, vsParam);
                         tree.Add(bDist, math.MakeSetter(vsParam, 1));
                         tree.Add(aDist, math.MakeSetter(vsParam, -1));
                         vs.WithAnimation(tree);
@@ -342,7 +341,7 @@ namespace VF.Feature {
                         var current = states[Tuple.Create(i, j)];
                         var otherActivate = states[Tuple.Create(j, -1)];
 
-                        current.TransitionsTo(otherActivate).When(vsParam.IsGreaterThan(0));
+                        current.TransitionsTo(otherActivate).When(vsParam.AsFloat().IsGreaterThan(0));
                         
                         var nextI = j + 1;
                         if (nextI == i) nextI++;
