@@ -135,9 +135,43 @@ namespace VF.Feature {
             if (!renderer) return;
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                 if (mat == null) return mat;
-                if (!mat.HasProperty(propName)) return mat;
-                mat = MutableManager.MakeMutable(mat);
-                mat.SetFloat(propName, val.GetFloat());
+
+                var type = mat.GetPropertyType(propName);
+                if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
+                    mat = MutableManager.MakeMutable(mat);
+                    mat.SetFloat(propName, val.GetFloat());
+                    return mat;
+                }
+
+                if (propName.Length < 2 || propName[propName.Length-2] != '.') return mat;
+
+                var bundleName = propName.Substring(0, propName.Length - 2);
+                var bundleSuffix = propName.Substring(propName.Length - 1);
+                var bundleType = mat.GetPropertyType(bundleName);
+                // This is /technically/ incorrect, since if a property is missing, the proper (matching unity)
+                // behaviour is that it should be set to 0. However, unit really tries to not allow you to be missing
+                // one component in your animator (by deleting them all at once), so it's probably not a big deal.
+                if (bundleType == ShaderUtil.ShaderPropertyType.Color) {
+                    mat = MutableManager.MakeMutable(mat);
+                    var color = mat.GetColor(bundleName);
+                    if (bundleSuffix == "r") color.r = val.GetFloat();
+                    if (bundleSuffix == "g") color.g = val.GetFloat();
+                    if (bundleSuffix == "b") color.b = val.GetFloat();
+                    if (bundleSuffix == "a") color.a = val.GetFloat();
+                    mat.SetColor(propName, color);
+                    return mat;
+                }
+                if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
+                    mat = MutableManager.MakeMutable(mat);
+                    var vector = mat.GetVector(bundleName);
+                    if (bundleSuffix == "x") vector.x = val.GetFloat();
+                    if (bundleSuffix == "y") vector.y = val.GetFloat();
+                    if (bundleSuffix == "z") vector.z = val.GetFloat();
+                    if (bundleSuffix == "w") vector.w = val.GetFloat();
+                    mat.SetVector(propName, vector);
+                    return mat;
+                }
+
                 return mat;
             }).ToArray();
             VRCFuryEditorUtils.MarkDirty(renderer);
