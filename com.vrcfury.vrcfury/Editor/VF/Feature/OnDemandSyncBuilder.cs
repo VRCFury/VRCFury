@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Injector;
@@ -12,10 +14,12 @@ namespace Editor.VF.Feature {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly SmoothingService smoothingService;
         
         [FeatureBuilderAction()]
         public void Apply() {
             var fx = GetFx();
+            var layers = fx.GetRaw().GetLayers();
             foreach (var param in model.parameters) {
                 manager.GetParams().GetParam(param).networkSynced = false;
             }
@@ -50,6 +54,7 @@ namespace Editor.VF.Feature {
             
             var rxLayer = fx.NewLayer("Receive");
             var rxIdle = rxLayer.NewState("Idle");
+            var smoothedDict = new Dictionary<string, string>();
             for (int i = 0; i < model.parameters.Count; i++) {
                 var dst = new VFAFloat(fx.GetRaw().GetParam(model.parameters[i]));
                 var rxState = rxLayer.NewState($"Receive {model.parameters[i]}");
@@ -58,6 +63,15 @@ namespace Editor.VF.Feature {
                     .When(fx.Always());
                 rxIdle.TransitionsTo(rxState)
                     .When(pointer.IsEqualTo(i).And(fx.IsLocal().IsFalse()));
+                
+                var dstSmoothed = smoothingService.Smooth($"{dst.Name()}/Smoothed", dst, 0.1f, false);
+                smoothedDict[dst.Name()] = dstSmoothed.Name();
+                fx.GetRaw().RewriteParameters(name => {
+                    if (smoothedDict.TryGetValue(name, out var smoothed)) {
+                        return smoothed;
+                    }
+                    return name;
+                }, false, layers.Select(l => l.stateMachine).ToArray());
             }
         }
         
