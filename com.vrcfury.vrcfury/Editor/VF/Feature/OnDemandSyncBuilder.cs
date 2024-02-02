@@ -26,9 +26,11 @@ namespace Editor.VF.Feature {
             var pointer = fx.NewInt("SyncPointer", synced: true);
             var localPointer = fx.NewInt("LocalPointer"); // Use a local only pointer to avoid race condition
             var data = fx.NewFloat("SyncData", synced: true);
-            
+            var sending = fx.NewFloat("IsSending");
+
             var txLayer = fx.NewLayer("Send");
             var txIdle = txLayer.NewState("Idle");
+            txIdle.Drives(sending, 0, true);
             var txAdder = txLayer.NewState("Adder");
             var txResetter = txLayer.NewState("Reset");
             txResetter.Drives(localPointer, 0, local: true)
@@ -39,17 +41,39 @@ namespace Editor.VF.Feature {
             txAdder.DrivesDelta(localPointer, 1)
                 .TransitionsToExit()
                 .When(fx.Always());
+            
+            for (int i = 0; i < model.parameters.Count; i++) {
+                var src = new VFAFloat(fx.GetRaw().GetParam(model.parameters[i]));
+                var lastSrc = fx.NewFloat($"last{src.Name()}");
+                directTree.Add(math.MakeCopier(src, lastSrc)); 
+                var srcDiff = math.Subtract(src, lastSrc);
+                var maintain = math.MakeMaintainer(srcDiff); // Maintain while in send animation
+                directTree.Add(sending, maintain);
+                
+                var sendInstantState = txLayer.NewState($"Send Instant {model.parameters[i]}");
+                sendInstantState
+                    .DrivesCopy(data, src)
+                    .Drives(pointer, i)
+                    .Drives(sending, 1, true)
+                    .TransitionsToExit()
+                    .WithTransitionExitTime(0.1f)
+                    .When(fx.Always());
+                txIdle.TransitionsTo(sendInstantState)
+                    .When(fx.IsLocal().IsTrue().And(srcDiff.IsGreaterThan(0).Or(srcDiff.IsLessThan(0))));
+            }
+
             for (int i = 0; i < model.parameters.Count; i++) {
                 var src = new VFAFloat(fx.GetRaw().GetParam(model.parameters[i]));
                 var sendState = txLayer.NewState($"Send {model.parameters[i]}");
                 sendState
                     .DrivesCopy(data, src)
                     .DrivesCopy(pointer, localPointer)
+                    .Drives(sending, 1, true)
                     .TransitionsTo(txAdder)
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
                 txIdle.TransitionsTo(sendState)
-                    .When(pointer.IsEqualTo(i).And(fx.IsLocal().IsTrue()));
+                    .When(fx.IsLocal().IsTrue().And(localPointer.IsEqualTo(i)));
             }
             
             var rxLayer = fx.NewLayer("Receive");
