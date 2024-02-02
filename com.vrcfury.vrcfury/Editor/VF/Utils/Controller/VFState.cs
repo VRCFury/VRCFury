@@ -100,8 +100,8 @@ namespace VF.Utils.Controller {
             p.value = delta;
             return this;
         }
-        public VFState DrivesCopy(VFAInteger param, VFAInteger source) {
-            var driver = GetDriver(true);
+        public VFState DrivesCopy(VFAParam param, VFAParam source, bool local = true) {
+            var driver = GetDriver(local);
             var p = new VRC_AvatarParameterDriver.Parameter();
             p.name = param.Name();
             var sourceField = p.GetType().GetField("source");
