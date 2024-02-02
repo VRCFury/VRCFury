@@ -58,7 +58,7 @@ namespace VF.Feature {
                     defaultWeight = layer.weight
                 };
                 newFxLayers.Add(copyLayer);
-                if (propTypes.Contains(PropType.Muscle)) {
+                if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
                     // Remove fx bindings from the gesture copy
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
                         clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
