@@ -20,6 +20,7 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
+    [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateBuilder restingState;
 
@@ -253,7 +254,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (savedRestingClip == null) {
-            savedRestingClip = restingClip;
+            var copy = new AnimationClip();
+            copy.CopyFrom(restingClip);
+            savedRestingClip = copy;
+            mover.AddAdditionalManagedClip(savedRestingClip);
         }
     }
 
