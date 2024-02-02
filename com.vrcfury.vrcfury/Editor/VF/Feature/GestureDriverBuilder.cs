@@ -125,7 +125,7 @@ namespace VF.Feature {
             var fx = GetFx();
             var layer = fx.NewLayer($"{input.Name()} Target");
 
-            var target = fx.NewFloat($"{input.Name()}/Target", def: input.GetDefault());
+            var target = math.MakeAap($"{input.Name()}/Target", def: input.GetDefault(), animatedFromDefaultTree: false);
 
             var off = layer.NewState("Off").WithAnimation(math.MakeSetter(target, 0));
             var on = layer.NewState("On").WithAnimation(math.MakeCopier(input, target));
