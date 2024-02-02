@@ -36,6 +36,10 @@ namespace VF.Builder {
             return Tuple.Create(gameObject).GetHashCode();
         }
 
+        public override string ToString() {
+            return GetPath();
+        }
+
         public Matrix4x4 worldToLocalMatrix => transform.worldToLocalMatrix;
         public Matrix4x4 localToWorldMatrix => transform.localToWorldMatrix;
 

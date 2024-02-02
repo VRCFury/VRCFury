@@ -319,6 +319,12 @@ namespace VF.Feature {
             return model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
         }
 
+        private enum ChestUpHack {
+            None,
+            ClothesHaveChestUp,
+            AvatarHasChestUp
+        }
+
         private class Links {
             // These are stacks, because it's convenient, and we want to iterate over them in reverse order anyways
             // because when operating on the vrc clone, we delete game objects as we process them, and we want to
@@ -326,6 +332,7 @@ namespace VF.Feature {
 
             public VFGameObject propMain;
             public VFGameObject avatarMain;
+            public ChestUpHack chestUpHack = ChestUpHack.None;
             
             // left=bone in prop | right=bone in avatar
             public readonly Stack<(VFGameObject, VFGameObject)> mergeBones
@@ -394,10 +401,18 @@ namespace VF.Feature {
                         searchName = searchName.Replace(removeBoneSuffix, "");
                     }
                     var childAvatarBone = checkAvatarBone.Find(searchName);
+
                     // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                     if (!childAvatarBone) {
-                        childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
+                        if (childPropBone.name.Contains("ChestUp")) {
+                            childAvatarBone = checkAvatarBone;
+                            links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
+                        } else {
+                            childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
+                            if (childAvatarBone) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
+                        }
                     }
+
                     if (childAvatarBone) {
                         var marshmallowChild = GetMarshmallowChild(childAvatarBone);
                         if (marshmallowChild != null) childAvatarBone = marshmallowChild;
@@ -516,9 +531,17 @@ namespace VF.Feature {
             
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Restrict automatic scaling factor to powers of 10:"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scalingFactorPowersOf10Only")));
+            
+            var chestUpWarning = VRCFuryEditorUtils.Warn(
+                "These clothes are designed for an avatar with a different ChestUp configuration. You may" +
+                " have downloaded the wrong version of the clothes for your avatar version, or the clothes may not be designed for your avatar." +
+                " Contact the clothing creator, and see if they have a proper version of the clothing for your rig.\n\n" +
+                "VRCFury will attempt to merge it anyways, but the chest area may not look correct.");
+            chestUpWarning.SetVisible(false);
+            container.Add(chestUpWarning);
 
-            container.Add(new VisualElement { style = { paddingTop = 10 } });
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                chestUpWarning.SetVisible(false);
                 if (avatarObject == null) {
                     return "Avatar descriptor is missing";
                 }
@@ -530,6 +553,10 @@ namespace VF.Feature {
                 var links = GetLinks();
                 if (links == null) {
                     return "No valid link target found";
+                }
+
+                if (links.chestUpHack != ChestUpHack.None) {
+                    chestUpWarning.SetVisible(true);
                 }
                 var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
                 var text = new List<string>();
