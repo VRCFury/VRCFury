@@ -8,7 +8,6 @@ using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -149,7 +148,7 @@ namespace VF.Feature {
                 }
 
                 // If the transform isn't used and contains no children, we can just throw it away
-                var keepReasons = GetUsageReasons(propBone);
+                var keepReasons = GetUsageReasons(propBone, avatarObject);
                 if (keepReasons.Count == 0) {
                     addedObject.Destroy();
                     continue;
@@ -225,8 +224,15 @@ namespace VF.Feature {
             return (avatarMainScale, propMainScale, scalingFactor);
         }
 
-        private HashSet<string> GetUsageReasons(VFGameObject obj) {
+        public static HashSet<string> GetUsageReasons(VFGameObject obj, VFGameObject avatarObject) {
             var reasons = new HashSet<string>();
+            
+            string GetPath(object o) {
+                if (o is UnityEngine.Component c) {
+                    return c.owner().GetPath(avatarObject);
+                }
+                return "";
+            }
 
             if (obj.childCount > 0) {
                 reasons.Add("Added children");
@@ -268,13 +274,6 @@ namespace VF.Feature {
             }
 
             return reasons;
-        }
-
-        private string GetPath(object o) {
-            if (o is UnityEngine.Component c) {
-                return c.owner().GetPath(avatarObject);
-            }
-            return "";
         }
 
         private ArmatureLink.ArmatureLinkMode GetLinkMode() {

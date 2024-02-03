@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Feature;
 
 namespace VF.Menu {
     public static class UnusedBoneCleaner {
@@ -19,6 +21,14 @@ namespace VF.Menu {
         }
         
         private static void Run(VFGameObject avatarObj) {
+            if (!EditorUtility.DisplayDialog(
+                    "Unused Bone Cleanup",
+                    "MAKE SURE YOU BACKED UP YOUR SELECTED OBJECT FIRST" +
+                    "\n\nContinue?",
+                    "Yes",
+                    "Cancel"
+                )) return;
+
             var effects = Clean(avatarObj, false);
             if (effects.Count == 0) {
                 EditorUtility.DisplayDialog(
@@ -40,35 +50,14 @@ namespace VF.Menu {
         }
         
         private static List<string> Clean(VFGameObject avatarObj, bool perform = false) {
-            var usedBones = new HashSet<VFGameObject>();
-            foreach (var s in avatarObj.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                foreach (var bone in s.bones) {
-                    if (bone) usedBones.Add(bone);
-                }
-                if (s.rootBone) usedBones.Add(s.rootBone);
-            }
-            foreach (var c in avatarObj.GetComponentsInSelfAndChildren<IConstraint>()) {
-                for (var i = 0; i < c.sourceCount; i++) {
-                    var t = c.GetSource(i).sourceTransform;
-                    if (t) usedBones.Add(t);
-                }
-            }
             return AvatarCleaner.Cleanup(
                 avatarObj,
                 perform: perform,
                 ShouldRemoveObj: obj => {
-                    var parent = obj.parent;
-                    if (!parent) return false;
-                    var name = obj.name;
-                    var parentName = parent.name;
-                    if (PrefabUtility.IsPartOfPrefabInstance(obj) && !PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
+                    if (PrefabUtility.IsPartOfPrefabInstance(obj) && !PrefabUtility.IsOutermostPrefabInstanceRoot(obj))
                         return false;
-                    }
-                    if (!name.Contains(parentName)) return false;
-                    if (name == parentName + "_end") return false;
-                    if (obj.childCount > 0) return false;
-                    if (obj.GetComponents<UnityEngine.Component>().Length > 1) return false;
-                    if (usedBones.Contains(obj)) return false;
+                    if (ArmatureLinkBuilder.GetUsageReasons(obj, obj.root).Any())
+                        return false;
                     return true;
                 }
             );
