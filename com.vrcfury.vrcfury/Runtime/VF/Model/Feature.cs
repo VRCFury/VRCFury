@@ -279,6 +279,7 @@ namespace VF.Model.Feature {
         public string globalParam;
         public bool holdButton;
         public bool invertRestLogic;
+        public bool onDemandSync = false;
 
         public override void CreateNewInstance(GameObject obj) {
         }

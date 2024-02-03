@@ -22,6 +22,7 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateBuilder restingState;
+    [VFAutowired] private readonly OnDemandSyncService onDemandSyncService;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
@@ -101,6 +102,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     param,
                     icon: model.enableIcon ? model.icon?.Get() : null
                 );
+            }
+            if (model.onDemandSync && synced) {
+                onDemandSyncService.SetParameterOnDemandSync(param);
             }
         } else if (model.useInt) {
             var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
@@ -332,6 +336,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
+        var onDemandSyncProp = prop.FindPropertyRelative("onDemandSync");
 
         var flex = new VisualElement().Row();
         content.Add(flex);
@@ -353,6 +358,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     invertRestLogicProp.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
+
+                if (sliderProp.boolValue) {
+                    advMenu.AddItem(new GUIContent("On Demand Sync"), onDemandSyncProp.boolValue, () => {
+                        onDemandSyncProp.boolValue = !onDemandSyncProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                }
 
                 advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
                     securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
@@ -521,6 +533,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var tags = new List<string>();
                 if (savedProp.boolValue)
                     tags.Add("Saved");
+                if (sliderProp.boolValue) {
+                    if (onDemandSyncProp.boolValue)
+                        tags.Add("On Demand Sync");
+                }
                 if (securityEnabledProp.boolValue)
                     tags.Add("Security");
                 if (!sliderProp.boolValue) {
@@ -555,7 +571,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             exclusiveOffStateProp,
             holdButtonProp,
             hasExitTimeProp,
-            sliderProp
+            sliderProp,
+            onDemandSyncProp
         ));
 
         var toggleOffWarning = VRCFuryEditorUtils.Error(
