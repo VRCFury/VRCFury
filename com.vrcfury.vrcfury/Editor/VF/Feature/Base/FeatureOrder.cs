@@ -34,6 +34,7 @@ namespace VF.Feature.Base {
         ApplyRestState2,
 
         Default,
+        OnDemandSync,
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
         // Needs to run after all possible toggles have been created and applied
