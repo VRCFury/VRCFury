@@ -81,7 +81,6 @@ namespace VF.Feature.Base {
         DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
-        Slot4Fix,
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         RemoveDefaultedAdditiveLayer,
         FixUnsetPlayableLayers,
