@@ -35,10 +35,14 @@ namespace Editor.VF.Feature {
         private IEnumerable<VFAFloat> GetAllRadialPuppetParameters() {
             var floatParams = new List<VFAFloat>();
             manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
-                    var animParam = GetFx().GetRaw().GetParam(control.GetSubParameter(0).name);
-                    if(animParam != null) floatParams.Add(new VFAFloat(animParam));
-                }
+                if (control.type != VRCExpressionsMenu.Control.ControlType.RadialPuppet)
+                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                var controlParam = control.GetSubParameter(0).name;
+                var vrcParam = manager.GetParams().GetParam(controlParam);
+                if (vrcParam is not { networkSynced: true })
+                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                var animParam = GetFx().GetRaw().GetParam(control.GetSubParameter(0).name);
+                if(animParam != null) floatParams.Add(new VFAFloat(animParam));
                 return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
             });
             return floatParams;
