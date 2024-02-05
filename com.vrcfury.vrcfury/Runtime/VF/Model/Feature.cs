@@ -106,6 +106,7 @@ namespace VF.Model.Feature {
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
         public List<SmoothParamEntry> smoothedPrms = new List<SmoothParamEntry>();
+        public List<string> onDemandSyncedPrms = new List<string>();
         public List<string> globalParams = new List<string>();
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
@@ -820,6 +821,7 @@ namespace VF.Model.Feature {
     public class OnDemandSync : NewFeatureModel {
         public List<string> parameters;
         public bool allRadialControls = false;
+        public bool includeVrcFuryFeatures = false;
     }
 
 }

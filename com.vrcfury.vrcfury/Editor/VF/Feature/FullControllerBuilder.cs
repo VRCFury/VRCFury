@@ -31,6 +31,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
+        [VFAutowired] private readonly OnDemandSyncService onDemandSyncService;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -87,6 +88,15 @@ namespace VF.Feature {
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
                 manager.GetMenu().MergeMenu(prefix, copy);
+            }
+
+            foreach (var prm in model.onDemandSyncedPrms) {
+                if (rewrittenParams.TryGetValue(prm, out var rewrittenPrm)) {
+                    var animPrm = GetFx().GetRaw().GetParam(rewrittenPrm);
+                    if(animPrm == null) continue;
+                    if(animPrm.type != AnimatorControllerParameterType.Float) continue;
+                    onDemandSyncService.SetParameterOnDemandSync(new VFAFloat(animPrm));
+                }
             }
 
             foreach (var receiver in GetBaseObject().GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
@@ -456,6 +466,8 @@ namespace VF.Feature {
             adv.Add(a);
             adv.Add(b);
             adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
+            adv.Add(VRCFuryEditorUtils.WrappedLabel("On demand sync float parameters"));
+            adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("onDemandSyncedPrms")));
             
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));

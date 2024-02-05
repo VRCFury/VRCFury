@@ -21,10 +21,10 @@ namespace VF.Service {
             onDemandSyncParameters.Add(parameter);
         }
 
-        [FeatureBuilderAction(FeatureOrder.OnDemandSync)]
+        [FeatureBuilderAction(FeatureOrder.OnDemandSyncBuild)]
         public void Apply() {
+            onDemandSyncParameters.RemoveAll(prm => manager.GetParams().GetParam(prm.Name()).networkSynced);
             if (onDemandSyncParameters.Count == 0) return;
-            
             var fx = manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
             var layers = fx.GetRaw().GetLayers();
             foreach (var param in onDemandSyncParameters) {

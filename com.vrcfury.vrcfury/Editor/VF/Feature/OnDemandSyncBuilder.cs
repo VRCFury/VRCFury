@@ -15,9 +15,19 @@ namespace Editor.VF.Feature {
     public class OnDemandSyncBuilder : FeatureBuilder<OnDemandSync> {
         [VFAutowired] private readonly OnDemandSyncService onDemandSyncService;
 
-        [FeatureBuilderAction]
-        public void Apply() {
-            if (model.allRadialControls) {
+        [FeatureBuilderAction(FeatureOrder.OnDemandSyncEarly)]
+        public void ApplyEarly() {
+            if (model.allRadialControls && !model.includeVrcFuryFeatures) {
+                foreach (var param in GetAllRadialPuppetParameters()) {
+                    onDemandSyncService.SetParameterOnDemandSync(param);
+                }
+            }
+           
+        }
+
+        [FeatureBuilderAction(FeatureOrder.OnDemandSyncLate)]
+        public void ApplyLate() {
+            if (model.allRadialControls && model.includeVrcFuryFeatures) {
                 foreach (var param in GetAllRadialPuppetParameters()) {
                     onDemandSyncService.SetParameterOnDemandSync(param);
                 }
@@ -65,8 +75,11 @@ namespace Editor.VF.Feature {
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will optimize float parameters on radial toggles into a single" +
                 " 16 bits pointer and data field combination to sync the parameters on change."));
-            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allRadialControls"), "All radial controls"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Float parameters"));
+            var allRadialControlsProp = prop.FindPropertyRelative("allRadialControls");
+            content.Add(VRCFuryEditorUtils.Prop(allRadialControlsProp, "Apply on all radial controls"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("includeVrcFuryFeatures"), "Include VRCFury Toggles & Full Controllers").PaddingLeft(15));
+            content.Add(new VisualElement { style = { paddingTop = 10}});
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Include synced float parameters:"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("parameters")));
             return content;
         }
