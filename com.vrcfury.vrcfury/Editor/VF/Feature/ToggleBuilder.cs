@@ -22,7 +22,8 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
-    [VFAutowired] private readonly RestingStateBuilder restingState;
+    [VFAutowired] private readonly RestingStateService restingState;
+    [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
@@ -309,7 +310,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (!savedRestingClip.IsStatic()) return;
 
-        restingState.ApplyClipToRestingState(savedRestingClip, true);
+        foreach (var b in savedRestingClip.GetFloatBindings())
+            writeDefaultsManager.RecordDefaultNow(b, true);
+        foreach (var b in savedRestingClip.GetObjectBindings())
+            writeDefaultsManager.RecordDefaultNow(b, false);
+        restingState.ApplyClipToRestingState(savedRestingClip);
     }
 
     public override string GetEditorTitle() {

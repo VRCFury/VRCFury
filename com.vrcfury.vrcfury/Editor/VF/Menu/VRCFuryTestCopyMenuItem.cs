@@ -29,7 +29,10 @@ namespace VF.Menu {
             }
             var clone = originalObject.Clone();
             clone.name = originalObject.name + "(Clone)";
-            VRCBuildPipelineCallbacks.OnPreprocessAvatar(clone);
+            if (!VRCBuildPipelineCallbacks.OnPreprocessAvatar(clone)) {
+                clone.Destroy();
+                return;
+            }
 
             clone.active = true;
             if (clone.scene != originalObject.scene) {

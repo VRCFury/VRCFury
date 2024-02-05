@@ -24,7 +24,7 @@ namespace VF.Feature {
     public class BakeHapticPlugsBuilder : FeatureBuilder {
         
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly RestingStateBuilder restingState;
+        [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
@@ -57,8 +57,8 @@ namespace VF.Feature {
                     if (bakeInfo == null) continue;
                     bakeResults[plug] = bakeInfo;
 
-                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner(), applyOffClip: false);
-                    restingState.ApplyClipToRestingState(postBakeClip);
+                    var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
+                    restingState.ApplyClipToRestingState(postBakeClip, owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject));
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }

@@ -1,24 +1,33 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Component;
+using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
-using VF.Service;
+using VF.Model;
+using VF.Model.StateAction;
 using VF.Utils;
+using Action = VF.Model.StateAction.Action;
 
-namespace VF.Feature {
+namespace VF.Service {
     /**
-     * This builder is in charge of changing the resting state of the avatar for all the other builders.
-     * If two builders make a conflicting decision, something is wrong (perhaps the user gave conflicting instructions?)
+     * This service is in charge of changing the resting state of the avatar for all the other builders.
+     * If two builders within a phase (FeatureOrder) make a conflicting decision,
+     * something is wrong (perhaps the user gave conflicting instructions?)
      */
-    public class RestingStateBuilder : FeatureBuilder {
+    [VFService]
+    public class RestingStateService {
 
+        [VFAutowired] private readonly GlobalsService globals;
+        private VFGameObject avatarObject => globals.avatarObject;
         [VFAutowired] private readonly ObjectMoveService mover;
-        [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
+        [VFAutowired] private readonly ActionClipService actionClipService;
         private readonly List<PendingClip> pendingClips = new List<PendingClip>();
 
         public class PendingClip {
@@ -26,51 +35,50 @@ namespace VF.Feature {
             public string owner;
         }
 
-        public void ApplyClipToRestingState(AnimationClip clip, bool recordDefaultStateFirst = false) {
-            if (recordDefaultStateFirst) {
-                foreach (var b in clip.GetFloatBindings())
-                    writeDefaultsManager.RecordDefaultNow(b, true);
-                foreach (var b in clip.GetObjectBindings())
-                    writeDefaultsManager.RecordDefaultNow(b, false);
-            }
-
+        public void ApplyClipToRestingState(AnimationClip clip, string owner = null) {
             var copy = new AnimationClip();
             copy.CopyFrom(clip);
-            pendingClips.Add(new PendingClip { clip = copy, owner = manager.GetCurrentlyExecutingFeatureName() });
+            pendingClips.Add(new PendingClip { clip = copy, owner = owner ?? globals.currentFeatureNameProvider() });
             mover.AddAdditionalManagedClip(copy);
         }
 
-        /**
-         * There are three phases that resting state can be applied from,
-         * (1) ForceObjectState, (2) Toggles and other things, (3) Toggle Rest Pose
-         * Conflicts are allowed between phases, but not within a phase.
-         */
-        [FeatureBuilderAction(FeatureOrder.ApplyRestState1)]
-        public void ApplyPendingClips() {
+        public void OnPhaseChanged() {
+            if (!pendingClips.Any()) return;
+
+            var debugLog = new List<string>();
+            
             foreach (var pending in pendingClips) {
                 pending.clip.SampleAnimation(avatarObject, 0);
                 foreach (var (binding,curve) in pending.clip.GetAllCurves()) {
-                    HandleMaterialSwaps(binding, curve);
-                    HandleMaterialProperties(binding, curve);
-                    StoreBinding(binding, curve.GetFirst(), pending.owner);
+                    var value = curve.GetFirst();
+                    debugLog.Add($"{binding.path} {binding.type.Name} {binding.propertyName} = {value}\n  via {pending.owner}");
+                    HandleMaterialSwaps(binding, value);
+                    HandleMaterialProperties(binding, value);
+                    StoreBinding(binding, value, pending.owner);
                 }
             }
             pendingClips.Clear();
             stored.Clear();
-        }
-        [FeatureBuilderAction(FeatureOrder.ApplyRestState2)]
-        public void ApplyPendingClips2() {
-            ApplyPendingClips();
-        }
-        [FeatureBuilderAction(FeatureOrder.ApplyRestState3)]
-        public void ApplyPendingClips3() {
-            ApplyPendingClips();
-        }
-        [FeatureBuilderAction(FeatureOrder.ApplyRestState4)]
-        public void ApplyPendingClips4() {
-            ApplyPendingClips();
+            
+            Debug.Log("Resting state report:\n" + string.Join("\n", debugLog));
         }
 
+        [FeatureBuilderAction(FeatureOrder.ApplyImplicitRestingStates)]
+        public void ApplyImplicitRestingStates() {
+            foreach (var component in globals.avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
+                var path = component.owner().GetPath(globals.avatarObject, true);
+                UnitySerializationUtils.Iterate(component, visit => {
+                    if (visit.field?.GetCustomAttribute<DoNotApplyRestingStateAttribute>() != null) {
+                        return UnitySerializationUtils.IterateResult.Skip;
+                    }
+                    if (visit.value is State action) {
+                        var built = actionClipService.LoadStateAdv("", action);
+                        ApplyClipToRestingState(built.implicitRestingClip, owner: $"{component.GetType().Name} on {path}");
+                    }
+                    return UnitySerializationUtils.IterateResult.Continue;
+                });
+            }
+        }
 
         public IEnumerable<AnimationClip> GetPendingClips() {
             return pendingClips.Select(pending => pending.clip);
@@ -101,8 +109,7 @@ namespace VF.Feature {
             };
         }
 
-        private void HandleMaterialSwaps(EditorCurveBinding binding, FloatOrObjectCurve curve) {
-            var val = curve.GetFirst();
+        private void HandleMaterialSwaps(EditorCurveBinding binding, FloatOrObject val) {
             if (val.IsFloat()) return;
             var newMat = val.GetObject() as Material;
             if (newMat == null) return;
@@ -123,8 +130,7 @@ namespace VF.Feature {
             VRCFuryEditorUtils.MarkDirty(renderer);
         }
 
-        private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObjectCurve curve) {
-            var val = curve.GetFirst();
+        private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObject val) {
             if (!val.IsFloat()) return;
             if (!binding.propertyName.StartsWith("material.")) return;
             var propName = binding.propertyName.Substring("material.".Length);

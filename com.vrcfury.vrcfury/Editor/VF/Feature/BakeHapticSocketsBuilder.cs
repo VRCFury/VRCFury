@@ -24,7 +24,7 @@ namespace VF.Feature {
     public class BakeHapticSocketsBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly RestingStateBuilder restingState;
+        [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly FakeHeadService fakeHead;
