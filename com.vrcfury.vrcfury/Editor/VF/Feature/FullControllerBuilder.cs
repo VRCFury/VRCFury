@@ -427,26 +427,16 @@ namespace VF.Feature {
                 "This feature will merge the given controller / menu / parameters into the avatar" +
                 " during the upload process."));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
 
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix"));
             content.Add(VRCFuryEditorUtils.WrappedLabel("(If prefix is left empty, menu will be merged into avatar's root menu)"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
 
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel(
-                "Parameters in this list will have their name kept as is, allowing you to interact with " +
-                "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
-                "parameters (such as gestures) are included by default. " +
-                "If you want to make all parameters global, you can use '*'. " +
-                "If you want to make all parameters global except for a few, you can mark specific parameters " +
-                "as not global by prefixing them with '!'."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
-            
             content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clips:"));
             content.Add(VRCFuryEditorUtils.WrappedLabel(
                 "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
@@ -458,15 +448,31 @@ namespace VF.Feature {
                 text = "Advanced Options",
                 value = false
             };
-
-            var (a, b) = VRCFuryEditorUtils.CreateTooltip(
-                "Smooth Parameters",
-                "All parameters listed here that are found in FX controllers listed above will have their " +
-                "values smoothed. The number represents how many seconds it should take to reach 90% of the target value.");
-            adv.Add(a);
-            adv.Add(b);
-            adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
             
+            {
+                var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                    "Global Parameters",
+                    "Parameters in this list will have their name kept as is, allowing you to interact with " +
+                    "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
+                    "parameters (such as gestures) are included by default. " +
+                    "If you want to make all parameters global, you can use '*'. " +
+                    "If you want to make all parameters global except for a few, you can mark specific parameters " +
+                    "as not global by prefixing them with '!'."
+                );
+                adv.Add(a);
+                adv.Add(b);
+            }
+
+            {
+                var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                    "Smooth Parameters",
+                    "All parameters listed here that are found in FX controllers listed above will have their " +
+                    "values smoothed. The number represents how many seconds it should take to reach 90% of the target value.");
+                adv.Add(a);
+                adv.Add(b);
+                adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
+            }
+
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
