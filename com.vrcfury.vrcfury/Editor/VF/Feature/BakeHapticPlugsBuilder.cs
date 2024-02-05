@@ -24,7 +24,7 @@ namespace VF.Feature {
     public class BakeHapticPlugsBuilder : FeatureBuilder {
         
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly RestingStateBuilder restingState;
+        [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
@@ -34,7 +34,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
 
-        private Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
+        private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
 
         /**
@@ -54,12 +54,13 @@ namespace VF.Feature {
                         usedRenderers,
                         deferMaterialConfig: true
                     );
+                    if (bakeInfo == null) continue;
                     bakeResults[plug] = bakeInfo;
 
                     var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                    restingState.ApplyClipToRestingState(postBakeClip);
+                    restingState.ApplyClipToRestingState(postBakeClip, owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject));
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
@@ -69,19 +70,16 @@ namespace VF.Feature {
             var fx = GetFx();
 
             AnimationClip tipLightOnClip = null;
+            AnimationClip spsPlusClip = null;
 
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
-                    var bakeInfo = bakeResults[plug];
-                    if (bakeInfo == null) continue;
+                    if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
 
                     var bakeRoot = bakeInfo.bakeRoot;
                     var renderers = bakeInfo.renderers;
                     var worldRadius = bakeInfo.worldRadius;
                     var worldLength = bakeInfo.worldLength;
-                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(r.transform);
-                    }
 
                     var name = plug.name;
                     if (string.IsNullOrWhiteSpace(name)) {
@@ -94,7 +92,7 @@ namespace VF.Feature {
                     name = uniqueHapticNamesService.GetUniqueName(name);
                     Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
                     
-                    if (HapticsToggleMenuItem.Get()) {
+                    if (HapticsToggleMenuItem.Get() && !plug.sendersOnly) {
                         // Haptic Receivers
                         var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
                         var haptics = GameObjects.Create("Haptics", bakeRoot);
@@ -138,6 +136,7 @@ namespace VF.Feature {
 
                     if (plug.enableSps) {
                         var plusRoot = GameObjects.Create("SpsPlus", bakeRoot);
+                        plusRoot.active = false;
                         plusRoot.worldScale = Vector3.one;
                         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
                             var p = plusRoot.AddComponent<ScaleConstraint>();
@@ -179,6 +178,19 @@ namespace VF.Feature {
 
                             SendParam("_SPS_Plus_Ring", HapticUtils.TagSpsSocketIsRing);
                             SendParam("_SPS_Plus_Hole", HapticUtils.TagSpsSocketIsHole);
+                        }
+                        
+                        if (spsPlusClip == null) {
+                            spsPlusClip = fx.NewClip("SpsPlus");
+                            directTree.Add(spsPlusClip);
+                        }
+
+                        clipBuilder.Enable(spsPlusClip, plusRoot);
+                        foreach (var r in renderers) {
+                            spsPlusClip.SetCurve(
+                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Plus_Enabled"),
+                                1
+                            );
                         }
                     }
 
@@ -226,8 +238,12 @@ namespace VF.Feature {
                             plug.useHipAvoidance
                         );
                     }
+                    
+                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                        _forceStateInAnimatorService.DisableDuringLoad(r.owner());
+                    }
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake Haptic Plug: {plug.owner().GetPath()}", e);
+                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
@@ -239,8 +255,8 @@ namespace VF.Feature {
             public Func<Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
         }
-        private List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
-        private List<Light> dpsTipToDo = new List<Light>();
+        private readonly List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
+        private readonly List<Light> dpsTipToDo = new List<Light>();
 
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
@@ -320,7 +336,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.DpsTipScaleFix)]
         public void ApplyDpsTipScale() {
             foreach (var light in dpsTipToDo)
-                scaleCompensationService.AddScaledProp(light.gameObject,
+                scaleCompensationService.AddScaledProp(light.owner(),
                     new[] { (light.owner(), typeof(Light), "m_Intensity", light.intensity) });
         }
     }

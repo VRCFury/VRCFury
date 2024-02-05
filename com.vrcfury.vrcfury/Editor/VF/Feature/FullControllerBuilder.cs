@@ -263,7 +263,7 @@ namespace VF.Feature {
 
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
-            ((AnimatorController)from).RewriteParameters(RewriteParamName);
+            from.RewriteParameters(RewriteParamName);
 
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                 var layer0 = from.GetLayer(0);
@@ -299,7 +299,7 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed.Name();
                 }
 
-                ((AnimatorController)toMain.GetRaw()).RewriteParameters(name => {
+                toMain.GetRaw().RewriteParameters(name => {
                     if (smoothedDict.TryGetValue(name, out var smoothed)) {
                         return smoothed;
                     }
@@ -375,7 +375,7 @@ namespace VF.Feature {
         public class SmoothParamDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
                 var row = new VisualElement().Row();
-                SerializedProperty nameProp = prop.FindPropertyRelative("name");
+                var nameProp = prop.FindPropertyRelative("name");
                 row.Add(VRCFuryEditorUtils.Prop(nameProp).FlexGrow(1));
                 row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration")).FlexBasis(50));
 
@@ -491,15 +491,10 @@ namespace VF.Feature {
 
                 var missingPaths = new HashSet<string>();
                 var usesWdOff = false;
-                var usesAdditive = false;
                 foreach (var c in model.controllers) {
                     var c1 = c.controller?.Get() as AnimatorController;
                     if (c1 == null) continue;
                     var controller = (VFController)c1;
-                    if (c.type == VRCAvatarDescriptor.AnimLayerType.Additive) usesAdditive = true;
-                    foreach (var layer in controller.GetLayers()) {
-                        if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) usesAdditive = true;
-                    }
                     foreach (var state in new AnimatorIterator.States().From(controller)) {
                         if (!state.writeDefaultValues) {
                             usesWdOff = true;
@@ -508,7 +503,7 @@ namespace VF.Feature {
                             .SelectMany(clip => clip.GetAllBindings())
                             .Select(binding => RewritePath(binding.path))
                             .Where(path => path != null)
-                            .Where(path => baseObject.transform.Find(path) == null));
+                            .Where(path => baseObject.Find(path) == null));
                     }
                 }
 
@@ -518,13 +513,6 @@ namespace VF.Feature {
                         " If you want this prop to be reusable, you should use WD on." +
                         " VRCFury will automatically convert the WD on or off to match the client's avatar," +
                         " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
-                    text.Add("");
-                }
-                if (usesAdditive) {
-                    text.Add(
-                        "This controller contains an Additive layer! Beware that this will likely TOTALLY DESTROY the animations" +
-                        " of any avatar using WD off, even animations unrelated to your prop. Avoid using Additive layers at all costs!"
-                    );
                     text.Add("");
                 }
                 if (missingPaths.Count > 0) {
@@ -548,7 +536,7 @@ namespace VF.Feature {
             return content;
         }
         
-        public static HashSet<string> VRChatGlobalParams = new HashSet<string> {
+        public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",
             "Voice",

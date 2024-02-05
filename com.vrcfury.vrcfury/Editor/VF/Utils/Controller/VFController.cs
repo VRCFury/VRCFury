@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Editor.VF.Utils;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature;
+using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
@@ -144,6 +146,7 @@ namespace VF.Utils.Controller {
             
             var output = new VFController(ac);
             output.FixNullStateMachines();
+            output.CheckForBadBehaviours();
             output.ReplaceSyncedLayers();
 
             // Apply override controllers
@@ -221,6 +224,32 @@ namespace VF.Utils.Controller {
             }
         }
 
+        private void CheckForBadBehaviours() {
+            foreach (var layer in GetLayers()) {
+                foreach (var stateMachine in AnimatorIterator.GetAllStateMachines(layer)) {
+                    try {
+                        var test = stateMachine.behaviours.Cast<object>().ToArray();
+                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
+                    } catch (Exception e) {
+                        throw new Exception(
+                            $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
+                            e);
+                    }
+                }
+
+                foreach (var state in new AnimatorIterator.States().From(layer)) {
+                    try {
+                        var test = state.behaviours.Cast<object>().ToArray();
+                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
+                    } catch (Exception e) {
+                        throw new Exception(
+                            $"{layer.debugName} State `{state.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
+                            e);
+                    }
+                }
+            }
+        }
+
         /**
          * Synced layers are... "very" broken in unity and in vrchat. In unity, if you delete a layer higher than the synced
          * layer, the synced layer is randomly deleted. In vrchat, synced layers don't really work properly at all.
@@ -247,17 +276,98 @@ namespace VF.Utils.Controller {
                 var copy = MutableManager.CopyRecursiveAdv(layers[layer.syncedLayerIndex].stateMachine);
                 layer.syncedLayerIndex = -1;
                 layer.stateMachine = copy.output;
-                foreach (var state in new AnimatorIterator.States().From(layer.stateMachine)) {
+                foreach (var state in new AnimatorIterator.States().From(new VFLayer(new VFController(ctrl), layer.stateMachine))) {
                     var originalState = (AnimatorState)copy.copyToOriginal[state];
                     state.motion = layer.GetOverrideMotion(originalState);
                     state.behaviours = layer.GetOverrideBehaviours(originalState);
                     layer.SetOverrideMotion(originalState, null);
-                    layer.SetOverrideBehaviours(originalState, new StateMachineBehaviour[0]);
+                    layer.SetOverrideBehaviours(originalState, Array.Empty<StateMachineBehaviour>());
                 }
 
                 return layer;
             }).ToArray();
 
+        }
+        
+        public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
+            string RewriteParamName(string str) {
+                if (string.IsNullOrEmpty(str)) return str;
+                return rewriteParamNameNullUnsafe(str);
+            }
+            var affectsLayers = GetLayers()
+                .Where(l => limitToLayers == null || limitToLayers.Contains(l.stateMachine))
+                .ToArray();
+            
+            // Params
+            if (includeWrites && limitToLayers == null) {
+                var prms = ctrl.parameters;
+                foreach (var p in prms) {
+                    p.name = RewriteParamName(p.name);
+                }
+
+                ctrl.parameters = prms;
+                VRCFuryEditorUtils.MarkDirty(ctrl);
+            }
+
+            // States
+            foreach (var state in new AnimatorIterator.States().From(affectsLayers)) {
+                if (state.speedParameterActive) {
+                    state.speedParameter = RewriteParamName(state.speedParameter);
+                }
+                if (state.cycleOffsetParameterActive) {
+                    state.cycleOffsetParameter = RewriteParamName(state.cycleOffsetParameter);
+                }
+                if (state.mirrorParameterActive) {
+                    state.mirrorParameter = RewriteParamName(state.mirrorParameter);
+                }
+                if (state.timeParameterActive) {
+                    state.timeParameter = RewriteParamName(state.timeParameter);
+                }
+                VRCFuryEditorUtils.MarkDirty(state);
+            }
+
+            // Parameter Drivers
+            if (includeWrites) {
+                foreach (var b in new AnimatorIterator.Behaviours().From(affectsLayers)) {
+                    if (b is VRCAvatarParameterDriver oldB) {
+                        foreach (var p in oldB.parameters) {
+                            p.name = RewriteParamName(p.name);
+                            var sourceField = p.GetType().GetField("source");
+                            if (sourceField != null) {
+                                sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
+                            }
+                        }
+                        VRCFuryEditorUtils.MarkDirty(b);
+                    }
+                }
+            }
+
+            // Parameter Animations
+            if (includeWrites) {
+                foreach (var clip in new AnimatorIterator.Clips().From(affectsLayers)) {
+                    clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
+                        if (binding.path != "") return binding;
+                        if (binding.type != typeof(Animator)) return binding;
+                        if (binding.IsMuscle()) return binding;
+                        binding.propertyName = RewriteParamName(binding.propertyName);
+                        return binding;
+                    }));
+                }
+            }
+
+            // Blend trees
+            foreach (var tree in new AnimatorIterator.Trees().From(affectsLayers)) {
+                tree.RewriteParameters(RewriteParamName);
+            }
+
+            // Transitions
+            foreach (var transition in new AnimatorIterator.Transitions().From(affectsLayers)) {
+                transition.RewriteConditions(cond => {
+                    cond.parameter = RewriteParamName(cond.parameter);
+                    return cond;
+                });
+                VRCFuryEditorUtils.MarkDirty(transition);
+            }
         }
     }
 }

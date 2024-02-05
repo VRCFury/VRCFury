@@ -1,9 +1,11 @@
 using System;
+using JetBrains.Annotations;
 
 namespace VF.Feature.Base {
     [AttributeUsage(AttributeTargets.Method)]
+    [MeansImplicitUse]
     public class FeatureBuilderActionAttribute : Attribute, IComparable<FeatureBuilderActionAttribute> {
-        private readonly int priority;
+        private readonly FeatureOrder priority;
         private readonly int priorityOffset;
 
         /**
@@ -14,13 +16,17 @@ namespace VF.Feature.Base {
          * a supported API.
          */
         public FeatureBuilderActionAttribute(FeatureOrder priority = FeatureOrder.Default, int priorityOffset = 0) {
-            this.priority = (int)priority;
+            this.priority = priority;
             this.priorityOffset = priorityOffset;
         }
 
         public int CompareTo(FeatureBuilderActionAttribute other) {
-            return (priority, priorityOffset).CompareTo(
-                (other.priority, other.priorityOffset));
+            return ((int)priority, priorityOffset).CompareTo(
+                ((int)other.priority, other.priorityOffset));
+        }
+
+        public FeatureOrder GetPriority() {
+            return priority;
         }
     }
 }

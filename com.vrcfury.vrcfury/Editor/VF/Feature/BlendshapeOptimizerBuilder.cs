@@ -120,8 +120,8 @@ namespace VF.Feature {
         }
 
         private class SavedBlendshape {
-            private string name;
-            private List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
+            private readonly string name;
+            private readonly List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
                 = new List<Tuple<float, Vector3[], Vector3[], Vector3[]>>();
             public SavedBlendshape(Mesh mesh, int id) {
                 name = mesh.GetBlendShapeName(id);
@@ -190,8 +190,8 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, VFController controller) {
-            var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
+        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(VFGameObject obj, VFController controller) {
+            var prefix = obj.GetPath(avatarObject);
 
             var clipsInController = new AnimatorIterator.Clips().From(controller);
 
@@ -210,10 +210,10 @@ namespace VF.Feature {
                 .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
                 .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
-                    .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
+                    .SelectMany(animator => GetBindings(animator.owner(), animator.runtimeAnimatorController as AnimatorController)))
                 .ToList();
 
-            var skinPath = clipBuilder.GetPath(skin.transform);
+            var skinPath = clipBuilder.GetPath(skin.owner());
 
             var blendshapeNames = skin.GetBlendshapeNames();
             

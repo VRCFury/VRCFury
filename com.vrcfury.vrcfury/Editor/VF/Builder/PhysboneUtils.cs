@@ -7,7 +7,7 @@ using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder {
-    public class PhysboneUtils {
+    public static class PhysboneUtils {
         public static void RemoveFromPhysbones(VFGameObject obj, bool force = false) {
             if (!force && ContainsBonesUsedExternally(obj)) {
                 return;
@@ -25,14 +25,16 @@ namespace VF.Builder {
 
         private static bool ContainsBonesUsedExternally(VFGameObject obj) {
             foreach (var s in obj.root.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                foreach (var bone in s.bones) {
+                foreach (var bone in s.bones.AsVf()) {
                     if (bone && bone.IsChildOf(obj)) return true;
                 }
-                if (s.rootBone && s.rootBone.IsChildOf(obj)) return true;
+
+                var rootBone = s.rootBone.asVf();
+                if (rootBone && rootBone.IsChildOf(obj)) return true;
             }
             foreach (var c in obj.root.GetComponentsInSelfAndChildren<IConstraint>()) {
                 for (var i = 0; i < c.sourceCount; i++) {
-                    var t = c.GetSource(i).sourceTransform;
+                    var t = c.GetSource(i).sourceTransform.asVf();
                     if (t && t.IsChildOf(obj)) return true;
                 }
             }

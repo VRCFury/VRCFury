@@ -10,7 +10,7 @@ using VF.Model;
 using VF.Model.Feature;
 
 namespace VF.Menu {
-    public class MenuItems {
+    public static class MenuItems {
         private const string prefix = "Tools/VRCFury/";
 
         public const string testCopy = prefix + "Build an Editor Test Copy";
@@ -34,7 +34,7 @@ namespace VF.Menu {
         public const string reserialize = prefix + "Utilites/Reserialize All VRCFury Assets";
         public const int reserializePriority = 1315;
         
-        public const string playMode = prefix + "Settings/Build during play mode";
+        public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;
         public const string ndmfFirst = prefix + "Settings/Force NDMF to run before VRCF";
         public const int ndmfFirstPriority = 1322;
@@ -46,13 +46,13 @@ namespace VF.Menu {
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                LegacyHapticsUpgrader.Run();
+                SpsUpgrader.Run();
             });
         }
 
         [MenuItem(upgradeLegacyHaptics, true)]
         private static bool Check() {
-            return LegacyHapticsUpgrader.Check();
+            return SpsUpgrader.Check();
         }
         
         [MenuItem("GameObject/VRCFury/Create SPS Socket", priority = 40)]
@@ -102,7 +102,7 @@ namespace VF.Menu {
         [MenuItem(listComponents, priority = listComponentsPriority)]
         private static void ListChildComponents() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                VFGameObject obj = Selection.activeGameObject;
+                var obj = Selection.activeGameObject.asVf();
                 if (obj == null) return;
                 var list = new List<string>();
                 foreach (var c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {

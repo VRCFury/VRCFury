@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Utils.Controller;
 using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
 using Object = UnityEngine.Object;
 
@@ -14,35 +15,25 @@ namespace VF.Builder {
      */
     public static class AnimatorIterator {
         public static void ForEachBehaviourRW(
-            AnimatorStateMachine root,
+            VFLayer layer,
             Func<StateMachineBehaviour, Func<Type, StateMachineBehaviour>, bool> action
         ) {
-            foreach (var stateMachine in GetAllStateMachines(root)) {
-                for (var i = 0; i < stateMachine.behaviours.Length; i++) {
-                    var keep = action(stateMachine.behaviours[i], type => stateMachine.VAddStateMachineBehaviour(type));
-                    if (!keep) {
-                        var behaviours = stateMachine.behaviours.ToList();
-                        behaviours.RemoveAt(i);
-                        stateMachine.behaviours = behaviours.ToArray();
-                        i--;
-                    }
+            foreach (var stateMachine in GetAllStateMachines(layer)) {
+                foreach (var behaviour in stateMachine.behaviours.ToArray()) {
+                    var keep = action(behaviour, type => stateMachine.VAddStateMachineBehaviour(type));
+                    if (!keep) stateMachine.behaviours = stateMachine.behaviours.Where(b => b != behaviour).ToArray();
                 }
             }
-            foreach (var state in new States().From(root)) {
-                for (var i = 0; i < state.behaviours.Length; i++) {
-                    var keep = action(state.behaviours[i], type => state.VAddStateMachineBehaviour(type));
-                    if (!keep) {
-                        var behaviours = state.behaviours.ToList();
-                        behaviours.RemoveAt(i);
-                        state.behaviours = behaviours.ToArray();
-                        i--;
-                    }
+            foreach (var state in new States().From(layer)) {
+                foreach (var behaviour in state.behaviours.ToArray()) {
+                    var keep = action(behaviour, type => state.VAddStateMachineBehaviour(type));
+                    if (!keep) state.behaviours = state.behaviours.Where(b => b != behaviour).ToArray();
                 }
             }
         }
 
         public static void ForEachTransitionRW(
-            AnimatorStateMachine root,
+            VFLayer root,
             Func<AnimatorTransitionBase,IEnumerable<AnimatorTransitionBase>> action
         ) {
             foreach (var sm in GetAllStateMachines(root)) {
@@ -89,22 +80,17 @@ namespace VF.Builder {
                 if (root == null) return ImmutableHashSet<T>.Empty;
                 return From(root.motion);
             }
-            public virtual IImmutableSet<T> From(AnimatorStateMachine root) {
+            public virtual IImmutableSet<T> From(VFLayer root) {
                 return new States().From(root).SelectMany(From).ToImmutableHashSet();
             }
-
-            public IImmutableSet<T> From(AnimatorControllerLayer root) {
-                if (root == null) return ImmutableHashSet<T>.Empty;
-                return From(root.stateMachine);
-            }
             
-            public IImmutableSet<T> From(IEnumerable<AnimatorControllerLayer> layers) {
+            public IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
                 return layers.SelectMany(From).ToImmutableHashSet();
             }
 
-            public IImmutableSet<T> From(AnimatorController root) {
+            public IImmutableSet<T> From(VFController root) {
                 if (root == null) return ImmutableHashSet<T>.Empty;
-                return From(root.layers);
+                return From(root.GetLayers());
             }
         }
 
@@ -130,14 +116,14 @@ namespace VF.Builder {
             return all.ToImmutableHashSet();
         }
         
-        private static IImmutableSet<AnimatorStateMachine> GetAllStateMachines(AnimatorStateMachine root) {
+        public static IImmutableSet<AnimatorStateMachine> GetAllStateMachines(AnimatorStateMachine root) {
             return GetRecursive(root, sm => sm.stateMachines
                 .Select(c => c.stateMachine)
             );
         }
 
         public class States : Iterator<AnimatorState> {
-            public override IImmutableSet<AnimatorState> From(AnimatorStateMachine root) {
+            public override IImmutableSet<AnimatorState> From(VFLayer root) {
                 return GetAllStateMachines(root)
                     .SelectMany(sm => sm.states)
                     .Select(c => c.state)
@@ -147,7 +133,7 @@ namespace VF.Builder {
         }
         
         public class Transitions : Iterator<AnimatorTransitionBase> {
-            public override IImmutableSet<AnimatorTransitionBase> From(AnimatorStateMachine root) {
+            public override IImmutableSet<AnimatorTransitionBase> From(VFLayer root) {
                 var states = new States().From(root);
                 return GetAllStateMachines(root)
                     .SelectMany(sm =>
@@ -162,7 +148,7 @@ namespace VF.Builder {
         }
         
         public class Conditions : Iterator<AnimatorCondition> {
-            public override IImmutableSet<AnimatorCondition> From(AnimatorStateMachine root) {
+            public override IImmutableSet<AnimatorCondition> From(VFLayer root) {
                 return new Transitions().From(root)
                     .SelectMany(t => t.conditions)
                     .ToImmutableHashSet();
@@ -194,7 +180,7 @@ namespace VF.Builder {
         }
         
         public class Behaviours : Iterator<StateMachineBehaviour> {
-            public override IImmutableSet<StateMachineBehaviour> From(AnimatorStateMachine root) {
+            public override IImmutableSet<StateMachineBehaviour> From(VFLayer root) {
                 var all = new HashSet<StateMachineBehaviour>();
                 ForEachBehaviourRW(root, (b, add) => {
                     all.Add(b);

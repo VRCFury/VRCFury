@@ -112,8 +112,8 @@ namespace VF.Service {
         ) {
             var fx = avatarManager.GetFx();
             
-            var maxDist = Math.Max(0, actions.Max(a => Math.Max(a.startDistance, a.endDistance))) * (worldScale ? 1f : animRoot.transform.lossyScale.z);
-            var minDist = Math.Min(0, actions.Min(a => Math.Min(a.startDistance, a.endDistance))) * (worldScale ? 1f : animRoot.transform.lossyScale.z);
+            var maxDist = Math.Max(0, actions.Max(a => Math.Max(a.startDistance, a.endDistance))) * (worldScale ? 1f : animRoot.worldScale.z);
+            var minDist = Math.Min(0, actions.Min(a => Math.Min(a.startDistance, a.endDistance))) * (worldScale ? 1f : animRoot.worldScale.z);
             var offset = Math.Max(0, -minDist); // Because the blendtree math can't handle negative values
 
             var cache = new Dictionary<bool, VFAFloat>();
@@ -161,8 +161,8 @@ namespace VF.Service {
                 var mapped = math.Map(
                     $"{prefix}/Mapped",
                     unsmoothed,
-                    offset + depthAction.startDistance * (worldScale ? 1f : animRoot.transform.lossyScale.z),
-                    offset + depthAction.endDistance * (worldScale ? 1f : animRoot.transform.lossyScale.z),
+                    offset + depthAction.startDistance * (worldScale ? 1f : animRoot.worldScale.z),
+                    offset + depthAction.endDistance * (worldScale ? 1f : animRoot.worldScale.z),
                     0, 1
                 );
                 var smoothed = smoothing.Smooth(

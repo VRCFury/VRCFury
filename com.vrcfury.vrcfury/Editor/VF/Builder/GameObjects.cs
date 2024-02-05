@@ -1,30 +1,30 @@
 using UnityEngine;
 
 namespace VF.Builder {
-    public class GameObjects {
+    public static class GameObjects {
         public static VFGameObject Create(
             string name,
-            VFGameObject parent,
+            VFGameObject parent = null,
             VFGameObject useTransformFrom = null,
             bool removeFromPhysbones = true
         ) {
-            var transform = new GameObject(name).transform;
+            var obj = new GameObject(name).asVf();
             if (useTransformFrom) {
-                transform.SetParent(useTransformFrom, false);
+                obj.SetParent(useTransformFrom, false);
                 if (parent != null) {
-                    transform.SetParent(parent, true);
+                    obj.SetParent(parent, true);
                 } else {
-                    transform.transform.parent = null;
+                    obj.SetParent(null, true);
                 }
             } else if (parent != null) {
-                transform.SetParent(parent, false);
+                obj.SetParent(parent, false);
             }
 
             if (removeFromPhysbones) {
-                PhysboneUtils.RemoveFromPhysbones(transform, true);
+                PhysboneUtils.RemoveFromPhysbones(obj, true);
             }
 
-            return transform;
+            return obj;
         }
     }
 }

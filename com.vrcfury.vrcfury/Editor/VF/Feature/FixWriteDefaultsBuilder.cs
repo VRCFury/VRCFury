@@ -21,15 +21,13 @@ namespace VF.Feature {
             if (binding.type == typeof(Animator)) return;
 
             if (isFloat) {
+                if (!binding.GetFloatFromGameObject(avatarObject, out var value)) return;
                 if (GetDefaultClip().GetFloatCurve(binding) != null) return;
-                if (binding.GetFloatFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetCurve(binding, value);
-                }
+                GetDefaultClip().SetCurve(binding, value);
             } else {
+                if (!binding.GetObjectFromGameObject(avatarObject, out var value)) return;
                 if (GetDefaultClip().GetObjectCurve(binding) != null) return;
-                if (binding.GetObjectFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetCurve(binding, value);
-                }
+                GetDefaultClip().SetCurve(binding, value);
             }
         }
 
@@ -42,7 +40,14 @@ namespace VF.Feature {
                 _defaultLayer = fx.NewLayer("Defaults", 0);
                 _defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             }
+            if (_defaultLayer == null) {
+                throw new Exception("Defaults layer disappeared during the build. Please report this on the discord.");
+            }
             return _defaultClip;
+        }
+        public VFLayer GetDefaultLayer() {
+            GetDefaultClip();
+            return _defaultLayer;
         }
 
         [FeatureBuilderAction(FeatureOrder.PositionDefaultsLayer)]
@@ -159,11 +164,7 @@ namespace VF.Feature {
                 }
                 // Save the choice
                 if (ask == 0 || ask == 2) {
-                    if (Application.isPlaying) {
-                        FixWriteDefaultsLater.SaveLater(avatarObject, ask == 0);
-                    } else if (originalObject) {
-                        FixWriteDefaultsLater.SaveNow(originalObject, ask == 0);
-                    }
+                    FixWriteDefaultsLater.Save(originalObject, ask == 0);
                 }
             }
 
@@ -231,7 +232,7 @@ namespace VF.Feature {
                 var (type, controller) = tuple;
                 var info = new ControllerInfo();
                 info.type = type;
-                foreach (var layer in controller.layers) {
+                foreach (var layer in controller.GetLayers()) {
                     var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
                     if (!ignore) {
                         foreach (var state in new AnimatorIterator.States().From(layer)) {

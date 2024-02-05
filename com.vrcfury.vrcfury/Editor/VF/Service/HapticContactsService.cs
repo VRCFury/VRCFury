@@ -24,9 +24,9 @@ namespace VF.Service {
         }
 
         public void AddSender(
-            Transform obj,
+            VFGameObject obj,
             Vector3 pos,
-            String objName,
+            string objName,
             float radius,
             string[] tags,
             float height = 0,
@@ -39,7 +39,6 @@ namespace VF.Service {
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
-            new List<string>(tags);
             if (height > 0) {
                 sender.shapeType = ContactBase.ShapeType.Capsule;
                 sender.height = height;
@@ -66,10 +65,10 @@ namespace VF.Service {
         }
 
         public VFAFloat AddReceiver(
-            Transform obj,
+            VFGameObject obj,
             Vector3 pos,
-            String paramName,
-            String objName,
+            string paramName,
+            string objName,
             float radius,
             string[] tags,
             HapticUtils.ReceiverParty party,
@@ -88,7 +87,7 @@ namespace VF.Service {
                 if (!usePrefix) throw new Exception("Cannot create a 'Both' receiver without param prefix");
                 var others = AddReceiver(obj, pos, $"{paramName}/Others", $"{objName}Others", radius, tags, HapticUtils.ReceiverParty.Others, true, localOnly, height, rotation, type, worldScale, useHipAvoidance);
                 var self = AddReceiver(obj, pos, $"{paramName}/Self", $"{objName}Self", radius, tags, HapticUtils.ReceiverParty.Self, true, localOnly, height, rotation, type, worldScale, useHipAvoidance);
-                return math.Max(others, self);
+                return math.Max(others, self, $"{paramName}/Both");
             }
 
             var param = fx.NewFloat(paramName, usePrefix: usePrefix);

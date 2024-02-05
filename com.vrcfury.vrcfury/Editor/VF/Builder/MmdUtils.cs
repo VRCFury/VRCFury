@@ -2,9 +2,9 @@ using System.Collections.Immutable;
 using System.Linq;
 
 namespace VF.Builder {
-    public class MmdUtils {
+    public static class MmdUtils {
 
-        private static string text = @"
+        private const string text = @"
 a
 ah
 alaugh

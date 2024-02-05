@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using VF.Api;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
@@ -16,44 +15,71 @@ using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
 
 public class VRCFuryBuilder {
 
-    internal bool SafeRun(VFGameObject avatarObject, VFGameObject originalObject = null) {
-        try {
-            NdmfFirstMenuItem.Run(avatarObject);
-        } catch (Exception e) {
-            Debug.LogException(e);
-            return false;
-        }
+    internal enum Status {
+        Success,
+        Failed
+    }
+
+    internal Status SafeRun(
+        VFGameObject avatarObject,
+        VFGameObject originalObject,
+        bool keepDebugInfo = false
+    ) {
+        /*
+         * We call SaveAssets here for two reasons:
+         * 1. If the build crashes unity for some reason, the user won't lose changes
+         * 2. If we don't call this here, the first time we call AssetDatabase.CreateAsset can randomly
+         *   fail with "Global asset import parameters have been changed during the import. Importing is restarted."
+         *   followed by "Unable to import newly created asset..."
+         */
+        AssetDatabase.SaveAssets();
 
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
-                Run(avatarObject, originalObject);
+                try {
+                    MaterialLocker.avatarObject = avatarObject;
+                    Run(avatarObject, originalObject);
+                } finally {
+                    MaterialLocker.avatarObject = null;
+                }
             });
         });
 
+        // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
+        StripAllVrcfComponents(avatarObject, keepDebugInfo);
+
+        // Make sure all new assets we've created have actually been saved to disk
         AssetDatabase.SaveAssets();
 
-        return result;
+        return result ? Status.Success : Status.Failed;
     }
 
     internal static bool ShouldRun(VFGameObject avatarObject) {
-        return avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>().Length > 0;
+        return avatarObject
+            .GetComponentsInSelfAndChildren<VRCFuryComponent>()
+            .Where(c => !(c is VRCFuryDebugInfo || c is VRCFuryTest))
+            .Any();
     }
 
-    public static void StripAllVrcfComponents(VFGameObject obj) {
+    public static void StripAllVrcfComponents(VFGameObject obj, bool keepDebugInfo = false) {
         foreach (var c in obj.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
+            if (c is VRCFuryDebugInfo && keepDebugInfo) {
+                continue;
+            }
             Object.DestroyImmediate(c);
         }
     }
 
-    private void Run(GameObject avatarObject, GameObject originalObject) {
+    private void Run(VFGameObject avatarObject, VFGameObject originalObject) {
         if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
@@ -143,7 +169,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(RestingStateBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
         AddBuilder(typeof(FixEmptyMotionBuilder));
 
@@ -230,14 +255,21 @@ public class VRCFuryBuilder {
 
         AddModel(new DirectTreeOptimizer { managedOnly = true }, avatarObject);
 
+        FeatureOrder? lastPriority = null;
         while (actions.Count > 0) {
             var action = actions.Min();
             actions.Remove(action);
             var service = action.GetService();
             if (action.configObject == null) {
-                var statusSkipMessage = $"\n{service.GetType().Name} ({currentModelNumber}) Skipped\nObject does not exist (probably got deleted by previous stages)";
+                var statusSkipMessage = $"{service.GetType().Name} ({currentModelNumber}) Skipped (Object no longer exists)";
                 progress.Progress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
                 continue;
+            }
+
+            var priority = action.GetPriorty();
+            if (lastPriority != priority) {
+                lastPriority = priority;
+                injector.GetService<RestingStateService>().OnPhaseChanged();
             }
 
             currentModelNumber = action.serviceNum;
@@ -247,7 +279,7 @@ public class VRCFuryBuilder {
             currentMenuSortPosition = action.menuSortOrder;
             currentComponentObject = action.configObject;
 
-            var statusMessage = $"{objectName}\n{service.GetType().Name} ({currentModelNumber})\n{action.GetName()}";
+            var statusMessage = $"{service.GetType().Name}.{action.GetName()} on {objectName} ({currentModelNumber})";
             progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
             try {

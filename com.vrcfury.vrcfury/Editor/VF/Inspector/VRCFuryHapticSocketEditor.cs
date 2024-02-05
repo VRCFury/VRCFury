@@ -134,7 +134,7 @@ namespace VF.Inspector {
             var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
             plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters)"));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Width (meters)"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters)"));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
             
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Use hip avoidance",
@@ -164,7 +164,7 @@ namespace VF.Inspector {
         public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
             static VRCFuryHapticPlaySocketEditor() {
                 VRCFurySocketGizmo.EnableSceneLighting = () => {
-                    SceneView sv = EditorWindow.GetWindow<SceneView>();
+                    var sv = EditorWindow.GetWindow<SceneView>();
                     if (sv != null) {
                         sv.sceneLighting = true;
                         sv.drawGizmos = true;
@@ -174,7 +174,7 @@ namespace VF.Inspector {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
                 if (!gizmo.show) return;
-                DrawGizmo(gizmo.transform.TransformPoint(gizmo.pos), gizmo.transform.rotation * gizmo.rot, gizmo.type, "");
+                DrawGizmo(gizmo.owner().TransformPoint(gizmo.pos), gizmo.owner().worldRotation * gizmo.rot, gizmo.type, "");
             }
         }
 
@@ -280,14 +280,16 @@ namespace VF.Inspector {
             DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
         }
 
+        [CanBeNull]
         public static VFGameObject Bake(VRCFuryHapticSocket socket, HapticContactsService hapticContactsService) {
             var transform = socket.transform;
-            HapticUtils.RemoveTPSSenders(transform);
-            HapticUtils.AssertValidScale(transform, "socket");
+            if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.sendersOnly)) {
+                return null;
+            }
 
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
 
-            var bakeRoot = GameObjects.Create("BakedHapticSocket", transform);
+            var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
 
@@ -298,7 +300,7 @@ namespace VF.Inspector {
                 var rootTags = new List<string>();
                 rootTags.Add(HapticUtils.TagTpsOrfRoot);
                 rootTags.Add(HapticUtils.TagSpsSocketRoot);
-                if (lightType != VRCFuryHapticSocket.AddLight.None) {
+                if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.sendersOnly) {
                     switch (lightType) {
                         case VRCFuryHapticSocket.AddLight.Ring:
                             rootTags.Add(HapticUtils.TagSpsSocketIsRing);
@@ -317,7 +319,7 @@ namespace VF.Inspector {
                     new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront }, useHipAvoidance: socket.useHipAvoidance);
             }
 
-            if (lightType != VRCFuryHapticSocket.AddLight.None) {
+            if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.sendersOnly) {
                 var lights = GameObjects.Create("Lights", bakeRoot);
 
                 ForEachPossibleLight(transform, false, light => {
@@ -347,7 +349,7 @@ namespace VF.Inspector {
                 }
             }
             
-            if (EditorApplication.isPlaying) {
+            if (EditorApplication.isPlaying && !socket.sendersOnly) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
                 gizmo.pos = localPosition;
                 gizmo.rot = localRotation;
@@ -365,7 +367,7 @@ namespace VF.Inspector {
         }
 
         public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket, [CanBeNull] VRCAvatarDescriptor avatar) {
-            bool enableHandTouchZone = false;
+            var enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
             } else if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto) {
@@ -436,7 +438,7 @@ namespace VF.Inspector {
                 }
             }
         }
-        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLights(Transform obj, bool directOnly = false) {
+        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLights(VFGameObject obj, bool directOnly = false) {
             var isRing = false;
             Light main = null;
             Light normal = null;
@@ -456,8 +458,8 @@ namespace VF.Inspector {
 
             if (main == null || normal == null) return null;
 
-            var position = obj.InverseTransformPoint(main.transform.position);
-            var normalPosition = obj.InverseTransformPoint(normal.transform.position);
+            var position = obj.InverseTransformPoint(main.owner().worldPosition);
+            var normalPosition = obj.InverseTransformPoint(normal.owner().worldPosition);
             var forward = (normalPosition - position).normalized;
             var rotation = Quaternion.LookRotation(forward);
 

@@ -37,7 +37,7 @@ namespace VF.Feature {
             Renderer maxRenderer = null;
             foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 var bounds = renderer.bounds;
-                bounds.Encapsulate(avatarObject.transform.position);
+                bounds.Encapsulate(avatarObject.worldPosition);
                 var extents = bounds.extents;
                 var linear = extents.x + extents.y + extents.z;
                 if (linear > maxLinear) {
@@ -47,7 +47,7 @@ namespace VF.Feature {
             }
 
             if (maxRenderer != null) {
-                Debug.Log($"Largest renderer is {clipBuilder.GetPath(maxRenderer.transform)} with linear size of {maxLinear}");
+                Debug.Log($"Largest renderer is {maxRenderer.owner().GetPath(avatarObject)} with linear size of {maxLinear}");
             }
 
             foreach (var skin in skins) {
@@ -84,12 +84,13 @@ namespace VF.Feature {
                     return false;
                 }
                 skin.localBounds = b;
+                skin.updateWhenOffscreen = false;
                 return true;
             }
 
             var stepSizeInMeters = 0.05f;
             var maxSteps = 20;
-            var stepSize = stepSizeInMeters / root.transform.lossyScale.x;
+            var stepSize = stepSizeInMeters / root.worldScale.x;
             for (var i = 0; i < maxSteps; i++) {
                 ModifyBounds(sizeX: stepSize, centerX: -stepSize);
                 ModifyBounds(sizeX: stepSize, centerX: stepSize);
@@ -127,8 +128,8 @@ namespace VF.Feature {
         }
 
         private static Bounds CalculateFullBounds(VFGameObject avatarObject) {
-            var bounds = new Bounds(avatarObject.transform.position, Vector3.zero);
-            foreach (Renderer renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+            var bounds = new Bounds(avatarObject.worldPosition, Vector3.zero);
+            foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) {
                     bounds.Encapsulate(renderer.bounds);
                 }

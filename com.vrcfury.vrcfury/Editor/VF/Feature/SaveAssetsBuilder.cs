@@ -34,7 +34,7 @@ namespace VF.Builder {
                 foreach (var asset in GetUnsavedChildren(component, recurse: false)) {
                     SaveAssetAndChildren(
                         asset,
-                        $"VRCFury {asset.GetType().Name} for {component.gameObject.name}"
+                        $"VRCFury {asset.GetType().Name} for {component.owner().name}"
                     );
                 }
             }
@@ -44,6 +44,7 @@ namespace VF.Builder {
             var unsavedChildren = new List<Object>();
             MutableManager.ForEachChild(obj, asset => {
                 if (asset == obj) return true;
+                if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (IsSaved(asset)) return false;
                 unsavedChildren.Add(asset);
                 return recurse;

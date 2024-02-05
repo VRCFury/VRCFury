@@ -60,7 +60,7 @@ namespace VF.Feature {
                 PhysboneUtils.RemoveFromPhysbones(globalContact.transform);
 
                 var target = globalContact.GetTransform();
-                fakeHead.MarkEligible(target.gameObject);
+                fakeHead.MarkEligible(target);
                 var finger = fingers[i].Item2;
                 var setFinger = fingers[i].Item3;
                 finger.isMirrored = false;

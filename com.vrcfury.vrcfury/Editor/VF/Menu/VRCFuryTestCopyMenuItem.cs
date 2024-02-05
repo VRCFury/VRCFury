@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Model;
+using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Menu {
     public static class VRCFuryTestCopyMenuItem {
@@ -27,21 +28,19 @@ namespace VF.Menu {
                 exists.Destroy();
             }
             var clone = originalObject.Clone();
+            clone.name = originalObject.name + "(Clone)";
+            if (!VRCBuildPipelineCallbacks.OnPreprocessAvatar(clone)) {
+                clone.Destroy();
+                return;
+            }
+
             clone.active = true;
             if (clone.scene != originalObject.scene) {
                 SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
             }
             clone.name = cloneName;
-
-            var builder = new VRCFuryBuilder();
-            var result = builder.SafeRun(clone, originalObject);
-            if (result) {
-                VRCFuryBuilder.StripAllVrcfComponents(clone);
-                clone.AddComponent<VRCFuryTest>();
-                Selection.SetActiveObjectWithContext(clone, clone);
-            } else {
-                clone.Destroy();
-            }
+            clone.AddComponent<VRCFuryTest>();
+            Selection.SetActiveObjectWithContext(clone, clone);
         }
 
         public static bool IsTestCopy(VFGameObject obj) {

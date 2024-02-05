@@ -5,12 +5,16 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Model.Feature;
+using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
     public class FinalizeMenuBuilder : FeatureBuilder {
+        [VFAutowired] private readonly ExceptionService excService;
+        
         [FeatureBuilderAction(FeatureOrder.FinalizeMenu)]
         public void Apply() {
             var menuSettings = allFeaturesInRun.OfType<OverrideMenuSettings>().FirstOrDefault();
@@ -74,9 +78,9 @@ namespace VF.Feature {
             });
 
             if (iconsTooLarge.Count > 0) {
-                throw new Exception(
+                excService.ThrowIfActuallyUploading(new Exception(
                     "You have some VRCFury props that are using menu icons larger than the VRCSDK will allow. Find these icons, and make" +
-                    " sure the Max Size is set to 256:\n\n" + string.Join("\n", iconsTooLarge.OrderBy(n => n)));
+                    " sure the Max Size is set to 256 and that compression is enabled:\n\n" + string.Join("\n", iconsTooLarge.OrderBy(n => n))));
             }
         }
     }

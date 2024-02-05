@@ -15,18 +15,18 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using Random = System.Random;
 
 namespace VF.Builder.Haptics {
-    public class HapticUtils {
-        public static string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
-        public static string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
-        public static string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
-        public static string CONTACT_PEN_ROOT = "TPS_Pen_Root";
-        public static string TagTpsOrfRoot = "TPS_Orf_Root";
-        public static string TagTpsOrfFront = "TPS_Orf_Norm";
+    public static class HapticUtils {
+        public const string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
+        public const string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
+        public const string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
+        public const string CONTACT_PEN_ROOT = "TPS_Pen_Root";
+        public const string TagTpsOrfRoot = "TPS_Orf_Root";
+        public const string TagTpsOrfFront = "TPS_Orf_Norm";
 
-        public static string TagSpsSocketRoot = "SPSLL_Socket_Root";
-        public static string TagSpsSocketFront = "SPSLL_Socket_Front";
-        public static string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
-        public static string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
+        public const string TagSpsSocketRoot = "SPSLL_Socket_Root";
+        public const string TagSpsSocketFront = "SPSLL_Socket_Front";
+        public const string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
+        public const string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",
@@ -52,73 +52,48 @@ namespace VF.Builder.Haptics {
             Both
         }
 
-        public static void RemoveTPSSenders(Transform obj) {
-            var remove = new List<UnityEngine.Component>();
-            foreach (Transform child in obj) {
-                foreach (var sender in child.gameObject.GetComponents<VRCContactSender>()) {
-                    if (IsTPSSender(sender)) {
-                        Debug.Log("Deleting TPS sender on " + sender.gameObject);
-                        remove.Add(sender);
-                    }
-                }
-            }
-
-            foreach (var c in remove) {
-                AvatarCleaner.RemoveComponent(c);
-            }
-
-            if (obj.parent) {
-                RemoveTPSSenders(obj.parent);
-            }
-        }
-
-        public static bool IsTPSSender(VRCContactSender c) {
-            if (c.collisionTags.Any(t => t == CONTACT_PEN_MAIN)) return true;
-            if (c.collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) return true;
-            if (c.collisionTags.Any(t => t == TagTpsOrfRoot)) return true;
-            if (c.collisionTags.Any(t => t == TagTpsOrfFront)) return true;
-            return false;
-        }
-
-        private static bool IsZeroScale(Transform obj) {
+        private static bool IsZeroScale(VFGameObject obj) {
             var scale = obj.localScale;
             return scale.x == 0 || scale.y == 0 || scale.z == 0;
         }
-        private static bool IsNegativeScale(Transform obj) {
+        private static bool IsNegativeScale(VFGameObject obj) {
             var scale = obj.localScale;
             return scale.x < 0 || scale.y < 0 || scale.z < 0;
         }
-        public static bool IsNonUniformScale(Transform obj) {
+        public static bool IsNonUniformScale(VFGameObject obj) {
             var scale = obj.localScale;
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
         }
-        public static void AssertValidScale(VFGameObject obj, string type) {
+        public static bool AssertValidScale(VFGameObject obj, string type, bool shouldThrow = true) {
             var current = obj;
             while (true) {
                 if (IsZeroScale(current)) {
-                    throw new Exception(
+                    if (shouldThrow) throw new Exception(
                         "A haptic component exists on an object with zero scale." +
                         " This object must not be zero scale or size calculation will fail.\n\n" +
                         "Component path: " + obj.GetPath() + "\n" +
                         "Offending object: " + current.GetPath());
+                    return false;
                 }
                 if (IsNegativeScale(current)) {
-                    throw new Exception(
+                    if (shouldThrow) throw new Exception(
                         "A haptic component exists on an object with negative scale." +
                         " This object must have a positive scale or size calculation will fail.\n\n" +
                         "Component path: " + obj.GetPath() + "\n" +
                         "Offending object: " + current.GetPath());
+                    return false;
                 }
                 if (IsNonUniformScale(current)) {
                     var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
                     if (!bypass) {
-                        throw new Exception(
+                        if (shouldThrow) throw new Exception(
                             "A haptic component exists on an object with a non-uniform scale." +
                             " This object (and all parents) must have an X, Y, and Z scale value that match" +
                             " each other, or size calculation will fail.\n\n" +
                             "Component path: " + obj.GetPath() + "\n" +
                             "Offending object: " + current.GetPath());
+                        return false;
                     }
                 }
 
@@ -126,13 +101,15 @@ namespace VF.Builder.Haptics {
                 if (parent == null) break;
                 current = parent;
             }
+
+            return true;
         }
 
-        public static Transform GetMeshRoot(Renderer r) {
-            if (r is SkinnedMeshRenderer skin && skin.rootBone) {
+        public static VFGameObject GetMeshRoot(Renderer r) {
+            if (r is SkinnedMeshRenderer skin && skin.rootBone != null) {
                 return skin.rootBone;
             }
-            return r.transform;
+            return r.owner();
         }
         
         public static string GetName(VFGameObject obj) {
@@ -161,6 +138,8 @@ namespace VF.Builder.Haptics {
             name = Regex.Replace(name, @"haptic", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"socket", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"plug", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"ring", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"hole", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"\(\d+\)", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecifiro"), "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecafiro"), "", RegexOptions.IgnoreCase);
@@ -215,8 +194,8 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static bool IsChildOf(Transform parent, Transform child, bool followConstraints) {
-            var alreadyChecked = new HashSet<Transform>();
+        private static bool IsChildOf(VFGameObject parent, VFGameObject child, bool followConstraints) {
+            var alreadyChecked = new HashSet<VFGameObject>();
             var current = child;
             while (current != null) {
                 alreadyChecked.Add(current);

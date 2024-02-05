@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Component;
@@ -22,7 +22,6 @@ namespace VF.Service {
     public class ActionClipService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MutableManager mutableManager;
-        [VFAutowired] private readonly RestingStateBuilder restingState;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
@@ -30,15 +29,23 @@ namespace VF.Service {
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
 
-        private List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
+        private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, bool applyOffClip = true) {
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
+            return LoadStateAdv(name, state, animObjectOverride).onClip;
+        }
+
+        public class BuiltAction {
+            // Don't use fx.GetEmptyClip(), since this clip may be mutated later
+            public AnimationClip onClip = new AnimationClip();
+            public AnimationClip implicitRestingClip = new AnimationClip();
+        }
+        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null) {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
 
             if (state == null) {
-                // Don't use fx.GetEmptyClip(), since this clip may be mutated later
-                return new AnimationClip();
+                return new BuiltAction();
             }
 
             var actions = state.actions.Where(action => {
@@ -50,7 +57,7 @@ namespace VF.Service {
                 return true;
             }).ToArray();
             if (actions.Length == 0) {
-                return new AnimationClip();
+                return new BuiltAction();
             }
 
             var rewriter = AnimationRewriter.Combine(
@@ -91,8 +98,8 @@ namespace VF.Service {
                         // leniency around it.
                         var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
                         var binding = EditorCurveBinding.FloatCurve(
-                            clipBuilder.GetPath(renderer.gameObject),
-                            typeof(SkinnedMeshRenderer),
+                            clipBuilder.GetPath(renderer.owner()),
+                            renderer.GetType(),
                             "material._FlipbookCurrentFrame"
                         );
                         onClip.SetCurve(binding, frameAnimNum);
@@ -102,7 +109,7 @@ namespace VF.Service {
                         var renderer = shaderInventoryAction.renderer;
                         if (renderer == null) break;
                         var binding = EditorCurveBinding.FloatCurve(
-                            clipBuilder.GetPath(renderer.gameObject),
+                            clipBuilder.GetPath(renderer.owner()),
                             renderer.GetType(),
                             $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
                         );
@@ -121,7 +128,7 @@ namespace VF.Service {
                             if (poiyomiUVTileAction.renamedMaterial != "")
                                 propertyName += $"_{poiyomiUVTileAction.renamedMaterial}";
                             var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(renderer.gameObject),
+                                clipBuilder.GetPath(renderer.owner()),
                                 renderer.GetType(),
                                 $"material.{propertyName}"
                             );
@@ -141,7 +148,7 @@ namespace VF.Service {
                         foreach (var renderer in renderers) {
                             void AddOne(string suffix, float value) {
                                 var binding = EditorCurveBinding.FloatCurve(
-                                    clipBuilder.GetPath(renderer.gameObject),
+                                    clipBuilder.GetPath(renderer.owner()),
                                     renderer.GetType(),
                                     $"material.{materialPropertyAction.propertyName}{suffix}"
                                 );
@@ -197,7 +204,7 @@ namespace VF.Service {
                             foundOne = true;
                             //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
                             var binding = EditorCurveBinding.FloatCurve(
-                                clipBuilder.GetPath(skin.gameObject),
+                                clipBuilder.GetPath(skin.owner()),
                                 typeof(SkinnedMeshRenderer),
                                 "blendShape." + blendShape.blendShape
                             );
@@ -224,7 +231,7 @@ namespace VF.Service {
                         if (mat == null) break;
                         
                         var binding = EditorCurveBinding.PPtrCurve(
-                            clipBuilder.GetPath(renderer.gameObject),
+                            clipBuilder.GetPath(renderer.owner()),
                             renderer.GetType(),
                             "m_Materials.Array.data[" + matAction.materialIndex + "]"
                         );
@@ -277,7 +284,7 @@ namespace VF.Service {
                     }
                     case ResetPhysboneAction resetPhysbone: {
                         if (resetPhysbone.physBone != null) {
-                            physbonesToReset.Add(resetPhysbone.physBone.gameObject);
+                            physbonesToReset.Add(resetPhysbone.physBone.owner());
                         }
                         break;
                     }
@@ -287,7 +294,7 @@ namespace VF.Service {
                         // Duplicate the last state so the last state still gets an entire frame
                         states.Add(states.Last());
                         var sources = states
-                            .Select((substate,i) => ((float)i, LoadState("tmp", substate, animObjectOverride, false)))
+                            .Select((substate,i) => ((float)i, LoadState("tmp", substate, animObjectOverride)))
                             .ToArray();
                         var built = clipBuilder.MergeSingleFrameClips(sources);
                         built.UseConstantTangents();
@@ -304,21 +311,24 @@ namespace VF.Service {
                 onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
 
-            if (applyOffClip) {
-                restingState.ApplyClipToRestingState(offClip);
-            }
-
             if (onClip.CollapseProxyBindings().Count > 0) {
                 throw new Exception(
                     "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
             }
 
-            foreach (var muscleType in onClip.GetMuscleBindingTypes()) {
+            var types = onClip.GetMuscleBindingTypes();
+            if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
+                types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Other);
+            }
+            foreach (var muscleType in types) {
                 var trigger = fullBodyEmoteService.AddClip(onClip, muscleType);
                 onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
             }
 
-            return onClip;
+            return new BuiltAction() {
+                onClip = onClip,
+                implicitRestingClip = offClip
+            };
         }
 
         public static (IList<Renderer>, ShaderUtil.ShaderPropertyType? type) MatPropLookup(
@@ -374,7 +384,7 @@ namespace VF.Service {
 
             if (rewrites.Count > 0) {
                 foreach (var c in manager.GetAllUsedControllers()) {
-                    ((AnimatorController)c.GetRaw()).RewriteParameters(from =>
+                    c.GetRaw().RewriteParameters(from =>
                         rewrites.TryGetValue(from, out var to) ? to : from
                     );
                 }

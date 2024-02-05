@@ -6,7 +6,7 @@ using VF.Inspector;
 using VF.Model;
 
 namespace VF.Builder {
-    public class VRCFPrefabFixer {
+    public static class VRCFPrefabFixer {
         /**
          * Unity has two big annoying bugs.
          * 1) If a change is made externally (like via git) to a nested prefab, the change
@@ -20,7 +20,7 @@ namespace VF.Builder {
          * components, then will force-reimport them in bottom-up order.
          */
         public static void Fix(ICollection<VFGameObject> objs) {
-            Debug.Log("Running VRCFury prefab fix pass on " + objs);
+            Debug.Log("Running VRCFury prefab fix pass on " + string.Join(", ", objs.Select(o => o.GetPath())));
 
             var dependsOn = new Dictionary<string, HashSet<string>>();
             HashSet<string> GetDependsOn(string childPath) {

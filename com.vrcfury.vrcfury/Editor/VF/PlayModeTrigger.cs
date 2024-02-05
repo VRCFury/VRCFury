@@ -5,7 +5,6 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using VF.Api;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
@@ -16,29 +15,21 @@ using VF.PlayMode;
 using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
 namespace VF {
-    [InitializeOnLoad]
     public class PlayModeTrigger {
         private static string tmpDir;
-        private static int nextPlayerId = 1;
 
-        static PlayModeTrigger() {
+        [InitializeOnLoadMethod]
+        static void Init() {
             SceneManager.sceneLoaded += OnSceneLoaded;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-            
-            if (ContactBase.OnValidatePlayers == null) {
-                ContactBase.OnValidatePlayers = (a, b) => true;
-            }
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
-                if (PlayModeMenuItem.Get()) {
-                    var rootObjects = VFGameObject.GetRoots();
-                    VRCFPrefabFixer.Fix(rootObjects);
-                }
                 tmpDir = null;
             }
         }
@@ -76,12 +67,9 @@ namespace VF {
                 Directory.CreateDirectory(tmpDir);
             }
 
-            var builder = new VRCFuryBuilder();
-            var restartAudioLink = false;
-            var restartAv3Emulator = false;
             foreach (var root in VFGameObject.GetRoots(scene)) {
                 foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
-                    RescanOnStartComponent.AddToObject(avatar.gameObject);
+                    RescanOnStartComponent.AddToObject(avatar.owner());
                     var obj = avatar.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
@@ -91,44 +79,12 @@ namespace VF {
                     }
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
 
-                    var failed = false;
-                    var failSuffix = "(VRCFury Failed)";
-                    foreach (var (source,callback) in VfBuildHooks.beforePlayModeBuildCallbacks) {
-                        try {
-                            callback(obj);
-                        } catch (Exception e) {
-                            Debug.LogException(e);
-                            EditorUtility.DisplayDialog(
-                                "Avatar Error",
-                                $"Pre-Build hook from '{source}' threw an exception:\n\n{e.Message}\n\nSee the console for full details.",
-                                "Ok"
-                            );
-                            failed = true;
-                            failSuffix = "(Pre-Build hooks failed)";
-                        }
-                    }
-
-                    if (!failed) {
-                        failed = !builder.SafeRun(obj);
-                    }
-
-                    if (!failed) {
-                        VRCFuryBuilder.StripAllVrcfComponents(obj);
-                        restartAudioLink = true;
-                        if (obj.GetComponents<UnityEngine.Component>().Any(c => c.GetType().Name == "LyumaAv3Runtime")) {
-                            restartAv3Emulator = true;
-                        }
-
-                        var playerId = nextPlayerId++;
-                        foreach (var contact in obj.GetComponentsInSelfAndChildren<ContactBase>()) {
-                            contact.playerId = playerId;
-                        }
-                    } else {
-                        var name = obj.name;
-                        var failMarker = new GameObject($"{name} {failSuffix}");
-                        SceneManager.MoveGameObjectToScene(failMarker, obj.scene);
-                        Object.DestroyImmediate(obj);
-                    }
+                    var orig = obj.Clone();
+                    orig.name = obj.name;
+                    obj.name += "(Clone)";
+                    VRCBuildPipelineCallbacks.OnPreprocessAvatar(obj);
+                    obj.name = orig.name;
+                    orig.Destroy();
                 }
                 if (root.gameObject == null) continue; // it was deleted
                 foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
@@ -139,8 +95,12 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        var hapticContactsService = new HapticContactsService();
-                        VRCFuryHapticSocketEditor.Bake(socket, hapticContactsService);
+                        try {
+                            var hapticContactsService = new HapticContactsService();
+                            VRCFuryHapticSocketEditor.Bake(socket, hapticContactsService);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to bake detached SPS Socket: {socket.owner().GetPath()}", e);
+                        }
                     });
                     Object.DestroyImmediate(socket);
                 }
@@ -152,22 +112,19 @@ namespace VF {
                     if (IsWithinAv3EmulatorClone(obj)) continue;
                     plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        var hapticContactsService = new HapticContactsService();
-                        VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
+                        try {
+                            var hapticContactsService = new HapticContactsService();
+                            VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
+                        }
                     });
                     Object.DestroyImmediate(plug);
                 }
             }
-
-            if (restartAv3Emulator) {
-                EditorApplication.delayCall += RestartAv3Emulator;
-            }
-            if (restartAudioLink) {
-                RestartAudiolink();
-            }
         }
 
-        private static bool IsAv3EmulatorClone(VFGameObject obj) {
+        public static bool IsAv3EmulatorClone(VFGameObject obj) {
             return obj.name.Contains("(ShadowClone)")
                    || obj.name.Contains("(MirrorReflection)");
         }
@@ -176,93 +133,13 @@ namespace VF {
             return obj.GetSelfAndAllParents().Any(IsAv3EmulatorClone);
         }
 
-        private static void DestroyAllOfType(string typeStr) {
-            var type = ReflectionUtils.GetTypeFromAnyAssembly(typeStr);
-            if (type == null) return;
-            foreach (var runtime in Object.FindObjectsOfType(type)) {
-                Object.DestroyImmediate(runtime);
-            }
-        }
-
-        private static void ClearField(object obj, string fieldStr) {
-            var field = obj.GetType().GetField(fieldStr);
-            if (field == null) return;
-            var value = field.GetValue(obj);
-            if (value == null) return;
-            var clear = value.GetType().GetMethod("Clear");
-            if (clear == null) return;
-            clear.Invoke(value, new object[]{});
-        }
-
-        /**
-         * This is needed because (at least at this time), Av3Emulator hooks during Awake, which is before we have a chance to build.
-         * If some day Av3Emulator moves to Start(), this will automatically stop being used, since we only call it if LyumaAv3Runtime
-         * exists on the avatar when we build.
-         */
-        private static void RestartAv3Emulator() {
-            try {
-                var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator");
-                if (av3EmulatorType == null) av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
-                if (av3EmulatorType == null) return;
-                
-                Debug.Log("Restarting av3emulator ...");
-                
-                DestroyAllOfType("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime");
-                DestroyAllOfType("LyumaAv3Runtime");
-                DestroyAllOfType("Lyuma.Av3Emulator.Runtime.LyumaAv3Menu");
-                DestroyAllOfType("Lyuma.Av3Emulator.Runtime.GestureManagerAv3Menu");
-
-                var restartField = av3EmulatorType.GetField("RestartEmulator");
-                if (restartField == null) throw new Exception("Failed to find RestartEmulator field");
-                var emulators = Object.FindObjectsOfType(av3EmulatorType);
-                foreach (var emulator in emulators) {
-                    ClearField(emulator, "runtimes");
-                    ClearField(emulator, "forceActiveRuntimes");
-                    ClearField(emulator, "scannedAvatars");
-                    restartField.SetValue(emulator, true);
-                }
-
-                foreach (var root in VFGameObject.GetRoots()) {
-                    if (IsAv3EmulatorClone(root)) {
-                        root.Destroy();
-                    }
-                }
-            } catch (Exception e) {
-                Debug.LogException(e);
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    "VRCFury detected Av3Emulator, but was unable to reload it after making changes to the avatar." +
-                    " Because of this, testing with the emulator may not be correct." +
-                    " Report this on https://vrcfury.com/discord\n\n" + e.Message,
-                    "Ok"
-                );
-            }
-        }
-
-        /**
-         * This is needed because AudioLink sets a texture on all materials globally. If we introduce a new material, we need
-         * it to set that texture again.
-         */
-        private static void RestartAudiolink() {
-            var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
-            if (alComponentType == null) alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
-            if (alComponentType == null) return;
-            foreach (var gm in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
-                Debug.Log("Restarting AudioLink ...");
-                if (gm.gameObject.activeSelf) {
-                    gm.gameObject.SetActive(false);
-                    gm.gameObject.SetActive(true);
-                }
-            }
-        }
-
         [DefaultExecutionOrder(-10000)]
         public class RescanOnStartComponent : MonoBehaviour {
             private void Start() {
-                Rescan(gameObject.scene);
+                Rescan(this.owner().scene);
             }
 
-            public static void AddToObject(GameObject obj) {
+            public static void AddToObject(VFGameObject obj) {
                 if (obj.GetComponent<RescanOnStartComponent>()) {
                     return;
                 }

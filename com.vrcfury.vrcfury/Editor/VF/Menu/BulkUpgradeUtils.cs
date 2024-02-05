@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 using VF.Builder;
 
 namespace VF.Menu {
-    public class BulkUpgradeUtils {
+    public static class BulkUpgradeUtils {
         public static void WithAllScenesOpen(Action fn) {
             EditorSceneManager.SaveOpenScenes();
             AssetDatabase.SaveAssets();
@@ -51,14 +51,14 @@ namespace VF.Menu {
             }
         }
 
-        public static (Dictionary<(Transform,Transform), List<T>>, Dictionary<T, string>) FindAll<T>(Func<T, Transform> GetTarget) where T : UnityEngine.Component {
-            var map = new Dictionary<(Transform,Transform), List<T>>();
+        public static (Dictionary<(VFGameObject,VFGameObject), List<T>>, Dictionary<T, string>) FindAll<T>(Func<T, VFGameObject> GetTarget) where T : UnityEngine.Component {
+            var map = new Dictionary<(VFGameObject,VFGameObject), List<T>>();
             var sources = new Dictionary<T, string>();
 
             foreach (var c in FindAll<T>()) {
                 if (c == null) continue;
                 var target = GetTarget(c);
-                var key = (c.transform, target);
+                var key = (c.owner(), target);
                 if (!map.ContainsKey(key)) map[key] = new List<T>();
                 if (map[key].Contains(c)) continue;
                 map[key].Add(c);

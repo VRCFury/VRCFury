@@ -20,13 +20,12 @@ namespace VF.Service {
         public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
             if (smoothingSeconds <= 0) return target;
 
-            var fx = manager.GetFx();
-            var output = fx.NewFloat(name, def: target.GetDefault());
+            var output = math.MakeAap(name, def: target.GetDefault());
             directTree.Add(Smooth(target, output, smoothingSeconds, useAcceleration));
             return output;
         }
         
-        private Motion Smooth(VFAFloat target, VFAFloat output, float smoothingSeconds, bool useAcceleration = true, string prefix = "") {
+        private Motion Smooth(VFAFloat target, MathService.VFAap output, float smoothingSeconds, bool useAcceleration = true, string prefix = "") {
             if (smoothingSeconds <= 0) return math.MakeCopier(target, output);
             if (smoothingSeconds > 10) smoothingSeconds = 10;
             var speed = GetSpeed(smoothingSeconds, useAcceleration);
@@ -38,13 +37,13 @@ namespace VF.Service {
 
             var fx = manager.GetFx();
             var tree = math.MakeDirect(output.Name());
-            var pass1 = fx.NewFloat($"{output.Name()}{prefix}/Pass1", def: output.GetDefault());
+            var pass1 = math.MakeAap($"{output.Name()}{prefix}/Pass1", def: output.GetDefault());
             tree.Add(fx.One(), Smooth_(target, pass1, speed));
             tree.Add(fx.One(), Smooth_(pass1, output, speed));
             return tree;
         }
 
-        private Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
+        private readonly Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
         private VFAFloat GetSpeed(float seconds, bool useAcceleration) {
             var framerateForCalculation = 60; // closer to the in game framerate, the more technically accurate it will be
             var targetFrames = seconds * framerateForCalculation;
@@ -70,7 +69,7 @@ namespace VF.Service {
             return output;
         }
 
-        private Motion Smooth_(VFAFloat target, VFAFloat output, VFAFloat speedParam) {
+        private Motion Smooth_(VFAFloat target, MathService.VFAap output, VFAFloat speedParam) {
             // Maintain tree - keeps the current value
             var maintainTree = math.MakeMaintainer(output);
 

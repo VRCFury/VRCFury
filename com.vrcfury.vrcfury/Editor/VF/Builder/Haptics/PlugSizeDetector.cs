@@ -71,11 +71,11 @@ namespace VF.Builder.Haptics {
 
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
-            return HapticUtils.GetMeshRoot(renderer).rotation * localRotation;
+            return HapticUtils.GetMeshRoot(renderer).worldRotation * localRotation;
         }
         
         public static Vector3 GetAutoWorldPosition(Renderer renderer) {
-            return HapticUtils.GetMeshRoot(renderer).position;
+            return HapticUtils.GetMeshRoot(renderer).worldPosition;
         }
 
         public static Tuple<float, float> GetAutoWorldSize(Renderer renderer) {
@@ -100,7 +100,7 @@ namespace VF.Builder.Haptics {
                 if (bakedMesh == null) return new Vector3[]{};
                 var mask = plug ? PlugMaskGenerator.GetMask(renderer, plug) : null;
                 return bakedMesh.vertices
-                    .Select(vert => renderer.transform.TransformPoint(vert))
+                    .Select(vert => renderer.owner().TransformPoint(vert))
                     .Where((vert, i) => mask == null || mask[i] > 0);
             }).ToArray();
 

@@ -411,7 +411,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             var content = new VisualElement();
             var match = Regex.Match(prop.propertyPath, @"\[(\d+)\]$");
             string pageNum;
-            if (match.Success && Int32.TryParse(match.Groups[1].ToString(), out var num)) {
+            if (match.Success && int.TryParse(match.Groups[1].ToString(), out var num)) {
                 pageNum = (num + 1).ToString();
             } else {
                 pageNum = "?";

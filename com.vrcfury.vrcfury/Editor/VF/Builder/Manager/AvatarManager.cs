@@ -23,7 +23,7 @@ namespace VF.Builder {
             if (_menu == null) {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                 var initializing = true;
-                _menu = new MenuManager(menu, tmpDir, () => initializing ? 0 : globals.currentMenuSortPosition());
+                _menu = new MenuManager(menu, () => initializing ? 0 : globals.currentMenuSortPosition());
 
                 var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (origMenu != null) _menu.MergeMenu(origMenu);
@@ -47,7 +47,6 @@ namespace VF.Builder {
                     GetParams,
                     type,
                     globals.currentFeatureNumProvider,
-                    globals.currentFeatureNameProvider,
                     globals.currentFeatureClipPrefixProvider,
                     MakeUniqueParamName,
                     layerSourceService

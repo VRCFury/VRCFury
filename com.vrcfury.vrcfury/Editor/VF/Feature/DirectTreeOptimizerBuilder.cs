@@ -12,10 +12,12 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
+        [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
@@ -37,6 +39,16 @@ namespace VF.Feature {
             foreach (var layer in applyToLayers) {
                 void AddDebug(string msg) {
                     debugLog.Add($"{layer.name} - {msg}");
+                }
+
+                // We must never optimize the defaults layer.
+                // While it may seem impossible for the defaults layer to be optimized (because it shares keys
+                // with other layers), it's theoretically possible for the layer to be created early with bindings
+                // that are no longer valid, making it "empty" at this point, and if we direct tree optimize it,
+                // the layer will be missing later when the FixWriteDefaultBuilder tries to add to it.
+                if (layer == fixWriteDefaults.GetDefaultLayer()) {
+                    AddDebug($"Not optimizing (this is the vrcf defaults layer)");
+                    continue;
                 }
 
                 var weight = layer.weight;
@@ -307,10 +319,11 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(AnimatorStateMachine sm) {
-            return new AnimatorIterator.Clips().From(sm)
+        private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(VFLayer layer) {
+            return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
                 .Where(binding => binding.IsValid(avatarObject))
+                .Select(binding => binding.Normalize())
                 .ToImmutableHashSet();
         }
 

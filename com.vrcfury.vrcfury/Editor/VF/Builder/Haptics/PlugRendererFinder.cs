@@ -5,7 +5,7 @@ using VF.Utils;
 
 namespace VF.Builder.Haptics {
     /** Automatically finds the renderer to use for a plug */
-    public class PlugRendererFinder {
+    public static class PlugRendererFinder {
         public static IImmutableList<Renderer> GetAutoRenderer(VFGameObject obj, bool newSearchAlgo) {
             if (newSearchAlgo) {
                 var current = obj;
@@ -49,13 +49,12 @@ namespace VF.Builder.Haptics {
             var foundInChildren = obj.GetComponentsInSelfAndChildren<Renderer>().Where(IsDps).ToImmutableList();
             if (foundInChildren.Count > 0) return foundInChildren;
 
-            var parent = obj.transform.parent;
+            var parent = obj.parent;
             while (parent != null) {
                 var foundOnParent = parent.GetComponents<Renderer>().Where(IsDps).ToImmutableList();
                 if (foundOnParent.Count > 0) return foundOnParent;
 
-                var foundOnChildOfParent = Enumerable.Range(0, parent.childCount)
-                    .Select(childNum => parent.GetChild(childNum))
+                var foundOnChildOfParent = parent.Children()
                     .SelectMany(child => child.GetComponents<Renderer>().Where(IsDps))
                     .ToImmutableList();
                 if (foundOnChildOfParent.Count > 0) return foundOnChildOfParent;

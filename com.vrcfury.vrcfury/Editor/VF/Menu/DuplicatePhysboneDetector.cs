@@ -11,7 +11,7 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Menu {
-    public class DuplicatePhysboneDetector {
+    public static class DuplicatePhysboneDetector {
         [MenuItem(MenuItems.detectDuplicatePhysbones, priority = MenuItems.detectDuplicatePhysbonesPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(RunUnsafe);
@@ -72,7 +72,7 @@ namespace VF.Menu {
                    + (IsMutable(c) ? "" : " (Immutable)");
         }
 
-        private static void FindDupes<T>(Func<T, Transform> GetTarget, List<string> badList) where T : UnityEngine.Component {
+        private static void FindDupes<T>(Func<T, VFGameObject> GetTarget, List<string> badList) where T : UnityEngine.Component {
             var (map, sources) = BulkUpgradeUtils.FindAll(GetTarget);
             foreach (var ((transform,target),components) in map.Select(x => (x.Key, x.Value))) {
                 if (components.Count == 1) continue;
@@ -88,7 +88,7 @@ namespace VF.Menu {
             return !PrefabUtility.IsPartOfImmutablePrefab(c) && !PrefabUtility.IsPartOfPrefabInstance(c);
         }
         
-        private static void FixDupes<T>(Func<T, Transform> GetTarget) where T : UnityEngine.Component {
+        private static void FixDupes<T>(Func<T, VFGameObject> GetTarget) where T : UnityEngine.Component {
             var (map, sources) = BulkUpgradeUtils.FindAll(GetTarget);
             foreach (var ((transform,target),components) in map.Select(x => (x.Key, x.Value))) {
                 if (components.Count == 1) continue;
@@ -98,7 +98,7 @@ namespace VF.Menu {
                 }
 
                 foreach (var c in mutable) {
-                    var obj = c.gameObject;
+                    var obj = c.owner();
                     Object.DestroyImmediate(c, true);
                     EditorUtility.SetDirty(obj);
                 }

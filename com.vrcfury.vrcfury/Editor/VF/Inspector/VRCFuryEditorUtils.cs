@@ -270,7 +270,7 @@ public static class VRCFuryEditorUtils {
         VisualElement fieldOverride = null
     ) {
         VisualElement field = null;
-        bool isCheckbox = false;
+        var isCheckbox = false;
         if (fieldOverride != null) {
             field = fieldOverride;
             isCheckbox = field is Toggle;
@@ -288,7 +288,7 @@ public static class VRCFuryEditorUtils {
                         prop.enumValueIndex,
                         formatSelectedValueCallback: formatEnum,
                         formatListItemCallback: formatEnum
-                    ) { bindingPath = prop.propertyPath };
+                    ) { bindingPath = prop.propertyPath }.FlexShrink(1);
                     break;
                 }
                 case SerializedPropertyType.Generic: {
@@ -448,8 +448,8 @@ public static class VRCFuryEditorUtils {
         if (float.IsNaN(input) || float.IsPositiveInfinity(input) || float.IsNegativeInfinity(input))
             return input;
 
-        byte[] bytes = BitConverter.GetBytes(input);
-        int bits = BitConverter.ToInt32(bytes, 0);
+        var bytes = BitConverter.GetBytes(input);
+        var bits = BitConverter.ToInt32(bytes, 0);
 
         if (input > 0) {
             bits += offset;
@@ -633,7 +633,7 @@ public static class VRCFuryEditorUtils {
         if (obj is GameObject go) {
             MarkSceneDirty(go.scene);
         } else if (obj is UnityEngine.Component c) {
-            MarkSceneDirty(c.gameObject.scene);
+            MarkSceneDirty(c.owner().scene);
         }
     }
 

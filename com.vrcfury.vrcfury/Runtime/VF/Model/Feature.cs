@@ -410,13 +410,20 @@ namespace VF.Model.Feature {
             No
         }
 
+        [Serializable]
+        public class LinkTo {
+            public bool useBone = true;
+            public HumanBodyBones bone = HumanBodyBones.Hips;
+            public bool useObj = false;
+            public GameObject obj = null;
+            public string offset = "";
+        }
+
         public ArmatureLinkMode linkMode = ArmatureLinkMode.Auto;
         public GameObject propBone;
-        public HumanBodyBones boneOnAvatar;
-        public string bonePathOnAvatar;
+        public List<LinkTo> linkTo = new List<LinkTo>() { new LinkTo() };
         public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public string removeBoneSuffix;
-        public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
         
@@ -425,6 +432,9 @@ namespace VF.Model.Feature {
         [Obsolete] public bool useBoneMerging;
         [Obsolete] public bool keepBoneOffsets;
         [Obsolete] public bool physbonesOnAvatarBones;
+        [Obsolete] public HumanBodyBones boneOnAvatar;
+        [Obsolete] public string bonePathOnAvatar;
+        [Obsolete] public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
@@ -451,11 +461,22 @@ namespace VF.Model.Feature {
                     scalingFactorPowersOf10Only = false;
                 }
             }
+            if (fromVersion < 6) {
+                linkTo.Clear();
+                if (string.IsNullOrWhiteSpace(bonePathOnAvatar)) {
+                    linkTo.Add(new LinkTo { bone = boneOnAvatar });
+                    foreach (var fallback in fallbackBones) {
+                        linkTo.Add(new LinkTo { bone = fallback });
+                    }
+                } else {
+                    linkTo.Add(new LinkTo { useBone = false, useObj = false, offset = bonePathOnAvatar });
+                }
+            }
             return false;
 #pragma warning restore 0612
         }
         public override int GetLatestVersion() {
-            return 5;
+            return 6;
         }
     }
     
@@ -679,6 +700,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class ApplyDuringUpload : NewFeatureModel {
+        [DoNotApplyRestingState]
         public State action;
     }
 

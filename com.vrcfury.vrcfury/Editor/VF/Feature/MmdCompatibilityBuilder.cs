@@ -16,7 +16,6 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Feature {
     public class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
         [VFAutowired] private readonly MathService mathService;
-        [VFAutowired] private readonly FixMasksBuilder fixMasksBuilder;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         
         public override string GetEditorTitle() {
@@ -75,7 +74,7 @@ namespace VF.Feature {
                 .Select(l => l.name)
                 .ToImmutableHashSet();
             var layersToDisable = fx.GetLayers()
-                .Where(l => fixMasksBuilder.IsMigratedFromGesture(l.stateMachine) || layerNamesToDisable.Contains(l.name))
+                .Where(l => layerNamesToDisable.Contains(l.name))
                 .Select(l => l.stateMachine)
                 .ToArray();
             

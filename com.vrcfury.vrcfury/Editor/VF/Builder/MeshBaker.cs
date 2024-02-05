@@ -19,7 +19,7 @@ namespace VF.Builder {
                 // So we have to skip rescaling, otherwise we'd apply the inverse scale inappropriately and it would be too small.
                 var actuallySkinned = mesh != null && mesh.boneWeights.Length > 0;
                 if (actuallySkinned) {
-                    var scale = skin.transform.lossyScale;
+                    var scale = skin.owner().worldScale;
                     var inverseScale = new Vector3(1 / scale.x, 1 / scale.y, 1 / scale.z);
                     ApplyScale(temporaryMesh, inverseScale);
                 }
@@ -33,9 +33,9 @@ namespace VF.Builder {
             Vector3[] normals;
             if (origin) {
                 vertices = mesh.vertices
-                    .Select(v => origin.InverseTransformPoint(renderer.transform.TransformPoint(v))).ToArray();
+                    .Select(v => origin.InverseTransformPoint(renderer.owner().TransformPoint(v))).ToArray();
                 normals = mesh.normals
-                    .Select(v => origin.InverseTransformDirection(renderer.transform.TransformDirection(v))).ToArray();
+                    .Select(v => origin.InverseTransformDirection(renderer.owner().TransformDirection(v))).ToArray();
             } else {
                 vertices = mesh.vertices;
                 normals = mesh.normals;

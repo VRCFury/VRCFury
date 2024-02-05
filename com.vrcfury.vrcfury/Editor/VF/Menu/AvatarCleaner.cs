@@ -7,12 +7,13 @@ using UnityEngine;
 using VF.Builder;
 using VF.Inspector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Menu {
-    public class AvatarCleaner {
+    public static class AvatarCleaner {
         public static List<string> Cleanup(
             VFGameObject avatarObj,
             bool perform = false,
@@ -23,17 +24,13 @@ namespace VF.Menu {
             Func<string, bool> ShouldRemoveParam = null
         ) {
             var removeItems = new List<string>();
-            
-            string GetPath(GameObject obj) {
-                return AnimationUtility.CalculateTransformPath(obj.transform, avatarObj.transform);
-            }
 
             if (ShouldRemoveAsset != null) {
                 var animators = avatarObj.GetComponentsInSelfAndChildren<Animator>();
                 foreach (var animator in animators) {
                     if (animator.runtimeAnimatorController != null &&
                         ShouldRemoveAsset(animator.runtimeAnimatorController)) {
-                        removeItems.Add("Animator Controller at path " + GetPath(animator.gameObject));
+                        removeItems.Add("Animator Controller at path " + animator.owner().GetPath(avatarObj));
                         if (perform) {
                             animator.runtimeAnimatorController = null;
                             VRCFuryEditorUtils.MarkDirty(animator);
@@ -43,11 +40,10 @@ namespace VF.Menu {
             }
 
             if (ShouldRemoveObj != null || ShouldRemoveComponent != null) {
-                var checkStack = new Stack<Transform>();
-                checkStack.Push(avatarObj.transform);
+                var checkStack = new Stack<VFGameObject>();
+                checkStack.Push(avatarObj);
                 while (checkStack.Count > 0) {
-                    var t = checkStack.Pop();
-                    var obj = t.gameObject;
+                    var obj = checkStack.Pop();
 
                     // TODO: ShouldRemoveObj should maybe verify if anything else in the avatar is using the object
                     // (constraints and things)
@@ -64,21 +60,21 @@ namespace VF.Menu {
                     }
 
                     if (removeObject) {
-                        removeItems.Add("Object: " + GetPath(obj));
+                        removeItems.Add("Object: " + obj.GetPath(avatarObj));
                         if (perform) RemoveObject(obj);
                     } else {
                         if (ShouldRemoveComponent != null) {
                             foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
                                 if (component != null && !(component is Transform) && ShouldRemoveComponent(component)) {
-                                    removeItems.Add(component.GetType().Name + " on " + GetPath(obj));
+                                    removeItems.Add(component.GetType().Name + " on " + obj.GetPath(avatarObj));
                                     if (perform) RemoveComponent(component);
                                 }
                             }
                         }
 
                         // Make sure RemoveComponent didn't remove this object!
-                        if (t) {
-                            foreach (Transform t2 in t) checkStack.Push(t2);
+                        if (obj != null) {
+                            foreach (var t2 in obj.Children()) checkStack.Push(t2);
                         }
                     }
                 }
@@ -87,23 +83,22 @@ namespace VF.Menu {
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
                 foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
-                    var controller = c.controller as AnimatorController;
-                    if (controller == null) continue;
+                    var controller_ = c.controller as AnimatorController;
+                    if (controller_ == null) continue;
+                    var controller = (VFController)(controller_);
                     var typeName = VRCFEnumUtils.GetName(c.type);
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {
                         removeItems.Add("Avatar Controller: " + typeName);
                         if (perform) c.setToDefault();
                     } else {
-                        var removedLayers = new HashSet<AnimatorStateMachine>();
+                        var removedLayers = new HashSet<VFLayer>();
                         if (ShouldRemoveLayer != null) {
-                            for (var i = 0; i < controller.layers.Length; i++) {
-                                var layer = controller.layers[i];
+                            foreach (var layer in controller.GetLayers()) {
                                 if (!ShouldRemoveLayer(layer.name)) continue;
                                 removeItems.Add(typeName + " Layer: " + layer.name);
-                                removedLayers.Add(layer.stateMachine);
+                                removedLayers.Add(layer);
                                 if (perform) {
-                                    controller.RemoveLayer(i);
-                                    i--;
+                                    layer.Remove();
                                 }
                             }
                         }
@@ -113,8 +108,8 @@ namespace VF.Menu {
                                 var prm = controller.parameters[i].name;
                                 if (!ShouldRemoveParam(prm)) continue;
 
-                                var prmUsed = controller.layers
-                                    .Where(layer => !removedLayers.Contains(layer.stateMachine))
+                                var prmUsed = controller.GetLayers()
+                                    .Where(layer => !removedLayers.Contains(layer))
                                     .Any(layer => IsParamUsed(layer, prm));
                                 if (prmUsed) continue;
 
@@ -216,8 +211,8 @@ namespace VF.Menu {
         }
         
         public static void RemoveComponent(UnityEngine.Component c) {
-            if (c.gameObject.GetComponents<UnityEngine.Component>().Length == 2 && c.gameObject.transform.childCount == 0)
-                RemoveObject(c.gameObject);
+            if (c.owner().GetComponents<UnityEngine.Component>().Length == 2 && c.owner().childCount == 0)
+                RemoveObject(c.owner());
             else
                 Object.DestroyImmediate(c);
         }
@@ -234,7 +229,7 @@ namespace VF.Menu {
             }
         }
 
-        private static bool IsParamUsed(AnimatorControllerLayer layer, string param) {
+        private static bool IsParamUsed(VFLayer layer, string param) {
             var isUsed = false;
             isUsed |= new AnimatorIterator.Conditions().From(layer)
                 .Any(c => c.parameter == param);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VF.Model;
+using VF.Model.StateAction;
 
 namespace VF.Component {
     [AddComponentMenu("VRCFury/VRCFury - SPS Plug")]
@@ -18,6 +19,7 @@ namespace VF.Component {
         public bool unitsInMeters = false;
         public bool configureTps = false;
         public bool enableSps = true;
+        [NonSerialized] public bool sendersOnly = false;
         public bool spsAutorig = true;
         public List<string> spsBlendshapes = new List<string>();
         public List<Renderer> configureTpsMesh = new List<Renderer>();
@@ -25,6 +27,7 @@ namespace VF.Component {
         public bool useLegacyRendererFinder = false;
         public bool addDpsTipLight = false;
         public bool spsKeepImports = false;
+        [DoNotApplyRestingState]
         public State postBakeActions;
         public bool spsOverrun = true;
         public bool enableDepthAnimations = false;

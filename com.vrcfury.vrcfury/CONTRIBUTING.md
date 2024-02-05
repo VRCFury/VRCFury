@@ -71,10 +71,12 @@ For more information, please refer to <https://unlicense.org>
   * Created numerous setup prefabs
   * Fix DirectTreeOptimizer for clips with partial keyframes
   * Added parameter smoothing to Full Controller
+  * Debugged and found the solution to VRC stations breaking smoothing
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
   * Prevented SPS toggle from disabling SPS autorig physbone
   * Set the Editor Test Copy's Animator controller to the generated FX layer
+  * Added drop-in box for quickly setting bones in Armature Link
 * Raphiiko
   * Added global parameters for Toggles
 * TayouVR
@@ -83,6 +85,7 @@ For more information, please refer to <https://unlicense.org>
   * Contributed SPS support for legacy DPS channel 1 (unused)
   * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
   * Added version number to vrcfury components
+  * Checking for transform path on specified bone in Armature Link
 * TheLastRar
   * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
   * Added scaling of legacy DPS tip light intensity
