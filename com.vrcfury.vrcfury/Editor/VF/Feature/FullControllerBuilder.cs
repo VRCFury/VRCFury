@@ -200,9 +200,12 @@ namespace VF.Feature {
                 if (name.StartsWith("Go/")) return name;
                 return "Go/" + name;
             }
-            
+
+            if (model.globalParams.Contains("*")) {
+                if (model.globalParams.Contains("!" + name)) return manager.MakeUniqueParamName(name);
+                return name;
+            }
             if (model.globalParams.Contains(name)) return name;
-            if (model.globalParams.Contains("*")) return name;
             return manager.MakeUniqueParamName(name);
         }
 
@@ -313,9 +316,9 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
         public class ControllerEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var row = new VisualElement().Row();
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller")).FlexGrow(1));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type")).FlexGrow(1));
+                var row = new VisualElement();
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("controller"), label: "File"));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("type"), label: "Type"));
                 return row;
             }
         }
@@ -323,9 +326,13 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.MenuEntry))]
         public class MenuEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var row = new VisualElement().Row();
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu")).FlexGrow(1));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix")).FlexGrow(1));
+                var row = new VisualElement();
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menu"), "File"));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("prefix"), "Prefix", tooltip:
+                    "This is where the menu will be merged into the avatar's existing menu." +
+                    " If the box is empty, it will be merged into the root of the avatar's menu. If you put (for example) 'Clothes', then the menu file will be" +
+                    " placed within a submenu called 'Clothes'."
+                ));
                 return row;
             }
         }
@@ -420,43 +427,61 @@ namespace VF.Feature {
                 "This feature will merge the given controller / menu / parameters into the avatar" +
                 " during the upload process."));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Controllers:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Controller"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
-
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Menus + Path Prefix:"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel("(If prefix is left empty, menu will be merged into avatar's root menu)"));
+            
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Menu"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters:"));
+            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters"));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
-
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Global Parameters:"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel(
-                "Parameters in this list will have their name kept as is, allowing you to interact with " +
-                "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
-                "parameters (such as gestures) are included by default."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
-            
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Rewrite animation clips:"));
-            content.Add(VRCFuryEditorUtils.WrappedLabel(
-                "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
-                " in the controller were originally written to be based from a specific avatar root," +
-                " but you are now trying to use as a re-usable VRCFury prop."));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings")));
 
             var adv = new Foldout {
                 text = "Advanced Options",
                 value = false
             };
-
-            var (a, b) = VRCFuryEditorUtils.CreateTooltip(
-                "Smooth Parameters",
-                "All parameters listed here that are found in FX controllers listed above will have their " +
-                "values smoothed. The number represents how many seconds it should take to reach 90% of the target value.");
-            adv.Add(a);
-            adv.Add(b);
-            adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
             
+            {
+                var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                    "Global Parameters",
+                    "VRCFury normally renames all merged parameters so that they will never conflict with parameters already existing on the" +
+                    " avatar / other copies of this prefab.\n" +
+                    "\n" +
+                    "Parameters in this list will have their name kept as is, allowing you to interact with " +
+                    "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
+                    "parameters (such as gestures) are included by default.\n" +
+                    "\n" +
+                    "If you want to make all parameters global, you can use enter a * . " +
+                    "If you want to make all parameters global except for a few, you can mark specific parameters " +
+                    "as not global by prefixing them with a ! ."
+                );
+                adv.Add(a);
+                adv.Add(b);
+                adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
+            }
+
+            {
+                var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                    "Smooth Parameters",
+                    "All parameters listed here that are found in FX controllers listed above will have their " +
+                    "values smoothed. The number represents how many seconds it should take to reach 90% of the target value.");
+                adv.Add(a);
+                adv.Add(b);
+                adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
+            }
+            
+            {
+                var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                    "Binding Rewrite Rules",
+                    "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
+                    " in the controller were originally written to be based from a specific avatar root," +
+                    " but you are now trying to use as a re-usable VRCFury prop."
+                );
+                adv.Add(a);
+                adv.Add(b);
+                adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings")));
+            }
+
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
@@ -473,7 +498,8 @@ namespace VF.Feature {
 
                 var baseObject = GetBaseObject();
 
-                var missingPaths = new HashSet<string>();
+                var missingFromBase = new HashSet<string>();
+                var missingFromAvatar = new HashSet<string>();
                 var usesWdOff = false;
                 foreach (var c in model.controllers) {
                     var c1 = c.controller?.Get() as AnimatorController;
@@ -483,11 +509,18 @@ namespace VF.Feature {
                         if (!state.writeDefaultValues) {
                             usesWdOff = true;
                         }
-                        missingPaths.UnionWith(new AnimatorIterator.Clips().From(state)
+
+                        var paths = new AnimatorIterator.Clips().From(state)
                             .SelectMany(clip => clip.GetAllBindings())
                             .Select(binding => RewritePath(binding.path))
-                            .Where(path => path != null)
-                            .Where(path => baseObject.Find(path) == null));
+                            .Where(path => path != null);
+                        foreach (var path in paths) {
+                            if (avatarObject != baseObject && baseObject.Find(path) == null) {
+                                missingFromBase.Add(path);
+                            } else if (avatarObject.Find(path) == null) {
+                                missingFromAvatar.Add(path);
+                            }
+                        }
                     }
                 }
 
@@ -499,19 +532,20 @@ namespace VF.Feature {
                         " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
                     text.Add("");
                 }
-                if (missingPaths.Count > 0) {
-                    if (avatarObject == baseObject) {
-                        text.Add(
-                            "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything. " +
-                            "You may need to use 'Rewrite bindings' to fix them if your avatar's objects are in a different location.");
-                    } else {
-                        text.Add(
-                            "These paths are animated in the controller, but not found as children of this object. " +
-                            "If you want this prop to be reusable, you should use 'Rewrite bindings' above to rewrite " +
-                            "these paths so they work with how the objects are located within this object.");
-                    }
+                if (missingFromAvatar.Any()) {
+                    text.Add(
+                        "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything. " +
+                        "You may need to use 'Binding Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.");
                     text.Add("");
-                    text.AddRange(missingPaths.OrderBy(path => path));
+                    text.AddRange(missingFromAvatar.OrderBy(path => path));
+                }
+                if (missingFromBase.Any()) {
+                    text.Add(
+                        "These paths are animated in the controller, but not found as children of this object. " +
+                        "If you want this prop to be reusable, you should use 'Binding Rewrite Rules' in the Advanced Settings to rewrite " +
+                        "these paths so they work with how the objects are located within this object.");
+                    text.Add("");
+                    text.AddRange(missingFromBase.OrderBy(path => path));
                 }
 
                 return string.Join("\n", text);

@@ -62,6 +62,8 @@ For more information, please refer to <https://unlicense.org>
   * Fixed toggles possibly being in the wrong state for one frame upon loading
   * Added ability for toggles to "play to completion"
   * Added transition time support to Toggles
+* Happyrobot33
+  * Added support for excluded global params in Full Controller
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
   * Made colliders merge properly within Armature Link (unused)
