@@ -69,14 +69,26 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (model.name, model.usePrefixOnParam);
     }
 
+    private bool getLocalOnly() {
+        if (model.state.actions.Count() > 0) return true;
+        if (model.hasTransition) {
+            if (model.transitionStateIn.actions.Count() > 0) return true;
+            if (model.transitionStateOut.actions.Count() > 0) return true;
+        }
+
+        return false;
+        
+    }
+
     [FeatureBuilderAction]
     public void Apply() {
         var fx = GetFx();
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
+        var networkSyncParam = addMenuItem && getLocalOnly();
 
-        var synced = true;
+        var synced = addMenuItem;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
             synced = false;
         }
@@ -89,7 +101,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var param = fx.NewFloat(
                 paramName,
                 synced: synced,
-                networkSynced: addMenuItem,
+                networkSynced: networkSyncParam,
                 saved: model.saved,
                 def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
@@ -111,7 +123,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = param.IsNotEqualTo(0);
             defaultOn = model.defaultOn;
         } else {
-            var param = fx.NewBool(paramName, synced: synced, networkSynced: addMenuItem, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var param = fx.NewBool(paramName, synced: synced, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             exclusiveParam = param;
             onCase = param.IsTrue();
             defaultOn = model.defaultOn;
