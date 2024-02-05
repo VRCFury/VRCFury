@@ -10,7 +10,7 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Link() {
             addOtherFeature(new ArmatureLink {
-                boneOnAvatar = model.bone,
+                linkTo = { new ArmatureLink.LinkTo { bone = model.bone }},
                 keepBoneOffsets2 = ArmatureLink.KeepBoneOffsets.No,
                 linkMode = ArmatureLink.ArmatureLinkMode.ParentConstraint,
                 propBone = model.obj
