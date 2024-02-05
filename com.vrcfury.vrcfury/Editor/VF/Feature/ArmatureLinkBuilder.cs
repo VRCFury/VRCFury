@@ -357,26 +357,37 @@ namespace VF.Feature {
             }
 
             if (!model.linkTo.Any()) {
-                return null;
+                throw new Exception("'Link To' field is empty");
             }
 
+            var exceptions = new List<string>();
             var avatarBone = model.linkTo.Select(to => {
-                VFGameObject obj;
-                if (to.useBone) obj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, to.bone);
-                else if (to.useObj) obj = to.obj;
-                else obj = avatarObject;
-                if (obj == null) return null;
-                if (!string.IsNullOrWhiteSpace(to.offset)) {
-                    obj = obj.Find(to.offset);
+                try {
+                    VFGameObject obj;
+                    if (to.useBone) {
+                        obj = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, to.bone);
+                    } else if (to.useObj) {
+                        obj = to.obj;
+                        if (obj == null) throw new Exception("'Link to' object does not exist");
+                    } else {
+                        obj = avatarObject;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(to.offset)) {
+                        var path = obj.GetPath(avatarObject);
+                        obj = obj.Find(path);
+                        if (obj == null) throw new Exception($"Failed to find object at path '{path}'");
+                    }
+
+                    return obj;
+                } catch (Exception e) {
+                    exceptions.Add(e.Message);
+                    return null;
                 }
-                return obj;
-            }).FirstOrDefault();
+            }).NotNull().FirstOrDefault();
 
             if (avatarBone == null) {
-                throw new Exception(
-                    "ArmatureLink failed to find its link target on your avatar." +
-                    " Are you sure your rig is humanoid?" +
-                    " Is this asset made for a specific avatar that isn't yours?");
+                throw new Exception(string.Join("\n", exceptions));
             }
 
             var removeBoneSuffix = model.removeBoneSuffix;

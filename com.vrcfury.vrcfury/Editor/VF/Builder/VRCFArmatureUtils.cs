@@ -45,8 +45,11 @@ namespace VF.Builder {
             var lookup = Load(avatarObject);
 
             if (!lookup.TryGetValue(findBone, out var path)) {
+                if (!lookup.ContainsKey(HumanBodyBones.Hips)) {
+                    throw new Exception($"{findBone} bone could not be found because avatar's rig is not set to humanoid");
+                }
                 throw new VRCFBuilderException(
-                    "Bone isn't present in rig. Are you sure the rig for the avatar is humanoid and contains this bone?");
+                    $"{findBone} bone isn't set in this avatar's rig");
             }
 
             return path;
