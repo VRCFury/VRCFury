@@ -288,7 +288,7 @@ public static class VRCFuryEditorUtils {
                         prop.enumValueIndex,
                         formatSelectedValueCallback: formatEnum,
                         formatListItemCallback: formatEnum
-                    ) { bindingPath = prop.propertyPath };
+                    ) { bindingPath = prop.propertyPath }.FlexShrink(1);
                     break;
                 }
                 case SerializedPropertyType.Generic: {
