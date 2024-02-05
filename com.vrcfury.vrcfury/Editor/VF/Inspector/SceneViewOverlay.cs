@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
@@ -43,11 +46,17 @@ namespace VF.Inspector {
         private static bool ndmfPresent =
             ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;
 
-        public static string GetOutputString() {
+        public static string GetOutputString([CanBeNull] VFGameObject avatarObject = null) {
             var output = "";
-            
-            var wdDisabled = Object
-                .FindObjectsOfType<VRCFury>()
+
+            IEnumerable<VRCFury> vrcfComponents;
+            if (avatarObject == null) {
+                vrcfComponents = Object.FindObjectsOfType<VRCFury>();
+            } else {
+                vrcfComponents = avatarObject.GetComponentsInSelfAndChildren<VRCFury>();
+            }
+
+            var wdDisabled = vrcfComponents
                 .SelectMany(c => c.config.features)
                 .OfType<FixWriteDefaults>()
                 .Any(fwd => fwd.mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled);

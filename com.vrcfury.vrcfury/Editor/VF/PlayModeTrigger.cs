@@ -69,7 +69,7 @@ namespace VF {
 
             foreach (var root in VFGameObject.GetRoots(scene)) {
                 foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
-                    RescanOnStartComponent.AddToObject(avatar.gameObject);
+                    RescanOnStartComponent.AddToObject(avatar.owner());
                     var obj = avatar.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
@@ -124,7 +124,7 @@ namespace VF {
             }
         }
 
-        private static bool IsAv3EmulatorClone(VFGameObject obj) {
+        public static bool IsAv3EmulatorClone(VFGameObject obj) {
             return obj.name.Contains("(ShadowClone)")
                    || obj.name.Contains("(MirrorReflection)");
         }
@@ -136,10 +136,10 @@ namespace VF {
         [DefaultExecutionOrder(-10000)]
         public class RescanOnStartComponent : MonoBehaviour {
             private void Start() {
-                Rescan(gameObject.scene);
+                Rescan(this.owner().scene);
             }
 
-            public static void AddToObject(GameObject obj) {
+            public static void AddToObject(VFGameObject obj) {
                 if (obj.GetComponent<RescanOnStartComponent>()) {
                     return;
                 }

@@ -71,6 +71,7 @@ For more information, please refer to <https://unlicense.org>
   * Created numerous setup prefabs
   * Fix DirectTreeOptimizer for clips with partial keyframes
   * Added parameter smoothing to Full Controller
+  * Debugged and found the solution to VRC stations breaking smoothing
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
   * Prevented SPS toggle from disabling SPS autorig physbone

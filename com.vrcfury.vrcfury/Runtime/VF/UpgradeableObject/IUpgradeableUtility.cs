@@ -37,6 +37,7 @@ namespace VF.Upgradeable {
                 if (visit.value is IUpgradeable upgradeable) {
                     list.Add(upgradeable);
                 }
+                return UnitySerializationUtils.IterateResult.Continue;
             });
             list.Reverse();
             var upgradedOne = false;
@@ -52,6 +53,7 @@ namespace VF.Upgradeable {
                 if (visit.value is IUpgradeable upgradeable) {
                     tooNew |= upgradeable.Version > upgradeable.GetLatestVersion();
                 }
+                return UnitySerializationUtils.IterateResult.Continue;
             });
             return tooNew;
         }

@@ -5,7 +5,7 @@ using VF.Builder;
 
 namespace VF.Menu {
     public static class ZawooDeleter {
-        public static void Run(GameObject avatarObj) {
+        public static void Run(VFGameObject avatarObj) {
             var effects = CleanupAllZawooComponents(avatarObj, false);
             if (effects.Count == 0) {
                 EditorUtility.DisplayDialog(
@@ -27,7 +27,7 @@ namespace VF.Menu {
             CleanupAllZawooComponents(avatarObj, true);
         }
         
-        private static List<string> CleanupAllZawooComponents(GameObject avatarObj, bool perform = false) {
+        private static List<string> CleanupAllZawooComponents(VFGameObject avatarObj, bool perform = false) {
             return AvatarCleaner.Cleanup(
                 avatarObj,
                 perform: perform,

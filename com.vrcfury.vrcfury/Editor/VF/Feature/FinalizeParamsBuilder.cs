@@ -5,12 +5,16 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Injector;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     public class FinalizeParamsBuilder : FeatureBuilder {
+        [VFAutowired] private readonly ExceptionService excService;
+
         [FeatureBuilderAction(FeatureOrder.FinalizeParams)]
         public void Apply() {
             var p = manager.GetParams();
@@ -20,17 +24,17 @@ namespace VF.Feature {
                 maxBits = 256;
             }
             if (p.GetRaw().CalcTotalCost() > maxBits) {
-                throw new SneakyException(
+                excService.ThrowIfActuallyUploading(new SneakyException(
                     "Your avatar is out of space for parameters! Used "
                     + p.GetRaw().CalcTotalCost() + "/" + maxBits
-                    + " bits. Ask your avatar creator, or the creator of the last prop you've added, if there are any parameters you can remove to make space.");
+                    + " bits. Ask your avatar creator, or the creator of the last prop you've added, if there are any parameters you can remove to make space."));
             }
 
             if (p.GetRaw().parameters.Length > 256) {
-                throw new SneakyException(
+                excService.ThrowIfActuallyUploading(new SneakyException(
                     $"Your avatar is using too many synced and unsynced expression parameters ({p.GetRaw().parameters.Length})!"
                     + " A bug in vrchat causes this to unexpectedly throw away some of your parameters.\n\n" +
-                    "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param");
+                    "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param"));
             }
 
             var contacts = avatarObject.GetComponentsInSelfAndChildren<ContactBase>().ToArray();
@@ -44,15 +48,16 @@ namespace VF.Feature {
                 var usesSps = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
                               || avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();
                 if (usesSps) {
-                    throw new SneakyException(
+                    excService.ThrowIfActuallyUploading(new SneakyException(
                         "Your avatar is using more than the allowed number of contacts! Used "
                         + contacts.Length + "/" + contactLimit
-                        + ". Delete some contacts or DPS/SPS items from your avatar.");
+                        + ". Delete some contacts or DPS/SPS items from your avatar."));
+                } else {
+                    excService.ThrowIfActuallyUploading(new SneakyException(
+                        "Your avatar is using more than the allowed number of contacts! Used "
+                        + contacts.Length + "/" + contactLimit
+                        + ". Delete some contacts from your avatar."));
                 }
-                throw new SneakyException(
-                    "Your avatar is using more than the allowed number of contacts! Used "
-                    + contacts.Length + "/" + contactLimit
-                    + ". Delete some contacts from your avatar.");
             }
         }
     }

@@ -20,8 +20,10 @@ using Toggle = VF.Model.Feature.Toggle;
 namespace VF.Feature {
 
 public class ToggleBuilder : FeatureBuilder<Toggle> {
+    [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
-    [VFAutowired] private readonly RestingStateBuilder restingState;
+    [VFAutowired] private readonly RestingStateService restingState;
+    [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
@@ -58,7 +60,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (!model.enableExclusiveTag) return false; // no eclusive tags
         if (model.slider) return false; // already uses float
         if (string.IsNullOrEmpty(model.name)) return false; // no menu item
-        if (model.networkUnsynced) return false; // network unscynced param
+        if (getLocalOnly()) return false; // network unscynced param
         return true;
     }
     public string GetPrimaryExclusive() {
@@ -134,14 +136,24 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (model.name, model.usePrefixOnParam);
     }
 
+    private bool getLocalOnly() {
+        if (model.state.actions.Count() > 0) return true;
+        if (model.hasTransition) {
+            if (model.transitionStateIn.actions.Count() > 0) return true;
+            if (model.transitionStateOut.actions.Count() > 0) return true;
+        }
+        return false;
+    }
+
     [FeatureBuilderAction]
     public void Apply() {
         var fx = GetFx();
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
+        var networkSyncParam = addMenuItem && getLocalOnly();
 
-        var synced = true;
+        var synced = addMenuItem;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
             synced = false;
         }
@@ -154,7 +166,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var param = fx.NewFloat(
                 paramName,
                 synced: synced,
-                networkSynced: !model.networkUnsynced,
+                networkSynced: networkSyncParam,
                 saved: model.saved,
                 def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
@@ -176,7 +188,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = param.IsNotEqualTo(0);
             defaultOn = model.defaultOn;
         } else {
-            var param = fx.NewBool(paramName, synced: synced, networkSynced: !model.networkUnsynced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var param = fx.NewBool(paramName, synced: synced, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             exclusiveParam = param;
             onCase = param.IsTrue();
             defaultOn = model.defaultOn;
@@ -321,7 +333,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (savedRestingClip == null) {
-            savedRestingClip = restingClip;
+            var copy = new AnimationClip();
+            copy.CopyFrom(restingClip);
+            savedRestingClip = copy;
+            mover.AddAdditionalManagedClip(savedRestingClip);
         }
     }
 
@@ -390,7 +405,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (!savedRestingClip.IsStatic()) return;
 
-        restingState.ApplyClipToRestingState(savedRestingClip, true);
+        foreach (var b in savedRestingClip.GetFloatBindings())
+            writeDefaultsManager.RecordDefaultNow(b, true);
+        foreach (var b in savedRestingClip.GetObjectBindings())
+            writeDefaultsManager.RecordDefaultNow(b, false);
+        restingState.ApplyClipToRestingState(savedRestingClip);
     }
 
     public override string GetEditorTitle() {
@@ -417,7 +436,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
-        var networkUnsyncedProp = prop.FindPropertyRelative("networkUnsynced");
 
         var flex = new VisualElement().Row();
         content.Add(flex);
@@ -500,11 +518,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
                 advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
                     useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Use Unsynced Parameter"), networkUnsyncedProp.boolValue, () => {
-                    networkUnsyncedProp.boolValue = !networkUnsyncedProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
@@ -626,8 +639,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
                 if (exclusiveOffStateProp.boolValue)
                     tags.Add("This is the Exclusive Off State");
-                if (networkUnsyncedProp.boolValue)
-                    tags.Add("Unsynced Param");
 
                 var row = new VisualElement().Row().FlexWrap();
                 foreach (var tag in tags) {
@@ -648,8 +659,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             exclusiveOffStateProp,
             holdButtonProp,
             hasExitTimeProp,
-            sliderProp,
-            networkUnsyncedProp
+            sliderProp
         ));
 
         var toggleOffWarning = VRCFuryEditorUtils.Error(

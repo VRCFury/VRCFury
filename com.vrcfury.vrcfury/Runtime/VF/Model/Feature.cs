@@ -279,7 +279,6 @@ namespace VF.Model.Feature {
         public string globalParam;
         public bool holdButton;
         public bool invertRestLogic;
-        public bool networkUnsynced = false;
 
         public override void CreateNewInstance(GameObject obj) {
         }
@@ -680,6 +679,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class ApplyDuringUpload : NewFeatureModel {
+        [DoNotApplyRestingState]
         public State action;
     }
 

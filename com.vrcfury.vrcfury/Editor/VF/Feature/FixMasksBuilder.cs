@@ -49,6 +49,14 @@ namespace VF.Feature {
                     .ToImmutableHashSet();
 
                 if (!propTypes.Contains(PropType.Fx) && !propTypes.Contains(PropType.Aap)) continue;
+                
+                // Ensure the gesture copy has a unique copy of all of its clips, as we will be modifying them later,
+                // and they may be shared with other layers (where they should not be modified)
+                foreach (var state in new AnimatorIterator.States().From(layer)) {
+                    if (state.motion != null) {
+                        state.motion = MutableManager.CopyRecursive(state.motion);
+                    }
+                }
 
                 var copyLayer = new AnimatorControllerLayer {
                     name = layer.name,
@@ -58,13 +66,16 @@ namespace VF.Feature {
                     defaultWeight = layer.weight
                 };
                 newFxLayers.Add(copyLayer);
-                if (propTypes.Contains(PropType.Muscle)) {
+                if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
                     // Remove fx bindings from the gesture copy
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
                         clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
                             if (GetPropType(b) != PropType.Fx) return b;
                             return null;
                         }, false));
+                    }
+                    if (layer.mask != null) {
+                        layer.mask.AllowAllTransforms();
                     }
                     // Remove muscle control from the fx copy
                     var vfCopy = new VFLayer(null, copyLayer.stateMachine);

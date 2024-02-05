@@ -29,7 +29,7 @@ public class VRCFuryBuilder {
 
     internal Status SafeRun(
         VFGameObject avatarObject,
-        VFGameObject originalObject = null,
+        VFGameObject originalObject,
         bool keepDebugInfo = false
     ) {
         /*
@@ -66,7 +66,7 @@ public class VRCFuryBuilder {
     internal static bool ShouldRun(VFGameObject avatarObject) {
         return avatarObject
             .GetComponentsInSelfAndChildren<VRCFuryComponent>()
-            .Where(c => !(c is VRCFuryDebugInfo))
+            .Where(c => !(c is VRCFuryDebugInfo || c is VRCFuryTest))
             .Any();
     }
 
@@ -79,7 +79,7 @@ public class VRCFuryBuilder {
         }
     }
 
-    private void Run(GameObject avatarObject, GameObject originalObject) {
+    private void Run(VFGameObject avatarObject, VFGameObject originalObject) {
         if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
@@ -169,7 +169,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(RestingStateBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
         AddBuilder(typeof(FixEmptyMotionBuilder));
 
@@ -256,6 +255,7 @@ public class VRCFuryBuilder {
 
         AddModel(new DirectTreeOptimizer { managedOnly = true }, avatarObject);
 
+        FeatureOrder? lastPriority = null;
         while (actions.Count > 0) {
             var action = actions.Min();
             actions.Remove(action);
@@ -264,6 +264,12 @@ public class VRCFuryBuilder {
                 var statusSkipMessage = $"{service.GetType().Name} ({currentModelNumber}) Skipped (Object no longer exists)";
                 progress.Progress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
                 continue;
+            }
+
+            var priority = action.GetPriorty();
+            if (lastPriority != priority) {
+                lastPriority = priority;
+                injector.GetService<RestingStateService>().OnPhaseChanged();
             }
 
             currentModelNumber = action.serviceNum;
