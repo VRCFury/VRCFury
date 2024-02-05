@@ -18,29 +18,18 @@ namespace VF.Service {
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         
         public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true) {
-            if (smoothingSeconds <= 0) return target;
-
-            var output = math.MakeAap(name, def: target.GetDefault());
-            directTree.Add(Smooth(target, output, smoothingSeconds, useAcceleration));
-            return output;
-        }
-        
-        private Motion Smooth(VFAFloat target, MathService.VFAap output, float smoothingSeconds, bool useAcceleration = true, string prefix = "") {
-            if (smoothingSeconds <= 0) return math.MakeCopier(target, output);
+            if (smoothingSeconds <= 0) {
+                return target;
+            }
             if (smoothingSeconds > 10) smoothingSeconds = 10;
             var speed = GetSpeed(smoothingSeconds, useAcceleration);
-            if (prefix != "") prefix = "/" + prefix;
 
             if (!useAcceleration) {
-                return Smooth_(target, output, speed);
+                return Smooth_(target, name, speed);
             }
 
-            var fx = manager.GetFx();
-            var tree = math.MakeDirect(output.Name());
-            var pass1 = math.MakeAap($"{output.Name()}{prefix}/Pass1", def: output.GetDefault());
-            tree.Add(fx.One(), Smooth_(target, pass1, speed));
-            tree.Add(fx.One(), Smooth_(pass1, output, speed));
-            return tree;
+            var pass1 = Smooth_(target, $"{name}/Pass1", speed);
+            return Smooth_(pass1, $"{name}/Pass2", speed);
         }
 
         private readonly Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
@@ -69,12 +58,14 @@ namespace VF.Service {
             return output;
         }
 
-        private Motion Smooth_(VFAFloat target, MathService.VFAap output, VFAFloat speedParam) {
+        private MathService.VFAap Smooth_(VFAFloat target, string name, VFAFloat speedParam) {
+            var output = math.MakeAap(name, def: target.GetDefault());
+            
             // Maintain tree - keeps the current value
-            var maintainTree = math.MakeMaintainer(output);
+            var maintainTree = math.MakeCopier(output, output, true);
 
             // Target tree - uses the target (input) value
-            var targetTree = math.MakeCopier(target, output);
+            var targetTree = math.MakeCopier(target, output, true);
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
@@ -84,8 +75,9 @@ namespace VF.Service {
                 (0, maintainTree),
                 (1, targetTree)
             );
+            directTree.Add(smoothTree);
 
-            return smoothTree;
+            return output;
         }
 
     }
