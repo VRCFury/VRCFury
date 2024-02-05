@@ -78,7 +78,7 @@ namespace VF.Feature {
                     return mat;
                 }).ToArray();
 
-                VFGameObject rootBone = renderer.transform;
+                var rootBone = renderer.owner();
                 if (renderer is SkinnedMeshRenderer skin && skin.rootBone != null) {
                     rootBone = skin.rootBone;
                 }

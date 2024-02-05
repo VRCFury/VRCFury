@@ -105,12 +105,11 @@ namespace VF.Feature {
             var whenAnimatedDict = new Dictionary<TrackingControlType, VFCondition>();
             {
                 foreach (var type in typesUsed) {
-                    var merged = fx.NewFloat("TC_merged_" + type.fieldName);
-                    var setter = mathService.MakeSetter(merged, 1);
-                    foreach (var input in inhibitors.Get(type)) {
-                        directTreeService.Add(input, setter);
-                    }
-                    whenAnimatedDict[type] = merged.IsGreaterThan(0.5f);
+                    var merged = mathService.Add(
+                        $"TC_merged_{type.fieldName}",
+                        inhibitors.Get(type).Select(input => ((MathService.VFAFloatOrConst)input,1f)).ToArray()
+                    );
+                    whenAnimatedDict[type] = merged.AsFloat().IsGreaterThan(0.5f);
                 }
             }
 

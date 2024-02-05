@@ -24,7 +24,7 @@ namespace VF.Service {
         }
 
         public void AddSender(
-            Transform obj,
+            VFGameObject obj,
             Vector3 pos,
             string objName,
             float radius,
@@ -65,7 +65,7 @@ namespace VF.Service {
         }
 
         public VFAFloat AddReceiver(
-            Transform obj,
+            VFGameObject obj,
             Vector3 pos,
             string paramName,
             string objName,

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VF.Model;
+using VF.Model.StateAction;
 
 namespace VF.Component {
     [AddComponentMenu("VRCFury/VRCFury - SPS Plug")]
@@ -26,6 +27,7 @@ namespace VF.Component {
         public bool useLegacyRendererFinder = false;
         public bool addDpsTipLight = false;
         public bool spsKeepImports = false;
+        [DoNotApplyRestingState]
         public State postBakeActions;
         public bool spsOverrun = true;
         public bool enableDepthAnimations = false;

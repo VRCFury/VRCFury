@@ -1,14 +1,10 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils.Controller;
-using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDKBase;
 
 namespace VF.Feature {
     /**
@@ -18,19 +14,19 @@ namespace VF.Feature {
     [VFService]
     public class ForceStateInAnimatorService : FeatureBuilder {
         [VFAutowired] private readonly AvatarManager avatarManager;
-        private readonly List<Transform> _disableDuringLoad = new List<Transform>();
-        private readonly List<Transform> _forceEnable = new List<Transform>();
-        private readonly List<Transform> _forceEnableLocal = new List<Transform>();
+        private readonly List<VFGameObject> _disableDuringLoad = new List<VFGameObject>();
+        private readonly List<VFGameObject> _forceEnable = new List<VFGameObject>();
+        private readonly List<VFGameObject> _forceEnableLocal = new List<VFGameObject>();
 
-        public void DisableDuringLoad(Transform receiver) {
+        public void DisableDuringLoad(VFGameObject receiver) {
             _disableDuringLoad.Add(receiver);
         }
         
-        public void ForceEnable(Transform t) {
+        public void ForceEnable(VFGameObject t) {
             _forceEnable.Add(t);
         }
         
-        public void ForceEnableLocal(Transform t) {
+        public void ForceEnableLocal(VFGameObject t) {
             _forceEnableLocal.Add(t);
         }
 
@@ -63,18 +59,18 @@ namespace VF.Feature {
 
             var firstFrameClip = fx.NewClip("Load (First Frame)");
             foreach (var obj in disableDuringLoad) {
-                clipBuilder.Enable(firstFrameClip, obj.gameObject, false);
+                clipBuilder.Enable(firstFrameClip, obj, false);
             }
             load.WithAnimation(firstFrameClip);
             
             var onLocalClip = fx.NewClip("Idle (Local)");
             var onRemoteClip = fx.NewClip("Idle (Remote)");
             foreach (var obj in forceEnable) {
-                clipBuilder.Enable(onLocalClip, obj.gameObject);
-                clipBuilder.Enable(onRemoteClip, obj.gameObject);
+                clipBuilder.Enable(onLocalClip, obj);
+                clipBuilder.Enable(onRemoteClip, obj);
             }
             foreach (var obj in forceEnableLocal) {
-                clipBuilder.Enable(onLocalClip, obj.gameObject);
+                clipBuilder.Enable(onLocalClip, obj);
             }
             onLocal.WithAnimation(onLocalClip);
             onRemote.WithAnimation(onRemoteClip);

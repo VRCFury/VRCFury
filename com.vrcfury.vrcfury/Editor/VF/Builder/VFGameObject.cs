@@ -36,6 +36,10 @@ namespace VF.Builder {
             return Tuple.Create(gameObject).GetHashCode();
         }
 
+        public override string ToString() {
+            return GetPath();
+        }
+
         public Matrix4x4 worldToLocalMatrix => transform.worldToLocalMatrix;
         public Matrix4x4 localToWorldMatrix => transform.localToWorldMatrix;
 
@@ -85,6 +89,10 @@ namespace VF.Builder {
             set => gameObject.SetActive(value);
         }
 
+        public void SetParent(VFGameObject newParent, bool worldPositionStays) {
+            transform.SetParent(newParent, worldPositionStays);
+        }
+
         public bool activeInHierarchy => gameObject.activeInHierarchy;
 
         public VFGameObject parent => transform.parent;
@@ -121,7 +129,7 @@ namespace VF.Builder {
         public UnityEngine.Component GetComponent(Type t) {
             return GetComponents(t).FirstOrDefault();
         }
-        public T GetComponent<T>() where T : UnityEngine.Component {
+        public T GetComponent<T>() {
             return GetComponents<T>().FirstOrDefault();
         }
         
@@ -129,11 +137,11 @@ namespace VF.Builder {
             // Components can sometimes be null for some reason. Perhaps when they're corrupt?
             return gameObject.GetComponents(t).NotNull().ToArray();
         }
-        public T[] GetComponents<T>() where T : UnityEngine.Component {
+        public T[] GetComponents<T>() {
             return gameObject.GetComponents<T>().NotNull().ToArray();
         }
         
-        public T GetComponentInSelfOrParent<T>() where T : UnityEngine.Component {
+        public T GetComponentInSelfOrParent<T>() {
             return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
         
@@ -161,7 +169,7 @@ namespace VF.Builder {
             return transform.Find(search);
         }
 
-        public bool IsChildOf(Transform other) {
+        public bool IsChildOf(VFGameObject other) {
             return transform.IsChildOf(other);
         }
 
@@ -211,5 +219,9 @@ namespace VF.Builder {
         public static VFGameObject Cast(Transform o) {
             return o;
         }
+
+        public Vector3 TransformPoint(Vector3 position) => transform.TransformPoint(position);
+        public Vector3 InverseTransformPoint(Vector3 position) => transform.InverseTransformPoint(position);
+        public Vector3 TransformDirection(Vector3 direction) => transform.TransformDirection(direction);
     }
 }

@@ -26,8 +26,8 @@ namespace VF.Builder {
         public static VFGameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
             var bonePath = FindBonePathOrException(avatarObject, findBone);
 
-            var found = avatarObject.transform.Find(bonePath);
-            if (!found) {
+            var found = avatarObject.Find(bonePath);
+            if (found == null) {
                 throw new VRCFBuilderException(
                     "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
                     "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
@@ -58,8 +58,8 @@ namespace VF.Builder {
            throw new VRCFBuilderException(
                "Did not find " + findObject.name + " object in the humanoid descriptor in the original path.");
         }
- 
-        private static string FindBonePathOrException(Transform avatarObject, HumanBodyBones findBone) {
+        
+        private static string FindBonePathOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
             var lookup = Load(avatarObject);
 
             if (!lookup.TryGetValue(findBone, out var path)) {
@@ -70,12 +70,12 @@ namespace VF.Builder {
             return path;
         }
 
-        private static Dictionary<HumanBodyBones, string> Load(Transform avatarObject) {
+        private static Dictionary<HumanBodyBones, string> Load(VFGameObject avatarObject) {
             if (cache.TryGetValue(avatarObject, out var cached)) {
                 return cached;
             }
 
-            var animator = avatarObject.owner().GetComponent<Animator>();
+            var animator = avatarObject.GetComponent<Animator>();
             if (!animator) {
                 return new Dictionary<HumanBodyBones, string>();
             }

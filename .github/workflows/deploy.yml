@@ -23,9 +23,9 @@ jobs:
           - vrcsdkVersion: 3.5.0
             unityImage: unityci/editor:ubuntu-2022.3.6f1-android-3.0.1
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         with:
           path: ${{ env.PROJECT_PATH }}/Library
           key: Library-${{ matrix.unityImage }}-${{ matrix.vrcsdkVersion }}
@@ -85,18 +85,18 @@ jobs:
       contents: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: repo
       - name: Checkout version manifest
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: versions
           repository: VRCFury/vrcfury-updater-manifest
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
       - name: Bundle
         working-directory: repo
         env:
