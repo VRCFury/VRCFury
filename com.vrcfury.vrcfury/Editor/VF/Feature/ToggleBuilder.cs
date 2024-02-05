@@ -136,13 +136,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return (model.name, model.usePrefixOnParam);
     }
 
-    private bool getLocalOnly() {
-        if (model.state.actions.Count() > 0) return true;
+    private bool getIsOnlyLocalToggle() {
+        if (model.state.actions.Count() > 0) return false;
         if (model.hasTransition) {
-            if (model.transitionStateIn.actions.Count() > 0) return true;
-            if (model.transitionStateOut.actions.Count() > 0) return true;
+            if (model.transitionStateIn.actions.Count() > 0) return false;
+            if (model.transitionStateOut.actions.Count() > 0) return false;
         }
-        return false;
+        return true;
     }
 
     [FeatureBuilderAction]
@@ -151,9 +151,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
-        var networkSyncParam = addMenuItem && getLocalOnly();
+        var networkSyncParam = addMenuItem && !getIsOnlyLocalToggle();
 
-        var synced = addMenuItem;
+        var synced = addMenuItem || model.useGlobalParam;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
             synced = false;
         }
