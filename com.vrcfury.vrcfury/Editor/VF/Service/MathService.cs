@@ -50,30 +50,33 @@ namespace VF.Service {
             public VFAFloat AsFloat() => value;
         }
 
+        /**
+         * value : [0,Infinity)
+         */
         public VFAap SetValueWithConditions(
             string name,
-            params (VFAFloatOrConst,VFAFloatBool)[] targets
+            params (VFAFloatOrConst value,VFAFloatBool condition)[] targets
         ) {
             var defaultValue = targets
-                .Where(target => target.Item2 == null || target.Item2.defaultIsTrue)
-                .Select(target => target.Item1.GetDefault())
+                .Where(target => target.condition == null || target.condition.defaultIsTrue)
+                .Select(target => target.value.GetDefault())
                 .DefaultIfEmpty(0)
                 .First();
 
             var output = MakeAap(name, def: defaultValue);
 
             // The "fall through" (if all conditions are false) is to maintain the current output value
-            var elseTree = MakeMaintainer(output);
+            var elseTree = MakeCopier(output, output);
 
-            foreach (var (target, when) in targets.Reverse()) {
-                var doWhenTrue = MakeCopier(target, output);
+            foreach (var target in targets.Reverse()) {
+                var doWhenTrue = MakeCopier(target.value, output);
 
-                if (when == null) {
+                if (target.condition == null) {
                     elseTree = doWhenTrue;
                     continue;
                 }
 
-                elseTree = when.create(doWhenTrue, elseTree);
+                elseTree = target.condition.create(doWhenTrue, elseTree);
             }
             directTree.Add(elseTree);
             return output;
@@ -92,6 +95,9 @@ namespace VF.Service {
             );
         }
 
+        /**
+         * input : (-Infinity,Infinity)
+         */
         public VFAap Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
             var fx = avatarManager.GetFx();
             var outputDefault = VrcfMath.Map(input.GetDefault(), inMin, inMax, outMin, outMax);
@@ -119,6 +125,9 @@ namespace VF.Service {
             return output;
         }
         
+        /**
+         * a,b : (-Infinity,Infinity)
+         */
         public VFAFloatBool Equals(VFAFloat a, float b, string name = null) {
             return new VFAFloatBool((whenTrue, whenFalse) => Make1D(
                 name ?? $"{CleanName(a)} == {b}",
@@ -129,6 +138,9 @@ namespace VF.Service {
             ), a.GetDefault() == b);
         }
 
+        /**
+         * a,b : [-10000,10000]
+         */
         public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false) {
             return new VFAFloatBool((whenTrue, whenFalse) => {
                 var fx = avatarManager.GetFx();
@@ -146,6 +158,9 @@ namespace VF.Service {
             }, a.GetDefault() > b.GetDefault() || (orEqual && a.GetDefault() == b.GetDefault()));
         }
         
+        /**
+         * a,b : (-Infinity,Infinity)
+         */
         public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false) {
             return new VFAFloatBool((whenTrue, whenFalse) => Make1D(
                 $"{CleanName(a)} > {b}",
@@ -155,6 +170,9 @@ namespace VF.Service {
             ), a.GetDefault() > b || (orEqual && a.GetDefault() == b));
         }
 
+        /**
+         * a,b : (-Infinity,Infinity)
+         */
         public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false) {
             return Not(GreaterThan(a, b, !orEqual));
         }
@@ -166,16 +184,26 @@ namespace VF.Service {
             return VRCFuryEditorUtils.NextFloatDown(a);
         }
 
+        /**
+         * a,b : [0,Infinity)
+         */
         public VFAap Subtract(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
             name = name ?? $"{CleanName(a)} - {CleanName(b)}";
             return Add(name, (a,1), (b,-1));
         }
         
+        /**
+         * a,b : [0,Infinity)
+         */
         public VFAap Add(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
             name = name ?? $"{CleanName(a)} + {CleanName(b)}";
             return Add(name, (a,1), (b,1));
         }
         
+        /**
+         * input : [0,Infinity)
+         * multiplier : (-Infinity,Infinity)
+         */
         public VFAap Add(string name, params (VFAFloatOrConst input,float multiplier)[] components) {
             var fx = avatarManager.GetFx();
             float def = 0;
@@ -193,7 +221,7 @@ namespace VF.Service {
                 if (input.param != null) {
                     directTree.Add(input.param, MakeSetter(output, multiplier));
                 } else {
-                    directTree.Add(fx.One(), MakeSetter(output, input.constt * multiplier));
+                    directTree.Add(MakeSetter(output, input.constt * multiplier));
                 }
             }
 
@@ -244,6 +272,9 @@ namespace VF.Service {
             return tree;
         }
         
+        /**
+         * from : [0,Infinity)
+         */
         public VFAap Buffer(VFAFloat from, string to = null, bool usePrefix = true) {
             to = to ?? $"{CleanName(from)}_b";
             var output = MakeAap(to, from.GetDefault(), usePrefix: usePrefix);
@@ -257,21 +288,25 @@ namespace VF.Service {
         }
         
         /**
-         * Only works on values > 0 !
-         * Value MUST be defaulted to 0, or the copy will ADD to it
+         * from : [0,Infinity)
+         *   or [-10000,10000] with supportNegatives
          */
-        public Motion MakeCopier(VFAFloatOrConst from, VFAap to) {
-            if (from.param != null) {
-                var direct = MakeDirect($"{CleanName(to)} = {CleanName(from)}");
-                direct.Add(from.param, MakeSetter(to, 1));
-                return direct;
-            } else {
+        public Motion MakeCopier(VFAFloatOrConst from, VFAap to, bool supportNegatives = false) {
+            if (from.param == null) {
                 return MakeSetter(to, from.constt);
             }
-        }
-        
-        public Motion MakeMaintainer(VFAap param) {
-            return MakeCopier(param, param);
+
+            var name = $"{CleanName(to)} = {CleanName(from)}";
+            if (supportNegatives) {
+                return Make1D(name, from.param,
+                    (-10000, MakeSetter(to, -10000)),
+                    (10000, MakeSetter(to, 10000))
+                );
+            }
+
+            var direct = MakeDirect(name);
+            direct.Add(from.param, MakeSetter(to, 1));
+            return direct;
         }
 
         public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b, string name = null) {
@@ -310,6 +345,10 @@ namespace VF.Service {
             );
         }
         
+        /**
+         * a : [0,Infinity)
+         * b : [0,Infinity) (may be negative if constant)
+         */
         public VFAap Multiply(string name, VFAFloat a, VFAFloatOrConst b) {
             var output = MakeAap(name, def: a.GetDefault() * b.GetDefault());
 
