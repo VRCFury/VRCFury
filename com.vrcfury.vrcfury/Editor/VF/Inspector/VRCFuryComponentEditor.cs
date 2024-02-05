@@ -164,8 +164,9 @@ namespace VF.Inspector {
                 Debug.LogException(new Exception("Failed to render editor", e));
                 content = VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
             }
-            
-            var versionLabel = new Label(SceneViewOverlay.GetOutputString() + " " + VRCFPackageUtils.Version);
+
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(target as UnityEngine.Component);
+            var versionLabel = new Label(SceneViewOverlay.GetOutputString(avatarObject) + " " + VRCFPackageUtils.Version);
             versionLabel.AddToClassList("vfVersionLabel");
             versionLabel.pickingMode = PickingMode.Ignore;
             

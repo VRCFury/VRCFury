@@ -29,7 +29,7 @@ public class VRCFuryBuilder {
 
     internal Status SafeRun(
         VFGameObject avatarObject,
-        VFGameObject originalObject = null,
+        VFGameObject originalObject,
         bool keepDebugInfo = false
     ) {
         /*

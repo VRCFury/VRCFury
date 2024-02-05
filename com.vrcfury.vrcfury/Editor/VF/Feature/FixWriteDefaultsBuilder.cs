@@ -164,11 +164,7 @@ namespace VF.Feature {
                 }
                 // Save the choice
                 if (ask == 0 || ask == 2) {
-                    if (Application.isPlaying) {
-                        FixWriteDefaultsLater.SaveLater(avatarObject, ask == 0);
-                    } else if (originalObject) {
-                        FixWriteDefaultsLater.SaveNow(originalObject, ask == 0);
-                    }
+                    FixWriteDefaultsLater.Save(originalObject, ask == 0);
                 }
             }
 

@@ -36,13 +36,21 @@ namespace VF.PlayMode {
             };
         }
 
-        public static void SaveLater(VFGameObject avatar, bool auto) {
+        public static void Save(VFGameObject avatar, bool auto) {
+            if (Application.isPlaying) {
+                SaveLater(avatar, auto);
+            } else {
+                SaveNow(avatar, auto);
+            }
+        }
+
+        private static void SaveLater(VFGameObject avatar, bool auto) {
             var data = GetData();
             data.entries.Add(new Entry() { auto = auto, name = avatar.name });
             SetData(data);
         }
 
-        public static void SaveNow(VFGameObject avatar, bool auto) {
+        private static void SaveNow(VFGameObject avatar, bool auto) {
             if (avatar.GetComponentsInSelfAndChildren<VRCFury>()
                 .SelectMany(v => v.config.features)
                 .Any(f => f is FixWriteDefaults)) {
