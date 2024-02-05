@@ -149,7 +149,7 @@ namespace VF.Feature {
                 .Where(t => t.name == model.baseObj)
                 .Select(t => t.GetComponent<SkinnedMeshRenderer>())
                 .NotNull()
-                .OrderBy(skin => AnimationUtility.CalculateTransformPath(skin.transform, avatarObject.transform).Length)
+                .OrderBy(skin => skin.owner().GetPath(avatarObject).Length)
                 .FirstOrDefault();
         }
 
@@ -241,7 +241,7 @@ namespace VF.Feature {
                 Debug.LogWarning("Failed to find base skin on avatar");
                 return;
             }
-            var baseSkinPath = AnimationUtility.CalculateTransformPath(baseSkin.transform, avatarObject.transform);
+            var baseSkinPath = baseSkin.owner().GetPath(avatarObject);
             var linkSkins = GetLinkSkins();
 
             foreach (var linked in linkSkins) {
@@ -266,8 +266,7 @@ namespace VF.Feature {
                                 var linkedI = linked.GetBlendShapeIndex(linkedName);
                                 if (linkedI < 0) continue;
                                 var newBinding = binding;
-                                newBinding.path =
-                                    AnimationUtility.CalculateTransformPath(linked.transform, avatarObject.transform);
+                                newBinding.path = linked.owner().GetPath(avatarObject);
                                 newBinding.propertyName = "blendShape." + linkedName;
 
                                 clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));

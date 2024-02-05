@@ -34,7 +34,7 @@ namespace VF.Builder {
                 foreach (var asset in GetUnsavedChildren(component, recurse: false)) {
                     SaveAssetAndChildren(
                         asset,
-                        $"VRCFury {asset.GetType().Name} for {component.gameObject.name}"
+                        $"VRCFury {asset.GetType().Name} for {component.owner().name}"
                     );
                 }
             }

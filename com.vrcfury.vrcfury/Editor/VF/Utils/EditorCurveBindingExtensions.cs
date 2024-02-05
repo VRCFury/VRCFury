@@ -87,10 +87,10 @@ namespace VF.Utils {
             return $"({binding.path} {binding.type?.Name} {binding.propertyName})";
         }
 
-        public static bool GetFloatFromGameObject(this EditorCurveBinding binding, GameObject root, out float data) {
+        public static bool GetFloatFromGameObject(this EditorCurveBinding binding, VFGameObject root, out float data) {
             return AnimationUtility.GetFloatValue(root, binding, out data);
         }
-        public static bool GetObjectFromGameObject(this EditorCurveBinding binding, GameObject root, out Object data) {
+        public static bool GetObjectFromGameObject(this EditorCurveBinding binding, VFGameObject root, out Object data) {
             return AnimationUtility.GetObjectReferenceValue(root, binding, out data);
         }
     }

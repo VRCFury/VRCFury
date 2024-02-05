@@ -12,8 +12,7 @@ namespace VF.Feature {
     public class CleanupLegacyBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.CleanupLegacy)]
         public void Apply() {
-            if (originalObject) CleanFromAvatar(originalObject);
-            CleanFromAvatar(avatarObject);
+            CleanFromAvatar();
 
             VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
             Directory.CreateDirectory(tmpDir);
@@ -47,7 +46,7 @@ namespace VF.Feature {
         }
 
         /** Removes VRCF from avatars made in the pre-"nondestructive" days */
-        private void CleanFromAvatar(GameObject a) {
+        private void CleanFromAvatar() {
             AvatarCleaner.Cleanup(avatarObject, perform: true,
                 ShouldRemoveAsset: obj => {
                     if (obj == null) return false;

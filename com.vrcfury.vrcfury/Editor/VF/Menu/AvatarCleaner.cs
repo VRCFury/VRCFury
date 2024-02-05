@@ -24,17 +24,13 @@ namespace VF.Menu {
             Func<string, bool> ShouldRemoveParam = null
         ) {
             var removeItems = new List<string>();
-            
-            string GetPath(GameObject obj) {
-                return AnimationUtility.CalculateTransformPath(obj.transform, avatarObj.transform);
-            }
 
             if (ShouldRemoveAsset != null) {
                 var animators = avatarObj.GetComponentsInSelfAndChildren<Animator>();
                 foreach (var animator in animators) {
                     if (animator.runtimeAnimatorController != null &&
                         ShouldRemoveAsset(animator.runtimeAnimatorController)) {
-                        removeItems.Add("Animator Controller at path " + GetPath(animator.gameObject));
+                        removeItems.Add("Animator Controller at path " + animator.owner().GetPath(avatarObj));
                         if (perform) {
                             animator.runtimeAnimatorController = null;
                             VRCFuryEditorUtils.MarkDirty(animator);
@@ -44,11 +40,10 @@ namespace VF.Menu {
             }
 
             if (ShouldRemoveObj != null || ShouldRemoveComponent != null) {
-                var checkStack = new Stack<Transform>();
-                checkStack.Push(avatarObj.transform);
+                var checkStack = new Stack<VFGameObject>();
+                checkStack.Push(avatarObj);
                 while (checkStack.Count > 0) {
-                    var t = checkStack.Pop();
-                    var obj = t.gameObject;
+                    var obj = checkStack.Pop();
 
                     // TODO: ShouldRemoveObj should maybe verify if anything else in the avatar is using the object
                     // (constraints and things)
@@ -65,21 +60,21 @@ namespace VF.Menu {
                     }
 
                     if (removeObject) {
-                        removeItems.Add("Object: " + GetPath(obj));
+                        removeItems.Add("Object: " + obj.GetPath(avatarObj));
                         if (perform) RemoveObject(obj);
                     } else {
                         if (ShouldRemoveComponent != null) {
                             foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
                                 if (component != null && !(component is Transform) && ShouldRemoveComponent(component)) {
-                                    removeItems.Add(component.GetType().Name + " on " + GetPath(obj));
+                                    removeItems.Add(component.GetType().Name + " on " + obj.GetPath(avatarObj));
                                     if (perform) RemoveComponent(component);
                                 }
                             }
                         }
 
                         // Make sure RemoveComponent didn't remove this object!
-                        if (t) {
-                            foreach (Transform t2 in t) checkStack.Push(t2);
+                        if (obj != null) {
+                            foreach (var t2 in obj.Children()) checkStack.Push(t2);
                         }
                     }
                 }
@@ -216,8 +211,8 @@ namespace VF.Menu {
         }
         
         public static void RemoveComponent(UnityEngine.Component c) {
-            if (c.gameObject.GetComponents<UnityEngine.Component>().Length == 2 && c.gameObject.transform.childCount == 0)
-                RemoveObject(c.gameObject);
+            if (c.owner().GetComponents<UnityEngine.Component>().Length == 2 && c.owner().childCount == 0)
+                RemoveObject(c.owner());
             else
                 Object.DestroyImmediate(c);
         }

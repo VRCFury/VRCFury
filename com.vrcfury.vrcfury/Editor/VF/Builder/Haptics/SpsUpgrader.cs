@@ -19,10 +19,7 @@ namespace VF.Builder.Haptics {
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
-            if (avatarObject == null) { 
-                avatarObject = Selection.activeGameObject;
-                while (avatarObject.transform.parent != null) avatarObject = avatarObject.transform.parent.gameObject;
-            }
+            if (avatarObject == null) avatarObject = Selection.activeGameObject.transform.root;
 
             var messages = Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {
@@ -59,7 +56,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static bool IsHapticContact(UnityEngine.Component c, List<string> collisionTags) {
-            VFGameObject obj = c.gameObject;
+            var obj = c.owner();
             if (collisionTags.Any(t => t.StartsWith("TPSVF_"))) return true;
             else if (obj.name.StartsWith("OGB_")) return true;
             return false;
@@ -115,17 +112,17 @@ namespace VF.Builder.Haptics {
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 hasExistingPlug.Add(c.transform);
                 foreach (var renderer in VRCFuryHapticPlugEditor.GetRenderers(c)) {
-                    hasExistingPlug.Add(renderer.transform);
+                    hasExistingPlug.Add(renderer.owner());
                 }
             }
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
-                hasExistingSocket.Add(c.transform);
+                hasExistingSocket.Add(c.owner());
             }
             
             // Upgrade "parent-constraint" DPS setups
             if (mode == Mode.Manual) {
                 foreach (var parent in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
-                    var constraint = parent.gameObject.GetComponent<ParentConstraint>();
+                    var constraint = parent.owner().GetComponent<ParentConstraint>();
                     if (constraint == null) continue;
                     if (constraint.sourceCount < 2) continue;
                     var sourcesWithWeight = 0;
@@ -161,19 +158,19 @@ namespace VF.Builder.Haptics {
                         addedSocketNames[t] = name;
                         if (socket != null) {
                             socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
-                                * constraint.transform.lossyScale.x / socket.transform.lossyScale.x;
+                                * constraint.owner().worldScale.x / socket.owner().worldScale.x;
                             socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
                             socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
                             socket.addMenuItem = true;
                             //t.name = "Haptic Socket";
 
                             if (name.ToLower().Contains("vag")) {
-                                AddBlendshapeIfPresent(avatarObject.transform, socket,
+                                AddBlendshapeIfPresent(avatarObject, socket,
                                     VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
                             }
 
                             if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
-                                AddBlendshapeIfPresent(avatarObject.transform, socket,
+                                AddBlendshapeIfPresent(avatarObject, socket,
                                     VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
                             }
                         }
@@ -217,19 +214,19 @@ namespace VF.Builder.Haptics {
                 UnbakePen(t.Find("BakedSpsPlug"));
                 UnbakeOrf(t.Find("OGB_Baked_Orf"));
                 UnbakeOrf(t.Find("BakedOGBOrifice"));
-                UnbakePen(t.Find("BakedHapticSocket"));
-                UnbakePen(t.Find("BakedSpsSocket"));
+                UnbakeOrf(t.Find("BakedHapticSocket"));
+                UnbakeOrf(t.Find("BakedSpsSocket"));
             }
             
             // Auto-add plugs from DPS and TPS
             foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (TpsConfigurer.HasDpsOrTpsMaterial(renderer) && PlugSizeDetector.GetAutoWorldSize(renderer) != null)
-                    AddPlug(renderer.transform);
+                    AddPlug(renderer.owner());
             }
             
             // Auto-add sockets from DPS
             foreach (var light in avatarObject.GetComponentsInSelfAndChildren<Light>()) {
-                var parent = light.transform.parent;
+                var parent = light.owner().parent;
                 if (parent) {
                     if (VRCFuryHapticSocketEditor.GetInfoFromLights(parent, true) != null)
                         AddSocket(parent);
@@ -292,7 +289,7 @@ namespace VF.Builder.Haptics {
                     perform: !dryRun,
                     ShouldRemoveObj: obj => {
                         return obj.name == "GUIDES_DELETE"
-                               || objectsToDelete.Contains(obj.transform);
+                               || objectsToDelete.Contains(obj);
                     },
                     ShouldRemoveAsset: asset => {
                         if (asset == null) return false;
@@ -393,7 +390,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static void AddBlendshapeIfPresent(
-            Transform avatarObject,
+            VFGameObject avatarObject,
             VRCFuryHapticSocket socket,
             string name,
             float minDepth,

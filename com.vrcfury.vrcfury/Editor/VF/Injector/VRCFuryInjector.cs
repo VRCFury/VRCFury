@@ -78,7 +78,11 @@ namespace VF.Injector {
         }
 
         public object[] GetAllServices() {
-            return availableTypes.Select(t => GetService(t, null)).ToArray();
+            return availableTypes.Select(t => GetService(t)).ToArray();
+        }
+
+        public T GetService<T>() where T : class {
+            return GetService(typeof(T)) as T;
         }
     }
 }

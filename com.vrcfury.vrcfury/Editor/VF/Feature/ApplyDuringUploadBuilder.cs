@@ -8,12 +8,12 @@ using VF.Service;
 
 namespace VF.Feature {
     public class ApplyDuringUploadBuilder : FeatureBuilder<ApplyDuringUpload> {
-        [VFAutowired] private readonly RestingStateBuilder restingState;
+        [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly ActionClipService actionClipService;
         
         [FeatureBuilderAction(FeatureOrder.ApplyDuringUpload)]
         public void Apply() {
-            var clip = actionClipService.LoadState("applyDuringUpload", model.action, applyOffClip: false);
+            var clip = actionClipService.LoadState("applyDuringUpload", model.action);
             restingState.ApplyClipToRestingState(clip);
         }
         

@@ -680,6 +680,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class ApplyDuringUpload : NewFeatureModel {
+        [DoNotApplyRestingState]
         public State action;
     }
 

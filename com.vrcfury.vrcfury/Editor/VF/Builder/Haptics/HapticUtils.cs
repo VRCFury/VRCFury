@@ -52,43 +52,15 @@ namespace VF.Builder.Haptics {
             Both
         }
 
-        public static void RemoveTPSSenders(Transform obj) {
-            var remove = new List<UnityEngine.Component>();
-            foreach (Transform child in obj) {
-                foreach (var sender in child.gameObject.GetComponents<VRCContactSender>()) {
-                    if (IsTPSSender(sender)) {
-                        Debug.Log("Deleting TPS sender on " + sender.gameObject);
-                        remove.Add(sender);
-                    }
-                }
-            }
-
-            foreach (var c in remove) {
-                AvatarCleaner.RemoveComponent(c);
-            }
-
-            if (obj.parent) {
-                RemoveTPSSenders(obj.parent);
-            }
-        }
-
-        public static bool IsTPSSender(VRCContactSender c) {
-            if (c.collisionTags.Any(t => t == CONTACT_PEN_MAIN)) return true;
-            if (c.collisionTags.Any(t => t == CONTACT_PEN_WIDTH)) return true;
-            if (c.collisionTags.Any(t => t == TagTpsOrfRoot)) return true;
-            if (c.collisionTags.Any(t => t == TagTpsOrfFront)) return true;
-            return false;
-        }
-
-        private static bool IsZeroScale(Transform obj) {
+        private static bool IsZeroScale(VFGameObject obj) {
             var scale = obj.localScale;
             return scale.x == 0 || scale.y == 0 || scale.z == 0;
         }
-        private static bool IsNegativeScale(Transform obj) {
+        private static bool IsNegativeScale(VFGameObject obj) {
             var scale = obj.localScale;
             return scale.x < 0 || scale.y < 0 || scale.z < 0;
         }
-        public static bool IsNonUniformScale(Transform obj) {
+        public static bool IsNonUniformScale(VFGameObject obj) {
             var scale = obj.localScale;
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
@@ -133,11 +105,11 @@ namespace VF.Builder.Haptics {
             return true;
         }
 
-        public static Transform GetMeshRoot(Renderer r) {
-            if (r is SkinnedMeshRenderer skin && skin.rootBone) {
+        public static VFGameObject GetMeshRoot(Renderer r) {
+            if (r is SkinnedMeshRenderer skin && skin.rootBone != null) {
                 return skin.rootBone;
             }
-            return r.transform;
+            return r.owner();
         }
         
         public static string GetName(VFGameObject obj) {
@@ -166,6 +138,8 @@ namespace VF.Builder.Haptics {
             name = Regex.Replace(name, @"haptic", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"socket", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"plug", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"ring", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"hole", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"\(\d+\)", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecifiro"), "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecafiro"), "", RegexOptions.IgnoreCase);
@@ -220,8 +194,8 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static bool IsChildOf(Transform parent, Transform child, bool followConstraints) {
-            var alreadyChecked = new HashSet<Transform>();
+        private static bool IsChildOf(VFGameObject parent, VFGameObject child, bool followConstraints) {
+            var alreadyChecked = new HashSet<VFGameObject>();
             var current = child;
             while (current != null) {
                 alreadyChecked.Add(current);

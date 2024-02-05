@@ -16,6 +16,12 @@ namespace VF.Feature {
     [VFService]
     public class FixMasksBuilder : FeatureBuilder {
 
+        private enum PropType {
+            Muscle,
+            Aap,
+            Fx
+        }
+
         [FeatureBuilderAction(FeatureOrder.FixGestureFxConflict)]
         public void FixGestureFxConflict() {
             if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
@@ -26,21 +32,31 @@ namespace VF.Feature {
             var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
             var newFxLayers = new List<AnimatorControllerLayer>();
             var fx = manager.GetFx();
-
-            bool IsMuscle(EditorCurveBinding b) {
-                if (b.IsProxyBinding()) return true;
-                return b.path == "" && b.type == typeof(Animator);
+            
+            PropType GetPropType(EditorCurveBinding b) {
+                if (b.IsProxyBinding()) return PropType.Muscle;
+                if (b.path == "" && b.type == typeof(Animator)) {
+                    if (gesture.GetRaw().GetParam(b.propertyName) != null) return PropType.Aap;
+                    return PropType.Muscle;
+                }
+                return PropType.Fx;
             }
 
             foreach (var layer in gesture.GetLayers()) {
-                var hasMuscle = new AnimatorIterator.Clips().From(layer)
+                var propTypes = new AnimatorIterator.Clips().From(layer)
                     .SelectMany(clip => clip.GetAllBindings())
-                    .Any(IsMuscle);
-                var hasNonMuscle = new AnimatorIterator.Clips().From(layer)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Any(b => !IsMuscle(b));
+                    .Select(GetPropType)
+                    .ToImmutableHashSet();
 
-                if (!hasNonMuscle) continue;
+                if (!propTypes.Contains(PropType.Fx) && !propTypes.Contains(PropType.Aap)) continue;
+                
+                // Ensure the gesture copy has a unique copy of all of its clips, as we will be modifying them later,
+                // and they may be shared with other layers (where they should not be modified)
+                foreach (var state in new AnimatorIterator.States().From(layer)) {
+                    if (state.motion != null) {
+                        state.motion = MutableManager.CopyRecursive(state.motion);
+                    }
+                }
 
                 var copyLayer = new AnimatorControllerLayer {
                     name = layer.name,
@@ -50,20 +66,29 @@ namespace VF.Feature {
                     defaultWeight = layer.weight
                 };
                 newFxLayers.Add(copyLayer);
-                if (hasMuscle) {
+                if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
+                    // Remove fx bindings from the gesture copy
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
                         clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                            if (IsMuscle(b)) return b;
+                            if (GetPropType(b) != PropType.Fx) return b;
                             return null;
                         }, false));
                     }
-                    foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null, copyLayer.stateMachine))) {
+                    if (layer.mask != null) {
+                        layer.mask.AllowAllTransforms();
+                    }
+                    // Remove muscle control from the fx copy
+                    var vfCopy = new VFLayer(null, copyLayer.stateMachine);
+                    foreach (var clip in new AnimatorIterator.Clips().From(vfCopy)) {
                         clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                            if (IsMuscle(b)) return null;
-                            return b;
+                            if (GetPropType(b) != PropType.Muscle) return b;
+                            return null;
                         }, false));
                     }
+                    // Remove behaviours from the fx copy
+                    AnimatorIterator.ForEachBehaviourRW(vfCopy, (behaviour, add) => false);
                 } else {
+                    // Move everything to FX and just delete the original
                     layer.Remove();
                 }
             }

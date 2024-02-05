@@ -13,20 +13,20 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         
         public class AnimatedTransforms {
-            public readonly HashSet<Transform> scaleIsAnimated = new HashSet<Transform>();
-            public readonly HashSet<Transform> positionIsAnimated = new HashSet<Transform>();
-            public readonly HashSet<Transform> rotationIsAnimated = new HashSet<Transform>();
-            public readonly HashSet<Transform> physboneRoot = new HashSet<Transform>();
-            public readonly HashSet<Transform> physboneChild = new HashSet<Transform>();
-            public readonly HashSet<Transform> activated = new HashSet<Transform>();
-            private readonly Dictionary<Transform, List<string>> debugSources = new Dictionary<Transform, List<string>>();
+            public readonly HashSet<VFGameObject> scaleIsAnimated = new HashSet<VFGameObject>();
+            public readonly HashSet<VFGameObject> positionIsAnimated = new HashSet<VFGameObject>();
+            public readonly HashSet<VFGameObject> rotationIsAnimated = new HashSet<VFGameObject>();
+            public readonly HashSet<VFGameObject> physboneRoot = new HashSet<VFGameObject>();
+            public readonly HashSet<VFGameObject> physboneChild = new HashSet<VFGameObject>();
+            public readonly HashSet<VFGameObject> activated = new HashSet<VFGameObject>();
+            private readonly Dictionary<VFGameObject, List<string>> debugSources = new Dictionary<VFGameObject, List<string>>();
 
-            public void AddDebugSource(Transform t, string source) {
+            public void AddDebugSource(VFGameObject t, string source) {
                 if (debugSources.TryGetValue(t, out var list)) list.Add(source);
                 else debugSources[t] = new List<string> { source };
             }
 
-            public IList<string> GetDebugSources(Transform t) {
+            public IList<string> GetDebugSources(VFGameObject t) {
                 return debugSources.TryGetValue(t, out var output) ? output : new List<string>();
             }
         }
@@ -39,7 +39,7 @@ namespace VF.Service {
             foreach (var physBone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
                 var root = physBone.GetRootTransform().asVf();
                 var path = physBone.owner().GetPath(avatarObject);
-                bool IsIgnored(Transform transform) =>
+                bool IsIgnored(VFGameObject transform) =>
                     physBone.ignoreTransforms.Any(ignored => ignored != null && transform.IsChildOf(ignored));
                 var nonIgnoredChildren = root.Children()
                     .Where(child => !IsIgnored(child))
@@ -52,7 +52,7 @@ namespace VF.Service {
                     output.AddDebugSource(root, $"Physbone root in {path}");
                 }
 
-                output.physboneChild.UnionWith(nonIgnoredChildren.Select(o => o.transform));
+                output.physboneChild.UnionWith(nonIgnoredChildren);
                 foreach (var r in nonIgnoredChildren) {
                     output.AddDebugSource(r, $"Physbone child in {path}");
                 }
@@ -62,7 +62,7 @@ namespace VF.Service {
             foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
                 foreach (var binding in clip.GetAllBindings()) {
                     if (binding.type == typeof(Transform)) {
-                        var transform = avatarObject.Find(binding.path).transform;
+                        var transform = avatarObject.Find(binding.path);
                         if (transform == null) continue;
                         var lower = binding.propertyName.ToLower();
                         if (lower.Contains("scale"))
@@ -73,7 +73,7 @@ namespace VF.Service {
                             output.positionIsAnimated.Add(transform);
                         output.AddDebugSource(transform, "Transform animated in " + clip.name);
                     } else if (binding.type == typeof(GameObject)) {
-                        var transform = avatarObject.Find(binding.path).transform;
+                        var transform = avatarObject.Find(binding.path);
                         if (transform == null) continue;
                         output.activated.Add(transform);
                     }
