@@ -75,9 +75,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (model.transitionStateIn.actions.Count() > 0) return true;
             if (model.transitionStateOut.actions.Count() > 0) return true;
         }
-
         return false;
-        
     }
 
     [FeatureBuilderAction]
