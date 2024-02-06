@@ -121,7 +121,7 @@ namespace Editor.VF.Feature {
         }
         
         public override string GetEditorTitle() {
-            return "On Demand Sync";
+            return "Radial Toggle Optimizer";
         }
         
         public override bool OnlyOneAllowed() {
