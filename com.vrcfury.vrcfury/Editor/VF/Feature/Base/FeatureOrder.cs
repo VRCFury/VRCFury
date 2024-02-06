@@ -20,9 +20,6 @@ namespace VF.Feature.Base {
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase,
         
-        // Needs to happen before Full Controller
-        OnDemandSyncEarly,
-        
         // Needs to happen before any objects are moved, so otherwise the imported
         // animations would not be adjusted to point to the new moved object paths
         FullController,
@@ -37,9 +34,8 @@ namespace VF.Feature.Base {
         ApplyRestState2,
 
         Default,
-        //Needs to happen after Toggles
-        OnDemandSyncLate,
-        OnDemandSyncBuild,
+        //Needs to happen after Toggles and Full Controller
+        OnDemandSync,
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
         // Needs to run after all possible toggles have been created and applied

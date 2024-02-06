@@ -22,7 +22,6 @@ namespace VF.Feature {
 public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateBuilder restingState;
-    [VFAutowired] private readonly OnDemandSyncService onDemandSyncService;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFAParam exclusiveParam;
@@ -102,9 +101,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     param,
                     icon: model.enableIcon ? model.icon?.Get() : null
                 );
-            }
-            if (model.onDemandSync && synced) {
-                onDemandSyncService.SetParameterOnDemandSync(param);
             }
         } else if (model.useInt) {
             var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
@@ -358,13 +354,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     invertRestLogicProp.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-
-                if (sliderProp.boolValue) {
-                    advMenu.AddItem(new GUIContent("On Demand Sync"), onDemandSyncProp.boolValue, () => {
-                        onDemandSyncProp.boolValue = !onDemandSyncProp.boolValue;
-                        prop.serializedObject.ApplyModifiedProperties();
-                    });
-                }
 
                 advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
                     securityEnabledProp.boolValue = !securityEnabledProp.boolValue;

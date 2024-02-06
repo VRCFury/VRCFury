@@ -818,10 +818,6 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class OnDemandSync : NewFeatureModel {
-        public List<string> parameters;
-        public bool allRadialControls = false;
-        public bool includeVrcFuryFeatures = false;
-    }
+    public class OnDemandSync : NewFeatureModel {}
 
 }
