@@ -24,29 +24,8 @@ namespace VF.Hooks {
                 return true;
             }
 
-            // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
-            // Let's get a reference to the original avatar, so we can apply our changes to it as well.
-            var cloneObjectName = vrcCloneObject.name;
-
-            if (!cloneObjectName.EndsWith("(Clone)")) {
-                Debug.LogError("Seems that we're not operating on a vrc avatar clone? Bailing. Please report this to VRCFury.");
-                return false;
-            }
-
-            // Clean up junk from the original avatar, in case it still has junk from way back when we used to
-            // dirty the original
-            VFGameObject original = null;
-            {
-                foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
-                    if (desc.owner().name + "(Clone)" == cloneObjectName && desc.owner().activeInHierarchy) {
-                        original = desc.owner();
-                        break;
-                    }
-                }
-            }
-
             var builder = new VRCFuryBuilder();
-            var vrcFuryStatus = builder.SafeRun(vrcCloneObject, original, keepDebugInfo: Application.isPlaying);
+            var vrcFuryStatus = builder.SafeRun(vrcCloneObject, keepDebugInfo: Application.isPlaying);
 
             return vrcFuryStatus == VRCFuryBuilder.Status.Success;
         }

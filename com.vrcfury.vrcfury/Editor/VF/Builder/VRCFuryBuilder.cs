@@ -29,7 +29,6 @@ public class VRCFuryBuilder {
 
     internal Status SafeRun(
         VFGameObject avatarObject,
-        VFGameObject originalObject,
         bool keepDebugInfo = false
     ) {
         /*
@@ -47,7 +46,7 @@ public class VRCFuryBuilder {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 try {
                     MaterialLocker.avatarObject = avatarObject;
-                    Run(avatarObject, originalObject);
+                    Run(avatarObject);
                 } finally {
                     MaterialLocker.avatarObject = null;
                 }
@@ -79,7 +78,7 @@ public class VRCFuryBuilder {
         }
     }
 
-    private void Run(VFGameObject avatarObject, VFGameObject originalObject) {
+    private void Run(VFGameObject avatarObject) {
         if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
@@ -96,7 +95,6 @@ public class VRCFuryBuilder {
         try {
             ApplyFuryConfigs(
                 avatarObject,
-                originalObject,
                 progress
             );
         } finally {
@@ -108,7 +106,6 @@ public class VRCFuryBuilder {
 
     private static void ApplyFuryConfigs(
         VFGameObject avatarObject,
-        VFGameObject originalObject,
         VRCFProgressWindow progress
     ) {
         var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
@@ -143,7 +140,6 @@ public class VRCFuryBuilder {
             allFeaturesInRun = collectedModels,
             allBuildersInRun = collectedBuilders,
             avatarObject = avatarObject,
-            originalObject = originalObject,
             currentFeatureNumProvider = () => currentModelNumber,
             currentFeatureNameProvider = () => currentModelName,
             currentFeatureClipPrefixProvider = () => currentModelClipPrefix,
