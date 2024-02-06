@@ -818,6 +818,6 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class OnDemandSync : NewFeatureModel {}
+    public class RadialToggleOptimizer : NewFeatureModel {}
 
 }

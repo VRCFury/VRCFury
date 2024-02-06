@@ -35,7 +35,7 @@ namespace VF.Feature.Base {
 
         Default,
         //Needs to happen after Toggles and Full Controller
-        OnDemandSync,
+        RadialToggleOptimizer,
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
         // Needs to run after all possible toggles have been created and applied

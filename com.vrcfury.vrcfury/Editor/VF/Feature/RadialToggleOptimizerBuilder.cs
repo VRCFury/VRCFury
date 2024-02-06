@@ -12,12 +12,12 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace Editor.VF.Feature {
-    public class OnDemandSyncBuilder : FeatureBuilder<OnDemandSync> {
+    public class RadialToggleOptimizerBuilder : FeatureBuilder<RadialToggleOptimizer> {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly SmoothingService smoothingService;
 
-        [FeatureBuilderAction(FeatureOrder.OnDemandSync)]
+        [FeatureBuilderAction(FeatureOrder.RadialToggleOptimizer)]
         public void Apply() {
             var onDemandSyncParameters = GetAllRadialPuppetParameters();
             if (onDemandSyncParameters.Count == 0) return;
