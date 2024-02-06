@@ -28,7 +28,6 @@ namespace VF.Feature.Base {
         protected string tmpDirParent => globals.tmpDirParent;
         protected string tmpDir => globals.tmpDir;
         protected VFGameObject avatarObject => avatarObjectOverride ?? globals?.avatarObject;
-        protected VFGameObject originalObject => globals.originalObject;
         protected List<FeatureModel> allFeaturesInRun => globals.allFeaturesInRun;
         protected List<FeatureBuilder> allBuildersInRun => globals.allBuildersInRun;
         public VFGameObject avatarObjectOverride = null;

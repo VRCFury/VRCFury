@@ -7,15 +7,19 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.PlayMode;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
+
+        [VFAutowired] private readonly OriginalAvatarService originalAvatar;
 
         public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat = true) {
             if (binding.type == typeof(Animator)) return;
@@ -164,7 +168,7 @@ namespace VF.Feature {
                 }
                 // Save the choice
                 if (ask == 0 || ask == 2) {
-                    FixWriteDefaultsLater.Save(originalObject, ask == 0);
+                    FixWriteDefaultsLater.Save(originalAvatar.GetOriginal() ?? avatarObject, ask == 0);
                 }
             }
 
