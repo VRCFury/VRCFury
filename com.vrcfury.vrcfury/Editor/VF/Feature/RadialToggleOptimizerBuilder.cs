@@ -1,6 +1,9 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Injector;
@@ -16,77 +19,94 @@ namespace Editor.VF.Feature {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly SmoothingService smoothingService;
+        
+        private static readonly FieldInfo networkSyncedField =
+            typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
 
         [FeatureBuilderAction(FeatureOrder.RadialToggleOptimizer)]
         public void Apply() {
-            var onDemandSyncParameters = GetAllRadialPuppetParameters();
-            if (onDemandSyncParameters.Count == 0) return;
+            if (networkSyncedField == null) return;
+            var toOptimize = GetAllSyncedRadialPuppetParameters();
+            if (toOptimize.Count <= 2) return; // don't optimize 16 bits or less
             var fx = GetFx();
-            var layers = fx.GetRaw().GetLayers();
-            foreach (var param in onDemandSyncParameters) {
-                manager.GetParams().GetParam(param.Name()).networkSynced = false;
+            var layers = fx.GetLayers();
+            foreach (var param in toOptimize) {
+                var vrcPrm = manager.GetParams().GetParam(param.Name());
+                networkSyncedField.SetValue(vrcPrm, false);
             }
             var pointer = fx.NewInt("SyncPointer", synced: true);
             var localPointer = fx.NewInt("LocalPointer"); // Use a local only pointer to avoid race condition
             var data = fx.NewFloat("SyncData", synced: true);
-            var sending = fx.NewFloat("IsSending");
+            //var sending = fx.NewFloat("IsSending");
 
             var txLayer = fx.NewLayer("Send");
             var txIdle = txLayer.NewState("Idle");
-            txIdle.Drives(sending, 0, true);
+           //txIdle.Drives(sending, 0, true);
             var txAdder = txLayer.NewState("Adder");
             var txResetter = txLayer.NewState("Reset");
             txResetter.Drives(localPointer, 0, local: true)
                 .TransitionsToExit()
                 .When(fx.Always());
             txAdder.TransitionsTo(txResetter)
-                .When(localPointer.IsGreaterThan(onDemandSyncParameters.Count - 1)); // always > 0
+                .When(localPointer.IsGreaterThan(toOptimize.Count - 1)); // always > 0
             txAdder.DrivesDelta(localPointer, 1)
                 .TransitionsToExit()
                 .When(fx.Always());
-            
+
+            var sending = toOptimize.Select((_, i) => fx.NewFloat($"sending{i}")).ToList();
             // instant sync on change detection
-            for (int i = 0; i < onDemandSyncParameters.Count; i++) {
-                var src = onDemandSyncParameters[i];
-                var lastSrc = fx.NewFloat($"last{src.Name()}");
-                directTree.Add(math.MakeCopier(src, lastSrc)); 
+            for (int i = 0; i < toOptimize.Count; i++) {
+                var src = toOptimize[i];
+                var lastSrc = math.Buffer(src);
                 var srcDiff = math.Subtract(src, lastSrc);
-                var maintain = math.MakeMaintainer(srcDiff); // Maintain while in send animation
-                directTree.Add(sending, maintain);
                 
-                var sendInstantState = txLayer.NewState($"Send Instant {onDemandSyncParameters[i]}");
+                var pending = math.SetValueWithConditions($"diffPending{i}",
+                    (0, math.GreaterThan(sending[i], 0.5f)),
+                    (1, math.Or(math.GreaterThan(srcDiff, 0), math.LessThan(srcDiff, 0))));
+                /*var maintain = math.MakeMaintainer(srcDiff); // Maintain while in send animation
+                directTree.Add(sending, maintain);*/
+                var sendInstantPrepareState = txLayer.NewState($"Send Prepare Instant {toOptimize[i].Name()}");
+                sendInstantPrepareState.Drives(sending[i], 1, true);
+                var sendInstantState = txLayer.NewState($"Send Instant {toOptimize[i].Name()}");
                 sendInstantState
-                    .DrivesCopy(data, src)
-                    .Drives(pointer, i)
-                    .Drives(sending, 1, true)
+                    .DrivesCopy(data, src, true)
+                    .Drives(pointer, i, true)
+                    .Drives(sending[i], 0, true)
                     .TransitionsToExit()
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
-                txIdle.TransitionsTo(sendInstantState)
-                    .When(fx.IsLocal().IsTrue().And(srcDiff.IsGreaterThan(0).Or(srcDiff.IsLessThan(0))));
+                txIdle.TransitionsTo(sendInstantPrepareState)
+                    .When(fx.IsLocal().IsTrue().And(pending.IsGreaterThan(0.5f))); // srcDiff.IsGreaterThan(0).Or(srcDiff.IsLessThan(0))));
+                sendInstantPrepareState.TransitionsTo(sendInstantState)
+                    .When(fx.Always());
+                //txIdle.Drives(sending[i], 0, true);
             }
 
             // round robin pointer iteration
-            for (int i = 0; i < onDemandSyncParameters.Count; i++) {
-                var src = onDemandSyncParameters[i];
-                var sendState = txLayer.NewState($"Send {onDemandSyncParameters[i]}");
+            for (int i = 0; i < toOptimize.Count; i++) {
+                var src = toOptimize[i];
+                var sendPrepareState = txLayer.NewState($"Send Prepare {toOptimize[i].Name()}");
+                sendPrepareState.Drives(sending[i], 1, true);
+                var sendState = txLayer.NewState($"Send {toOptimize[i].Name()}");
                 sendState
                     .DrivesCopy(data, src)
                     .DrivesCopy(pointer, localPointer)
-                    .Drives(sending, 1, true)
+                    .Drives(sending[i], 0, true)
                     .TransitionsTo(txAdder)
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
-                txIdle.TransitionsTo(sendState)
+                txIdle.TransitionsTo(sendPrepareState)
                     .When(fx.IsLocal().IsTrue().And(localPointer.IsEqualTo(i)));
+                sendPrepareState.TransitionsTo(sendState)
+                    .When(fx.Always());
             }
             
             var rxLayer = fx.NewLayer("Receive");
             var rxIdle = rxLayer.NewState("Idle");
             var smoothedDict = new Dictionary<string, string>();
-            for (int i = 0; i < onDemandSyncParameters.Count; i++) {
-                var dst = onDemandSyncParameters[i];
-                var rxState = rxLayer.NewState($"Receive {onDemandSyncParameters[i]}");
+            for (int i = 0; i < toOptimize.Count; i++) {
+                var dst = toOptimize[i];
+                var rxState = rxLayer.NewState($"Receive {toOptimize[i]}");
                 rxState.DrivesCopy(dst, data, false)
                     .TransitionsToExit()
                     .When(fx.Always());
@@ -104,17 +124,19 @@ namespace Editor.VF.Feature {
             }, false, layers.Select(l => l.stateMachine).ToArray());
         }
 
-        private List<VFAFloat> GetAllRadialPuppetParameters() {
+        private List<VFAFloat> GetAllSyncedRadialPuppetParameters() {
             var floatParams = new List<VFAFloat>();
             manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
                 if (control.type != VRCExpressionsMenu.Control.ControlType.RadialPuppet)
                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
-                var controlParam = control.GetSubParameter(0).name;
+                var controlParam = control.GetSubParameter(0)?.name;
+                if(string.IsNullOrEmpty(controlParam)) return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
                 var vrcParam = manager.GetParams().GetParam(controlParam);
                 if (vrcParam == null || vrcParam.networkSynced == false)
                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
                 var animParam = GetFx().GetRaw().GetParam(control.GetSubParameter(0).name);
-                if(animParam != null) floatParams.Add(new VFAFloat(animParam));
+                if(animParam != null && animParam.type == AnimatorControllerParameterType.Float) 
+                    floatParams.Add(new VFAFloat(animParam));
                 return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
             });
             return floatParams;
