@@ -39,11 +39,17 @@ namespace Editor.VF.Feature {
             var data = fx.NewFloat("SyncData", synced: true);
             //var sending = fx.NewFloat("IsSending");
 
-            var txLayer = fx.NewLayer("Send");
-            var txIdle = txLayer.NewState("Idle");
-           //txIdle.Drives(sending, 0, true);
-            var txAdder = txLayer.NewState("Adder");
-            var txResetter = txLayer.NewState("Reset");
+            var layer = fx.NewLayer("Radial Toggle Optimizer");
+            var idle = layer.NewState("Idle");
+            //txIdle.Drives(sending, 0, true);
+            var local = layer.NewState("Local");
+            var remote = layer.NewState("Remote");
+            idle.TransitionsTo(local)
+                .When(fx.IsLocal().IsTrue());
+            idle.TransitionsTo(remote)
+                .When(fx.IsLocal().IsFalse());
+            var txAdder = layer.NewState("Adder");
+            var txResetter = layer.NewState("Reset");
             txResetter.Drives(localPointer, 0, local: true)
                 .TransitionsToExit()
                 .When(fx.Always());
@@ -65,9 +71,9 @@ namespace Editor.VF.Feature {
                     (1, math.Or(math.GreaterThan(srcDiff, 0), math.LessThan(srcDiff, 0))));
                 /*var maintain = math.MakeMaintainer(srcDiff); // Maintain while in send animation
                 directTree.Add(sending, maintain);*/
-                var sendInstantPrepareState = txLayer.NewState($"Send Prepare Instant {toOptimize[i].Name()}");
+                var sendInstantPrepareState = layer.NewState($"Send Prepare Instant {toOptimize[i].Name()}");
                 sendInstantPrepareState.Drives(sending[i], 1, true);
-                var sendInstantState = txLayer.NewState($"Send Instant {toOptimize[i].Name()}");
+                var sendInstantState = layer.NewState($"Send Instant {toOptimize[i].Name()}");
                 sendInstantState
                     .DrivesCopy(data, src, true)
                     .Drives(pointer, i, true)
@@ -75,8 +81,8 @@ namespace Editor.VF.Feature {
                     .TransitionsToExit()
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
-                txIdle.TransitionsTo(sendInstantPrepareState)
-                    .When(fx.IsLocal().IsTrue().And(pending.IsGreaterThan(0.5f))); // srcDiff.IsGreaterThan(0).Or(srcDiff.IsLessThan(0))));
+                local.TransitionsTo(sendInstantPrepareState)
+                    .When(pending.IsGreaterThan(0.5f)); // srcDiff.IsGreaterThan(0).Or(srcDiff.IsLessThan(0))));
                 sendInstantPrepareState.TransitionsTo(sendInstantState)
                     .When(fx.Always());
                 //txIdle.Drives(sending[i], 0, true);
@@ -85,9 +91,9 @@ namespace Editor.VF.Feature {
             // round robin pointer iteration
             for (int i = 0; i < toOptimize.Count; i++) {
                 var src = toOptimize[i];
-                var sendPrepareState = txLayer.NewState($"Send Prepare {toOptimize[i].Name()}");
+                var sendPrepareState = layer.NewState($"Send Prepare {toOptimize[i].Name()}");
                 sendPrepareState.Drives(sending[i], 1, true);
-                var sendState = txLayer.NewState($"Send {toOptimize[i].Name()}");
+                var sendState = layer.NewState($"Send {toOptimize[i].Name()}");
                 sendState
                     .DrivesCopy(data, src)
                     .DrivesCopy(pointer, localPointer)
@@ -95,23 +101,23 @@ namespace Editor.VF.Feature {
                     .TransitionsTo(txAdder)
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
-                txIdle.TransitionsTo(sendPrepareState)
+                local.TransitionsTo(sendPrepareState)
                     .When(fx.IsLocal().IsTrue().And(localPointer.IsEqualTo(i)));
                 sendPrepareState.TransitionsTo(sendState)
                     .When(fx.Always());
             }
             
-            var rxLayer = fx.NewLayer("Receive");
-            var rxIdle = rxLayer.NewState("Idle");
+            //var rxLayer = fx.NewLayer("Receive");
+            //var rxIdle = rxLayer.NewState("Idle");
             var smoothedDict = new Dictionary<string, string>();
             for (int i = 0; i < toOptimize.Count; i++) {
                 var dst = toOptimize[i];
-                var rxState = rxLayer.NewState($"Receive {toOptimize[i]}");
+                var rxState = layer.NewState($"Receive {toOptimize[i].Name()}");
                 rxState.DrivesCopy(dst, data, false)
                     .TransitionsToExit()
                     .When(fx.Always());
-                rxIdle.TransitionsTo(rxState)
-                    .When(pointer.IsEqualTo(i).And(fx.IsLocal().IsFalse()));
+                remote.TransitionsTo(rxState)
+                    .When(pointer.IsEqualTo(i));
                 
                 var dstSmoothed = smoothingService.Smooth($"{dst.Name()}/Smoothed", dst, 0.1f, false);
                 smoothedDict[dst.Name()] = dstSmoothed.Name();
