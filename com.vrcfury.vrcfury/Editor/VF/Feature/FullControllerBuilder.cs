@@ -517,7 +517,7 @@ namespace VF.Feature {
                         foreach (var path in paths) {
                             if (avatarObject != baseObject && baseObject.Find(path) == null) {
                                 missingFromBase.Add(path);
-                            } else if (avatarObject.Find(path) == null) {
+                            } else if (avatarObject != null && avatarObject.Find(path) == null) {
                                 missingFromAvatar.Add(path);
                             }
                         }
