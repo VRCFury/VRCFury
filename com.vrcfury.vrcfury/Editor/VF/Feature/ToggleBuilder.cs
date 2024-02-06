@@ -304,7 +304,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     public void ApplyRestingState() {
         if (savedRestingClip == null) return;
 
-        var includeInRest = model.defaultOn || model.slider;
+        bool includeInRest;
+        if (model.slider) {
+            includeInRest = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
+        } else {
+            includeInRest = model.defaultOn;
+        }
         if (model.invertRestLogic) includeInRest = !includeInRest;
         if (!includeInRest) return;
 
