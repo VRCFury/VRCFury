@@ -332,7 +332,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
         var globalParamProp = prop.FindPropertyRelative("globalParam");
         var holdButtonProp = prop.FindPropertyRelative("holdButton");
-        var onDemandSyncProp = prop.FindPropertyRelative("onDemandSync");
 
         var flex = new VisualElement().Row();
         content.Add(flex);
@@ -522,10 +521,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 var tags = new List<string>();
                 if (savedProp.boolValue)
                     tags.Add("Saved");
-                if (sliderProp.boolValue) {
-                    if (onDemandSyncProp.boolValue)
-                        tags.Add("On Demand Sync");
-                }
                 if (securityEnabledProp.boolValue)
                     tags.Add("Security");
                 if (!sliderProp.boolValue) {
@@ -560,8 +555,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             exclusiveOffStateProp,
             holdButtonProp,
             hasExitTimeProp,
-            sliderProp,
-            onDemandSyncProp
+            sliderProp
         ));
 
         var toggleOffWarning = VRCFuryEditorUtils.Error(
