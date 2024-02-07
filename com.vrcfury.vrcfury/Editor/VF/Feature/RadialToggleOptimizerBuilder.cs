@@ -38,11 +38,13 @@ namespace Editor.VF.Feature {
             var localPointer = fx.NewInt("LocalPointer"); // Use a local only pointer to avoid race condition
             var data = fx.NewFloat("SyncData", synced: true);
             var sending = fx.NewFloat("IsSending");
-
+            var isLocalFloat = fx.NewFloat("IsLocalFloat");
+            
             var layer = fx.NewLayer("Radial Toggle Optimizer");
             var idle = layer.NewState("Idle");
             var local = layer.NewState("Local");
-            local.Drives(sending, 0, true);
+            local.Drives(sending, 0, true)
+                .Drives(isLocalFloat, 1, true); // cast IsLocal to float
             var remote = layer.NewState("Remote");
             idle.TransitionsTo(local)
                 .When(fx.IsLocal().IsTrue());
@@ -58,7 +60,7 @@ namespace Editor.VF.Feature {
             txAdder.DrivesDelta(localPointer, 1)
                 .TransitionsToExit()
                 .When(fx.Always());
-
+            
             // instant sync on change detection
             for (int i = 0; i < toOptimize.Count; i++) {
                 var src = toOptimize[i];
@@ -76,7 +78,7 @@ namespace Editor.VF.Feature {
                     .Drives(pointer, i, true)
                     .Drives(sending, 1, true)
                     .TransitionsToExit()
-                    .WithTransitionExitTime(2f)
+                    .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
                 local.TransitionsTo(sendInstantState)
                     .When(pending.IsGreaterThan(0.5f));
@@ -92,14 +94,13 @@ namespace Editor.VF.Feature {
                     .DrivesCopy(pointer, localPointer)
                     .Drives(sending, 1, true)
                     .TransitionsTo(txAdder)
-                    .WithTransitionExitTime(2f)
+                    .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
                 local.TransitionsTo(sendState)
                     .When(localPointer.IsEqualTo(i));
-
             }
             
-            var smoothedDict = new Dictionary<string, string>();
+            var mappedDict = new Dictionary<string, string>();
             for (int i = 0; i < toOptimize.Count; i++) {
                 var dst = toOptimize[i];
                 var rxState = layer.NewState($"Receive {toOptimize[i].Name()}");
@@ -110,11 +111,16 @@ namespace Editor.VF.Feature {
                     .When(pointer.IsEqualTo(i));
                 
                 var dstSmoothed = smoothingService.Smooth($"{dst.Name()}/Smoothed", dst, 0.1f, false);
-                smoothedDict[dst.Name()] = dstSmoothed.Name();
+                var dstMapped = math.SetValueWithConditions($"{dst.Name()}/Mapped",
+                    (dst, math.GreaterThan(isLocalFloat, 0.5f)),
+                    (dstSmoothed, null)
+                    );
+                
+                mappedDict[dst.Name()] = dstMapped.Name();
             }
             fx.GetRaw().RewriteParameters(name => {
-                if (smoothedDict.TryGetValue(name, out var smoothed)) {
-                    return smoothed;
+                if (mappedDict.TryGetValue(name, out var mapped)) {
+                    return mapped;
                 }
                 return name;
             }, false, layers.Select(l => l.stateMachine).ToArray());
