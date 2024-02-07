@@ -395,19 +395,8 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.SmoothParamEntry))]
         public class SmoothParamDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var row = new VisualElement();
+
                 var nameProp = prop.FindPropertyRelative("name");
-                row.Add(VRCFuryEditorUtils.Prop(nameProp, "Property"));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration"), "Duration (sec)"));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("range"), "Supported Range", formatEnum:
-                    s => {
-                        switch (s) {
-                            case "Zero To Infinity": return "0 to Infinity (No Jitter)";
-                            case "Neg One To One": return "-1 to 1 (Insignificant Jitter)";
-                            case "Neg 10k To 10k": return "-10,000 to 10,000 (Minor Jitter)";
-                        }
-                        return s;
-                    }));
 
                 void SelectButtonPress() {
                     var menu = new GenericMenu();
@@ -443,10 +432,23 @@ namespace VF.Feature {
                     menu.ShowAsContext();
                 }
 
-                var selectButton = new Button(SelectButtonPress) { text = "Select" };
-                row.Add(selectButton);
+                var content = new VisualElement();
+                var row = new VisualElement().Row();
+                content.Add(row);
+                row.Add(VRCFuryEditorUtils.Prop(nameProp, "Property").FlexGrow(1));
+                row.Add(new Button(SelectButtonPress) { text = "Select" });
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration"), "Duration (sec)"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("range"), "Supported Range", formatEnum:
+                    s => {
+                        switch (s) {
+                            case "Zero To Infinity": return "0 to Infinity (No Jitter)";
+                            case "Neg One To One": return "-1 to 1 (Insignificant Jitter)";
+                            case "Neg 10k To 10k": return "-10,000 to 10,000 (Minor Jitter)";
+                        }
+                        return s;
+                    }));
 
-                return row;
+                return content;
             }
         }
 
