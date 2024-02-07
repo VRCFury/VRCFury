@@ -524,8 +524,6 @@ namespace VF.Feature {
             
             content.Add(new VisualElement { style = { paddingTop = 10 } });
             content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                var text = new List<string>();
-
                 var baseObject = GetBaseObject();
 
                 var missingFromBase = new HashSet<string>();
@@ -542,18 +540,31 @@ namespace VF.Feature {
 
                         var paths = new AnimatorIterator.Clips().From(state)
                             .SelectMany(clip => clip.GetAllBindings())
-                            .Select(binding => RewritePath(binding.path))
-                            .Where(path => path != null);
-                        foreach (var path in paths) {
-                            if (avatarObject != baseObject && baseObject.Find(path) == null) {
-                                missingFromBase.Add(path);
-                            } else if (avatarObject != null && avatarObject.Find(path) == null) {
-                                missingFromAvatar.Add(path);
+                            .Select(binding => binding.path)
+                            .ToImmutableHashSet();
+                        foreach (var originalPath in paths) {
+                            var rewrittenPath = RewritePath(originalPath);
+                            if (rewrittenPath == null) {
+                                // binding was deleted by rules :)
+                                continue;
+                            }
+                            if (rewrittenPath.ToLower().Contains("ignore")) {
+                                continue;
+                            }
+                            if (baseObject.Find(rewrittenPath) == null) {
+                                if (avatarObject == baseObject) {
+                                    missingFromAvatar.Add(rewrittenPath);
+                                } else if (avatarObject != null && avatarObject.Find(originalPath) == null) {
+                                    missingFromAvatar.Add(originalPath);
+                                } else {
+                                    missingFromBase.Add(rewrittenPath);
+                                }
                             }
                         }
                     }
                 }
 
+                var text = new List<string>();
                 if (usesWdOff) {
                     text.Add(
                         "This controller uses WD off!" +
@@ -564,10 +575,11 @@ namespace VF.Feature {
                 }
                 if (missingFromAvatar.Any()) {
                     text.Add(
-                        "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything. " +
+                        "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything! " +
                         "You may need to use 'Binding Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.");
                     text.Add("");
                     text.AddRange(missingFromAvatar.OrderBy(path => path));
+                    text.Add("");
                 }
                 if (missingFromBase.Any()) {
                     text.Add(
