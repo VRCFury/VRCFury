@@ -9,16 +9,37 @@ using VF.Upgradeable;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
-    [AddComponentMenu("VRCFury/VRCFury")]
+    [AddComponentMenu("")]
     [HelpURL("https://vrcfury.com")]
     public class VRCFury : VRCFuryComponent {
-
-        public VRCFuryConfig config = new VRCFuryConfig();
-
+        
         [Header("VRCFury failed to load")]
+        [Header("Something is really broken. Do not edit anything in here, or you may make it worse.")]
+        [Header("You probably have script errors in the console caused by some other plugin. Please fix them.")]
         public bool somethingIsBroken;
 
+        /**
+         * Replaced by `content`. Only one feature can be set per vrcfury component. Every component MUST contain
+         * a feature or it will be considered corrupted.
+         */
+        [Obsolete] public VRCFuryConfig config = new VRCFuryConfig();
+
+        [SerializeReference] public FeatureModel content;
+
         public static bool RunningFakeUpgrade = false;
+
+        public IEnumerable<FeatureModel> GetAllFeatures() {
+            var output = new List<FeatureModel>();
+#pragma warning disable 0612
+            if (config?.features != null) {
+                output.AddRange(config.features);
+            }
+#pragma warning restore 0612
+            if (content != null) {
+                output.Add(content);
+            }
+            return output;
+        }
         
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
@@ -52,7 +73,7 @@ namespace VF.Model {
                         if (s.action == ObjectState.Action.DELETE) {
                             if (!RunningFakeUpgrade) {
                                 var vrcf = s.obj.AddComponent<VRCFury>();
-                                vrcf.config.features.Add(new DeleteDuringUpload());
+                                vrcf.content = new DeleteDuringUpload();
                             }
                         } else if (s.action == ObjectState.Action.ACTIVATE) {
                             apply.action.actions.Add(new ObjectToggleAction() {
@@ -79,8 +100,8 @@ namespace VF.Model {
                 } else if (features[i] is BlendshapeOptimizer opt) {
                     if (opt.keepMmdShapes && !RunningFakeUpgrade) {
                         var hasMmdCompat = gameObject.GetComponents<VRCFury>()
-                            .Where(c => c != null && c.config?.features != null)
-                            .SelectMany(c => c.config.features)
+                            .Where(c => c != null)
+                            .SelectMany(c => c.GetAllFeatures())
                             .Any(feature => feature is MmdCompatibility);
                         if (!hasMmdCompat) {
                             features.Insert(++i, new MmdCompatibility());
@@ -91,12 +112,28 @@ namespace VF.Model {
                 }
             }
 
+            if (content == null && features.Count == 1) {
+                content = features[0];
+                features.Clear();
+                didSomething = true;
+            } else if (features.Count >= 1) {
+                foreach (var f in features) {
+                    var newComponent = gameObject.AddComponent<VRCFury>();
+                    newComponent.content = f;
+                }
+                features.Clear();
+                didSomething = true;
+            }
+            if (content == null) {
+                DestroyImmediate(this);
+            }
+
             return didSomething;
 #pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
-            return 2;
+            return 3;
         }
     }
     
