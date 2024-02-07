@@ -39,12 +39,14 @@ namespace Editor.VF.Feature {
             var data = fx.NewFloat("SyncData", synced: true);
             var sending = fx.NewFloat("IsSending");
             var isLocalFloat = fx.NewFloat("IsLocalFloat");
+            var instant = fx.NewBool("InstantSync", synced: true);
+            var instantFloat = fx.NewFloat("InstantSyncFloat");
             
             var layer = fx.NewLayer("Radial Toggle Optimizer");
             var idle = layer.NewState("Idle");
             var local = layer.NewState("Local");
             local.Drives(sending, 0, true)
-                .Drives(isLocalFloat, 1, true); // cast IsLocal to float
+                .Drives(isLocalFloat, 1, true); // cast IsLocal to float to use in DBT
             var remote = layer.NewState("Remote");
             idle.TransitionsTo(local)
                 .When(fx.IsLocal().IsTrue());
@@ -77,6 +79,7 @@ namespace Editor.VF.Feature {
                     .DrivesCopy(data, src, true)
                     .Drives(pointer, i, true)
                     .Drives(sending, 1, true)
+                    .Drives(instant, true, true)
                     .TransitionsToExit()
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
@@ -93,6 +96,7 @@ namespace Editor.VF.Feature {
                     .DrivesCopy(data, src)
                     .DrivesCopy(pointer, localPointer)
                     .Drives(sending, 1, true)
+                    .Drives(instant, false, true)
                     .TransitionsTo(txAdder)
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
@@ -105,6 +109,7 @@ namespace Editor.VF.Feature {
                 var dst = toOptimize[i];
                 var rxState = layer.NewState($"Receive {toOptimize[i].Name()}");
                 rxState.DrivesCopy(dst, data, false)
+                    .DrivesCopy(instantFloat, instant, false)
                     .TransitionsToExit()
                     .When(fx.Always());
                 remote.TransitionsTo(rxState)
@@ -112,10 +117,8 @@ namespace Editor.VF.Feature {
                 
                 var dstSmoothed = smoothingService.Smooth($"{dst.Name()}/Smoothed", dst, 0.1f, false);
                 var dstMapped = math.SetValueWithConditions($"{dst.Name()}/Mapped",
-                    (dst, math.GreaterThan(isLocalFloat, 0.5f)),
-                    (dstSmoothed, null)
-                    );
-                
+                    (dst, math.Or(math.GreaterThan(isLocalFloat, 0.5f), math.LessThan(instantFloat, 0.5f))),
+                    (dstSmoothed, null));
                 mappedDict[dst.Name()] = dstMapped.Name();
             }
             fx.GetRaw().RewriteParameters(name => {
