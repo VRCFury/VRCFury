@@ -290,8 +290,29 @@ namespace VF.Feature {
                     if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
                     var target = new VFAFloat(exists);
-                    var smoothed = smoothingService.Smooth($"{rewritten}/Smoothed", target,
-                        smoothedParam.smoothingDuration);
+
+                    float minSupported, maxSupported;
+                    switch (smoothedParam.range) {
+                        case FullController.SmoothingRange.NegOneToOne:
+                            minSupported = -1;
+                            maxSupported = 1;
+                            break;
+                        case FullController.SmoothingRange.Neg10kTo10k:
+                            minSupported = -10000;
+                            maxSupported = 10000;
+                            break;
+                        default:
+                            minSupported = 0;
+                            maxSupported = float.MaxValue;
+                            break;
+                    }
+                    var smoothed = smoothingService.Smooth(
+                        $"{rewritten}/Smoothed",
+                        target,
+                        smoothedParam.smoothingDuration,
+                        minSupported: minSupported,
+                        maxSupported: maxSupported
+                    );
                     smoothedDict[rewritten] = smoothed.Name();
                 }
 
@@ -374,10 +395,19 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.SmoothParamEntry))]
         public class SmoothParamDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var row = new VisualElement().Row();
+                var row = new VisualElement();
                 var nameProp = prop.FindPropertyRelative("name");
-                row.Add(VRCFuryEditorUtils.Prop(nameProp).FlexGrow(1));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration")).FlexBasis(50));
+                row.Add(VRCFuryEditorUtils.Prop(nameProp, "Property"));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration"), "Duration (sec)"));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("range"), "Supported Range", formatEnum:
+                    s => {
+                        switch (s) {
+                            case "Zero To Infinity": return "0 to Infinity (No Jitter)";
+                            case "Neg One To One": return "-1 to 1 (Insignificant Jitter)";
+                            case "Neg 10k To 10k": return "-10,000 to 10,000 (Minor Jitter)";
+                        }
+                        return s;
+                    }));
 
                 void SelectButtonPress() {
                     var menu = new GenericMenu();
@@ -464,7 +494,7 @@ namespace VF.Feature {
                 var (a, b) = VRCFuryEditorUtils.CreateTooltip(
                     "Smooth Parameters",
                     "All parameters listed here that are found in FX controllers listed above will have their " +
-                    "values smoothed. The number represents how many seconds it should take to reach 90% of the target value.");
+                    "values smoothed. The duration represents how many seconds it should take to reach 90% of the target value.");
                 adv.Add(a);
                 adv.Add(b);
                 adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
