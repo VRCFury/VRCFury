@@ -125,7 +125,7 @@ namespace VF.Model {
                 didSomething = true;
             }
             if (content == null) {
-                DestroyImmediate(this);
+                DestroyImmediate(this, true);
             }
 
             return didSomething;
