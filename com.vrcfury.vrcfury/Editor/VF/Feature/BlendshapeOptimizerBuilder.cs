@@ -190,8 +190,8 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(GameObject obj, VFController controller) {
-            var prefix = AnimationUtility.CalculateTransformPath(obj.transform, avatarObject.transform);
+        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(VFGameObject obj, VFController controller) {
+            var prefix = obj.GetPath(avatarObject);
 
             var clipsInController = new AnimatorIterator.Clips().From(controller);
 
@@ -210,10 +210,10 @@ namespace VF.Feature {
                 .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
                 .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
-                    .SelectMany(animator => GetBindings(animator.gameObject, animator.runtimeAnimatorController as AnimatorController)))
+                    .SelectMany(animator => GetBindings(animator.owner(), animator.runtimeAnimatorController as AnimatorController)))
                 .ToList();
 
-            var skinPath = clipBuilder.GetPath(skin.transform);
+            var skinPath = clipBuilder.GetPath(skin.owner());
 
             var blendshapeNames = skin.GetBlendshapeNames();
             

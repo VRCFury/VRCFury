@@ -29,7 +29,6 @@ public class VRCFuryBuilder {
 
     internal Status SafeRun(
         VFGameObject avatarObject,
-        VFGameObject originalObject = null,
         bool keepDebugInfo = false
     ) {
         /*
@@ -47,7 +46,7 @@ public class VRCFuryBuilder {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 try {
                     MaterialLocker.avatarObject = avatarObject;
-                    Run(avatarObject, originalObject);
+                    Run(avatarObject);
                 } finally {
                     MaterialLocker.avatarObject = null;
                 }
@@ -79,7 +78,7 @@ public class VRCFuryBuilder {
         }
     }
 
-    private void Run(GameObject avatarObject, GameObject originalObject) {
+    private void Run(VFGameObject avatarObject) {
         if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
@@ -96,7 +95,6 @@ public class VRCFuryBuilder {
         try {
             ApplyFuryConfigs(
                 avatarObject,
-                originalObject,
                 progress
             );
         } finally {
@@ -108,7 +106,6 @@ public class VRCFuryBuilder {
 
     private static void ApplyFuryConfigs(
         VFGameObject avatarObject,
-        VFGameObject originalObject,
         VRCFProgressWindow progress
     ) {
         var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
@@ -143,7 +140,6 @@ public class VRCFuryBuilder {
             allFeaturesInRun = collectedModels,
             allBuildersInRun = collectedBuilders,
             avatarObject = avatarObject,
-            originalObject = originalObject,
             currentFeatureNumProvider = () => currentModelNumber,
             currentFeatureNameProvider = () => currentModelName,
             currentFeatureClipPrefixProvider = () => currentModelClipPrefix,
@@ -169,7 +165,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));
         AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(RestingStateBuilder));
         AddBuilder(typeof(RestoreProxyClipsBuilder));
         AddBuilder(typeof(FixEmptyMotionBuilder));
 
@@ -235,15 +230,14 @@ public class VRCFuryBuilder {
             if (loadFailure != null) {
                 throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
             }
-            var config = vrcFury.config;
-            if (config.features != null) {
-                var debugLogString = $"Importing {config.features.Count} features from {configObject.name}";
-                foreach (var feature in config.features) {
-                    AddModel(feature, configObject);
-                    debugLogString += $"\n{feature.GetType()}";
-                }
-                Debug.Log(debugLogString);
+
+            if (vrcFury.content == null) {
+                continue;
             }
+
+            var debugLogString = $"Importing {vrcFury.content.GetType().Name} from {configObject.name}";
+            AddModel(vrcFury.content, configObject);
+            Debug.Log(debugLogString);
         }
 
         foreach (var type in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()) {
@@ -256,6 +250,7 @@ public class VRCFuryBuilder {
 
         AddModel(new DirectTreeOptimizer { managedOnly = true }, avatarObject);
 
+        FeatureOrder? lastPriority = null;
         while (actions.Count > 0) {
             var action = actions.Min();
             actions.Remove(action);
@@ -264,6 +259,12 @@ public class VRCFuryBuilder {
                 var statusSkipMessage = $"{service.GetType().Name} ({currentModelNumber}) Skipped (Object no longer exists)";
                 progress.Progress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
                 continue;
+            }
+
+            var priority = action.GetPriorty();
+            if (lastPriority != priority) {
+                lastPriority = priority;
+                injector.GetService<RestingStateService>().OnPhaseChanged();
             }
 
             currentModelNumber = action.serviceNum;

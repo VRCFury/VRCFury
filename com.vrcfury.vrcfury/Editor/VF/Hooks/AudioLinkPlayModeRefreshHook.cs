@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VF.Menu;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
@@ -33,11 +34,12 @@ namespace VF.Hooks {
             var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
             if (alComponentType == null) alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
             if (alComponentType == null) return;
-            foreach (var gm in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
-                if (gm.gameObject.activeSelf) {
-                    Debug.Log($"VRCFury is restarting AudioLink object {gm.gameObject.name} ...");
-                    gm.gameObject.SetActive(false);
-                    gm.gameObject.SetActive(true);
+            foreach (var audioLink in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
+                var obj = audioLink.owner();
+                if (obj.active) {
+                    Debug.Log($"VRCFury is restarting AudioLink object {obj.name} ...");
+                    obj.active = false;
+                    obj.active = true;
                 }
             }
         }

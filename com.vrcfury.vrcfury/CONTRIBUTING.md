@@ -62,6 +62,8 @@ For more information, please refer to <https://unlicense.org>
   * Fixed toggles possibly being in the wrong state for one frame upon loading
   * Added ability for toggles to "play to completion"
   * Added transition time support to Toggles
+* Happyrobot33
+  * Added support for excluded global params in Full Controller
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
   * Made colliders merge properly within Armature Link (unused)
@@ -71,10 +73,13 @@ For more information, please refer to <https://unlicense.org>
   * Created numerous setup prefabs
   * Fix DirectTreeOptimizer for clips with partial keyframes
   * Added parameter smoothing to Full Controller
+  * Debugged and found the solution to VRC stations breaking smoothing
+  * Added smoothing of negative values
 * nullstalgia
   * Added option for Toggles to use momentary push buttons
   * Prevented SPS toggle from disabling SPS autorig physbone
   * Set the Editor Test Copy's Animator controller to the generated FX layer
+  * Added drop-in box for quickly setting bones in Armature Link
 * Raphiiko
   * Added global parameters for Toggles
 * TayouVR
@@ -83,6 +88,7 @@ For more information, please refer to <https://unlicense.org>
   * Contributed SPS support for legacy DPS channel 1 (unused)
   * Added EditorOnly handling and fixed Builder Crash with ForceObjectState Delete
   * Added version number to vrcfury components
+  * Checking for transform path on specified bone in Armature Link
 * TheLastRar
   * Contributed attempts to fix light slot 4 breakage for DPS tip lights (unused)
   * Added scaling of legacy DPS tip light intensity

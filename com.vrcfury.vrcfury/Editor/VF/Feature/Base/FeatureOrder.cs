@@ -29,9 +29,9 @@ namespace VF.Feature.Base {
 
         // Needs to run after all haptic components are in place
         // Needs to run before Toggles, because of its "After Bake" action
-        ApplyRestState1,
         BakeHapticPlugs,
-        ApplyRestState2,
+        
+        ApplyImplicitRestingStates,
 
         Default,
         //Needs to happen after Toggles and Full Controller
@@ -40,8 +40,6 @@ namespace VF.Feature.Base {
         SenkyGestureDriver,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
-        // Needs to run before ArmatureLinkBuilder, which reads active state of objects
-        ApplyRestState3,
         
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
@@ -75,7 +73,6 @@ namespace VF.Feature.Base {
 
         // Needs to run after everything else is done messing with rest state
         ApplyToggleRestingState,
-        ApplyRestState4,
 
         // Finalize Controllers
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
@@ -83,7 +80,6 @@ namespace VF.Feature.Base {
         DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
-        Slot4Fix,
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         RemoveDefaultedAdditiveLayer,
         FixUnsetPlayableLayers,

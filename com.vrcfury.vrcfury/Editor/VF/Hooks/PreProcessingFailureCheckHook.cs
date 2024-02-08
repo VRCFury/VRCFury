@@ -18,7 +18,7 @@ namespace VF.Hooks {
             // somewhere between calling our start hook and our end hook.
             if (!Application.isPlaying) return;
             if (uploadingObject == null) return;
-            var failMarker = new GameObject($"{uploadingObject.name} (Preprocess hooks failed)");
+            var failMarker = GameObjects.Create($"{uploadingObject.name} (Preprocess hooks failed)");
             SceneManager.MoveGameObjectToScene(failMarker, uploadingObject.scene);
             uploadingObject.Destroy();
         }

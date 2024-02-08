@@ -19,11 +19,8 @@ namespace VF.Service {
         public VFAFloat GetFrameTime() {
             if (cachedFrameTime != null) return cachedFrameTime;
 
-            var fx = manager.GetFx();
             var timeSinceLoad = GetTimeSinceLoad();
-            var lastTimeSinceLoad = fx.NewFloat("lastTimeSinceLoad");
-            directTree.Add(math.MakeCopier(timeSinceLoad, lastTimeSinceLoad));
-
+            var lastTimeSinceLoad = math.Buffer(timeSinceLoad, to: "lastTimeSinceLoad");
             var diff = math.Subtract(timeSinceLoad, lastTimeSinceLoad, name: "frameTime");
 
             cachedFrameTime = diff;

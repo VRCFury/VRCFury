@@ -25,7 +25,7 @@ namespace VF.Builder.Haptics {
         // Converts MeshRenderers or 0-bone SkinnedMeshRenderers to real weighted SkinnedMeshRenderers
         public static SkinnedMeshRenderer NormalizeRenderer(
             Renderer renderer,
-            Transform rootTransform,
+            VFGameObject rootTransform,
             float worldLength
         ) {
             // Convert MeshRenderer to SkinnedMeshRenderer
@@ -53,7 +53,7 @@ namespace VF.Builder.Haptics {
 
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
             if (mesh.boneWeights.Length == 0) {
-                var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.transform);
+                var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.owner());
                 var meshCopy = MutableManager.MakeMutable(mesh);
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
@@ -74,7 +74,7 @@ namespace VF.Builder.Haptics {
                 bounds.Encapsulate(vertex);
             }
 
-            var localLength = worldLength / rootTransform.lossyScale.z;
+            var localLength = worldLength / rootTransform.worldScale.z;
             bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * 2.5f));
             bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * 2.5f));
             bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * -0.5f));

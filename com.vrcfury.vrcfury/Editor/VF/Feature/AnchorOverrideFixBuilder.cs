@@ -11,14 +11,14 @@ namespace VF.Feature {
     public class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
-            GameObject root;
+            VFGameObject root;
             try {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Chest);
             } catch (Exception) {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Hips);
             }
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                skin.probeAnchor = root.transform;
+                skin.probeAnchor = root;
             }
         }
         

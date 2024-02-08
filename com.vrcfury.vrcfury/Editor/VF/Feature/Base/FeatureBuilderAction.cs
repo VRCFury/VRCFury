@@ -36,7 +36,7 @@ namespace VF.Feature.Base {
         public string GetName() {
             return method.Name;
         }
-        
-        
+
+        public FeatureOrder GetPriorty() => attribute.GetPriority();
     }
 }

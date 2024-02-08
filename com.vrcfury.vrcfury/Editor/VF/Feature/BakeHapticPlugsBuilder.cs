@@ -24,7 +24,7 @@ namespace VF.Feature {
     public class BakeHapticPlugsBuilder : FeatureBuilder {
         
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly RestingStateBuilder restingState;
+        [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
@@ -58,7 +58,7 @@ namespace VF.Feature {
                     bakeResults[plug] = bakeInfo;
 
                     var postBakeClip = actionClipService.LoadState("sps_postbake", plug.postBakeActions, plug.owner());
-                    restingState.ApplyClipToRestingState(postBakeClip);
+                    restingState.ApplyClipToRestingState(postBakeClip, owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject));
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
@@ -240,7 +240,7 @@ namespace VF.Feature {
                     }
                     
                     foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(r.transform);
+                        _forceStateInAnimatorService.DisableDuringLoad(r.owner());
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
@@ -336,7 +336,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.DpsTipScaleFix)]
         public void ApplyDpsTipScale() {
             foreach (var light in dpsTipToDo)
-                scaleCompensationService.AddScaledProp(light.gameObject,
+                scaleCompensationService.AddScaledProp(light.owner(),
                     new[] { (light.owner(), typeof(Light), "m_Intensity", light.intensity) });
         }
     }

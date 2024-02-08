@@ -64,16 +64,13 @@ public static class FeatureFinder {
             .All(c => c is VRCFuryComponent || c is Transform);
     }
 
-    public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu(GameObject gameObject) {
-        var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
-        var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
+    public static IEnumerable<KeyValuePair<Type, Type>> GetAllFeaturesForMenu() {
         return GetAllFeatures()
             .Select(e => {
                 var impl = (FeatureBuilder)Activator.CreateInstance(e.Value);
                 var title = impl.GetEditorTitle();
                 if (title == null) return null;
                 if (!impl.ShowInMenu()) return null;
-                if (!allowRootFeatures && impl.AvailableOnRootOnly()) return null;
                 return Tuple.Create(title, e);
             })
             .Where(tuple => tuple != null)
@@ -83,10 +80,7 @@ public static class FeatureFinder {
 
     public static FeatureModel GetFeature(SerializedProperty prop) {
         var component = (VRCFury)prop.serializedObject.targetObject;
-        var startBracket = prop.propertyPath.IndexOf("[");
-        var endBracket = prop.propertyPath.IndexOf("]");
-        var index = Int32.Parse(prop.propertyPath.Substring(startBracket + 1, endBracket - startBracket - 1));
-        return component.config.features[index];
+        return component.content;
     }
 
     public static VisualElement RenderFeatureEditor(SerializedProperty prop) {
@@ -132,8 +126,7 @@ public static class FeatureFinder {
             VisualElement body;
             if (featureInstance.AvailableOnRootOnly() && !AllowRootFeatures(gameObject, avatarObject)) {
                 body = VRCFuryEditorUtils.Error(
-                    "To avoid abuse by prefab creators, this component can only be placed on the object containing the avatar descriptor.\n\n" +
-                    "Alternatively, it can be placed on a child object if the child contains ONLY vrcfury components.");
+                    "To avoid abuse by prefab creators, this component can only be placed on the root object containing the avatar descriptor, OR a child object containing ONLY vrcfury components.");
             } else {
                 body = featureInstance.CreateEditor(prop);
             }
@@ -151,9 +144,7 @@ public static class FeatureFinder {
     private static VisualElement RenderFeatureEditor(string title, VisualElement bodyContent) {
         var wrapper = new VisualElement();
 
-        var header = VRCFuryEditorUtils.WrappedLabel(title);
-        header.style.unityFontStyleAndWeight = FontStyle.Bold;
-        wrapper.Add(header);
+        wrapper.Add(VRCFuryComponentHeader.CreateHeaderOverlay(title));
 
         if (bodyContent != null) {
             var body = new VisualElement();
