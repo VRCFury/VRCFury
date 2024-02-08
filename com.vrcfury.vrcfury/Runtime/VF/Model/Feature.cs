@@ -106,7 +106,6 @@ namespace VF.Model.Feature {
         public List<MenuEntry> menus = new List<MenuEntry>();
         public List<ParamsEntry> prms = new List<ParamsEntry>();
         public List<SmoothParamEntry> smoothedPrms = new List<SmoothParamEntry>();
-        public List<string> onDemandSyncedPrms = new List<string>();
         public List<string> globalParams = new List<string>();
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
@@ -287,7 +286,6 @@ namespace VF.Model.Feature {
         public string globalParam;
         public bool holdButton;
         public bool invertRestLogic;
-        public bool onDemandSync = false;
 
         public override void CreateNewInstance(GameObject obj) {
         }
