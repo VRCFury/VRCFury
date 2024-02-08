@@ -32,12 +32,23 @@ namespace Editor.VF.Feature {
             var toOptimize = GetAllSyncedRadialPuppetParameters();
             if (toOptimize.Count <= 2) return; // don't optimize 16 bits or less
             var fx = GetFx();
-            var layers = fx.GetLayers();
+            var layers = fx.GetLayers().ToList();
             foreach (var param in toOptimize) {
                 var vrcPrm = manager.GetParams().GetParam(param.Name());
                 networkSyncedField.SetValue(vrcPrm, false);
             }
 
+            // Rewrite as marked before blend trees are added to optimized toggles layer, to circumvent them getting overwritten
+            var markedDict = toOptimize.Select(prm => {
+                var marked = fx.NewFloat(prm.Name() + "/Marked");
+                return (prm.Name(), marked);
+            }).ToDictionary(mark => mark.Item1, mark => mark.Item2);
+            fx.GetRaw().RewriteParameters(name => {
+                    if (markedDict.TryGetValue(name, out var marked)) return marked.Name();
+                    return name;
+                },
+                false, layers.Select(l => l.stateMachine).ToArray());
+            
             var pointer = fx.NewInt("SyncPointer", synced: true);
             var localPointer = fx.NewInt("LocalPointer"); // Use a local only pointer to avoid race condition
             var data = fx.NewFloat("SyncData", synced: true);
@@ -117,18 +128,24 @@ namespace Editor.VF.Feature {
                 var dstMapped = math.SetValueWithConditions($"{dst.Name()}/Mapped",
                     (dst, math.GreaterThan(isLocalFloat, 0.5f)),
                     (dstSmoothed, null)
-                    );
-                
-                mappedDict[dst.Name()] = dstMapped.Name();
+                );
+
+                mappedDict[markedDict[dst.Name()].Name()] = dstMapped.Name();
             }
 
             fx.GetRaw().RewriteParameters(name => {
-                if (mappedDict.TryGetValue(name, out var mapped)) {
-                    return mapped;
-                }
-
+                if (mappedDict.TryGetValue(name, out var mapped)) return mapped;
                 return name;
             }, false, layers.Select(l => l.stateMachine).ToArray());
+            
+            var toCleanup = markedDict.Values.Select(prm => prm.Name()).ToHashSet();
+            for (int i = 0; i < fx.GetRaw().parameters.Length; i++) {
+                var prm = fx.GetRaw().parameters[i];
+                if (!toCleanup.Contains(prm.name)) continue;
+                fx.GetRaw().RemoveParameter(i);
+                i--;
+            }
+
             Debug.Log($"Radial Toggle Optimizer: Reduced {toOptimize.Count * 8} bits into 16 bits.");
         }
 
