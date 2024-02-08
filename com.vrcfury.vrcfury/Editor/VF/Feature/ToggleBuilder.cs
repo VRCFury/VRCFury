@@ -588,7 +588,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .Where(o => o != null)
                 .ToImmutableHashSet();
             var othersTurnOn = baseObject.GetComponentsInSelfAndChildren<VRCFury>()
-                .SelectMany(vf => vf.config.features)
+                .SelectMany(vf => vf.GetAllFeatures())
                 .OfType<Toggle>()
                 .SelectMany(toggle => toggle.state.actions)
                 .OfType<ObjectToggleAction>()

@@ -5,7 +5,7 @@ using VF.Model;
 using VF.Model.StateAction;
 
 namespace VF.Component {
-    [AddComponentMenu("VRCFury/VRCFury - SPS Plug")]
+    [AddComponentMenu("VRCFury/VRCFury | SPS Plug")]
     public class VRCFuryHapticPlug : VRCFuryComponent {
         public bool autoRenderer = true;
         public bool autoPosition = true;

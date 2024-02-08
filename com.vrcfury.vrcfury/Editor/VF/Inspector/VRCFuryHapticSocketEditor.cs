@@ -22,7 +22,7 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     public class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
-        public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
+        protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
             container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject, true));

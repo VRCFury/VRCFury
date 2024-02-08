@@ -230,15 +230,14 @@ public class VRCFuryBuilder {
             if (loadFailure != null) {
                 throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
             }
-            var config = vrcFury.config;
-            if (config.features != null) {
-                var debugLogString = $"Importing {config.features.Count} features from {configObject.name}";
-                foreach (var feature in config.features) {
-                    AddModel(feature, configObject);
-                    debugLogString += $"\n{feature.GetType()}";
-                }
-                Debug.Log(debugLogString);
+
+            if (vrcFury.content == null) {
+                continue;
             }
+
+            var debugLogString = $"Importing {vrcFury.content.GetType().Name} from {configObject.name}";
+            AddModel(vrcFury.content, configObject);
+            Debug.Log(debugLogString);
         }
 
         foreach (var type in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()) {
