@@ -290,8 +290,29 @@ namespace VF.Feature {
                     if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
                     var target = new VFAFloat(exists);
-                    var smoothed = smoothingService.Smooth($"{rewritten}/Smoothed", target,
-                        smoothedParam.smoothingDuration);
+
+                    float minSupported, maxSupported;
+                    switch (smoothedParam.range) {
+                        case FullController.SmoothingRange.NegOneToOne:
+                            minSupported = -1;
+                            maxSupported = 1;
+                            break;
+                        case FullController.SmoothingRange.Neg10kTo10k:
+                            minSupported = -10000;
+                            maxSupported = 10000;
+                            break;
+                        default:
+                            minSupported = 0;
+                            maxSupported = float.MaxValue;
+                            break;
+                    }
+                    var smoothed = smoothingService.Smooth(
+                        $"{rewritten}/Smoothed",
+                        target,
+                        smoothedParam.smoothingDuration,
+                        minSupported: minSupported,
+                        maxSupported: maxSupported
+                    );
                     smoothedDict[rewritten] = smoothed.Name();
                 }
 
@@ -374,10 +395,8 @@ namespace VF.Feature {
         [CustomPropertyDrawer(typeof(FullController.SmoothParamEntry))]
         public class SmoothParamDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var row = new VisualElement().Row();
+
                 var nameProp = prop.FindPropertyRelative("name");
-                row.Add(VRCFuryEditorUtils.Prop(nameProp).FlexGrow(1));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration")).FlexBasis(50));
 
                 void SelectButtonPress() {
                     var menu = new GenericMenu();
@@ -413,10 +432,23 @@ namespace VF.Feature {
                     menu.ShowAsContext();
                 }
 
-                var selectButton = new Button(SelectButtonPress) { text = "Select" };
-                row.Add(selectButton);
+                var content = new VisualElement();
+                var row = new VisualElement().Row();
+                content.Add(row);
+                row.Add(VRCFuryEditorUtils.Prop(nameProp, "Property").FlexGrow(1));
+                row.Add(new Button(SelectButtonPress) { text = "Select" });
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("smoothingDuration"), "Duration (sec)"));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("range"), "Supported Range", formatEnum:
+                    s => {
+                        switch (s) {
+                            case "Zero To Infinity": return "0 to Infinity (No Jitter)";
+                            case "Neg One To One": return "-1 to 1 (Insignificant Jitter)";
+                            case "Neg 10k To 10k": return "-10,000 to 10,000 (Minor Jitter)";
+                        }
+                        return s;
+                    }));
 
-                return row;
+                return content;
             }
         }
 
@@ -464,7 +496,7 @@ namespace VF.Feature {
                 var (a, b) = VRCFuryEditorUtils.CreateTooltip(
                     "Smooth Parameters",
                     "All parameters listed here that are found in FX controllers listed above will have their " +
-                    "values smoothed. The number represents how many seconds it should take to reach 90% of the target value.");
+                    "values smoothed. The duration represents how many seconds it should take to reach 90% of the target value.");
                 adv.Add(a);
                 adv.Add(b);
                 adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
@@ -494,8 +526,6 @@ namespace VF.Feature {
             
             content.Add(new VisualElement { style = { paddingTop = 10 } });
             content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                var text = new List<string>();
-
                 var baseObject = GetBaseObject();
 
                 var missingFromBase = new HashSet<string>();
@@ -512,18 +542,31 @@ namespace VF.Feature {
 
                         var paths = new AnimatorIterator.Clips().From(state)
                             .SelectMany(clip => clip.GetAllBindings())
-                            .Select(binding => RewritePath(binding.path))
-                            .Where(path => path != null);
-                        foreach (var path in paths) {
-                            if (avatarObject != baseObject && baseObject.Find(path) == null) {
-                                missingFromBase.Add(path);
-                            } else if (avatarObject != null && avatarObject.Find(path) == null) {
-                                missingFromAvatar.Add(path);
+                            .Select(binding => binding.path)
+                            .ToImmutableHashSet();
+                        foreach (var originalPath in paths) {
+                            var rewrittenPath = RewritePath(originalPath);
+                            if (rewrittenPath == null) {
+                                // binding was deleted by rules :)
+                                continue;
+                            }
+                            if (rewrittenPath.ToLower().Contains("ignore")) {
+                                continue;
+                            }
+                            if (baseObject.Find(rewrittenPath) == null) {
+                                if (avatarObject == baseObject) {
+                                    missingFromAvatar.Add(rewrittenPath);
+                                } else if (avatarObject != null && avatarObject.Find(originalPath) == null) {
+                                    missingFromAvatar.Add(originalPath);
+                                } else {
+                                    missingFromBase.Add(rewrittenPath);
+                                }
                             }
                         }
                     }
                 }
 
+                var text = new List<string>();
                 if (usesWdOff) {
                     text.Add(
                         "This controller uses WD off!" +
@@ -534,10 +577,11 @@ namespace VF.Feature {
                 }
                 if (missingFromAvatar.Any()) {
                     text.Add(
-                        "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything. " +
+                        "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything! " +
                         "You may need to use 'Binding Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.");
                     text.Add("");
                     text.AddRange(missingFromAvatar.OrderBy(path => path));
+                    text.Add("");
                 }
                 if (missingFromBase.Any()) {
                     text.Add(

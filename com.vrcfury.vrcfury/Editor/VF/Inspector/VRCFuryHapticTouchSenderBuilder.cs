@@ -31,7 +31,7 @@ namespace VF.Inspector {
         
         [CustomEditor(typeof(VRCFuryHapticTouchSender), true)]
         public class VRCFuryHapticTouchSenderEditor : VRCFuryComponentEditor<VRCFuryHapticTouchSender> {
-            public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticTouchSender target) {
+            protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticTouchSender target) {
                 var container = new VisualElement();
                 
                 container.Add(VRCFuryEditorUtils.Info(

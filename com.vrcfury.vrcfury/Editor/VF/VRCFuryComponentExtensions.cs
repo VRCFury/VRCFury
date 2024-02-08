@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
@@ -36,7 +37,7 @@ namespace VF {
             if (c.IsBroken()) return;
             if (PrefabUtility.IsPartOfPrefabInstance(c)) return;
             if (IUpgradeableUtility.UpgradeRecursive(c)) {
-                EditorUtility.SetDirty(c);
+                if (c != null) EditorUtility.SetDirty(c);
             }
         }
         
@@ -48,7 +49,19 @@ namespace VF {
                 DelayReimport(c);
                 return $"This component was created with a newer version of VRCFury";
             }
-            if (UnitySerializationUtils.ContainsNullsInList(c)) {
+            
+            var containsNull = false;
+            UnitySerializationUtils.Iterate(c, visit => {
+                if (visit.field?.Name == "content" && c.Version >= 0 && c.Version <= 2) {
+                    // Allow VRCFury content field to be null until it's upgraded
+                    return UnitySerializationUtils.IterateResult.Continue;
+                }
+                containsNull |=
+                    visit.field?.GetCustomAttribute<SerializeReference>() != null
+                    && visit.value == null;
+                return UnitySerializationUtils.IterateResult.Continue;
+            });
+            if (containsNull) {
                 DelayReimport(c);
                 if (Application.unityVersion.StartsWith("2019")) {
                     if (c.unityVersion != null && c.unityVersion.StartsWith("2022")) {
@@ -57,7 +70,7 @@ namespace VF {
                         return "This VRCFury asset was probably created using Unity 2022, which means it cannot be used on Unity 2019";
                     }
                 }
-                return "Found a null list on a child object";
+                return "Found a null SerializeReference";
             }
             return null;
         }

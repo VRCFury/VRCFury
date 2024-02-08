@@ -123,17 +123,5 @@ namespace VF {
             }
             return output;
         }
-        
-        public static bool ContainsNullsInList(object obj) {
-            var containsNull = false;
-            Iterate(obj, visit => {
-                containsNull |=
-                    visit.isArrayElement
-                    && visit.field?.GetCustomAttribute<SerializeReference>() != null
-                    && visit.value == null;
-                return IterateResult.Continue;
-            });
-            return containsNull;
-        }
     }
 }

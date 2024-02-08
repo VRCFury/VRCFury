@@ -286,27 +286,23 @@ namespace VF.Service {
             var buffered = SetValueWithConditions(to, (1, from), (0, null));
             return GreaterThan(buffered, 0.5f);
         }
-        
-        /**
-         * from : [0,Infinity)
-         *   or [-10000,10000] with supportNegatives
-         */
-        public Motion MakeCopier(VFAFloatOrConst from, VFAap to, bool supportNegatives = false) {
+
+        public Motion MakeCopier(VFAFloatOrConst from, VFAap to, float minSupported = 0, float maxSupported = float.MaxValue) {
             if (from.param == null) {
                 return MakeSetter(to, from.constt);
             }
 
             var name = $"{CleanName(to)} = {CleanName(from)}";
-            if (supportNegatives) {
-                return Make1D(name, from.param,
-                    (-10000, MakeSetter(to, -10000)),
-                    (10000, MakeSetter(to, 10000))
-                );
+            if (minSupported >= 0) {
+                var direct = MakeDirect(name);
+                direct.Add(from.param, MakeSetter(to, 1));
+                return direct;
             }
 
-            var direct = MakeDirect(name);
-            direct.Add(from.param, MakeSetter(to, 1));
-            return direct;
+            return Make1D(name, from.param,
+                (minSupported, MakeSetter(to, minSupported)),
+                (maxSupported, MakeSetter(to, maxSupported))
+            );
         }
 
         public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b, string name = null) {

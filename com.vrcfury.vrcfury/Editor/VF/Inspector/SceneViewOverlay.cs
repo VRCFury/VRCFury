@@ -57,7 +57,7 @@ namespace VF.Inspector {
             }
 
             var wdDisabled = vrcfComponents
-                .SelectMany(c => c.config.features)
+                .SelectMany(c => c.GetAllFeatures())
                 .OfType<FixWriteDefaults>()
                 .Any(fwd => fwd.mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled);
             if (wdDisabled) {

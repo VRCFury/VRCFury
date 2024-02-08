@@ -660,6 +660,7 @@ public static class VRCFuryEditorUtils {
         el.RegisterCallback<DetachFromPanelEvent>(e => {
             EditorApplication.update -= Update;
         });
+        Update();
     }
 
     public static string Rev(string s) {

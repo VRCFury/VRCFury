@@ -150,11 +150,18 @@ namespace VF.Model.Feature {
             public bool delete = false;
             public bool ResetMePlease2;
         }
+        
+        public enum SmoothingRange {
+            ZeroToInfinity,
+            NegOneToOne,
+            Neg10kTo10k
+        }
 
         [Serializable]
         public class SmoothParamEntry {
             public string name;
             public float smoothingDuration = 0.2f;
+            public SmoothingRange range = SmoothingRange.ZeroToInfinity;
             public bool ResetMePlease2;
         }
 
