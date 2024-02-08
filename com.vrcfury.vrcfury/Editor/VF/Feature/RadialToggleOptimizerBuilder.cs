@@ -84,7 +84,7 @@ namespace Editor.VF.Feature {
                 var pending = math.SetValueWithConditions($"diffPending{i}",
                     (1, math.Or(math.GreaterThan(srcDiff, 0), math.LessThan(srcDiff, 0))),
                     (0, null));
-                var maintain = math.MakeMaintainer(pending); // Maintain while in send animation
+                var maintain = math.MakeCopier(pending, pending); // Maintain while in send animation
                 directTree.Add(sending, maintain);
 
                 var sendInstantState = layer.NewState($"Send Instant {toOptimize[i].Name()}");
@@ -96,7 +96,7 @@ namespace Editor.VF.Feature {
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
                 local.TransitionsTo(sendInstantState)
-                    .When(pending.IsGreaterThan(0.5f));
+                    .When(pending.AsFloat().IsGreaterThan(0.5f));
             }
 
             // round robin pointer iteration
@@ -205,7 +205,7 @@ namespace Editor.VF.Feature {
 
         private int CountRadialToggles() {
             var features = avatarObject.GetComponentsInSelfAndChildren<VRCFury>()
-                .SelectMany(vrcf => vrcf.config.features).ToList();
+                .Select(vrcf => vrcf.content).NotNull().ToList();
 
             var toggleSliders = features.OfType<Toggle>().Count(toggle => toggle.slider);
 
