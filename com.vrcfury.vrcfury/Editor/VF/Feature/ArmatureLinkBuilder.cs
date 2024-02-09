@@ -375,8 +375,9 @@ namespace VF.Feature {
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
                         var path = obj.GetPath(avatarObject);
-                        obj = avatarObject.Find(ClipRewriter.Join(path, to.offset));
-                        if (obj == null) throw new Exception($"Failed to find object at path '{path}'");
+                        var finalPath = ClipRewriter.Join(path, to.offset);
+                        obj = avatarObject.Find(finalPath);
+                        if (obj == null) throw new Exception($"Failed to find object at path '{finalPath}'");
                     }
                     
                     // This is just here to ensure that the target is inside the avatar
