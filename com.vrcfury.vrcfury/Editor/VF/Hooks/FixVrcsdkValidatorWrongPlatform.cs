@@ -1,6 +1,8 @@
 ﻿using UnityEditor;
 using UnityEngine;
+#if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
+#endif
 
 namespace VF.Hooks {
     /**
