@@ -36,6 +36,17 @@ namespace VF.Menu {
 
         [MenuItem(MenuItems.constrainedProportions, priority = MenuItems.constrainedProportionsPriority)]
         private static void Click() {
+            if (Get()) {
+                var ok = EditorUtility.DisplayDialog(
+                    "Warning",
+                    "Without Constrained Proportions, it's easy to accidentally scale objects non-uniformly," +
+                    " introducing what is called 'Shear' in unity. This can make bones stretch different amounts depending on which" +
+                    " direction they are rotated. Are you sure you want to continue?",
+                    "Yes, stop enabling Constrained Proportions",
+                    "Cancel"
+                );
+                if (!ok) return;
+            }
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();
         }
