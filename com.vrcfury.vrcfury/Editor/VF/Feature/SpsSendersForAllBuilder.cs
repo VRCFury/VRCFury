@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Menu;
@@ -16,6 +17,14 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.GiveEverythingSpsSenders)]
         public void Apply() {
+            var hasSps = globals.avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
+                         || globals.avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();
+            var allowAuto = AutoUpgradeDpsMenuItem.Get();
+
+            if (!hasSps && !allowAuto) {
+                return;
+            }
+
             RemoveTPSSenders();
             SpsUpgrader.Apply(globals.avatarObject, false, SpsUpgrader.Mode.AutomatedForEveryone);
         }

@@ -42,6 +42,8 @@ namespace VF.Menu {
         public const int constrainedProportionsPriority = 1323;
         public const string hapticToggle = prefix + "Settings/Enable SPS Haptics";
         public const int hapticTogglePriority = 1324;
+        public const string dpsAutoUpgrade = prefix + "Settings/Auto-Upgrade DPS with contacts";
+        public const int dpsAutoUpgradePriority = 1325;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
