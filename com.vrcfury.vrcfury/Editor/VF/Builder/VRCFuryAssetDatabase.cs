@@ -48,6 +48,11 @@ namespace VF.Builder {
             return fullPath;
         }
 
+        [PreferBinarySerialization]
+        internal class BinaryContainer : ScriptableObject {
+            
+        }
+
         public static void SaveAsset(Object obj, string dir, string filename) {
             string ext;
             if (obj is AnimationClip) {
@@ -61,6 +66,19 @@ namespace VF.Builder {
             } else {
                 ext = "asset";
             }
+            
+#if ! UNITY_2022_1_OR_NEWER
+            // this works around a crash when unity 2019 tries to create a thumbnail for the asset
+            // within Awake() in play mode
+            if (EditorApplication.isPlaying && (obj is Material || obj is Mesh || obj is Texture)) {
+                var wrapperPath = GetUniquePath(dir, filename, "asset");
+                var wrapper = ScriptableObject.CreateInstance<BinaryContainer>();
+                AssetDatabase.CreateAsset(wrapper, wrapperPath);
+                AssetDatabase.RemoveObjectFromAsset(obj);
+                AssetDatabase.AddObjectToAsset(obj, wrapper);
+                return;
+            }
+#endif
 
             var fullPath = GetUniquePath(dir, filename, ext);
             // If object was already part of another asset, or was recently deleted, we MUST

@@ -21,6 +21,15 @@ namespace VF.Menu {
 
         [MenuItem(MenuItems.playMode, priority = MenuItems.playModePriority)]
         private static void Click() {
+            if (Get()) {
+                var ok = EditorUtility.DisplayDialog(
+                    "Warning",
+                    "Disabling this option will cause VRCFury-added features to not function AT ALL while in play mode. Are you sure you want to continue?",
+                    "Yes, do not run VRCFury in play mode",
+                    "Cancel"
+                );
+                if (!ok) return;
+            }
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();
         }

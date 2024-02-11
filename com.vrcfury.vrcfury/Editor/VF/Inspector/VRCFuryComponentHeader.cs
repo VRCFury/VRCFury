@@ -109,20 +109,6 @@ namespace VF.Inspector {
             if (root.ClassListContains("vrcfMultipleHeaders")) return true;
             return HasMultipleHeaders(root.parent);
         }
-        
-        private static void DetachHeaderOverlay(VisualElement body) {
-            var inspectorRoot = FindEditor(body);
-
-            if (HasMultipleHeaders(body) || inspectorRoot == null) {
-                return;
-            }
-
-            foreach (var oldHeader in inspectorRoot.Children()
-                         .ToList()
-                         .Where(child => child.ClassListContains("vrcfHeaderOverlay"))) {
-                oldHeader.parent?.Remove(oldHeader);
-            }
-        }
 
         private static void AttachHeaderOverlay(VisualElement body, string title) {
             var inspectorRoot = FindEditor(body);
@@ -132,10 +118,13 @@ namespace VF.Inspector {
                 return;
             }
 
-            DetachHeaderOverlay(body);
             var headerArea = RenderHeader(title, true);
             headerArea.AddToClassList("vrcfHeaderOverlay");
             inspectorRoot.Insert(1, headerArea);
+            
+            body.RegisterCallback<DetachFromPanelEvent>(e => {
+                headerArea.parent?.Remove(headerArea);
+            });
         }
 
         public static VisualElement CreateHeaderOverlay(string title) {
@@ -144,9 +133,7 @@ namespace VF.Inspector {
             el.RegisterCallback<AttachToPanelEvent>(e => {
                 AttachHeaderOverlay(el, title);
             });
-            el.RegisterCallback<DetachFromPanelEvent>(e => {
-                DetachHeaderOverlay(el);
-            });
+
             return el;
         }
     }
