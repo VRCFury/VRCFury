@@ -20,8 +20,8 @@ namespace VF.Inspector {
                 Color.blue
             );
         }
-        
-        public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryGlobalCollider target) {
+
+        protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryGlobalCollider target) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Info(

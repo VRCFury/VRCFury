@@ -23,10 +23,10 @@ namespace VF.Service {
         private readonly List<(string, string)> deferred = new List<(string, string)>();
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
-        public void Move(VFGameObject obj, GameObject newParent = null, string newName = null, bool worldPositionStays = true, bool defer = false) {
+        public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true, bool defer = false) {
             var oldPath = clipBuilder.GetPath(obj);
             if (newParent != null)
-                obj.transform.SetParent(newParent.transform, worldPositionStays);
+                obj.SetParent(newParent, worldPositionStays);
             if (newName != null)
                 obj.name = newName;
             var newPath = clipBuilder.GetPath(obj);

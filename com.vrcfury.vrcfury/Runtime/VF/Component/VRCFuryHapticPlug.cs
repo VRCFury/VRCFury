@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VF.Model;
+using VF.Model.StateAction;
 
 namespace VF.Component {
-    [AddComponentMenu("VRCFury/VRCFury - SPS Plug")]
+    [AddComponentMenu("VRCFury/VRCFury | SPS Plug")]
     public class VRCFuryHapticPlug : VRCFuryComponent {
         public bool autoRenderer = true;
         public bool autoPosition = true;
@@ -26,6 +27,7 @@ namespace VF.Component {
         public bool useLegacyRendererFinder = false;
         public bool addDpsTipLight = false;
         public bool spsKeepImports = false;
+        [DoNotApplyRestingState]
         public State postBakeActions;
         public bool spsOverrun = true;
         public bool enableDepthAnimations = false;
@@ -54,7 +56,7 @@ namespace VF.Component {
                 unitsInMeters = true;
             }
             if (fromVersion < 2) {
-                autoRenderer = configureTpsMesh.Count == 0;
+                autoRenderer = configureTpsMesh == null || configureTpsMesh.Count == 0;
                 autoLength = length == 0;
                 autoRadius = radius == 0;
             }

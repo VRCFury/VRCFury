@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using JetBrains.Annotations;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -10,30 +11,36 @@ namespace VF {
         public static void FindAndResetMarkedFields(object root) {
             Iterate(root, visit => {
                 var value = visit.value;
-                if (value == null) return;
+                if (value == null) return IterateResult.Continue;
                 var resetField = visit.value.GetType().GetField("ResetMePlease2", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (resetField != null && resetField.GetValue(value) is bool b && b) {
                     visit.set(Activator.CreateInstance(value.GetType()));
                 }
+                return IterateResult.Continue;
             });
         }
 
         public class IterateVisit {
-            public FieldInfo field;
+            [CanBeNull] public FieldInfo field;
             public bool isArrayElement = false;
-            public object value;
+            [CanBeNull] public object value;
             public Action<object> set;
         }
-        public static void Iterate(object obj, Action<IterateVisit> forEach, bool isRoot = true) {
+        public enum IterateResult {
+            Skip,
+            Continue
+        }
+        public static void Iterate(object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true) {
             if (obj == null) return;
             if (isRoot) {
-                forEach(new IterateVisit {
+                var r = forEach(new IterateVisit {
                     value = obj,
                 });
+                if (r == IterateResult.Skip) return;
             }
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
-                forEach(new IterateVisit {
+                var r = forEach(new IterateVisit {
                     field = field,
                     value = value,
                     set = v => {
@@ -41,9 +48,10 @@ namespace VF {
                         field.SetValue(obj, v);
                     },
                 });
+                if (r == IterateResult.Skip) continue;
                 if (value is IList list) {
                     for (var i = 0; i < list.Count; i++) {
-                        forEach(new IterateVisit {
+                        var r2 = forEach(new IterateVisit {
                             field = field,
                             isArrayElement = true,
                             value = list[i],
@@ -51,6 +59,7 @@ namespace VF {
                                 list[i] = v;
                             }
                         });
+                        if (r2 == IterateResult.Skip) continue;
                         if (SerializionEnters(list[i])) {
                             Iterate(list[i], forEach, false);
                         }
@@ -113,17 +122,6 @@ namespace VF {
                 }
             }
             return output;
-        }
-        
-        public static bool ContainsNullsInList(object obj) {
-            var containsNull = false;
-            Iterate(obj, visit => {
-                containsNull |=
-                    visit.isArrayElement
-                    && visit.field.GetCustomAttribute<SerializeReference>() != null
-                    && visit.value == null;
-            });
-            return containsNull;
         }
     }
 }

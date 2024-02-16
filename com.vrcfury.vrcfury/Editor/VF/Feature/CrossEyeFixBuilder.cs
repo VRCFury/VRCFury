@@ -29,7 +29,7 @@ namespace VF.Feature {
             if (eyeRight) avatar.customEyeLookSettings.rightEye = AddFakeEye(eyeRight);
         }
 
-        private Transform AddFakeEye(VFGameObject originalEye) {
+        private VFGameObject AddFakeEye(VFGameObject originalEye) {
             var baseName = originalEye.name;
 
             var realEyeUp = GameObjects.Create(baseName + ".Up", originalEye.parent, useTransformFrom: originalEye);

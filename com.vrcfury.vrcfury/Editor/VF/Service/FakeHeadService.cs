@@ -18,13 +18,13 @@ namespace VF.Service {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly AvatarManager manager;
 
-        private readonly HashSet<GameObject> objectsEligibleForFakeHead = new HashSet<GameObject>();
+        private readonly HashSet<VFGameObject> objectsEligibleForFakeHead = new HashSet<VFGameObject>();
 
-        public void MarkEligible(GameObject obj) {
+        public void MarkEligible(VFGameObject obj) {
             objectsEligibleForFakeHead.Add(obj);
         }
 
-        public bool IsEligible(GameObject obj) {
+        public bool IsEligible(VFGameObject obj) {
             return objectsEligibleForFakeHead.Contains(obj);
         }
 
@@ -39,15 +39,15 @@ namespace VF.Service {
             
             var objectsForFakeHead = objectsEligibleForFakeHead
                 .NotNull()
-                .Where(obj => obj.transform.parent == head.transform)
+                .Where(obj => obj.parent == head)
                 .ToList();
             if (objectsForFakeHead.Count == 0) return;
 
-            var vrcfAlwaysVisibleHead = GameObjects.Create("vrcfAlwaysVisibleHead", head.transform.parent, useTransformFrom: head.transform);
+            var vrcfAlwaysVisibleHead = GameObjects.Create("vrcfAlwaysVisibleHead", head.parent, useTransformFrom: head);
             
             var p = vrcfAlwaysVisibleHead.AddComponent<ParentConstraint>();
             p.AddSource(new ConstraintSource() {
-                sourceTransform = head.transform,
+                sourceTransform = head,
                 weight = 1
             });
             p.weight = 1;

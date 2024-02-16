@@ -19,29 +19,13 @@ namespace VF.Builder {
             Func<StateMachineBehaviour, Func<Type, StateMachineBehaviour>, bool> action
         ) {
             foreach (var stateMachine in GetAllStateMachines(layer)) {
-                StateMachineBehaviour[] behaviours;
-                try {
-                    behaviours = stateMachine.behaviours;
-                    if (behaviours.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                } catch (Exception e) {
-                    throw new Exception(
-                        $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.", e);
-                }
-                foreach (var behaviour in behaviours) {
+                foreach (var behaviour in stateMachine.behaviours.ToArray()) {
                     var keep = action(behaviour, type => stateMachine.VAddStateMachineBehaviour(type));
                     if (!keep) stateMachine.behaviours = stateMachine.behaviours.Where(b => b != behaviour).ToArray();
                 }
             }
             foreach (var state in new States().From(layer)) {
-                StateMachineBehaviour[] behaviours;
-                try {
-                    behaviours = state.behaviours;
-                    if (behaviours.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                } catch (Exception e) {
-                    throw new Exception(
-                        $"{layer.debugName} State `{state.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.", e);
-                }
-                foreach (var behaviour in behaviours) {
+                foreach (var behaviour in state.behaviours.ToArray()) {
                     var keep = action(behaviour, type => state.VAddStateMachineBehaviour(type));
                     if (!keep) state.behaviours = state.behaviours.Where(b => b != behaviour).ToArray();
                 }
@@ -132,7 +116,7 @@ namespace VF.Builder {
             return all.ToImmutableHashSet();
         }
         
-        private static IImmutableSet<AnimatorStateMachine> GetAllStateMachines(AnimatorStateMachine root) {
+        public static IImmutableSet<AnimatorStateMachine> GetAllStateMachines(AnimatorStateMachine root) {
             return GetRecursive(root, sm => sm.stateMachines
                 .Select(c => c.stateMachine)
             );

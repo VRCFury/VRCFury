@@ -241,10 +241,10 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 }
             }
             case nameof(ScaleAction): {
-                var row = new VisualElement().Row();
-                row.Add(Title("Scale").FlexBasis(100));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj")).FlexGrow(1));
-                row.Add( VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale")).FlexBasis(50));
+                var row = new VisualElement();
+                row.Add(Title("Scale"));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Object"));
+                row.Add( VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale"), "Multiplier"));
                 return row;
             }
             case nameof(ObjectToggleAction): {

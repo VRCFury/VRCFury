@@ -21,14 +21,14 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
     
     [FeatureBuilderAction]
     public void Apply() {
-        foreach (var zawooRoot in GetZawooRoots()) {
-            ApplyZawoo(zawooRoot.Item1, zawooRoot.Item2);
+        foreach (var (type,root) in GetZawooRoots()) {
+            ApplyZawoo(type, root);
         }
         addOtherFeature(new OGBIntegration2());
     }
 
-    private List<Tuple<Type, GameObject>> GetZawooRoots() {
-        var roots = new List<Tuple<Type, GameObject>>();
+    private List<(Type, VFGameObject)> GetZawooRoots() {
+        var roots = new List<(Type, VFGameObject)>();
         foreach (var child in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
             var maybeValid = false;
             var isCanine = false;
@@ -41,7 +41,7 @@ public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
                 }
             }
             if (!maybeValid) continue;
-            roots.Add(Tuple.Create(isCanine ? Type.Canine : Type.Anthro, child.gameObject));
+            roots.Add((isCanine ? Type.Canine : Type.Anthro, child));
         }
 
         return roots;

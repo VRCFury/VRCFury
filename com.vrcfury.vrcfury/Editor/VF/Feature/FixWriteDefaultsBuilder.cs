@@ -7,9 +7,11 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.PlayMode;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -17,19 +19,19 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
 
+        [VFAutowired] private readonly OriginalAvatarService originalAvatar;
+
         public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat = true) {
             if (binding.type == typeof(Animator)) return;
 
             if (isFloat) {
+                if (!binding.GetFloatFromGameObject(avatarObject, out var value)) return;
                 if (GetDefaultClip().GetFloatCurve(binding) != null) return;
-                if (binding.GetFloatFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetCurve(binding, value);
-                }
+                GetDefaultClip().SetCurve(binding, value);
             } else {
+                if (!binding.GetObjectFromGameObject(avatarObject, out var value)) return;
                 if (GetDefaultClip().GetObjectCurve(binding) != null) return;
-                if (binding.GetObjectFromGameObject(avatarObject, out var value)) {
-                    GetDefaultClip().SetCurve(binding, value);
-                }
+                GetDefaultClip().SetCurve(binding, value);
             }
         }
 
@@ -42,7 +44,14 @@ namespace VF.Feature {
                 _defaultLayer = fx.NewLayer("Defaults", 0);
                 _defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             }
+            if (_defaultLayer == null) {
+                throw new Exception("Defaults layer disappeared during the build. Please report this on the discord.");
+            }
             return _defaultClip;
+        }
+        public VFLayer GetDefaultLayer() {
+            GetDefaultClip();
+            return _defaultLayer;
         }
 
         [FeatureBuilderAction(FeatureOrder.PositionDefaultsLayer)]
@@ -159,11 +168,7 @@ namespace VF.Feature {
                 }
                 // Save the choice
                 if (ask == 0 || ask == 2) {
-                    if (Application.isPlaying) {
-                        FixWriteDefaultsLater.SaveLater(avatarObject, ask == 0);
-                    } else if (originalObject) {
-                        FixWriteDefaultsLater.SaveNow(originalObject, ask == 0);
-                    }
+                    FixWriteDefaultsLater.Save(originalAvatar.GetOriginal() ?? avatarObject, ask == 0);
                 }
             }
 
