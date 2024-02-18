@@ -259,7 +259,7 @@ namespace VF.Builder {
             IList<string> prefix,
             VRCExpressionsMenu from,
             Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null,
-            int index = 0
+            int index = -1
         ) {
             var to = GetSubmenu(prefix);
             if (seen == null) {
