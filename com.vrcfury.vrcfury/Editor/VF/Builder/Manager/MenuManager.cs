@@ -65,13 +65,26 @@ namespace VF.Builder {
         }
 
         public void Insert(VRCExpressionsMenu menu, VRCExpressionsMenu.Control item, int index) {
+            
             if (index == -1) return;
             if (index < 0) {
-                index += menu.controls.Count();
+                index = Math.Max(index + menu.controls.Count(), 0);
             }
+            index = Math.Min(index, menu.controls.Count() - 1);
+
+            menu.controls.Sort((a, b) => {
+                sortPositions.TryGetValue(a, out var aPos);
+                sortPositions.TryGetValue(b, out var bPos);
+                return aPos - bPos;
+            });
+
+            menu.controls.Remove(item);
+            menu.controls.Insert(index, item);
+
+            var i = 0;
             foreach (var control in menu.controls) {
-                if (control == item) sortPositions[item] = index;
-                else if (sortPositions[control] >= index) sortPositions[control] = sortPositions[control] + 1;
+                sortPositions[control] = i;
+                i++;
             }
         }
 
