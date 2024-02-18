@@ -40,7 +40,7 @@ namespace VF.Feature {
             BetweenSteps();
             foreach (var model in allActions.OfType<MoveMenuItem>()) {
                 Debug.Log($"Moving {model.fromPath} to {model.toPath}");
-                var result = manager.GetMenu().Move(model.fromPath, model.toPath);
+                var result = manager.GetMenu().Move(model.fromPath, model.toPath, model.index);
                 if (result) {
                     BetweenSteps();
                 }

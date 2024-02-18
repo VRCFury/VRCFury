@@ -16,6 +16,7 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.Info("This feature will move a menu item to another location. You can use slashes to make subfolders."));
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("fromPath"), "From Path"));
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toPath"), "To Path"));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("index"), "Index"));
             return content;
         }
 
