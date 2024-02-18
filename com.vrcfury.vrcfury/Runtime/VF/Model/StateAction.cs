@@ -51,6 +51,20 @@ namespace VF.Model.StateAction {
         public float blendShapeValue = 100;
         public Renderer renderer;
         public bool allRenderers = true;
+        public bool hasBlendShapeValueOff;
+        public float blendShapeValueOff;
+
+        public BlendShapeAction CloneAsOffAction() {
+            Debug.Assert(hasBlendShapeValueOff);
+            return new BlendShapeAction {
+                blendShape = blendShape,
+                blendShapeValue = blendShapeValueOff,
+                renderer = renderer,
+                allRenderers = allRenderers,
+                desktopActive = desktopActive,
+                androidActive = androidActive,
+            };
+        }
     }
     
     [Serializable]

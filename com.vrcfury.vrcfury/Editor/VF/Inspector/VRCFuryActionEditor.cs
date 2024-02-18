@@ -314,6 +314,30 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 });
                 content.Add(valueField);
 
+                var valueOffProp = prop.FindPropertyRelative("blendShapeValueOff");
+                var valueOffField = VRCFuryEditorUtils.Prop(valueOffProp, "Off Value");
+                valueOffField.RegisterCallback<ChangeEvent<float>>(e => {
+                    if (e.newValue < 0) {
+                        valueOffProp.floatValue = 0;
+                        ApplyWithoutUndo();
+                    }
+                    if (e.newValue > 100) {
+                        valueOffProp.floatValue = 100;
+                        ApplyWithoutUndo();
+                    }
+                });
+
+                var hasBlendShapeValueOffProp = prop.FindPropertyRelative("hasBlendShapeValueOff");
+                var hasBlendShapeValueOffField = VRCFuryEditorUtils.Prop(hasBlendShapeValueOffProp, "Override Value while Off");
+                hasBlendShapeValueOffField.RegisterCallback<ChangeEvent<bool>>(e => {
+                    hasBlendShapeValueOffProp.boolValue = e.newValue;
+                    ApplyWithoutUndo();
+                    valueOffField.SetVisible(e.newValue);
+                });
+
+                content.Add(hasBlendShapeValueOffField);
+                content.Add(valueOffField);
+
                 void SelectButtonPress() {
                     var window = new VrcfSearchWindow("Blendshapes");
                     var allRenderers = allRenderersProp.boolValue;

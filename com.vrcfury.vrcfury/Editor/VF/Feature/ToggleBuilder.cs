@@ -138,6 +138,17 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
 
+        var blendShapeOffState = new State {
+            actions = model.state.actions
+                .OfType<BlendShapeAction>()
+                .Where(b => b.hasBlendShapeValueOff)
+                .Select(b => b.CloneAsOffAction() as Model.StateAction.Action)
+                .ToList()
+        };
+        if (blendShapeOffState.actions.Count > 0) {
+            off = off.WithAnimation(actionClipService.LoadState("Off", blendShapeOffState));
+        }
+
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
             Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
