@@ -64,7 +64,18 @@ namespace VF.Builder {
             return true;
         }
 
-        public bool Move(string from, string to) {
+        public void Insert(VRCExpressionsMenu menu, VRCExpressionsMenu.Control item, int index) {
+            if (index == -1) return;
+            if (index < 0) {
+                index += menu.controls.Count();
+            }
+            foreach (var control in menu.controls) {
+                if (control == item) sortPositions[item] = index;
+                else if (sortPositions[control] >= index) sortPositions[control] = sortPositions[control] + 1;
+            }
+        }
+
+        public bool Move(string from, string to, int index) {
             GetSubmenuAndItem(from, false, out var fromPath, out var fromPrefix, out var fromName, out var fromMenu);
             if (!fromMenu) return false;
             
@@ -81,12 +92,12 @@ namespace VF.Builder {
             foreach (var control in fromControls) {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     GetSubmenu(toPath, createFromControl: control);
-                    MergeMenu(toPath, control.subMenu);
+                    MergeMenu(toPath, control.subMenu, index: index);
                 } else {
                     control.name = toName;
                     var tmpMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                     tmpMenu.controls.Add(control);
-                    MergeMenu(toPrefix, tmpMenu);
+                    MergeMenu(toPrefix, tmpMenu, index: index);
                 }
             }
             return true;
@@ -269,7 +280,8 @@ namespace VF.Builder {
         public void MergeMenu(
             IList<string> prefix,
             VRCExpressionsMenu from,
-            Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
+            Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null,
+            int index = 0
         ) {
             var to = GetSubmenu(prefix);
             if (seen == null) {
@@ -288,6 +300,8 @@ namespace VF.Builder {
                         var toControl = CloneControl(fromControl);
                         toControl.subMenu = value;
                         to.controls.Add(toControl);
+                        Insert(to, toControl, index);
+                        if (index >= 0) index++;
                     } else {
                         var submenuDupId = GetNextSubmenuDupId(fromControl.name);
                         var prefix2 = new List<string>(prefix);
@@ -296,7 +310,10 @@ namespace VF.Builder {
                         MergeMenu(prefix2.ToArray(), fromControl.subMenu, seen);
                     }
                 } else {
-                    to.controls.Add(CloneControl(fromControl));
+                    var toControl = CloneControl(fromControl);
+                    to.controls.Add(toControl);
+                    Insert(to, toControl, index);
+                    if (index >= 0) index++;
                 }
             }
         }

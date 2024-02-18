@@ -594,6 +594,7 @@ namespace VF.Model.Feature {
     public class MoveMenuItem : NewFeatureModel {
         public string fromPath;
         public string toPath;
+        public int index = -1;
         
         public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
