@@ -201,13 +201,16 @@ namespace VF.Service {
                             if (!blendShape.allRenderers && blendShape.renderer != skin) continue;
                             if (!skin.HasBlendshape(blendShape.blendShape)) continue;
                             foundOne = true;
-                            //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
                             var binding = EditorCurveBinding.FloatCurve(
                                 clipBuilder.GetPath(skin.owner()),
                                 typeof(SkinnedMeshRenderer),
                                 "blendShape." + blendShape.blendShape
                             );
                             onClip.SetCurve(binding, blendShape.blendShapeValue);
+                            if (blendShape.hasBlendShapeValueOff)
+                            {
+                                offClip.SetCurve(binding, blendShape.blendShapeValueOff);
+                            }
                         }
                         if (!foundOne) {
                             Debug.LogWarning("BlendShape not found: " + blendShape.blendShape);

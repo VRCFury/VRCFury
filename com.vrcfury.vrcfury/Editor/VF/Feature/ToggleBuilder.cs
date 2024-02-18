@@ -138,17 +138,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var layer = fx.NewLayer(layerName);
         var off = layer.NewState("Off");
 
-        var blendShapeOffState = new State {
-            actions = model.state.actions
-                .OfType<BlendShapeAction>()
-                .Where(b => b.hasBlendShapeValueOff)
-                .Select(b => b.CloneAsOffAction() as Model.StateAction.Action)
-                .ToList()
-        };
-        if (blendShapeOffState.actions.Count > 0) {
-            off = off.WithAnimation(actionClipService.LoadState("Off", blendShapeOffState));
-        }
-
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
             Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
@@ -172,7 +161,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         float inTime,
         float outTime
     ) {
-        var clip = actionClipService.LoadState(onName, action);
+        var advState = actionClipService.LoadStateAdv(onName, action);
+        var clip = advState.onClip;
+
+        var offClip = advState.implicitRestingClip.empty ? null : advState.implicitRestingClip;
+        if (offClip != null) {
+            off.WithAnimation(offClip);
+        }
 
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
@@ -194,7 +189,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
                 clip = clipBuilder.MergeSingleFrameClips(
-                    (0, new AnimationClip()),
+                    (0, offClip != null ? offClip : new AnimationClip()),
                     (1, clip)
                 );
                 clip.UseLinearTangents();
