@@ -12,14 +12,14 @@ namespace VF.Builder {
         public static string MakeFilenameSafe(string str) {
             var output = "";
             foreach (var c in str) {
-                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '.') {
+                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '.' || c == '(' || c == ')') {
                     output += c;
                 } else {
                     output += '_';
                 }
             }
             
-            if (output.Length > 64) output = output.Substring(0, 64);
+            if (output.Length > 64) output = output.Substring(0, 32) + output.Substring(output.Length - 32);
 
             // Unity will reject importing folders / files that start or end with a dot (this is undocumented)
             while (output.StartsWith(" ") || output.StartsWith(".")) {
@@ -41,7 +41,6 @@ namespace VF.Builder {
                 fullPath = dir
                            + "/"
                            + safeFilename + (i > 0 ? "_" + i : "")
-                           + (filename.Contains("(VF_1_G_BAKED)") ? "(VF_1_G_BAKED)" : "")
                            + (ext != "" ? "." + ext : "");
                 if (!File.Exists(fullPath)) break;
             }
