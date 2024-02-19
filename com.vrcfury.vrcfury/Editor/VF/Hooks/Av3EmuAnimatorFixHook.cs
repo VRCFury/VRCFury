@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VRC.SDKBase.Editor.BuildPipeline;
+using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 
 namespace VF.Hooks {
@@ -15,7 +18,13 @@ namespace VF.Hooks {
     internal class Av3EmuAnimatorFixHook : IVRCSDKPreprocessAvatarCallback {
         public int callbackOrder => int.MaxValue;
         public bool OnPreprocessAvatar(GameObject obj) {
-            if (Application.isPlaying) RestartAv3Emulator();
+            if (Application.isPlaying) {
+                EditorApplication.delayCall += () => {
+                    if (Application.isPlaying) {
+                        RestartAv3Emulator();
+                    }
+                };
+            }
             return true;
         }
         

@@ -35,7 +35,6 @@ namespace VF {
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
-            if (VrcIsUploadingDetector.IsProbablyUploading()) return;
             if (!EditorApplication.isPlaying) return;
             Rescan(scene);
         }

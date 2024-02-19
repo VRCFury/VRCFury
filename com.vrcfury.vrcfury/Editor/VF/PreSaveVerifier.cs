@@ -37,10 +37,19 @@ namespace VF {
                 }
             }
 
+            var extras = 0;
+            while (blocked.Count > 5) {
+                blocked.RemoveAt(blocked.Count - 1);
+                extras++;
+            }
+            if (extras > 0) {
+                blocked.Add($"... and {extras} more");
+            }
+
             if (blocked.Count > 0) {
                 EditorUtility.DisplayDialog("VRCFury Blocked Saving",
-                    string.Join("\n", blocked),
-                    "Ok"); 
+                    "VRCFury blocked these assets from saving to prevent unity from overwriting them with corrupt data:\n\n" + string.Join("\n\n", blocked),
+                    "Ok");
                 paths = paths.ToList().Where(e => !blockedPaths.Contains(e)).ToArray();
             }
             
