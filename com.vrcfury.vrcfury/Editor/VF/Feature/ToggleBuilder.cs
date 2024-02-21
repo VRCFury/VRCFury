@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -29,12 +30,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFAParam exclusiveParam;
     private AnimationClip savedRestingClip;
 
-    private string primaryExclusive = null;
-
     private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
-        + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
-        + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
-        + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
+                                           + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
+                                           + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
+                                           + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
 
     private static ISet<string> SeparateList(string str) {
         return str.Split(',')
@@ -56,27 +55,30 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
         return new HashSet<string>(); 
     }
-    public bool IsEligableForInt() {
-        if (!model.enableExclusiveTag) return false; // no eclusive tags
+
+    public bool IsEligibleForInt() {
+        if (!model.enableExclusiveTag) return false; // no exclusive tags
+        if (model.useInt) return false;
+        if (model.paramOverride != null) return false;
         if (model.slider) return false; // already uses float
         if (string.IsNullOrEmpty(model.name)) return false; // no menu item
         return true;
     }
-    public string GetPrimaryExclusive() {
-        if (!IsEligableForInt()) return "";
+
+    private string primaryExclusive = null;
+    private string GetPrimaryExclusive() {
+        if (!IsEligibleForInt()) return "";
         if (primaryExclusive == null) {
-            string targetTag = "";
-            int targetMax = -1;
+            var targetTag = "";
+            var targetMax = -1;
 
             foreach (var exclusiveTag in GetExclusiveTags()) {
-                int tagCount = 1;
-                foreach (var toggle in allBuildersInRun
-                            .OfType<ToggleBuilder>()) {
-
-                    if (toggle.IsEligableForInt() && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
-                        tagCount++;
-                    }
-                }
+                // ReSharper disable once ReplaceWithSingleCallToCount
+                var tagCount = 1 + allBuildersInRun
+                    .OfType<ToggleBuilder>()
+                    .Where(other => other.IsEligibleForInt())
+                    .Where(other => other.GetExclusiveTags().Contains(exclusiveTag))
+                    .Count();
 
                 if (tagCount > targetMax) {
                     targetTag = exclusiveTag;
@@ -89,39 +91,55 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return primaryExclusive;
     }
 
-    private (bool, int, bool, int) CheckExclusives() {
-        var targetTag = GetPrimaryExclusive();
-        if (targetTag == "") return (false, -1, false, 0);
-        
-        var tagCount = 1;
-        var tagIndex = 0;
-        var savedParam = false;
-        var tagDefault = 0;
-       
-        foreach (var toggle in allBuildersInRun
-                    .OfType<ToggleBuilder>()) {
+    private VFAInteger exclusiveIntParam;
+    private (int myValue, VFAInteger param)? GetExclusiveInt() {
+        var primaryTag = GetPrimaryExclusive();
+        if (primaryTag == "") return null;
 
-            if (!model.exclusiveOffState && toggle == this) {
-                tagIndex = tagCount;
+        var foundOffState = false;
+        var foundDefaultState = false;
+        var lastValue = 0;
+        var myValue = -1;
+        var isSaved = false;
+        var defaultInt = 0;
+        ToggleBuilder firstToggle = null;
+
+        foreach (var toggle in allBuildersInRun.OfType<ToggleBuilder>()) {
+            if (toggle.GetPrimaryExclusive() != primaryTag) continue;
+            firstToggle = toggle;
+            int intVal;
+            if (!foundOffState && model.exclusiveOffState) {
+                foundOffState = true;
+                intVal = 0;
+            } else {
+                intVal = ++lastValue;
             }
-            if (!toggle.model.exclusiveOffState && toggle.GetPrimaryExclusive() == targetTag) {
-                if (toggle.model.saved) savedParam = true;
-                if (toggle.model.defaultOn) tagDefault = tagCount;
-                tagCount++;
+            if (toggle == this) {
+                myValue = intVal;
+            }
+            if (toggle.model.saved) isSaved = true;
+            if (toggle.model.defaultOn && !foundDefaultState) {
+                defaultInt = intVal;
+                foundDefaultState = true;
             }
         }
 
-        if (tagCount > 256) {
-            throw new Exception("Too many toggles for exclusive tag " + targetTag + ". Please reduce the number of toggles using this tag to below 255.");
+        if (myValue < 0 || firstToggle == null) {
+            throw new Exception("Failed to find own toggle in exclusive tag int calculator");
+        }
+        if (lastValue >= 256) {
+            throw new Exception("Too many toggles for exclusive tag " + primaryTag + ". Please reduce the number of toggles using this tag to below 255.");
         }
 
-        if (tagCount > 9) {
-            return (true, tagIndex, savedParam, tagDefault);
+        if (lastValue < 8) return null;
+
+        if (firstToggle.exclusiveIntParam == null) {
+            firstToggle.exclusiveIntParam = manager.GetFx().NewInt(GetPrimaryExclusive() + "_Exclusives", synced: true, saved: isSaved, def: defaultInt);
         }
-        return (false, -1, false, 0);
+        return (myValue, firstToggle.exclusiveIntParam);
     }
 
-    public VFAParam GetExclusiveParam() {
+    private VFAParam GetExclusiveParam() {
         return exclusiveParam;
     }
 
@@ -361,14 +379,12 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             on.Drives(exclusiveParam, 1);
         }
 
-        var (useInt, intTarget, intSaved, intDefault) = CheckExclusives();
-        var boolParam = exclusiveParam as VFABool;
-
-        if (useInt && boolParam != null) {
-            var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: intSaved, def: intDefault, usePrefix: false);
+        var exclusiveInt = GetExclusiveInt();
+        if (exclusiveInt != null && exclusiveParam is VFABool boolParam) {
+            var (myValue, intParam) = exclusiveInt.Value;
             var aliasLayer = fx.NewLayer(model.name + "_Alias");
             var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
-            var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true).Drives(intParam, intTarget);
+            var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true).Drives(intParam, myValue);
             var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
             startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget).Or(boolParam.IsTrue()));
             aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());

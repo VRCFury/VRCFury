@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -31,21 +32,14 @@ namespace VF.Builder {
 
         public void UnsyncSyncedParam(string name) {
             var exists = GetParam(name);
-            if (exists == null) {
-                return;
-            }
-            for (int i = 0; i < syncedParams.parameters.Length; i++)
-            {
-                if (syncedParams.parameters[i] == exists) {
-                    syncedParams.parameters[i].networkSynced = false;
-                    break;
-                }
-            }
+            if (exists == null) return;
+            exists.networkSynced = false;
             VRCFuryEditorUtils.MarkDirty(syncedParams);
         }
 
+        [CanBeNull]
         public VRCExpressionParameters.Parameter GetParam(string name) {
-            return syncedParams.parameters.FirstOrDefault(p => p.name == name);
+            return syncedParams.FindParameter(name);
         }
 
         public VRCExpressionParameters GetRaw() {
