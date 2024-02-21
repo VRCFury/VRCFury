@@ -56,14 +56,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
         return new HashSet<string>(); 
     }
-    public bool IsEligableForInt() {
+    public bool IsEligibleForInt() {
         if (!model.enableExclusiveTag) return false; // no eclusive tags
         if (model.slider) return false; // already uses float
         if (string.IsNullOrEmpty(model.name)) return false; // no menu item
         return true;
     }
     public string GetPrimaryExclusive() {
-        if (!IsEligableForInt()) return "";
+        if (!IsEligibleForInt()) return "";
         if (primaryExclusive == null) {
             string targetTag = "";
             int targetMax = -1;
@@ -73,7 +73,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 foreach (var toggle in allBuildersInRun
                             .OfType<ToggleBuilder>()) {
 
-                    if (toggle.IsEligableForInt() && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
+                    if (toggle.IsEligibleForInt() && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
                         tagCount++;
                     }
                 }
