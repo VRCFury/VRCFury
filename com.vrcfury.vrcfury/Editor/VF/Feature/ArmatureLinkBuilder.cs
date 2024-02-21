@@ -144,10 +144,6 @@ namespace VF.Feature {
                     RewriteSkins(propBone, avatarBone);
                 }
 
-                if (fakeHead.IsEligible(propBone)) {
-                    fakeHead.MarkEligible(addedObject);
-                }
-
                 // If the transform isn't used and contains no children, we can just throw it away
                 var keepReasons = GetUsageReasons(propBone, avatarObject);
                 if (keepReasons.Count == 0) {

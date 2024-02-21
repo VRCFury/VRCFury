@@ -823,6 +823,9 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class ShowInFirstPerson : NewFeatureModel {
+        [NonSerialized] public bool useObjOverride = false;
+        [NonSerialized] public GameObject objOverride = null;
+        [NonSerialized] public bool onlyIfChildOfHead = false;
     }
 
     [Serializable]
