@@ -18,7 +18,7 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.ShowInFirstPersonBuilder)]
         public void Apply() {
-            VFGameObject obj = model.useObjOverride ? model.objOverride : featureBaseObject;
+            var obj = model.useObjOverride ? model.objOverride.asVf() : featureBaseObject;
             if (obj == null) return;
 
             if (model.onlyIfChildOfHead) {
