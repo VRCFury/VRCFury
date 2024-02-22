@@ -303,6 +303,21 @@ namespace VF.Service {
                         
                         break;
                     }
+                    case SmoothLoopAction smoothLoopAction: {
+                        var clip1 = LoadState("tmp", smoothLoopAction.state1, animObjectOverride);
+                        var clip2 = LoadState("tmp", smoothLoopAction.state2, animObjectOverride);
+
+                        var built = clipBuilder.MergeSingleFrameClips(
+                            (0, clip1),
+                            (smoothLoopAction.loopTime / 2, clip2),
+                            (smoothLoopAction.loopTime, clip1)
+                        );
+
+                        onClip.CopyFrom(built);
+                        onClip.SetLooping(true);
+                        
+                        break;
+                    }
                 }
             }
 
