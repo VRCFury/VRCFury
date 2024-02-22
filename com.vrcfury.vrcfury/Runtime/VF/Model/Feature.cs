@@ -273,23 +273,27 @@ namespace VF.Model.Feature {
             public bool ResetMePlease2;
         }
 
+#pragma warning disable 0612
         public override IList<FeatureModel> Migrate(MigrateRequest request) {
             var tag = "mode_" + name.Replace(" ", "").Replace("/", "").Trim();
             var modeNum = 0;
             var output = new List<FeatureModel>();
             foreach (var mode in modes) {
-                var toggle = new Toggle();
-                toggle.name = name + "/Mode " + (++modeNum);
-                toggle.saved = saved;
-                toggle.securityEnabled = securityEnabled;
-                toggle.resetPhysbones = new List<GameObject>(resetPhysbones);
-                toggle.state = mode.state;
-                toggle.enableExclusiveTag = true;
-                toggle.exclusiveTag = tag;
+                var toggle = new Toggle {
+                    name = name + "/Mode " + (++modeNum),
+                    saved = saved,
+                    securityEnabled = securityEnabled,
+                    resetPhysbones = new List<GameObject>(resetPhysbones),
+                    state = mode.state,
+                    enableExclusiveTag = true,
+                    exclusiveTag = tag,
+                    Version = 0
+                };
                 output.Add(toggle);
             }
             return output;
         }
+#pragma warning restore 0612
     }
 
     [Serializable]
@@ -880,6 +884,7 @@ namespace VF.Model.Feature {
     public class BlendshapeOptimizer : NewFeatureModel {
         [Obsolete] public bool keepMmdShapes;
 
+#pragma warning disable 0612
         public override IList<FeatureModel> Migrate(MigrateRequest request) {
             var output = new List<FeatureModel>();
 
@@ -896,6 +901,7 @@ namespace VF.Model.Feature {
             output.Add(this);
             return output;
         }
+#pragma warning restore 0612
     }
 
     [Serializable]

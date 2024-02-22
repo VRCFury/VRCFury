@@ -44,19 +44,19 @@ namespace VF.Model {
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
             IEnumerable<FeatureModel> Migrate(FeatureModel input) {
-                var migrated = input.Migrate(new FeatureModel.MigrateRequest {
+                var m = input.Migrate(new FeatureModel.MigrateRequest {
                     fakeUpgrade = RunningFakeUpgrade,
                     gameObject = gameObject
                 });
 
                 // Recursively upgrade the migrated features
-                migrated = migrated.SelectMany(newFeature => {
+                m = m.SelectMany(newFeature => {
                     if (newFeature == input) return new[] { newFeature };
                     IUpgradeableUtility.UpgradeRecursive(newFeature);
                     return Migrate(newFeature);
                 }).ToList();
 
-                return migrated;
+                return m;
             }
 
             var migrated = GetAllFeatures().SelectMany(Migrate).ToList();
