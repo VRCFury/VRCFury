@@ -34,12 +34,13 @@ namespace VF.Hooks {
                         false, // checked
                         (int)0, // priority
                         (Action)(() => {
-                            var obj = Selection.activeGameObject;
-                            if (obj == null) return;
-                            var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
-                            if (modelInst == null) return;
-                            var c = obj.AddComponent<VRCFury>();
-                            c.content = modelInst;
+                            foreach (var obj in Selection.gameObjects) {
+                                if (obj == null) continue;
+                                var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
+                                if (modelInst == null) continue;
+                                var c = obj.AddComponent<VRCFury>();
+                                c.content = modelInst;
+                            }
                         }),
                         null
                     });

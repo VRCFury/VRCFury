@@ -34,6 +34,9 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         var desktopActive = prop.FindPropertyRelative("desktopActive");
         var androidActive = prop.FindPropertyRelative("androidActive");
         col.AddManipulator(new ContextualMenuManipulator(e => {
+            if (e.menu.MenuItems().OfType<DropdownMenuAction>().Any(i => i.name == "Desktop Only")) {
+                return;
+            }
             if (e.menu.MenuItems().Count > 0) {
                 e.menu.AppendSeparator();
             }
@@ -370,6 +373,17 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     " and use the slider to select one of them."
                 ));
                 output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("pages")));
+                return output;
+            }
+            case nameof(SmoothLoopAction): {
+                var output = new VisualElement();
+                output.Add(Title("Smooth Loop Builder (Breathing, etc)"));
+                output.Add(VRCFuryEditorUtils.Info(
+                    "This will create an animation smoothly looping between two states." +
+                    " You can use this for a breathing cycle or any other type of smooth two-state loop."));
+                output.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state1"), "State A"));
+                output.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state2"), "State B"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("loopTime"), "Loop time (seconds)"));
                 return output;
             }
         }

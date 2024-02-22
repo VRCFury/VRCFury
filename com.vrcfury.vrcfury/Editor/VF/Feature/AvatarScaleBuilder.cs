@@ -10,12 +10,18 @@ public class AvatarScaleBuilder : FeatureBuilder<AvatarScale2> {
     [FeatureBuilderAction]
     public void Apply() {
     }
-    
+
+    public override string GetEditorTitle() {
+        return "Avatar Scale";
+    }
+
+    public override bool ShowInMenu() {
+        return false;
+    }
+
     public override VisualElement CreateEditor(SerializedProperty prop) {
         return VRCFuryEditorUtils.Error(
-            "This Avatar Scale feature is no longer available due to VRChat sdk changes. " +
-                   "Please see the VRCFury/Prefabs/ThatFatKidsStuff/README.md" +
-                   " for instructions on an alternative avatar scale implementation."
+            "This Avatar Scale feature is no longer available as scaling is now built into VRChat."
             );
     }
 

@@ -56,7 +56,7 @@ namespace VF.Component {
                 unitsInMeters = true;
             }
             if (fromVersion < 2) {
-                autoRenderer = configureTpsMesh.Count == 0;
+                autoRenderer = configureTpsMesh == null || configureTpsMesh.Count == 0;
                 autoLength = length == 0;
                 autoRadius = radius == 0;
             }

@@ -171,7 +171,7 @@ public static class FeatureFinder {
 
         var builder = (FeatureBuilder)injector.CreateAndInject(builderType);
         if (builder.AvailableOnRootOnly() && !AllowRootFeatures(gameObject, avatarObject)) {
-            throw new Exception($"This VRCFury component ({builder.GetEditorTitle()}) is only allowed on the root object of the avatar.");
+            throw new Exception($"This VRCFury component ({builder.GetEditorTitle()}) is only allowed on the root object of the avatar, but was found in {gameObject.GetPath(avatarObject)}.");
         }
         
         builder.GetType().GetField("model").SetValue(builder, model);

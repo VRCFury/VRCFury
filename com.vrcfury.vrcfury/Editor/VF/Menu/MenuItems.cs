@@ -36,12 +36,14 @@ namespace VF.Menu {
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;
-        public const string ndmfFirst = prefix + "Settings/Force NDMF to run before VRCF";
-        public const int ndmfFirstPriority = 1322;
-        public const string constrainedProportions = prefix + "Settings/Automatically enable Constrained Proportions on objects";
+        public const string uploadMode = prefix + "Settings/Enable VRCFury for uploads";
+        public const int uploadModePriority = 1322;
+        public const string constrainedProportions = prefix + "Settings/Automatically enable Constrained Proportions";
         public const int constrainedProportionsPriority = 1323;
         public const string hapticToggle = prefix + "Settings/Enable SPS Haptics";
         public const int hapticTogglePriority = 1324;
+        public const string dpsAutoUpgrade = prefix + "Settings/Auto-Upgrade DPS with contacts";
+        public const int dpsAutoUpgradePriority = 1325;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -16,9 +18,25 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.ShowInFirstPersonBuilder)]
         public void Apply() {
-            var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
-            mover.Move(featureBaseObject, head);
-            fakeHead.MarkEligible(featureBaseObject);
+            var obj = model.useObjOverride ? model.objOverride.asVf() : featureBaseObject;
+            if (obj == null) return;
+
+            if (model.onlyIfChildOfHead) {
+                var h = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
+                if (h == null || !obj.IsChildOf(h)) return;
+            }
+            
+            addOtherFeature(new ArmatureLink {
+                propBone = obj,
+                linkTo = new List<ArmatureLink.LinkTo> {
+                    new ArmatureLink.LinkTo {
+                        obj = fakeHead.GetFakeHead(),
+                        useBone = false,
+                        useObj = true
+                    }
+                },
+                linkMode = ArmatureLink.ArmatureLinkMode.ReparentRoot
+            });
         }
 
         public override string GetEditorTitle() {

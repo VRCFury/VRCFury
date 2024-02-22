@@ -3,6 +3,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
+using VF.Model;
 using VF.Upgradeable;
 
 namespace VF {
@@ -51,16 +52,24 @@ namespace VF {
             }
             
             var containsNull = false;
-            UnitySerializationUtils.Iterate(c, visit => {
-                if (visit.field?.Name == "content" && c.Version >= 0 && c.Version <= 2) {
-                    // Allow VRCFury content field to be null until it's upgraded
-                    return UnitySerializationUtils.IterateResult.Continue;
+
+            UnitySerializationUtils.IterateResult Check(UnitySerializationUtils.IterateVisit visit) {
+                if (visit.value is VRCFury vf) {
+                    // Old vrcfury components have a null content field, so we have to handle them specially
+                    if (vf.content == null) {
+                        if ((c.Version >= 0 && c.Version <= 2) || (vf.config?.features?.Count ?? 0) > 0) {
+                            UnitySerializationUtils.Iterate(vf.config, Check);
+                            return UnitySerializationUtils.IterateResult.Skip;
+                        }
+                    }
                 }
                 containsNull |=
                     visit.field?.GetCustomAttribute<SerializeReference>() != null
                     && visit.value == null;
                 return UnitySerializationUtils.IterateResult.Continue;
-            });
+            }
+            UnitySerializationUtils.Iterate(c, Check);
+
             if (containsNull) {
                 DelayReimport(c);
                 if (Application.unityVersion.StartsWith("2019")) {

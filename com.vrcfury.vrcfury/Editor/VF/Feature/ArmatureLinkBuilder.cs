@@ -144,10 +144,6 @@ namespace VF.Feature {
                     RewriteSkins(propBone, avatarBone);
                 }
 
-                if (fakeHead.IsEligible(propBone)) {
-                    fakeHead.MarkEligible(addedObject);
-                }
-
                 // If the transform isn't used and contains no children, we can just throw it away
                 var keepReasons = GetUsageReasons(propBone, avatarObject);
                 if (keepReasons.Count == 0) {
@@ -375,8 +371,9 @@ namespace VF.Feature {
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
                         var path = obj.GetPath(avatarObject);
-                        obj = avatarObject.Find(ClipRewriter.Join(path, to.offset));
-                        if (obj == null) throw new Exception($"Failed to find object at path '{path}'");
+                        var finalPath = ClipRewriter.Join(path, to.offset);
+                        obj = avatarObject.Find(finalPath);
+                        if (obj == null) throw new Exception($"Failed to find object at path '{finalPath}'");
                     }
                     
                     // This is just here to ensure that the target is inside the avatar

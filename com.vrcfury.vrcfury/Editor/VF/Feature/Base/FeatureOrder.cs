@@ -5,17 +5,14 @@ namespace VF.Feature.Base {
         
         // Needs to happen before everything
         FixDoubleFx,
-        
-        // Needs to happen before ForceObjectState
-        FullControllerToggle,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
         
         // Needs to happen before toggles begin getting processed
         DeleteDuringUpload,
-        ApplyDuringUpload,
         RemoveEditorOnly,
+        ApplyDuringUpload,
 
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase,
@@ -47,18 +44,14 @@ namespace VF.Feature.Base {
         // Needs to happen after builders have scanned their prop children objects for any purpose (since this action
         // may move objects out of the props and onto the avatar base). One example is the FullController which
         // scans the prop children for contact receivers.
+        // This should be basically the only place that "moving objects" happens
         ArmatureLinkBuilder,
-        ShowInFirstPersonBuilder,
-        
+        ShowInFirstPersonBuilder, // needs to happen after ArmatureLink so things moved to head using armature link (like a socket) can get picked up by it
         HapticContactsDetectPosiion,
 
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix,
         AnchorOverrideFix,
-
-        // Needs to run before ObjectMoveBuilderFixAnimations, but after anything that needs
-        // an object moved onto the fake head bone
-        FakeHeadBuilder,
 
         // Needs to happen after toggles
         HapticsAnimationRewrites,

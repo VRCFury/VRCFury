@@ -7,6 +7,7 @@ using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Model.Feature;
 using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
@@ -57,10 +58,9 @@ namespace VF.Feature {
 
             var i = 0;
             foreach (var globalContact in globalContacts) {
-                PhysboneUtils.RemoveFromPhysbones(globalContact.transform);
+                PhysboneUtils.RemoveFromPhysbones(globalContact.owner());
 
                 var target = globalContact.GetTransform();
-                fakeHead.MarkEligible(target);
                 var finger = fingers[i].Item2;
                 var setFinger = fingers[i].Item3;
                 finger.isMirrored = false;
@@ -74,8 +74,13 @@ namespace VF.Feature {
                 // If collider length < radius*2, it will be a sphere in a weird in-between location
                 // If collider length >= radius*2, it will be a capsule with one end attached to the set transform's parent,
                 //   facing the direction of the set transform.
-                
+
                 var childObj = GameObjects.Create("GlobalContact", target);
+                addOtherFeature(new ShowInFirstPerson {
+                    useObjOverride = true,
+                    objOverride = childObj,
+                    onlyIfChildOfHead = true
+                });
                 if (globalContact.height <= globalContact.radius * 2) {
                     // It's a sphere
                     finger.transform = childObj;

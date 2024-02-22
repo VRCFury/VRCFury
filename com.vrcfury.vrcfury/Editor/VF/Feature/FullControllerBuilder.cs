@@ -142,7 +142,7 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction(FeatureOrder.FullControllerToggle)]
+        [FeatureBuilderAction]
         public void ApplyOldToggle() {
             if (string.IsNullOrWhiteSpace(model.toggleParam)) {
                 return;

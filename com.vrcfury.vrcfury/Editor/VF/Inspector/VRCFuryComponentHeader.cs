@@ -24,7 +24,7 @@ namespace VF.Inspector {
                 style = {
                     height = 20,
                     width = Length.Percent(100),
-                    marginTop = 1,
+                    top = -21,
                     position = Position.Absolute,
                 },
                 pickingMode = PickingMode.Ignore
@@ -101,27 +101,16 @@ namespace VF.Inspector {
             }.FlexGrow(1);
             row.Add(name);
 
-            return headerArea;
+            var wrapper = new VisualElement();
+            wrapper.Add(headerArea);
+
+            return wrapper;
         }
 
         private static bool HasMultipleHeaders(VisualElement root) {
             if (root == null) return false;
             if (root.ClassListContains("vrcfMultipleHeaders")) return true;
             return HasMultipleHeaders(root.parent);
-        }
-        
-        private static void DetachHeaderOverlay(VisualElement body) {
-            var inspectorRoot = FindEditor(body);
-
-            if (HasMultipleHeaders(body) || inspectorRoot == null) {
-                return;
-            }
-
-            foreach (var oldHeader in inspectorRoot.Children()
-                         .ToList()
-                         .Where(child => child.ClassListContains("vrcfHeaderOverlay"))) {
-                oldHeader.parent?.Remove(oldHeader);
-            }
         }
 
         private static void AttachHeaderOverlay(VisualElement body, string title) {
@@ -132,10 +121,25 @@ namespace VF.Inspector {
                 return;
             }
 
-            DetachHeaderOverlay(body);
+            var headerIndex = inspectorRoot.Children()
+                .Select((e, i) => (element: e, index: i))
+                .Where(x => x.element.name.EndsWith("Header"))
+                .Select(x => x.index)
+                .DefaultIfEmpty(-1)
+                .First();
+
+            if (headerIndex < 0) {
+                body.Add(RenderHeader(title, false));
+                return;
+            }
+
             var headerArea = RenderHeader(title, true);
             headerArea.AddToClassList("vrcfHeaderOverlay");
-            inspectorRoot.Insert(1, headerArea);
+            inspectorRoot.Insert(headerIndex+1, headerArea);
+            
+            body.RegisterCallback<DetachFromPanelEvent>(e => {
+                headerArea.parent?.Remove(headerArea);
+            });
         }
 
         public static VisualElement CreateHeaderOverlay(string title) {
@@ -144,9 +148,7 @@ namespace VF.Inspector {
             el.RegisterCallback<AttachToPanelEvent>(e => {
                 AttachHeaderOverlay(el, title);
             });
-            el.RegisterCallback<DetachFromPanelEvent>(e => {
-                DetachHeaderOverlay(el);
-            });
+
             return el;
         }
     }
