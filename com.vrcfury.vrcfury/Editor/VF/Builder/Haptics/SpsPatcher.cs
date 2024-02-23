@@ -224,7 +224,19 @@ namespace VF.Builder.Haptics {
             string searchForOldStruct = flattenedPass;
             bool useStructExtends = !isSurfaceShader;
             if (oldVertFunction != null) {
-                var foundOldVert = GetRegex(Regex.Escape(oldVertFunction) + @"\s*\(([^\);]*)\)\s*\{")
+                var foundOldVert = GetRegex(
+                        Regex.Escape(oldVertFunction)
+                        + @"\s*" // whitespace before param list
+                        + @"\(" // start param list
+                        + "(" // param list
+                            + "(" // Repeating params or preprocessor directive
+                                + @"([^#\);]*)"
+                                + @"|"
+                                + @"(#[^\n]*\n)"
+                            + ")*"
+                        + ")"
+                        + @"\)\s*\{" // end param list and start function bracket
+                    )
                     .Matches(flattenedPass)
                     .Cast<Match>()
                     .Select(m => {
@@ -493,7 +505,13 @@ namespace VF.Builder.Haptics {
                     fullPath = path;
                     attempts.Add(fullPath);
                 } else {
-                    fullPath = Path.Combine(Path.GetDirectoryName(filePath), path);
+                    var p = path;
+                    fullPath = Path.GetDirectoryName(filePath);
+                    while (p.StartsWith("..")) {
+                        fullPath = Path.GetDirectoryName(fullPath);
+                        p = p.Substring(3);
+                    }
+                    fullPath = Path.Combine(fullPath, p);
                     attempts.Add(fullPath);
                 }
                 if (!path.Contains("..") && !File.Exists(fullPath)) {
@@ -512,6 +530,11 @@ namespace VF.Builder.Haptics {
                 if (replacer != null) {
                     return "\n" + replacer(fullPath) + "\n";
                 } else if (replaceWithFullPath) {
+                    if (fullPath.Contains("'")) {
+                        throw new Exception(
+                            "A unity bug prevents SPS from including shaders stored in a folder with a ' in the name. " +
+                            "Please rename the folder to remove the quote symbol: " + fullPath);
+                    }
                     return "\n" + before + fullPath + after + "\n";
                 } else {
                     return "\n" + before + path + after + "\n";
