@@ -431,8 +431,9 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class Visemes : NewFeatureModel {
-        public float transitionTime = -1;
-        public State state_sil;
+        [Obsolete] public float transitionTime = -1;
+        [Obsolete] public State state_sil;
+        public bool instant = false;
         public State state_PP;
         public State state_FF;
         public State state_TH;
@@ -447,6 +448,19 @@ namespace VF.Model.Feature {
         public State state_I;
         public State state_O;
         public State state_U;
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                instant = transitionTime == 0;
+            }
+#pragma warning restore 0612
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]
