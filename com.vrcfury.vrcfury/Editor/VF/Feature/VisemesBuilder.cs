@@ -1,5 +1,6 @@
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Injector;
@@ -17,6 +18,9 @@ namespace VF.Feature {
 public class VisemesBuilder : FeatureBuilder<Visemes> {
     [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
     [VFAutowired] private readonly ActionClipService actionClipService;
+    [VFAutowired] private readonly DirectBlendTreeService directTree;
+    [VFAutowired] private readonly MathService math;
+    [VFAutowired] private readonly SmoothingService smooth;
 
     private readonly string[] visemeNames = {
         "sil", "PP", "FF", "TH", "DD", "kk", "CH", "SS", "nn", "RR", "aa", "E", "I", "O", "U"
@@ -25,37 +29,52 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
     [FeatureBuilderAction]
     public void Apply() {
         var avatar = manager.Avatar;
-        if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.Default) {
+        if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
             avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
         }
+        
+        var transitionTime = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
 
         var fx = GetFx();
-        var layer = fx.NewLayer("Visemes");
-        var VisemeParam = fx.Viseme();
+        var VisemeParam = fx.NewFloat("Viseme", usePrefix: false);
+        var VolumeParam = fx.NewFloat("Voice", usePrefix: false);
+
+        var voiceTree = math.MakeDirect("Advanced Visemes");
+        var enabled = math.MakeAap("AdvancedVisemesEnabled", def: 1);
+        var volumeTree = math.MakeDirect("Advanced Visemes");
+        volumeTree.Add(VolumeParam, voiceTree);
+        directTree.Add(enabled, volumeTree);
+
         void addViseme(int index, string text, State clipState) {
             var clip = actionClipService.LoadState(text, clipState);
-            var state = layer.NewState(text).WithAnimation(clip);
-            if (text == "sil") state.Move(0, -8);
-            state.TransitionsFromEntry().When(VisemeParam.IsEqualTo(index));
-            var transitionTime = model.transitionTime >= 0 ? model.transitionTime : 0.07f;
-            state.TransitionsToExit().When(VisemeParam.IsNotEqualTo(index)).WithTransitionDurationSeconds(transitionTime);
+            var intensityRaw = math.SetValueWithConditions(
+                $"{text}Raw",
+                (1, math.Equals(VisemeParam, index)),
+                (0, null)
+            );
+            var intensitySmooth = smooth.Smooth($"{text}Smooth", intensityRaw, transitionTime, false);
+            voiceTree.Add(intensitySmooth, clip);
         }
 
         for (var i = 0; i < visemeNames.Length; i++) {
             var name = visemeNames[i];
-            addViseme(i, name, (State)model.GetType().GetField("state_" + name).GetValue(model));
+            var fieldName = "state_" + ((i == 0) ? "aa" : name);
+            addViseme(i, name, (State)model.GetType().GetField(fieldName).GetValue(model));
         }
 
-        var blocked = layer.NewState("Blocked");
         trackingConflictResolverBuilder.WhenCollected(() => {
-            if (!layer.Exists()) return; // Deleted by empty layer builder
             var inhibitors =
                 trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingMouth);
-            if (inhibitors.Count > 0) {
-                var blockedWhen = VFCondition.Any(inhibitors.Select(inhibitor => inhibitor.IsGreaterThan(0)));
-                blocked.TransitionsFromAny().When(blockedWhen);
-                blocked.TransitionsToExit().When(blockedWhen.Not());
+
+            var enabledWhen = math.True();
+            foreach (var inhibitor in inhibitors) {
+                enabledWhen = math.And(enabledWhen, math.LessThan(inhibitor, 0.5f));
             }
+
+            directTree.Add(enabledWhen.create(
+                math.MakeSetter(enabled, 1),
+                new AnimationClip()
+            ));
         });
     }
 
@@ -69,6 +88,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             "This feature will allow you to use animations for your avatar's visemes."
         ));
         foreach (var name in visemeNames) {
+            if (name == "sil") continue;
             var row = new VisualElement().Row();
             row.Add(new Label(name).FlexBasis(30));
             row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state_" + name)).FlexGrow(1));
