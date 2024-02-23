@@ -12,7 +12,7 @@ namespace VF.Service {
         public string tmpDirParent;
         public string tmpDir;
         public VFGameObject avatarObject;
-        public Action<FeatureModel,VFGameObject> addOtherFeature;
+        public Action<FeatureModel> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
         public Func<int> currentFeatureNumProvider;

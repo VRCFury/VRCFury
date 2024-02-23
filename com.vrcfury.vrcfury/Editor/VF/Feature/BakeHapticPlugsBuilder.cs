@@ -46,7 +46,7 @@ namespace VF.Feature {
             var usedRenderers = new Dictionary<VFGameObject, VRCFuryHapticPlug>();
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
-                    PhysboneUtils.RemoveFromPhysbones(plug.transform);
+                    PhysboneUtils.RemoveFromPhysbones(plug.owner());
                     var bakeInfo = VRCFuryHapticPlugEditor.Bake(
                         plug,
                         hapticContacts,

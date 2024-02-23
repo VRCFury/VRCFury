@@ -268,6 +268,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 );
                 clip.UseLinearTangents();
             }
+            clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);

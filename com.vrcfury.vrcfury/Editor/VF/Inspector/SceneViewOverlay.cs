@@ -75,6 +75,10 @@ namespace VF.Inspector {
             if (!PlayModeMenuItem.Get()) {
                 output += "P";
             }
+            
+            if (!UseInUploadMenuItem.Get()) {
+                output += "U";
+            }
 
             if (!ConstrainedProportionsMenuItem.Get()) {
                 output += "C";

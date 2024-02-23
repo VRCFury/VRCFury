@@ -30,7 +30,7 @@ namespace VF {
             Skip,
             Continue
         }
-        public static void Iterate(object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true) {
+        public static void Iterate([CanBeNull] object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true) {
             if (obj == null) return;
             if (isRoot) {
                 var r = forEach(new IterateVisit {

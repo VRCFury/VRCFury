@@ -31,8 +31,8 @@ namespace VF.Feature.Base {
         protected List<FeatureModel> allFeaturesInRun => globals.allFeaturesInRun;
         protected List<FeatureBuilder> allBuildersInRun => globals.allBuildersInRun;
         public VFGameObject avatarObjectOverride = null;
-        public void addOtherFeature(FeatureModel model) {
-            globals.addOtherFeature(model, featureBaseObject);
+        protected void addOtherFeature(FeatureModel model) {
+            globals.addOtherFeature(model);
         }
 
         [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
