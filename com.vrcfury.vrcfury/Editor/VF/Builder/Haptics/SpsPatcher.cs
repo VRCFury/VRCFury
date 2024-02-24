@@ -345,6 +345,12 @@ namespace VF.Builder.Haptics {
             newBody.Add($"struct SpsInputs{extends} {{");
             newBody.Add(newStructBody);
             newBody.Add("};");
+
+            // Silent Shader (No Outline)
+            if (oldVertFunction == "vert_nogeom") {
+                newBody.Add("#if (defined(SHADER_STAGE_VERTEX) || defined(SHADER_STAGE_GEOMETRY))");
+            }
+
             newBody.Add($"{returnType} {newVertFunction}({newInputParams}) {{");
             newBody.Add($"  sps_apply({mainParamName}.{vertexParam}.xyz, {mainParamName}.{normalParam}, {mainParamName}.{vertexIdParam}, {mainParamName}.{colorParam});");
             if (newPassParams != null) {
@@ -352,6 +358,11 @@ namespace VF.Builder.Haptics {
                 newBody.Add($"  {ret}{oldVertFunction}({newPassParams});");
             }
             newBody.Add("}");
+            
+            // Silent Shader (No Outline)
+            if (oldVertFunction == "vert_nogeom") {
+                newBody.Add("#endif");
+            }
 
             // We add the body to the end of the pass, since otherwise it may be too early and
             // get inserted before includes that are needed for the base data types
