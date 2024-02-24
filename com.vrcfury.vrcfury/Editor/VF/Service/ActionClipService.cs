@@ -365,8 +365,8 @@ namespace VF.Service {
 
             var type = renderers
                 .Select(r => r.GetPropertyType(propName))
-                .Where(type => type.HasValue)
-                .Select(type => type.Value)
+                .Where(t => t.HasValue)
+                .Select(t => t.Value)
                 .DefaultIfEmpty(ShaderUtil.ShaderPropertyType.Float)
                 .First();
             return (renderers, type);

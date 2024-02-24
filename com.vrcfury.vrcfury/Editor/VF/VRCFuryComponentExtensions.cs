@@ -56,12 +56,14 @@ namespace VF {
             UnitySerializationUtils.IterateResult Check(UnitySerializationUtils.IterateVisit visit) {
                 if (visit.value is VRCFury vf) {
                     // Old vrcfury components have a null content field, so we have to handle them specially
+#pragma warning disable 0612
                     if (vf.content == null) {
                         if ((c.Version >= 0 && c.Version <= 2) || (vf.config?.features?.Count ?? 0) > 0) {
                             UnitySerializationUtils.Iterate(vf.config, Check);
                             return UnitySerializationUtils.IterateResult.Skip;
                         }
                     }
+#pragma warning restore 0612
                 }
                 containsNull |=
                     visit.field?.GetCustomAttribute<SerializeReference>() != null
