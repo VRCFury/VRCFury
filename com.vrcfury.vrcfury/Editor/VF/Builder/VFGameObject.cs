@@ -223,5 +223,27 @@ namespace VF.Builder {
         public Vector3 TransformPoint(Vector3 position) => transform.TransformPoint(position);
         public Vector3 InverseTransformPoint(Vector3 position) => transform.InverseTransformPoint(position);
         public Vector3 TransformDirection(Vector3 direction) => transform.TransformDirection(direction);
+        
+        /**
+         * If two objects share the same name, animations will always target the first one.
+         * If an object contains a slash in its name, it can't be animated at all.
+         */
+        public void EnsureAnimationSafeName() {
+            var name = this.name;
+            name = name.Replace("/", "_");
+            if (string.IsNullOrEmpty(name)) name = "_";
+
+            if (parent != null) {
+                for (var i = 0; ; i++) {
+                    var finalName = name + (i == 0 ? "" : $" ({i})");
+                    var exists = parent.Find(finalName);
+                    if (exists != null && exists != this) continue; // Already used by something else
+                    name = finalName;
+                    break;
+                }
+            }
+
+            this.name = name;
+        }
     }
 }

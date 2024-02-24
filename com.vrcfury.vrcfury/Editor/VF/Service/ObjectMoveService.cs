@@ -29,6 +29,7 @@ namespace VF.Service {
                 obj.SetParent(newParent, worldPositionStays);
             if (newName != null)
                 obj.name = newName;
+            obj.EnsureAnimationSafeName();
             var newPath = clipBuilder.GetPath(obj);
             PhysboneUtils.RemoveFromPhysbones(obj, true);
             deferred.Add((oldPath, newPath));

@@ -24,6 +24,7 @@ namespace VF.Builder {
                 PhysboneUtils.RemoveFromPhysbones(obj, true);
             }
 
+            obj.EnsureAnimationSafeName();
             return obj;
         }
     }
