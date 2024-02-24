@@ -143,28 +143,6 @@ namespace VF.Utils {
             }));
             return output;
         }
-        
-        public static AnimationClip EvaluateBlend(this AnimationClip clip, VFGameObject root, float amount) {
-            if (amount < 0) amount = 0;
-            if (amount > 1) amount = 1;
-
-            var output = MutableManager.CopyRecursive(clip);
-            output.name = $"{clip.name} ({amount} blend)";
-            output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
-                // TODO: Animator parameters aren't handled here
-                if (curve.IsFloat) {
-                    if (!binding.GetFloatFromGameObject(root, out var from)) {
-                        return (binding, null, true);
-                    }
-                    var to = curve.GetFirst().GetFloat();
-                    var final = VrcfMath.Map(amount, 0, 1, from, to);
-                    return (binding, final, true);
-                } else {
-                    return (binding, curve.GetFirst(), true);
-                }
-            }));
-            return output;
-        }
 
         public static void UseConstantTangents(this AnimationClip clip) {
             clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {

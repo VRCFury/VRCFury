@@ -20,16 +20,17 @@ namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly OriginalAvatarService originalAvatar;
+        [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
 
         public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat = true) {
             if (binding.type == typeof(Animator)) return;
 
             if (isFloat) {
-                if (!binding.GetFloatFromGameObject(avatarObject, out var value)) return;
+                if (!bindingStateService.GetFloat(binding, out var value)) return;
                 if (GetDefaultClip().GetFloatCurve(binding) != null) return;
                 GetDefaultClip().SetCurve(binding, value);
             } else {
-                if (!binding.GetObjectFromGameObject(avatarObject, out var value)) return;
+                if (!bindingStateService.GetObject(binding, out var value)) return;
                 if (GetDefaultClip().GetObjectCurve(binding) != null) return;
                 GetDefaultClip().SetCurve(binding, value);
             }
