@@ -16,6 +16,8 @@ namespace VF.Feature {
     [VFService]
     public class FixMasksBuilder : FeatureBuilder {
 
+        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+
         private enum PropType {
             Muscle,
             Aap,
@@ -87,7 +89,13 @@ namespace VF.Feature {
                     }
                     // Remove behaviours from the fx copy
                     AnimatorIterator.ForEachBehaviourRW(vfCopy, (behaviour, add) => false);
+
+                    // TODO: How to handle AnimatorLayerControlOffsetBuilder in this case?
+                    // Should the new controller target both layers in the same way it targeted the original layer?
                 } else {
+                    // Update AnimatorLayerControlOffsetBuilder's references to the replacement state machine.
+                    animatorLayerControlManager.Update(layer.stateMachine, copyLayer.stateMachine);
+
                     // Move everything to FX and just delete the original
                     layer.Remove();
                 }

@@ -104,6 +104,20 @@ namespace VF.Feature {
             mapping.Put(control, targetSm);
         }
 
+        public void Update(AnimatorStateMachine oldTargetSm, AnimatorStateMachine newTargetSm) {
+            // Replace all instances of oldTargetSm with newTargetSm
+            
+            foreach (var key in mapping.GetKeys()) {
+                var targetList = mapping.Get(key);
+
+                for (int i = 0; i < targetList.Count; i++) {
+                    if (targetList[i] == oldTargetSm) {
+                        targetList[i] = newTargetSm;
+                    }
+                }
+            }
+        }
+
         public bool IsLayerTargeted(AnimatorStateMachine sm) {
             return mapping.ContainsValue(sm);
         }
