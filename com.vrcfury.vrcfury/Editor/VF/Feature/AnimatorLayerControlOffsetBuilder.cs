@@ -104,16 +104,10 @@ namespace VF.Feature {
             mapping.Put(control, targetSm);
         }
 
-        public void Update(AnimatorStateMachine oldTargetSm, AnimatorStateMachine newTargetSm) {
-            // Replace all instances of oldTargetSm with newTargetSm
-            
+        public void Alias(AnimatorStateMachine oldTargetSm, AnimatorStateMachine newTargetSm) {
             foreach (var key in mapping.GetKeys()) {
-                var targetList = mapping.Get(key);
-
-                for (int i = 0; i < targetList.Count; i++) {
-                    if (targetList[i] == oldTargetSm) {
-                        targetList[i] = newTargetSm;
-                    }
+                if (mapping.Get(key).Contains(oldTargetSm)) {
+                    mapping.Put(key, newTargetSm);
                 }
             }
         }

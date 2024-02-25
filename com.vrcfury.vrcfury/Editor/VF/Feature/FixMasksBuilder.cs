@@ -68,6 +68,8 @@ namespace VF.Feature {
                     defaultWeight = layer.weight
                 };
                 newFxLayers.Add(copyLayer);
+                animatorLayerControlManager.Alias(layer, copyLayer.stateMachine);
+
                 if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
                     // Remove fx bindings from the gesture copy
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
@@ -89,13 +91,7 @@ namespace VF.Feature {
                     }
                     // Remove behaviours from the fx copy
                     AnimatorIterator.ForEachBehaviourRW(vfCopy, (behaviour, add) => false);
-
-                    // TODO: How to handle AnimatorLayerControlOffsetBuilder in this case?
-                    // Should the new controller target both layers in the same way it targeted the original layer?
                 } else {
-                    // Update AnimatorLayerControlOffsetBuilder's references to the replacement state machine.
-                    animatorLayerControlManager.Update(layer.stateMachine, copyLayer.stateMachine);
-
                     // Move everything to FX and just delete the original
                     layer.Remove();
                 }
