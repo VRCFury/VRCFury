@@ -346,8 +346,10 @@ namespace VF.Builder.Haptics {
             newBody.Add(newStructBody);
             newBody.Add("};");
 
-            // Silent Shader (No Outline)
-            if (oldVertFunction == "vert_nogeom") {
+            // Silent Crosstone
+            var useEndif = false;
+            if (flattenedPass.Contains("SHADER_STAGE_VERTEX")) {
+                useEndif = true;
                 newBody.Add("#if (defined(SHADER_STAGE_VERTEX) || defined(SHADER_STAGE_GEOMETRY))");
             }
 
@@ -359,8 +361,8 @@ namespace VF.Builder.Haptics {
             }
             newBody.Add("}");
             
-            // Silent Shader (No Outline)
-            if (oldVertFunction == "vert_nogeom") {
+            // Silent Crosstone
+            if (useEndif) {
                 newBody.Add("#endif");
             }
 
