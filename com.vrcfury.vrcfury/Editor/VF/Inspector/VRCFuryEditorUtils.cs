@@ -364,6 +364,18 @@ public static class VRCFuryEditorUtils {
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {
 
+        var c = changed;
+        changed = () => {
+            // Unity sometimes calls onchange when the SerializedProperty is no longer valid.
+            // Unfortunately the only way to detect this is to try to access it and catch an error, since isValid is internal
+            try {
+                var name = prop.name;
+            } catch (Exception) {
+                return;
+            }
+            c();
+        };
+
         switch(prop.propertyType) {
             case SerializedPropertyType.Boolean:
                 return _OnChange(prop, () => prop.boolValue, changed, (a,b) => a==b);
