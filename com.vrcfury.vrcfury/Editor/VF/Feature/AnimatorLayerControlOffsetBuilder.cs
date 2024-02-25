@@ -104,6 +104,14 @@ namespace VF.Feature {
             mapping.Put(control, targetSm);
         }
 
+        public void Alias(AnimatorStateMachine oldTargetSm, AnimatorStateMachine newTargetSm) {
+            foreach (var key in mapping.GetKeys()) {
+                if (mapping.Get(key).Contains(oldTargetSm)) {
+                    mapping.Put(key, newTargetSm);
+                }
+            }
+        }
+
         public bool IsLayerTargeted(AnimatorStateMachine sm) {
             return mapping.ContainsValue(sm);
         }
