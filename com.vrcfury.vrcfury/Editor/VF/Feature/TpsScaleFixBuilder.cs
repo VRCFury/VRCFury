@@ -121,10 +121,6 @@ namespace VF.Feature {
             return scaledProps;
         }
 
-        public override string GetEditorTitle() {
-            return "TPS Scale Fix (Deprecated)";
-        }
-
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Error(
@@ -135,11 +131,19 @@ namespace VF.Feature {
                 "object scaling, or any combination of the two may be used in conjunction with TPS."));
             return c;
         }
+        
+        public override string GetEditorTitle() {
+            return "TPS Scale Fix (Deprecated)";
+        }
 
         public override bool AvailableOnRootOnly() {
             return true;
         }
-        
+
+        public override bool ShowInMenu() {
+            return false;
+        }
+
         public override bool OnlyOneAllowed() {
             return true;
         }
