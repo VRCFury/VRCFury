@@ -2,12 +2,14 @@ namespace VF.Feature.Base {
     public enum FeatureOrder {
 
         CleanupLegacy,
-        
+
         // Needs to happen before everything
         FixDoubleFx,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
+        
+        FixAmbiguousObjectNames,
         
         // Needs to happen before toggles begin getting processed
         DeleteDuringUpload,
