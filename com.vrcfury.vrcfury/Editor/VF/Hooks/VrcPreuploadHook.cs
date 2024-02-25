@@ -21,12 +21,8 @@ namespace VF.Hooks {
             
             VFGameObject vrcCloneObject = _vrcCloneObject;
 
-            if (!VRCFuryBuilder.ShouldRun(vrcCloneObject)) {
-                return true;
-            }
-
             var builder = new VRCFuryBuilder();
-            var vrcFuryStatus = builder.SafeRun(vrcCloneObject, keepDebugInfo: Application.isPlaying);
+            var vrcFuryStatus = builder.SafeRun(vrcCloneObject);
 
             return vrcFuryStatus == VRCFuryBuilder.Status.Success;
         }

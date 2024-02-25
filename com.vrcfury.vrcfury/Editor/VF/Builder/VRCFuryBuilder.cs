@@ -27,19 +27,7 @@ public class VRCFuryBuilder {
         Failed
     }
 
-    internal Status SafeRun(
-        VFGameObject avatarObject,
-        bool keepDebugInfo = false
-    ) {
-        /*
-         * We call SaveAssets here for two reasons:
-         * 1. If the build crashes unity for some reason, the user won't lose changes
-         * 2. If we don't call this here, the first time we call AssetDatabase.CreateAsset can randomly
-         *   fail with "Global asset import parameters have been changed during the import. Importing is restarted."
-         *   followed by "Unable to import newly created asset..."
-         */
-        AssetDatabase.SaveAssets();
-
+    internal Status SafeRun(VFGameObject avatarObject) {
         Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
@@ -52,12 +40,6 @@ public class VRCFuryBuilder {
                 }
             });
         });
-
-        // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
-        StripAllVrcfComponents(avatarObject, keepDebugInfo);
-
-        // Make sure all new assets we've created have actually been saved to disk
-        AssetDatabase.SaveAssets();
 
         return result ? Status.Success : Status.Failed;
     }
@@ -90,6 +72,15 @@ public class VRCFuryBuilder {
             return;
         }
 
+        /*
+         * We call SaveAssets here for two reasons:
+         * 1. If the build crashes unity for some reason, the user won't lose changes
+         * 2. If we don't call this here, the first time we call AssetDatabase.CreateAsset can randomly
+         *   fail with "Global asset import parameters have been changed during the import. Importing is restarted."
+         *   followed by "Unable to import newly created asset..."
+         */
+        AssetDatabase.SaveAssets();
+
         var progress = VRCFProgressWindow.Create();
 
         try {
@@ -100,6 +91,12 @@ public class VRCFuryBuilder {
         } finally {
             progress.Close();
         }
+        
+        // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
+        StripAllVrcfComponents(avatarObject, Application.isPlaying);
+
+        // Make sure all new assets we've created have actually been saved to disk
+        AssetDatabase.SaveAssets();
 
         Debug.Log("VRCFury Finished!");
     }
