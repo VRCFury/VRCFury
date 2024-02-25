@@ -61,7 +61,7 @@ public class VRCFuryBuilder {
     }
 
     private void Run(VFGameObject avatarObject) {
-        if (VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
+        if (!Application.isPlaying && VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
             throw new VRCFBuilderException(
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
                 " used to create this test instead.");
