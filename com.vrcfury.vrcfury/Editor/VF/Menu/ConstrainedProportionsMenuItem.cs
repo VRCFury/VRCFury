@@ -6,13 +6,17 @@ using VF.Builder.Haptics;
 
 namespace VF.Menu {
     [InitializeOnLoad]
-    public class ConstrainedProportionsMenuItem {
+    public class ConstrainedProportionsMenuItem : AssetModificationProcessor {
         private const string EditorPref = "com.vrcfury.constrainedProportions";
 
         private static Action reset;
 
         private static void Reset() {
-            reset?.Invoke();
+            try {
+                reset?.Invoke();
+            } catch (Exception) {
+            }
+
             reset = null;
         }
 
@@ -74,6 +78,11 @@ namespace VF.Menu {
             }
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();
+        }
+        
+        static string[] OnWillSaveAssets(string[] paths) {
+            Reset();
+            return paths;
         }
     }
 }
