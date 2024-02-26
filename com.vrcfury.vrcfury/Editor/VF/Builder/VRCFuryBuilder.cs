@@ -90,13 +90,13 @@ public class VRCFuryBuilder {
             );
         } finally {
             progress.Close();
-        }
-        
-        // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
-        StripAllVrcfComponents(avatarObject, Application.isPlaying);
+            
+            // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
+            StripAllVrcfComponents(avatarObject, Application.isPlaying);
 
-        // Make sure all new assets we've created have actually been saved to disk
-        AssetDatabase.SaveAssets();
+            // Make sure all new assets we've created have actually been saved to disk
+            AssetDatabase.SaveAssets();
+        }
 
         Debug.Log("VRCFury Finished!");
     }
