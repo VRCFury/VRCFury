@@ -41,6 +41,9 @@ namespace VF.Hooks {
                                 if (modelInst == null) continue;
                                 var c = obj.AddComponent<VRCFury>();
                                 c.content = modelInst;
+                                if (modelInst is ArmatureLink al) {
+                                    al.propBone = obj;
+                                }
                             }
                         }),
                         null
