@@ -944,4 +944,9 @@ namespace VF.Model.Feature {
         }
     }
 
+    [Serializable]
+    public class WorldConstraint : NewFeatureModel {
+        public string menuPath;
+    }
+
 }

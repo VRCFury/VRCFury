@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VF.Injector;
 using VF.Utils;
@@ -58,6 +59,14 @@ namespace VF.Service {
             var binding = EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive");
             clip.SetCurve(binding, active ? 1 : 0);
         }
+
+        public void Enable(AnimationClip clip, IConstraint constraint, bool active = true) {
+            var component = constraint as UnityEngine.Component;
+            var path = component.owner().GetPath(baseObject);
+            var binding = EditorCurveBinding.FloatCurve(path, constraint.GetType(), "m_Active");
+            clip.SetCurve(binding, active ? 1 : 0);
+        }
+        
         public void Scale(AnimationClip clip, VFGameObject obj, Vector3 scale) {
             var path = GetPath(obj);
             var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), "");

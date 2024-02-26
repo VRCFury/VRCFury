@@ -47,6 +47,7 @@ namespace VF.Feature.Base {
         // This should be basically the only place that "moving objects" happens
         ArmatureLinkBuilder,
         ShowInFirstPersonBuilder, // needs to happen after ArmatureLink so things moved to head using armature link (like a socket) can get picked up by it
+        WorldConstraintBuilder,
         HapticContactsDetectPosiion,
 
         // Needs to happen after any new skinned meshes have been added

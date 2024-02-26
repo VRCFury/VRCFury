@@ -21,6 +21,7 @@ namespace VF.Hooks {
             var removeMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             removeMenuItem.Invoke(null, new object[] {"Component/UI/Toggle"});
+            removeMenuItem.Invoke(null, new object[] {"Component/UI/Legacy/Dropdown"});
             removeMenuItem.Invoke(null, new object[] {"Component/UI/Toggle Group"});
             var addMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);

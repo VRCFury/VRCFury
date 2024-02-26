@@ -62,6 +62,8 @@ namespace VF.Feature.Base {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
 
+        public ControllerManager fx => GetFx();
+
         public virtual string GetClipPrefix() {
             return null;
         }
