@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -24,6 +25,21 @@ namespace VF.Service {
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
         public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true, bool defer = false) {
+            var immovableBones = new HashSet<VFGameObject>();
+            immovableBones.Add(manager.AvatarObject);
+            foreach (var bone in VRCFArmatureUtils.GetAllBones(manager.AvatarObject)) {
+                var current = bone;
+                while (current != null && current != manager.AvatarObject) {
+                    immovableBones.Add(current);
+                    current = current.parent;
+                }
+            }
+            if (immovableBones.Contains(obj)) {
+                throw new Exception(
+                    $"VRCFury is trying to move the {obj.name} object, but bones / root avatar objects cannot be moved." +
+                    $" You are probably trying to do something weird in one of your VRCFury components. Don't do that.");
+            }
+            
             var oldPath = clipBuilder.GetPath(obj);
             if (newParent != null)
                 obj.SetParent(newParent, worldPositionStays);
