@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -17,6 +18,10 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.SecurityRestricted)]
         public void Apply() {
+            if (featureBaseObject == avatarObject) {
+                throw new Exception("The root object of your avatar cannot be security restricted, sorry!");
+            }
+            
             var parent = featureBaseObject.parent;
             while (parent != null && parent != avatarObject) {
                 if (parent.GetComponents<VRCFury>()
