@@ -16,6 +16,7 @@ namespace VF.Feature {
     public class WorldConstraintBuilder : FeatureBuilder<WorldConstraint> {
 
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ObjectMoveService mover;
 
         private VFABool toggle;
         
@@ -31,7 +32,7 @@ namespace VF.Feature {
                 return;
             }
 
-            var resetTarget = GameObjects.Create("Reset Target", featureBaseObject.parent, featureBaseObject);
+            var resetTarget = GameObjects.Create("Reset Target", featureBaseObject.parent, featureBaseObject.parent);
 
             var worldSpace = GameObjects.Create("Worldspace", resetTarget);
             var worldConstraint = worldSpace.AddComponent<ParentConstraint>();
@@ -55,20 +56,13 @@ namespace VF.Feature {
 
             var dropClip = new AnimationClip();
             clipBuilder.Enable(dropClip, resetConstraint, false);
+            foreach (var constriant in featureBaseObject.GetComponents<IConstraint>()) {
+                clipBuilder.Enable(dropClip, constriant, false);
+            }
 
             directTree.Add(toggle.AsFloat(), dropClip);
-            
-            addOtherFeature(new ArmatureLink {
-                propBone = featureBaseObject,
-                linkTo = new List<ArmatureLink.LinkTo> {
-                    new ArmatureLink.LinkTo {
-                        obj = inner,
-                        useBone = false,
-                        useObj = true
-                    }
-                },
-                linkMode = ArmatureLink.ArmatureLinkMode.ReparentRoot
-            });
+
+            mover.Move(featureBaseObject, inner);
         }
 
         public override string GetEditorTitle() {
