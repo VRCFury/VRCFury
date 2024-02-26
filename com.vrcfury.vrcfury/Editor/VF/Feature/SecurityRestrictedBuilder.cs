@@ -6,6 +6,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
 
@@ -16,6 +17,17 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.SecurityRestricted)]
         public void Apply() {
+            var parent = featureBaseObject.parent;
+            while (parent != null && parent != avatarObject) {
+                if (parent.GetComponents<VRCFury>()
+                    .SelectMany(vf => vf.GetAllFeatures())
+                    .Any(f => f is SecurityRestricted)) {
+                    // some parent is restricted, so we can skip this one and just let the parent handle it
+                    return;
+                }
+                parent = parent.parent;
+            }
+
             var security = allBuildersInRun.OfType<SecurityLockBuilder>().FirstOrDefault();
             if (security == null) {
                 Debug.LogWarning("Security pin not set, restriction disabled");
