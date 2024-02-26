@@ -139,10 +139,10 @@ namespace VF {
             }
 
             public static void AddToObject(VFGameObject obj) {
-                if (obj.GetComponent<RescanOnStartComponent>()) {
-                    return;
-                }
-                obj.AddComponent<RescanOnStartComponent>();
+                if (!Application.isPlaying) return;
+                if (obj.GetComponent<RescanOnStartComponent>() != null) return;
+                var c = obj.AddComponent<RescanOnStartComponent>();
+                c.hideFlags = HideFlags.DontSave;
             }
         }
     }
