@@ -139,7 +139,6 @@ namespace VF.Model.Feature {
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
         public string toggleParam;
-        public bool useSecurityForToggle = false;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
@@ -151,6 +150,7 @@ namespace VF.Model.Feature {
         [Obsolete] public string submenu;
         [Obsolete] public List<string> removePrefixes = new List<string>();
         [Obsolete] public string addPrefix = "";
+        [Obsolete] public bool useSecurityForToggle = false;
 
         [Serializable]
         public class ControllerEntry {
@@ -189,8 +189,9 @@ namespace VF.Model.Feature {
             public SmoothingRange range = SmoothingRange.ZeroToInfinity;
         }
 
-        public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
+        
+        public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
                 allNonsyncedAreGlobal = true;
             }
@@ -224,8 +225,26 @@ namespace VF.Model.Feature {
                 allowMissingAssets = true;
             }
             return false;
-#pragma warning restore 0612
         }
+
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            if (useSecurityForToggle && !request.fakeUpgrade) {
+                var obj = rootObjOverride;
+                if (obj == null) obj = request.gameObject;
+                var hasRestriction = obj.GetComponents<VRCFury>()
+                    .Where(c => c != null)
+                    .SelectMany(c => c.GetAllFeatures())
+                    .Any(feature => feature is SecurityRestricted);
+                if (!hasRestriction && !string.IsNullOrWhiteSpace(toggleParam)) {
+                    var vrcf = obj.AddComponent<VRCFury>();
+                    vrcf.content = new SecurityRestricted();
+                }
+                useSecurityForToggle = false;
+            }
+            return new FeatureModel[] { this };
+        }
+
+#pragma warning restore 0612
 
         public override int GetLatestVersion() {
             return 4;
