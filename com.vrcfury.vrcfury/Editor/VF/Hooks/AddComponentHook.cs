@@ -2,6 +2,7 @@
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Feature;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -42,7 +43,7 @@ namespace VF.Hooks {
                                 var c = obj.AddComponent<VRCFury>();
                                 c.content = modelInst;
                                 if (modelInst is ArmatureLink al) {
-                                    al.propBone = obj;
+                                    al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);
                                 }
                             }
                         }),

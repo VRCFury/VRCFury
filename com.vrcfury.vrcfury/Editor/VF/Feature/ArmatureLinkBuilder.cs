@@ -603,8 +603,19 @@ namespace VF.Feature {
                 "VRCFury will attempt to merge it anyways, but the chest area may not look correct.");
             chestUpWarning.SetVisible(false);
             container.Add(chestUpWarning);
+            
+            var hipsWarning = VRCFuryEditorUtils.Warn(
+                "It appears this object is clothing with an Armature and Hips bone. If you are trying to link the clothing to your avatar," +
+                " the Link From box should be the Hips object from this clothing, not this main object!");
+            hipsWarning.SetVisible(false);
+            container.Add(hipsWarning);
 
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                hipsWarning.SetVisible(false);
+                if (model.propBone != null && GuessLinkFrom(model.propBone) != model.propBone) {
+                    hipsWarning.SetVisible(true);
+                }
+                
                 chestUpWarning.SetVisible(false);
                 if (avatarObject == null) {
                     return "Avatar descriptor is missing";
@@ -663,6 +674,25 @@ namespace VF.Feature {
                 output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("offset")).FlexBasis(0).FlexGrow(1));
                 return output;
             }
+        }
+
+        public static VFGameObject GuessLinkFrom(VFGameObject componentObject) {
+            var armatures = new List<VFGameObject>();
+            if (componentObject.name.ToLower().Contains("armature")) {
+                armatures.Add(componentObject);
+            }
+            armatures.AddRange(componentObject
+                .Children()
+                .Where(child => child.name.ToLower().Contains("armature")));
+
+            var hips = armatures
+                .SelectMany(armature => armature.Children())
+                .FirstOrDefault(child => child.name.ToLower().Contains("hip"));
+            if (hips != null) {
+                return hips;
+            }
+
+            return componentObject;
         }
     }
 }
