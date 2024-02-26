@@ -34,6 +34,13 @@ namespace VF.Service {
                     current = current.parent;
                 }
             }
+            
+            // Eyes are weird, because vrc takes full control of them, and we move them as part of the crosseye fix
+            var eye = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.LeftEye);
+            if (eye != null) immovableBones.Remove(eye);
+            eye = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.RightEye);
+            if (eye != null) immovableBones.Remove(eye);
+            
             if (immovableBones.Contains(obj)) {
                 throw new Exception(
                     $"VRCFury is trying to move the {obj.name} object, but bones / root avatar objects cannot be moved." +
