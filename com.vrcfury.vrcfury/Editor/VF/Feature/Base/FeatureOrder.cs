@@ -45,6 +45,7 @@ namespace VF.Feature.Base {
         // may move objects out of the props and onto the avatar base). One example is the FullController which
         // scans the prop children for contact receivers.
         // This should be basically the only place that "moving objects" happens
+        SecurityRestricted, // needs to happen before armature link so that armature linked things can inherit the security restriction
         ArmatureLinkBuilder,
         ShowInFirstPersonBuilder, // needs to happen after ArmatureLink so things moved to head using armature link (like a socket) can get picked up by it
         WorldConstraintBuilder,

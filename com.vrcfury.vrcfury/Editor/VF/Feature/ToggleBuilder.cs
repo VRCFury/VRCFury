@@ -169,7 +169,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .Select(f => f.GetEnabled())
                 .FirstOrDefault();
             if (securityLockUnlocked != null) {
-                onCase = onCase.And(securityLockUnlocked);
+                onCase = onCase.And(securityLockUnlocked.IsTrue());
+            } else {
+                Debug.LogWarning("Security pin not set, restriction disabled");
             }
         }
 
