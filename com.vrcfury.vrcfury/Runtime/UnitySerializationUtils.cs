@@ -8,18 +8,6 @@ using Object = UnityEngine.Object;
 
 namespace VF {
     public static class UnitySerializationUtils {
-        public static void FindAndResetMarkedFields(object root) {
-            Iterate(root, visit => {
-                var value = visit.value;
-                if (value == null) return IterateResult.Continue;
-                var resetField = visit.value.GetType().GetField("ResetMePlease2", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (resetField != null && resetField.GetValue(value) is bool b && b) {
-                    visit.set(Activator.CreateInstance(value.GetType()));
-                }
-                return IterateResult.Continue;
-            });
-        }
-
         public class IterateVisit {
             [CanBeNull] public FieldInfo field;
             public bool isArrayElement = false;

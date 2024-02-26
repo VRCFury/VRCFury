@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -203,16 +204,25 @@ public static class VRCFuryEditorUtils {
         var newEntry = list.GetArrayElementAtIndex(list.arraySize-1);
         list.serializedObject.ApplyModifiedProperties();
 
-        var resetFlag = newEntry.FindPropertyRelative("ResetMePlease2");
-        if (resetFlag != null) {
-            resetFlag.boolValue = true;
+        // InsertArrayElementAtIndex makes a copy of the last element for some reason, instead of a fresh copy
+        // We fix that here by finding the raw array and creating a fresh object for the new element
+        if (newEntry.propertyType == SerializedPropertyType.ManagedReference) {
+            newEntry.managedReferenceValue = null;
             list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            UnitySerializationUtils.FindAndResetMarkedFields(list.serializedObject.targetObject);
-            list.serializedObject.Update();
+        } else {
+            if (list.GetObject() is IList listObj) {
+                var type = listObj[listObj.Count - 1].GetType();
+                listObj[listObj.Count - 1] = Activator.CreateInstance(type);
+                list.serializedObject.Update();
+            } else {
+                UnityEngine.Debug.LogError("Failed to find list to reset new entry. This is likely a VRCFury bug, please report on the discord.");
+            }
         }
 
-        if (doWith != null) doWith(newEntry);
-        list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        if (doWith != null) {
+            doWith(newEntry);
+            list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         return newEntry;
     }

@@ -156,20 +156,17 @@ namespace VF.Model.Feature {
         public class ControllerEntry {
             public GuidController controller;
             public VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.FX;
-            public bool ResetMePlease2;
         }
 
         [Serializable]
         public class MenuEntry {
             public GuidMenu menu;
             public string prefix;
-            public bool ResetMePlease2;
         }
 
         [Serializable]
         public class ParamsEntry {
             public GuidParams parameters;
-            public bool ResetMePlease2;
         }
         
         [Serializable]
@@ -177,7 +174,6 @@ namespace VF.Model.Feature {
             public string from;
             public string to;
             public bool delete = false;
-            public bool ResetMePlease2;
         }
         
         public enum SmoothingRange {
@@ -191,7 +187,6 @@ namespace VF.Model.Feature {
             public string name;
             public float smoothingDuration = 0.2f;
             public SmoothingRange range = SmoothingRange.ZeroToInfinity;
-            public bool ResetMePlease2;
         }
 
         public override bool Upgrade(int fromVersion) {
@@ -269,8 +264,6 @@ namespace VF.Model.Feature {
             public Mode(State state) {
                 this.state = state;
             }
-            
-            public bool ResetMePlease2;
         }
 
 #pragma warning disable 0612
@@ -701,8 +694,6 @@ namespace VF.Model.Feature {
             public string exclusiveTag;
             public bool enableWeight;
             
-            public bool ResetMePlease2;
-            
             public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
                 if (fromVersion < 1) {
@@ -754,7 +745,6 @@ namespace VF.Model.Feature {
         public class ObjState {
             public GameObject obj;
             public Action action = Action.DEACTIVATE;
-            public bool ResetMePlease2;
         }
         public enum Action {
             DEACTIVATE,
@@ -816,18 +806,15 @@ namespace VF.Model.Feature {
         [Serializable]
         public class LinkSkin {
             public SkinnedMeshRenderer renderer;
-            public bool ResetMePlease2;
         }
         [Serializable]
         public class Exclude {
             public string name;
-            public bool ResetMePlease2;
         }
         [Serializable]
         public class Include {
             public string nameOnBase;
             public string nameOnLinked;
-            public bool ResetMePlease2;
         }
         
         public override bool Upgrade(int fromVersion) {
@@ -954,7 +941,6 @@ namespace VF.Model.Feature {
         [Serializable]
         public class DisableLayer {
             public string name;
-            public bool ResetMePlease2;
         }
     }
 

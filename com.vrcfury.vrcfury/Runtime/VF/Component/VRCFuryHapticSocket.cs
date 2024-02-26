@@ -54,7 +54,6 @@ namespace VF.Component {
             public float endDistance = -0.25f;
             public bool enableSelf;
             public float smoothingSeconds = 0.25f;
-            public bool ResetMePlease2;
             
             [Obsolete] public float minDepth;
             [Obsolete] public float maxDepth;
