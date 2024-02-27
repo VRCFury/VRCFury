@@ -211,11 +211,21 @@ namespace VF.Utils.Controller {
             if (layer0 == null) return;
 
             var baseMask = layer0.mask;
-            if (isFx && baseMask == null) {
-                baseMask = AvatarMaskExtensions.DefaultFxMask();
+            if (baseMask == null) {
+                if (isFx) {
+                    baseMask = AvatarMaskExtensions.DefaultFxMask();
+                } else {
+                    return;
+                }
+            } else {
+                baseMask = MutableManager.CopyRecursive(baseMask, false);
             }
+
+            // Because of some unity bug, ONLY the muscle part of the base mask is actually applied to the child layers
+            // The transform part of the base mask DOES NOT impact lower layers!!
+            baseMask.AllowAllTransforms();
+
             foreach (var layer in GetLayers()) {
-                if (layer.mask == baseMask) continue;
                 if (layer.mask == null) {
                     layer.mask = MutableManager.CopyRecursive(baseMask, false);
                 } else {
