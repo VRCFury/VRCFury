@@ -93,21 +93,19 @@ namespace VF {
                 return false;
             }
             return true;
-        }
+        } 
 
-        private static IEnumerable<FieldInfo> GetAllSerializableFields(Type objType) {
+        public static IEnumerable<FieldInfo> GetAllSerializableFields(Type objType) {
             var output = new List<FieldInfo>();
-            foreach (var field in objType.GetFields()) {
-                if (field.IsInitOnly) continue;
+            foreach (var field in objType.GetFields(BindingFlags.Instance | BindingFlags.Public)) {
+                if (field.IsInitOnly || field.IsLiteral) continue;
                 output.Add(field);
             }
-            for (var current = objType; current != null; current = current.BaseType) {
-                var privateFields = current.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
-                foreach (var field in privateFields) {
-                    if (field.IsInitOnly) continue;
-                    if (field.GetCustomAttribute<SerializeField>() == null) continue;
-                    output.Add(field);
-                }
+            var privateFields = objType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            foreach (var field in privateFields) {
+                if (field.IsInitOnly || field.IsLiteral) continue;
+                if (field.GetCustomAttribute<SerializeField>() == null) continue;
+                output.Add(field);
             }
             return output;
         }

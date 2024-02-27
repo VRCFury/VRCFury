@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEngine;
 using VF.Component;
 using VF.Model.Feature;
@@ -13,6 +14,7 @@ namespace VF.Model {
     [HelpURL("https://vrcfury.com")]
     public class VRCFury : VRCFuryComponent {
         
+        [JsonIgnore]
         [Header("VRCFury failed to load")]
         [Header("Something is really broken. Do not edit anything in here, or you may make it worse.")]
         [Header("You probably have script errors in the console caused by some other plugin. Please fix them.")]
