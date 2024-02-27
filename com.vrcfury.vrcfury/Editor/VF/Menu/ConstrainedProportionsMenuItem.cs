@@ -45,7 +45,7 @@ namespace VF.Menu {
             var newValue = !HapticUtils.IsNonUniformScale(transform);
             if (oldValue == newValue) return;
 
-            var shouldReset = prop.isInstantiatedPrefab && !prop.prefabOverride;
+            var shouldReset = prop.isInstantiatedPrefab && !prop.prefabOverride && !Application.isPlaying;
             prop.boolValue = newValue;
             prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
