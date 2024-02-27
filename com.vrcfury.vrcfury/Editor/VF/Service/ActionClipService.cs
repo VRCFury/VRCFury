@@ -21,7 +21,6 @@ namespace VF.Service {
     [VFService]
     public class ActionClipService {
         [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly MutableManager mutableManager;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;

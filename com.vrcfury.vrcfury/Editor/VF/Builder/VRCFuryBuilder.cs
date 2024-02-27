@@ -110,8 +110,6 @@ public class VRCFuryBuilder {
         // old asset and messes with the new copy.
         var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
 
-        var mutableManager = new MutableManager(tmpDir);
-
         var currentModelName = "";
         var currentModelClipPrefix = "?";
         var currentServiceNumber = 0;
@@ -124,7 +122,6 @@ public class VRCFuryBuilder {
         var collectedBuilders = new List<FeatureBuilder>();
 
         var injector = new VRCFuryInjector();
-        injector.RegisterService(mutableManager);
         foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
             injector.RegisterService(serviceType);
         }

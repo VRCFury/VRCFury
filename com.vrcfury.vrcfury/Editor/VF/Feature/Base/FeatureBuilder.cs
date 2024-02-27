@@ -23,7 +23,6 @@ namespace VF.Feature.Base {
 
         [VFAutowired] protected readonly ClipBuilderService clipBuilder;
         [VFAutowired] protected readonly AvatarManager manager;
-        [VFAutowired] private readonly MutableManager mutableManager; 
         [VFAutowired] private readonly GlobalsService globals;
         protected string tmpDirParent => globals.tmpDirParent;
         protected string tmpDir => globals.tmpDir;
