@@ -40,11 +40,14 @@ namespace VF.Hooks {
                                 if (obj == null) continue;
                                 var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
                                 if (modelInst == null) continue;
-                                var c = obj.AddComponent<VRCFury>();
-                                c.content = modelInst;
                                 if (modelInst is ArmatureLink al) {
                                     al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);
                                 }
+                                
+                                var c = obj.AddComponent<VRCFury>();
+                                var so = new SerializedObject(c);
+                                so.FindProperty("content").managedReferenceValue = modelInst;
+                                so.ApplyModifiedPropertiesWithoutUndo();
                             }
                         }),
                         null
