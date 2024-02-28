@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -612,8 +613,11 @@ namespace VF.Feature {
 
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 hipsWarning.SetVisible(false);
-                if (model.propBone != null && GuessLinkFrom(model.propBone) != model.propBone) {
-                    hipsWarning.SetVisible(true);
+                if (model.propBone != null) {
+                    var hipsGuess = GuessLinkFrom(model.propBone);
+                    if (hipsGuess != null && hipsGuess != model.propBone) {
+                        hipsWarning.SetVisible(true);
+                    }
                 }
                 
                 chestUpWarning.SetVisible(false);
@@ -676,10 +680,12 @@ namespace VF.Feature {
             }
         }
 
+        [CanBeNull]
         public static VFGameObject GuessLinkFrom(VFGameObject componentObject) {
             // Try finding the hips following the same path they are on the avatar
             {
                 var avatarObject = VRCAvatarUtils.GuessAvatarObject(componentObject);
+                if (componentObject == avatarObject) return null;
                 if (avatarObject != null) {
                     var avatarHips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
                     if (avatarHips != null) {
