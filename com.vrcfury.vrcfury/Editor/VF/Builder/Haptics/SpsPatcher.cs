@@ -13,7 +13,7 @@ using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public static class SpsPatcher {
-        private const string HashBuster = "8";
+        private const string HashBuster = "9";
         
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
@@ -348,7 +348,7 @@ namespace VF.Builder.Haptics {
 
             // Silent Crosstone
             var useEndif = false;
-            if (flattenedPass.Contains("SHADER_STAGE_VERTEX")) {
+            if (flattenedPass.Contains("SHADER_STAGE_VERTEX") && !isSurfaceShader) {
                 useEndif = true;
                 newBody.Add("#if (defined(SHADER_STAGE_VERTEX) || defined(SHADER_STAGE_GEOMETRY))");
             }
