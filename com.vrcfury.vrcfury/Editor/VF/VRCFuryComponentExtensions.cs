@@ -3,6 +3,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
+using VF.Inspector;
 using VF.Model;
 using VF.Upgradeable;
 
@@ -38,10 +39,10 @@ namespace VF {
             if (c.IsBroken()) return;
             if (PrefabUtility.IsPartOfPrefabInstance(c)) return;
             if (IUpgradeableUtility.UpgradeRecursive(c)) {
-                if (c != null) EditorUtility.SetDirty(c);
+                if (c != null) VRCFuryEditorUtils.MarkDirty(c);
             }
         }
-        
+
         public static bool IsBroken(this VRCFuryComponent c) {
             return c.GetBrokenMessage() != null;
         }

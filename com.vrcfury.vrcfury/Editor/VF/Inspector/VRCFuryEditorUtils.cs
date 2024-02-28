@@ -10,6 +10,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Model;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -648,6 +649,10 @@ public static class VRCFuryEditorUtils {
         });
     }
 
+    [InitializeOnLoadMethod]
+    public static void MakeMarkDirtyAvailableToRuntime() {
+        VRCFury.markDirty = MarkDirty;
+    }
     public static void MarkDirty(Object obj) {
         EditorUtility.SetDirty(obj);
         

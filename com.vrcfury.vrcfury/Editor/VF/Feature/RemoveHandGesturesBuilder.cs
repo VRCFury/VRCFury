@@ -41,7 +41,7 @@ namespace VF.Feature {
         }
 
         public override string GetEditorTitle() {
-            return "Remove Hand Gestures";
+            return "Remove Built-in Hand Gestures";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
