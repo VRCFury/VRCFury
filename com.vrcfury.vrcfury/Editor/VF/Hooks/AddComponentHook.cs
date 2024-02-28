@@ -43,13 +43,11 @@ namespace VF.Hooks {
                                 if (modelInst is ArmatureLink al) {
                                     al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);
                                 }
-                                
-                                var c = obj.AddComponent<VRCFury>();
+
+                                var c = Undo.AddComponent<VRCFury>(obj);
                                 var so = new SerializedObject(c);
                                 so.FindProperty("content").managedReferenceValue = modelInst;
                                 so.ApplyModifiedPropertiesWithoutUndo();
-                                
-                                VRCFuryEditorUtils.MarkDirty(c);
                             }
                         }),
                         null
