@@ -48,6 +48,8 @@ namespace VF.Hooks {
                                 var so = new SerializedObject(c);
                                 so.FindProperty("content").managedReferenceValue = modelInst;
                                 so.ApplyModifiedPropertiesWithoutUndo();
+                                
+                                VRCFuryEditorUtils.MarkDirty(c);
                             }
                         }),
                         null
