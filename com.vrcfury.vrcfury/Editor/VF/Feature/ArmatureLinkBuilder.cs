@@ -677,19 +677,38 @@ namespace VF.Feature {
         }
 
         public static VFGameObject GuessLinkFrom(VFGameObject componentObject) {
-            var armatures = new List<VFGameObject>();
-            if (componentObject.name.ToLower().Contains("armature")) {
-                armatures.Add(componentObject);
+            // Try finding the hips following the same path they are on the avatar
+            {
+                var avatarObject = VRCAvatarUtils.GuessAvatarObject(componentObject);
+                if (avatarObject != null) {
+                    var avatarHips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
+                    if (avatarHips != null) {
+                        var pathToAvatarHips = avatarHips.GetPath(avatarObject);
+                        var foundHips = componentObject.Find(pathToAvatarHips);
+                        if (foundHips != null) return foundHips;
+                    }
+                }
             }
-            armatures.AddRange(componentObject
-                .Children()
-                .Where(child => child.name.ToLower().Contains("armature")));
 
-            var hips = armatures
-                .SelectMany(armature => armature.Children())
-                .FirstOrDefault(child => child.name.ToLower().Contains("hip"));
-            if (hips != null) {
-                return hips;
+            // Try finding the hips following normal naming conventions
+            {
+                var armatures = new List<VFGameObject>();
+                if (componentObject.name.ToLower().Contains("armature") ||
+                    componentObject.name.ToLower().Contains("skeleton")) {
+                    armatures.Add(componentObject);
+                }
+
+                armatures.AddRange(componentObject
+                    .Children()
+                    .Where(child =>
+                        child.name.ToLower().Contains("armature") || child.name.ToLower().Contains("skeleton")));
+
+                var hips = armatures
+                    .SelectMany(armature => armature.Children())
+                    .FirstOrDefault(child => child.name.ToLower().Contains("hip"));
+                if (hips != null) {
+                    return hips;
+                }
             }
 
             return componentObject;
