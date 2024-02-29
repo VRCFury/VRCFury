@@ -86,29 +86,5 @@ namespace VF.Utils {
         public static string PrettyString(this EditorCurveBinding binding) {
             return $"({binding.path} {binding.type?.Name} {binding.propertyName})";
         }
-
-        public static bool GetFloatFromGameObject(this EditorCurveBinding binding, VFGameObject root, out float data) {
-            // Unity always pulls material properties from the first material, even if it doesn't have the property.
-            // We improve on this by pulling from the first material that actually has it.
-            if (binding.propertyName.StartsWith("material.")) {
-                var matProp = binding.propertyName.Substring("material.".Length);
-                var obj = root.Find(binding.path);
-                if (obj != null) {
-                    var renderer = obj.GetComponent(binding.type) as Renderer;
-                    if (renderer != null) {
-                        foreach (var mat in renderer.sharedMaterials.NotNull()) {
-                            if (mat.HasProperty(matProp)) {
-                                data = mat.GetFloat(matProp);
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            return AnimationUtility.GetFloatValue(root, binding, out data);
-        }
-        public static bool GetObjectFromGameObject(this EditorCurveBinding binding, VFGameObject root, out Object data) {
-            return AnimationUtility.GetObjectReferenceValue(root, binding, out data);
-        }
     }
 }

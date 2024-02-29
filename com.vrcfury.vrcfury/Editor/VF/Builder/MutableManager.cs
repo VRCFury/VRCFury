@@ -6,15 +6,13 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Builder.Haptics;
 using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public class MutableManager {
-        private readonly string tmpDir;
+    public static class MutableManager {
 
         private static readonly Type[] typesToMakeMutable = {
             // This has to be here because animator override controllers
@@ -41,10 +39,6 @@ namespace VF.Builder {
             typeof(AnimatorTransitionBase),
             typeof(StateMachineBehaviour),
         };
-
-        public MutableManager(string tmpDir) {
-            this.tmpDir = tmpDir;
-        }
 
         private static void Iterate(SerializedObject obj, Action<SerializedProperty> act) {
             var prop = obj.GetIterator();
@@ -225,10 +219,6 @@ namespace VF.Builder {
                 copyClip.WriteProxyBinding(originalClip);
             }
             return copy;
-        }
-
-        public string GetTmpDir() {
-            return tmpDir;
         }
     }
 }

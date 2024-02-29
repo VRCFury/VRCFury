@@ -15,10 +15,6 @@ public class AvatarScaleBuilder : FeatureBuilder<AvatarScale2> {
         return "Avatar Scale";
     }
 
-    public override bool ShowInMenu() {
-        return false;
-    }
-
     public override VisualElement CreateEditor(SerializedProperty prop) {
         return VRCFuryEditorUtils.Error(
             "This Avatar Scale feature is no longer available as scaling is now built into VRChat."
@@ -27,6 +23,10 @@ public class AvatarScaleBuilder : FeatureBuilder<AvatarScale2> {
 
     public override bool AvailableOnRootOnly() {
         return true;
+    }
+    
+    public override bool ShowInMenu() {
+        return false;
     }
 }
 

@@ -1,8 +1,7 @@
 {
     "name": "VRCFury",
     "references": [
-        "VrcfEditorOnly",
-        "JsonComponent"
+        "VrcfEditorOnly"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

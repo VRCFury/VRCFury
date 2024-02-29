@@ -8,18 +8,6 @@ using Object = UnityEngine.Object;
 
 namespace VF {
     public static class UnitySerializationUtils {
-        public static void FindAndResetMarkedFields(object root) {
-            Iterate(root, visit => {
-                var value = visit.value;
-                if (value == null) return IterateResult.Continue;
-                var resetField = visit.value.GetType().GetField("ResetMePlease2", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (resetField != null && resetField.GetValue(value) is bool b && b) {
-                    visit.set(Activator.CreateInstance(value.GetType()));
-                }
-                return IterateResult.Continue;
-            });
-        }
-
         public class IterateVisit {
             [CanBeNull] public FieldInfo field;
             public bool isArrayElement = false;
@@ -109,18 +97,20 @@ namespace VF {
 
         private static IEnumerable<FieldInfo> GetAllSerializableFields(Type objType) {
             var output = new List<FieldInfo>();
-            foreach (var field in objType.GetFields()) {
-                if (field.IsInitOnly) continue;
-                output.Add(field);
-            }
+
             for (var current = objType; current != null; current = current.BaseType) {
-                var privateFields = current.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+                var privateFields =
+                    current.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 foreach (var field in privateFields) {
+                    if (field.DeclaringType != current) continue;
                     if (field.IsInitOnly) continue;
-                    if (field.GetCustomAttribute<SerializeField>() == null) continue;
+                    if (field.IsLiteral) continue;
+                    if (!field.IsPublic && field.GetCustomAttribute<SerializeField>() == null) continue;
+                    if (field.GetCustomAttribute<NonSerializedAttribute>() != null) continue;
                     output.Add(field);
                 }
             }
+
             return output;
         }
     }

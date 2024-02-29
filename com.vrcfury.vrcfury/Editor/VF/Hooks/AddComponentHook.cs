@@ -2,6 +2,7 @@
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Feature;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
@@ -21,6 +22,7 @@ namespace VF.Hooks {
             var removeMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             removeMenuItem.Invoke(null, new object[] {"Component/UI/Toggle"});
+            removeMenuItem.Invoke(null, new object[] {"Component/UI/Legacy/Dropdown"});
             removeMenuItem.Invoke(null, new object[] {"Component/UI/Toggle Group"});
             var addMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
@@ -38,8 +40,14 @@ namespace VF.Hooks {
                                 if (obj == null) continue;
                                 var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
                                 if (modelInst == null) continue;
-                                var c = obj.AddComponent<VRCFury>();
-                                c.content = modelInst;
+                                if (modelInst is ArmatureLink al) {
+                                    al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);
+                                }
+
+                                var c = Undo.AddComponent<VRCFury>(obj);
+                                var so = new SerializedObject(c);
+                                so.FindProperty("content").managedReferenceValue = modelInst;
+                                so.ApplyModifiedPropertiesWithoutUndo();
                             }
                         }),
                         null

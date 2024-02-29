@@ -161,7 +161,6 @@ namespace VF.Feature {
                 state = new State {
                     actions = { new ObjectToggleAction { obj = GetBaseObject(), mode = ObjectToggleAction.Mode.TurnOn} }
                 },
-                securityEnabled = model.useSecurityForToggle,
                 addMenuItem = false,
                 paramOverride = toggleParam,
                 useInt = toggleIsInt
@@ -517,7 +516,6 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useSecurityForToggle"), "(Deprecated) Use security for toggle"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
