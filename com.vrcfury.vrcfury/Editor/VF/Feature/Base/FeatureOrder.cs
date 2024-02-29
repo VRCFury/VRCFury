@@ -40,6 +40,9 @@ namespace VF.Feature.Base {
         
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
+        
+        // Needs to happen after animations are done but before objects start to move
+        FixAmbiguousAnimations,
 
         // Needs to happen after builders have scanned their prop children objects for any purpose (since this action
         // may move objects out of the props and onto the avatar base). One example is the FullController which
