@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Editor.VF.Utils;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
@@ -234,28 +235,27 @@ namespace VF.Utils.Controller {
             }
         }
 
+        private static void RemoveBadBehaviours(string location, object obj) {
+            var field = obj.GetType()
+                .GetProperty("behaviours_Internal", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field == null) return;
+            var raw = field.GetValue(obj) as ScriptableObject[];
+            if (raw == null) return;
+            var clean = raw.OfType<StateMachineBehaviour>().Cast<ScriptableObject>().ToArray();
+            if (raw.Length != clean.Length) {
+                field.SetValue(obj, clean);
+                Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
+            }
+        }
+
         private void CheckForBadBehaviours() {
             foreach (var layer in GetLayers()) {
                 foreach (var stateMachine in AnimatorIterator.GetAllStateMachines(layer)) {
-                    try {
-                        var test = stateMachine.behaviours.Cast<object>().ToArray();
-                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                    } catch (Exception e) {
-                        throw new Exception(
-                            $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
-                            e);
-                    }
+                    RemoveBadBehaviours($"{layer.debugName} StateMachine `{stateMachine.name}`", stateMachine);
                 }
 
                 foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    try {
-                        var test = state.behaviours.Cast<object>().ToArray();
-                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                    } catch (Exception e) {
-                        throw new Exception(
-                            $"{layer.debugName} State `{state.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
-                            e);
-                    }
+                    RemoveBadBehaviours($"{layer.debugName} State `{state.name}`", state);
                 }
             }
         }
