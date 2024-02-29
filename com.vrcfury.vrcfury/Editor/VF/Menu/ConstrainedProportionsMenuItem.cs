@@ -6,7 +6,7 @@ using VF.Builder.Haptics;
 
 namespace VF.Menu {
     [InitializeOnLoad]
-    public class ConstrainedProportionsMenuItem : AssetModificationProcessor {
+    public class ConstrainedProportionsMenuItem : UnityEditor.AssetModificationProcessor {
         private const string EditorPref = "com.vrcfury.constrainedProportions";
 
         private static Action reset;

@@ -28,9 +28,13 @@ namespace VF.Feature {
                 obj.EnsureAnimationSafeName();
             }
 
-            foreach (var (obj,oldPath) in oldPaths) {
+            foreach (var pair in oldPaths) {
+                var obj = pair.Key;
+                var oldPath = pair.Value;
                 var newPath = obj.GetPath(avatarObject);
-                movedPaths.TryAdd(oldPath, newPath);
+                if (!movedPaths.ContainsKey(oldPath)) {
+                    movedPaths[oldPath] = newPath;
+                }
             }
         }
 
