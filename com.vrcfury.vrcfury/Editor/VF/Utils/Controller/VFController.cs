@@ -237,14 +237,27 @@ namespace VF.Utils.Controller {
 
         private static void RemoveBadBehaviours(string location, object obj) {
             var field = obj.GetType()
-                .GetProperty("behaviours_Internal", BindingFlags.Instance | BindingFlags.NonPublic);
-            if (field == null) return;
-            var raw = field.GetValue(obj) as ScriptableObject[];
-            if (raw == null) return;
-            var clean = raw.OfType<StateMachineBehaviour>().Cast<ScriptableObject>().ToArray();
-            if (raw.Length != clean.Length) {
-                field.SetValue(obj, clean);
-                Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
+                .GetProperty("behaviours_Internal", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (field != null) {
+                // 2022+
+                var raw = field.GetValue(obj) as ScriptableObject[];
+                if (raw == null) return;
+                var clean = raw.OfType<StateMachineBehaviour>().Cast<ScriptableObject>().ToArray();
+                if (raw.Length != clean.Length) {
+                    field.SetValue(obj, clean);
+                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
+                }
+            } else {
+                // 2019
+                var oldField = obj.GetType().GetProperty("behaviours", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (oldField == null) return;
+                var raw = oldField.GetValue(obj) as StateMachineBehaviour[];
+                if (raw == null) return;
+                var clean = raw.Cast<object>().OfType<StateMachineBehaviour>().ToArray();
+                if (raw.Length != clean.Length) {
+                    oldField.SetValue(obj, clean);
+                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
+                }
             }
         }
 
