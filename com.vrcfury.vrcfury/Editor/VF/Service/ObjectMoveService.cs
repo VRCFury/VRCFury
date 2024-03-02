@@ -27,19 +27,17 @@ namespace VF.Service {
         public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true, bool defer = false) {
             var immovableBones = new HashSet<VFGameObject>();
             immovableBones.Add(manager.AvatarObject);
+            // Eyes are weird, because vrc takes full control of them, and we move them as part of the crosseye fix, so ignore them
+            var leftEye = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.LeftEye);
+            var rightEye = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.RightEye);
             foreach (var bone in VRCFArmatureUtils.GetAllBones(manager.AvatarObject)) {
+                if (bone == leftEye || bone == rightEye) continue;
                 var current = bone;
                 while (current != null && current != manager.AvatarObject) {
                     immovableBones.Add(current);
                     current = current.parent;
                 }
             }
-            
-            // Eyes are weird, because vrc takes full control of them, and we move them as part of the crosseye fix
-            var eye = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.LeftEye);
-            if (eye != null) immovableBones.Remove(eye);
-            eye = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.RightEye);
-            if (eye != null) immovableBones.Remove(eye);
             
             if (immovableBones.Contains(obj)) {
                 throw new Exception(
