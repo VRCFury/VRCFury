@@ -31,19 +31,15 @@ namespace VF.Service {
             // We improve on this by pulling from the first material that actually has it.
             if (binding.propertyName.StartsWith("material.")) {
                 var matProp = binding.propertyName.Substring("material.".Length);
-                var obj = avatarObject.Find(binding.path);
-                if (obj != null) {
-                    if (forcedMaterialProperties.TryGetValue((obj, matProp), out var forcedValue)) {
-                        data = forcedValue;
-                        return true;
-                    }
-                    var renderer = obj.GetComponent(binding.type) as Renderer;
-                    if (renderer != null) {
-                        foreach (var mat in renderer.sharedMaterials.NotNull()) {
-                            if (mat.HasProperty(matProp)) {
-                                data = mat.GetFloat(matProp);
-                                return true;
-                            }
+                if (TryFindObject(binding, out var obj) && forcedMaterialProperties.TryGetValue((obj, matProp), out var forcedValue)) {
+                    data = forcedValue;
+                    return true;
+                }
+                if (TryFindComponent<Renderer>(binding, out var renderer)) {
+                    foreach (var mat in renderer.sharedMaterials.NotNull()) {
+                        if (mat.HasProperty(matProp)) {
+                            data = mat.GetFloat(matProp);
+                            return true;
                         }
                     }
                 }
@@ -51,24 +47,46 @@ namespace VF.Service {
             return AnimationUtility.GetFloatValue(avatarObject, binding, out data);
         }
         public bool GetObject(EditorCurveBinding binding, out Object data) {
+            // Unity incorrectly says that material slots do not exist at all if the material in the slot is unset (null)
+            if (TryParseMaterialSlot(binding, out var renderer, out var slotNum)) {
+                data = renderer.sharedMaterials[slotNum];
+                return true;
+            }
             return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+        }
+        
+        private bool TryFindObject(EditorCurveBinding binding, out VFGameObject obj) {
+            obj = avatarObject.Find(binding.path);
+            return obj != null;
+        }
+
+        private bool TryFindComponent<T>(EditorCurveBinding binding, out T component) where T : UnityEngine.Component {
+            component = null;
+            if (!TryFindObject(binding, out var obj)) return false;
+            if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) return false;
+            component = obj.GetComponent(binding.type) as T;
+            return component != null;
+        }
+
+        private bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
+            renderer = null;
+            slotNum = 0;
+            var prefix = "m_Materials.Array.data[";
+            if (!binding.propertyName.StartsWith(prefix)) return false;
+            var start = prefix.Length;
+            var end = binding.propertyName.Length - 1;
+            var str = binding.propertyName.Substring(start, end - start);
+            if (!int.TryParse(str, out slotNum)) return false;
+            if (!TryFindComponent(binding, out renderer)) return false;
+            if (slotNum < 0 || slotNum >= renderer.sharedMaterials.Length) return false;
+            return true;
         }
 
         private void HandleMaterialSwaps(EditorCurveBinding binding, FloatOrObject val) {
             if (val.IsFloat()) return;
             var newMat = val.GetObject() as Material;
             if (newMat == null) return;
-            if (!binding.propertyName.StartsWith("m_Materials.Array.data[")) return;
-
-            var start = "m_Materials.Array.data[".Length;
-            var end = binding.propertyName.Length - 1;
-            var str = binding.propertyName.Substring(start, end - start);
-            if (!int.TryParse(str, out var num)) return;
-            var transform = avatarObject.Find(binding.path);
-            if (!transform) return;
-            if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) return;
-            var renderer = transform.GetComponent(binding.type) as Renderer;
-            if (!renderer) return;
+            if (!TryParseMaterialSlot(binding, out var renderer, out var num)) return;
             renderer.sharedMaterials = renderer.sharedMaterials
                 .Select((mat,i) => (i == num) ? newMat : mat)
                 .ToArray();
@@ -92,13 +110,9 @@ namespace VF.Service {
             if (!val.IsFloat()) return;
             if (!binding.propertyName.StartsWith("material.")) return;
             var propName = binding.propertyName.Substring("material.".Length);
-            var transform = avatarObject.Find(binding.path);
-            if (!transform) return;
-            if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) return;
-            var renderer = transform.GetComponent(binding.type) as Renderer;
-            if (!renderer) return;
+            if (!TryFindComponent<Renderer>(binding, out var renderer)) return;
 
-            forcedMaterialProperties[(transform, propName)] = val.GetFloat();
+            forcedMaterialProperties[(renderer.owner(), propName)] = val.GetFloat();
             
             renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                 if (mat == null) return mat;
