@@ -168,48 +168,7 @@ namespace VF.Utils.Controller {
             output.FixLayer0Weight();
             output.ApplyBaseMask(type);
             NoBadControllerParamsBuilder.RemoveWrongParamTypes(output);
-            output.FixBadIntConditions();
             return output;
-        }
-
-        /**
-         * If people convert a float to an int, it will cause an unusual editor state where conditions will
-         * not represent the actual threshold that is being used at runtime. If the condition value is a float,
-         * it will also cause vrcfury to later incorrectly upconvert the int to a float, even though it shouldn't need to be.
-         * We fix this by correcting the editor values to match how they actually behave in game.
-         */
-        private void FixBadIntConditions() {
-            var errorParam = new Lazy<string>(() => NewBool(
-                $"Int contains corrupt float threshold (VRCF {new System.Random().Next(1000,9999)})",
-                def: true
-            ).Name());
-            foreach (var t in new AnimatorIterator.Transitions().From(this)) {
-                var correctedOne = false;
-                t.conditions = t.conditions.Select(c => {
-                    var param = GetParam(c.parameter);
-                    if (param == null) return c;
-                    if (param.type == AnimatorControllerParameterType.Int && c.threshold % 1 != 0) {
-                        if (c.mode == AnimatorConditionMode.Equals) {
-                            c.mode = AnimatorConditionMode.IfNot;
-                            c.parameter = errorParam.Value;
-                        } else if (c.mode == AnimatorConditionMode.NotEqual) {
-                            c.mode = AnimatorConditionMode.If;
-                            c.parameter = errorParam.Value;
-                        } else if (c.mode == AnimatorConditionMode.Greater) {
-                            correctedOne = true;
-                            c.threshold = (int)Math.Floor(c.threshold);
-                        } else if (c.mode == AnimatorConditionMode.Less) {
-                            correctedOne = true;
-                            c.threshold = (int)Math.Ceiling(c.threshold);
-                        }
-                    }
-
-                    return c;
-                }).ToArray();
-                if (correctedOne) {
-                    t.AddCondition(AnimatorConditionMode.If, 0, errorParam.Value);
-                }
-            }
         }
 
         /**
