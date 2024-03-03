@@ -223,5 +223,32 @@ namespace VF.Builder {
         public Vector3 TransformPoint(Vector3 position) => transform.TransformPoint(position);
         public Vector3 InverseTransformPoint(Vector3 position) => transform.InverseTransformPoint(position);
         public Vector3 TransformDirection(Vector3 direction) => transform.TransformDirection(direction);
+        
+        /**
+         * If two objects share the same name, animations will always target the first one.
+         * If an object contains a slash in its name, it does weird things, since technically
+         *   it can be animated, but it will show as "missing" in the animation editor, and VRCFury
+         *   will think it's invalid because it can't find the object it's pointing to.
+         * Technically we should not remove slashes (since technically they can be animated by the user's animator),
+         *   but vrcfury has already been removing these animations as "invalid" for ages (because it can't find the object),
+         *   so we may as well just keep it at this point because retaining the existing broken animations would be very difficult.
+         */
+        public void EnsureAnimationSafeName() {
+            var name = this.name;
+            name = name.Replace("/", "_");
+            if (string.IsNullOrEmpty(name)) name = "_";
+
+            if (parent != null) {
+                for (var i = 0; ; i++) {
+                    var finalName = name + (i == 0 ? "" : $" ({i})");
+                    var exists = parent.Find(finalName);
+                    if (exists != null && exists != this) continue; // Already used by something else
+                    name = finalName;
+                    break;
+                }
+            }
+
+            this.name = name;
+        }
     }
 }

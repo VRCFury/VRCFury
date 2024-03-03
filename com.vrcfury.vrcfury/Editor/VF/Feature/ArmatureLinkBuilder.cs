@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -603,8 +604,22 @@ namespace VF.Feature {
                 "VRCFury will attempt to merge it anyways, but the chest area may not look correct.");
             chestUpWarning.SetVisible(false);
             container.Add(chestUpWarning);
+            
+            var hipsWarning = VRCFuryEditorUtils.Warn(
+                "It appears this object is clothing with an Armature and Hips bone. If you are trying to link the clothing to your avatar," +
+                " the Link From box should be the Hips object from this clothing, not this main object!");
+            hipsWarning.SetVisible(false);
+            container.Add(hipsWarning);
 
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                hipsWarning.SetVisible(false);
+                if (model.propBone != null) {
+                    var hipsGuess = GuessLinkFrom(model.propBone);
+                    if (hipsGuess != null && hipsGuess != model.propBone) {
+                        hipsWarning.SetVisible(true);
+                    }
+                }
+                
                 chestUpWarning.SetVisible(false);
                 if (avatarObject == null) {
                     return "Avatar descriptor is missing";
@@ -663,6 +678,46 @@ namespace VF.Feature {
                 output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("offset")).FlexBasis(0).FlexGrow(1));
                 return output;
             }
+        }
+
+        [CanBeNull]
+        public static VFGameObject GuessLinkFrom(VFGameObject componentObject) {
+            // Try finding the hips following the same path they are on the avatar
+            {
+                var avatarObject = VRCAvatarUtils.GuessAvatarObject(componentObject);
+                if (componentObject == avatarObject) return null;
+                if (avatarObject != null) {
+                    var avatarHips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
+                    if (avatarHips != null) {
+                        var pathToAvatarHips = avatarHips.GetPath(avatarObject);
+                        var foundHips = componentObject.Find(pathToAvatarHips);
+                        if (foundHips != null) return foundHips;
+                    }
+                }
+            }
+
+            // Try finding the hips following normal naming conventions
+            {
+                var armatures = new List<VFGameObject>();
+                if (componentObject.name.ToLower().Contains("armature") ||
+                    componentObject.name.ToLower().Contains("skeleton")) {
+                    armatures.Add(componentObject);
+                }
+
+                armatures.AddRange(componentObject
+                    .Children()
+                    .Where(child =>
+                        child.name.ToLower().Contains("armature") || child.name.ToLower().Contains("skeleton")));
+
+                var hips = armatures
+                    .SelectMany(armature => armature.Children())
+                    .FirstOrDefault(child => child.name.ToLower().Contains("hip"));
+                if (hips != null) {
+                    return hips;
+                }
+            }
+
+            return componentObject;
         }
     }
 }

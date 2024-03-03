@@ -12,21 +12,15 @@ using VF.Utils.Controller;
 namespace VF.Feature {
 
 public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
+    private MenuManager menu => manager.GetMenu();
+    
     private VFABool _unlockedParam = null;
-    private VFABool GetUnlockedParam() {
-        if (_unlockedParam == null) _unlockedParam = GetFx().NewBool("SecurityLockSync", synced: true);
+    public VFABool GetEnabled() {
+        if (_unlockedParam == null) _unlockedParam = Create();
         return _unlockedParam;
     }
-    public VFCondition GetEnabled() {
-        return GetUnlockedParam().IsTrue();
-    }
-    
-    [FeatureBuilderAction]
-    public void Apply() {
-        if (allFeaturesInRun.Where(m => m is SecurityLock).Count() > 1) {
-            throw new VRCFBuilderException("Cannot have more than one SecurityLock feature on avatar.");
-        }
-        
+
+    private VFABool Create() {
         var unlockCode = model.pinNumber;
         var digits = unlockCode
             .Select(c => c - '0')
@@ -45,14 +39,19 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         var numDigits = digits.Length;
         var numDigitSlots = 10;
 
-        var fx = GetFx();
-        var paramSecuritySync = GetUnlockedParam();
+        var paramSecuritySync = GetFx().NewBool("SecurityLockSync", synced: true);
         // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
         var paramInput = fx.NewInt("SecurityInput", synced: true, networkSynced: false);
-        for (var i = 1; i < 8; i++) {
-            manager.GetMenu().NewMenuToggle("Security/" + i, paramInput, i);
-        }
-        manager.GetMenu().NewMenuToggle("Security/Unlocked", paramInput, 8);
+        
+        // Because this is created lazily on demand from some other feature, but we want the position in the menu
+        // to be based on where this security lock was placed
+        menu.OverrideSortPosition(uniqueModelNum, () => {
+            for (var i = 1; i < 8; i++) {
+                manager.GetMenu().NewMenuToggle("Security/" + i, paramInput, i);
+            }
+            manager.GetMenu().NewMenuToggle("Security/Unlocked", paramInput, 8);
+        });
+
         var layer = fx.NewLayer("Security Lock");
         
         var remote = layer.NewState("Remote Trap");
@@ -106,17 +105,21 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         unlocked.Drives(paramInput, 8);
         unlocked.Drives(paramSecuritySync, true);
         unlocked.TransitionsTo(clear).When(paramInput.IsNotEqualTo(8));
-    }
 
+        return paramSecuritySync;
+    }
+    
     public override string GetEditorTitle() {
-        return "Security Lock";
+        return "Security Pin Number";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
-        content.Add(VRCFuryEditorUtils.Info("This feature will enable the security submenu in your avatar's menu. You must enter the correct pin to unlock any VRCFury toggles marked with the 'Security' flag."));
-        content.Add(VRCFuryEditorUtils.WrappedLabel("Pin Number (min 4 digits, max 10 digits, can only use numbers 1-7)"));
-        content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("pinNumber")));
+        content.Add(VRCFuryEditorUtils.Info(
+            "This feature will add a `Security` submenu in your avatar's menu. Until the correct pin number is entered:\n" +
+            "* All objects with a VRCFury Security Restricted component will be disabled.\n" +
+            "* All VRCFury Toggles marked with the `Security` flag will be forced Off."));
+        content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("pinNumber"), "Pin Number (min 4 digits, max 10 digits, can only use numbers 1-7)"));
         return content;
     }
     

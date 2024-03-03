@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VF.Injector;
 using VF.Utils;
@@ -12,16 +13,14 @@ namespace VF.Service {
 
     [VFService]
     public class ClipBuilderService {
-        //private static float ONE_FRAME = 1 / 60f;
-        private readonly VFGameObject baseObject;
-        public ClipBuilderService(AvatarManager avatarManager) {
-            baseObject = avatarManager.AvatarObject;
-        }
+        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
+        private VFGameObject baseObject => globals.avatarObject;
 
         public AnimationClip MergeSingleFrameClips(params (float, AnimationClip)[] sources) {
             var output = new AnimationClip();
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetFloatBindings()).Distinct()) {
-                var exists = binding.GetFloatFromGameObject(baseObject, out var defaultValue);
+                var exists = bindingStateService.GetFloat(binding, out var defaultValue);
                 if (!exists && binding.path == "" && binding.type == typeof(Animator)) {
                     exists = true;
                     defaultValue = 0;
@@ -39,7 +38,7 @@ namespace VF.Service {
                 output.SetFloatCurve(binding, outputCurve);
             }
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetObjectBindings()).Distinct()) {
-                var exists = binding.GetObjectFromGameObject(baseObject, out var defaultValue);
+                var exists = bindingStateService.GetObject(binding, out var defaultValue);
                 if (!exists) continue;
                 var outputCurve = new List<ObjectReferenceKeyframe>();
                 foreach (var (time,sourceClip) in sources) {
@@ -60,6 +59,14 @@ namespace VF.Service {
             var binding = EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive");
             clip.SetCurve(binding, active ? 1 : 0);
         }
+
+        public void Enable(AnimationClip clip, IConstraint constraint, bool active = true) {
+            var component = constraint as UnityEngine.Component;
+            var path = component.owner().GetPath(baseObject);
+            var binding = EditorCurveBinding.FloatCurve(path, constraint.GetType(), "m_Active");
+            clip.SetCurve(binding, active ? 1 : 0);
+        }
+        
         public void Scale(AnimationClip clip, VFGameObject obj, Vector3 scale) {
             var path = GetPath(obj);
             var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), "");

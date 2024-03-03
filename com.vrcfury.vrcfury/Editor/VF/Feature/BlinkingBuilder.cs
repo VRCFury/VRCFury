@@ -20,9 +20,6 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        var avatar = manager.Avatar;
-        avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
-
         var fx = GetFx();
         var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
 
@@ -100,7 +97,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var c = new VisualElement();
         c.Add(VRCFuryEditorUtils.Info(
-            "This feature will manage eye-blinking for your avatar. Note this will disable 'Eyelid Type' on the VRC avatar descriptor."));
+            "This feature will add Blinking to your avatar. You can use this in place of blinking in the VRC Avatar Descriptor, or on a prop to add blinking to an additional object."));
         c.Add(VRCFuryEditorUtils.Prop(
             prop.FindPropertyRelative("state"),
             "Blinking State"
@@ -117,10 +114,6 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             "Hold Time - Time eyelids will remain closed (in seconds, -1 will use VRCFury recommended value)"));
         c.Add(adv);
         return c;
-    }
-    
-    public override bool AvailableOnRootOnly() {
-        return true;
     }
 }
 

@@ -86,12 +86,5 @@ namespace VF.Utils {
         public static string PrettyString(this EditorCurveBinding binding) {
             return $"({binding.path} {binding.type?.Name} {binding.propertyName})";
         }
-
-        public static bool GetFloatFromGameObject(this EditorCurveBinding binding, VFGameObject root, out float data) {
-            return AnimationUtility.GetFloatValue(root, binding, out data);
-        }
-        public static bool GetObjectFromGameObject(this EditorCurveBinding binding, VFGameObject root, out Object data) {
-            return AnimationUtility.GetObjectReferenceValue(root, binding, out data);
-        }
     }
 }

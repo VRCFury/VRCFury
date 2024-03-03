@@ -71,6 +71,7 @@ namespace VF.Model {
                 foreach (var f in migrated) {
                     var newComponent = gameObject.AddComponent<VRCFury>();
                     newComponent.content = f;
+                    MarkDirty(newComponent);
                 }
                 DestroyImmediate(this, true);
                 return false;
@@ -83,6 +84,12 @@ namespace VF.Model {
         public override int GetLatestVersion() {
             return 3;
         }
+
+        public static Action<GameObject> markDirty;
+        // We need to call this to let unity know that the scene has changed, so it will mark it as dirty
+        public static void MarkDirty(UnityEngine.Component obj) {
+            markDirty?.Invoke(obj.gameObject);
+        }
     }
     
     [Serializable]
@@ -93,6 +100,5 @@ namespace VF.Model {
     [Serializable]
     public class State {
         [SerializeReference] public List<Action> actions = new List<Action>();
-        public bool ResetMePlease2;
     }
 }

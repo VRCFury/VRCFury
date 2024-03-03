@@ -16,6 +16,8 @@ namespace VF.Feature {
     [VFService]
     public class FixMasksBuilder : FeatureBuilder {
 
+        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+
         private enum PropType {
             Muscle,
             Aap,
@@ -66,6 +68,8 @@ namespace VF.Feature {
                     defaultWeight = layer.weight
                 };
                 newFxLayers.Add(copyLayer);
+                animatorLayerControlManager.Alias(layer, copyLayer.stateMachine);
+
                 if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
                     // Remove fx bindings from the gesture copy
                     foreach (var clip in new AnimatorIterator.Clips().From(layer)) {

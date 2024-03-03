@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Editor.VF.Utils;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
@@ -52,9 +53,6 @@ namespace VF.Utils.Controller {
             ctrl.RemoveParameter(i);
         }
 
-        public VFABool NewTrigger(string name) {
-            return new VFABool(NewParam(name, AnimatorControllerParameterType.Trigger));
-        }
         public VFABool NewBool(string name, bool def = false) {
             return new VFABool(NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def));
         }
@@ -211,11 +209,21 @@ namespace VF.Utils.Controller {
             if (layer0 == null) return;
 
             var baseMask = layer0.mask;
-            if (isFx && baseMask == null) {
-                baseMask = AvatarMaskExtensions.DefaultFxMask();
+            if (baseMask == null) {
+                if (isFx) {
+                    baseMask = AvatarMaskExtensions.DefaultFxMask();
+                } else {
+                    return;
+                }
+            } else {
+                baseMask = MutableManager.CopyRecursive(baseMask, false);
             }
+
+            // Because of some unity bug, ONLY the muscle part of the base mask is actually applied to the child layers
+            // The transform part of the base mask DOES NOT impact lower layers!!
+            baseMask.AllowAllTransforms();
+
             foreach (var layer in GetLayers()) {
-                if (layer.mask == baseMask) continue;
                 if (layer.mask == null) {
                     layer.mask = MutableManager.CopyRecursive(baseMask, false);
                 } else {
@@ -224,28 +232,40 @@ namespace VF.Utils.Controller {
             }
         }
 
+        private static void RemoveBadBehaviours(string location, object obj) {
+            var field = obj.GetType()
+                .GetProperty("behaviours_Internal", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (field != null) {
+                // 2022+
+                var raw = field.GetValue(obj) as ScriptableObject[];
+                if (raw == null) return;
+                var clean = raw.OfType<StateMachineBehaviour>().Cast<ScriptableObject>().ToArray();
+                if (raw.Length != clean.Length) {
+                    field.SetValue(obj, clean);
+                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
+                }
+            } else {
+                // 2019
+                var oldField = obj.GetType().GetProperty("behaviours", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (oldField == null) return;
+                var raw = oldField.GetValue(obj) as StateMachineBehaviour[];
+                if (raw == null) return;
+                var clean = raw.Cast<object>().OfType<StateMachineBehaviour>().ToArray();
+                if (raw.Length != clean.Length) {
+                    oldField.SetValue(obj, clean);
+                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
+                }
+            }
+        }
+
         private void CheckForBadBehaviours() {
             foreach (var layer in GetLayers()) {
                 foreach (var stateMachine in AnimatorIterator.GetAllStateMachines(layer)) {
-                    try {
-                        var test = stateMachine.behaviours.Cast<object>().ToArray();
-                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                    } catch (Exception e) {
-                        throw new Exception(
-                            $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
-                            e);
-                    }
+                    RemoveBadBehaviours($"{layer.debugName} StateMachine `{stateMachine.name}`", stateMachine);
                 }
 
                 foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    try {
-                        var test = state.behaviours.Cast<object>().ToArray();
-                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                    } catch (Exception e) {
-                        throw new Exception(
-                            $"{layer.debugName} State `{state.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
-                            e);
-                    }
+                    RemoveBadBehaviours($"{layer.debugName} State `{state.name}`", state);
                 }
             }
         }

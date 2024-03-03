@@ -11,5 +11,9 @@ namespace VF.Utils.Controller {
         public override VFCondition IsFalse() {
             return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.IfNot, parameter = Name(), threshold = 0 });
         }
+
+        public VFAFloat AsFloat() {
+            return new VFAFloat(param);
+        }
     }
 }

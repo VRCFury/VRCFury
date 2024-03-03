@@ -6,25 +6,54 @@ using VF.Builder.Haptics;
 
 namespace VF.Menu {
     [InitializeOnLoad]
-    public class ConstrainedProportionsMenuItem {
+    public class ConstrainedProportionsMenuItem : UnityEditor.AssetModificationProcessor {
         private const string EditorPref = "com.vrcfury.constrainedProportions";
+
+        private static Action reset;
+
+        private static void Reset() {
+            try {
+                reset?.Invoke();
+            } catch (Exception) {
+            }
+
+            reset = null;
+        }
 
         static ConstrainedProportionsMenuItem() {
             EditorApplication.delayCall += UpdateMenu;
+            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
             Selection.selectionChanged += () => {
+                Reset();
                 if (!Get()) return;
-                var method = typeof(Transform).GetMethod(
-                    "SetConstrainProportionsScale",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
-                    null,
-                    new Type[] { typeof(bool) },
-                    null
-                );
-                if (method == null) return;
+
                 foreach (var t in Selection.transforms) {
-                    method.Invoke(t, new object[] { !HapticUtils.IsNonUniformScale(t) });
+                    FixTransform(t);
                 }
             };
+        }
+        
+        private static void OnBeforeAssemblyReload() {
+            Reset();
+        }
+        
+        private static void FixTransform(Transform transform) {
+            var so = new SerializedObject(transform);
+            var prop = so.FindProperty("m_ConstrainProportionsScale");
+            if (prop == null || prop.propertyType != SerializedPropertyType.Boolean) return;
+            var oldValue = prop.boolValue;
+            var newValue = !HapticUtils.IsNonUniformScale(transform);
+            if (oldValue == newValue) return;
+
+            var shouldReset = prop.isInstantiatedPrefab && !prop.prefabOverride && !Application.isPlaying;
+            prop.boolValue = newValue;
+            prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            if (shouldReset) {
+                reset += () => {
+                    PrefabUtility.RevertPropertyOverride(new SerializedObject(prop.serializedObject.targetObject).FindProperty(prop.propertyPath), InteractionMode.AutomatedAction);
+                };
+            }
         }
 
         public static bool Get() {
@@ -49,6 +78,11 @@ namespace VF.Menu {
             }
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();
+        }
+        
+        static string[] OnWillSaveAssets(string[] paths) {
+            Reset();
+            return paths;
         }
     }
 }
