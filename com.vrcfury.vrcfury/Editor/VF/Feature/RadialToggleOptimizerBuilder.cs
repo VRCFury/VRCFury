@@ -151,7 +151,7 @@ namespace Editor.VF.Feature {
 
 
         private List<VFAFloat> GetAllSyncedRadialPuppetParameters() {
-            var floatParams = new List<VFAFloat>();
+            var floatParam = new HashSet<AnimatorControllerParameter>();
             manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
                 if (control.type != VRCExpressionsMenu.Control.ControlType.RadialPuppet)
                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
@@ -161,12 +161,14 @@ namespace Editor.VF.Feature {
                 var vrcParam = manager.GetParams().GetParam(controlParam);
                 if (vrcParam == null || vrcParam.networkSynced == false)
                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
-                var animParam = GetFx().GetRaw().GetParam(control.GetSubParameter(0).name);
+                var paramName = control.GetSubParameter(0).name;
+                var animParam = GetFx().GetRaw().GetParam(paramName);
                 if (animParam != null && animParam.type == AnimatorControllerParameterType.Float)
-                    floatParams.Add(new VFAFloat(animParam));
+                    floatParam.Add(animParam);
                 return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
             });
-            return floatParams;
+            
+            return floatParam.Select(prm => new VFAFloat(prm)).ToList();
         }
 
         public override string GetEditorTitle() {
