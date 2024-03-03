@@ -17,6 +17,7 @@ namespace VF.Hooks {
         private static readonly FieldInfo m_TreeViewState = PackageImportWindow?.GetField("m_TreeViewState", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly Type ImportPackageItem = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ImportPackageItem");
         private static readonly FieldInfo AssetPath = ImportPackageItem?.GetField("exportedAssetPath");
+        private static readonly string WarningDialogTitle = "Asset Import Warning from VRCFury";
 
         private static readonly string[] vrcsdkLocations = {
             "Packages/com.vrchat.base",
@@ -54,6 +55,14 @@ namespace VF.Hooks {
             var vrcsdkProjectPath = vrcsdkLocations.FirstOrDefault(path => Directory.Exists(path));
             var poiProjectPath = poiyomiLocations.FirstOrDefault(path => Directory.Exists(path));
 
+            // Some poi plugins (dps) are allowed to import into the poi location even if it's already installed,
+            // as long as they don't contain their own full shader files
+            var packageIncludesPoiShaderFile = items.Any(item => {
+                var path = AssetPath.GetValue(item) as string;
+                if (path == null) return false;
+                return path.EndsWith(".shader") && poiyomiLocations.Any(p => path.StartsWith(p + "/"));
+            });
+
             var removedPoiFile = false;
             var removedVrcsdkFile = false;
             var newItems = items.Where(item => {
@@ -66,7 +75,7 @@ namespace VF.Hooks {
                         return false;
                     }
                 }
-                if (poiProjectPath != null) {
+                if (poiProjectPath != null && packageIncludesPoiShaderFile) {
                     var isPoiFile = poiyomiLocations.Any(p => path == p || path.StartsWith(p + "/"));
                     if (isPoiFile) {
                         removedPoiFile = true;
@@ -90,16 +99,16 @@ namespace VF.Hooks {
                 (importWindow as EditorWindow)?.Close();
                 EditorApplication.delayCall += () => {
                     if (removedPoiFile) {
-                        EditorUtility.DisplayDialog("Asset Import",
+                        EditorUtility.DisplayDialog(WarningDialogTitle,
                             "Poiyomi is already installed at " + poiProjectPath +
                             " and must be removed before importing a new version.", "Ok");
                     } else if (removedVrcsdkFile) {
                         if (vrcsdkProjectPath != null && vrcsdkProjectPath.StartsWith("Assets")) {
-                            EditorUtility.DisplayDialog("Asset Import",
+                            EditorUtility.DisplayDialog(WarningDialogTitle,
                                 "The VRCSDK is already installed at " + vrcsdkProjectPath +
                                 " and must be removed before importing a new version.", "Ok");
                         } else {
-                            EditorUtility.DisplayDialog("Asset Import",
+                            EditorUtility.DisplayDialog(WarningDialogTitle,
                                 "The VRCSDK is already installed using the VCC.", "Ok");
                         }
                     }
