@@ -9,6 +9,7 @@ using Object = UnityEngine.Object;
 namespace VF {
     public static class UnitySerializationUtils {
         public class IterateVisit {
+            public string path;
             [CanBeNull] public FieldInfo field;
             public bool isArrayElement = false;
             [CanBeNull] public object value;
@@ -18,17 +19,22 @@ namespace VF {
             Skip,
             Continue
         }
-        public static void Iterate([CanBeNull] object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true) {
+        public static void Iterate([CanBeNull] object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true, string path = "") {
             if (obj == null) return;
             if (isRoot) {
                 var r = forEach(new IterateVisit {
+                    path = "",
                     value = obj,
                 });
                 if (r == IterateResult.Skip) return;
             }
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
+                var newPath = path;
+                if (newPath != "") newPath += ".";
+                newPath += field.Name;
                 var r = forEach(new IterateVisit {
+                    path = newPath,
                     field = field,
                     value = value,
                     set = v => {
@@ -49,11 +55,11 @@ namespace VF {
                         });
                         if (r2 == IterateResult.Skip) continue;
                         if (SerializionEnters(list[i])) {
-                            Iterate(list[i], forEach, false);
+                            Iterate(list[i], forEach, false, newPath + "[" + i + "]");
                         }
                     }
                 } else if (SerializionEnters(value)) {
-                    Iterate(value, forEach, false);
+                    Iterate(value, forEach, false, newPath);
                 }
             }
         }
@@ -89,7 +95,7 @@ namespace VF {
         }
 
         private static bool SerializionEnters(object obj) {
-            if (obj == null || obj is Object || obj is string || obj.GetType().IsValueType) {
+            if (obj == null || obj is Object || obj is string || obj.GetType().IsPrimitive) {
                 return false;
             }
             return true;

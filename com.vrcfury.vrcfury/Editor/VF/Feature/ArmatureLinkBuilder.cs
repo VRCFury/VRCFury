@@ -62,6 +62,7 @@ namespace VF.Feature {
 
             // Move over all the old components / children from the old location to a new child
             var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
+            var pruneCheck = new HashSet<VFGameObject>();
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 bool ShouldReparent() {
                     if (propBone == links.propMain) return true;
@@ -145,17 +146,7 @@ namespace VF.Feature {
                     RewriteSkins(propBone, avatarBone);
                 }
 
-                // If the transform isn't used and contains no children, we can just throw it away
-                var keepReasons = GetUsageReasons(propBone, avatarObject);
-                if (keepReasons.Count == 0) {
-                    addedObject.Destroy();
-                    continue;
-                }
-
-                keepReasons.UnionWith(anim.GetDebugSources(propBone));
-                var debugInfo = addedObject.AddComponent<VRCFuryDebugInfo>();
-                debugInfo.debugInfo = "VRCFury did not fully merge this object because:\n";
-                debugInfo.debugInfo += string.Join("\n", keepReasons.OrderBy(a => a));
+                pruneCheck.Add(addedObject);
             }
 
             mover.ApplyDeferred();
@@ -171,6 +162,27 @@ namespace VF.Feature {
                         var b = binding;
                         b.path = other.GetPath(avatarObject);
                         clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
+                    }
+                }
+            }
+            
+            // Clean up objects that don't need to exist anymore
+            var usedReasons = GetUsageReasons(avatarObject);
+            var attachDebugInfoTo = new HashSet<VFGameObject>();
+            foreach (var obj in pruneCheck) {
+                if (obj == null) continue;
+                attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
+                if (!usedReasons.ContainsKey(obj)) obj.Destroy();
+            }
+
+            if (Application.isPlaying) {
+                foreach (var obj in attachDebugInfoTo) {
+                    if (obj == null) continue;
+                    if (usedReasons.ContainsKey(obj)) {
+                        var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
+                        debugInfo.debugInfo =
+                            "VRCFury Armature Link did not clean up this object because it is still used:\n";
+                        debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
                     }
                 }
             }
@@ -222,52 +234,32 @@ namespace VF.Feature {
             return (avatarMainScale, propMainScale, scalingFactor);
         }
 
-        public static HashSet<string> GetUsageReasons(VFGameObject obj, VFGameObject avatarObject) {
-            var reasons = new HashSet<string>();
-            
-            string GetPath(object o) {
-                if (o is UnityEngine.Component c) {
-                    return c.owner().GetPath(avatarObject);
-                }
-                return "";
+        public static VFMultimapSet<VFGameObject,string> GetUsageReasons(VFGameObject avatarObject) {
+            var reasons = new VFMultimapSet<VFGameObject,string>();
+
+            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
+                if (component is Transform) continue;
+                reasons.Put(component.owner(), "Contains components");
+
+                var so = new SerializedObject(component);
+                var prop = so.GetIterator();
+                do {
+                    if (prop.propertyType == SerializedPropertyType.ObjectReference) {
+                        VFGameObject target = null;
+                        if (prop.objectReferenceValue is Transform t) target = t;
+                        else if (prop.objectReferenceValue is GameObject g) target = g;
+                        if (target != null && target.IsChildOf(avatarObject)) {
+                            reasons.Put(target, prop.propertyPath + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
+                        }
+                    }
+                } while (prop.Next(true));
             }
 
-            if (obj.childCount > 0) {
-                reasons.Add("Added children");
-            }
-            if (obj.GetComponents<UnityEngine.Component>().Length > 1) {
-                reasons.Add("Added components");
-            }
-
-            foreach (var s in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                if (s.bones.Contains(obj.transform)) {
-                    reasons.Add("Bone in " + GetPath(s));
-                }
-                if (s.rootBone == obj) {
-                    reasons.Add("Root bone in " + GetPath(s));
-                }
-            }
-            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<IConstraint>()) {
-                if (Enumerable.Range(0, c.sourceCount)
-                    .Select(i => c.GetSource(i))
-                    .Any(source => source.sourceTransform == obj)
-                ) {
-                    reasons.Add("Target of constraint " + GetPath(c));
-                }
-            }
-            foreach (var b in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
-                if (b.GetRootTransform() == obj) {
-                    reasons.Add("Target of physbone " + GetPath(b));
-                }
-            }
-            foreach (var b in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()) {
-                if (b.GetRootTransform() == obj) {
-                    reasons.Add("Target of collider " + GetPath(b));
-                }
-            }
-            foreach (var b in avatarObject.GetComponentsInSelfAndChildren<ContactBase>()) {
-                if (b.GetRootTransform() == obj) {
-                    reasons.Add("Target of contact " + GetPath(b));
+            foreach (var used in reasons.GetKeys().ToArray()) {
+                foreach (var parent in used.GetSelfAndAllParents()) {
+                    if (parent != used && parent.IsChildOf(avatarObject)) {
+                        reasons.Put(parent, "A child object is used");
+                    }
                 }
             }
 
