@@ -23,9 +23,8 @@ namespace VF.Utils {
         }
 
         public static FloatOrObjectCurve GetCurve(this AnimationClip clip, EditorCurveBinding binding, bool isFloat) {
-            return isFloat
-                ? clip.GetFloatCurve(binding)
-                : clip.GetObjectCurve(binding);
+            if (isFloat) return clip.GetFloatCurve(binding);
+            return clip.GetObjectCurve(binding);
         }
         
         public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {
