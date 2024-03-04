@@ -2,9 +2,11 @@
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -29,7 +31,7 @@ namespace Editor.VF.Feature {
         [FeatureBuilderAction(FeatureOrder.RadialToggleOptimizer)]
         public void Apply() {
             if (networkSyncedField == null) return;
-            var toOptimize = GetAllSyncedRadialPuppetParameters();
+            var toOptimize = GetAllSyncedRadialPuppetParameters(model.excludeDriven);
             if (toOptimize.Count <= 2) return; // don't optimize 16 bits or less
             var fx = GetFx();
             var layers = fx.GetLayers().ToList();
@@ -150,22 +152,27 @@ namespace Editor.VF.Feature {
         }
 
 
-        private List<VFAFloat> GetAllSyncedRadialPuppetParameters() {
+        private List<VFAFloat> GetAllSyncedRadialPuppetParameters(bool excludeDriven = false) {
             var floatParam = new HashSet<AnimatorControllerParameter>();
+            var drivenParams = GetDrivenParamNames(GetFx().GetRaw().GetRaw());
+            var cont = VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
             manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
-                if (control.type != VRCExpressionsMenu.Control.ControlType.RadialPuppet)
-                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                if (control.type != VRCExpressionsMenu.Control.ControlType.RadialPuppet) return cont;
+                
                 var controlParam = control.GetSubParameter(0)?.name;
-                if (string.IsNullOrEmpty(controlParam))
-                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                if (string.IsNullOrEmpty(controlParam)) return cont;
+                
                 var vrcParam = manager.GetParams().GetParam(controlParam);
-                if (vrcParam == null || vrcParam.networkSynced == false)
-                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                if (vrcParam == null || vrcParam.networkSynced == false) return cont;
+                
                 var paramName = control.GetSubParameter(0).name;
                 var animParam = GetFx().GetRaw().GetParam(paramName);
-                if (animParam != null && animParam.type == AnimatorControllerParameterType.Float)
-                    floatParam.Add(animParam);
-                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                if (animParam == null || animParam.type != AnimatorControllerParameterType.Float) return cont;
+                
+                if(excludeDriven && drivenParams.Contains(paramName)) return cont;
+
+                floatParam.Add(animParam);
+                return cont;
             });
             
             return floatParam.Select(prm => new VFAFloat(prm)).ToList();
@@ -212,17 +219,35 @@ namespace Editor.VF.Feature {
             var toggleSliders = features.OfType<Toggle>().Count(toggle => toggle.slider);
 
             var fullControllerRadials = features.OfType<FullController>().Sum(fullController => {
-                var prms = fullController.prms.SelectMany(prm => GetFloatParameters(prm.parameters.Get())).ToHashSet();
+                var driven = fullController.controllers
+                    .Where(entry => entry.type == VRCAvatarDescriptor.AnimLayerType.FX)
+                    .Select(entry => entry.controller.Get() as AnimatorController)
+                    .SelectMany(GetDrivenParamNames)
+                    .ToHashSet();
+                var prms = fullController.prms.SelectMany(prm => GetFloatParameters(prm.parameters.Get()))
+                    .Where(prm => !model.excludeDriven || !driven.Contains(prm)).ToHashSet();
                 var radials = fullController.menus
                     .Sum(menu => CountRadials(menu.menu.Get(), prms));
                 return radials;
             });
 
             var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-            var vrcPrms = GetFloatParameters(avatar.expressionParameters);
-            var vrcRadials = CountRadials(avatar.expressionsMenu, vrcPrms);
+            var (isDefault, fx) = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX);
+            var driven = GetDrivenParamNames(fx as AnimatorController);
+            var vrcPrms = GetFloatParameters(VRCAvatarUtils.GetAvatarParams(avatar))
+                .Where(prm => !model.excludeDriven || !driven.Contains(prm)).ToHashSet();
+            var vrcRadials = CountRadials(VRCAvatarUtils.GetAvatarMenu(avatar), vrcPrms);
 
             return vrcRadials + toggleSliders + fullControllerRadials;
+        }
+        
+        private HashSet<string> GetDrivenParamNames(AnimatorController controller) {
+            if (controller == null) return new HashSet<string>();
+            return controller
+                .GetBehaviours<VRCAvatarParameterDriver>()
+                .SelectMany(driver => driver.parameters)
+                .Select(prm => prm.name)
+                .ToHashSet();
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
@@ -230,13 +255,19 @@ namespace Editor.VF.Feature {
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will optimize all synced float parameters on radial toggles into a single" +
                 " 16 bits pointer and data field combination, to sync the parameters on change."));
+            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("excludeDriven"), 
+                "Exclude parameters that are modified by an Avatar Parameter Driver.",
+                tooltip: "Avatar Parameter Drivers can lead to the Optimizer constantly syncing the modified parameter" + 
+                    " and to not syncing any other parameter, if the Driver is being excuted faster than 100 ms." +
+                    " You should activate this toggle, if you have a Driver constantly changing a float parameter" +
+                    " used on a radial puppet in your menu."));
             content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 if (avatarObject == null) return "Avatar descriptor is missing";
                 var radials = CountRadialToggles();
                 var parameterSpace = radials * 8;
                 if (radials <= 2) {
                     return
-                        $"Only {radials} have been found. Optimization applies when 3 or more radial toggles are used";
+                        $"Only {radials} radial puppet{(radials > 1 ? "s have" : " has")} been found. Optimization applies when 3 or more radial toggles are used.";
                 } else {
                     return $"{parameterSpace} bits of float parameters are optimized into 16 bits.";
                 }

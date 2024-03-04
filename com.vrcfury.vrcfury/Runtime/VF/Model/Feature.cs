@@ -1015,5 +1015,7 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
-    public class RadialToggleOptimizer : NewFeatureModel {}
+    public class RadialToggleOptimizer : NewFeatureModel {
+        public bool excludeDriven = false;
+    }
 }
