@@ -20,6 +20,13 @@ namespace VF.Utils {
                 return new FloatOrObjectCurve(new [] { new ObjectReferenceKeyframe { time = 0, value = d.GetObject() } });
             }
         }
+        public static bool operator ==(FloatOrObjectCurve a, FloatOrObjectCurve b) {
+            return a?.floatCurve == b?.floatCurve
+                   && a?.objectCurve == b?.objectCurve;
+        }
+        public static bool operator !=(FloatOrObjectCurve a, FloatOrObjectCurve b) {
+            return !(a == b);
+        }
 
         private FloatOrObjectCurve(AnimationCurve floatCurve) {
             this.isFloat = true;
