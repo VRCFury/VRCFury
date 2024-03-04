@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -109,14 +110,19 @@ namespace VF.Menu {
                 var list = new List<string>();
                 foreach (var c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                     if (c == null || c is Transform) continue;
-                    list.Add(c.GetType().Name + " in " + c.owner().GetPath(obj));
+                    var type = c.GetType().Name;
+                    if (c is VRCFury vf) {
+                        type += " (" + string.Join(",", vf.GetAllFeatures().Select(f => f.GetType().Name)) + ")";
+                    }
+                    list.Add(type  + " in " + c.owner().GetPath(obj));
                 }
 
-                Debug.Log($"List of components on {obj}:\n" + string.Join("\n", list));
+                var output = $"List of components on {obj}:\n" + string.Join("\n", list);
+                GUIUtility.systemCopyBuffer = output;
 
                 EditorUtility.DisplayDialog(
                     "Debug",
-                    $"Found {list.Count} components in {obj.name} and logged them to the console",
+                    $"Found {list.Count} components in {obj.name} and copied them to clipboard",
                     "Ok"
                 );
             });
