@@ -418,9 +418,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (!savedRestingClip.IsStatic()) return;
 
         foreach (var b in savedRestingClip.GetFloatBindings())
-            writeDefaultsManager.RecordDefaultNow(b, true);
+            writeDefaultsManager.RecordDefaultNow(b, true, true);
         foreach (var b in savedRestingClip.GetObjectBindings())
-            writeDefaultsManager.RecordDefaultNow(b, false);
+            writeDefaultsManager.RecordDefaultNow(b, false, true);
         restingState.ApplyClipToRestingState(savedRestingClip);
     }
 

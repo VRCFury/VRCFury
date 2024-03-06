@@ -5,6 +5,7 @@ namespace VF.Feature.Base {
 
         // Needs to happen before everything
         FixDoubleFx,
+        RemoveDefaultControllers,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
@@ -83,7 +84,6 @@ namespace VF.Feature.Base {
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
-        RemoveDefaultedAdditiveLayer,
         FixUnsetPlayableLayers,
         PositionDefaultsLayer, // Needs to be right before FixMasks so it winds up at the top of FX, right under the base mask
         FixMasks,

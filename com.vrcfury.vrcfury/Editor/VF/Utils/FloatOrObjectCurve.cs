@@ -20,6 +20,15 @@ namespace VF.Utils {
                 return new FloatOrObjectCurve(new [] { new ObjectReferenceKeyframe { time = 0, value = d.GetObject() } });
             }
         }
+        public static bool operator ==(FloatOrObjectCurve a, FloatOrObjectCurve b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
+        public static bool operator !=(FloatOrObjectCurve a, FloatOrObjectCurve b) => !(a == b);
+        public override bool Equals(object other) {
+            return (other is FloatOrObjectCurve a && floatCurve == a.floatCurve && objectCurve == a.objectCurve)
+                   || (other == null && floatCurve == null && objectCurve == null);
+        }
+        public override int GetHashCode() {
+            return Tuple.Create(floatCurve,objectCurve).GetHashCode();
+        }
 
         private FloatOrObjectCurve(AnimationCurve floatCurve) {
             this.isFloat = true;
