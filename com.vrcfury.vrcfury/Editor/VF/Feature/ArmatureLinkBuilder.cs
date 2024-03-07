@@ -150,6 +150,16 @@ namespace VF.Feature {
             }
 
             mover.ApplyDeferred();
+            
+            // Clean up objects that don't need to exist anymore
+            // (this should happen before toggle rewrites, so we don't have to add toggles for a ton of things that won't exist anymore)
+            var usedReasons = GetUsageReasons(avatarObject);
+            var attachDebugInfoTo = new HashSet<VFGameObject>();
+            foreach (var obj in pruneCheck) {
+                if (obj == null) continue;
+                attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
+                if (!usedReasons.ContainsKey(obj)) obj.Destroy();
+            }
 
             // Rewrite animations that turn off parents
             foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
@@ -164,15 +174,6 @@ namespace VF.Feature {
                         clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
                     }
                 }
-            }
-            
-            // Clean up objects that don't need to exist anymore
-            var usedReasons = GetUsageReasons(avatarObject);
-            var attachDebugInfoTo = new HashSet<VFGameObject>();
-            foreach (var obj in pruneCheck) {
-                if (obj == null) continue;
-                attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
-                if (!usedReasons.ContainsKey(obj)) obj.Destroy();
             }
 
             if (Application.isPlaying) {
@@ -244,6 +245,11 @@ namespace VF.Feature {
                 var so = new SerializedObject(component);
                 var prop = so.GetIterator();
                 do {
+                    if (prop.propertyPath.StartsWith("ignoreTransforms.Array")) {
+                        // TODO: If we remove objects that are in these physbone ignoreTransforms arrays, we should
+                        // probably also remove them from the array instead of just leaving it null
+                        continue;
+                    }
                     if (prop.propertyType == SerializedPropertyType.ObjectReference) {
                         VFGameObject target = null;
                         if (prop.objectReferenceValue is Transform t) target = t;
