@@ -67,8 +67,6 @@ namespace VF.Feature.Base {
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
         DpsTipScaleFix,
-        
-        FixTouchingContacts,
 
         // Needs to run after everything else is done messing with rest state
         ApplyToggleRestingState,

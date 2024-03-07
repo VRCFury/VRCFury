@@ -26,7 +26,6 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
-        [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
@@ -237,10 +236,6 @@ namespace VF.Feature {
                             worldLength,
                             plug.useHipAvoidance
                         );
-                    }
-                    
-                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(r.owner());
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);

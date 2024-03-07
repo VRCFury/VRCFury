@@ -29,7 +29,6 @@ namespace VF.Feature {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         [VFAutowired] private readonly ObjectMoveService mover;
-        [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
@@ -139,7 +138,15 @@ namespace VF.Feature {
 
                     if (socket.addMenuItem) {
                         obj.active = true;
-                        _forceStateInAnimatorService.ForceEnable(obj);
+                        
+                        // Prevent anything from animating this object on or off
+                        var path = obj.GetPath(avatarObject);
+                        ((AnimatorController)GetFx().GetRaw()).Rewrite(AnimationRewriter.RewriteBinding(binding => {
+                            if (binding.path == path && binding.type == typeof(GameObject) && binding.propertyName == "m_IsActive") {
+                                return null;
+                            }
+                            return binding;
+                        }));
 
                         ICollection<VFGameObject> FindChildren(params string[] names) {
                             return names.Select(n => bakeRoot.Find(n))
@@ -177,7 +184,6 @@ namespace VF.Feature {
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
                         if (gizmo != null) {
                             gizmo.show = false;
-                            var path = clipBuilder.GetPath(obj);
                             onLocalClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
                             onRemoteClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
                         }
@@ -269,10 +275,6 @@ namespace VF.Feature {
                             var plugWidthValid = math.SetValueWithConditions($"{name}/WidthSensor/Stable", (plugWidth, validWhenBuffered));
                             math.Buffer(plugWidthValid, socket.plugWidthParameterName, usePrefix: false);
                         }
-                    }
-                    
-                    foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(receiver.owner());
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);

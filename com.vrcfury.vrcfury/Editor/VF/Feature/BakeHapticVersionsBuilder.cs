@@ -12,7 +12,6 @@ namespace VF.Builder.Haptics {
     /** Adds a parameter to the avatar so OGB can pick up what version of haptics are available */
     [VFService]
     public class BakeHapticVersionsBuilder : FeatureBuilder {
-        [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         
         // Bump when plug senders or receivers are changed
