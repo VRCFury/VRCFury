@@ -630,6 +630,7 @@ public static class VRCFuryEditorUtils {
             // DexClone_worldSpace/CloneContainer0?
             if (obj.name.StartsWith("CloneContainer")) return true;
             if (obj.name == "DexClone_worldSpace") return true;
+            if (obj.name == "CCopy World Space") return true;
             obj = obj.parent;
         }
         return false;
