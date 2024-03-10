@@ -29,8 +29,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFAParam exclusiveParam;
     private AnimationClip savedRestingClip;
 
-    private string primaryExclusive = null;
-
     public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
@@ -55,71 +53,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return SeparateList(model.driveGlobalParam);
         }
         return new HashSet<string>(); 
-    }
-    public bool IsEligibleForInt() {
-        if (!model.enableExclusiveTag) return false; // no eclusive tags
-        if (model.slider) return false; // already uses float
-        if (string.IsNullOrEmpty(model.name)) return false; // no menu item
-        if (getIsOnlyLocalToggle()) return false; // network unscynced param
-        return true;
-    }
-    public string GetPrimaryExclusive() {
-        if (!IsEligibleForInt()) return "";
-        if (primaryExclusive == null) {
-            string targetTag = "";
-            int targetMax = -1;
-
-            foreach (var exclusiveTag in GetExclusiveTags()) {
-                int tagCount = 1;
-                foreach (var toggle in allBuildersInRun
-                            .OfType<ToggleBuilder>()) {
-
-                    if (toggle.IsEligibleForInt() && toggle.GetExclusiveTags().Contains(exclusiveTag)) {
-                        tagCount++;
-                    }
-                }
-
-                if (tagCount > targetMax) {
-                    targetTag = exclusiveTag;
-                    targetMax = tagCount;
-                }
-            }
-
-            primaryExclusive = targetTag;
-        }
-        return primaryExclusive;
-    }
-
-    private (bool, int, bool, int) CheckExclusives() {
-        var targetTag = GetPrimaryExclusive();
-        if (targetTag == "") return (false, -1, false, 0);
-        
-        var tagCount = 1;
-        var tagIndex = 0;
-        var savedParam = false;
-        var tagDefault = 0;
-       
-        foreach (var toggle in allBuildersInRun
-                    .OfType<ToggleBuilder>()) {
-
-            if (!model.exclusiveOffState && toggle == this) {
-                tagIndex = tagCount;
-            }
-            if (!toggle.model.exclusiveOffState && toggle.GetPrimaryExclusive() == targetTag) {
-                if (toggle.model.saved) savedParam = true;
-                if (toggle.model.defaultOn) tagDefault = tagCount;
-                tagCount++;
-            }
-        }
-
-        if (tagCount > 256) {
-            throw new Exception("Too many toggles for exclusive tag " + targetTag + ". Please reduce the number of toggles using this tag to below 255.");
-        }
-
-        if (tagCount > 9) {
-            return (true, tagIndex, savedParam, tagDefault);
-        }
-        return (false, -1, false, 0);
     }
 
     public VFAParam GetExclusiveParam() {
@@ -379,24 +312,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(exclusiveParam.IsFalse()));
             on.Drives(exclusiveParam, 1);
         }
-
-        var (useInt, intTarget, intSaved, intDefault) = CheckExclusives();
-        var boolParam = exclusiveParam as VFABool;
-
-        if (useInt && boolParam != null) {
-            var intParam = fx.NewInt("VF_" + GetPrimaryExclusive() + "_Exclusives", synced: true, saved: intSaved, def: intDefault, usePrefix: false);
-            var aliasLayer = fx.NewLayer(model.name + "_Alias");
-            var startState = aliasLayer.NewState("Start").Drives(boolParam, false);
-            var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true).Drives(intParam, intTarget);
-            var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
-            startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget).Or(boolParam.IsTrue()));
-            aliasState.TransitionsTo(aliasState).When(boolParam.IsTrue().And(fx.IsLocal().IsTrue()));
-            aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
-            aliasState.TransitionsTo(intResetState).When(boolParam.IsFalse().And(intParam.IsEqualTo(intTarget)));
-            intResetState.TransitionsTo(startState).When(fx.Always());
-            fx.UnsyncParam(boolParam.Name());
-        }
-        
     }
 
     public override string GetClipPrefix() {

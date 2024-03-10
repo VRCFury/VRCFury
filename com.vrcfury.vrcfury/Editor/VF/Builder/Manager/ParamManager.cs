@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -8,6 +9,9 @@ namespace VF.Builder {
 
     public class ParamManager {
         private readonly VRCExpressionParameters syncedParams;
+
+        private static readonly FieldInfo networkSyncedField =
+            typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
 
         public ParamManager(VRCExpressionParameters syncedParams) {
             this.syncedParams = syncedParams;
@@ -37,7 +41,11 @@ namespace VF.Builder {
             for (int i = 0; i < syncedParams.parameters.Length; i++)
             {
                 if (syncedParams.parameters[i] == exists) {
+<<<<<<< HEAD
                     syncedParams.parameters[i].networkSynced = false;
+=======
+                    if (networkSyncedField != null) networkSyncedField.SetValue(syncedParams.parameters[i], false);
+>>>>>>> 6fce1be67ceffb63bc3d697cddcb80a1eeb392e4
                     break;
                 }
             }

@@ -198,6 +198,10 @@ namespace VF.Builder {
             GetParamManager().UnsyncSyncedParam(name);
         }
 
+        public void UnsyncParam(string name){
+            GetParamManager().UnsyncSyncedParam(name);
+        }
+
         private readonly int randomPrefix = (new System.Random()).Next(100_000_000, 999_999_999);
 
         public VFABool True() {
