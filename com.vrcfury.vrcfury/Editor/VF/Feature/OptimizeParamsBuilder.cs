@@ -5,18 +5,14 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils.Controller;
-using VRC.Dynamics;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     public class OptimizeParamsBuilder : FeatureBuilder<OptimizeParams> {
