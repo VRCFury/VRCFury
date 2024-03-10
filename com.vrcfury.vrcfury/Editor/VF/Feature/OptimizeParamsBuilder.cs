@@ -65,38 +65,36 @@ namespace VF.Feature {
                 }
             }
 
-            var optimizeBool = false;
-            var optimizeFloat = false;
-            var optimizeInt = false;
-
-            int optimizedTypes;
-
             if (totalCost + 16 - bools.Count() <= maxBits) {
-                optimizeBool = true;
                 ints.Clear();
                 floats.Clear();
-                optimizedTypes = 1;
                 Debug.Log("Optimizing Bools");
             } else if (totalCost + 24 - ints.Count()*8 - bools.Count()*8 <= maxBits) {
-                optimizeInt = true;
-                optimizeBool = true;
                 floats.Clear();
-                optimizedTypes = 2;
                 Debug.Log("Optimizing Bools and Ints");
             } else {
-                optimizeBool = true;
-                optimizeInt = true;
-                optimizeFloat = true;
-                optimizedTypes = 3;
                 Debug.Log("Optimizing Bools, Floats, and Ints");
             }
 
             var paramsPerSet = 0;
-            var bitsPerSet = optimizedTypes * 8;
+            var bitsPerSet = 0;
+            var minSlotsNeeded = 0;
 
-            if (optimizeBool) paramsPerSet += 8;
-            if (optimizeInt) paramsPerSet++;
-            if (optimizeFloat) paramsPerSet++;
+            if (bools.Count() > 0) {
+                paramsPerSet += 8;
+                bitsPerSet += 8;
+                minSlotsNeeded++;
+            }
+            if (ints.Count() > 0) {
+                paramsPerSet++;
+                bitsPerSet += 8;
+                minSlotsNeeded++;
+            }
+            if (floats.Count() > 0) {
+                paramsPerSet++;
+                bitsPerSet += 8;
+                minSlotsNeeded++;
+            }
 
             totalCost -= bools.Count();
             totalCost -= ints.Count()*8;
@@ -112,7 +110,7 @@ namespace VF.Feature {
 
             if (paramSlotsAvailable >= paramsPerSet) {
                 setCount = Math.Min(paramSlotsAvailable / paramsPerSet, (maxBits - totalCost) / bitsPerSet);
-            } else if (paramSlotsAvailable < optimizedTypes) {
+            } else if (paramSlotsAvailable < minSlotsNeeded) {
                  excService.ThrowIfActuallyUploading(new SneakyException(
                     $"Your avatar is using too many synced and unsynced expression parameters and they can't be further optimized!"
                     + " A bug in vrchat causes this to unexpectedly throw away some of your parameters.\n\n" +
@@ -149,14 +147,14 @@ namespace VF.Feature {
             List<VFAParam> syncFloats = new List<VFAParam>();
 
             for (var i = 0; i < setCount; i++) {
-                if (optimizeBool) {
+                if (bools.Count() > 0) {
                     for (var j = 0; j < boolsPerSet; j++) {
                         syncBools.Add(fx.NewBool("SYNC_BOOL_" + (i * boolsPerSet + j), synced: true));
                     }
                 }
 
-                if (optimizeFloat) syncFloats.Add(fx.NewFloat("SYNC_FLOAT_" + i, synced: true));
-                if (optimizeInt) syncInts.Add(fx.NewInt("SYNC_INT_" + i, synced: true));
+                if (floats.Count() > 0) syncFloats.Add(fx.NewFloat("SYNC_FLOAT_" + i, synced: true));
+                if (ints.Count() > 0) syncInts.Add(fx.NewInt("SYNC_INT_" + i, synced: true));
             }
 
             var maxIndex = new [] { bools.Count() / setCount / boolsPerSet, ints.Count() / setCount, floats.Count() / setCount }.Max() + 1;
@@ -226,13 +224,10 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
-                "This feature will attempt to reduce the amount of synced params " +
-                "used by your avatar by syncing them in a round robin method. " +
-                "It will attempt to optimize bools, then ints, then floats in that order. " +
-                "This may cause parameters to sync slightly slower in some cases, but " +
-                "allows for more params than would usually be allowed on an avatar. " +
-                "Due to some of VRC's limitations, it still may not be possible to optimize " +
-                "the avatar in certain configurations."));
+                "This feature will attempt to reduce the amount of synced params used by your avatar by syncing them in a round " +
+                "robin method. It will attempt to optimize bools, then ints, then floats in that order. This may cause parameters " +
+                "to sync slightly slower in some cases, but allows for more params than would usually be allowed on an avatar. Due " +
+                "to some of VRC's limitations, it still may not be possible to optimize the avatar in certain configurations."));
             return content;
         }
     }
