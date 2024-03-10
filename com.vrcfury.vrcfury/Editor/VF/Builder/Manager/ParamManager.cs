@@ -41,11 +41,7 @@ namespace VF.Builder {
             for (int i = 0; i < syncedParams.parameters.Length; i++)
             {
                 if (syncedParams.parameters[i] == exists) {
-<<<<<<< HEAD
-                    syncedParams.parameters[i].networkSynced = false;
-=======
                     if (networkSyncedField != null) networkSyncedField.SetValue(syncedParams.parameters[i], false);
->>>>>>> 6fce1be67ceffb63bc3d697cddcb80a1eeb392e4
                     break;
                 }
             }
