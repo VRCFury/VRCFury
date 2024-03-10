@@ -213,7 +213,11 @@ public static class VRCFuryEditorUtils {
         } else {
             if (list.GetObject() is IList listObj) {
                 var type = listObj[listObj.Count - 1].GetType();
-                listObj[listObj.Count - 1] = Activator.CreateInstance(type);
+                if (type == typeof(string)) {
+                    listObj[listObj.Count - 1] = "";
+                } else {
+                    listObj[listObj.Count - 1] = Activator.CreateInstance(type);
+                }
                 list.serializedObject.Update();
             } else {
                 UnityEngine.Debug.LogError("Failed to find list to reset new entry. This is likely a VRCFury bug, please report on the discord.");
@@ -626,6 +630,7 @@ public static class VRCFuryEditorUtils {
             // DexClone_worldSpace/CloneContainer0?
             if (obj.name.StartsWith("CloneContainer")) return true;
             if (obj.name == "DexClone_worldSpace") return true;
+            if (obj.name == "CCopy World Space") return true;
             obj = obj.parent;
         }
         return false;

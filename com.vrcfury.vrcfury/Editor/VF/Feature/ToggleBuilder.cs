@@ -390,6 +390,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var aliasState = aliasLayer.NewState("Alias").Drives(boolParam, true).Drives(intParam, intTarget);
             var intResetState = aliasLayer.NewState("Reset Int").Drives(intParam, 0);
             startState.TransitionsTo(aliasState).When(intParam.IsEqualTo(intTarget).Or(boolParam.IsTrue()));
+            aliasState.TransitionsTo(aliasState).When(boolParam.IsTrue().And(fx.IsLocal().IsTrue()));
             aliasState.TransitionsTo(startState).When(intParam.IsEqualTo(intTarget).Not());
             aliasState.TransitionsTo(intResetState).When(boolParam.IsFalse().And(intParam.IsEqualTo(intTarget)));
             intResetState.TransitionsTo(startState).When(fx.Always());
