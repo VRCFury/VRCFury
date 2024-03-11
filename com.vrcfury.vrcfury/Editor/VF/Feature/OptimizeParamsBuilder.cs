@@ -123,7 +123,7 @@ namespace VF.Feature {
                     setCount = 1;
                     intsPerSet = ints.Count() > 0 ? 1 : 0;
                     floatsPerSet = floats.Count() > 0 ? 1 : 0;
-                    boolsPerSet = paramSlotsAvailable - intsPerSet - floatsPerSet;
+                    boolsPerSet = Math.Min(paramSlotsAvailable - intsPerSet - floatsPerSet, maxBits - totalCost - intsPerSet - floatsPerSet);
                 }
             }
 
@@ -174,32 +174,32 @@ namespace VF.Feature {
 
             var maxIndex = new [] { bools.Count() / (Math.Max(boolsPerSet, 1) * setCount), ints.Count() / (Math.Max(intsPerSet, 1) * setCount), floats.Count() / (Math.Max(floatsPerSet, 1) * setCount) }.Max() + 1;
 
-            var localLayer = fx.NewLayer("Optimized Sync Local");
-            var remoteLayer = fx.NewLayer("Optimized Sync Remote");
+            var syncLayer = fx.NewLayer("Optimized Sync");
 
             List<VFState> localStates = new List<VFState>();
             List<VFState> remoteStates = new List<VFState>();
 
-            var localStart = localLayer.NewState("Start");
-            remoteLayer.NewState("Start");
+            var start = syncLayer.NewState("Start");
 
             VFState lastLocal = null;
 
             for (var i = 0; i < maxIndex; i++) {
-                var localState = localLayer.NewState("Sync " + i).Drives(syncIndex.Name(), i);
+                var localState = syncLayer.NewState("Sync Local " + i).Drives(syncIndex.Name(), i);
                 if (lastLocal != null) {
                     lastLocal.TransitionsTo(localState).When(fx.True().IsTrue());
                 }
                 lastLocal = localState;
                 localStates.Add(localState);
+            }
 
-                var remoteState = remoteLayer.NewState("Sync " + i);
+            start.TransitionsTo(localStates[0]).When(fx.IsLocal().IsTrue());
+            lastLocal.TransitionsTo(localStates[0]).When(fx.True().IsTrue());
+
+            for (var i = 0; i < maxIndex; i++) {
+                var remoteState = syncLayer.NewState("Sync Remote " + i);
                 remoteState.TransitionsFromAny().When(syncIndex.IsEqualTo(i).And(fx.IsLocal().IsFalse()));
                 remoteStates.Add(remoteState);
             }
-
-            localStart.TransitionsTo(localStates[0]).When(fx.IsLocal().IsTrue());
-            lastLocal.TransitionsTo(localStates[0]).When(fx.True().IsTrue());
             
             foreach (var param in bools) {
                 fx.UnsyncParam(param);
