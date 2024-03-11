@@ -119,6 +119,7 @@ namespace VF.Feature {
                     $"Your avatar is using too many synced and unsynced expression parameters and they can't be further optimized!"
                     + " A bug in vrchat causes this to unexpectedly throw away some of your parameters.\n\n" +
                     "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param"));
+                 return;
             } else {
                 setCount = 1;
                 intsPerSet = 1;
@@ -172,7 +173,7 @@ namespace VF.Feature {
                 }
             }
 
-            var maxIndex = new [] { bools.Count() / (boolsPerSet * setCount), ints.Count() / (intsPerSet * setCount), floats.Count() / (floatsPerSet * setCount) }.Max() + 1;
+            var maxIndex = new [] { bools.Count() / (Math.Max(boolsPerSet, 1) * setCount), ints.Count() / (Math.Max(intsPerSet, 1) * setCount), floats.Count() / (Math.Max(floatsPerSet, 1) * setCount) }.Max() + 1;
 
             var localLayer = fx.NewLayer("Optimized Sync Local");
             var remoteLayer = fx.NewLayer("Optimized Sync Remote");
