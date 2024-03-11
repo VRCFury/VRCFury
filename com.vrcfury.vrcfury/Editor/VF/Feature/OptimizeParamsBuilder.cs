@@ -123,7 +123,7 @@ namespace VF.Feature {
                     setCount = 1;
                     intsPerSet = ints.Count() > 0 ? 1 : 0;
                     floatsPerSet = floats.Count() > 0 ? 1 : 0;
-                    boolsPerSet = Math.Min(paramSlotsAvailable - intsPerSet - floatsPerSet, maxBits - totalCost - intsPerSet - floatsPerSet);
+                    boolsPerSet = Math.Min(paramSlotsAvailable - intsPerSet - floatsPerSet, maxBits - totalCost -  8*intsPerSet - 8*floatsPerSet);
                 }
             }
 
