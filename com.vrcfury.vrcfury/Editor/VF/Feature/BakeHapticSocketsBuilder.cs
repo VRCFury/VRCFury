@@ -35,7 +35,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
 
-        [FeatureBuilderAction(FeatureOrder.HapticsCreateMenus)]
+        [FeatureBuilderAction]
         public void Apply() {
             var fx = GetFx();
             var saved = spsOptions.GetOptions().saveSockets;
