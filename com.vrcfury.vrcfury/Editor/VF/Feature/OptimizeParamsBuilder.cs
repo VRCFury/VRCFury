@@ -72,23 +72,29 @@ namespace VF.Feature {
                 Debug.Log("Optimizing Bools, Floats, and Ints");
             }
 
+            var minValue = Math.Max(1, new [] {bools.Count(), ints.Count(), floats.Count() }.Min());
+
+            var boolsPerSet = bools.Count() / minValue;
+            var intsPerSet = ints.Count() / minValue;
+            var floatsPerSet = floats.Count() / minValue;
+
             var paramsPerSet = 0;
             var bitsPerSet = 0;
             var minSlotsNeeded = 0;
 
             if (bools.Count() > 0) {
-                paramsPerSet += 8;
-                bitsPerSet += 8;
+                paramsPerSet += boolsPerSet;
+                bitsPerSet += boolsPerSet;
                 minSlotsNeeded++;
             }
             if (ints.Count() > 0) {
-                paramsPerSet++;
-                bitsPerSet += 8;
+                paramsPerSet += intsPerSet;
+                bitsPerSet += 8 * intsPerSet;
                 minSlotsNeeded++;
             }
             if (floats.Count() > 0) {
-                paramsPerSet++;
-                bitsPerSet += 8;
+                paramsPerSet += floatsPerSet;
+                bitsPerSet += 8 * floatsPerSet;
                 minSlotsNeeded++;
             }
 
@@ -102,7 +108,6 @@ namespace VF.Feature {
             totalCost+=8; // index int
 
             var setCount = 0;
-            var boolsPerSet = 8;
 
             if (paramSlotsAvailable >= paramsPerSet) {
                 setCount = Math.Min(paramSlotsAvailable / paramsPerSet, (maxBits - totalCost) / bitsPerSet);
@@ -113,6 +118,8 @@ namespace VF.Feature {
                     "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param"));
             } else {
                 setCount = 1;
+                intsPerSet = 1;
+                floatsPerSet = 1;
                 boolsPerSet = paramSlotsAvailable - 2;
             }
 
@@ -127,13 +134,13 @@ namespace VF.Feature {
 
             index = 0;
             foreach(var param in floats) {
-                paramMap[param] = (index / setCount, index % setCount);
+                paramMap[param] = (index / (floatsPerSet * setCount), index % (floatsPerSet * setCount));
                 index++;
             }
 
             index = 0;
             foreach(var param in ints) {
-                paramMap[param] = (index / setCount, index % setCount);
+                paramMap[param] = (index / (intsPerSet * setCount), index % (intsPerSet * setCount));
                 index++;
             }
 
@@ -149,11 +156,20 @@ namespace VF.Feature {
                     }
                 }
 
-                if (floats.Count() > 0) syncFloats.Add(fx.NewFloat("SYNC_FLOAT_" + i, synced: true));
-                if (ints.Count() > 0) syncInts.Add(fx.NewInt("SYNC_INT_" + i, synced: true));
+                if (floats.Count() > 0) {
+                    for (var j = 0; j < floatsPerSet; j++) {
+                        syncFloats.Add(fx.NewFloat("SYNC_FLOAT_" + (i * floatsPerSet + j), synced: true));
+                    }
+                }
+
+                if (ints.Count() > 0) {
+                    for (var j = 0; j < intsPerSet; j++) {
+                        syncInts.Add(fx.NewInt("SYNC_INT_" + (i * intsPerSet + j), synced: true));
+                    }
+                }
             }
 
-            var maxIndex = new [] { bools.Count() / setCount / boolsPerSet, ints.Count() / setCount, floats.Count() / setCount }.Max() + 1;
+            var maxIndex = new [] { bools.Count() / (boolsPerSet * setCount), ints.Count() / (intsPerSet * setCount), floats.Count() / (floatsPerSet * setCount) }.Max() + 1;
 
             var localLayer = fx.NewLayer("Optimized Sync Local");
             var remoteLayer = fx.NewLayer("Optimized Sync Remote");
@@ -162,8 +178,7 @@ namespace VF.Feature {
             List<VFState> remoteStates = new List<VFState>();
 
             var localStart = localLayer.NewState("Start");
-            var remoteStart = remoteLayer.NewState("Start");
-
+            remoteLayer.NewState("Start");
 
             VFState lastLocal = null;
 
