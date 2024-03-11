@@ -110,23 +110,22 @@ namespace VF.Feature {
             paramSlotsAvailable--; // index int
             totalCost+=8; // index int
 
-            var setCount = 0;
+            var setCount = Math.Min(paramSlotsAvailable / paramsPerSet, (maxBits - totalCost) / bitsPerSet);
 
-            if (paramSlotsAvailable >= paramsPerSet) {
-                setCount = Math.Min(paramSlotsAvailable / paramsPerSet, (maxBits - totalCost) / bitsPerSet);
-            } else if (paramSlotsAvailable < minSlotsNeeded) {
-                 excService.ThrowIfActuallyUploading(new SneakyException(
-                    $"Your avatar is using too many synced and unsynced expression parameters and they can't be further optimized!"
-                    + " A bug in vrchat causes this to unexpectedly throw away some of your parameters.\n\n" +
-                    "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param"));
-                 return;
-            } else {
-                setCount = 1;
-                intsPerSet = 1;
-                floatsPerSet = 1;
-                boolsPerSet = paramSlotsAvailable - 2;
+            if (setCount == 0) {
+                if (paramSlotsAvailable < minSlotsNeeded) {
+                     excService.ThrowIfActuallyUploading(new SneakyException(
+                        $"Your avatar is using too many synced and unsynced expression parameters and they can't be further optimized!"
+                        + " A bug in vrchat causes this to unexpectedly throw away some of your parameters.\n\n" +
+                        "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param"));
+                     return;
+                } else {
+                    setCount = 1;
+                    intsPerSet = ints.Count() > 0 ? 1 : 0;
+                    floatsPerSet = floats.Count() > 0 ? 1 : 0;
+                    boolsPerSet = paramSlotsAvailable - intsPerSet - floatsPerSet;
+                }
             }
-
 
             Dictionary<string, (int, int)> paramMap = new Dictionary<string, (int, int)>();
 
