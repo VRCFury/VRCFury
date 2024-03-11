@@ -72,11 +72,14 @@ namespace VF.Feature {
                 Debug.Log("Optimizing Bools, Floats, and Ints");
             }
 
-            var minValue = Math.Max(1, new [] {bools.Count(), ints.Count(), floats.Count() }.Min());
+            if (ints.Count() == 1) ints.Clear(); // won't do any good anyway
+            if (floats.Count() == 1) floats.Clear(); // won't do any good anyway
 
-            var boolsPerSet = bools.Count() / minValue;
-            var intsPerSet = ints.Count() / minValue;
-            var floatsPerSet = floats.Count() / minValue;
+            var minValue = new [] {bools.Count(), ints.Count(), floats.Count() }.Where(x => x != 0).Min();
+
+            var boolsPerSet = (int) Math.Round((float) bools.Count() / minValue);
+            var intsPerSet = (int) Math.Round((float) ints.Count() / minValue);
+            var floatsPerSet = (int) Math.Round((float) floats.Count() / minValue);
 
             var paramsPerSet = 0;
             var bitsPerSet = 0;
