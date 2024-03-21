@@ -51,7 +51,11 @@ namespace VF.Feature {
             }
 
             if (keptMats == 0) {
-                EditorUtility.DisplayDialog("No Valid Android Materials", "You are currently building for android and are not using any compatible shaders, either switch back to PC or change the materials to use one of the VRChat/Mobile/ shaders", "OK" );
+                EditorUtility.DisplayDialog("No Valid Android Materials", 
+                                            "You are currently building for Android and are not using any compatible shaders. " + 
+                                            "You have likely switched to Android mode by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " + 
+                                            "If you have not switched by mistake and want to build for Android, you will need to change your materials to use shaders found in VRChat/Mobile.", 
+                                            "OK" );
             }
         }
 
