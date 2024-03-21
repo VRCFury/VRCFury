@@ -36,15 +36,22 @@ namespace VF.Feature {
                 }
             }
 
+            var keptMats = 0;
+
             foreach (var renderer in avatarManager.AvatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(m => {
                     if (!IsMobileMat(m)) return null;
+                    keptMats++;
                     return m;
                 }).ToArray();
             }
 
             foreach (var light in avatarManager.AvatarObject.GetComponentsInSelfAndChildren<Light>()) {
                 Object.DestroyImmediate(light);
+            }
+
+            if (keptMats == 0) {
+                EditorUtility.DisplayDialog("No Valid Android Materials", "You are currently building for android and are not using any compatible shaders, either switch back to PC or change the materials to use one of the VRChat/Mobile/ shaders", "OK" );
             }
         }
 
