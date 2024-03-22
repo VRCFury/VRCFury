@@ -67,41 +67,41 @@ namespace VF.Utils.Controller {
             driver.localOnly = local;
             return driver;
         }
-        private VRC_AvatarParameterDriver.Parameter Drives(string param, bool local = false) {
-            var driver = GetDriver(local);
+        private VRC_AvatarParameterDriver.Parameter Drives(string param) {
+            var driver = GetDriver(false);
             var p = new VRC_AvatarParameterDriver.Parameter();
             p.name = param;
             p.type = VRC_AvatarParameterDriver.ChangeType.Set;
             driver.parameters.Add(p);
             return p;
         }
-        public VFState Drives(VFABool param, bool value, bool local = false) {
-            Drives(param.Name(), local).value = value ? 1 : 0;
+        public VFState Drives(VFABool param, bool value) {
+            Drives(param.Name()).value = value ? 1 : 0;
             return this;
         }
-        public VFState Drives(VFAParam param, float value, bool local = false) {
-            Drives(param.Name(), local).value = value;
+        public VFState Drives(VFAParam param, float value) {
+            Drives(param.Name()).value = value;
             return this;
         }
-        public VFState Drives(string param, float value, bool local = false) {
-            Drives(param, local).value = value;
+        public VFState Drives(string param, float value) {
+            Drives(param).value = value;
             return this;
         }
         public VFState DrivesRandom(VFAInteger param, float min, float max) {
-            var p = Drives(param.Name(), true);
+            var p = Drives(param.Name());
             p.type = VRC_AvatarParameterDriver.ChangeType.Random;
             p.valueMin = min;
             p.valueMax = max;
             return this;
         }
         public VFState DrivesDelta(VFAInteger param, float delta) {
-            var p = Drives(param.Name(), true);
+            var p = Drives(param.Name());
             p.type = VRC_AvatarParameterDriver.ChangeType.Add;
             p.value = delta;
             return this;
         }
-        public VFState DrivesCopy(VFAInteger param, VFAInteger source) {
-            var driver = GetDriver(true);
+        public VFState DrivesCopy(VFAParam param, VFAParam source) {
+            var driver = GetDriver();
             var p = new VRC_AvatarParameterDriver.Parameter();
             p.name = param.Name();
             var sourceField = p.GetType().GetField("source");

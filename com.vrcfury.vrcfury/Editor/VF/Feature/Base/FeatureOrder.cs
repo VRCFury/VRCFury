@@ -74,6 +74,7 @@ namespace VF.Feature.Base {
         ApplyToggleRestingState,
 
         // Finalize Controllers
+        UnlimitedParameters,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
