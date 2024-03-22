@@ -118,23 +118,14 @@ namespace Editor.VF.Feature {
         }
 
         private IList<(string name,VRCExpressionParameters.ValueType type)> GetParamsToOptimize() {
-            var drivenParams = manager.GetAllUsedControllers()
-                .Select(c => c.GetRaw().GetRaw())
-                .SelectMany(controller => controller.GetBehaviours<VRCAvatarParameterDriver>())
-                .SelectMany(driver => driver.parameters)
-                .Select(prm => prm.name)
-                .ToImmutableHashSet();
-
             var paramsToOptimize = new HashSet<(string,VRCExpressionParameters.ValueType)>();
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
                 
                 var vrcParam = manager.GetParams().GetParam(paramName);
                 if (vrcParam == null) return;
-                var synced = (bool)networkSyncedField.GetValue(vrcParam);
-                if (!synced) return;
-
-                if(drivenParams.Contains(paramName)) return;
+                var networkSynced = (bool)networkSyncedField.GetValue(vrcParam);
+                if (!networkSynced) return;
 
                 if (vrcParam.valueType != VRCExpressionParameters.ValueType.Int &&
                     vrcParam.valueType != VRCExpressionParameters.ValueType.Float) {
