@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -102,7 +103,7 @@ namespace Editor.VF.Feature {
                 .SelectMany(controller => controller.GetBehaviours<VRCAvatarParameterDriver>())
                 .SelectMany(driver => driver.parameters)
                 .Select(prm => prm.name)
-                .ToHashSet();
+                .ToImmutableHashSet();
 
             var floatsToOptimize = new HashSet<AnimatorControllerParameter>();
             void AttemptToAdd(string paramName) {
