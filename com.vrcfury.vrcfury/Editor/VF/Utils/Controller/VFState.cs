@@ -103,14 +103,29 @@ namespace VF.Utils.Controller {
             p.value = delta;
             return this;
         }
-        public VFState DrivesCopy(VFAParam param, VFAParam source) {
+        public VFState DrivesCopy(string from, string to, float fromMin = 0, float fromMax = 0, float toMin = 0, float toMax = 0) {
             var driver = GetDriver();
             var p = new VRC_AvatarParameterDriver.Parameter();
-            p.name = param.Name();
+            p.name = to;
             var sourceField = p.GetType().GetField("source");
             if (sourceField == null) throw new VRCFBuilderException("VRCFury feature failed to build because VRCSDK is outdated");
-            sourceField.SetValue(p, source.Name());
-            // We cast rather than use Copy directly so it doesn't fail to compile on old VRCSDK
+            sourceField.SetValue(p, from);
+
+            if (fromMin != 0 || fromMax != 0) {
+                var sourceMinField = p.GetType().GetField("sourceMin");
+                var sourceMaxField = p.GetType().GetField("sourceMax");
+                var destMinField = p.GetType().GetField("destMin");
+                var destMaxField = p.GetType().GetField("destMax");
+                var convertRangeField = p.GetType().GetField("convertRange");
+                if (sourceMinField == null || sourceMaxField == null || destMinField == null || destMaxField == null || convertRangeField == null)
+                    throw new VRCFBuilderException("VRCFury feature failed to build because VRCSDK is outdated");
+                sourceMinField.SetValue(p, fromMin);
+                sourceMaxField.SetValue(p, fromMax);
+                destMinField.SetValue(p, toMin);
+                destMaxField.SetValue(p, toMax);
+                convertRangeField.SetValue(p, true);
+            }
+
             p.type = (VRC_AvatarParameterDriver.ChangeType)3; //VRC_AvatarParameterDriver.ChangeType.Copy;
             driver.parameters.Add(p);
             return this;

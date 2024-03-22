@@ -79,7 +79,7 @@ public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
             saveStates.Add(saveState);
             var target = digitParams[i];
             var source = i == 0 ? paramInput : digitParams[i - 1];
-            saveState.DrivesCopy(target, source);
+            saveState.DrivesCopy(source, target);
             if (saveStates.Count > 1) {
                 saveStates[saveStates.Count - 2].TransitionsTo(saveState).When(fx.Always());
             } else {

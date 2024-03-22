@@ -31,12 +31,12 @@ namespace Editor.VF.Feature {
                 throw new Exception("Your VRCSDK is too old to support the Unlimited Parameters component.");
             }
 
-            var floatsToOptimize = GetFloatsToOptimize();
-            if (floatsToOptimize.Count <= 2) return; // don't optimize 16 bits or less
-            if (floatsToOptimize.Count > 255) throw new Exception("You have more than 255 floats? o.o");
+            var paramsToOptimize = GetParamsToOptimize();
+            var bits = paramsToOptimize.Sum(p => VRCExpressionParameters.TypeCost(p.type));
+            if (bits <= 16) return; // don't optimize 16 bits or less
 
-            foreach (var param in floatsToOptimize) {
-                var vrcPrm = manager.GetParams().GetParam(param.Name());
+            foreach (var param in paramsToOptimize) {
+                var vrcPrm = manager.GetParams().GetParam(param.name);
                 networkSyncedField.SetValue(vrcPrm, false);
             }
 
@@ -50,20 +50,33 @@ namespace Editor.VF.Feature {
 
             Action addRoundRobins = () => { };
             Action addDefault = () => { };
-            for (int i = 0; i < floatsToOptimize.Count; i++) {
-                var src = floatsToOptimize[i];
-                var lastValue = fx.NewFloat($"{src.Name()}/LastSynced", def: -100);
-                var diff = math.Subtract(src, lastValue);
+            for (int i = 0; i < paramsToOptimize.Count; i++) {
+                var syncIndex = i + 1;
+                var src = paramsToOptimize[i];
+                var lastValue = fx.NewFloat($"{src.name}/LastSynced", def: -100);
 
-                var sendState = layer.NewState($"Send {floatsToOptimize[i].Name()}");
+                var sendState = layer.NewState($"Send {src.name}");
                 if (i == 0) sendState.Move(local, 1, 0);
                 sendState
-                    .DrivesCopy(syncData, src)
-                    .DrivesCopy(lastValue, src)
-                    .Drives(syncPointer, i)
+                    .DrivesCopy(src.name, lastValue)
+                    .Drives(syncPointer, syncIndex)
                     .TransitionsTo(local)
                     .WithTransitionExitTime(0.1f)
                     .When(fx.Always());
+                
+                VFAFloat currentValue;
+                if (src.type == VRCExpressionParameters.ValueType.Float) {
+                    currentValue = fx.NewFloat(src.name, usePrefix: false);
+                    sendState.DrivesCopy(src.name, syncData);
+                } else if (src.type == VRCExpressionParameters.ValueType.Int) {
+                    currentValue = fx.NewFloat($"{src.name}/Current");
+                    local.DrivesCopy(src.name, currentValue);
+                    sendState.DrivesCopy(src.name, syncData, 0, 255, -1, 1);
+                } else {
+                    throw new Exception("Unknown type?");
+                }
+                var diff = math.Subtract(currentValue, lastValue);
+                
                 local.TransitionsTo(sendState)
                     .When(diff.AsFloat().IsLessThan(0).Or(diff.AsFloat().IsGreaterThan(0)));
                 if (i == 0) {
@@ -71,7 +84,7 @@ namespace Editor.VF.Feature {
                         local.TransitionsTo(sendState).When(fx.Always());
                     };
                 } else {
-                    var fromI = i - 1; // Needs to be set outside the lambda
+                    var fromI = syncIndex - 1; // Needs to be set outside the lambda
                     addRoundRobins += () => {
                         local.TransitionsTo(sendState).When(syncPointer.IsEqualTo(fromI));
                     };
@@ -83,21 +96,28 @@ namespace Editor.VF.Feature {
             // Receive
             var remote = layer.NewState("Remote").Move(local, 2, 0);
             entry.TransitionsTo(remote).When(fx.Always());
-            for (int i = 0; i < floatsToOptimize.Count; i++) {
-                var dst = floatsToOptimize[i];
-                var receiveState = layer.NewState($"Receive {floatsToOptimize[i].Name()}");
+            for (int i = 0; i < paramsToOptimize.Count; i++) {
+                var syncIndex = i + 1;
+                var dst = paramsToOptimize[i];
+                var receiveState = layer.NewState($"Receive {dst.name}");
                 if (i == 0) receiveState.Move(remote, 1, 0);
                 receiveState
-                    .DrivesCopy(dst, syncData)
                     .TransitionsTo(remote)
                     .When(fx.Always());
-                remote.TransitionsTo(receiveState).When(syncPointer.IsEqualTo(i));
+                if (dst.type == VRCExpressionParameters.ValueType.Float) {
+                    receiveState.DrivesCopy(syncData, dst.name);
+                } else if (dst.type == VRCExpressionParameters.ValueType.Int) {
+                    receiveState.DrivesCopy(syncData, dst.name, -1, 1, 0, 255);
+                } else {
+                    throw new Exception("Unknown type?");
+                }
+                remote.TransitionsTo(receiveState).When(syncPointer.IsEqualTo(syncIndex));
             }
 
-            Debug.Log($"Radial Toggle Optimizer: Reduced {floatsToOptimize.Count * 8} bits into 16 bits.");
+            Debug.Log($"Radial Toggle Optimizer: Reduced {bits} bits into 16 bits.");
         }
 
-        private List<VFAFloat> GetFloatsToOptimize() {
+        private IList<(string name,VRCExpressionParameters.ValueType type)> GetParamsToOptimize() {
             var drivenParams = manager.GetAllUsedControllers()
                 .Select(c => c.GetRaw().GetRaw())
                 .SelectMany(controller => controller.GetBehaviours<VRCAvatarParameterDriver>())
@@ -105,7 +125,7 @@ namespace Editor.VF.Feature {
                 .Select(prm => prm.name)
                 .ToImmutableHashSet();
 
-            var floatsToOptimize = new HashSet<AnimatorControllerParameter>();
+            var paramsToOptimize = new HashSet<(string,VRCExpressionParameters.ValueType)>();
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
                 
@@ -114,23 +134,29 @@ namespace Editor.VF.Feature {
                 var synced = (bool)networkSyncedField.GetValue(vrcParam);
                 if (!synced) return;
 
-                var animParam = GetFx().GetRaw().GetParam(paramName);
-                if (animParam == null || animParam.type != AnimatorControllerParameterType.Float) return;
-                
                 if(drivenParams.Contains(paramName)) return;
 
-                floatsToOptimize.Add(animParam);
+                if (vrcParam.valueType != VRCExpressionParameters.ValueType.Int &&
+                    vrcParam.valueType != VRCExpressionParameters.ValueType.Float) {
+                    return;
+                }
+
+                paramsToOptimize.Add((paramName, vrcParam.valueType));
             }
 
             manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
                     AttemptToAdd(control.GetSubParameter(0)?.name);
                 }
+                if (control.type == VRCExpressionsMenu.Control.ControlType.Button
+                    || control.type == VRCExpressionsMenu.Control.ControlType.Toggle) {
+                    AttemptToAdd(control.parameter?.name);
+                }
 
                 return Continue;
             });
-            
-            return floatsToOptimize.Select(prm => new VFAFloat(prm)).ToList();
+
+            return paramsToOptimize.Take(255).ToList();
         }
 
         public override string GetEditorTitle() {
