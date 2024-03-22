@@ -34,8 +34,6 @@ namespace VF.Feature.Base {
         ApplyImplicitRestingStates,
 
         Default,
-        //Needs to happen after Toggles and Full Controller
-        RadialToggleOptimizer,
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
         // Needs to run after all possible toggles have been created and applied
@@ -76,6 +74,7 @@ namespace VF.Feature.Base {
         ApplyToggleRestingState,
 
         // Finalize Controllers
+        UnlimitedParameters,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
