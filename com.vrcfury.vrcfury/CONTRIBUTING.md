@@ -62,6 +62,7 @@ For more information, please refer to <https://unlicense.org>
   * Fixed toggles possibly being in the wrong state for one frame upon loading
   * Added ability for toggles to "play to completion"
   * Added transition time support to Toggles
+  * Added popup warning when you're in android mode but don't have any valid mats
 * Happyrobot33
   * Added support for excluded global params in Full Controller
 * KaelanDuck
@@ -82,6 +83,8 @@ For more information, please refer to <https://unlicense.org>
   * Added drop-in box for quickly setting bones in Armature Link
 * Raphiiko
   * Added global parameters for Toggles
+* sentfromspacevr
+  * Added pointer-based float syncing
 * TayouVR
   * Added Logging to Blendshape Optimizer
   * Improved log outputs from exception handling
