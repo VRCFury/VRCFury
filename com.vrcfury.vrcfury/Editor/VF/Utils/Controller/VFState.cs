@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -58,17 +59,19 @@ namespace VF.Utils.Controller {
             return this;
         }
 
-        public VRCAvatarParameterDriver GetDriver(bool local = false) {
-            foreach (var b in node.state.behaviours) {
-                var d = b as VRCAvatarParameterDriver;
-                if (d && d.localOnly == local) return d;
+        private VRCAvatarParameterDriver GetDriver() {
+            var exists = node.state.behaviours
+                .OfType<VRCAvatarParameterDriver>()
+                .FirstOrDefault(b => !b.localOnly);
+            if (exists != null) {
+                return exists;
             }
             var driver = node.state.VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-            driver.localOnly = local;
+            driver.localOnly = false;
             return driver;
         }
         private VRC_AvatarParameterDriver.Parameter Drives(string param) {
-            var driver = GetDriver(false);
+            var driver = GetDriver();
             var p = new VRC_AvatarParameterDriver.Parameter();
             p.name = param;
             p.type = VRC_AvatarParameterDriver.ChangeType.Set;

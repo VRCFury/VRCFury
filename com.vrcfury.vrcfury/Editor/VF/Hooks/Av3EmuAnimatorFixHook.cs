@@ -47,7 +47,6 @@ namespace VF.Hooks {
         }
 
         private static void RestartAv3Emulator() {
-            return;
             try {
                 var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator");
                 if (av3EmulatorType == null) av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
