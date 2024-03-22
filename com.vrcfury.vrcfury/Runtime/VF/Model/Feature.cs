@@ -1015,8 +1015,4 @@ namespace VF.Model.Feature {
     public class SecurityRestricted : NewFeatureModel {
     }
 
-    [Serializable]
-    public class OptimizeParams : NewFeatureModel {
-    }
-
 }

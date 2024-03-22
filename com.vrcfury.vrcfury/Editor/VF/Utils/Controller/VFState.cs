@@ -101,17 +101,12 @@ namespace VF.Utils.Controller {
             return this;
         }
         public VFState DrivesCopy(VFAParam param, VFAParam source, bool local = true) {
-            DrivesCopy(param.Name(), source.Name());
-            return this;
-        }
-
-        public VFState DrivesCopy(string param, string source, bool local = true) {
-            var driver = GetDriver(local);
+            var driver = GetDriver(true);
             var p = new VRC_AvatarParameterDriver.Parameter();
-            p.name = param;
+            p.name = param.Name();
             var sourceField = p.GetType().GetField("source");
             if (sourceField == null) throw new VRCFBuilderException("VRCFury feature failed to build because VRCSDK is outdated");
-            sourceField.SetValue(p, source);
+            sourceField.SetValue(p, source.Name());
             // We cast rather than use Copy directly so it doesn't fail to compile on old VRCSDK
             p.type = (VRC_AvatarParameterDriver.ChangeType)3; //VRC_AvatarParameterDriver.ChangeType.Copy;
             driver.parameters.Add(p);

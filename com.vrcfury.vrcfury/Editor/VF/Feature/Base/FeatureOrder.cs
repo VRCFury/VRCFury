@@ -103,7 +103,6 @@ namespace VF.Feature.Base {
 
         // Finalize Parameters
         FixBadParameters,
-        OptimizeParams,
         FinalizeParams,
 
         MarkThingsAsDirtyJustInCase,
