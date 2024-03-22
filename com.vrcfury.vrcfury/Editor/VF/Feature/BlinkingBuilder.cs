@@ -9,6 +9,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
@@ -65,7 +66,6 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             var waitTrue = layer.NewState("Waiting (true)").Move(waitFalse, 1, 0);
             var checkActive = layer.NewState("Check Active").Move(waitFalse, 0, 1);
             var blinkStart = layer.NewState("Blink Start").Move(checkActive, 1, 0);
-            var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 1, 0);
 
             idle.TransitionsTo(waitFalse).When(blinkTriggerSynced.IsFalse());
             idle.TransitionsTo(waitTrue).When(blinkTriggerSynced.IsTrue());
@@ -79,13 +79,23 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
                 }
                 checkActive.TransitionsTo(blinkStart).When(fx.Always());
             });
-            blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
-            if (holdDuration > 0) {
-                var hold = layer.NewState("Hold").WithAnimation(blinkClip).Move(blink, 1, 0);
-                blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(fx.Always());
-                hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+
+            if (blinkClip.IsStatic()) {
+                var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 1, 0);
+                blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                if (holdDuration > 0) {
+                    var hold = layer.NewState("Hold").WithAnimation(blinkClip).Move(blink, 1, 0);
+                    blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(fx.Always());
+                    hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                } else {
+                    blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                }
             } else {
-                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                blinkStart
+                    .WithAnimation(blinkClip)
+                    .TransitionsTo(idle)
+                    .WithTransitionExitTime(1)
+                    .When(fx.Always());
             }
         }
     }

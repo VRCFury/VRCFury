@@ -24,21 +24,15 @@ namespace VF.Builder {
             VAddStateMachineBehaviour(machine, typeof (T)) as T;
 
         public static void ThrowProbablyCompileErrorException(string msg) {
-            var output = msg;
-            output += " Usually this means you have an error in one of your other non-vrcfury packages. Delete or upgrade it to resolve the issue.";
-            output += "\n\n";
             var errors = ErrorCatcher.Errors;
             if (errors.Count > 0) {
-                output += "Detected error:\n";
-                output += errors.First();
-            } else {
-                output += "Press Ctrl+Shift+C, click clear, then look at the errors that remain.";
+                throw new SneakyException(
+                    "One of the scripts in your project failed to compile. You should either remove, upgrade, or reinstall the broken plugin:\n\n" +
+                    errors.First());
             }
 
-            output += "\n\n";
-            output += "If nothing fixes it, report on https://vrcfury.com/discord";
-
-            throw new VRCFBuilderException(output);
+            throw new SneakyException(
+                "One of the scripts in your project failed to compile. Press Ctrl+Shift+C, click Clear, then fix the errors that remain (do not run another build first)");
         }
     }
 }

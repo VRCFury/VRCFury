@@ -33,7 +33,6 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
         }
 
-        var fx = GetFx();
         var VisemeParam = fx.NewFloat("Viseme", usePrefix: false);
         var VolumeParam = fx.NewFloat("Voice", usePrefix: false);
 
@@ -61,7 +60,13 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
         directTree.Add(enabled, volumeTree);
 
         void addViseme(int index, string text, State clipState) {
-            var clip = actionClipService.LoadState(text, clipState);
+            var _clip = actionClipService.LoadState(text, clipState);
+
+            // Ensure it's only one frame, since it's going into the main direct blendtree
+            var clip = new AnimationClip();
+            clip.name = "Viseme " + text;
+            clip.CopyFromLast(_clip);
+
             var intensityRaw = math.SetValueWithConditions(
                 $"{text}Raw",
                 (1, math.Equals(VisemeParam, index)),

@@ -21,6 +21,11 @@ namespace VF.Utils {
         public static EditorCurveBinding[] GetAllBindings(this AnimationClip clip) {
             return clip.GetFloatBindings().Concat(clip.GetObjectBindings()).ToArray();
         }
+
+        public static FloatOrObjectCurve GetCurve(this AnimationClip clip, EditorCurveBinding binding, bool isFloat) {
+            if (isFloat) return clip.GetFloatCurve(binding);
+            return clip.GetObjectCurve(binding);
+        }
         
         public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {
             return AnimationUtility.GetEditorCurve(clip, binding);

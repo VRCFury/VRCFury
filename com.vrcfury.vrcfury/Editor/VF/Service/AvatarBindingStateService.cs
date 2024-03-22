@@ -25,34 +25,73 @@ namespace VF.Service {
                 HandleMaterialProperties(binding, value);
             }
         }
+
+        public bool Get(EditorCurveBinding binding, bool isFloat, out FloatOrObject data, bool trustUnity = false) {
+            if (isFloat) {
+                var r = GetFloat(binding, out var d, trustUnity);
+                data = d;
+                return r;
+            } else {
+                var r = GetObject(binding, out var d, trustUnity);
+                data = d;
+                return r;
+            }
+        }
         
-        public bool GetFloat(EditorCurveBinding binding, out float data) {
+        public bool GetFloat(EditorCurveBinding binding, out float data, bool trustUnity = false) {
             // Unity always pulls material properties from the first material, even if it doesn't have the property.
             // We improve on this by pulling from the first material that actually has it.
-            if (binding.propertyName.StartsWith("material.")) {
-                var matProp = binding.propertyName.Substring("material.".Length);
-                if (TryFindObject(binding, out var obj) && forcedMaterialProperties.TryGetValue((obj, matProp), out var forcedValue)) {
-                    data = forcedValue;
-                    return true;
+            if (TryParseMaterialProperty(binding, out var matProp)) {
+                if (!trustUnity) {
+                    if (TryFindObject(binding, out var obj) &&
+                        forcedMaterialProperties.TryGetValue((obj, matProp), out var forcedValue)) {
+                        data = forcedValue;
+                        return true;
+                    }
                 }
+
                 if (TryFindComponent<Renderer>(binding, out var renderer)) {
-                    foreach (var mat in renderer.sharedMaterials.NotNull()) {
-                        if (mat.HasProperty(matProp)) {
-                            data = mat.GetFloat(matProp);
-                            return true;
+                    if (trustUnity) {
+                        // For some reason, in game, the default value only ever pulls from the first material slot
+                        // However, in editor, AnimationUtility.GetFloatValue pulls from all slots. We need to replicate
+                        // the in-game behaviour here so that FixWriteDefaults knows to record defaults affected by this
+                        if (renderer.sharedMaterials.Length < 1 || renderer.sharedMaterials[0] == null ||
+                            !renderer.sharedMaterials[0].HasProperty(matProp)) {
+                            data = 0;
+                            return false;
+                        }
+                    } else {
+                        foreach (var mat in renderer.sharedMaterials.NotNull()) {
+                            if (mat.HasProperty(matProp)) {
+                                data = mat.GetFloat(matProp);
+                                return true;
+                            }
                         }
                     }
                 }
             }
+
             return AnimationUtility.GetFloatValue(avatarObject, binding, out data);
         }
-        public bool GetObject(EditorCurveBinding binding, out Object data) {
-            // Unity incorrectly says that material slots do not exist at all if the material in the slot is unset (null)
-            if (TryParseMaterialSlot(binding, out var renderer, out var slotNum)) {
-                data = renderer.sharedMaterials[slotNum];
+        public bool GetObject(EditorCurveBinding binding, out Object data, bool trustUnity = false) {
+            if (!trustUnity) {
+                // Unity incorrectly says that material slots do not exist at all if the material in the slot is unset (null)
+                if (TryParseMaterialSlot(binding, out var renderer, out var slotNum)) {
+                    data = renderer.sharedMaterials[slotNum];
+                    return true;
+                }
+            }
+
+            return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+        }
+
+        private static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
+            if (binding.propertyName.StartsWith("material.")) {
+                propertyName = binding.propertyName.Substring("material.".Length);
                 return true;
             }
-            return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+            propertyName = null;
+            return false;
         }
         
         private bool TryFindObject(EditorCurveBinding binding, out VFGameObject obj) {
@@ -108,8 +147,7 @@ namespace VF.Service {
         
         private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObject val) {
             if (!val.IsFloat()) return;
-            if (!binding.propertyName.StartsWith("material.")) return;
-            var propName = binding.propertyName.Substring("material.".Length);
+            if (!TryParseMaterialProperty(binding, out var propName)) return;
             if (!TryFindComponent<Renderer>(binding, out var renderer)) return;
 
             forcedMaterialProperties[(renderer.owner(), propName)] = val.GetFloat();

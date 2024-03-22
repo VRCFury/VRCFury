@@ -88,11 +88,6 @@ namespace VF.Feature {
                 try {
                     VFGameObject obj = socket.owner();
                     PhysboneUtils.RemoveFromPhysbones(socket.owner());
-                    addOtherFeature(new ShowInFirstPerson {
-                        useObjOverride = true,
-                        objOverride = socket.owner(),
-                        onlyIfChildOfHead = true
-                    });
 
                     var name = VRCFuryHapticSocketEditor.GetName(socket);
                     name = uniqueHapticNamesService.GetUniqueName(name);
@@ -100,6 +95,12 @@ namespace VF.Feature {
 
                     var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket, hapticContacts);
                     if (bakeRoot == null) continue;
+                    
+                    addOtherFeature(new ShowInFirstPerson {
+                        useObjOverride = true,
+                        objOverride = bakeRoot,
+                        onlyIfChildOfHead = true
+                    });
                     
                     if (HapticsToggleMenuItem.Get() && !socket.sendersOnly) {
                         // Haptic receivers
