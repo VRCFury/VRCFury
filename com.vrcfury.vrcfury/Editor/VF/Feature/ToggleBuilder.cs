@@ -59,14 +59,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         return exclusiveParam;
     }
 
-    private (string,bool) GetParamName() {
+    private (string,bool,bool) GetParamName() {
         if (model.paramOverride != null) {
-            return (model.paramOverride, false);
+            return (model.paramOverride, false, false);
         }
         if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
-            return (model.globalParam, false);
+            return (model.globalParam, false, false);
         }
-        return (model.name, model.usePrefixOnParam);
+        var existingParam = manager.GetMenu().GetMenuParam(model.name, model.slider);
+        if (existingParam != null) {
+            return (existingParam, false, true);
+        }
+        return (model.name, model.usePrefixOnParam, false);
     }
 
     [FeatureBuilderAction]
@@ -81,7 +85,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             synced = false;
         }
 
-        var (paramName, usePrefixOnParam) = GetParamName();
+        var (paramName, usePrefixOnParam, menuItemAlreadyMade) = GetParamName();
         VFCondition onCase;
         VFAFloat weight = null;
         bool defaultOn;
@@ -97,7 +101,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
             defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
             weight = param;
-            if (addMenuItem) {
+            if (addMenuItem && !menuItemAlreadyMade) {
                 manager.GetMenu().NewMenuSlider(
                     model.name,
                     param,
@@ -114,7 +118,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             exclusiveParam = param;
             onCase = param.IsTrue();
             defaultOn = model.defaultOn;
-            if (addMenuItem) {
+            if (addMenuItem && !menuItemAlreadyMade) {
                 if (model.holdButton) {
                     manager.GetMenu().NewMenuButton(
                         model.name,

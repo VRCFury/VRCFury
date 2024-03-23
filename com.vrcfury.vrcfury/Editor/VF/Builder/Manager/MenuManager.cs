@@ -231,6 +231,28 @@ namespace VF.Builder {
             control.icon = icon;
         }
 
+        public string GetMenuParam(string path, bool isFloat) {
+            var split = SplitPath(path);
+            if (split.Count == 0) split = new[] { "" };
+            var name = split[split.Count-1];
+            var submenu = GetSubmenu(Slice(split, split.Count-1));
+            foreach (var control in submenu.controls) {
+                if (control.name == name) {
+                    switch(control.type) 
+                    {
+                        case VRCExpressionsMenu.Control.ControlType.Button:
+                        case VRCExpressionsMenu.Control.ControlType.Toggle:
+                            if (!isFloat && control.value == 1) return control.parameter.name;
+                            break;
+                        case VRCExpressionsMenu.Control.ControlType.RadialPuppet:
+                            if (isFloat) return control.parameter.name;
+                            break;
+                    }
+                }
+            }
+            return null;
+        }
+
         private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
