@@ -98,6 +98,7 @@ For more information, please refer to <https://unlicense.org>
   * Add option for using local space for socket units
   * Add option for exact matching in BlendShapeLink
   * Allow configuring whether ring sockets are bidirectional
+  * Ensure minimum distance to rings to avoid excessive roll
 * Toys0125
   * Added Poiyomi UV Tile action type
 * wholesomevr
