@@ -510,14 +510,15 @@ namespace VF.Builder.Haptics {
                 var before = match.Groups[1].ToString();
                 var path = match.Groups[2].ToString();
                 var after = match.Groups[3].ToString();
-                if (path.StartsWith("/")) path = path.Substring(1);
                 string fullPath;
                 var attempts = new List<string>();
                 var isLib = false;
-                if (filePath == null) {
+                {
                     fullPath = path;
                     attempts.Add(fullPath);
-                } else {
+                }
+                if (path.StartsWith("/")) path = path.Substring(1);
+                if (filePath != null && !File.Exists(fullPath)) {
                     var p = path;
                     fullPath = Path.GetDirectoryName(filePath);
                     while (p.StartsWith("..")) {
