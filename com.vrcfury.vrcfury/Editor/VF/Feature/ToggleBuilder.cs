@@ -140,6 +140,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
 
         if (model.separateLocal) {
             var isLocal = fx.IsLocal().IsTrue();
+            if(model.localIncludeFriends) isLocal = isLocal.Or(fx.IsOnFriendsList().IsTrue());
             Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
             Apply(fx, layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
         } else {
@@ -511,6 +512,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var remoteSingle = MakeSingle("transitionStateIn", "state", "transitionStateOut", "transitionTimeIn", "transitionTimeOut");
             var c = new VisualElement();
             if (separateLocalProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("localIncludeFriends"), "Include friends with local", tooltip: "" +
+                    "When checked, 'local' will toggle for yourself & friends, and 'remote' will only toggle for strangers."));
                 var localSingle = MakeSingle("localTransitionStateIn", "localState", "localTransitionStateOut", "localTransitionTimeIn", "localTransitionTimeOut");
                 c.Add(MakeTabbed("In local:", localSingle));
                 c.Add(MakeTabbed("In remote:", remoteSingle));
