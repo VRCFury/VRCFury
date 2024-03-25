@@ -61,18 +61,6 @@ namespace VF.Hooks {
                 var runHooksField =
                     av3EmulatorType.GetField("RunPreprocessAvatarHook", BindingFlags.Instance | BindingFlags.Public);
                 if (runHooksField == null) throw new Exception("Failed to find RunPreprocessAvatarHook field");
-                    
-                foreach (var contactReceiver in avatar.GetComponentsInChildren<VRCContactReceiver>()) contactReceiver.paramAccess = null;
-                foreach (var physBone in avatar.GetComponentsInChildren<VRCPhysBone>())
-                {
-                    foreach (var fieldInfo in typeof(VRCPhysBoneBase).GetFields())
-                    {
-                        if (fieldInfo.FieldType == typeof(IAnimParameterAccess))
-                        {
-                            fieldInfo.SetValue(physBone, null);
-                        }
-                    }
-                }
                 
                 DestroyAllOfType("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime");
                 DestroyAllOfType("LyumaAv3Runtime");
@@ -91,6 +79,21 @@ namespace VF.Hooks {
                     restartField.SetValue(emulator, true);
                 }
 
+                if (emulators != null && emulators.Length >= 1)
+                {
+                    foreach (var contactReceiver in avatar.GetComponentsInChildren<VRCContactReceiver>()) contactReceiver.paramAccess = null;
+                    foreach (var physBone in avatar.GetComponentsInChildren<VRCPhysBone>())
+                    {
+                        foreach (var fieldInfo in typeof(VRCPhysBoneBase).GetFields())
+                        {
+                            if (fieldInfo.FieldType == typeof(IAnimParameterAccess))
+                            {
+                                fieldInfo.SetValue(physBone, null);
+                            }
+                        }
+                    }
+                }
+                
                 foreach (var root in VFGameObject.GetRoots()) {
                     if (PlayModeTrigger.IsAv3EmulatorClone(root)) {
                         root.Destroy();
