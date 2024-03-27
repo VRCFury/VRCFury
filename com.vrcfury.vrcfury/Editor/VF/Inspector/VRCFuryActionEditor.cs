@@ -293,12 +293,8 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 var rendererProp = prop.FindPropertyRelative("renderer");
                 content.Add(RendererSelector(allRenderersProp, rendererProp));
 
-                var row = new VisualElement().Row();
                 var blendshapeProp = prop.FindPropertyRelative("blendShape");
-                row.Add(VRCFuryEditorUtils.Prop(blendshapeProp, "Blendshape").FlexGrow(1));
-                var selectButton = new Button(SelectButtonPress) { text = "Search" };
-                row.Add(selectButton);
-                content.Add(row);
+                content.Add(BlendshapeSelector(avatarObject, blendshapeProp, allRenderersProp, rendererProp));
 
                 var valueProp = prop.FindPropertyRelative("blendShapeValue");
                 var valueField = VRCFuryEditorUtils.Prop(valueProp, "Value (0-100)");
@@ -313,36 +309,6 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                     }
                 });
                 content.Add(valueField);
-
-                void SelectButtonPress() {
-                    var window = new VrcfSearchWindow("Blendshapes");
-                    var allRenderers = allRenderersProp.boolValue;
-                    var singleRenderer = rendererProp.objectReferenceValue as Renderer;
-
-                    var shapes = new Dictionary<string, string>();
-                    if (avatarObject != null) {
-                        foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                            if (!allRenderers && skin != singleRenderer) continue;
-                            foreach (var bs in skin.GetBlendshapeNames()) {
-                                if (shapes.ContainsKey(bs)) {
-                                    shapes[bs] += ", " + skin.owner().name;
-                                } else {
-                                    shapes[bs] = skin.owner().name;
-                                }
-                            }
-                        }
-                    }
-
-                    var mainGroup = window.GetMainGroup();
-                    foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
-                        mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
-                    }
-                    
-                    window.Open(value => {
-                        blendshapeProp.stringValue = value;
-                        Apply();
-                    });
-                }
 
                 return content;
             }
@@ -397,7 +363,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         return label;
     }
 
-    private static VisualElement RendererSelector(SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
+    public static VisualElement RendererSelector(SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
         var content = new VisualElement();
 
         var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers");
@@ -417,6 +383,43 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         UpdateVisibility();
         allRenderersField.RegisterCallback<ChangeEvent<bool>>(e => UpdateVisibility());
         return content;
+    }
+
+    public static VisualElement BlendshapeSelector(VFGameObject avatarObject, SerializedProperty blendshapeProp, SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
+        var row = new VisualElement().Row();
+        row.Add(VRCFuryEditorUtils.Prop(blendshapeProp, "Blendshape").FlexGrow(1));
+        row.Add(new Button(SearchBlendshape) { text = "Search" });
+        return row;
+
+        void SearchBlendshape() {
+            var window = new VrcfSearchWindow("Blendshapes");
+            var allRenderers = allRenderersProp.boolValue;
+            var singleRenderer = rendererProp.objectReferenceValue as Renderer;
+
+            var shapes = new Dictionary<string, string>();
+            if (avatarObject != null) {
+                foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                    if (!allRenderers && skin != singleRenderer) continue;
+                    foreach (var bs in skin.GetBlendshapeNames()) {
+                        if (shapes.ContainsKey(bs)) {
+                            shapes[bs] += ", " + skin.owner().name;
+                        } else {
+                            shapes[bs] = skin.owner().name;
+                        }
+                    }
+                }
+            }
+
+            var mainGroup = window.GetMainGroup();
+            foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
+                mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
+            }
+            
+            window.Open((blenshape) => {
+                blendshapeProp.stringValue = blenshape;
+                blendshapeProp.serializedObject.ApplyModifiedProperties();
+            });
+        }
     }
 
     [CustomPropertyDrawer(typeof(FlipBookBuilderAction.FlipBookPage))]

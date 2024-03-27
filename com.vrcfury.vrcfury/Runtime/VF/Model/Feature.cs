@@ -483,6 +483,13 @@ namespace VF.Model.Feature {
     }
 
     [Serializable]
+    public class RemoveBlendshapeVertices : NewFeatureModel {
+        public bool allRenderers;
+        public SkinnedMeshRenderer renderer;
+        public string blendshape;
+    }
+
+    [Serializable]
     public class Visemes : NewFeatureModel {
         [Obsolete] public float transitionTime = -1;
         [Obsolete] public State state_sil;
