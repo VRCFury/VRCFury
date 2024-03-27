@@ -68,7 +68,7 @@ public class RemoveBlendshapeVerticesBuilder : FeatureBuilder<RemoveBlendshapeVe
 
         var uvList = new List<Vector4>(original.vertexCount);
         for (int i = 0; i < 8; i++) {
-            if (mesh.HasVertexAttribute(VertexAttribute.TexCoord0 + i)) {
+            if (original.HasVertexAttribute(VertexAttribute.TexCoord0 + i)) {
                 original.GetUVs(i, uvList);
                 mesh.SetUVs(i, uvList.Where((_, j) => verticesToRemove[j] == false).ToList());
             }
