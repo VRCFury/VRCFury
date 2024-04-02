@@ -46,8 +46,8 @@ jobs:
             unzip "vrcsdk.zip" -d "$PROJECT_PATH/Assets"
           else
             MANIFEST="$(curl 'https://vrchat.github.io/packages/index.json')"
-            AV_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.avatars\".versions.\"$VERSION\".url" --raw-output)"
-            BASE_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.base\".versions.\"$VERSION\".url" --raw-output)"
+            AV_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.avatars\".versions.\"${{ matrix.vrcsdkVersion }}\".url" --raw-output)"
+            BASE_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.base\".versions.\"${{ matrix.vrcsdkVersion }}\".url" --raw-output)"
             curl -L -o "avatars.zip" "$AV_URL"
             curl -L -o "base.zip" "$BASE_URL"
             mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
