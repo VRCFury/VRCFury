@@ -17,8 +17,12 @@ namespace VF.Feature {
             VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
             Directory.CreateDirectory(tmpDir);
 
+#if UNITY_2022_1_OR_NEWER
+            tempAsset = null;
+#else
             tempAsset = new AnimatorController();
             VRCFuryAssetDatabase.SaveAsset(tempAsset, tmpDir, "tempStorage");
+#endif
         }
 
         private static Object tempAsset;
@@ -28,7 +32,7 @@ namespace VF.Feature {
          * along with whatever else the method added to the asset.
          */
         public static void WithTemporaryPersistence(Object obj, Action with) {
-            if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(obj))) {
+            if (tempAsset == null || !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(obj))) {
                 with();
                 return;
             }
