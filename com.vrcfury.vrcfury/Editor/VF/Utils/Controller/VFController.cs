@@ -308,7 +308,7 @@ namespace VF.Utils.Controller {
             }).ToArray();
 
         }
-        
+
         public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
             string RewriteParamName(string str) {
                 if (string.IsNullOrEmpty(str)) return str;
@@ -345,21 +345,25 @@ namespace VF.Utils.Controller {
                 }
                 VRCFuryEditorUtils.MarkDirty(state);
             }
-
-            // Parameter Drivers
-            if (includeWrites) {
-                foreach (var b in new AnimatorIterator.Behaviours().From(affectsLayers)) {
-                    if (b is VRCAvatarParameterDriver oldB) {
-                        foreach (var p in oldB.parameters) {
-                            p.name = RewriteParamName(p.name);
-                            var sourceField = p.GetType().GetField("source");
-                            if (sourceField != null) {
-                                sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
-                            }
-                        }
-                        VRCFuryEditorUtils.MarkDirty(b);
+            
+            foreach (var b in new AnimatorIterator.Behaviours().From(affectsLayers)) {
+                // VRCAvatarParameterDriver
+                if (includeWrites && b is VRCAvatarParameterDriver oldB) {
+                    foreach (var p in oldB.parameters) {
+                        p.name = RewriteParamName(p.name);
+#if VRCSDK_HAS_DRIVER_COPY
+                        p.source = RewriteParamName(p.source);
+#endif
                     }
+                    VRCFuryEditorUtils.MarkDirty(b);
                 }
+
+                // VRCAnimatorPlayAudio
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+                if (b is VRCAnimatorPlayAudio audio) {
+                    audio.ParameterName = RewriteParamName(audio.ParameterName);
+                }
+#endif
             }
 
             // Parameter Animations

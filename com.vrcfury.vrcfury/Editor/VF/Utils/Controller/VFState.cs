@@ -104,31 +104,27 @@ namespace VF.Utils.Controller {
             return this;
         }
         public VFState DrivesCopy(string from, string to, float fromMin = 0, float fromMax = 0, float toMin = 0, float toMax = 0) {
+#if ! VRCSDK_HAS_DRIVER_COPY
+            throw new Exception("VRCFury feature failed to build because VRCSDK is outdated");
+#else
             var driver = GetDriver();
-            var p = new VRC_AvatarParameterDriver.Parameter();
-            p.name = to;
-            var sourceField = p.GetType().GetField("source");
-            if (sourceField == null) throw new VRCFBuilderException("VRCFury feature failed to build because VRCSDK is outdated");
-            sourceField.SetValue(p, from);
+            var p = new VRC_AvatarParameterDriver.Parameter {
+                name = to,
+                source = from
+            };
 
             if (fromMin != 0 || fromMax != 0) {
-                var sourceMinField = p.GetType().GetField("sourceMin");
-                var sourceMaxField = p.GetType().GetField("sourceMax");
-                var destMinField = p.GetType().GetField("destMin");
-                var destMaxField = p.GetType().GetField("destMax");
-                var convertRangeField = p.GetType().GetField("convertRange");
-                if (sourceMinField == null || sourceMaxField == null || destMinField == null || destMaxField == null || convertRangeField == null)
-                    throw new VRCFBuilderException("VRCFury feature failed to build because VRCSDK is outdated");
-                sourceMinField.SetValue(p, fromMin);
-                sourceMaxField.SetValue(p, fromMax);
-                destMinField.SetValue(p, toMin);
-                destMaxField.SetValue(p, toMax);
-                convertRangeField.SetValue(p, true);
+                p.sourceMin = fromMin;
+                p.sourceMax = fromMax;
+                p.destMin = toMin;
+                p.destMax = toMax;
+                p.convertRange = true;
             }
 
-            p.type = (VRC_AvatarParameterDriver.ChangeType)3; //VRC_AvatarParameterDriver.ChangeType.Copy;
+            p.type = VRC_AvatarParameterDriver.ChangeType.Copy;
             driver.parameters.Add(p);
             return this;
+#endif
         }
 
         public VFEntryTransition TransitionsFromEntry() {

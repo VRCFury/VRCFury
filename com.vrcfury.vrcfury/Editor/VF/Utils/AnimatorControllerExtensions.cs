@@ -27,6 +27,15 @@ namespace VF.Utils {
                     .Select(rewriter.RewritePath)
                     .Where(path => path != null));
             }
+            
+            // Rewrite VRCAnimatorPlayAudio
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+            foreach (var b in new AnimatorIterator.Behaviours().From(c)) {
+                if (b is VRCAnimatorPlayAudio audio) {
+                    audio.SourcePath = rewriter.RewritePath(audio.SourcePath);
+                }
+            }
+#endif
         }
     }
 }
