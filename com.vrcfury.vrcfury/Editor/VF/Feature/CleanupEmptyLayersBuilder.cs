@@ -21,24 +21,13 @@ namespace VF.Feature {
 
                 // Delete bindings targeting things that don't exist
                 foreach (var clip in new AnimatorIterator.Clips().From(c.GetRaw())) {
-                    var originalLength = clip.length;
                     clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                        if (binding.path == "__vrcf_length") {
-                            return null;
-                        }
                         if (!binding.IsValid(avatarObject)) {
                             removedBindings.Add($"{binding.PrettyString()} from {clip.name}");
                             return null;
                         }
                         return binding;
                     }));
-                    var newLength = clip.length;
-                    if (originalLength != newLength) {
-                        clip.SetFloatCurve(
-                            EditorCurveBinding.FloatCurve("__vrcf_length", typeof(GameObject), "m_IsActive"),
-                            AnimationCurve.Constant(0, originalLength, 0)
-                        );
-                    }
                 }
 
                 if (removedBindings.Count > 0) {
