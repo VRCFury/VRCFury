@@ -41,13 +41,20 @@ jobs:
 
       - name: Download VRCSDK
         run: |
-          if [[ "${{ matrix.vrcsdkVersion }}" == "2022.06.03.00.04" ]]; then
+          VERSION="${{ matrix.vrcsdkVersion }}"
+          echo "Downloading VRCSDK $VERSION"
+
+          if [[ "$VERSION" == "2022.06.03.00.04" ]]; then
             curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
             unzip "vrcsdk.zip" -d "$PROJECT_PATH/Assets"
           else
-            MANIFEST="$(curl 'https://vrchat.github.io/packages/index.json')"
+            MANIFEST_URL="https://vrchat.github.io/packages/index.json"
+            echo "Downloading manifest from $MANIFEST_URL"
+            MANIFEST="$(curl "$MANIFEST_URL")"
             AV_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.avatars\".versions.\"${{ matrix.vrcsdkVersion }}\".url" --raw-output)"
+            echo "Avatar SDK URL is $AV_URL"
             BASE_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.base\".versions.\"${{ matrix.vrcsdkVersion }}\".url" --raw-output)"
+            echo "Base SDK URL is $BASE_URL"
             curl -L -o "avatars.zip" "$AV_URL"
             curl -L -o "base.zip" "$BASE_URL"
             mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
