@@ -22,10 +22,6 @@ jobs:
             unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
           - vrcsdkVersion: 3.5.0
             unityImage: unityci/editor:ubuntu-2022.3.6f1-android-3.0.1
-          - vrcsdkVersion: 3.0.7
-            unityImage: unityci/editor:ubuntu-2019.4.31f1-windows-mono-2.0.0
-          - vrcsdkVersion: 3.0.8
-            unityImage: unityci/editor:ubuntu-2019.4.31f1-windows-mono-2.0.0
           - vrcsdkVersion: 3.5.2
             unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
     steps:
@@ -51,8 +47,6 @@ jobs:
             MANIFEST_URL="https://vrchat.github.io/packages/index.json"
             echo "Downloading manifest from $MANIFEST_URL"
             MANIFEST="$(curl "$MANIFEST_URL")"
-            echo "$MANIFEST"
-            jq --help
             AV_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.avatars\".versions.\"$VERSION\".url" --raw-output)"
             echo "Avatar SDK URL is $AV_URL"
             BASE_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.base\".versions.\"$VERSION\".url" --raw-output)"
