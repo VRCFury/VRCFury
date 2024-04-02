@@ -146,6 +146,7 @@ namespace VF.Utils.Controller {
             output.FixNullStateMachines();
             output.CheckForBadBehaviours();
             output.ReplaceSyncedLayers();
+            output.RemoveDuplicateStateMachines();
 
             // Apply override controllers
             if (overrides.Count > 0) {
@@ -307,6 +308,25 @@ namespace VF.Utils.Controller {
                 return layer;
             }).ToArray();
 
+        }
+
+        /**
+         * Some systems (modular avatar) can improperly add multiple layers with the same state machine.
+         * This wrecks havoc, as making changes to one of the layers can impact both, while typically there is
+         * expected to be no cross-talk. Since there's basically no legitimate reason for the same state machine
+         * to be used more than once in the same controller, we can just nuke the copies.
+         */
+        private void RemoveDuplicateStateMachines() {
+            var seenStateMachines = new HashSet<AnimatorStateMachine>();
+            layers = layers.Select(layer => {
+                if (layer.stateMachine != null) {
+                    if (seenStateMachines.Contains(layer.stateMachine)) {
+                        return null;
+                    }
+                    seenStateMachines.Add(layer.stateMachine);
+                }
+                return layer;
+            }).NotNull().ToArray();
         }
 
         public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
