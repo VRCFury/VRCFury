@@ -80,6 +80,12 @@ namespace VF.Feature {
                     var renderers = bakeInfo.renderers;
                     var worldRadius = bakeInfo.worldRadius;
                     var worldLength = bakeInfo.worldLength;
+                    
+                    addOtherFeature(new ShowInFirstPerson {
+                        useObjOverride = true,
+                        objOverride = bakeRoot,
+                        onlyIfChildOfHead = true
+                    });
 
                     var name = plug.name;
                     if (string.IsNullOrWhiteSpace(name)) {

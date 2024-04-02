@@ -20,12 +20,21 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
 
         private readonly Lazy<VFGameObject> fakeHead;
+        private readonly Lazy<VFGameObject> headChopObj;
         public FakeHeadService() {
             fakeHead = new Lazy<VFGameObject>(MakeFakeHead);
+            headChopObj = new Lazy<VFGameObject>(() => {
+                var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(manager.AvatarObject, HumanBodyBones.Head);
+                return GameObjects.Create("vrcfHeadChop", head);
+            });
         }
 
         public VFGameObject GetFakeHead() {
             return fakeHead.Value;
+        }
+
+        public VFGameObject GetHeadChopObj() {
+            return headChopObj.Value;
         }
 
         private VFGameObject MakeFakeHead() {

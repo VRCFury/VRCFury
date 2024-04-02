@@ -63,8 +63,12 @@ namespace VF.Utils {
             return curveRewriter(binding, curve);
         }
         public void Rewrite(AnimationClip clip) {
+            var originalLength = clip.length;
             var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
             foreach (var (binding,curve) in clip.GetAllCurves()) {
+                if (binding.path == "__vrcf_length") {
+                    continue;
+                }
                 var (newBinding, newCurve, curveUpdated) = RewriteOne(binding, curve);
                 if (newCurve == null) {
                     output.Add((binding, null));
@@ -74,6 +78,13 @@ namespace VF.Utils {
                 }
             }
             clip.SetCurves(output);
+            var newLength = clip.length;
+            if (originalLength != newLength) {
+                clip.SetFloatCurve(
+                    EditorCurveBinding.FloatCurve("__vrcf_length", typeof(GameObject), "m_IsActive"),
+                    AnimationCurve.Constant(0, originalLength, 0)
+                );
+            }
         }
 
         public string RewritePath(string input) {
