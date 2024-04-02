@@ -51,6 +51,8 @@ jobs:
             MANIFEST_URL="https://vrchat.github.io/packages/index.json"
             echo "Downloading manifest from $MANIFEST_URL"
             MANIFEST="$(curl "$MANIFEST_URL")"
+            echo "$MANIFEST"
+            jq --help
             AV_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.avatars\".versions.\"$VERSION\".url" --raw-output)"
             echo "Avatar SDK URL is $AV_URL"
             BASE_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.base\".versions.\"$VERSION\".url" --raw-output)"
