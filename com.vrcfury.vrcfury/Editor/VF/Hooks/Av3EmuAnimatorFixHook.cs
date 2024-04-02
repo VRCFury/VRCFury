@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VRC.Dynamics;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDKBase;
@@ -21,11 +22,14 @@ namespace VF.Hooks {
      */
     internal class Av3EmuAnimatorFixHook : IVRCSDKPreprocessAvatarCallback {
         public int callbackOrder => int.MaxValue;
+        private static bool restartPending = false;
         public bool OnPreprocessAvatar(GameObject obj) {
-            if (Application.isPlaying) {
+            if (Application.isPlaying && !restartPending) {
+                restartPending = true;
                 EditorApplication.delayCall += () => {
+                    restartPending = false;
                     if (Application.isPlaying) {
-                        RestartAv3Emulator(obj);
+                        RestartAv3Emulator();
                     }
                 };
             }
@@ -50,7 +54,7 @@ namespace VF.Hooks {
             clear.Invoke(value, new object[]{});
         }
 
-        private static void RestartAv3Emulator(GameObject avatar) {
+        private static void RestartAv3Emulator() {
             try {
                 var av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator");
                 if (av3EmulatorType == null) av3EmulatorType = ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
@@ -79,16 +83,14 @@ namespace VF.Hooks {
                     restartField.SetValue(emulator, true);
                 }
 
-                if (emulators != null && emulators.Length >= 1)
-                {
-                    foreach (var contactReceiver in avatar.GetComponentsInChildren<VRCContactReceiver>()) contactReceiver.paramAccess = null;
-                    foreach (var physBone in avatar.GetComponentsInChildren<VRCPhysBone>())
-                    {
-                        foreach (var fieldInfo in typeof(VRCPhysBoneBase).GetFields())
-                        {
-                            if (fieldInfo.FieldType == typeof(IAnimParameterAccess))
-                            {
-                                fieldInfo.SetValue(physBone, null);
+                if (emulators.Length >= 1) {
+                    var avatars = Object.FindObjectsOfType<VRCAvatarDescriptor>();
+                    foreach (var avatar in avatars) {
+                        foreach (var component in avatar.GetComponentsInChildren<IParameterSetup>(true)) {
+                            foreach (var fieldInfo in component.GetType().GetFields()) {
+                                if (fieldInfo.FieldType == typeof(IAnimParameterAccess)) {
+                                    fieldInfo.SetValue(component, null);
+                                }
                             }
                         }
                     }
