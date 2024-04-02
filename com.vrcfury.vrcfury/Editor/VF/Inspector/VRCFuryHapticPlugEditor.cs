@@ -382,7 +382,7 @@ namespace VF.Inspector {
 
                         var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
                         if (plug.enableSps && plug.spsAutorig) {
-                            SpsAutoRigger.AutoRig(skin, worldLength, worldRadius, activeFromMask);
+                            SpsAutoRigger.AutoRig(skin, bakeRoot, worldLength, worldRadius, activeFromMask);
                         }
 
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, tmpDir, activeFromMask, false, spsBlendshapes) : null;

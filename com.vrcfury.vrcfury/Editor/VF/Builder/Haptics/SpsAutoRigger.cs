@@ -8,7 +8,7 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder.Haptics {
     public static class SpsAutoRigger {
-        public static void AutoRig(SkinnedMeshRenderer skin, float worldLength, float worldRadius, float[] activeFromMask) {
+        public static void AutoRig(SkinnedMeshRenderer skin, VFGameObject bakeRoot, float worldLength, float worldRadius, float[] activeFromMask) {
             float GetActive(int i) {
                 return activeFromMask == null ? 1 : activeFromMask[i];
             }
@@ -21,19 +21,17 @@ namespace VF.Builder.Haptics {
             if (mesh == null) throw new Exception("Missing mesh");
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
             const int boneCount = 10;
-            VFGameObject lastParent = skin.rootBone;
-            var bonesAlreadyExist = lastParent.Find("VrcFuryAutoRig0") != null;
+
+            // This is left outside of the bake root so that it isn't shown by head chop
+            var autoRigRoot = GameObjects.Create("SpsAutoRig", skin.owner(), useTransformFrom: bakeRoot);
+
+            var lastParent = autoRigRoot;
             var bones = new List<Transform>();
             var bindPoses = new List<Matrix4x4>();
             var localLength = worldLength / skin.rootBone.lossyScale.z;
             var localRadius = worldRadius / skin.rootBone.lossyScale.z;
             for (var i = 0; i < boneCount; i++) {
-                var bone = bonesAlreadyExist
-                    ? lastParent.Find("VrcFuryAutoRig" + i)
-                    : GameObjects.Create("VrcFuryAutoRig" + i, lastParent);
-                if (bone == null) {
-                    throw new Exception("Existing autorig bone was not found");
-                }
+                var bone = GameObjects.Create("Bone" + i, lastParent);
                 var pos = bone.localPosition;
                 pos.z = localLength / boneCount;
                 bone.localPosition = pos;
@@ -61,18 +59,16 @@ namespace VF.Builder.Haptics {
             }
             mesh.boneWeights = weights;
 
-            if (!bonesAlreadyExist) {
-                var physbone = skin.owner().AddComponent<VRCPhysBone>();
-                physbone.integrationType = VRCPhysBoneBase.IntegrationType.Advanced;
-                physbone.pull = 0.8f;
-                physbone.spring = 0.1f;
-                physbone.stiffness = 0.3f;
-                physbone.rootTransform = bones.First();
+            var physbone = autoRigRoot.AddComponent<VRCPhysBone>();
+            physbone.integrationType = VRCPhysBoneBase.IntegrationType.Advanced;
+            physbone.pull = 0.8f;
+            physbone.spring = 0.1f;
+            physbone.stiffness = 0.3f;
+            physbone.rootTransform = bones.First();
 
-                var radiusEnd = Mathf.Max(0.0f, 1.0f - localRadius / localLength);
-                physbone.radiusCurve = AnimationCurve.Linear(radiusEnd, 1.0f, 1.0f, 0.0f);
-                physbone.radius = localRadius;
-            }
+            var radiusEnd = Mathf.Max(0.0f, 1.0f - localRadius / localLength);
+            physbone.radiusCurve = AnimationCurve.Linear(radiusEnd, 1.0f, 1.0f, 0.0f);
+            physbone.radius = localRadius;
         }
 
         private static BoneWeight CalculateWeight(int closestBoneId, int otherBoneId, float distanceToOther, float activeFromMask) {
