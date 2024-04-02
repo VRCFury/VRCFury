@@ -53,7 +53,7 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 
 		if (type == SPS_TYPE_HOLE) {
 			// Uncancel if hilted in a hole
-			const float hiltedSphereRadius = 0.3;
+			const float hiltedSphereRadius = 0.5;
 			const float inSphere = orfDistance > worldLength*hiltedSphereRadius ? 0 : 1;
 			//const float hilted = min(isBehind, inSphere);
 			//shrinkLerp = hilted;
