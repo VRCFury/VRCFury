@@ -22,6 +22,12 @@ jobs:
             unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
           - vrcsdkVersion: 3.5.0
             unityImage: unityci/editor:ubuntu-2022.3.6f1-android-3.0.1
+          - vrcsdkVersion: 3.0.7
+            unityImage: unityci/editor:ubuntu-2019.4.31f1-windows-mono-2.0.0
+          - vrcsdkVersion: 3.0.8
+            unityImage: unityci/editor:ubuntu-2019.4.31f1-windows-mono-2.0.0
+          - vrcsdkVersion: 3.5.2
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
     steps:
       - uses: actions/checkout@v4
 
@@ -38,30 +44,16 @@ jobs:
           if [[ "${{ matrix.vrcsdkVersion }}" == "2022.06.03.00.04" ]]; then
             curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
             unzip "vrcsdk.zip" -d "$PROJECT_PATH/Assets"
-          elif [[ "${{ matrix.vrcsdkVersion }}" == "3.0.9" ]]; then
-            curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.avatars-3.0.9.zip"
-            curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.1.9/com.vrchat.base-3.0.9.zip"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
-            unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
-          elif [[ "${{ matrix.vrcsdkVersion }}" == "3.3.0" ]]; then
-            curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.3.0/com.vrchat.avatars-3.3.0.zip"
-            curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.3.0/com.vrchat.base-3.3.0.zip"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
-            unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
-          elif [[ "${{ matrix.vrcsdkVersion }}" == "3.5.0" ]]; then
-            curl -L -o "avatars.zip" "https://github.com/vrchat/packages/releases/download/3.5.0/com.vrchat.avatars-3.5.0.zip"
-            curl -L -o "base.zip" "https://github.com/vrchat/packages/releases/download/3.5.0/com.vrchat.base-3.5.0.zip"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
-            unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
           else
-            echo "What"
-            exit 1
+            MANIFEST="$(curl 'https://vrchat.github.io/packages/index.json')"
+            AV_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.avatars\".versions.\"$VERSION\".url" --raw-output)"
+            BASE_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.base\".versions.\"$VERSION\".url" --raw-output)"
+            curl -L -o "avatars.zip" "$AV_URL"
+            curl -L -o "base.zip" "$BASE_URL"
+            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
+            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
+            unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
+            unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
           fi
 
       - name: Run Tests
