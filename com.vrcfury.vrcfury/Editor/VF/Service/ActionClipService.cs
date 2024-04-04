@@ -47,6 +47,10 @@ namespace VF.Service {
                 return new BuiltAction();
             }
 
+            if (state.actions.Any(action => action == null)) {
+                throw new Exception("Action list contains a corrupt action");
+            }
+
             var actions = state.actions.Where(action => {
                 if (action.desktopActive || action.androidActive) {
                     var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
