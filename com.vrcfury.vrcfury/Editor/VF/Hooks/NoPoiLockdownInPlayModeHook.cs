@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.Callbacks;
@@ -53,7 +54,13 @@ namespace VF.Hooks {
                     Debug.Log("VRCFury inhibited poiyomi from locking down all mats on the avatar");
                     return true;
                 }
-                return wrapped.OnPreprocessAvatar(avatarGameObject);
+
+                try {
+                    return wrapped.OnPreprocessAvatar(avatarGameObject);
+                } catch (Exception e) {
+                    Debug.LogException(new Exception("Poiyomi failed to lockdown materials: " + e.Message, e));
+                    throw e;
+                }
             }
         }
     }
