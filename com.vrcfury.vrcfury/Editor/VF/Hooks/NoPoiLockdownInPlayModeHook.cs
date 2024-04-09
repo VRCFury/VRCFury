@@ -26,7 +26,7 @@ namespace VF.Hooks {
             foreach (var callback in callbacks.ToArray()) {
                 if (callback.GetType().Name == "LockMaterialsOnUpload") {
                     Debug.Log("VRCFury found LockMaterialsOnUpload and is patching it to not run in play mode");
-                    var newCallback = new WrappedCallback(callback);
+                    var newCallback = new PoiyomiLockdownDuringUploadWrapper(callback);
                     callbacks.Remove(callback);
                     callbacks.Add(newCallback);
                 }
@@ -35,15 +35,15 @@ namespace VF.Hooks {
             callbacksField.SetValue(null, callbacks);
         }
 
-        private class WrappedCallback : IVRCSDKPreprocessAvatarCallback {
+        private class PoiyomiLockdownDuringUploadWrapper : IVRCSDKPreprocessAvatarCallback {
             private IVRCSDKPreprocessAvatarCallback wrapped;
             
             // The VRCSDK makes an instance of this hook using the default constructor and we can't stop it >:(
-            public WrappedCallback() {
+            public PoiyomiLockdownDuringUploadWrapper() {
                 this.wrapped = null;
             }
 
-            public WrappedCallback(IVRCSDKPreprocessAvatarCallback wrapped) {
+            public PoiyomiLockdownDuringUploadWrapper(IVRCSDKPreprocessAvatarCallback wrapped) {
                 this.wrapped = wrapped;
             }
 
