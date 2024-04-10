@@ -41,7 +41,7 @@ namespace Editor.VF.Feature {
             }
 
             var syncPointer = fx.NewInt("SyncPointer", synced: true);
-            var syncData = fx.NewFloat("SyncData", synced: true);
+            var syncData = fx.NewInt("SyncData", synced: true);
 
             var layer = fx.NewLayer("Unlimited Parameters");
             var entry = layer.NewState("Entry");
@@ -67,11 +67,11 @@ namespace Editor.VF.Feature {
                 VFAFloat currentValue;
                 if (src.type == VRCExpressionParameters.ValueType.Float) {
                     currentValue = fx.NewFloat(src.name, usePrefix: false);
-                    sendState.DrivesCopy(src.name, syncData);
+                    sendState.DrivesCopy(src.name, syncData, -1, 1, 0, 254);
                 } else if (src.type == VRCExpressionParameters.ValueType.Int) {
                     currentValue = fx.NewFloat($"{src.name}/Current");
                     local.DrivesCopy(src.name, currentValue);
-                    sendState.DrivesCopy(src.name, syncData, 0, 255, -1, 1);
+                    sendState.DrivesCopy(src.name, syncData);
                 } else {
                     throw new Exception("Unknown type?");
                 }
@@ -105,9 +105,9 @@ namespace Editor.VF.Feature {
                     .TransitionsTo(remote)
                     .When(fx.Always());
                 if (dst.type == VRCExpressionParameters.ValueType.Float) {
-                    receiveState.DrivesCopy(syncData, dst.name);
+                    receiveState.DrivesCopy(syncData, dst.name, 0, 254, -1, 1);
                 } else if (dst.type == VRCExpressionParameters.ValueType.Int) {
-                    receiveState.DrivesCopy(syncData, dst.name, -1, 1, 0, 255);
+                    receiveState.DrivesCopy(syncData, dst.name);
                 } else {
                     throw new Exception("Unknown type?");
                 }

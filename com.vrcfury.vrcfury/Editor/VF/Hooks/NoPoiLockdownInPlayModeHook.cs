@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.Callbacks;
@@ -25,7 +26,7 @@ namespace VF.Hooks {
             foreach (var callback in callbacks.ToArray()) {
                 if (callback.GetType().Name == "LockMaterialsOnUpload") {
                     Debug.Log("VRCFury found LockMaterialsOnUpload and is patching it to not run in play mode");
-                    var newCallback = new WrappedCallback(callback);
+                    var newCallback = new PoiyomiLockdownDuringUploadWrapper(callback);
                     callbacks.Remove(callback);
                     callbacks.Add(newCallback);
                 }
@@ -34,15 +35,15 @@ namespace VF.Hooks {
             callbacksField.SetValue(null, callbacks);
         }
 
-        private class WrappedCallback : IVRCSDKPreprocessAvatarCallback {
+        private class PoiyomiLockdownDuringUploadWrapper : IVRCSDKPreprocessAvatarCallback {
             private IVRCSDKPreprocessAvatarCallback wrapped;
             
             // The VRCSDK makes an instance of this hook using the default constructor and we can't stop it >:(
-            public WrappedCallback() {
+            public PoiyomiLockdownDuringUploadWrapper() {
                 this.wrapped = null;
             }
 
-            public WrappedCallback(IVRCSDKPreprocessAvatarCallback wrapped) {
+            public PoiyomiLockdownDuringUploadWrapper(IVRCSDKPreprocessAvatarCallback wrapped) {
                 this.wrapped = wrapped;
             }
 
@@ -53,7 +54,13 @@ namespace VF.Hooks {
                     Debug.Log("VRCFury inhibited poiyomi from locking down all mats on the avatar");
                     return true;
                 }
-                return wrapped.OnPreprocessAvatar(avatarGameObject);
+
+                try {
+                    return wrapped.OnPreprocessAvatar(avatarGameObject);
+                } catch (Exception e) {
+                    Debug.LogException(new Exception("Poiyomi failed to lockdown materials: " + e.Message, e));
+                    throw e;
+                }
             }
         }
     }

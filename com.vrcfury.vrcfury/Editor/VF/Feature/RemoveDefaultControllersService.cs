@@ -29,11 +29,12 @@ namespace VF.Feature {
                  * The default VRC action layer shouldn't be there unless the user's menu specifically uses VRCEmote.
                  * Otherwise it just takes up space when people are merging in GogoLoco.
                  */
-                if (c.type == VRCAvatarDescriptor.AnimLayerType.Action && c.isDefault) {
-                    if (!MenuUsesVrcEmote()) {
-                        c.set(null);
-                    }
-                }
+                // Temporarily disabled because the default action layer still has AFK which some people use
+                // if (c.type == VRCAvatarDescriptor.AnimLayerType.Action && c.isDefault) {
+                //     if (!MenuUsesVrcEmote()) {
+                //         c.set(null);
+                //     }
+                // }
             }
         }
 

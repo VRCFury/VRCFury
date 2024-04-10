@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
 using VF.Feature.Base;
@@ -67,28 +68,33 @@ namespace VF.Service {
         public void ApplyImplicitRestingStates() {
             foreach (var component in globals.avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
                 var path = component.owner().GetPath(globals.avatarObject, true);
-                UnitySerializationUtils.Iterate(component, visit => {
-                    if (visit.field?.GetCustomAttribute<DoNotApplyRestingStateAttribute>() != null) {
-                        return UnitySerializationUtils.IterateResult.Skip;
-                    }
-                    if (visit.value is State action) {
-                        var built = actionClipService.LoadStateAdv("", action);
-                        ApplyClipToRestingState(built.implicitRestingClip, owner: $"{component.GetType().Name} on {path}");
-                    }
-                    if (visit.value is FullController fc) {
-                        if (!string.IsNullOrWhiteSpace(fc.toggleParam)) {
-                            var rootObj = component.owner();
-                            if (fc.rootObjOverride != null) rootObj = fc.rootObjOverride;
-                            var built = actionClipService.LoadStateAdv("", new State {
-                                actions = {
-                                    new ObjectToggleAction { obj = rootObj, mode = ObjectToggleAction.Mode.TurnOn }
-                                }
-                            });
+                var owner = $"{component.GetType().Name} on {path}";
+                try {
+                    UnitySerializationUtils.Iterate(component, visit => {
+                        if (visit.field?.GetCustomAttribute<DoNotApplyRestingStateAttribute>() != null) {
+                            return UnitySerializationUtils.IterateResult.Skip;
+                        }
+                        if (visit.value is State action) {
+                            var built = actionClipService.LoadStateAdv("", action);
                             ApplyClipToRestingState(built.implicitRestingClip, owner: $"{component.GetType().Name} on {path}");
                         }
-                    }
-                    return UnitySerializationUtils.IterateResult.Continue;
-                });
+                        if (visit.value is FullController fc) {
+                            if (!string.IsNullOrWhiteSpace(fc.toggleParam)) {
+                                var rootObj = component.owner();
+                                if (fc.rootObjOverride != null) rootObj = fc.rootObjOverride;
+                                var built = actionClipService.LoadStateAdv("", new State {
+                                    actions = {
+                                        new ObjectToggleAction { obj = rootObj, mode = ObjectToggleAction.Mode.TurnOn }
+                                    }
+                                });
+                                ApplyClipToRestingState(built.implicitRestingClip, owner: owner);
+                            }
+                        }
+                        return UnitySerializationUtils.IterateResult.Continue;
+                    });
+                } catch(Exception e) {
+                    throw new ExceptionWithCause($"Failed to handle {owner}", e);
+                }
             }
         }
 
