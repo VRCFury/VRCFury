@@ -312,14 +312,14 @@ namespace VF.Builder.Haptics {
 
             var newStructBody = "";
             if (!useStructExtends) newStructBody += oldStructBody;
-            string FindParam(string keyword, string defaultName, string defaultType) {
+            (string type, string name) FindParam(string keyword, string defaultName, string defaultType) {
                 var match = GetRegex(@"([^ \t]+)[ \t]+([^ \t:]+)[ \t:]+" + Regex.Escape(keyword))
                     .Match(oldStructBody);
                 if (match.Success) {
-                    return match.Groups[2].ToString();
+                    return (match.Groups[1].ToString(), match.Groups[2].ToString());
                 }
                 newStructBody += $"  {defaultType} {defaultName} : {keyword};\n";
-                return defaultName;
+                return (defaultType,defaultName);
             }
 
             var vertexParam = FindParam("POSITION", "spsPosition", "float3");
@@ -354,11 +354,29 @@ namespace VF.Builder.Haptics {
             }
 
             newBody.Add($"{returnType} {newVertFunction}({newInputParams}) {{");
-            newBody.Add($"  sps_apply({mainParamName}.{vertexParam}.xyz, {mainParamName}.{normalParam}, {mainParamName}.{vertexIdParam}, {mainParamName}.{colorParam});");
+            var colorIsFloat3 = colorParam.type == "float3";
+            if (colorIsFloat3) {
+                newBody.Add($"  float4 color = float4({mainParamName}.{colorParam.name},1);");
+            }
+            newBody.Add($"  sps_apply(");
+            newBody.Add($"    {mainParamName}.{vertexParam.name}.xyz,");
+            newBody.Add($"    {mainParamName}.{normalParam.name},");
+            newBody.Add($"    {mainParamName}.{vertexIdParam.name},");
+            if (colorIsFloat3) {
+                newBody.Add($"    color");
+            } else {
+                newBody.Add($"    {mainParamName}.{colorParam.name}");
+            }
+            newBody.Add($"  );");
+            if (colorIsFloat3) {
+                newBody.Add($"  {mainParamName}.{colorParam.name} = color.xyz;");
+            }
+
             if (newPassParams != null) {
                 var ret = returnType == "void" ? "" : "return ";
                 newBody.Add($"  {ret}{oldVertFunction}({newPassParams});");
             }
+
             newBody.Add("}");
             
             // Silent Crosstone
