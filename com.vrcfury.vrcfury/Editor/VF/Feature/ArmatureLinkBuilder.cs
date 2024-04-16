@@ -26,6 +26,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
         [VFAutowired] private readonly FakeHeadService fakeHead;
+        [VFAutowired] private readonly ArmatureLinkHelperService armatureLinkHelper;
 
         [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
         public void Apply() {
@@ -61,8 +62,6 @@ namespace VF.Feature {
             var rootName = GetRootName(links.propMain);
 
             // Move over all the old components / children from the old location to a new child
-            var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
-            var pruneCheck = new HashSet<VFGameObject>();
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 bool ShouldReparent() {
                     if (propBone == links.propMain) return true;
@@ -114,9 +113,11 @@ namespace VF.Feature {
                 var current = addedObject;
 
                 foreach (var a in animatedParents) {
-                    current = GameObjects.Create($"Toggle From {a.name}", current);
+                    var origName = armatureLinkHelper.GetOriginalName(a);
+                    current = GameObjects.Create($"Toggle From {origName}", current);
+                    armatureLinkHelper.SetOriginalName(current, origName);
                     current.active = a.active;
-                    animLink.Put(a, current);
+                    armatureLinkHelper.LinkEnableAnims(a, current);
                 }
 
                 var transformAnimated =
@@ -146,47 +147,10 @@ namespace VF.Feature {
                     RewriteSkins(propBone, avatarBone);
                 }
 
-                pruneCheck.Add(addedObject);
+                armatureLinkHelper.MarkAvailableForCleanup(addedObject);
             }
 
             mover.ApplyDeferred();
-            
-            // Clean up objects that don't need to exist anymore
-            // (this should happen before toggle rewrites, so we don't have to add toggles for a ton of things that won't exist anymore)
-            var usedReasons = GetUsageReasons(avatarObject);
-            var attachDebugInfoTo = new HashSet<VFGameObject>();
-            foreach (var obj in pruneCheck) {
-                if (obj == null) continue;
-                attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
-                if (!usedReasons.ContainsKey(obj)) obj.Destroy();
-            }
-
-            // Rewrite animations that turn off parents
-            foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
-                foreach (var binding in clip.GetFloatBindings()) {
-                    if (binding.type != typeof(GameObject)) continue;
-                    var transform = avatarObject.Find(binding.path);
-                    if (transform == null) continue;
-                    foreach (var other in animLink.Get(transform)) {
-                        if (other == null) continue; // it got deleted because the propBone wasn't used
-                        var b = binding;
-                        b.path = other.GetPath(avatarObject);
-                        clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
-                    }
-                }
-            }
-
-            if (Application.isPlaying) {
-                foreach (var obj in attachDebugInfoTo) {
-                    if (obj == null) continue;
-                    if (usedReasons.ContainsKey(obj)) {
-                        var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
-                        debugInfo.debugInfo =
-                            "VRCFury Armature Link did not clean up this object because it is still used:\n";
-                        debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
-                    }
-                }
-            }
         }
 
         private void RewriteSkins(VFGameObject fromBone, VFGameObject toBone) {
@@ -233,43 +197,6 @@ namespace VF.Feature {
             }
 
             return (avatarMainScale, propMainScale, scalingFactor);
-        }
-
-        public static VFMultimapSet<VFGameObject,string> GetUsageReasons(VFGameObject avatarObject) {
-            var reasons = new VFMultimapSet<VFGameObject,string>();
-
-            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                if (component is Transform) continue;
-                reasons.Put(component.owner(), "Contains components");
-
-                var so = new SerializedObject(component);
-                var prop = so.GetIterator();
-                do {
-                    if (prop.propertyPath.StartsWith("ignoreTransforms.Array")) {
-                        // TODO: If we remove objects that are in these physbone ignoreTransforms arrays, we should
-                        // probably also remove them from the array instead of just leaving it null
-                        continue;
-                    }
-                    if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                        VFGameObject target = null;
-                        if (prop.objectReferenceValue is Transform t) target = t;
-                        else if (prop.objectReferenceValue is GameObject g) target = g;
-                        if (target != null && target.IsChildOf(avatarObject)) {
-                            reasons.Put(target, prop.propertyPath + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
-                        }
-                    }
-                } while (prop.Next(true));
-            }
-
-            foreach (var used in reasons.GetKeys().ToArray()) {
-                foreach (var parent in used.GetSelfAndAllParents()) {
-                    if (parent != used && parent.IsChildOf(avatarObject)) {
-                        reasons.Put(parent, "A child object is used");
-                    }
-                }
-            }
-
-            return reasons;
         }
 
         private ArmatureLink.ArmatureLinkMode GetLinkMode() {
