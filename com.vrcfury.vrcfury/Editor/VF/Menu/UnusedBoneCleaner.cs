@@ -6,7 +6,6 @@ using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature;
-using VF.Service;
 
 namespace VF.Menu {
     public static class UnusedBoneCleaner {
@@ -51,7 +50,7 @@ namespace VF.Menu {
         }
         
         private static List<string> Clean(VFGameObject avatarObj, bool perform = false) {
-            var used = ObjectUsageService.GetUsageReasons(avatarObj.root);
+            var used = ArmatureLinkBuilder.GetUsageReasons(avatarObj.root);
             return AvatarCleaner.Cleanup(
                 avatarObj,
                 perform: perform,
