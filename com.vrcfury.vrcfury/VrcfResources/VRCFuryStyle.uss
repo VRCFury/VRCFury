@@ -120,6 +120,7 @@ Vector4Field.VrcFuryEditorProp > .unity-vector4-field__input {
     color: rgba(255,255,255,0.3);
     font-size: 10px;
     height: 8px;
+    margin-top: 3px;
     margin-bottom: -5px;
     margin-right: -3px;
 }

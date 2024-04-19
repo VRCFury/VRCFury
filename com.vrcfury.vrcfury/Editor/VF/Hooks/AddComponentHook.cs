@@ -12,25 +12,30 @@ namespace VF.Hooks {
     public static class AddComponentHook {
         [InitializeOnLoadMethod]
         public static void Init() {
-            EditorApplication.delayCall += () => {
-                AddToMenu();
-            };
+            EditorApplication.update += AddToMenu;
         }
+        
+        private static readonly MethodInfo MenuItemExists = typeof(UnityEditor.Menu).GetMethod("MenuItemExists",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo RemoveMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo AddMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
         private static void AddToMenu() {
+            if (!(bool)MenuItemExists.Invoke(null, new object[] { "Component/UI/Toggle" })) {
+                return;
+            }
+            
             Debug.Log("Adding VRCFury components to menu");
-            var removeMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            removeMenuItem.Invoke(null, new object[] {"Component/UI/Toggle"});
-            removeMenuItem.Invoke(null, new object[] {"Component/UI/Legacy/Dropdown"});
-            removeMenuItem.Invoke(null, new object[] {"Component/UI/Toggle Group"});
-            var addMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            RemoveMenuItem.Invoke(null, new object[] {"Component/UI/Toggle"});
+            RemoveMenuItem.Invoke(null, new object[] {"Component/UI/Legacy/Dropdown"});
+            RemoveMenuItem.Invoke(null, new object[] {"Component/UI/Toggle Group"});
             foreach (var feature in FeatureFinder.GetAllFeaturesForMenu()) {
                 var editorInst = (FeatureBuilder) Activator.CreateInstance(feature.Value);
                 var title = editorInst.GetEditorTitle();
-                if (title != null) { 
-                    addMenuItem.Invoke(null, new object[] {
+                if (title != null) {
+                    AddMenuItem.Invoke(null, new object[] {
                         "Component/VRCFury/VRCFury | " + title, // name
                         "", // shortcut
                         false, // checked
