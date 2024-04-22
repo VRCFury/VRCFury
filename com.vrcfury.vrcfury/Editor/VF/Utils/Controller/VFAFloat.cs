@@ -3,7 +3,11 @@ using UnityEngine;
 
 namespace VF.Utils.Controller {
     public class VFAFloat : VFAParam {
-        public VFAFloat(AnimatorControllerParameter param) : base(param) {}
+        private float def;
+
+        public VFAFloat(string name, float def) : base(name) {
+            this.def = def;
+        }
 
         public VFCondition IsGreaterThan(float num) {
             return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.Greater, parameter = Name(), threshold = num });
@@ -18,12 +22,8 @@ namespace VF.Utils.Controller {
             return IsGreaterThan(num).Not();
         }
 
-        public override VFCondition IsFalse() {
-            return IsLessThanOrEquals(0);
-        }
-
         public float GetDefault() {
-            return param.defaultFloat;
+            return def;
         }
     }
 }

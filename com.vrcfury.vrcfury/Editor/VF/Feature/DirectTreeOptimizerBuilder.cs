@@ -18,6 +18,7 @@ namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
@@ -26,7 +27,6 @@ namespace VF.Feature {
                 .OfType<DirectTreeOptimizer>()
                 .Any(m => !m.managedOnly);
 
-            var fx = GetFx();
             var applyToLayers = applyToUnmanaged ? fx.GetLayers() : fx.GetManagedLayers();
 
             var bindingsByLayer = fx.GetLayers()
@@ -48,6 +48,11 @@ namespace VF.Feature {
                 // the layer will be missing later when the FixWriteDefaultBuilder tries to add to it.
                 if (layer == fixWriteDefaults.GetDefaultLayer()) {
                     AddDebug($"Not optimizing (this is the vrcf defaults layer)");
+                    continue;
+                }
+
+                if (layer == directTree.GetLayer()) {
+                    AddDebug($"Not optimizing (this is the shared DBT)");
                     continue;
                 }
 
@@ -115,7 +120,7 @@ namespace VF.Feature {
 
                 Motion onClip;
                 Motion offClip;
-                string param;
+                VFAFloat param;
 
                 var states = layer.stateMachine.states;
                 if (states.Length == 1) {
@@ -137,11 +142,11 @@ namespace VF.Feature {
                         offClip.name = state.motion.name + " (OFF)";
                         onClip = dualState.Item2;
                         onClip.name = state.motion.name + " (ON)";
-                        param = state.timeParameter;
+                        param = new VFAFloat(state.timeParameter, 0);
                     } else {
                         offClip = null;
                         onClip = states[0].state.motion;
-                        param = floatTrue.Name();
+                        param = floatTrue;
                     }
                 } else {
                     ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
@@ -237,7 +242,7 @@ namespace VF.Feature {
                         onClip = onState.motion;
                     }
                     
-                    param = state0Condition.Value.parameter;
+                    param = new VFAFloat(state0Condition.Value.parameter, 0);
                 }
 
                 if (param == fx.True().Name()) {
@@ -278,13 +283,11 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
-                var tree = fx.NewBlendTree("Optimized Toggles");
-                tree.blendType = BlendTreeType.Direct;
                 foreach (var toggle in eligibleLayers) {
                     var offEmpty = !toggle.offState.HasValidBinding(avatarObject);
                     var onEmpty = !toggle.onState.HasValidBinding(avatarObject);
                     if (offEmpty && onEmpty) continue;
-                    string param;
+                    VFAFloat param;
                     Motion motion;
                     if (!offEmpty) {
                         var subTree = fx.NewBlendTree("Layer " + toggle.offState.name);
@@ -294,14 +297,14 @@ namespace VF.Feature {
                         subTree.AddChild(
                             !onEmpty ? toggle.onState : fx.GetEmptyClip(), 1);
                         subTree.blendParameter = toggle.param;
-                        param = floatTrue.Name();
+                        param = floatTrue;
                         motion = subTree;
                     } else {
                         param = toggle.param;
                         motion = toggle.onState;
                     }
 
-                    tree.AddDirectChild(param, motion);
+                    directTree.Add(param, motion);
 
                     var fxRaw = fx.GetRaw();
                     fxRaw.parameters = fxRaw.parameters.Select(p => {
@@ -313,9 +316,6 @@ namespace VF.Feature {
                         return p;
                     }).ToArray();
                 }
-                
-                var layer = fx.NewLayer("Optimized Toggles");
-                layer.NewState("Optimized Toggles").WithAnimation(tree);
             }
         }
 
@@ -327,7 +327,7 @@ namespace VF.Feature {
                 .ToImmutableHashSet();
         }
 
-        public enum EffectiveCondition {
+        private enum EffectiveCondition {
             WHEN_1,
             WHEN_0,
             INVALID
@@ -354,10 +354,10 @@ namespace VF.Feature {
             return allConditions[0];
         }
 
-        public class EligibleLayer {
+        private class EligibleLayer {
             public Motion offState;
             public Motion onState;
-            public string param;
+            public VFAFloat param;
         }
         
         public override string GetEditorTitle() {

@@ -26,7 +26,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
-    private VFAParam exclusiveParam;
+    private VFCondition isOn;
+    private Action<VFState, bool> drive;
     private AnimationClip savedRestingClip;
 
     public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
@@ -53,10 +54,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return SeparateList(model.driveGlobalParam);
         }
         return new HashSet<string>(); 
-    }
-
-    public VFAParam GetExclusiveParam() {
-        return exclusiveParam;
     }
 
     private (string,bool) GetParamName() {
@@ -93,8 +90,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
             );
-            exclusiveParam = param;
             onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+            if (model.sliderInactiveAtZero) {
+                drive = (state,on) => { if (!on) state.Drives(param, 0); };
+            }
             defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
             weight = param;
             if (addMenuItem) {
@@ -106,13 +105,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         } else if (model.useInt) {
             var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-            exclusiveParam = param;
             onCase = param.IsNotEqualTo(0);
+            drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
         } else {
             var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-            exclusiveParam = param;
             onCase = param.IsTrue();
+            drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
             if (addMenuItem) {
                 if (model.holdButton) {
@@ -130,6 +129,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
             }
         }
+        
+        this.isOn = onCase;
 
         var layerName = model.name;
         if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
@@ -279,23 +280,22 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var otherTags = other.GetExclusiveTags();
             var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
             if (conflictsWithOther) {
-                var otherParam = other.GetExclusiveParam();
-                if (otherParam != null) {
+                if (other.isOn != null && other.drive != null) {
                     foreach (var state in exclusiveTagTriggeringStates) {
-                        state.Drives(otherParam, 0);
+                        other.drive(state, false);
                     }
-                    allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
+                    allOthersOffCondition = allOthersOffCondition.And(other.isOn.Not());
                 }
             }
         }
 
-        if (model.exclusiveOffState && exclusiveParam != null) {
+        if (model.exclusiveOffState && isOn != null && drive != null) {
             var layer = fx.NewLayer(model.name + " - Off Trigger");
             var off = layer.NewState("Idle");
             var on = layer.NewState("Trigger");
             off.TransitionsTo(on).When(allOthersOffCondition);
-            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(exclusiveParam.IsFalse()));
-            on.Drives(exclusiveParam, 1);
+            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
+            drive(on, true);
         }
     }
 

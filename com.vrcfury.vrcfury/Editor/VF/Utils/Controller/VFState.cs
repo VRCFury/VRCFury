@@ -20,14 +20,21 @@ namespace VF.Utils.Controller {
             this.stateMachine = stateMachine;
         }
 
-        public static Vector3 MovePos(Vector3 orig, float x, float y) {
-            var pos = orig;
+        public static Vector3 CalculateOffsetPosition(Vector3 basis, float x, float y) {
+            var pos = basis;
             pos.x += x * X_OFFSET;
             pos.y += y * Y_OFFSET;
             return pos;
         }
         public VFState Move(Vector3 orig, float x, float y) {
-            node.position = MovePos(orig, x, y);
+            SetPosition(CalculateOffsetPosition(orig, x, y));
+            return this;
+        }
+        private VFState SetPosition(Vector2 v) {
+            var pos = node.position;
+            pos.x = v.x;
+            pos.y = v.y;
+            node.position = pos;
             var states = stateMachine.states;
             var index = Array.FindIndex(states, n => n.state == node.state);
             if (index >= 0) {
