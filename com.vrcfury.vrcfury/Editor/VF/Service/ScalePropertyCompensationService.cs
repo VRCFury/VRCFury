@@ -27,7 +27,10 @@ namespace VF.Service {
             }
 
             var zeroClip = manager.GetFx().NewClip($"scaleComp_{scaleReference.name}_zero");
+            directTree.Add(zeroClip);
+
             var scaleClip = manager.GetFx().NewClip($"scaleComp_{scaleReference.name}_one");
+            directTree.Add(scaleFactor, scaleClip);
 
             foreach (var prop in properties) {
                 var objectPath = prop.obj.GetPath(manager.AvatarObject);
@@ -40,9 +43,6 @@ namespace VF.Service {
                     0
                 );
             }
-            
-            directTree.Add(zeroClip);
-            directTree.Add(scaleFactor, scaleClip);
         }
     }
 }
