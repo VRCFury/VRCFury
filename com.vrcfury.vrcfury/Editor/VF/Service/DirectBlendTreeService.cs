@@ -35,6 +35,11 @@ namespace VF.Service {
         }
         
         public void Add(VFAFloat param, Motion motion) {
+            if (!motion.IsStatic()) {
+                throw new Exception(
+                    "Something tried to add a non-static clip to the VRCF shared DBT. This is likely a bug.");
+            }
+
             if (param.Name() == manager.GetFx().One().Name() && motion is BlendTree tree && tree.blendType == BlendTreeType.Direct) {
                 foreach (var child in tree.children) {
                     Add(new VFAFloat(child.directBlendParameter, 0), child.motion);
