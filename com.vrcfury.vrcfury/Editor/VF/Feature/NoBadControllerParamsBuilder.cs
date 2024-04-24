@@ -166,7 +166,14 @@ namespace VF.Feature {
             // Change the param types
             controller.parameters = controller.parameters.Select(p => {
                 if (paramTypes.TryGetValue(p.name, out var type)) {
+                    float oldDefault = 0;
+                    if (p.type == AnimatorControllerParameterType.Bool) oldDefault = p.defaultBool ? 1 : 0;
+                    if (p.type == AnimatorControllerParameterType.Int) oldDefault = p.defaultInt;
+                    if (p.type == AnimatorControllerParameterType.Float) oldDefault = p.defaultFloat;
                     p.type = type;
+                    p.defaultBool = oldDefault > 0;
+                    p.defaultInt = (int)Math.Round(oldDefault);
+                    p.defaultFloat = oldDefault;
                 }
                 return p;
             }).ToArray();

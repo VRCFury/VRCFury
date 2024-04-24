@@ -27,12 +27,11 @@ namespace VF.Inspector {
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(target as UnityEngine.Component);
             var versionLabel = new Label(SceneViewOverlay.GetOutputString(avatarObject) + " " + VRCFPackageUtils.Version);
             versionLabel.AddToClassList("vfVersionLabel");
-            versionLabel.pickingMode = PickingMode.Ignore;
             
             var contentWithVersion = new VisualElement();
             contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
-            contentWithVersion.Add(versionLabel);
             contentWithVersion.Add(content);
+            contentWithVersion.Add(versionLabel);
             return contentWithVersion;
         }
 

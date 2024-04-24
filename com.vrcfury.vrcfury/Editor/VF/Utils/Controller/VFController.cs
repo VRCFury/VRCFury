@@ -45,7 +45,7 @@ namespace VF.Utils.Controller {
                 layer.Move(insertAt);
             }
             layer.weight = 1;
-            layer.stateMachine.anyStatePosition = VFState.MovePos(layer.stateMachine.entryPosition, 0, 1);
+            layer.stateMachine.anyStatePosition = VFState.CalculateOffsetPosition(layer.stateMachine.entryPosition, 0, 1);
             return layer;
         }
 
@@ -54,13 +54,16 @@ namespace VF.Utils.Controller {
         }
 
         public VFABool NewBool(string name, bool def = false) {
-            return new VFABool(NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def));
+            var p = NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def);
+            return new VFABool(p.name, p.defaultBool);
         }
         public VFAFloat NewFloat(string name, float def = 0) {
-            return new VFAFloat(NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def));
+            var p = NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def);
+            return new VFAFloat(p.name, p.defaultFloat);
         }
         public VFAInteger NewInt(string name, int def = 0) {
-            return new VFAInteger(NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def));
+            var p = NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def);
+            return new VFAInteger(p.name, p.defaultInt);
         }
         public AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
             var exists = GetParam(name);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -14,7 +15,7 @@ namespace VF.Inspector {
     [InitializeOnLoad]
     public class SceneViewOverlay {
         static SceneViewOverlay() {
-            SceneView.duringSceneGui += DuringSceneGui;
+            //SceneView.duringSceneGui += DuringSceneGui;
         }
 
         private static void DuringSceneGui(SceneView view) {
@@ -89,6 +90,17 @@ namespace VF.Inspector {
                 || !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath("cc05f54cef1ff194fb23f8c1d552c492"))) {
                 output += "B";
             }
+            
+            if (!File.Exists("Packages/vpm-manifest.json")) {
+                output += "V";
+            }
+            
+            output += " " + Application.unityVersion;
+
+            var vrcsdkAvatar = VRCFPackageUtils.GetVersionFromId("com.vrchat.avatars");
+            var vrcsdkBase = VRCFPackageUtils.GetVersionFromId("com.vrchat.base");
+            output += " " + vrcsdkAvatar;
+            if (vrcsdkBase != vrcsdkAvatar) output += "x" + vrcsdkBase;
 
             return output;
         }

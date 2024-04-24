@@ -1,4 +1,7 @@
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 
@@ -36,6 +39,31 @@ namespace VF.Utils {
         private static bool HasValidBinding(AnimationClip clip, VFGameObject avatarRoot) {
             return clip.GetAllBindings()
                 .Any(binding => binding.IsValid(avatarRoot));
+        }
+
+        public static void MakeZeroLength(this Motion motion) {
+            if (motion is AnimationClip clip) {
+                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => (binding, curve.GetFirst(), true)));
+                if (!clip.GetAllBindings().Any()) {
+                    clip.SetFloatCurve(
+                        EditorCurveBinding.FloatCurve("__ignored", typeof(GameObject), "m_IsActive"),
+                        AnimationCurve.Constant(0, 0, 0)
+                    );
+                }
+            } else {
+                foreach (var tree in new AnimatorIterator.Trees().From(motion)) {
+                    tree.RewriteChildren(child => {
+                        if (child.motion == null) {
+                            child.motion = new AnimationClip();
+                            child.motion.name = "Empty";
+                        }
+                        return child;
+                    });
+                }
+                foreach (var c in new AnimatorIterator.Clips().From(motion)) {
+                    c.MakeZeroLength();
+                }
+            }
         }
     }
 }

@@ -52,11 +52,11 @@ namespace VF.Feature {
                 applyCondition = VRCHeadChop.HeadChopBone.ApplyCondition.AlwaysApply
             }).ToArray();
 #else
-            if (obj.parent != head) {
-                throw new Exception(
-                    "You are using a VRCFury feature that requires VRCSDK HeadChop, but your VRCSDK is too old. Please update your VRCSDK to the newest, or at least version 3.5.2."
-                );
-            }
+            //if (obj.parent != head) {
+            //    throw new Exception(
+            //        "You are using a VRCFury feature that requires VRCSDK HeadChop, but your VRCSDK is too old. Please update your VRCSDK to the newest, or at least version 3.5.2."
+            //    );
+            //}
             addOtherFeature(new ArmatureLink {
                 propBone = obj,
                 linkTo = new List<ArmatureLink.LinkTo> {

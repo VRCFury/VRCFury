@@ -142,9 +142,10 @@ namespace VF.Service {
         /**
          * a,b : [-10000,10000]
          */
-        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false) {
+        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
+            name = name ?? $"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}";
             return new VFAFloatBool((whenTrue, whenFalse) => {
-                var tree = fx.NewBlendTree($"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}");
+                var tree = fx.NewBlendTree(name);
                 tree.blendType = BlendTreeType.SimpleDirectional2D;
                 tree.useAutomaticThresholds = false;
                 tree.blendParameter = a.Name();
@@ -161,9 +162,10 @@ namespace VF.Service {
         /**
          * a,b : (-Infinity,Infinity)
          */
-        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false) {
+        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
+            name = name ?? $"{CleanName(a)} > {b}";
             return new VFAFloatBool((whenTrue, whenFalse) => Make1D(
-                $"{CleanName(a)} > {b}",
+                name,
                 a,
                 (orEqual ? Down(b) : b, whenFalse),
                 (orEqual ? b : Up(b), whenTrue)
@@ -173,8 +175,8 @@ namespace VF.Service {
         /**
          * a,b : (-Infinity,Infinity)
          */
-        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false) {
-            return Not(GreaterThan(a, b, !orEqual));
+        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
+            return Not(GreaterThan(a, b, !orEqual, name));
         }
 
         private static float Up(float a) {

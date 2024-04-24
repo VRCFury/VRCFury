@@ -288,7 +288,7 @@ namespace VF.Feature {
                     var exists = toMain.GetRaw().GetParam(rewritten);
                     if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
-                    var target = new VFAFloat(exists);
+                    var target = new VFAFloat(exists.name, exists.defaultFloat);
 
                     float minSupported, maxSupported;
                     switch (smoothedParam.range) {
