@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
-using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils.Controller;
 using VRC.Dynamics;
@@ -14,8 +14,8 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Service {
     [VFService]
     public class HapticContactsService {
-        [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly MathService math;
+        [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
+        [VFAutowired] [CanBeNull] private readonly MathService math;
 
         public void AddSender(
             VFGameObject obj,
@@ -52,7 +52,7 @@ namespace VF.Service {
             }
             SetTags("");
 
-            if (HapticUtils.GetClosestHumanoidBone(obj, manager.AvatarObject) != HumanBodyBones.Hips || !useHipAvoidance) {
+            if (HapticUtils.GetClosestHumanoidBone(obj, manager?.AvatarObject) != HumanBodyBones.Hips || !useHipAvoidance) {
                 SetTags("", "_SelfNotOnHips");
             }
         }
@@ -73,6 +73,10 @@ namespace VF.Service {
             bool worldScale = true,
             bool useHipAvoidance = true
         ) {
+            if (manager == null || math == null) {
+                throw new Exception("Receiver cannot be created in detached mode");
+            }
+
             var fx = manager.GetFx();
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return fx.Zero();
 
