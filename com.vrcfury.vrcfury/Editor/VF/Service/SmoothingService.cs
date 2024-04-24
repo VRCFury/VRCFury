@@ -12,7 +12,6 @@ namespace VF.Service {
      */
     [VFService]
     public class SmoothingService {
-        [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly FrameTimeService frameTimeService;

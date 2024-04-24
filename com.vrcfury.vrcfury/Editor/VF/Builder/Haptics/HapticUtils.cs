@@ -7,8 +7,11 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Component;
+using VF.Feature;
 using VF.Inspector;
 using VF.Menu;
+using VF.Model;
+using VF.Model.Feature;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -168,38 +171,47 @@ namespace VF.Builder.Haptics {
             }
             return new string(arr);
         }
-
-        public static bool IsDirectChildOfHips(VFGameObject obj) {
-            return IsChildOfBone(obj, HumanBodyBones.Hips)
-                   && !IsChildOfBone(obj, HumanBodyBones.Chest)
-                   && !IsChildOfBone(obj, HumanBodyBones.Spine)
-                   && !IsChildOfBone(obj, HumanBodyBones.LeftUpperArm)
-                   && !IsChildOfBone(obj, HumanBodyBones.LeftUpperLeg)
-                   && !IsChildOfBone(obj, HumanBodyBones.RightUpperArm)
-                   && !IsChildOfBone(obj, HumanBodyBones.RightUpperLeg);
+        
+        [Obsolete]
+        public static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj) {
+            return GetClosestHumanoidBone(obj, VRCAvatarUtils.GuessAvatarObject(obj));
         }
 
-        public static bool IsChildOfHead(VFGameObject obj) {
-            return IsChildOfBone(obj, HumanBodyBones.Head, false);
-        }
+        private static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj, VFGameObject avatarObject) {
+            if (avatarObject == null) return null;
+            var followConstraints = true;
+            var followArmatureLink = true;
 
-        public static bool IsChildOfBone(VFGameObject obj, HumanBodyBones bone, bool followConstraints = true) {
-            try {
-                VFGameObject avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
-                if (!avatarObject) return false;
-                var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
-                return boneObj && IsChildOf(boneObj, obj, followConstraints);
-            } catch (Exception) {
-                return false;
-            }
-        }
-
-        private static bool IsChildOf(VFGameObject parent, VFGameObject child, bool followConstraints) {
+            var humanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject)
+                .ToDictionary(x => x.Value, x => x.Key);
             var alreadyChecked = new HashSet<VFGameObject>();
-            var current = child;
+            var current = obj;
             while (current != null) {
+                if (humanoidBones.TryGetValue(current, out var bone))
+                    return bone;
+
                 alreadyChecked.Add(current);
-                if (current == parent) return true;
+
+                if (followArmatureLink) {
+                    VFGameObject foundParent = null;
+                    foreach (var armatureLink in avatarObject
+                        .GetComponentsInSelfAndChildren<VRCFury>()
+                        .SelectMany(v => v.GetAllFeatures())
+                        .OfType<ArmatureLink>()
+                    ) {
+                        var p = ArmatureLinkBuilder.GetProbableParent(armatureLink, avatarObject, obj);
+                        if (p != null && !alreadyChecked.Contains(p)) {
+                            foundParent = p;
+                            break;
+                        }
+                    }
+
+                    if (foundParent != null) {
+                        current = foundParent;
+                        continue;
+                    }
+                }
+                
                 if (followConstraints) {
                     Transform foundConstraint = null;
                     foreach (var constraint in current.GetComponents<IConstraint>()) {
@@ -219,7 +231,7 @@ namespace VF.Builder.Haptics {
                 }
                 current = current.parent;
             }
-            return false;
+            return null;
         }
     }
 }
