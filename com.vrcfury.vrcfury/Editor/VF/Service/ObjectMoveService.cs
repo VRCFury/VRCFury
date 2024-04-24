@@ -28,7 +28,9 @@ namespace VF.Service {
             var immovableBones = new HashSet<VFGameObject>();
             immovableBones.Add(manager.AvatarObject);
             // Eyes are weird, because vrc takes full control of them, and we move them as part of the crosseye fix, so ignore them
-            foreach (var (bone,boneObj) in VRCFArmatureUtils.GetAllBones(manager.AvatarObject)) {
+            foreach (var pair in VRCFArmatureUtils.GetAllBones(manager.AvatarObject)) {
+                var bone = pair.Key;
+                var boneObj = pair.Value;
                 if (bone == HumanBodyBones.LeftEye || bone == HumanBodyBones.RightEye) continue;
                 var current = boneObj;
                 while (current != null && current != manager.AvatarObject) {

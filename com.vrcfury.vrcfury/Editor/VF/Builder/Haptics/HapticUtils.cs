@@ -171,13 +171,12 @@ namespace VF.Builder.Haptics {
             }
             return new string(arr);
         }
-        
-        [Obsolete]
+
         public static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj) {
             return GetClosestHumanoidBone(obj, VRCAvatarUtils.GuessAvatarObject(obj));
         }
 
-        private static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj, VFGameObject avatarObject) {
+        public static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj, VFGameObject avatarObject) {
             if (avatarObject == null) return null;
             var followConstraints = true;
             var followArmatureLink = true;

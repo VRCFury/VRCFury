@@ -52,7 +52,7 @@ namespace VF.Service {
             }
             SetTags("");
 
-            if (HapticUtils.GetClosestHumanoidBone(obj) != HumanBodyBones.Hips || !useHipAvoidance) {
+            if (HapticUtils.GetClosestHumanoidBone(obj, manager.AvatarObject) != HumanBodyBones.Hips || !useHipAvoidance) {
                 SetTags("", "_SelfNotOnHips");
             }
         }
@@ -112,7 +112,7 @@ namespace VF.Service {
                 }).ToList();
             }
             SetTags("");
-            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance && HapticUtils.GetClosestHumanoidBone(obj) == HumanBodyBones.Hips) {
+            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance && HapticUtils.GetClosestHumanoidBone(obj, manager.AvatarObject) == HumanBodyBones.Hips) {
                 SetTags("_SelfNotOnHips");
             }
 
