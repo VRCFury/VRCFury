@@ -12,35 +12,47 @@ namespace VF.Hooks {
     public static class AddComponentHook {
         [InitializeOnLoadMethod]
         public static void Init() {
-            EditorApplication.update += AddToMenu;
+            if (MenuChanged != null) {
+                void Add() {
+                    menuChanged -= Add;
+                    AddToMenu();
+                }
+                menuChanged += Add;
+
+                void Remove() {
+                    menuChanged -= Remove;
+                    RemoveJunkFromMenu();
+                    menuChanged += Remove;
+                }
+                menuChanged += Remove;
+            } else {
+                EditorApplication.delayCall += () => {
+                    RemoveJunkFromMenu();
+                    AddToMenu();
+                };
+            }
         }
-        
-        private static readonly MethodInfo MenuItemExists = typeof(UnityEditor.Menu).GetMethod("MenuItemExists",
+
+        private static Action menuChanged {
+            get => (Action)MenuChanged.GetValue(null);
+            set => MenuChanged.SetValue(null, value);
+        }
+        private static readonly FieldInfo MenuChanged = typeof(UnityEditor.Menu).GetField("menuChanged",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo RemoveMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo AddMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
-        private static bool addedOnce = false;
-        private static void AddToMenu() {
-            if (MenuItemExists != null) {
-                if (!(bool)MenuItemExists.Invoke(null, new object[] { "Component/UI/Toggle" })) {
-                    return;
-                }
-            } else if (addedOnce) {
-                return;
-            }
-
-            addedOnce = true;
-
-            Debug.Log("Adding VRCFury components to menu");
-
+        private static void RemoveJunkFromMenu() {
             if (RemoveMenuItem != null) {
                 RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Toggle" });
                 RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Legacy/Dropdown" });
                 RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Toggle Group" });
             }
+        }
+        private static void AddToMenu() {
+            Debug.Log("Adding VRCFury components to menu");
 
             if (AddMenuItem != null) {
                 foreach (var feature in FeatureFinder.GetAllFeaturesForMenu()) {
