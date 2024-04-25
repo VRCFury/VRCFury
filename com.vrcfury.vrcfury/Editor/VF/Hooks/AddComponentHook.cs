@@ -13,18 +13,17 @@ namespace VF.Hooks {
         [InitializeOnLoadMethod]
         public static void Init() {
             if (MenuChanged != null) {
-                void Add() {
-                    menuChanged -= Add;
-                    AddToMenu();
-                }
-                menuChanged += Add;
-
-                //void Remove() {
-                //    menuChanged -= Remove;
-                //    RemoveJunkFromMenu();
-                //    menuChanged += Remove;
-                //}
-                //menuChanged += Remove;
+                bool inHandler = false;
+                bool added = false;
+                EventHandler onMenuChange = (src, args) => {
+                    if (inHandler) return;
+                    inHandler = true;
+                    Debug.Log("On Menu Change");
+                    RemoveJunkFromMenu();
+                    if (!added) AddToMenu();
+                    inHandler = false;
+                };
+                MenuChanged.AddEventHandler(null, onMenuChange);
             } else {
                 EditorApplication.delayCall += () => {
                     RemoveJunkFromMenu();
@@ -33,11 +32,10 @@ namespace VF.Hooks {
             }
         }
 
-        private static Action menuChanged {
-            get => (Action)MenuChanged.GetValue(null);
-            set => MenuChanged.SetValue(null, value);
+        private static EventHandler menuChanged {
+            get => MenuChanged.get(null);
         }
-        private static readonly FieldInfo MenuChanged = typeof(UnityEditor.Menu).GetField("menuChanged",
+        private static readonly EventInfo MenuChanged = typeof(UnityEditor.Menu).GetEvent("menuChanged",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo RemoveMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
@@ -45,6 +43,7 @@ namespace VF.Hooks {
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
         private static void RemoveJunkFromMenu() {
+            Debug.Log("Removing VRCFury components to menu");
             if (RemoveMenuItem != null) {
                 RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Toggle" });
                 RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Legacy/Dropdown" });
