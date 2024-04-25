@@ -19,12 +19,12 @@ namespace VF.Hooks {
                 }
                 menuChanged += Add;
 
-                void Remove() {
-                    menuChanged -= Remove;
-                    RemoveJunkFromMenu();
-                    menuChanged += Remove;
-                }
-                menuChanged += Remove;
+                //void Remove() {
+                //    menuChanged -= Remove;
+                //    RemoveJunkFromMenu();
+                //    menuChanged += Remove;
+                //}
+                //menuChanged += Remove;
             } else {
                 EditorApplication.delayCall += () => {
                     RemoveJunkFromMenu();
