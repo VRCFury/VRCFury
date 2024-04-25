@@ -32,9 +32,6 @@ namespace VF.Hooks {
             }
         }
 
-        private static EventHandler menuChanged {
-            get => MenuChanged.get(null);
-        }
         private static readonly EventInfo MenuChanged = typeof(UnityEditor.Menu).GetEvent("menuChanged",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo RemoveMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
