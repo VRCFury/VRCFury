@@ -12,81 +12,64 @@ namespace VF.Hooks {
     public static class AddComponentHook {
         [InitializeOnLoadMethod]
         public static void Init() {
-            if (MenuChangedAddHandler != null) {
-                bool inHandler = false;
-                bool added = false;
-                Action onMenuChange = () => {
-                    if (inHandler) return;
-                    inHandler = true;
-                    Debug.Log("On Menu Change");
-                    RemoveJunkFromMenu();
-                    if (!added) {
-                        added = true;
-                        AddToMenu();
-                    }
-                    inHandler = false;
-                };
-                MenuChangedAddHandler.Invoke(null, new object[] { onMenuChange });
-            } else {
-                EditorApplication.delayCall += () => {
-                    RemoveJunkFromMenu();
-                    AddToMenu();
-                };
-            }
+            EditorApplication.update += AddToMenu;
         }
-
-        private static readonly MethodInfo MenuChangedAddHandler = typeof(UnityEditor.Menu).GetEvent("menuChanged",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetAddMethod(true);
+        
+        private static readonly MethodInfo MenuItemExists = typeof(UnityEditor.Menu).GetMethod("MenuItemExists",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo RemoveMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo AddMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        
-        private static void RemoveJunkFromMenu() {
-            if (RemoveMenuItem == null) {
-                Debug.LogError("Menu.RemoveMenuItem is missing");
-                return;
-            }
 
-            RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Toggle" });
-            RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Legacy/Dropdown" });
-            RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Toggle Group" });
-        }
-
+        private static bool addedOnce = false;
         private static void AddToMenu() {
-            if (AddMenuItem == null) {
-                Debug.LogError("Menu.AddMenuItem is missing");
+            if (MenuItemExists != null) {
+                if (!(bool)MenuItemExists.Invoke(null, new object[] { "Component/UI/Toggle" })) {
+                    return;
+                }
+            } else if (addedOnce) {
                 return;
             }
-            
+
+            addedOnce = true;
+
             Debug.Log("Adding VRCFury components to menu");
 
-            foreach (var feature in FeatureFinder.GetAllFeaturesForMenu()) {
-                var editorInst = (FeatureBuilder)Activator.CreateInstance(feature.Value);
-                var title = editorInst.GetEditorTitle();
-                if (title != null) {
-                    AddMenuItem.Invoke(null, new object[] {
-                        "Component/VRCFury/VRCFury | " + title, // name
-                        "", // shortcut
-                        false, // checked
-                        (int)0, // priority
-                        (Action)(() => {
-                            foreach (var obj in Selection.gameObjects) {
-                                if (obj == null) continue;
-                                var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
-                                if (modelInst == null) continue;
-                                if (modelInst is ArmatureLink al) {
-                                    al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);
-                                }
+            if (RemoveMenuItem != null) {
+                RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Toggle" });
+                RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Legacy/Dropdown" });
+                RemoveMenuItem.Invoke(null, new object[] { "Component/UI/Toggle Group" });
+            }
 
-                                var c = Undo.AddComponent<VRCFury>(obj);
-                                var so = new SerializedObject(c);
-                                so.FindProperty("content").managedReferenceValue = modelInst;
-                                so.ApplyModifiedPropertiesWithoutUndo();
-                            }
-                        }),
-                        null
-                    });
+            if (AddMenuItem != null) {
+                foreach (var feature in FeatureFinder.GetAllFeaturesForMenu()) {
+                    var editorInst = (FeatureBuilder)Activator.CreateInstance(feature.Value);
+                    var title = editorInst.GetEditorTitle();
+                    if (title != null) {
+                        AddMenuItem.Invoke(null, new object[] {
+                            "Component/VRCFury/VRCFury | " + title, // name
+                            "", // shortcut
+                            false, // checked
+                            (int)0, // priority
+                            (Action)(() => {
+                                foreach (var obj in Selection.gameObjects) {
+                                    if (obj == null) continue;
+                                    var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
+                                    if (modelInst == null) continue;
+                                    if (modelInst is ArmatureLink al) {
+                                        al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);
+                                    }
+
+                                    var c = Undo.AddComponent<VRCFury>(obj);
+                                    var so = new SerializedObject(c);
+                                    so.FindProperty("content").managedReferenceValue = modelInst;
+                                    so.ApplyModifiedPropertiesWithoutUndo();
+                                }
+                            }),
+                            null
+                        });
+                    }
                 }
             }
         }
