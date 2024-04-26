@@ -38,7 +38,7 @@ public static class FeatureFinder {
                     }
                 }
             }
-            Debug.Log("VRCFury loaded " + allFeatures.Count + " features");
+            Debug.Log("VRCFury loaded " + allFeatures.Count + " component types");
         }
         return allFeatures;
     }
