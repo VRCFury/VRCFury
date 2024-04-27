@@ -30,11 +30,10 @@ namespace VF.Feature {
                     + " bits. Ask your avatar creator, or the creator of the last prop you've added, if there are any parameters you can remove to make space."));
             }
 
-            if (p.GetRaw().parameters.Length > 256) {
+            if (p.GetRaw().parameters.Length > 8192) {
                 excService.ThrowIfActuallyUploading(new SneakyException(
                     $"Your avatar is using too many synced and unsynced expression parameters ({p.GetRaw().parameters.Length})!"
-                    + " A bug in vrchat causes this to unexpectedly throw away some of your parameters.\n\n" +
-                    "https://feedback.vrchat.com/avatar-30/p/1332-bug-vrcexpressionparameters-fail-to-load-correctly-with-more-than-256-param"));
+                    + " There's a limit of 8192 total expression parameters."));
             }
 
             var contacts = avatarObject.GetComponentsInSelfAndChildren<ContactBase>().ToArray();
