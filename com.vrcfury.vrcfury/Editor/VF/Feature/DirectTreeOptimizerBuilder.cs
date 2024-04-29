@@ -283,6 +283,11 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
+                var tree = fx.NewBlendTree("Optimized Toggles");
+                tree.blendType = BlendTreeType.Direct;
+                var layer = fx.NewLayer("Optimized Toggles");
+                layer.NewState("Optimized Toggles").WithAnimation(tree);
+
                 foreach (var toggle in eligibleLayers) {
                     var offEmpty = !toggle.offState.HasValidBinding(avatarObject);
                     var onEmpty = !toggle.onState.HasValidBinding(avatarObject);
@@ -304,7 +309,8 @@ namespace VF.Feature {
                         motion = toggle.onState;
                     }
 
-                    directTree.Add(param, motion);
+                    //directTree.Add(param, motion);
+                    tree.AddDirectChild(param, motion);
 
                     var fxRaw = fx.GetRaw();
                     fxRaw.parameters = fxRaw.parameters.Select(p => {

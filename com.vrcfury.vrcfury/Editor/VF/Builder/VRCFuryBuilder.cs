@@ -152,7 +152,6 @@ public class VRCFuryBuilder {
         AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
         AddBuilder(typeof(CleanupEmptyLayersBuilder));
         AddBuilder(typeof(ResetAnimatorBuilder));
-        AddBuilder(typeof(FixBadVrcParameterNamesBuilder));
         AddBuilder(typeof(FinalizeMenuBuilder));
         AddBuilder(typeof(FinalizeParamsBuilder));
         AddBuilder(typeof(FinalizeControllerBuilder));

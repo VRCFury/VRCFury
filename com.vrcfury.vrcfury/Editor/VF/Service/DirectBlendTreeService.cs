@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using JetBrains.Annotations;
-using NUnit.Framework;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;

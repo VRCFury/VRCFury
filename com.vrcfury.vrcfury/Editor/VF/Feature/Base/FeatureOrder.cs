@@ -104,7 +104,6 @@ namespace VF.Feature.Base {
         FinalizeMenu,
 
         // Finalize Parameters
-        FixBadParameters,
         FinalizeParams,
 
         MarkThingsAsDirtyJustInCase,

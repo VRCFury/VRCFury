@@ -17,7 +17,6 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
-using VRC.Dynamics;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
@@ -34,19 +33,19 @@ namespace VF.Feature {
                 return;
             }
 
-            var links = GetLinks();
+            var linkMode = GetLinkMode(model, avatarObject);
+            var links = GetLinks(model, linkMode, avatarObject);
             if (links == null) {
                 return;
             }
 
-            var linkMode = GetLinkMode();
             var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
 
             var (_, _, scalingFactor) = GetScalingFactor(links, linkMode);
             Debug.Log("Detected scaling factor: " + scalingFactor);
 
             var anim = findAnimatedTransformsService.Find();
-            var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).ToImmutableHashSet();
+            var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).Values.ToImmutableHashSet();
 
             var doNotReparent = new HashSet<VFGameObject>();
             // We still reparent scale-animated things, because some users take advantage of this to "scale to 0" every bone
@@ -66,13 +65,11 @@ namespace VF.Feature {
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 bool ShouldReparent() {
                     if (propBone == links.propMain) return true;
-                    if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) return false;
                     if (avatarHumanoidBones.Contains(avatarBone)) return true;
                     if (doNotReparent.Contains(propBone)) return false;
                     return true;
                 }
                 bool ShouldReuseBone() {
-                    if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) return false; // See note below why we don't do this for ReparentRoot
                     if (anim.positionIsAnimated.Contains(propBone)) return false;
                     if (anim.rotationIsAnimated.Contains(propBone)) return false;
                     if (anim.scaleIsAnimated.Contains(propBone)) return false;
@@ -210,6 +207,11 @@ namespace VF.Feature {
                         .ToArray();
                     VRCFuryEditorUtils.MarkDirty(skin);
                 }
+                
+                // We never rewrite rootBone because of two reasons:
+                // 1. It defines the origin of the bounds (which may rotate and be impossible to reproduce)
+                // 2. It defines the origin for verts that are not weight painted (unusual, but really hard
+                //    to fix because there is no "bind pose" for the root bone)
             }
         }
 
@@ -272,7 +274,7 @@ namespace VF.Feature {
             return reasons;
         }
 
-        private ArmatureLink.ArmatureLinkMode GetLinkMode() {
+        private static ArmatureLink.ArmatureLinkMode GetLinkMode(ArmatureLink model, VFGameObject avatarObject) {
             if (model.linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
                 var usesBonesFromProp = false;
                 var propRoot = model.propBone.asVf();
@@ -334,15 +336,29 @@ namespace VF.Feature {
                 = new Stack<(VFGameObject, VFGameObject)>();
             
             // left=object to move | right=new parent
-            public readonly Stack<(VFGameObject, VFGameObject)> reparent
+            public readonly Stack<(VFGameObject, VFGameObject)> unmergedChildren
                 = new Stack<(VFGameObject, VFGameObject)>();
         }
 
-        private Links GetLinks() {
+        public static VFGameObject GetProbableParent(ArmatureLink model, VFGameObject avatarObject, VFGameObject obj) {
+            try {
+                var linkFrom = model.propBone;
+                if (linkFrom == null || !obj.IsChildOf(linkFrom)) return null;
+                var links = GetLinks(model, GetLinkMode(model, avatarObject), avatarObject);
+                return links.mergeBones
+                    .Where(pair => pair.Item1 == obj)
+                    .Select(pair => pair.Item2)
+                    .FirstOrDefault();
+            } catch (Exception) {
+                return null;
+            }
+        }
+
+        private static Links GetLinks(ArmatureLink model, ArmatureLink.ArmatureLinkMode linkMode, VFGameObject avatarObject) {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
-            foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject)) {
+            foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject).Values) {
                 if (b.IsChildOf(propBone)) {
                     throw new VRCFBuilderException(
                         "Link From is part of the avatar's armature." +
@@ -399,41 +415,42 @@ namespace VF.Feature {
             }
             
             var links = new Links();
-
-            var checkStack = new Stack<(VFGameObject, VFGameObject)>();
-            checkStack.Push((propBone, avatarBone));
             links.mergeBones.Push((propBone, avatarBone));
 
-            while (checkStack.Count > 0) {
-                var (checkPropBone, checkAvatarBone) = checkStack.Pop();
-                foreach (var childPropBone in checkPropBone.Children()) {
-                    var searchName = childPropBone.name;
-                    if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
-                        searchName = searchName.Replace(removeBoneSuffix, "");
-                    }
-                    var childAvatarBone = checkAvatarBone.Find(searchName);
-
-                    // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
-                    if (!childAvatarBone) {
-                        if (childPropBone.name.Contains("ChestUp")) {
-                            childAvatarBone = checkAvatarBone;
-                            links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
-                        } else {
-                            childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
-                            if (childAvatarBone) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
+            if (linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+                var checkStack = new Stack<(VFGameObject, VFGameObject)>();
+                checkStack.Push((propBone, avatarBone));
+                while (checkStack.Count > 0) {
+                    var (checkPropBone, checkAvatarBone) = checkStack.Pop();
+                    foreach (var childPropBone in checkPropBone.Children()) {
+                        var searchName = childPropBone.name;
+                        if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
+                            searchName = searchName.Replace(removeBoneSuffix, "");
                         }
-                    }
+                        var childAvatarBone = checkAvatarBone.Find(searchName);
 
-                    if (childAvatarBone) {
-                        var marshmallowChild = GetMarshmallowChild(childAvatarBone);
-                        if (marshmallowChild != null) childAvatarBone = marshmallowChild;
-                    }
+                        // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
+                        if (!childAvatarBone) {
+                            if (childPropBone.name.Contains("ChestUp")) {
+                                childAvatarBone = checkAvatarBone;
+                                links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
+                            } else {
+                                childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
+                                if (childAvatarBone) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
+                            }
+                        }
 
-                    if (childAvatarBone != null) {
-                        links.mergeBones.Push((childPropBone, childAvatarBone));
-                        checkStack.Push((childPropBone, childAvatarBone));
-                    } else {
-                        links.reparent.Push((childPropBone, checkAvatarBone));
+                        if (childAvatarBone) {
+                            var marshmallowChild = GetMarshmallowChild(childAvatarBone);
+                            if (marshmallowChild != null) childAvatarBone = marshmallowChild;
+                        }
+
+                        if (childAvatarBone != null) {
+                            links.mergeBones.Push((childPropBone, childAvatarBone));
+                            checkStack.Push((childPropBone, childAvatarBone));
+                        } else {
+                            links.unmergedChildren.Push((childPropBone, checkAvatarBone));
+                        }
                     }
                 }
             }
@@ -623,9 +640,9 @@ namespace VF.Feature {
                     return "Avatar descriptor is missing";
                 }
 
-                var linkMode = GetLinkMode();
-
-                var links = GetLinks();
+                var linkMode = GetLinkMode(model, avatarObject);
+                var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
+                var links = GetLinks(model, linkMode, avatarObject);
                 if (links == null) {
                     return "No valid link target found";
                 }
@@ -633,7 +650,7 @@ namespace VF.Feature {
                 if (links.chestUpHack != ChestUpHack.None) {
                     chestUpWarning.SetVisible(true);
                 }
-                var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
+
                 var text = new List<string>();
                 var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links, linkMode);
                 text.Add($"Merging to bone: {links.avatarMain.GetPath(avatarObject)}");
@@ -644,11 +661,11 @@ namespace VF.Feature {
                     text.Add($"Avatar root bone scale: {avatarMainScale}");
                     text.Add($"Scaling factor: {scalingFactor}");
                 }
-                if (linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot && links.reparent.Count > 0) {
+                if (links.unmergedChildren.Count > 0) {
                     text.Add(
                         "These bones do not have a match on the avatar and will be added as new children: \n" +
                         string.Join("\n",
-                            links.reparent.Select(b =>
+                            links.unmergedChildren.Select(b =>
                                 "* " + b.Item1.GetPath(links.propMain))));
                 }
 

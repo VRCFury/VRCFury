@@ -1,23 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Menu;
-using VF.Model;
 using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
@@ -467,18 +461,17 @@ namespace VF.Inspector {
         }
 
         public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
-            if (HapticUtils.IsDirectChildOfHips(socket.owner())) {
-                var name = GetName(socket).ToLower();
-                if (name.Contains("rubbing") || name.Contains("job")) {
-                    return false;
-                }
-                return true;
-            }
-            return false;
+            if (HapticUtils.GetClosestHumanoidBone(socket.owner()) != HumanBodyBones.Hips) return false;
+
+            var name = GetName(socket).ToLower();
+            if (name.Contains("rubbing") || name.Contains("job")) return false;
+            
+            return true;
         }
 
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
-            if (HapticUtils.IsChildOfBone(socket.owner(), HumanBodyBones.Head)) return true;
+            var closestBone = HapticUtils.GetClosestHumanoidBone(socket.owner());
+            if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) return true;
             return ShouldProbablyHaveTouchZone(socket);
         }
 

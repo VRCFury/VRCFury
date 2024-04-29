@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -60,8 +61,8 @@ namespace VF.Feature {
             }
             return _defaultClip;
         }
-        public VFLayer GetDefaultLayer() {
-            GetDefaultClip();
+
+        [CanBeNull] public VFLayer GetDefaultLayer() {
             return _defaultLayer;
         }
 

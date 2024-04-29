@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
-using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils.Controller;
 using VRC.Dynamics;
@@ -14,14 +14,8 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Service {
     [VFService]
     public class HapticContactsService {
-        [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly MathService math;
-        private readonly List<Action> addTagsLater = new List<Action>();
-
-        [FeatureBuilderAction(FeatureOrder.HapticContactsDetectPosiion)]
-        public void AddTagsLater() {
-            foreach (var a in addTagsLater) a();
-        }
+        [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
+        [VFAutowired] [CanBeNull] private readonly MathService math;
 
         public void AddSender(
             VFGameObject obj,
@@ -57,11 +51,10 @@ namespace VF.Service {
                 }).ToList();
             }
             SetTags("");
-            addTagsLater.Add(() => {
-                if (!HapticUtils.IsDirectChildOfHips(obj) || !useHipAvoidance) {
-                    SetTags("", "_SelfNotOnHips");
-                }
-            });
+
+            if (HapticUtils.GetClosestHumanoidBone(obj, manager?.AvatarObject) != HumanBodyBones.Hips || !useHipAvoidance) {
+                SetTags("", "_SelfNotOnHips");
+            }
         }
 
         public VFAFloat AddReceiver(
@@ -80,6 +73,10 @@ namespace VF.Service {
             bool worldScale = true,
             bool useHipAvoidance = true
         ) {
+            if (manager == null || math == null) {
+                throw new Exception("Receiver cannot be created in detached mode");
+            }
+
             var fx = manager.GetFx();
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return fx.Zero();
 
@@ -119,12 +116,8 @@ namespace VF.Service {
                 }).ToList();
             }
             SetTags("");
-            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance) {
-                addTagsLater.Add(() => {
-                    if (HapticUtils.IsDirectChildOfHips(obj)) {
-                        SetTags("_SelfNotOnHips");
-                    }
-                });
+            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance && HapticUtils.GetClosestHumanoidBone(obj, manager.AvatarObject) == HumanBodyBones.Hips) {
+                SetTags("_SelfNotOnHips");
             }
 
             return param;
