@@ -170,7 +170,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         float inTime,
         float outTime
     ) {
-        var clip = actionClipService.LoadState(onName, action);
+        var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
 
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
@@ -202,13 +202,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
         } else if (model.hasTransition) {
-            var inClip = actionClipService.LoadState(onName + " In", inAction);
+            var inClip = actionClipService.LoadState(onName + " In", inAction, toggleFeature: this);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
                 clip = fx.NewClip(onName);
                 clip.CopyFromLast(inClip);
             }
-            var outClip = model.simpleOutTransition ? inClip : actionClipService.LoadState(onName + " Out", outAction);
+            var outClip = model.simpleOutTransition ? inClip : actionClipService.LoadState(onName + " Out", outAction, toggleFeature: this);
             var outSpeed = model.simpleOutTransition ? -1 : 1;
             
             // Copy "object enabled" and "material" states to in and out clips if they don't already have them

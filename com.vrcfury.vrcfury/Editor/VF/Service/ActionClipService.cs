@@ -31,8 +31,8 @@ namespace VF.Service {
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
-            return LoadStateAdv(name, state, animObjectOverride).onClip;
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, ToggleBuilder toggleFeature = null) {
+            return LoadStateAdv(name, state, animObjectOverride, toggleFeature).onClip;
         }
 
         public class BuiltAction {
@@ -40,7 +40,7 @@ namespace VF.Service {
             public AnimationClip onClip = new AnimationClip();
             public AnimationClip implicitRestingClip = new AnimationClip();
         }
-        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null) {
+        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, ToggleBuilder toggleFeature = null) {
             var fx = avatarManager.GetFx();
             var avatarObject = avatarManager.AvatarObject;
 
@@ -331,7 +331,7 @@ namespace VF.Service {
                         break;
                     }
                     case TagStateAction tagStateAction: {
-                        driveParameterService.CreateTagTrigger(onClip, tagStateAction.tag, tagStateAction.value);
+                        driveParameterService.CreateTagTrigger(onClip, tagStateAction.tag, tagStateAction.value, toggleFeature);
                         break;
                     }
                 }
