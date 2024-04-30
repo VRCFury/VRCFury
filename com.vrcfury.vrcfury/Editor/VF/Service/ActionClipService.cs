@@ -27,6 +27,7 @@ namespace VF.Service {
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+        [VFAutowired] private readonly DriveParameterService driveParameterService;
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
@@ -319,6 +320,18 @@ namespace VF.Service {
                         onClip.CopyFrom(built);
                         onClip.SetLooping(true);
                         
+                        break;
+                    }
+                    case SyncParamAction syncParamAction: {
+                        driveParameterService.CreateParamTrigger(onClip, syncParamAction.param, syncParamAction.value);
+                        break;
+                    }
+                    case ToggleStateAction toggleStateAction: {
+                        driveParameterService.CreateToggleTrigger(onClip, toggleStateAction.toggle, toggleStateAction.value);
+                        break;
+                    }
+                    case TagStateAction tagStateAction: {
+                        driveParameterService.CreateTagTrigger(onClip, tagStateAction.tag, tagStateAction.value);
                         break;
                     }
                 }

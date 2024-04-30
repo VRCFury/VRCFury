@@ -16,54 +16,70 @@ namespace VF.Service {
      */
     [VFService]
     public class DriveParameterService {
-        [VFAutowired] private AvatarManager avatarManager;
+        [VFAutowired] private AvatarManager manager;
         [VFAutowired] private readonly GlobalsService globals;
 
-        private List<(VFState, string, float)> paramTriggers = new ();
-        private List<(VFState, string, float)> toggleTriggers = new ();
-        private List<(VFState, string, float, FeatureBuilder)> tagTriggers = new ();
+        private List<(AnimationClip, string, float)> paramTriggers = new ();
+        private List<(AnimationClip, string, float)> toggleTriggers = new ();
+        private List<(AnimationClip, string, float, FeatureBuilder)> tagTriggers = new ();
 
-        public void CreateParamTrigger(VFState state, string param, float target) {
-            paramTriggers.Add((state, param, target));
+        public void CreateParamTrigger(AnimationClip clip, string param, float target) {
+            paramTriggers.Add((clip, param, target));
         }
 
-        public void CreateToggleTrigger(VFState state, string toggle, float target) {
-            toggleTriggers.Add((state, toggle, target));
+        public void CreateToggleTrigger(AnimationClip clip, string toggle, float target) {
+            toggleTriggers.Add((clip, toggle, target));
         }
 
-        public void CreateTagTrigger(VFState state, string tag, float target, FeatureBuilder feature = null) {
-            tagTriggers.Add((state, tag, target, feature));
+        public void CreateTagTrigger(AnimationClip clip, string tag, float target, FeatureBuilder feature = null) {
+            tagTriggers.Add((clip, tag, target, feature));
         }
 
         public void ApplyTriggers() {
+
+            Dictionary<Motion, VFState> states = new();
+
+            foreach (var c in manager.GetAllUsedControllers()) {
+                foreach (var layer in c.GetLayers()) {
+                    var stateMachine = layer.stateMachine;
+                    foreach (var state in stateMachine.states) {
+                        if (state.state == null || state.state.motion == null) continue;
+                        states[state.state.motion] = new VFState(state, stateMachine);
+                    }
+                }
+            }
             
             List<(VFState, string, float)> triggers = new();
             foreach (var trigger in tagTriggers) {
-                var (state, tag, target, feature) = trigger;
+                var (clip, tag, target, feature) = trigger;
+                if (!states.Keys.Contains(clip)) continue;
                 foreach (var other in globals.allBuildersInRun
                      .OfType<ToggleBuilder>()
                      .Where(b => b != feature)) {
                         var otherTags = other.GetExclusiveTags();
                         
                         if (otherTags.Contains(tag)) {
-                            if (target == 0) triggers.Add((state, other.getParam(), 0));
-                            else triggers.Add((state, other.getParam(), other.model.slider ? target : 1));
+                            if (target == 0) triggers.Add((states[clip], other.getParam(), 0));
+                            else triggers.Add((states[clip], other.getParam(), other.model.slider ? target : 1));
                         }
 
                 }
             }
 
             foreach (var trigger in toggleTriggers) {
-                var (state, path, target) = trigger;
-                var control = avatarManager.GetMenu().GetMenuItem(path);
-
-                if (target == 0) triggers.Add((state, control.parameter.name, 0));
-                else if (control.type == ControlType.RadialPuppet) triggers.Add((state, control.parameter.name, target));
-                else triggers.Add((state, control.parameter.name, control.value));
+                var (clip, path, target) = trigger;
+                if (!states.Keys.Contains(clip)) continue;
+                var control = manager.GetMenu().GetMenuItem(path);
+                if (control == null) continue;
+                if (target == 0) triggers.Add((states[clip], control.parameter.name, 0));
+                else if (control.type == ControlType.RadialPuppet) triggers.Add((states[clip], control.parameter.name, target));
+                else triggers.Add((states[clip], control.parameter.name, control.value));
             }
 
             foreach (var trigger in paramTriggers) {
-                triggers.Add(trigger);
+                var (clip, param, target) = trigger;
+                if (!states.Keys.Contains(clip)) continue;
+                triggers.Add((states[clip], param, target));
             }
 
             foreach (var trigger in triggers) {
