@@ -42,6 +42,7 @@ namespace VF.Service {
                     var stateMachine = layer.stateMachine;
                     foreach (var state in stateMachine.states) {
                         if (state.state == null || state.state.motion == null) continue;
+                        if (state.state.speed == -1) continue; // ignore transition out is reverse of transition in
                         states[state.state.motion] = new VFState(state, stateMachine);
                     }
                 }
