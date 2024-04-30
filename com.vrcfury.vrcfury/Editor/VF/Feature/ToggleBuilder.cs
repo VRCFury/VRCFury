@@ -29,6 +29,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFCondition isOn;
     private Action<VFState, bool> drive;
     private AnimationClip savedRestingClip;
+    private VFAParam param;
 
     public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -42,7 +43,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             .ToImmutableHashSet();
     }
 
-    private ISet<string> GetExclusiveTags() {
+    public ISet<string> GetExclusiveTags() {
         if (model.enableExclusiveTag) {
             return SeparateList(model.exclusiveTag);
         }
@@ -64,6 +65,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return (model.globalParam, false);
         }
         return (model.name, model.usePrefixOnParam);
+    }
+
+    public VFAParam getParam() {
+        return param;
     }
 
     [FeatureBuilderAction]
@@ -103,11 +108,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     icon: model.enableIcon ? model.icon?.Get() : null
                 );
             }
+            this.param = param;
         } else if (model.useInt) {
             var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = param.IsNotEqualTo(0);
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
+            this.param = param;
         } else {
             var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             onCase = param.IsTrue();
@@ -128,6 +135,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     );
                 }
             }
+            this.param = param;
         }
         
         this.isOn = onCase;

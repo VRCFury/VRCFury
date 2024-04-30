@@ -57,6 +57,12 @@ public class VRCFuryStateEditor : PropertyDrawer {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FlipBookBuilderAction()); });
             menu.AddItem(new GUIContent("Smooth Loop Builder (Breathing, etc)"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SmoothLoopAction()); });
+            menu.AddItem(new GUIContent("Drive Synced Param"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SyncParamAction()); });
+            menu.AddItem(new GUIContent("Drive Toggle Value"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ToggleStateAction()); });
+            menu.AddItem(new GUIContent("Drive Tag Value"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new TagStateAction()); });
             menu.ShowAsContext();
         }
 
