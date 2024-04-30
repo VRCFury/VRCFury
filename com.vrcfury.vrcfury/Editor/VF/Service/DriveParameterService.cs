@@ -1,12 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
-using VF.Model.Feature;
 using VF.Utils.Controller;
 using static VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control;
 
