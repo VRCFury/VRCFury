@@ -362,6 +362,8 @@ namespace VF.Model.Feature {
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag;
+        public bool enableTags;
+        public string tags;
         [Obsolete] public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;

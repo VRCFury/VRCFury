@@ -56,7 +56,7 @@ namespace VF.Service {
                 foreach (var other in globals.allBuildersInRun
                      .OfType<ToggleBuilder>()
                      .Where(b => b != feature)) {
-                        var otherTags = other.GetExclusiveTags();
+                        var otherTags = other.GetTags();
                         
                         if (otherTags.Contains(tag)) {
                             if (target == 0) triggers.Add((states[clip], other.getParam(), 0));

@@ -43,7 +43,18 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             .ToImmutableHashSet();
     }
 
-    public ISet<string> GetExclusiveTags() {
+    public ISet<string> GetTags() {
+        var output = new HashSet<string>();
+        if (model.enableExclusiveTag) {
+            output.UnionWith(SeparateList(model.exclusiveTag));
+        }
+        if (model.enableTags) {
+            output.UnionWith(SeparateList(model.tags));
+        }
+        return output;
+    }
+
+    private ISet<string> GetExclusiveTags() {
         if (model.enableExclusiveTag) {
             return SeparateList(model.exclusiveTag);
         }
@@ -347,6 +358,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         var invertRestLogicProp = prop.FindPropertyRelative("invertRestLogic");
         var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
+        var enableTagsProp = prop.FindPropertyRelative("enableTags");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
         var separateLocalProp = prop.FindPropertyRelative("separateLocal");
@@ -407,6 +419,11 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
+                advMenu.AddItem(new GUIContent("Enable Tags"), enableTagsProp.boolValue, () => {
+                    enableTagsProp.boolValue = !enableTagsProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+
                 advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
                     enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
@@ -445,6 +462,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 advMenu.ShowAsContext();
             });
         flex.Add(button);
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (enableTagsProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("tags"), "Tags"));
+            }
+            return c;
+        }, enableTagsProp));
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var c = new VisualElement();
