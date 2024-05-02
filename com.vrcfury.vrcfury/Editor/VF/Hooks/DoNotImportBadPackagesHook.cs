@@ -38,16 +38,12 @@ namespace VF.Hooks {
             EditorApplication.update += Check;
         }
 
-        private static bool checkedContent = false;
+        private static EditorWindow lastCheckedWindow = null;
         private static void Check() {
-            var importWindow = Resources.FindObjectsOfTypeAll(PackageImportWindow).FirstOrDefault();
-            if (importWindow == null) {
-                checkedContent = false;
-                return;
-            }
-
-            if (checkedContent) return;
-            checkedContent = true;
+            var importWindow = EditorWindow.focusedWindow;
+            if (!PackageImportWindow.IsInstanceOfType(importWindow)) return;
+            if (importWindow == lastCheckedWindow) return;
+            lastCheckedWindow = importWindow;
 
             var items = m_ImportPackageItems.GetValue(importWindow) as object[];
             if (items == null) return;
