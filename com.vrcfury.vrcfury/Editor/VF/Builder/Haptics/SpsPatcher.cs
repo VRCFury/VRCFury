@@ -21,7 +21,7 @@ namespace VF.Builder.Haptics {
                 var renderQueue = mat.renderQueue;
                 PatchUnsafe(mat, keepImports);
                 mat.renderQueue = renderQueue;
-            } catch(SpsErrorMatException e) {
+            } catch(SpsErrorMatException) {
                 throw new SneakyException(
                     $"Your avatar is using a material ({mat.name}) that couldn't load properly.\n\n" +
                     $"The shader used by this material may be broken or out of date in your project. Ask the creator of this asset what shader and version should be used.");
