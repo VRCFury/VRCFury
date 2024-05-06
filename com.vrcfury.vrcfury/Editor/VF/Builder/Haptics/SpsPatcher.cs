@@ -403,8 +403,13 @@ namespace VF.Builder.Haptics {
                 newBody.Add("#endif");
             }
             
-            program = string.Join("\n", newHeader) + "\n" + program;
-            program = program + string.Join("\n", newBody);
+            program = "\n" +
+                      string.Join("\n", newHeader)
+                      + "\n"
+                      + program
+                      + "\n"
+                      + string.Join("\n", newBody)
+                      + "\n";
 
             return program;
         }
