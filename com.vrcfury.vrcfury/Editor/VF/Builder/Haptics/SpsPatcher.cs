@@ -13,7 +13,7 @@ using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public static class SpsPatcher {
-        private const string HashBuster = "10";
+        private const string HashBuster = "11";
         
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
@@ -113,13 +113,18 @@ namespace VF.Builder.Haptics {
                 1
             );
 
+            var cgIncludes = "";
+            WithEachCgInclude(contents, include => {
+                cgIncludes += include + "\n";
+            });
+
             var patchedPrograms = 0;
             var passNum = 0;
             contents = WithEachPass(contents,
                 pass => {
                     passNum++;
                     try {
-                        var (newPass, num) = PatchPass(pass, spsMain, false);
+                        var (newPass, num) = PatchPass(pass, spsMain, cgIncludes, false);
                         patchedPrograms += num;
                         return newPass;
                     } catch (Exception e) {
@@ -128,7 +133,7 @@ namespace VF.Builder.Haptics {
                 },
                 rest => {
                     try {
-                        var (newRest, num) = PatchPass(rest, spsMain, true);
+                        var (newRest, num) = PatchPass(rest, spsMain, cgIncludes, true);
                         patchedPrograms += num;
                         return newRest;
                     } catch (Exception e) {
@@ -179,7 +184,7 @@ namespace VF.Builder.Haptics {
             };
         }
 
-        private static (string,int) PatchPass(string pass, string spsMain, bool isSurfaceShader) {
+        private static (string,int) PatchPass(string pass, string spsMain, string cgIncludes, bool isSurfaceShader) {
             if (!isSurfaceShader) {
                 // If lightmode is unset (the default of "Always"), set it to ForwardBase
                 // so that we actually receive light data
@@ -194,7 +199,7 @@ namespace VF.Builder.Haptics {
             pass = WithEachProgram(pass, (program, isCgProgram) => {
                 patchedPrograms++;
                 try {
-                    return PatchProgram(program, isCgProgram, spsMain, isSurfaceShader);
+                    return PatchProgram(program, isCgProgram, spsMain, cgIncludes, isSurfaceShader);
                 } catch (Exception e) {
                     throw new Exception($"Failed to patch program #{patchedPrograms}: " + e.Message, e);
                 }
@@ -203,7 +208,7 @@ namespace VF.Builder.Haptics {
             return (pass, patchedPrograms);
         }
 
-        private static string PatchProgram(string program, bool isCgProgram, string spsMain, bool isSurfaceShader) {
+        private static string PatchProgram(string program, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
             var newVertFunction = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string oldVertFunction = null;
@@ -235,11 +240,14 @@ namespace VF.Builder.Haptics {
 
             var flattenedProgram = program;
             if (isCgProgram) {
-                flattenedProgram = "#include \"HLSLSupport.cginc\"\n" + flattenedProgram;
-                flattenedProgram = "#include \"UnityShaderVariables.cginc\"\n" + flattenedProgram;
+                var autoCgHeader = "";
+                autoCgHeader += "#include \"HLSLSupport.cginc\"\n";
+                autoCgHeader += "#include \"UnityShaderVariables.cginc\"\n";
                 if (isSurfaceShader) {
-                    flattenedProgram = "#include \"Lighting.cginc\"\n" + flattenedProgram;
+                    autoCgHeader += "#include \"Lighting.cginc\"\n";
                 }
+                autoCgHeader += cgIncludes + "\n";
+                flattenedProgram = autoCgHeader + flattenedProgram;
             }
             flattenedProgram = ReadAndFlattenContent(flattenedProgram, includeLibraryFiles: true);
 
@@ -459,6 +467,26 @@ namespace VF.Builder.Haptics {
             };
         }
         
+        private static void WithEachCgInclude(string content, Action<string> withInclude) {
+            var lastIncludeEnd = 0;
+            while (true) {
+                var nextProgramStart = GetRegex(@"\n\s*(CGINCLUDE)\s*\n").Match(content, lastIncludeEnd);
+                if (nextProgramStart.Success) {
+                    var start = nextProgramStart.Index + nextProgramStart.Length;
+                    var endMatch = GetRegex(@"\n\s*ENDCG\s*\n").Match(content, start);
+                    if (!endMatch.Success) {
+                        throw new Exception("Failed to find CGINCLUDE end marker");
+                    }
+                    var end = endMatch.Index;
+                    var oldProgram = content.Substring(start, end - start);
+                    withInclude(oldProgram);
+                    lastIncludeEnd = end;
+                } else {
+                    break;
+                }
+            }
+        }
+        
         private static string WithEachProgram(string content, Func<string, bool, string> withProgram) {
             var output = "";
             var lastProgramEnd = 0;
@@ -470,7 +498,7 @@ namespace VF.Builder.Haptics {
                     output += content.Substring(lastProgramEnd, start - lastProgramEnd);
                     var endMatch = GetRegex(@"\n\s*" + (isCg ? "ENDCG" : "ENDHLSL") + @"\s*\n").Match(content, start);
                     if (!endMatch.Success) {
-                        throw new Exception("Failed to find end program marker");
+                        throw new Exception($"Failed to find {nextProgramStart.Groups[1].ToString()} end marker");
                     }
                     var end = endMatch.Index;
                     var oldProgram = content.Substring(start, end - start);
@@ -492,12 +520,12 @@ namespace VF.Builder.Haptics {
             while (true) {
                 var nextPassStart = GetRegex(@"\n\s*Pass[\s{]*\s*\n").Match(content, lastPassEnd);
                 if (nextPassStart.Success) {
-                    var start = nextPassStart.Index;
+                    var start = nextPassStart.Index + nextPassStart.Length;
                     output += content.Substring(lastPassEnd, start - lastPassEnd);
-                    var end = IndexOfEndOfNextContext(content, start);
+                    var end = IndexOfEndOfNextContext(content, nextPassStart.Index);
                     var oldPass = content.Substring(start, end - start);
                     var newPass = withPass(oldPass);
-                    output += $"__PASS_{processedPasses.Count}__";
+                    output += $"\n__PASS_{processedPasses.Count}__\n";
                     processedPasses.Add(newPass);
                     lastPassEnd = end;
                 } else {
