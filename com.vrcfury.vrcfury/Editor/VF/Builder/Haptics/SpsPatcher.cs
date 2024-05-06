@@ -45,7 +45,7 @@ namespace VF.Builder.Haptics {
 
         public class PatchResult {
             public Shader shader;
-            public int patchedPasses;
+            public int patchedPrograms;
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
             var pathToSps = GetPathToSps();
@@ -103,7 +103,7 @@ namespace VF.Builder.Haptics {
             if (alreadyExists != null) {
                 return new PatchResult {
                     shader = alreadyExists,
-                    patchedPasses = 0
+                    patchedPrograms = 0
                 };
             }
 
@@ -113,26 +113,27 @@ namespace VF.Builder.Haptics {
                 1
             );
 
-            var patchedPasses = 0;
+            var patchedPrograms = 0;
+            var passNum = 0;
             contents = WithEachPass(contents,
                 pass => {
-                    patchedPasses++;
+                    passNum++;
                     try {
-                        return PatchPass(pass, spsMain, false);
+                        var (newPass, num) = PatchPass(pass, spsMain, false);
+                        patchedPrograms += num;
+                        return newPass;
                     } catch (Exception e) {
-                        throw new Exception($"Failed to patch pass #{patchedPasses}: " + e.Message, e);
+                        throw new Exception($"Failed to patch pass #{passNum}: " + e.Message, e);
                     }
                 },
                 rest => {
-                    if (GetRegex(@"\n[ \t]*#pragma[ \t]+surface").IsMatch(rest)) {
-                        patchedPasses++;
-                        try {
-                            return PatchPass(rest, spsMain, true);
-                        } catch (Exception e) {
-                            throw new Exception($"Failed to patch surface shader: " + e.Message, e);
-                        }
+                    try {
+                        var (newRest, num) = PatchPass(rest, spsMain, true);
+                        patchedPrograms += num;
+                        return newRest;
+                    } catch (Exception e) {
+                        throw new Exception($"Failed to patch non-pass segment: " + e.Message, e);
                     }
-                    return rest;
                 }
             );
             var childShaders = new Dictionary<Shader, Shader>();
@@ -146,15 +147,15 @@ namespace VF.Builder.Haptics {
 
                 if (!childShaders.TryGetValue(includedShader, out var rewrittenIncludedShader)) {
                     var output = PatchUnsafe(includedShader, keepImports, hash);
-                    patchedPasses += output.patchedPasses;
+                    patchedPrograms += output.patchedPrograms;
                     rewrittenIncludedShader = output.shader;
                     childShaders[includedShader] = rewrittenIncludedShader;
                 }
                 
                 return $"\nUsePass \"{rewrittenIncludedShader.name}/{passName}\"\n";
             });
-            if (patchedPasses == 0) {
-                throw new Exception($"No passes found");
+            if (patchedPrograms == 0) {
+                throw new Exception($"No programs found");
             }
 
             var newPathDir = $"{TmpFilePackage.GetPath()}/SPS";
@@ -174,11 +175,11 @@ namespace VF.Builder.Haptics {
 
             return new PatchResult {
                 shader = newShader,
-                patchedPasses = patchedPasses
+                patchedPrograms = patchedPrograms
             };
         }
 
-        private static string PatchPass(string pass, string spsMain, bool isSurfaceShader) {
+        private static (string,int) PatchPass(string pass, string spsMain, bool isSurfaceShader) {
             if (!isSurfaceShader) {
                 // If lightmode is unset (the default of "Always"), set it to ForwardBase
                 // so that we actually receive light data
@@ -189,11 +190,17 @@ namespace VF.Builder.Haptics {
                 }
             }
 
+            var patchedPrograms = 0;
             pass = WithEachProgram(pass, (program, isCgProgram) => {
-                return PatchProgram(program, isCgProgram, spsMain, isSurfaceShader);
+                patchedPrograms++;
+                try {
+                    return PatchProgram(program, isCgProgram, spsMain, isSurfaceShader);
+                } catch (Exception e) {
+                    throw new Exception($"Failed to patch program #{patchedPrograms}: " + e.Message, e);
+                }
             });
 
-            return pass;
+            return (pass, patchedPrograms);
         }
 
         private static string PatchProgram(string program, bool isCgProgram, string spsMain, bool isSurfaceShader) {
