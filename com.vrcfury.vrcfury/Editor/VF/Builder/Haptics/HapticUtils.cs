@@ -198,7 +198,7 @@ namespace VF.Builder.Haptics {
                         .SelectMany(v => v.GetAllFeatures())
                         .OfType<ArmatureLink>()
                     ) {
-                        var p = ArmatureLinkBuilder.GetProbableParent(armatureLink, avatarObject, obj);
+                        var p = ArmatureLinkBuilder.GetProbableParent(armatureLink, avatarObject, current);
                         if (p != null && !alreadyChecked.Contains(p)) {
                             foundParent = p;
                             break;

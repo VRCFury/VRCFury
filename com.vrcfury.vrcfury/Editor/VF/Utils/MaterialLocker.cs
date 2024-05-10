@@ -22,7 +22,8 @@ namespace VF.Utils {
             try {
                 LockUnsafe(mat);
             } catch (Exception e) {
-                throw new Exception("Failed to lock material " + mat.name, e);
+                throw new Exception(
+                    "Failed to lock material " + mat.name + ". This usually means your Poiyomi is out of date. You can update it from https://poiyomi.github.io/vpm\n\n" + e.Message, e);
             }
         }
 

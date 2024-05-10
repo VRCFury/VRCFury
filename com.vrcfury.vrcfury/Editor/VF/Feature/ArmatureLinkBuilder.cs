@@ -183,6 +183,17 @@ namespace VF.Feature {
                         debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
                     }
                 }
+
+                foreach (var obj in doNotReparent) {
+                    if (obj == null) continue;
+                    var animSources = anim.GetDebugSources(obj);
+                    if (animSources.Count > 0) {
+                        var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
+                        debugInfo.debugInfo =
+                            "VRCFury Armature Link did not merge this object because it was animated:\n";
+                        debugInfo.debugInfo += string.Join("\n", animSources.OrderBy(a => a));
+                    }
+                }
             }
         }
 

@@ -21,6 +21,10 @@ namespace VF.Builder.Haptics {
                 var renderQueue = mat.renderQueue;
                 PatchUnsafe(mat, keepImports);
                 mat.renderQueue = renderQueue;
+            } catch(SpsErrorMatException) {
+                throw new SneakyException(
+                    $"Your avatar is using a material ({mat.name}) that couldn't load properly.\n\n" +
+                    $"The shader used by this material may be broken or out of date in your project. Ask the creator of this asset what shader and version should be used.");
             } catch (Exception e) {
                 throw new Exception(
                     "Failed to patch shader with SPS. Report this on the VRCFury discord. Maybe this shader isn't supported yet.\n\n" +
@@ -614,8 +618,7 @@ namespace VF.Builder.Haptics {
                 } else if (shader.name == "Standard (Specular setup)") {
                     path = $"{GetPathToSps()}/StandardSpecular.shader.orig";
                 } else if (shader.name.Contains("Error")) {
-                    throw new VRCFBuilderException(
-                        "This is an error shader. Please verify that the base material actually loads.");
+                    throw new SpsErrorMatException();
                 } else {
                     throw new VRCFBuilderException(
                         "SPS does not yet support this built-in unity shader.");

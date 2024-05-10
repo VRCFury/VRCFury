@@ -80,7 +80,7 @@ namespace VF.Feature {
                         return null;
                     }, false));
                 }
-                if (layerForFx.avatarMask.AllowsAllTransforms()) {
+                if (layerForFx.avatarMask != null && layerForFx.avatarMask.AllowsAllTransforms()) {
                     layerForFx.avatarMask = null;
                 }
 
@@ -115,7 +115,7 @@ namespace VF.Feature {
                 if (layer.mask == null) {
                     layer.mask = AvatarMaskExtensions.DefaultFxMask();
                 }
-                
+
                 // Remove redundant FX masks if they're not needed
                 if (layer.mask.AllowsAllTransforms() && !layer.HasMuscles()) {
                     layer.mask = null;
