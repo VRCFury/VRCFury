@@ -160,7 +160,7 @@ namespace VF.Builder.Haptics {
             var newPathDir = $"{TmpFilePackage.GetPath()}/SPS";
             var newPath = $"{newPathDir}/{hash}.shader";
             VRCFuryAssetDatabase.WithAssetEditing(() => {
-                Directory.CreateDirectory(newPathDir);
+                VRCFuryAssetDatabase.CreateFolder(newPathDir);
                 WriteFile(newPath, contents);
             });
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -137,6 +139,28 @@ namespace VF.Builder {
                 foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
                     var assetPath = AssetDatabase.GUIDToAssetPath(asset);
                     AssetDatabase.DeleteAsset(assetPath);
+                }
+            }
+        }
+
+        /**
+         * Directory.CreateDirectory causes a SIGSEGV on some systems if used to create directories recursively.
+         * No idea why. So we have to make them one-by-one ourselves.
+         *
+         * Received signal SIGSEGV
+         * Obtained 2 stack frames
+         * RtlLookupFunctionEntry returned NULL function. Aborting stack walk.
+         */
+        public static void CreateFolder(string path) {
+            var paths = new List<string>();
+            while (!string.IsNullOrEmpty(path)) {
+                paths.Add(path);
+                path = Path.GetDirectoryName(path);
+            }
+            paths.Reverse();
+            foreach (var p in paths) {
+                if (!Directory.Exists(p)) {
+                    Directory.CreateDirectory(p);
                 }
             }
         }

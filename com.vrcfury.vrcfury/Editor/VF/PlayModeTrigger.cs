@@ -63,7 +63,7 @@ namespace VF {
                 var tmpDirParent = TmpFilePackage.GetPath() + "/PlayMode";
                 VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
                 tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
-                Directory.CreateDirectory(tmpDir);
+                VRCFuryAssetDatabase.CreateFolder(tmpDir);
             }
 
             foreach (var root in VFGameObject.GetRoots(scene)) {
