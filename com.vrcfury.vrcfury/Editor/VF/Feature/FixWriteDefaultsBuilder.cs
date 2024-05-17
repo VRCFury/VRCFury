@@ -135,6 +135,7 @@ namespace VF.Feature {
             public bool applyToUnmanagedLayers;
             public bool useWriteDefaults;
             public bool ignoredBroken;
+            public string excludeKeyword;
         }
         private BuildSettings _buildSettings;
         private BuildSettings GetBuildSettings() {
@@ -206,14 +207,18 @@ namespace VF.Feature {
             _buildSettings = new BuildSettings {
                 applyToUnmanagedLayers = applyToUnmanagedLayers,
                 useWriteDefaults = useWriteDefaults,
-                ignoredBroken = analysis.isBroken && mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled
+                ignoredBroken = analysis.isBroken && mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled,
+                excludeKeyword = "ExcludeWDFix"
             };
             return _buildSettings;
         }
 
         private IEnumerable<VFLayer> GetMaintainedLayers(ControllerManager controller) {
             var settings = GetBuildSettings();
-            return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
+            var layers = settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
+
+            // Filters out layers that contain the exclude keyword
+            return layers.Where(layer => !layer.name.Contains(settings.excludeKeyword));
         }
 
         private class ControllerInfo {
