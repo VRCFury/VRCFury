@@ -122,9 +122,6 @@ namespace VF.Feature {
                         foreach (var r in renderers) {
                             var renderer = r.renderer;
                             addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
-                            if (renderer is SkinnedMeshRenderer skin) {
-                                addOtherFeature(new BoundingBoxFix2() { skipRenderer = skin });
-                            }
                         }
                     }
 

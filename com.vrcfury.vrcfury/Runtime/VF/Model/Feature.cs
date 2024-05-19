@@ -622,8 +622,6 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BoundingBoxFix2 : NewFeatureModel {
-        [NonSerialized] public SkinnedMeshRenderer singleRenderer;
-        [NonSerialized] public SkinnedMeshRenderer skipRenderer;
     }
 
     [Serializable]
