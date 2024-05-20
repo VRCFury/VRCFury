@@ -7,6 +7,7 @@ using System.Threading;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
