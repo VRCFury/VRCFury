@@ -95,13 +95,23 @@ namespace VF.Feature {
 
                 var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
                     .Any(clip => !clip.IsStatic());
+                
+                var states = layer.stateMachine.states;
 
-                var usedBindings = bindingsByLayer[layer];
-                if (usedBindings.Any(b => b.propertyName.ToLower().Contains("localeulerangles"))) {
+                var hasEulerRotation = states.Any(state => {
+                    if (state.state.motion is BlendTree) return false;
+                    return new AnimatorIterator.Clips().From(state.state.motion)
+                        .SelectMany(clip => clip.GetAllBindings())
+                        .Where(binding => binding.IsValid(avatarObject))
+                        .Select(binding => binding.Normalize())
+                        .Any(b => b.propertyName.ToLower().Contains("localeulerangles"));
+                });
+                if (hasEulerRotation) {
                     AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
                     continue;
                 }
                 
+                var usedBindings = bindingsByLayer[layer];
                 var otherLayersAnimateTheSameThing = bindingsByLayer
                     .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
                     .Select(pair => pair.Key)
@@ -116,7 +126,6 @@ namespace VF.Feature {
                 Motion offClip;
                 VFAFloat param;
 
-                var states = layer.stateMachine.states;
                 if (states.Length == 1) {
                     var state = states[0].state;
                     if (hasNonstaticClips) {
