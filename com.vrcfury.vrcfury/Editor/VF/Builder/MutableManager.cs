@@ -155,7 +155,7 @@ namespace VF.Builder {
                 return c;
             }
 
-            var copy = VrcfObjectFactory.Create<T>();
+            var copy = VrcfObjectFactory.Create(original.GetType()) as T;
             EditorUtility.CopySerialized(original, copy);
             return copy;
         }

@@ -29,14 +29,17 @@ namespace VF.Utils {
         }
 
         public static T Create<T>() where T : Object {
-            T obj;
-            if (typeof(ScriptableObject).IsAssignableFrom(typeof(T))) {
-                obj = ScriptableObject.CreateInstance(typeof(T)) as T;
+            return Create(typeof(T)) as T;
+        }
+        public static Object Create(Type type) {
+            Object obj;
+            if (typeof(ScriptableObject).IsAssignableFrom(type)) {
+                obj = ScriptableObject.CreateInstance(type) as Object;
             } else {
-                obj = Activator.CreateInstance(typeof(T)) as T;
+                obj = Activator.CreateInstance(type) as Object;
             }
             if (obj == null) {
-                throw new Exception("Failed to create instance of " + typeof(T).FullName);
+                throw new Exception("Failed to create instance of Object " + type.FullName);
             }
 
             Register(obj);
