@@ -271,10 +271,10 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
-                var tree = fx.NewBlendTree("Optimized Toggles");
+                var tree = fx.NewBlendTree("Optimized DBT");
                 tree.blendType = BlendTreeType.Direct;
-                var layer = fx.NewLayer("Optimized Toggles");
-                layer.NewState("Optimized Toggles").WithAnimation(tree);
+                var layer = fx.NewLayer("Optimized DBT");
+                layer.NewState("DBT").WithAnimation(tree);
 
                 foreach (var toggle in eligibleLayers) {
                     var offEmpty = !toggle.offState.HasValidBinding(avatarObject);

@@ -10,20 +10,20 @@ namespace VF.Injector {
      * an entire DI library into VRCF.
      */
     public class VRCFuryInjector {
-        private readonly Dictionary<Type, object> completedObjects = new Dictionary<Type, object>();
+        private readonly Dictionary<(VFInjectorParent,Type), object> completedObjects = new Dictionary<(VFInjectorParent,Type), object>();
 
         public void SetService(object service) {
-            if (completedObjects.ContainsKey(service.GetType())) {
+            if (completedObjects.ContainsKey((null, service.GetType()))) {
                 throw new Exception("Service of type " + service.GetType() + " already set");
             }
-            completedObjects[service.GetType()] = service;
+            completedObjects[(null, service.GetType())] = service;
         }
 
         private static bool IsPrototypeScope(Type type) {
             return type.GetCustomAttribute<VFPrototypeScopeAttribute>() != null;
         }
 
-        public object GetService(Type type, List<Type> _parents = null, VFInjectorParent parentHolder = null, bool useCache = true) {
+        public object GetService(Type type, List<Type> _parents = null, VFInjectorParent nearestNonPrototypeParent = null, bool useCache = true) {
             try {
                 var parents = new List<Type>();
                 if (_parents != null) {
@@ -35,14 +35,19 @@ namespace VF.Injector {
                 parents.Add(type);
 
                 var isPrototypeScope = !useCache || IsPrototypeScope(type);
-                if (completedObjects.TryGetValue(type, out var finished) && !isPrototypeScope) {
+                if (!isPrototypeScope) nearestNonPrototypeParent = null;
+                if (completedObjects.TryGetValue((nearestNonPrototypeParent, type), out var finished)) {
                     return finished;
                 }
 
                 var nextParentHolder = new VFInjectorParent();
                 object GetField(Type type) {
-                    if (isPrototypeScope && type == typeof(VFInjectorParent) && parentHolder != null) return parentHolder;
-                    return GetService(type, parents, isPrototypeScope && parentHolder != null ? parentHolder : nextParentHolder);
+                    if (type == typeof(VFInjectorParent) && nearestNonPrototypeParent != null) return nearestNonPrototypeParent;
+                    return GetService(
+                        type,
+                        parents,
+                        nearestNonPrototypeParent ?? nextParentHolder
+                    );
                 }
 
                 var constructor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
@@ -56,9 +61,10 @@ namespace VF.Injector {
                     field.SetValue(instance, GetField(field.FieldType));
                 }
 
-                if (!isPrototypeScope) {
-                    SetService(instance);
+                if (useCache) {
+                    completedObjects[(nearestNonPrototypeParent, type)] = instance;
                 }
+
                 return instance;
             } catch(Exception e) {
                 throw new Exception($"Error while constructing {type.FullName} service\n" + e.Message, e);
