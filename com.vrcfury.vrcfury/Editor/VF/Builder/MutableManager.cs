@@ -150,18 +150,12 @@ namespace VF.Builder {
         // Object.Instantiate
         private static T SafeInstantiate<T>(T original) where T : Object {
             if (original is Material || original is Mesh) {
-                return Object.Instantiate(original);
+                var c = Object.Instantiate(original);
+                VrcfObjectFactory.Register(c);
+                return c;
             }
 
-            T copy;
-            if (original is ScriptableObject) {
-                copy = ScriptableObject.CreateInstance(original.GetType()) as T;
-            } else {
-                copy = Activator.CreateInstance(original.GetType()) as T;
-            }
-            if (copy == null) {
-                throw new VRCFBuilderException("Failed to create copy of " + original);
-            }
+            var copy = VrcfObjectFactory.Create<T>();
             EditorUtility.CopySerialized(original, copy);
             return copy;
         }

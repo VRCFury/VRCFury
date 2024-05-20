@@ -54,7 +54,7 @@ namespace VF.Feature {
             resetConstraint.constraintActive = true;
             resetConstraint.locked = true;
 
-            var dropClip = new AnimationClip();
+            var dropClip = VrcfObjectFactory.Create<AnimationClip>();
             clipBuilder.Enable(dropClip, resetConstraint, false);
             foreach (var constriant in featureBaseObject.GetComponents<IConstraint>()) {
                 clipBuilder.Enable(dropClip, constriant, false);

@@ -74,7 +74,7 @@ namespace VF.Builder {
             // within Awake() in play mode
             if (EditorApplication.isPlaying && (obj is Material || obj is Mesh || obj is Texture)) {
                 var wrapperPath = GetUniquePath(dir, filename, "asset");
-                var wrapper = ScriptableObject.CreateInstance<BinaryContainer>();
+                var wrapper = VrcfObjectFactory.Create<BinaryContainer>();
                 AssetDatabase.CreateAsset(wrapper, wrapperPath);
                 AssetDatabase.RemoveObjectFromAsset(obj);
                 AssetDatabase.AddObjectToAsset(obj, wrapper);

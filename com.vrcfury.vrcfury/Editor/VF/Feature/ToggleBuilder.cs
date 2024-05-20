@@ -184,7 +184,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
                 clip = clipBuilder.MergeSingleFrameClips(
-                    (0, new AnimationClip()),
+                    (0, VrcfObjectFactory.Create<AnimationClip>()),
                     (1, clip)
                 );
                 clip.UseLinearTangents();
@@ -259,7 +259,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (savedRestingClip == null) {
-            var copy = new AnimationClip();
+            var copy = VrcfObjectFactory.Create<AnimationClip>();
             copy.CopyFrom(restingClip);
             savedRestingClip = copy;
             mover.AddAdditionalManagedClip(savedRestingClip);

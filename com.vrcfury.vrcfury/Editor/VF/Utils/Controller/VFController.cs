@@ -46,6 +46,7 @@ namespace VF.Utils.Controller {
             }
             layer.weight = 1;
             layer.stateMachine.anyStatePosition = VFState.CalculateOffsetPosition(layer.stateMachine.entryPosition, 0, 1);
+            VrcfObjectFactory.Register(layer.stateMachine);
             return layer;
         }
 
@@ -183,10 +184,10 @@ namespace VF.Utils.Controller {
         private void FixNullStateMachines() {
             ctrl.layers = ctrl.layers.Select(layer => {
                 if (layer.stateMachine == null) {
-                    layer.stateMachine = new AnimatorStateMachine {
-                        name = layer.name,
-                        hideFlags = HideFlags.HideInHierarchy
-                    };
+                    var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
+                    sm.name = layer.name;
+                    sm.hideFlags = HideFlags.HideInHierarchy;
+                    layer.stateMachine = sm;
                 }
                 return layer;
             }).ToArray();
@@ -289,10 +290,10 @@ namespace VF.Utils.Controller {
                     return layer;
                 }
                 if (layer.syncedLayerIndex >= layers.Length) {
-                    layer.stateMachine = new AnimatorStateMachine {
-                        name = layer.name,
-                        hideFlags = HideFlags.HideInHierarchy
-                    };
+                    var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
+                    sm.name = layer.name;
+                    sm.hideFlags = HideFlags.HideInHierarchy;
+                    layer.stateMachine = sm;
                     layer.syncedLayerIndex = -1;
                     return layer;
                 }

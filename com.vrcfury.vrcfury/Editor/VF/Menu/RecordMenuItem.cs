@@ -60,10 +60,12 @@ namespace VF.Menu {
 //         public static void Record(AnimationClip clip, GameObject baseObject) {
 //             OnRecordingEnd();
 //
-//             var controller = new AnimatorController();
+//             var controller = VrcfObjectFactory.Create<AnimatorController>();
 //             controller.AddLayer("Temp Controller For Recording");
 //             var layer = controller.layers.Last();
+//             VrcfObjectFactory.Register(layer.stateMachine);
 //             var state = layer.stateMachine.AddState("Main");
+//             VrcfObjectFactory.Register(state);
 //             state.motion = clip;
 //
 //             Action onRecordingStart = null;
@@ -113,11 +115,13 @@ namespace VF.Menu {
 //                 Object.DestroyImmediate(a);
 //             }
 //             var animator = clone.AddComponent<Animator>();
-//             var controller = new AnimatorController();
+//             var controller = VrcfObjectFactory.Create<AnimatorController>();
 //             animator.runtimeAnimatorController = controller;
 //             controller.AddLayer("Temp Controller For Recording");
+//             VrcfObjectFactory.Register(layer.stateMachine);
 //             var layer = controller.layers.Last();
 //             var state = layer.stateMachine.AddState("Main");
+//             VrcfObjectFactory.Register(state);
 //             state.motion = selectedAnimation;
 //             
 //             var animationWindow = Resources.FindObjectsOfTypeAll(AnimationWindow)[0];

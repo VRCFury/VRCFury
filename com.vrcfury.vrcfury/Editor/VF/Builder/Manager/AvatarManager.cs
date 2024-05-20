@@ -4,6 +4,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Injector;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -21,7 +22,7 @@ namespace VF.Builder {
         private MenuManager _menu;
         public MenuManager GetMenu() {
             if (_menu == null) {
-                var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                var menu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                 var initializing = true;
                 _menu = new MenuManager(menu, () => initializing ? 0 : globals.currentMenuSortPosition());
 
@@ -41,7 +42,7 @@ namespace VF.Builder {
                 var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
                 VFController ctrl = null;
                 if (existingController != null) ctrl = VFController.CopyAndLoadController(existingController, type);
-                if (ctrl == null) ctrl = new AnimatorController();
+                if (ctrl == null) ctrl = VrcfObjectFactory.Create<AnimatorController>();
                 output = new ControllerManager(
                     ctrl,
                     GetParams,
@@ -77,7 +78,7 @@ namespace VF.Builder {
                 if (origParams != null) {
                     prms = MutableManager.CopyRecursive(origParams);
                 } else {
-                    prms = ScriptableObject.CreateInstance<VRCExpressionParameters>();
+                    prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
                     prms.parameters = new VRCExpressionParameters.Parameter[]{};
                 }
                 VRCAvatarUtils.SetAvatarParams(avatar, prms);
