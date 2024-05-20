@@ -22,7 +22,7 @@ namespace VF.Feature {
     public class NoBadControllerParamsBuilder {
         [VFAutowired] private readonly AvatarManager manager;
         
-        [FeatureBuilderAction(FeatureOrder.RemoveBadControllerTransitions)]
+        [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in manager.GetAllUsedControllers()) {
                 UpgradeWrongParamTypes(c.GetRaw());

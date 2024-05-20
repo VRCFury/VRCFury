@@ -24,6 +24,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateService restingState;
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
+    [VFAutowired] private readonly ClipRewriteService clipRewriteService;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;
@@ -262,7 +263,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var copy = VrcfObjectFactory.Create<AnimationClip>();
             copy.CopyFrom(restingClip);
             savedRestingClip = copy;
-            mover.AddAdditionalManagedClip(savedRestingClip);
+            clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
         }
     }
 

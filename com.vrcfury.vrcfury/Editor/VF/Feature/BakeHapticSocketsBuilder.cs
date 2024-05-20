@@ -262,10 +262,6 @@ namespace VF.Feature {
                             math.Buffer(plugWidthValid, socket.plugWidthParameterName, usePrefix: false);
                         }
                     }
-                    
-                    foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(receiver.owner());
-                    }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);
                 }
