@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using UnityEditor;
 using UnityEditor.PackageManager;
+using VF.Builder;
 
 namespace VF {
     [InitializeOnLoad]
@@ -21,7 +22,7 @@ namespace VF {
             }
 
             if (!Directory.Exists(TmpDirPath)) {
-                Directory.CreateDirectory(TmpDirPath); 
+                VRCFuryAssetDatabase.CreateFolder(TmpDirPath); 
                 File.Create(LegacyPrefabsImportedMarker).Close();
             }
 

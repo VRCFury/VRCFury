@@ -18,7 +18,7 @@ namespace VF.Service {
         private VFGameObject baseObject => globals.avatarObject;
 
         public AnimationClip MergeSingleFrameClips(params (float, AnimationClip)[] sources) {
-            var output = new AnimationClip();
+            var output = VrcfObjectFactory.Create<AnimationClip>();
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetFloatBindings()).Distinct()) {
                 var exists = bindingStateService.GetFloat(binding, out var defaultValue);
                 if (!exists && binding.path == "" && binding.type == typeof(Animator)) {
@@ -55,7 +55,10 @@ namespace VF.Service {
         }
 
         public void Enable(AnimationClip clip, VFGameObject obj, bool active = true) {
-            var path = GetPath(obj);
+            Enable(clip, GetPath(obj), active);
+        }
+        
+        public static void Enable(AnimationClip clip, string path, bool active = true) {
             var binding = EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive");
             clip.SetCurve(binding, active ? 1 : 0);
         }
@@ -67,8 +70,7 @@ namespace VF.Service {
             clip.SetCurve(binding, active ? 1 : 0);
         }
         
-        public void Scale(AnimationClip clip, VFGameObject obj, Vector3 scale) {
-            var path = GetPath(obj);
+        public static void Scale(AnimationClip clip, string path, Vector3 scale) {
             var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), "");
 
             binding.propertyName = "m_LocalScale.x";
@@ -97,8 +99,8 @@ namespace VF.Service {
             if (!times.Contains(0)) return null;
             if (times.Count > 2) return null;
 
-            var startClip = new AnimationClip();
-            var endClip = new AnimationClip();
+            var startClip = VrcfObjectFactory.Create<AnimationClip>();
+            var endClip = VrcfObjectFactory.Create<AnimationClip>();
             
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 if (curve.IsFloat) {

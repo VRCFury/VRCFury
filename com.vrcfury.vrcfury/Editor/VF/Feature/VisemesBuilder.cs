@@ -63,7 +63,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
             var _clip = actionClipService.LoadState(text, clipState);
 
             // Ensure it's only one frame, since it's going into the main direct blendtree
-            var clip = new AnimationClip();
+            var clip = VrcfObjectFactory.Create<AnimationClip>();
             clip.name = "Viseme " + text;
             clip.CopyFromLast(_clip);
 
@@ -98,7 +98,7 @@ public class VisemesBuilder : FeatureBuilder<Visemes> {
 
             directTree.Add(enabledWhen.create(
                 math.MakeSetter(enabled, 1),
-                new AnimationClip()
+                VrcfObjectFactory.Create<AnimationClip>()
             ));
         });
     }

@@ -135,19 +135,19 @@ namespace VF.Utils.Controller {
         }
 
         public VFEntryTransition TransitionsFromEntry() {
-            return new VFEntryTransition(() => stateMachine.AddEntryTransition(node.state));
+            return new VFEntryTransition(() => VrcfObjectFactory.Register(stateMachine.AddEntryTransition(node.state)));
         }
         public VFTransition TransitionsFromAny() {
-            return new VFTransition(() => stateMachine.AddAnyStateTransition(node.state));
+            return new VFTransition(() => VrcfObjectFactory.Register(stateMachine.AddAnyStateTransition(node.state)));
         }
         public VFTransition TransitionsTo(VFState other) {
-            return new VFTransition(() => node.state.AddTransition(other.node.state));
+            return new VFTransition(() => VrcfObjectFactory.Register(node.state.AddTransition(other.node.state)));
         }
         public VFTransition TransitionsTo(AnimatorState other) {
-            return new VFTransition(() => node.state.AddTransition(other));
+            return new VFTransition(() => VrcfObjectFactory.Register(node.state.AddTransition(other)));
         }
         public VFTransition TransitionsToExit() {
-            return new VFTransition(() => node.state.AddExitTransition());
+            return new VFTransition(() => VrcfObjectFactory.Register(node.state.AddExitTransition()));
         }
 
         public AnimatorState GetRaw() {

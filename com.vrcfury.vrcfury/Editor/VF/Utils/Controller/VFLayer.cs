@@ -90,7 +90,8 @@ namespace VF.Utils.Controller {
             name = WrapStateName(name);
             name = name.Replace(".", "");
 
-            _stateMachine.AddState(name);
+            var s = _stateMachine.AddState(name);
+            VrcfObjectFactory.Register(s);
             var node = GetLastNode().Value;
             node.state.writeDefaultValues = true;
 

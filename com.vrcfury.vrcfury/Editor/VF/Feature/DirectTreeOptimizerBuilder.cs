@@ -18,7 +18,6 @@ namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
@@ -48,11 +47,6 @@ namespace VF.Feature {
                 // the layer will be missing later when the FixWriteDefaultBuilder tries to add to it.
                 if (layer == fixWriteDefaults.GetDefaultLayer()) {
                     AddDebug($"Not optimizing (this is the vrcf defaults layer)");
-                    continue;
-                }
-
-                if (layer == directTree.GetLayer()) {
-                    AddDebug($"Not optimizing (this is the shared DBT)");
                     continue;
                 }
 
@@ -101,13 +95,23 @@ namespace VF.Feature {
 
                 var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
                     .Any(clip => !clip.IsStatic());
+                
+                var states = layer.stateMachine.states;
 
-                var usedBindings = bindingsByLayer[layer];
-                if (usedBindings.Any(b => b.propertyName.ToLower().Contains("localeulerangles"))) {
+                var hasEulerRotation = states.Any(state => {
+                    if (state.state.motion is BlendTree) return false;
+                    return new AnimatorIterator.Clips().From(state.state.motion)
+                        .SelectMany(clip => clip.GetAllBindings())
+                        .Where(binding => binding.IsValid(avatarObject))
+                        .Select(binding => binding.Normalize())
+                        .Any(b => b.propertyName.ToLower().Contains("localeulerangles"));
+                });
+                if (hasEulerRotation) {
                     AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
                     continue;
                 }
                 
+                var usedBindings = bindingsByLayer[layer];
                 var otherLayersAnimateTheSameThing = bindingsByLayer
                     .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
                     .Select(pair => pair.Key)
@@ -122,7 +126,6 @@ namespace VF.Feature {
                 Motion offClip;
                 VFAFloat param;
 
-                var states = layer.stateMachine.states;
                 if (states.Length == 1) {
                     var state = states[0].state;
                     if (hasNonstaticClips) {
@@ -245,21 +248,6 @@ namespace VF.Feature {
                     param = new VFAFloat(state0Condition.Value.parameter, 0);
                 }
 
-                if (param == fx.True().Name()) {
-                    AddDebug($"Not optimizing (VF_True)");
-                    continue;
-                }
-
-                var paramUsedInOtherLayer = fx.GetLayers()
-                    .Where(other => layer != other)
-                    .SelectMany(other => new AnimatorIterator.Conditions().From(other))
-                    .Any(c => c.parameter == param);
-
-                if (paramUsedInOtherLayer) {
-                    AddDebug($"Not optimizing (parameter used in some other layer)");
-                    continue;
-                }
-                
                 var paramType = fx.GetRaw().parameters
                     .Where(p => p.name == param)
                     .Select(p => p.type)
@@ -283,10 +271,10 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
-                var tree = fx.NewBlendTree("Optimized Toggles");
+                var tree = fx.NewBlendTree("Optimized DBT");
                 tree.blendType = BlendTreeType.Direct;
-                var layer = fx.NewLayer("Optimized Toggles");
-                layer.NewState("Optimized Toggles").WithAnimation(tree);
+                var layer = fx.NewLayer("Optimized DBT");
+                layer.NewState("DBT").WithAnimation(tree);
 
                 foreach (var toggle in eligibleLayers) {
                     var offEmpty = !toggle.offState.HasValidBinding(avatarObject);

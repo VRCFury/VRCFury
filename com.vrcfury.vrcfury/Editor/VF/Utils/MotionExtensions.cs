@@ -54,7 +54,7 @@ namespace VF.Utils {
                 foreach (var tree in new AnimatorIterator.Trees().From(motion)) {
                     tree.RewriteChildren(child => {
                         if (child.motion == null) {
-                            child.motion = new AnimationClip();
+                            child.motion = VrcfObjectFactory.Create<AnimationClip>();
                             child.motion.name = "Empty";
                         }
                         return child;
