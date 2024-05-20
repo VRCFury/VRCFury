@@ -686,7 +686,7 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            return (ReadFile(path), true);
+            return (ReadFile(path), isBuiltIn);
         }
         private static string ReadFile(string path) {
             string content;

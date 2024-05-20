@@ -41,10 +41,10 @@ namespace VF.Injector {
                 }
 
                 var nextParentHolder = new VFInjectorParent();
-                object GetField(Type type) {
-                    if (type == typeof(VFInjectorParent) && nearestNonPrototypeParent != null) return nearestNonPrototypeParent;
+                object GetField(Type t) {
+                    if (t == typeof(VFInjectorParent) && nearestNonPrototypeParent != null) return nearestNonPrototypeParent;
                     return GetService(
-                        type,
+                        t,
                         parents,
                         nearestNonPrototypeParent ?? nextParentHolder
                     );
