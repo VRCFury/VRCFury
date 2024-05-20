@@ -9,6 +9,7 @@ using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Injector;
 using VF.Inspector;
 using VF.Menu;
@@ -51,9 +52,9 @@ public class VRCFuryBuilder {
             .Any();
     }
 
-    public static void StripAllVrcfComponents(VFGameObject obj, bool keepDebugInfo = false) {
+    public static void StripAllVrcfComponents(VFGameObject obj) {
         foreach (var c in obj.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
-            if (c is VRCFuryDebugInfo && keepDebugInfo) {
+            if (c is VRCFuryDebugInfo && !IsActuallyUploadingHook.Get()) {
                 continue;
             }
             Object.DestroyImmediate(c);
@@ -92,7 +93,7 @@ public class VRCFuryBuilder {
             progress.Close();
             
             // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
-            StripAllVrcfComponents(avatarObject, Application.isPlaying);
+            StripAllVrcfComponents(avatarObject);
 
             // Make sure all new assets we've created have actually been saved to disk
             AssetDatabase.SaveAssets();

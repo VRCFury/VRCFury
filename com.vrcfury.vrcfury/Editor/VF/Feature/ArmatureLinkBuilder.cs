@@ -11,6 +11,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model;
@@ -62,11 +63,38 @@ namespace VF.Feature {
             // Move over all the old components / children from the old location to a new child
             var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
             var pruneCheck = new HashSet<VFGameObject>();
+            var saveDebugInfo = !IsActuallyUploadingHook.Get();
             foreach (var (propBone, avatarBone) in links.mergeBones) {
+                VRCFuryDebugInfo debugInfo = null;
+                if (saveDebugInfo) {
+                    Debug.Log($"Creating debug info on {propBone.GetPath(avatarObject, true)}");
+                    debugInfo = propBone.AddComponent<VRCFuryDebugInfo>();
+                }
+                void AddDebugInfo(string text) {
+                    if (debugInfo != null) debugInfo.debugInfo += text + "\n\n";
+                }
+                AddDebugInfo($"" +
+                             $"VRCFury Armature Link Debug Info\n" +
+                             $"Aramature link root: {links.propMain.GetPath(avatarObject, true)} -> {links.avatarMain.GetPath(avatarObject, true)}\n" +
+                             $"This object: {propBone.GetPath(avatarObject, true)} -> {avatarBone.GetPath(avatarObject, true)}");
+
                 bool ShouldReparent() {
-                    if (propBone == links.propMain) return true;
-                    if (avatarHumanoidBones.Contains(avatarBone)) return true;
-                    if (doNotReparent.Contains(propBone)) return false;
+                    if (propBone == links.propMain) {
+                        AddDebugInfo("This object was forced to link because it is the root of the armature link");
+                        return true;
+                    }
+                    if (avatarHumanoidBones.Contains(avatarBone)) {
+                        AddDebugInfo("This object was forced to link because it is a humanoid bone on the avatar");
+                        return true;
+                    }
+                    if (doNotReparent.Contains(propBone)) {
+                        AddDebugInfo("This object was not linked because a parent has its transform animated or is a physbone");
+                        var animSources = anim.GetDebugSources(propBone);
+                        if (animSources.Count > 0) {
+                            AddDebugInfo(string.Join("\n", animSources.OrderBy(a => a)));
+                        }
+                        return false;
+                    }
                     return true;
                 }
                 bool ShouldReuseBone() {
@@ -85,6 +113,7 @@ namespace VF.Feature {
                 // Rip out parent constraints, since they were likely there from an old pre-vrcfury merge process
                 foreach (var c in propBone.GetComponents<ParentConstraint>()) {
                     Object.DestroyImmediate(c);
+                    AddDebugInfo("An existing parent constraint component was removed, because it was probably a leftover from before Armature Link");
                 }
 
                 var animatedParents = new List<VFGameObject>();
@@ -114,6 +143,7 @@ namespace VF.Feature {
                     current = GameObjects.Create($"Toggle From {a.name}", current);
                     current.active = a.active;
                     animLink.Put(a, current);
+                    AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {a.name}");
                 }
 
                 var transformAnimated =
@@ -129,6 +159,7 @@ namespace VF.Feature {
                     if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
                         current.localScale = Vector3.one;
                     }
+                    AddDebugInfo($"Detected that this object's transform is animated, so a wrapper object was added to keep its original parent transform");
                 }
 
                 mover.Move(propBone, current, "Original Object", defer: true);
@@ -137,6 +168,7 @@ namespace VF.Feature {
                     addedObject.worldPosition = avatarBone.worldPosition;
                     addedObject.worldRotation = avatarBone.worldRotation;
                     addedObject.worldScale = avatarBone.worldScale * scalingFactor;
+                    AddDebugInfo($"Keep offsets is set to NO, so this object was snapped to its parent's transform");
                 }
 
                 if (ShouldReuseBone()) {
@@ -173,7 +205,7 @@ namespace VF.Feature {
                 }
             }
 
-            if (Application.isPlaying) {
+            if (saveDebugInfo) {
                 foreach (var obj in attachDebugInfoTo) {
                     if (obj == null) continue;
                     if (usedReasons.ContainsKey(obj)) {
@@ -181,17 +213,6 @@ namespace VF.Feature {
                         debugInfo.debugInfo =
                             "VRCFury Armature Link did not clean up this object because it is still used:\n";
                         debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
-                    }
-                }
-
-                foreach (var obj in doNotReparent) {
-                    if (obj == null) continue;
-                    var animSources = anim.GetDebugSources(obj);
-                    if (animSources.Count > 0) {
-                        var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
-                        debugInfo.debugInfo =
-                            "VRCFury Armature Link did not merge this object because it was animated:\n";
-                        debugInfo.debugInfo += string.Join("\n", animSources.OrderBy(a => a));
                     }
                 }
             }
@@ -252,26 +273,44 @@ namespace VF.Feature {
             var reasons = new VFMultimapSet<VFGameObject,string>();
 
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                if (component is Transform) continue;
-                reasons.Put(component.owner(), "Contains components");
+                var countExistanceAsUsage = true;
+                var scanInternals = true;
 
-                var so = new SerializedObject(component);
-                var prop = so.GetIterator();
-                do {
-                    if (prop.propertyPath.StartsWith("ignoreTransforms.Array")) {
-                        // TODO: If we remove objects that are in these physbone ignoreTransforms arrays, we should
-                        // probably also remove them from the array instead of just leaving it null
-                        continue;
-                    }
-                    if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                        VFGameObject target = null;
-                        if (prop.objectReferenceValue is Transform t) target = t;
-                        else if (prop.objectReferenceValue is GameObject g) target = g;
-                        if (target != null && target.IsChildOf(avatarObject)) {
-                            reasons.Put(target, prop.propertyPath + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
+                if (component is Transform) {
+                    countExistanceAsUsage = false;
+                    scanInternals = false;
+                }
+                if (component is VRCFuryDebugInfo) {
+                    countExistanceAsUsage = false;
+                    scanInternals = false;
+                }
+                if (component is IConstraint) {
+                    countExistanceAsUsage = false;
+                }
+
+                if (countExistanceAsUsage) {
+                    reasons.Put(component.owner(), $"Contains {component.GetType().Name} component");
+                }
+
+                if (scanInternals) {
+                    var so = new SerializedObject(component);
+                    var prop = so.GetIterator();
+                    do {
+                        if (prop.propertyPath.StartsWith("ignoreTransforms.Array")) {
+                            // TODO: If we remove objects that are in these physbone ignoreTransforms arrays, we should
+                            // probably also remove them from the array instead of just leaving it null
+                            continue;
                         }
-                    }
-                } while (prop.Next(true));
+                        if (prop.propertyType == SerializedPropertyType.ObjectReference) {
+                            VFGameObject target = null;
+                            if (prop.objectReferenceValue is Transform t) target = t;
+                            else if (prop.objectReferenceValue is GameObject g) target = g;
+                            if (target != null && target.IsChildOf(avatarObject)) {
+                                reasons.Put(target, prop.propertyPath + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
+                            }
+                        }
+                    } while (prop.Next(true));
+                }
             }
 
             foreach (var used in reasons.GetKeys().ToArray()) {

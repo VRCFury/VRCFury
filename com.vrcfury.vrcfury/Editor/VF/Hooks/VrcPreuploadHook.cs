@@ -17,7 +17,7 @@ namespace VF.Hooks {
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
             if (Application.isPlaying && !PlayModeMenuItem.Get()) return true;
-            if (!Application.isPlaying && !UseInUploadMenuItem.Get()) return true;
+            if (IsActuallyUploadingHook.Get() && !UseInUploadMenuItem.Get()) return true;
             
             VFGameObject vrcCloneObject = _vrcCloneObject;
 

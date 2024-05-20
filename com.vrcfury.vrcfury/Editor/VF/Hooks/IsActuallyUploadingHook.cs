@@ -1,21 +1,20 @@
-using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
-using VF.Injector;
 using Debug = UnityEngine.Debug;
 
-namespace VF.Service {
-    [VFService]
-    public class IsActuallyUploadingService {
-        private readonly bool _cached;
-
-        public IsActuallyUploadingService() {
-            _cached = Determine();
-            Debug.Log("We are" + (_cached ? "" : " NOT") + " actually uploading");
+namespace VF.Hooks {
+    public class IsActuallyUploadingHook {
+        public int callbackOrder => int.MinValue;
+        private static bool actuallyUploading = false;
+        public bool OnPreprocessAvatar(GameObject obj) {
+            EditorApplication.delayCall += () => actuallyUploading = false;
+            actuallyUploading = DetermineIfActuallyUploading();
+            return true;
         }
 
-        private bool Determine() {
+        private static bool DetermineIfActuallyUploading() {
             if (Application.isPlaying) return false;
             var stack = new StackTrace().GetFrames();
             if (stack == null) return true;
@@ -35,8 +34,8 @@ namespace VF.Service {
             return callingClass.StartsWith("VRC.");
         }
 
-        public bool Get() {
-            return _cached;
+        public static bool Get() {
+            return actuallyUploading;
         }
     }
 }
