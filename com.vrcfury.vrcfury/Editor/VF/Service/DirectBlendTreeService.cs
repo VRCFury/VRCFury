@@ -45,36 +45,5 @@ namespace VF.Service {
         public void Add(VFAFloat param, Motion motion) {
             GetTree().Add(param, motion);
         }
-
-        [FeatureBuilderAction(FeatureOrder.OptimizeSharedDbt)]
-        public void Optimize() {
-            if (_tree == null) return;
-            
-            // Everything in the shared DBT has to be one frame, or else smoothing can be impacted in some cases
-            if (!_tree.IsStatic()) {
-                throw new Exception(
-                    "Something tried to add a non-static clip to the VRCF shared DBT. This is likely a bug.");
-            }
-            _tree.MakeZeroLength();
-            Flatten(_tree);
-        }
-
-        private void Flatten([CanBeNull] Motion motion) {
-            if (motion is BlendTree tree) {
-                foreach (var child in tree.children) {
-                    Flatten(child.motion);
-                }
-
-                if (tree.blendType == BlendTreeType.Direct) {
-                    tree.children = tree.children.SelectMany(child => {
-                        if (child.directBlendParameter == manager.GetFx().One().Name() &&
-                            child.motion is BlendTree childTree && childTree.blendType == BlendTreeType.Direct) {
-                            return childTree.children;
-                        }
-                        return new ChildMotion[] { child };
-                    }).ToArray();
-                }
-            }
-        }
     }
 }

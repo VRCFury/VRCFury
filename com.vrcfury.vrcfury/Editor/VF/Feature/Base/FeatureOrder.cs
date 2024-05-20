@@ -93,7 +93,7 @@ namespace VF.Feature.Base {
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
         UpgradeWrongParamTypes,
-        OptimizeSharedDbt,
+        FlattenDbts,
         FinalizeController,
 
         // Finalize Menus
