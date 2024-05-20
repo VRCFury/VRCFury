@@ -17,7 +17,7 @@ namespace VF.Service {
         public void Apply() {
             var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()
                 .Where(skin => {
-                    var usesLights = skin.materials.Any(mat =>
+                    var usesLights = skin.sharedMaterials.Any(mat =>
                         DpsConfigurer.IsDps(mat) || TpsConfigurer.IsTps(mat) || SpsConfigurer.IsSps(mat));
                     return !usesLights;
                 });
