@@ -23,7 +23,7 @@ namespace VF.Service {
     [VFService]
     public class ScaleFactorService {
         [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly MathService smoothingService;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
@@ -50,7 +50,7 @@ namespace VF.Service {
             receiver.collisionTags.Add(tag);
             receiver.radius = 0.1f;
             receiver.position = new Vector3(0.1f, 0, 0);
-            var receiverParam = fx.NewFloat($"SFFix {obj.name} - Rcv");
+            var receiverParam = fx.NewFloat("SFFix_Rcv");
             receiver.parameter = receiverParam.Name();
             var p = receiverObj.AddComponent<ScaleConstraint>();
             p.AddSource(new ConstraintSource() {
@@ -61,7 +61,52 @@ namespace VF.Service {
             p.constraintActive = true;
             p.locked = true;
 
-            return math.Multiply($"SFFix {obj.name} - Final", receiverParam, 100);
+            var layer = fx.NewLayer("ScaleFactorFix");
+
+            var off = layer.NewState("Off");
+            var offClip = fx.NewClip("ScaleFactorFix Off");
+            clipBuilder.Enable(offClip, receiverObj, false);
+            off.WithAnimation(offClip);
+            
+            var off2 = layer.NewState("Off2");
+            off.TransitionsTo(off2).When(fx.Always()).WithTransitionDurationSeconds(0.5f);
+            off2.WithAnimation(offClip);
+            
+            var on = layer.NewState("On");
+            off2.TransitionsTo(on).When(fx.Always());
+
+            var on2 = layer.NewState("On2");
+            on.TransitionsTo(on2).When(fx.Always()).WithTransitionDurationSeconds(0.5f);
+
+            var read = layer.NewState("Read");
+            on2.TransitionsTo(read).When(fx.Always());
+            var readParam = fx.NewFloat("SFFix_Read");
+            var readDriver = read.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            readDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                type = VRC_AvatarParameterDriver.ChangeType.Copy,
+                name = readParam.Name(),
+                source = receiverParam.Name(),
+                convertRange = true,
+                sourceMin = 0,
+                sourceMax = 1,
+                destMin = 0,
+                destMax = 100
+            });
+
+            var copy = layer.NewState("Copy");
+            // Because sometimes vrc doesn't turn on the receiver fast enough and it still reads 0
+            read.TransitionsTo(copy).When(readParam.IsGreaterThan(0.001f));
+            read.TransitionsTo(off).When(fx.Always());
+            copy.TransitionsTo(off).When(fx.Always());
+            var finalParam = fx.NewFloat("SFFix_Final");
+            var finalDriver = copy.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            finalDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                type = VRC_AvatarParameterDriver.ChangeType.Copy,
+                name = finalParam.Name(),
+                source = readParam.Name(),
+            });
+
+            return finalParam;
         }
     }
 }

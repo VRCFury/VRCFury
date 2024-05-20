@@ -77,6 +77,7 @@ namespace VF.Feature.Base {
         UnlimitedParameters,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
+        DirectTreeOptimizer, // Needs to run after animations are done, but before RecordDefaults
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
@@ -86,14 +87,13 @@ namespace VF.Feature.Base {
         LocomotionConflictResolver,
         ActionConflictResolver,
         TrackingConflictResolver,
-        DirectTreeOptimizer, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AdjustWriteDefaults,
         FixEmptyMotions,
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
-        UpgradeWrongParamTypes,
-        FlattenDbts,
+        RemoveBadControllerTransitions,
+        OptimizeSharedDbt,
         FinalizeController,
 
         // Finalize Menus

@@ -20,9 +20,9 @@ namespace VF.Service {
     public class ObjectMoveService {
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
 
         private readonly List<(string, string)> deferred = new List<(string, string)>();
+        private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
         public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true, bool defer = false) {
             var immovableBones = new HashSet<VFGameObject>();
@@ -69,8 +69,17 @@ namespace VF.Service {
                 return path;
             });
 
-            clipRewriteService.ForAllClips(clip => clip.Rewrite(rewriter));
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                ((AnimatorController)controller.GetRaw()).Rewrite(rewriter);
+            }
+            foreach (var clip in additionalClips) {
+                clip.Rewrite(rewriter);
+            }
             deferred.Clear();
+        }
+
+        public void AddAdditionalManagedClip(AnimationClip clip) {
+            additionalClips.Add(clip);
         }
     }
 }

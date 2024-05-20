@@ -28,9 +28,9 @@ namespace VF.Service {
 
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
+        [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly AvatarBindingStateService bindingstateService;
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
         private readonly List<PendingClip> pendingClips = new List<PendingClip>();
 
         public class PendingClip {
@@ -42,7 +42,7 @@ namespace VF.Service {
             var copy = VrcfObjectFactory.Create<AnimationClip>();
             copy.CopyFrom(clip);
             pendingClips.Add(new PendingClip { clip = copy, owner = owner ?? globals.currentFeatureNameProvider() });
-            clipRewriteService.AddAdditionalManagedClip(copy);
+            mover.AddAdditionalManagedClip(copy);
         }
 
         public void OnPhaseChanged() {
@@ -66,8 +66,8 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.ApplyImplicitRestingStates)]
         public void ApplyImplicitRestingStates() {
-            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
-                var path = component.owner().GetPath(avatarObject, true);
+            foreach (var component in globals.avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
+                var path = component.owner().GetPath(globals.avatarObject, true);
                 var owner = $"{component.GetType().Name} on {path}";
                 try {
                     UnitySerializationUtils.Iterate(component, visit => {
@@ -96,6 +96,10 @@ namespace VF.Service {
                     throw new ExceptionWithCause($"Failed to handle {owner}", e);
                 }
             }
+        }
+
+        public IEnumerable<AnimationClip> GetPendingClips() {
+            return pendingClips.Select(pending => pending.clip);
         }
 
         private readonly Dictionary<EditorCurveBinding, StoredEntry> stored =
