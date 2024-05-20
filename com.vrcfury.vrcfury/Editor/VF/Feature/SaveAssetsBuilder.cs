@@ -7,6 +7,7 @@ using UnityEngine;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -42,13 +43,27 @@ namespace VF.Builder {
 
         private IList<Object> GetUnsavedChildren(Object obj, bool recurse = true) {
             var unsavedChildren = new List<Object>();
+            var clipReplacements = new Dictionary<Object, Object>();
             MutableManager.ForEachChild(obj, asset => {
                 if (asset == obj) return true;
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (IsSaved(asset)) return false;
+                if (asset is AnimationClip vac) {
+                    var proxyClip = vac.GetProxyClip();
+                    if (proxyClip != null) {
+                        clipReplacements[vac] = proxyClip;
+                        return false;
+                    }
+                    vac.FinalizeAsset();
+                }
                 unsavedChildren.Add(asset);
                 return recurse;
             });
+            if (clipReplacements.Count > 0) {
+                foreach (var o in unsavedChildren) {
+                    MutableManager.RewriteInternals(o, clipReplacements);
+                }
+            }
             return unsavedChildren;
         }
 

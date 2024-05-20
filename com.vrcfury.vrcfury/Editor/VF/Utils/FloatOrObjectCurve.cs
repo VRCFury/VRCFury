@@ -45,6 +45,13 @@ namespace VF.Utils {
         public AnimationCurve FloatCurve => floatCurve;
 
         public ObjectReferenceKeyframe[] ObjectCurve => objectCurve;
+        
+        public float lengthInSeconds {
+            get {
+                if (isFloat) return floatCurve.keys.Select(k => k.time).Max();
+                return 0;
+            }
+        }
 
         public FloatOrObject GetFirst() {
             if (isFloat) {
@@ -65,6 +72,16 @@ namespace VF.Utils {
                 if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
                 var length = objectCurve.Length;
                 return objectCurve[length - 1].value;
+            }
+        }
+
+        public FloatOrObjectCurve Clone() {
+            if (isFloat) {
+                var copy = new AnimationCurve();
+                copy.CopyFrom(floatCurve);
+                return copy;
+            } else {
+                return objectCurve.ToArray();
             }
         }
     }

@@ -39,8 +39,7 @@ namespace VF.Service {
         }
 
         public void ApplyClipToRestingState(AnimationClip clip, string owner = null) {
-            var copy = VrcfObjectFactory.Create<AnimationClip>();
-            copy.CopyFrom(clip);
+            var copy = clip.Clone();
             pendingClips.Add(new PendingClip { clip = copy, owner = owner ?? globals.currentFeatureNameProvider() });
             clipRewriteService.AddAdditionalManagedClip(copy);
         }

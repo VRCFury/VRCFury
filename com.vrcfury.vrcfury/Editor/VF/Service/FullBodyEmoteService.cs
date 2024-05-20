@@ -50,7 +50,7 @@ namespace VF.Service {
         }
         
         private VFAFloat AddClip(AnimationClip clip, ControllerManager ctrl, VFState idle, VFLayer layer, EditorCurveBindingExtensions.MuscleBindingType type) {
-            clip = MutableManager.CopyRecursive(clip, false);
+            clip = clip.Clone();
             var nonActionBindings = clip.GetAllBindings()
                 .Where(b => {
                     if (type == EditorCurveBindingExtensions.MuscleBindingType.Other) return !b.IsMuscle();

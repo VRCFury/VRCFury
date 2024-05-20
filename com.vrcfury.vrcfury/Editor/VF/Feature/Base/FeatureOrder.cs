@@ -108,11 +108,9 @@ namespace VF.Feature.Base {
         
         RemoveJunkAnimators,
 
-        // Needs to be at the very end, because it places immutable clips into the avatar
-        RestoreProxyClips,
+        SaveAssets,
+        
         // Needs to happen after everything is done using the animator
         ResetAnimatorAfter,
-
-        SaveAssets,
     }
 }
