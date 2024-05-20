@@ -49,7 +49,7 @@ namespace VF.Builder.Haptics {
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
             var pathToSps = GetPathToSps();
-            var contents = ReadFile(shader);
+            var (contents,isBuiltIn) = ReadFile(shader);
 
             void Replace(string pattern, string replacement, int count) {
                 var startLen = contents.Length + "" + contents.GetHashCode();
@@ -82,6 +82,7 @@ namespace VF.Builder.Haptics {
             
             var md5 = MD5.Create();
             var hashContent = contents + spsMain + HashBuster;
+            if (isBuiltIn) hashContent += Application.unityVersion;
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -606,13 +607,15 @@ namespace VF.Builder.Haptics {
         private static string GetPathToSps() {
             return AssetDatabase.GUIDToAssetPath("6cf9adf85849489b97305dfeecc74768");
         }
-        private static string ReadFile(Shader shader) {
+        private static (string,bool) ReadFile(Shader shader) {
             var path = AssetDatabase.GetAssetPath(shader);
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new Exception("Failed to find source file for the shader");
             }
 
+            var isBuiltIn = false;
             if (path.StartsWith("Resources") || path.StartsWith("Library")) {
+                isBuiltIn = true;
                 if (shader.name == "Standard") {
                     path = $"{GetPathToSps()}/Standard.shader.orig";
                 } else if (shader.name == "Standard (Specular setup)") {
@@ -625,7 +628,7 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            return ReadFile(path);
+            return (ReadFile(path), true);
         }
         private static string ReadFile(string path) {
             string content;
