@@ -15,6 +15,7 @@ namespace VF.Service {
      * Performs math within an animator
      */
     [VFService]
+    [VFPrototypeScope]
     public class MathService {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;

@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using UnityEngine.Experimental.XR;
 
 namespace VF.Injector {
     /**
@@ -12,73 +11,62 @@ namespace VF.Injector {
      */
     public class VRCFuryInjector {
         private readonly Dictionary<Type, object> completedObjects = new Dictionary<Type, object>();
-        private readonly HashSet<Type> availableTypes = new HashSet<Type>();
-        private readonly HashSet<Type> typesInConstruction = new HashSet<Type>();
 
-        public void RegisterService(Type type) {
-            if (availableTypes.Contains(type)) {
-                throw new Exception($"{type.FullName} was registered twice");
+        public void SetService(object service) {
+            if (completedObjects.ContainsKey(service.GetType())) {
+                throw new Exception("Service of type " + service.GetType() + " already set");
             }
-            availableTypes.Add(type);
+            completedObjects[service.GetType()] = service;
         }
 
-        public void RegisterService<T>(T service) {
-            RegisterService(typeof(T));
-            completedObjects[typeof(T)] = service;
+        private static bool IsPrototypeScope(Type type) {
+            return type.GetCustomAttribute<VFPrototypeScopeAttribute>() != null;
         }
 
-        public object CreateAndInject(Type type, List<Type> _parents = null, IEnumerable<object> additionalObjects = null) {
-            var parents = new List<Type>();
-            if (_parents != null) parents.AddRange(parents);
-            parents.Add(type);
-
-            var additionalObjectsDict = new Dictionary<Type, object>();
-            if (additionalObjects != null) {
-                foreach (var obj in additionalObjects) {
-                    additionalObjectsDict[obj.GetType()] = obj;
+        public object GetService(Type type, List<Type> _parents = null, VFInjectorParent parentHolder = null, bool useCache = true) {
+            try {
+                var parents = new List<Type>();
+                if (_parents != null) {
+                    if (_parents.Contains(type)) {
+                        throw new Exception($"{type.FullName} is already being constructed (dependency loop?) {string.Join(",", _parents)}");
+                    }
+                    parents.AddRange(_parents);
                 }
-            }
+                parents.Add(type);
 
-            var constructor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
-            var args = constructor.GetParameters()
-                .Select(p => GetService(p.ParameterType, parents, additionalObjectsDict))
-                .ToArray();
-            var instance = Activator.CreateInstance(type, args);
-            foreach (var field in ReflectionUtils.GetAllFields(type)) {
-                if (field.GetCustomAttribute<VFAutowiredAttribute>() == null) continue;
-                field.SetValue(instance, GetService(field.FieldType, parents, additionalObjectsDict));
-            }
+                var isPrototypeScope = !useCache || IsPrototypeScope(type);
+                if (completedObjects.TryGetValue(type, out var finished) && !isPrototypeScope) {
+                    return finished;
+                }
 
-            return instance;
-        }
+                var nextParentHolder = new VFInjectorParent();
+                object GetField(Type type) {
+                    if (isPrototypeScope && type == typeof(VFInjectorParent) && parentHolder != null) return parentHolder;
+                    return GetService(type, parents, isPrototypeScope && parentHolder != null ? parentHolder : nextParentHolder);
+                }
 
-        public T CreateAndInject<T>() where T : class {
-            return CreateAndInject(typeof(T)) as T;
-        }
+                var constructor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
+                var args = constructor.GetParameters()
+                    .Select(p => GetField(p.ParameterType))
+                    .ToArray();
+                var instance = Activator.CreateInstance(type, args);
+                nextParentHolder.parent = instance;
+                foreach (var field in ReflectionUtils.GetAllFields(type)) {
+                    if (field.GetCustomAttribute<VFAutowiredAttribute>() == null) continue;
+                    field.SetValue(instance, GetField(field.FieldType));
+                }
 
-        private object GetService(Type type, List<Type> _parents = null, Dictionary<Type, object> additionalObjects = null) {
-            var parents = new List<Type>();
-            if (_parents != null) parents.AddRange(_parents);
-
-            if (additionalObjects != null && additionalObjects.TryGetValue(type, out var found)) {
-                return found;
+                if (!isPrototypeScope) {
+                    SetService(instance);
+                }
+                return instance;
+            } catch(Exception e) {
+                throw new Exception($"Error while constructing {type.FullName} service\n" + e.Message, e);
             }
-            if (completedObjects.TryGetValue(type, out var finished)) {
-                return finished;
-            }
-            if (!availableTypes.Contains(type)) {
-                throw new Exception($"{type.FullName} is not a registered type");
-            }
-            if (typesInConstruction.Contains(type)) {
-                throw new Exception($"{type.FullName} is already being constructed (dependency loop?) {string.Join(",", parents)}");
-            }
-            typesInConstruction.Add(type);
-            completedObjects[type] = CreateAndInject(type, parents);
-            return completedObjects[type];
         }
 
         public object[] GetAllServices() {
-            return availableTypes.Select(t => GetService(t)).ToArray();
+            return completedObjects.Values.ToArray();
         }
 
         public T GetService<T>() where T : class {

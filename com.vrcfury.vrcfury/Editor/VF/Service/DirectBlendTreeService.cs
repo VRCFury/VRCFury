@@ -11,8 +11,10 @@ using VF.Utils.Controller;
 
 namespace VF.Service {
     [VFService]
+    [VFPrototypeScope]
     public class DirectBlendTreeService {
         [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly VFInjectorParent parent;
         private VFLayer _layer;
         private BlendTree _tree;
 
@@ -22,12 +24,16 @@ namespace VF.Service {
 
         public BlendTree GetTree() {
             if (_tree == null) {
+                var name = $"DBT for {parent.parent.GetType().Name}";
+                if (parent.parent is FeatureBuilder builder) {
+                    name += $" #{builder.uniqueModelNum}";
+                }
                 var fx = manager.GetFx();
-                var directLayer = fx.NewLayer("Direct Blend Tree Service");
+                var directLayer = fx.NewLayer(name);
                 _layer = directLayer;
-                _tree = fx.NewBlendTree("Direct Blend Tree Service");
+                _tree = fx.NewBlendTree(name);
                 _tree.blendType = BlendTreeType.Direct;
-                directLayer.NewState("Tree").WithAnimation(_tree);
+                directLayer.NewState("DBT").WithAnimation(_tree);
             }
             return _tree;
         }

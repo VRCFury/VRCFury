@@ -18,7 +18,6 @@ namespace VF.Feature {
     public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
@@ -48,11 +47,6 @@ namespace VF.Feature {
                 // the layer will be missing later when the FixWriteDefaultBuilder tries to add to it.
                 if (layer == fixWriteDefaults.GetDefaultLayer()) {
                     AddDebug($"Not optimizing (this is the vrcf defaults layer)");
-                    continue;
-                }
-
-                if (layer == directTree.GetLayer()) {
-                    AddDebug($"Not optimizing (this is the shared DBT)");
                     continue;
                 }
 
@@ -245,21 +239,6 @@ namespace VF.Feature {
                     param = new VFAFloat(state0Condition.Value.parameter, 0);
                 }
 
-                if (param == fx.True().Name()) {
-                    AddDebug($"Not optimizing (VF_True)");
-                    continue;
-                }
-
-                var paramUsedInOtherLayer = fx.GetLayers()
-                    .Where(other => layer != other)
-                    .SelectMany(other => new AnimatorIterator.Conditions().From(other))
-                    .Any(c => c.parameter == param);
-
-                if (paramUsedInOtherLayer) {
-                    AddDebug($"Not optimizing (parameter used in some other layer)");
-                    continue;
-                }
-                
                 var paramType = fx.GetRaw().parameters
                     .Where(p => p.name == param)
                     .Select(p => p.type)
