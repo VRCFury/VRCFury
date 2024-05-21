@@ -5,15 +5,17 @@
 #include "sps_utils.cginc"
 
 // SPS Penetration Shader
-void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color)
+void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tangent, uint vertexId, inout float4 color)
 {
 	const float worldLength = _SPS_Length;
 	const float3 origVertex = vertex;
 	const float3 origNormal = normal;
+	const float3 origTangent = tangent.xyz;
 	float3 bakedVertex;
 	float3 bakedNormal;
+	float3 bakedTangent;
 	float active;
-	SpsGetBakedPosition(vertexId, bakedVertex, bakedNormal, active);
+	SpsGetBakedPosition(vertexId, bakedVertex, bakedNormal, bakedTangent, active);
 
 	if (active == 0) return;
 
@@ -129,14 +131,36 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, uint vertexId, ino
 
 	float3 deformedVertex = bezierPos + bezierRight * bakedVertex.x * holeShrink + bezierUp * bakedVertex.y * holeShrink;
 	float3 deformedNormal = bezierRight * bakedNormal.x + bezierUp * bakedNormal.y + bezierForward * bakedNormal.z;
+	float3 deformedTangent = bezierRight * bakedTangent.x + bezierUp * bakedTangent.y + bezierForward * bakedTangent.z;
 
 	vertex = lerp(origVertex, deformedVertex, dumbLerp);
-	normal = sps_normalize(lerp(origNormal, deformedNormal, dumbLerp)) * length(origNormal);
+	normal = lerp(origNormal, deformedNormal, dumbLerp);
+	tangent.xyz = lerp(origTangent, deformedTangent, dumbLerp);
 }
-void sps_apply(inout float3 vertex, inout float3 normal, uint vertexId, inout float4 color) {
+void sps_apply(inout SpsInputs o) {
+
+	#if defined(SPS_STRUCT_COLOR_TYPE_float3)
+		float4 color = float4(o.SPS_STRUCT_COLOR_NAME,1);
+	#endif
+	
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
 	// Temporarily disable this check since apparently it causes some passes to not apply SPS
 	//#ifdef VERTEXLIGHT_ON
-	sps_apply_real(vertex, normal, vertexId, color);
+	sps_apply_real(
+		o.SPS_STRUCT_POSITION_NAME.xyz,
+		o.SPS_STRUCT_NORMAL_NAME,
+		o.SPS_STRUCT_TANGENT_NAME,
+		o.SPS_STRUCT_SV_VertexID_NAME,
+		#if defined(SPS_STRUCT_COLOR_TYPE_float3)
+			color
+		#else
+			o.SPS_STRUCT_COLOR_NAME
+		#endif
+	);
 	//#endif
+
+	#if defined(SPS_STRUCT_COLOR_TYPE_float3)
+		o.SPS_STRUCT_COLOR_NAME = color.xyz;
+	#endif
 }
+

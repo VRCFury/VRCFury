@@ -23,24 +23,22 @@ namespace VF.Builder.Haptics {
                 baked.WriteColor(0, 0, 0, 0);
             }
 
-            var vertices = bakedMesh.vertices;
-            var normals = bakedMesh.normals;
-
             float GetActive(int i) {
                 return activeFromMask == null ? 1 : activeFromMask[i];
             }
 
-            for (var i = 0; i < vertices.Length; i++) {
-                baked.WriteVector3(vertices[i]);
+            for (var i = 0; i < bakedMesh.vertices.Length; i++) {
+                baked.WriteVector3(bakedMesh.vertices[i]);
 
                 if (tpsCompatibility) {
                     if (GetActive(i) == 0) {
                         baked.WriteVector3(new Vector3(0,0,0));
                     } else {
-                        baked.WriteVector3(normals[i]);
+                        baked.WriteVector3(bakedMesh.normals[i]);
                     }
                 } else {
-                    baked.WriteVector3(normals[i]);
+                    baked.WriteVector3(bakedMesh.normals[i]);
+                    baked.WriteVector3(bakedMesh.tangents[i]);
                     baked.WriteFloat(GetActive(i));
                 }
             }
@@ -48,13 +46,16 @@ namespace VF.Builder.Haptics {
             if (!tpsCompatibility && spsBlendshapes != null) {
                 foreach (var bs in spsBlendshapes) {
                     var weight = skin.GetBlendShapeWeight(bs);
-                    skin.SetBlendShapeWeight(bs, weight + 100);
-                    var bsBakedMesh = MeshBaker.BakeMesh(skin, skin.rootBone, true);
+                    skin.SetBlendShapeWeight(bs, 0);
+                    var bsBakedMeshOff = MeshBaker.BakeMesh(skin, skin.rootBone, true);
+                    skin.SetBlendShapeWeight(bs, 100);
+                    var bsBakedMeshOn = MeshBaker.BakeMesh(skin, skin.rootBone, true);
                     skin.SetBlendShapeWeight(bs, weight);
                     baked.WriteFloat(weight);
-                    for (var v = 0; v < bsBakedMesh.vertices.Length; v++) {
-                        baked.WriteVector3(bsBakedMesh.vertices[v] - vertices[v]);
-                        baked.WriteVector3(bsBakedMesh.normals[v].normalized - normals[v].normalized);
+                    for (var v = 0; v < bsBakedMeshOn.vertices.Length; v++) {
+                        baked.WriteVector3(bsBakedMeshOn.vertices[v] - bsBakedMeshOff.vertices[v]);
+                        baked.WriteVector3(bsBakedMeshOn.normals[v] - bsBakedMeshOff.normals[v]);
+                        baked.WriteVector3(bsBakedMeshOn.tangents[v] - bsBakedMeshOff.tangents[v]);
                     }
                 }
             }
