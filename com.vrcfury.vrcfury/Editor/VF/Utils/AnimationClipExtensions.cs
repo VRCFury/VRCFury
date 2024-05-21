@@ -68,7 +68,9 @@ namespace VF.Utils {
                 );
             }
 #else
-            foreach (var (b, c) in ext.curves) {
+            foreach (var pair in ext.curves) {
+                var b = pair.Key;
+                var c = pair.Value;
                 if (c.IsFloat) {
                     AnimationUtility.SetEditorCurve(clip, b, c.FloatCurve);
                 } else {
