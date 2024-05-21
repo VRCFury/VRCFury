@@ -15,18 +15,17 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.FlattenDbts)]
         public void Optimize() {
-            foreach (var c in manager.GetAllUsedControllers()) {
-                foreach (var state in new AnimatorIterator.States().From(c.GetRaw())) {
-                    if (state.motion is BlendTree tree) {
-                        Optimize(tree);
-                    }
+            var fx = manager.GetFx();
+            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
+                if (state.motion is BlendTree tree) {
+                    Optimize(tree);
                 }
             }
         }
 
         private void Optimize(BlendTree tree) {
             if (!tree.IsStatic()) {
-                Debug.LogError("Something added a non-static clip to a VRCF DBT. This is likely a bug.");
+                //Debug.LogError("Something added a non-static clip to a VRCF DBT. This is likely a bug.");
                 return;
             }
             tree.MakeZeroLength();
