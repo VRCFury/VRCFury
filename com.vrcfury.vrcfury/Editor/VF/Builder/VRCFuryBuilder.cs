@@ -154,7 +154,6 @@ public class VRCFuryBuilder {
         injector.GetService(typeof(FinalizeParamsBuilder));
         injector.GetService(typeof(FinalizeControllerBuilder));
         injector.GetService(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        injector.GetService(typeof(RestoreProxyClipsBuilder));
         injector.GetService(typeof(FixEmptyMotionBuilder));
 
         foreach (var service in injector.GetAllServices()) {

@@ -16,7 +16,7 @@ namespace VF.Utils {
                 return newBinding;
             });
         }
-        public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite, bool skipProxyBindings = true) {
+        public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite) {
             var cache = new Dictionary<EditorCurveBinding, EditorCurveBinding?>();
             var output = RewriteCurve((binding, curve) => {
                 if (!cache.TryGetValue(binding, out var newBinding)) {
@@ -26,7 +26,6 @@ namespace VF.Utils {
                 if (newBinding == null) return (binding, null, false);
                 return (newBinding.Value, curve, false);
             });
-            output.skipProxyBindings = skipProxyBindings;
             return output;
         }
         public static AnimationRewriter RewriteCurve(CurveRewriter rewrite) {
@@ -49,21 +48,18 @@ namespace VF.Utils {
                 }
                 return (binding,curve,curveUpdated);
             });
-            output.skipProxyBindings = false;
             return output;
         }
         private readonly CurveRewriter curveRewriter;
-        private bool skipProxyBindings = true;
         private AnimationRewriter(CurveRewriter curveRewriter) {
             this.curveRewriter = curveRewriter;
         }
 
         private (EditorCurveBinding, FloatOrObjectCurve, bool) RewriteOne(EditorCurveBinding binding, FloatOrObjectCurve curve) {
-            if (skipProxyBindings && binding.IsProxyBinding()) return (binding,curve,false);
             return curveRewriter(binding, curve);
         }
         public void Rewrite(AnimationClip clip) {
-            var originalLength = clip.length;
+            var originalLength = clip.GetLengthInSeconds();
             var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 if (binding.path == "__vrcf_length") {
@@ -78,7 +74,7 @@ namespace VF.Utils {
                 }
             }
             clip.SetCurves(output);
-            var newLength = clip.length;
+            var newLength = clip.GetLengthInSeconds();
             if (originalLength != newLength) {
                 clip.SetFloatCurve(
                     EditorCurveBinding.FloatCurve("__vrcf_length", typeof(GameObject), "m_IsActive"),

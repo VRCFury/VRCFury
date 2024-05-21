@@ -83,11 +83,10 @@ namespace VF.Service {
                 .Select(action => action.clip.Get())
                 .FirstOrDefault(clip => clip != null);
             if (firstClip) {
-                var copy = MutableManager.CopyRecursive(firstClip);
+                var copy = firstClip.Clone();
                 copy.Rewrite(rewriter);
-                var nameBak = onClip.name;
-                EditorUtility.CopySerialized(copy, onClip);
-                onClip.name = nameBak;
+                copy.name = onClip.name;
+                onClip = copy;
             }
 
             var physbonesToReset = new HashSet<VFGameObject>();
@@ -180,7 +179,7 @@ namespace VF.Service {
                     case AnimationClipAction clipAction:
                         var clipActionClip = clipAction.clip.Get();
                         if (clipActionClip && clipActionClip != firstClip) {
-                            var copy = MutableManager.CopyRecursive(clipActionClip);
+                            var copy = clipActionClip.Clone();
                             copy.Rewrite(rewriter);
                             onClip.CopyFrom(copy);
                         }
@@ -352,7 +351,7 @@ namespace VF.Service {
                 onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
 
-            if (onClip.CollapseProxyBindings().Count > 0) {
+            if (onClip.IsProxyClip()) {
                 throw new Exception(
                     "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
             }

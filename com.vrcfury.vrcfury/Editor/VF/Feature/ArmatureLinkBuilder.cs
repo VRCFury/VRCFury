@@ -19,32 +19,19 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using Object = UnityEngine.Object;
+using Random = System.Random;
 
 namespace VF.Feature {
 
     public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
-        [VFAutowired] private readonly ObjectMoveService mover;
-        [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
-        [VFAutowired] private readonly FakeHeadService fakeHead;
 
-        [FeatureBuilderAction(FeatureOrder.ArmatureLinkBuilder)]
-        public void Apply() {
-            if (model.propBone == null) {
-                Debug.LogWarning("Root bone is null on armature link.");
-                return;
-            }
-
-            var linkMode = GetLinkMode(model, avatarObject);
-            var links = GetLinks(model, linkMode, avatarObject);
-            if (links == null) {
-                return;
-            }
-
-            var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
-
-            var (_, _, scalingFactor) = GetScalingFactor(links, linkMode);
-            Debug.Log("Detected scaling factor: " + scalingFactor);
-
+        public static void ApplyAll(
+            FindAnimatedTransformsService findAnimatedTransformsService,
+            ObjectMoveService mover,
+            VFGameObject avatarObject,
+            List<ArmatureLink> models,
+            AvatarManager manager
+        ) {
             var anim = findAnimatedTransformsService.Find();
             var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).Values.ToImmutableHashSet();
 
@@ -58,12 +45,91 @@ namespace VF.Feature {
             // Expand the list to include all transitive children
             doNotReparent.UnionWith(doNotReparent.AllChildren().ToArray());
 
-            var rootName = GetRootName(links.propMain);
-
-            // Move over all the old components / children from the old location to a new child
-            var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
             var pruneCheck = new HashSet<VFGameObject>();
             var saveDebugInfo = !IsActuallyUploadingHook.Get();
+            
+            var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
+
+            foreach (var m in models) {
+                ApplyOne(m, avatarObject, saveDebugInfo, avatarHumanoidBones, anim, doNotReparent, mover, pruneCheck, animLink);
+            }
+            
+            mover.ApplyDeferred();
+            
+            // Clean up objects that don't need to exist anymore
+            // (this should happen before toggle rewrites, so we don't have to add toggles for a ton of things that won't exist anymore)
+            var usedReasons = GetUsageReasons(avatarObject);
+            var attachDebugInfoTo = new HashSet<VFGameObject>();
+            foreach (var obj in pruneCheck) {
+                if (obj == null) continue;
+                attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
+                if (!usedReasons.ContainsKey(obj)) obj.Destroy();
+            }
+
+            // Rewrite animations that turn off parents
+            foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
+                foreach (var binding in clip.GetFloatBindings()) {
+                    if (binding.type != typeof(GameObject)) continue;
+                    var transform = avatarObject.Find(binding.path);
+                    if (transform == null) continue;
+                    foreach (var other in animLink.Get(transform)) {
+                        if (other == null) continue; // it got deleted because the propBone wasn't used
+                        var b = binding;
+                        b.path = other.GetPath(avatarObject);
+                        clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
+                    }
+                }
+            }
+
+            if (saveDebugInfo) {
+                foreach (var obj in attachDebugInfoTo) {
+                    if (obj == null) continue;
+                    if (usedReasons.ContainsKey(obj)) {
+                        var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
+                        debugInfo.debugInfo =
+                            "VRCFury Armature Link did not clean up this object because it is still used:\n";
+                        debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
+                    }
+                }
+            }
+        }
+
+        public static void ApplyOne(
+            ArmatureLink model,
+            VFGameObject avatarObject,
+            bool saveDebugInfo,
+            ISet<VFGameObject> avatarHumanoidBones,
+            FindAnimatedTransformsService.AnimatedTransforms anim,
+            ISet<VFGameObject> doNotReparent,
+            ObjectMoveService mover,
+            ISet<VFGameObject> pruneCheck,
+            VFMultimapList<VFGameObject, VFGameObject> animLink
+        ) {
+            if (model.onlyIf != null && !model.onlyIf.Invoke()) {
+                return;
+            }
+            
+            if (model.propBone == null) {
+                Debug.LogWarning("Root bone is null on armature link.");
+                return;
+            }
+            
+            Debug.Log("Armature Linking " + model.propBone.asVf().GetPath(avatarObject));
+
+            var linkMode = GetLinkMode(model, avatarObject);
+            var links = GetLinks(model, linkMode, avatarObject);
+            if (links == null) {
+                return;
+            }
+
+            var keepBoneOffsets = GetKeepBoneOffsets(model, linkMode);
+
+            var (_, _, scalingFactor) = GetScalingFactor(model, links, linkMode);
+            Debug.Log("Detected scaling factor: " + scalingFactor);
+
+            var rootName = GetRootName(links.propMain, avatarObject);
+
+            // Move over all the old components / children from the old location to a new child
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 VRCFuryDebugInfo debugInfo = null;
                 if (saveDebugInfo) {
@@ -133,7 +199,7 @@ namespace VF.Feature {
                 }
 
                 // Move it on over
-                var newName = $"[VF{uniqueModelNum}] {propBone.name}";
+                var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
                 if (propBone.name != rootName) newName += $" from {rootName}";
 
                 var addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
@@ -172,53 +238,14 @@ namespace VF.Feature {
                 }
 
                 if (ShouldReuseBone()) {
-                    RewriteSkins(propBone, avatarBone);
+                    RewriteSkins(propBone, avatarBone, avatarObject);
                 }
 
                 pruneCheck.Add(addedObject);
             }
-
-            mover.ApplyDeferred();
-            
-            // Clean up objects that don't need to exist anymore
-            // (this should happen before toggle rewrites, so we don't have to add toggles for a ton of things that won't exist anymore)
-            var usedReasons = GetUsageReasons(avatarObject);
-            var attachDebugInfoTo = new HashSet<VFGameObject>();
-            foreach (var obj in pruneCheck) {
-                if (obj == null) continue;
-                attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
-                if (!usedReasons.ContainsKey(obj)) obj.Destroy();
-            }
-
-            // Rewrite animations that turn off parents
-            foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
-                foreach (var binding in clip.GetFloatBindings()) {
-                    if (binding.type != typeof(GameObject)) continue;
-                    var transform = avatarObject.Find(binding.path);
-                    if (transform == null) continue;
-                    foreach (var other in animLink.Get(transform)) {
-                        if (other == null) continue; // it got deleted because the propBone wasn't used
-                        var b = binding;
-                        b.path = other.GetPath(avatarObject);
-                        clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
-                    }
-                }
-            }
-
-            if (saveDebugInfo) {
-                foreach (var obj in attachDebugInfoTo) {
-                    if (obj == null) continue;
-                    if (usedReasons.ContainsKey(obj)) {
-                        var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
-                        debugInfo.debugInfo =
-                            "VRCFury Armature Link did not clean up this object because it is still used:\n";
-                        debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
-                    }
-                }
-            }
         }
 
-        private void RewriteSkins(VFGameObject fromBone, VFGameObject toBone) {
+        private static void RewriteSkins(VFGameObject fromBone, VFGameObject toBone, VFGameObject avatarObject) {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
                 if (skin.bones.Contains(fromBone.transform)) {
@@ -247,7 +274,7 @@ namespace VF.Feature {
             }
         }
 
-        private (float, float, float) GetScalingFactor(Links links, ArmatureLink.ArmatureLinkMode linkMode) {
+        private static (float, float, float) GetScalingFactor(ArmatureLink model, Links links, ArmatureLink.ArmatureLinkMode linkMode) {
             var avatarMainScale = Math.Abs(links.avatarMain.worldScale.x);
             var propMainScale = Math.Abs(links.propMain.worldScale.x);
             var scalingFactor = model.skinRewriteScalingFactor;
@@ -344,7 +371,7 @@ namespace VF.Feature {
             return model.linkMode;
         }
 
-        private string GetRootName(VFGameObject rootBone) {
+        private static string GetRootName(VFGameObject rootBone, VFGameObject avatarObject) {
             if (rootBone == null) return "Unknown";
 
             var isBone = false;
@@ -354,12 +381,12 @@ namespace VF.Feature {
             }
             isBone |= rootBone.name.ToLower().Trim() == "armature";
 
-            if (isBone) return GetRootName(rootBone.parent);
+            if (isBone) return GetRootName(rootBone.parent, avatarObject);
 
             return rootBone.name;
         }
 
-        private bool GetKeepBoneOffsets(ArmatureLink.ArmatureLinkMode linkMode) {
+        private static bool GetKeepBoneOffsets(ArmatureLink model, ArmatureLink.ArmatureLinkMode linkMode) {
             if (model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Auto) {
                 return linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
             }
@@ -691,7 +718,7 @@ namespace VF.Feature {
                 }
 
                 var linkMode = GetLinkMode(model, avatarObject);
-                var keepBoneOffsets = GetKeepBoneOffsets(linkMode);
+                var keepBoneOffsets = GetKeepBoneOffsets(model, linkMode);
                 var links = GetLinks(model, linkMode, avatarObject);
                 if (links == null) {
                     return "No valid link target found";
@@ -702,7 +729,7 @@ namespace VF.Feature {
                 }
 
                 var text = new List<string>();
-                var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(links, linkMode);
+                var (avatarMainScale, propMainScale, scalingFactor) = GetScalingFactor(model, links, linkMode);
                 text.Add($"Merging to bone: {links.avatarMain.GetPath(avatarObject)}");
                 text.Add($"Link Mode: {linkMode}");
                 text.Add($"Keep Bone Offsets: {keepBoneOffsets}");

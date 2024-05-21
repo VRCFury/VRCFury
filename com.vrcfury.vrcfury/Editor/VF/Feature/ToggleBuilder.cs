@@ -208,7 +208,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
-            restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
+            restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
@@ -275,8 +275,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (savedRestingClip == null) {
-            var copy = VrcfObjectFactory.Create<AnimationClip>();
-            copy.CopyFrom(restingClip);
+            var copy = restingClip.Clone();
             savedRestingClip = copy;
             clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
         }

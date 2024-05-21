@@ -3,23 +3,123 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils {
     public static class AnimationClipExtensions {
+        
+        /**
+         * Operating on AnimationClips directly is really expensive. Instead, we operate on these temp objects, then
+         * write it all back to the AnimationClip at the end of the build.
+         */
+        private static readonly Dictionary<AnimationClip, AnimationClipExt> clipDb
+            = new Dictionary<AnimationClip, AnimationClipExt>();
+
+        private class AnimationClipExt {
+            public Dictionary<EditorCurveBinding, FloatOrObjectCurve> curves = new Dictionary<EditorCurveBinding, FloatOrObjectCurve>();
+            public string proxyClipPath;
+            
+            public AnimationClipExt Clone() {
+                var copy = new AnimationClipExt();
+                copy.proxyClipPath = proxyClipPath;
+                copy.curves = curves.ToDictionary(pair => pair.Key, pair => pair.Value.Clone());
+                return copy;
+            }
+        }
+
+        [InitializeOnLoadMethod]
+        public static void Init() {
+            EditorApplication.update += () => {
+                clipDb.Clear();
+            };
+        }
+
+        public static AnimationClip Clone(this AnimationClip clip) {
+            var copy = new AnimationClip();
+            copy.name = clip.name;
+            copy.frameRate = clip.frameRate;
+            AnimationUtility.SetAnimationClipSettings(copy, AnimationUtility.GetAnimationClipSettings(clip));
+            clipDb[copy] = GetExt(clip).Clone();
+            return copy;
+        }
+        public static void FinalizeAsset(this AnimationClip clip) {
+            if (AnimationUtility.GetCurveBindings(clip).Any() ||
+                AnimationUtility.GetObjectReferenceCurveBindings(clip).Any()) {
+                throw new Exception("VRCFury FinalizeAsset was called on a clip that wasn't empty! This is definitely a bug.");
+            }
+
+            var ext = GetExt(clip);
+#if UNITY_2022_1_OR_NEWER
+            var floatCurves = ext.curves.Where(pair => pair.Value.IsFloat).ToList();
+            if (floatCurves.Any()) {
+                AnimationUtility.SetEditorCurves(clip,
+                    floatCurves.Select(p => p.Key).ToArray(),
+                    floatCurves.Select(p => p.Value.FloatCurve).ToArray()
+                );
+            }
+            var objectCurves = ext.curves.Where(pair => !pair.Value.IsFloat).ToList();
+            if (objectCurves.Any()) {
+                AnimationUtility.SetObjectReferenceCurves(clip,
+                    objectCurves.Select(p => p.Key).ToArray(),
+                    objectCurves.Select(p => p.Value.ObjectCurve).ToArray()
+                );
+            }
+#else
+            foreach (var pair in ext.curves) {
+                var b = pair.Key;
+                var c = pair.Value;
+                if (c.IsFloat) {
+                    AnimationUtility.SetEditorCurve(clip, b, c.FloatCurve);
+                } else {
+                    AnimationUtility.SetObjectReferenceCurve(clip, b, c.ObjectCurve);
+                }
+            }
+#endif
+        }
+        private static AnimationClipExt GetExt(AnimationClip clip) {
+            if (!clipDb.TryGetValue(clip, out var ext)) {
+                clipDb[clip] = ext = new AnimationClipExt();
+                ext.curves = AnimationUtility.GetObjectReferenceCurveBindings(clip).Select(b => (b, (FloatOrObjectCurve)AnimationUtility.GetObjectReferenceCurve(clip, b)))
+                    .Concat(AnimationUtility.GetCurveBindings(clip).Select(b => (b, (FloatOrObjectCurve)AnimationUtility.GetEditorCurve(clip, b))))
+                    .ToDictionary(pair => pair.Item1, pair => pair.Item2);
+                var path = AssetDatabase.GetAssetPath(clip);
+                if (path != null && Path.GetFileName(path).StartsWith("proxy_")) {
+                    ext.proxyClipPath = path;
+                }
+            }
+            return ext;
+        }
+
+        public static bool IsProxyClip(this AnimationClip clip) {
+            return GetExt(clip).proxyClipPath != null;
+        }
+        
+        [CanBeNull]
+        public static AnimationClip GetProxyClip(this AnimationClip clip) {
+            var path = GetExt(clip).proxyClipPath;
+            if (path == null) return null;
+            var proxyClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+            if (proxyClip == null) throw new Exception("Failed to find proxy clip at " + path);
+            return proxyClip;
+        }
+        
+        public static void ClearProxyClip(this AnimationClip clip) {
+            GetExt(clip).proxyClipPath = null;
+        }
+
         public static EditorCurveBinding[] GetFloatBindings(this AnimationClip clip) {
-            return AnimationUtility.GetCurveBindings(clip);
+            return GetExt(clip).curves.Where(pair => pair.Value.IsFloat).Select(pair => pair.Key).ToArray();
         }
         
         public static EditorCurveBinding[] GetObjectBindings(this AnimationClip clip) {
-            return AnimationUtility.GetObjectReferenceCurveBindings(clip);
+            return GetExt(clip).curves.Where(pair => !pair.Value.IsFloat).Select(pair => pair.Key).ToArray();
         }
 
         public static EditorCurveBinding[] GetAllBindings(this AnimationClip clip) {
-            return clip.GetFloatBindings().Concat(clip.GetObjectBindings()).ToArray();
+            return GetExt(clip).curves.Keys.ToArray();
         }
 
         public static FloatOrObjectCurve GetCurve(this AnimationClip clip, EditorCurveBinding binding, bool isFloat) {
@@ -28,55 +128,35 @@ namespace VF.Utils {
         }
         
         public static AnimationCurve GetFloatCurve(this AnimationClip clip, EditorCurveBinding binding) {
-            return AnimationUtility.GetEditorCurve(clip, binding);
+            if (GetExt(clip).curves.TryGetValue(binding, out var curve) && curve.IsFloat) return curve.FloatCurve;
+            return null;
         }
         
         public static ObjectReferenceKeyframe[] GetObjectCurve(this AnimationClip clip, EditorCurveBinding binding) {
-            return AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            if (GetExt(clip).curves.TryGetValue(binding, out var curve) && !curve.IsFloat) return curve.ObjectCurve;
+            return null;
         }
 
         public static (EditorCurveBinding, AnimationCurve)[] GetFloatCurves(this AnimationClip clip) {
-            return clip.GetFloatBindings().Select(b => (b, clip.GetFloatCurve(b))).ToArray();
+            return GetExt(clip).curves.Where(pair => pair.Value.IsFloat).Select(pair => (pair.Key,pair.Value.FloatCurve)).ToArray();
         }
         
         public static (EditorCurveBinding, ObjectReferenceKeyframe[])[] GetObjectCurves(this AnimationClip clip) {
-            return clip.GetObjectBindings().Select(b => (b, clip.GetObjectCurve(b))).ToArray();
+            return GetExt(clip).curves.Where(pair => !pair.Value.IsFloat).Select(pair => (pair.Key,pair.Value.ObjectCurve)).ToArray();
         }
 
         public static (EditorCurveBinding,FloatOrObjectCurve)[] GetAllCurves(this AnimationClip clip) {
-            return clip.GetObjectBindings().Select(b => (b, (FloatOrObjectCurve)clip.GetObjectCurve(b)))
-                .Concat(clip.GetFloatBindings().Select(b => (b, (FloatOrObjectCurve)clip.GetFloatCurve(b))))
-                .ToArray();
+            return GetExt(clip).curves.Select(pair => (pair.Key,pair.Value)).ToArray();
         }
 
-        public static void SetCurves(this AnimationClip clip, IEnumerable<(EditorCurveBinding,FloatOrObjectCurve)> curves) {
-            var floatCurves = new List<(EditorCurveBinding, AnimationCurve)>();
-            var objectCurves = new List<(EditorCurveBinding, ObjectReferenceKeyframe[])>();
-
-            foreach (var (binding, curve) in curves) {
+        public static void SetCurves(this AnimationClip clip, IEnumerable<(EditorCurveBinding,FloatOrObjectCurve)> newCurves) {
+            var curves = GetExt(clip).curves;
+            foreach (var (binding, curve) in newCurves) {
                 if (curve == null) {
-                    // If we don't check if it exists first, unity throws a "Can't assign curve because the
-                    // type does not inherit from Component" if type is a GameObject
-                    if (clip.GetFloatCurve(binding) != null)
-                        floatCurves.Add((binding, null));
-                    if (clip.GetObjectCurve(binding) != null)
-                        objectCurves.Add((binding, null));
-                } else if (curve.IsFloat) {
-                    floatCurves.Add((binding, curve.FloatCurve));
+                    curves.Remove(binding);
                 } else {
-                    objectCurves.Add((binding, curve.ObjectCurve));
+                    curves[binding] = curve;
                 }
-            }
-
-            // SetEditorCurves is STILL BROKEN on unity 2022 :(
-            // (For instance, if we add and remove a curve in one call, the removal will just be ignored)
-            // So, we continue doing them one by one which is kinda slow.
-
-            foreach (var pair in floatCurves) {
-                AnimationUtility.SetEditorCurve(clip, pair.Item1, pair.Item2);
-            }
-            foreach (var pair in objectCurves) {
-                AnimationUtility.SetObjectReferenceCurve(clip, pair.Item1, pair.Item2);
             }
         }
 
@@ -85,15 +165,22 @@ namespace VF.Utils {
         }
 
         public static void SetFloatCurve(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
-            AnimationUtility.SetEditorCurve(clip, binding, curve);
+            clip.SetCurves(new [] { (binding,(FloatOrObjectCurve)curve) });
         }
         
         public static void SetObjectCurve(this AnimationClip clip, EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
-            AnimationUtility.SetObjectReferenceCurve(clip, binding, curve);
+            clip.SetCurves(new [] { (binding,(FloatOrObjectCurve)curve) });
         }
 
         public static int GetLengthInFrames(this AnimationClip clip) {
-            return (int)Math.Round(clip.length * clip.frameRate);
+            return (int)Math.Round(clip.GetLengthInSeconds() * clip.frameRate);
+        }
+        
+        public static float GetLengthInSeconds(this AnimationClip clip) {
+            return clip.GetAllCurves()
+                .Select(c => c.Item2.lengthInSeconds)
+                .DefaultIfEmpty(0)
+                .Max();
         }
 
         public static void CopyFrom(this AnimationClip clip, AnimationClip other) {
@@ -107,14 +194,13 @@ namespace VF.Utils {
         }
 
         public static bool IsLooping(this AnimationClip clip) {
-            var so = new SerializedObject(clip);
-            return so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue;
+            return AnimationUtility.GetAnimationClipSettings(clip).loopTime;
         }
 
         public static void SetLooping(this AnimationClip clip, bool on) {
-            var so = new SerializedObject(clip);
-            so.FindProperty("m_AnimationClipSettings.m_LoopTime").boolValue = on;
-            so.ApplyModifiedProperties();
+            var settings = AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = on;
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
         }
 
         public static IImmutableSet<EditorCurveBindingExtensions.MuscleBindingType> GetMuscleBindingTypes(this AnimationClip clip) {
@@ -125,12 +211,12 @@ namespace VF.Utils {
         }
 
         public static bool HasMuscles(this AnimationClip clip) {
-            return clip.GetFloatBindings()
-                .Any(binding => binding.IsMuscle() || binding.IsProxyBinding());
+            return clip.IsProxyClip()
+                || clip.GetFloatBindings().Any(binding => binding.IsMuscle());
         }
 
         public static AnimationClip Evaluate(this AnimationClip clip, float time) {
-            var output = MutableManager.CopyRecursive(clip);
+            var output = clip.Clone();
             output.name = $"{clip.name} (sampled at {time})";
             output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                 if (curve.IsFloat) {
