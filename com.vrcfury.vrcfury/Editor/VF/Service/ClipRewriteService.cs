@@ -9,7 +9,19 @@ namespace VF.Service {
     public class ClipRewriteService {
         [VFAutowired] private AvatarManager manager;
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
+
+        public void RewriteAllClips(AnimationRewriter rewriter) {
+            foreach (var c in manager.GetAllUsedControllers()) {
+                c.GetRaw().GetRaw().Rewrite(rewriter);
+            }
+            foreach (var clip in additionalClips) {
+                clip.Rewrite(rewriter);
+            }
+        }
         
+        /**
+         * Note: Does not update audio clip source paths
+         */
         public void ForAllClips(Action<AnimationClip> with) {
             var clips = new HashSet<AnimationClip>();
             foreach (var c in manager.GetAllUsedControllers()) {

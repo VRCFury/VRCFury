@@ -69,7 +69,7 @@ namespace VF.Service {
                 return path;
             });
 
-            clipRewriteService.ForAllClips(clip => clip.Rewrite(rewriter));
+            clipRewriteService.RewriteAllClips(rewriter);
             deferred.Clear();
         }
     }
