@@ -46,7 +46,13 @@ namespace VF.Utils {
             return copy;
         }
         public static void FinalizeAsset(this AnimationClip clip) {
+            if (AnimationUtility.GetCurveBindings(clip).Any() ||
+                AnimationUtility.GetObjectReferenceCurveBindings(clip).Any()) {
+                throw new Exception("VRCFury FinalizeAsset was called on a clip that wasn't empty! This is definitely a bug.");
+            }
+
             var ext = GetExt(clip);
+#if UNITY_2022_1_OR_NEWER
             var floatCurves = ext.curves.Where(pair => pair.Value.IsFloat).ToList();
             if (floatCurves.Any()) {
                 AnimationUtility.SetEditorCurves(clip,
@@ -61,6 +67,15 @@ namespace VF.Utils {
                     objectCurves.Select(p => p.Value.ObjectCurve).ToArray()
                 );
             }
+#else
+            foreach (var (b, c) in ext.curves) {
+                if (c.IsFloat) {
+                    AnimationUtility.SetEditorCurve(clip, b, c.FloatCurve);
+                } else {
+                    AnimationUtility.SetObjectReferenceCurve(clip, b, c.ObjectCurve);
+                }
+            }
+#endif
         }
         private static AnimationClipExt GetExt(AnimationClip clip) {
             if (!clipDb.TryGetValue(clip, out var ext)) {

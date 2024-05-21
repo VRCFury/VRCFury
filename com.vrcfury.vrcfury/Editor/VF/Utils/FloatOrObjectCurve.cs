@@ -48,7 +48,7 @@ namespace VF.Utils {
         
         public float lengthInSeconds {
             get {
-                if (isFloat) return floatCurve.keys.Select(k => k.time).Max();
+                if (isFloat) return floatCurve.keys.Select(k => k.time).DefaultIfEmpty(0).Max();
                 return 0;
             }
         }
@@ -78,7 +78,13 @@ namespace VF.Utils {
         public FloatOrObjectCurve Clone() {
             if (isFloat) {
                 var copy = new AnimationCurve();
+#if UNITY_2022_1_OR_NEWER
                 copy.CopyFrom(floatCurve);
+#else
+                copy.keys = floatCurve.keys.ToArray();
+                copy.preWrapMode = floatCurve.preWrapMode;
+                copy.postWrapMode = floatCurve.postWrapMode;
+#endif
                 return copy;
             } else {
                 return objectCurve.ToArray();
