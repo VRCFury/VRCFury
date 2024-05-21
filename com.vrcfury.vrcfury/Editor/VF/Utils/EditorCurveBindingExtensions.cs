@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VRC.SDK3.Avatars.Components;
-using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     public static class EditorCurveBindingExtensions {
@@ -66,7 +64,6 @@ namespace VF.Utils {
         }
 
         public static bool IsValid(this EditorCurveBinding binding, VFGameObject baseObject) {
-            if (binding.IsProxyBinding()) return true;
             var obj = baseObject.Find(binding.path);
             if (obj == null) return false;
             if (binding.type == null) return false;

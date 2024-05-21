@@ -123,9 +123,6 @@ public class VRCFuryBuilder {
         var collectedBuilders = new List<FeatureBuilder>();
 
         var injector = new VRCFuryInjector();
-        foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
-            injector.RegisterService(serviceType);
-        }
         
         var globals = new GlobalsService {
             tmpDirParent = tmpDirParent,
@@ -140,28 +137,27 @@ public class VRCFuryBuilder {
             currentMenuSortPosition = () => currentServiceNumber,
             currentComponentObject = () => currentServiceGameObject,
         };
-        injector.RegisterService(globals);
-
-        void AddBuilder(Type t) {
-            injector.RegisterService(t);
+        injector.SetService(globals);
+        
+        foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
+            injector.GetService(serviceType);
         }
-        AddBuilder(typeof(CleanupLegacyBuilder));
-        AddBuilder(typeof(RemoveJunkAnimatorsBuilder));
-        AddBuilder(typeof(FixDoubleFxBuilder));
-        AddBuilder(typeof(FixWriteDefaultsBuilder));
-        AddBuilder(typeof(BakeGlobalCollidersBuilder));
-        AddBuilder(typeof(AnimatorLayerControlOffsetBuilder));
-        AddBuilder(typeof(CleanupEmptyLayersBuilder));
-        AddBuilder(typeof(ResetAnimatorBuilder));
-        AddBuilder(typeof(FinalizeMenuBuilder));
-        AddBuilder(typeof(FinalizeParamsBuilder));
-        AddBuilder(typeof(FinalizeControllerBuilder));
-        AddBuilder(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        AddBuilder(typeof(RestoreProxyClipsBuilder));
-        AddBuilder(typeof(FixEmptyMotionBuilder));
+        injector.GetService(typeof(CleanupLegacyBuilder));
+        injector.GetService(typeof(RemoveJunkAnimatorsBuilder));
+        injector.GetService(typeof(FixDoubleFxBuilder));
+        injector.GetService(typeof(FixWriteDefaultsBuilder));
+        injector.GetService(typeof(BakeGlobalCollidersBuilder));
+        injector.GetService(typeof(AnimatorLayerControlOffsetBuilder));
+        injector.GetService(typeof(CleanupEmptyLayersBuilder));
+        injector.GetService(typeof(ResetAnimatorBuilder));
+        injector.GetService(typeof(FinalizeMenuBuilder));
+        injector.GetService(typeof(FinalizeParamsBuilder));
+        injector.GetService(typeof(FinalizeControllerBuilder));
+        injector.GetService(typeof(MarkThingsAsDirtyJustInCaseBuilder));
+        injector.GetService(typeof(FixEmptyMotionBuilder));
 
         foreach (var service in injector.GetAllServices()) {
-            AddService(service, avatarObject);
+            AddActionsFromObject(service, avatarObject);
         }
 
         void AddComponent(FeatureModel component, VFGameObject configObject, int? serviceNumOverride = null) {
@@ -178,10 +174,10 @@ public class VRCFuryBuilder {
             }
 
             if (builder == null) return;
-            AddService(builder, configObject, serviceNumOverride);
+            AddActionsFromObject(builder, configObject, serviceNumOverride);
         }
 
-        void AddService(object service, VFGameObject configObject, int? serviceNumOverride = null) {
+        void AddActionsFromObject(object service, VFGameObject configObject, int? serviceNumOverride = null) {
             var serviceNum = serviceNumOverride ?? ++totalServiceCount;
             if (service is FeatureBuilder builder) {
                 builder.uniqueModelNum = serviceNum;

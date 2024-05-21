@@ -18,7 +18,9 @@ namespace VF.Service {
         private VFGameObject avatarObject => globals.avatarObject;
 
         public void ApplyClip(AnimationClip clip) {
-            clip.SampleAnimation(avatarObject, 0);
+            var copy = clip.Clone();
+            copy.FinalizeAsset();
+            copy.SampleAnimation(avatarObject, 0);
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 var value = curve.GetFirst();
                 HandleMaterialSwaps(binding, value);
