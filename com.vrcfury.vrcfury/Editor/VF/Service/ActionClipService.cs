@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Component;
@@ -30,7 +31,7 @@ namespace VF.Service {
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
+        public Motion LoadState(string name, State state, VFGameObject animObjectOverride = null) {
             return LoadStateAdv(name, state, animObjectOverride).onClip;
         }
         
@@ -41,8 +42,9 @@ namespace VF.Service {
         }
 
         public class BuiltAction {
-            // Don't use fx.GetEmptyClip(), since this clip may be mutated later
-            public AnimationClip onClip = VrcfObjectFactory.Create<AnimationClip>();
+            public Motion onClip = VrcfObjectFactory.Create<AnimationClip>();
+            public AnimationClip flatOnClip = VrcfObjectFactory.Create<AnimationClip>();
+            public AnimationClip allOnClip = VrcfObjectFactory.Create<AnimationClip>();
             public AnimationClip implicitRestingClip = VrcfObjectFactory.Create<AnimationClip>();
         }
         public static BuiltAction LoadStateAdv(string name, State state, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service = null) {
@@ -305,7 +307,7 @@ namespace VF.Service {
                         var sources = states
                             .Select((substate,i) => {
                                 var loaded = LoadStateAdv("tmp", substate, avatarObject, animObject, service);
-                                return ((float)i, loaded.onClip);
+                                return ((float)i, loaded.flatOnClip);
                             })
                             .ToArray();
 
@@ -316,7 +318,7 @@ namespace VF.Service {
                         } else {
                             // This is wrong, but it's fine because this branch is for debug info only
                             foreach (var source in sources) {
-                                onClip.CopyFrom(source.onClip);
+                                onClip.CopyFrom(source.flatOnClip);
                             }
                         }
                         
@@ -328,15 +330,15 @@ namespace VF.Service {
 
                         if (service != null) {
                             var built = service.clipBuilder.MergeSingleFrameClips(
-                                (0, clip1.onClip),
-                                (smoothLoopAction.loopTime / 2, clip2.onClip),
-                                (smoothLoopAction.loopTime, clip1.onClip)
+                                (0, clip1.flatOnClip),
+                                (smoothLoopAction.loopTime / 2, clip2.flatOnClip),
+                                (smoothLoopAction.loopTime, clip1.flatOnClip)
                             );
                             onClip.CopyFrom(built);
                         } else {
                             // This is wrong, but it's fine because this branch is for debug info only
-                            onClip.CopyFrom(clip1.onClip);
-                            onClip.CopyFrom(clip2.onClip);
+                            onClip.CopyFrom(clip1.flatOnClip);
+                            onClip.CopyFrom(clip2.flatOnClip);
                         }
 
                         onClip.SetLooping(true);

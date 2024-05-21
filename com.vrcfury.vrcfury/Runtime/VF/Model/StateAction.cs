@@ -90,6 +90,7 @@ namespace VF.Model.StateAction {
     [Serializable]
     public class AnimationClipAction : Action {
         public GuidAnimationClip clip;
+        [NonSerialized] public Motion motionOverride;
     }
 
     [Serializable]

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 
@@ -41,9 +42,9 @@ namespace VF.Utils {
                 .Any(binding => binding.IsValid(avatarRoot));
         }
 
-        public static void MakeZeroLength(this Motion motion) {
+        public static void MakeZeroLength(this Motion motion, bool last = false) {
             if (motion is AnimationClip clip) {
-                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => (binding, curve.GetFirst(), true)));
+                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => (binding, last ? curve.GetLast() : curve.GetFirst(), true)));
                 if (!clip.GetAllBindings().Any()) {
                     clip.SetFloatCurve(
                         EditorCurveBinding.FloatCurve("__ignored", typeof(GameObject), "m_IsActive"),

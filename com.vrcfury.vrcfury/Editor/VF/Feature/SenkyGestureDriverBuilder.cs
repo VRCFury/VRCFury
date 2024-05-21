@@ -91,7 +91,7 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         var clip = actionClipService.LoadState("senkygesture", input);
         return new State() {
             actions = {
-                new AnimationClipAction { clip = clip },
+                new AnimationClipAction { motionOverride = clip },
                 new BlockBlinkingAction()
             }
         };
