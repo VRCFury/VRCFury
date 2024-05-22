@@ -1,19 +1,14 @@
 using System;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
-using VF.PlayMode;
 using VF.Service;
-using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
@@ -21,22 +16,20 @@ using Object = UnityEngine.Object;
 namespace VF {
     public class PlayModeTrigger {
         private static string tmpDir;
+        private const string TriggerObjectName = "__vrcf_play_mode_trigger";
 
         [InitializeOnLoadMethod]
         static void Init() {
-            SceneManager.sceneLoaded += OnSceneLoaded;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
+        private static bool leavingPlayMode = false;
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
-                tmpDir = null;
+                var obj = new GameObject(TriggerObjectName);
+                RescanOnStartComponent.AddToObject(obj);
             }
-        }
-
-        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
-            if (!EditorApplication.isPlaying) return;
-            Rescan(scene);
+            leavingPlayMode = state == PlayModeStateChange.ExitingPlayMode;
         }
 
         // This should absolutely always be false in play mode, but we check just in case
@@ -55,8 +48,9 @@ namespace VF {
             return false;
         }
 
-        private static void Rescan(Scene scene) {
+        private static void Rescan() {
             if (!Application.isPlaying) return;
+            if (leavingPlayMode) return;
             if (!PlayModeMenuItem.Get()) return;
 
             if (tmpDir == null) {
@@ -66,7 +60,7 @@ namespace VF {
                 VRCFuryAssetDatabase.CreateFolder(tmpDir);
             }
 
-            foreach (var root in VFGameObject.GetRoots(scene)) {
+            foreach (var root in VFGameObject.GetRoots()) {
                 foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
                     RescanOnStartComponent.AddToObject(avatar.owner());
                     var obj = avatar.owner();
@@ -133,16 +127,21 @@ namespace VF {
         }
 
         [DefaultExecutionOrder(-10000)]
+        [ExecuteInEditMode]
         public class RescanOnStartComponent : MonoBehaviour {
             private void Start() {
-                Rescan(this.owner().scene);
+                Rescan();
+                var obj = gameObject;
+                DestroyImmediate(this);
+                if (obj.name == TriggerObjectName) {
+                    DestroyImmediate(obj);
+                }
             }
 
             public static void AddToObject(VFGameObject obj) {
-                if (!Application.isPlaying) return;
+                //if (!Application.isPlaying) return;
                 if (obj.GetComponent<RescanOnStartComponent>() != null) return;
                 var c = obj.AddComponent<RescanOnStartComponent>();
-                c.hideFlags = HideFlags.DontSave;
             }
         }
     }
