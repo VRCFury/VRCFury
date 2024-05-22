@@ -600,7 +600,7 @@ namespace VF.Builder.Haptics {
                     bracketLevel++;
                 } else if (c == '}') {
                     bracketLevel--;
-                    if (bracketLevel == 0) return i+1;
+                    if (bracketLevel == 0) return i;
                 } else if (c == '"') {
                     inString = true;
                 }
