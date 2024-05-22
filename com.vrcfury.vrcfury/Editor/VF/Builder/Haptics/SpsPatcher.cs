@@ -177,7 +177,7 @@ namespace VF.Builder.Haptics {
 
             var newShader = Shader.Find(newShaderName);
             if (!newShader) {
-                throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the unity log for compile error?");
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the unity log for compile error?\n\n" + newPath);
             }
 
             if (ShaderUtil.ShaderHasError(newShader)) {
@@ -344,10 +344,12 @@ namespace VF.Builder.Haptics {
 
             var oldStructBody = "";
             if (oldStructType != null) {
-                var foundOldParam = GetRegex(@"struct\s+" + Regex.Escape(oldStructType) + @"\s*{([^}]*)}")
+                var foundOldParam = GetRegex(@"struct\s+" + Regex.Escape(oldStructType) + @"\s*{")
                     .Match(flattenedProgram);
                 if (foundOldParam.Success) {
-                    oldStructBody = foundOldParam.Groups[1].ToString();
+                    var start = foundOldParam.Index + foundOldParam.Length;
+                    var end = IndexOfEndOfNextContext(flattenedProgram, foundOldParam.Index);
+                    oldStructBody = flattenedProgram.Substring(start, end - start);
                 } else {
                     throw new Exception("Failed to find old struct: " + oldStructType);
                 }
@@ -355,33 +357,7 @@ namespace VF.Builder.Haptics {
 
             var newStructBody = new List<string>();
             if (!useStructExtends) newStructBody.Add(oldStructBody);
-
-            // Add type defines
-            {
-                var sinceLastIf = "";
-                void ProcessSinceLast() {
-                    var matches = GetRegex(@"([^\s:;]+)[\s]+([^\s:;]+)[\s]*:[\s]*([^\s:;]+)")
-                        .Matches(sinceLastIf)
-                        .Cast<Match>();
-                    foreach (var match in matches) {
-                        var type = match.Groups[1].ToString();
-                        var name = match.Groups[2].ToString();
-                        var keyword = match.Groups[3].ToString();
-                        newStructBody.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
-                        newStructBody.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
-                    }
-                    sinceLastIf = "";
-                }
-                foreach (var line in oldStructBody.Split('\n')) {
-                    if (line.TrimStart().StartsWith("#")) {
-                        ProcessSinceLast();
-                        newStructBody.Add(line);
-                    } else {
-                        sinceLastIf += "\n" + line;
-                    }
-                }
-                ProcessSinceLast();
-            }
+            newStructBody.Add(GetKeywordDefinesFromStruct(oldStructBody));
 
             void AddParamIfMissing(string keyword, string defaultName, string defaultType) {
                 newStructBody.Add($"#ifndef SPS_STRUCT_{keyword}_NAME");
@@ -437,6 +413,36 @@ namespace VF.Builder.Haptics {
                       + "\n";
 
             return program;
+        }
+
+        public static string GetKeywordDefinesFromStruct(string structBody) {
+            // Remove comments
+            structBody = Regex.Replace(structBody, @"(//[^\n]*)|(/\*.*?\*/)", "", RegexOptions.Singleline);
+            var output = new List<string>();
+            var sinceLastIf = "";
+            void ProcessSinceLast() {
+                var matches = GetRegex(@"([^\s:;]+)[\s]+([^\s:;]+)[\s]*:[\s]*([^\s:;]+)")
+                    .Matches(sinceLastIf)
+                    .Cast<Match>();
+                foreach (var match in matches) {
+                    var type = match.Groups[1].ToString();
+                    var name = match.Groups[2].ToString();
+                    var keyword = match.Groups[3].ToString();
+                    output.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
+                    output.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
+                }
+                sinceLastIf = "";
+            }
+            foreach (var line in structBody.Split('\n')) {
+                if (line.TrimStart().StartsWith("#")) {
+                    ProcessSinceLast();
+                    output.Add(line);
+                } else {
+                    sinceLastIf += "\n" + line;
+                }
+            }
+            ProcessSinceLast();
+            return string.Join("\n", output);
         }
 
         public class RewriteParamListOutput {
