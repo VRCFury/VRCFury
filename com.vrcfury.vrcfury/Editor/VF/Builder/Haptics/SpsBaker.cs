@@ -38,7 +38,7 @@ namespace VF.Builder.Haptics {
                     }
                 } else {
                     baked.WriteVector3(bakedMesh.normals[i]);
-                    baked.WriteVector3(bakedMesh.tangents[i]);
+                    baked.WriteVector3(i < bakedMesh.tangents.Length ? bakedMesh.tangents[i] : Vector3.zero);
                     baked.WriteFloat(GetActive(i));
                 }
             }
@@ -55,7 +55,7 @@ namespace VF.Builder.Haptics {
                     for (var v = 0; v < bsBakedMeshOn.vertices.Length; v++) {
                         baked.WriteVector3(bsBakedMeshOn.vertices[v] - bsBakedMeshOff.vertices[v]);
                         baked.WriteVector3(bsBakedMeshOn.normals[v] - bsBakedMeshOff.normals[v]);
-                        baked.WriteVector3(bsBakedMeshOn.tangents[v] - bsBakedMeshOff.tangents[v]);
+                        baked.WriteVector3(v < bsBakedMeshOn.tangents.Length ? bsBakedMeshOn.tangents[v] - bsBakedMeshOff.tangents[v] : Vector3.zero);
                     }
                 }
             }
