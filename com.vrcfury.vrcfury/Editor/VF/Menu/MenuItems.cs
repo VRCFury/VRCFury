@@ -45,6 +45,8 @@ namespace VF.Menu {
         public const int hapticTogglePriority = 1324;
         public const string dpsAutoUpgrade = prefix + "Settings/Auto-Upgrade DPS with contacts";
         public const int dpsAutoUpgradePriority = 1325;
+        public const string boundingBoxFix = prefix + "Settings/Automatically fix bounding boxes";
+        public const int boundingBoxFixPriority = 1326;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
