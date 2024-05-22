@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.Rendering;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Inspector;
@@ -101,7 +102,7 @@ namespace VF.Builder.Haptics {
                 newShaderName = $"Hidden/SPSPatched/{hash}";
             }
             var alreadyExists = Shader.Find(newShaderName);
-            if (alreadyExists != null) {
+            if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
                 return new PatchResult {
                     shader = alreadyExists,
                     patchedPrograms = 0
@@ -176,7 +177,14 @@ namespace VF.Builder.Haptics {
 
             var newShader = Shader.Find(newShaderName);
             if (!newShader) {
-                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile. Check the unity log for compile error.\n\n" + newPath);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the unity log for compile error?");
+            }
+
+            if (ShaderUtil.ShaderHasError(newShader)) {
+                var error = ShaderUtil
+                    .GetShaderMessages(newShader)
+                    .First(x => x.severity == ShaderCompilerMessageSeverity.Error);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile.\n\n" + error.file+":"+error.line+" "+error.message);
             }
 
             return new PatchResult {
