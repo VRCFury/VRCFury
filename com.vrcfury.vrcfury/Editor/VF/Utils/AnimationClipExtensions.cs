@@ -93,19 +93,23 @@ namespace VF.Utils {
                 .Select(b => b.GetMuscleBindingType())
                 .ToImmutableHashSet();
 
-            var path = AssetDatabase.GetAssetPath(clip);
-            if (path != null && Path.GetFileName(path).StartsWith("proxy_")) {
-                ext.proxyClipPath = path;
-                ext.proxyMuscleTypes = muscleTypes;
-                return ext;
-            }
+            if (AssetDatabase.IsMainAsset(clip)) {
+                var path = AssetDatabase.GetAssetPath(clip);
+                if (!string.IsNullOrEmpty(path)) {
+                    if (Path.GetFileName(path).StartsWith("proxy_")) {
+                        ext.proxyClipPath = path;
+                        ext.proxyMuscleTypes = muscleTypes;
+                        return ext;
+                    }
 
-            if (objectBindings.Length == 0 &&
-                muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)
-                && !muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) {
-                ext.proxyClipPath = path;
-                ext.proxyMuscleTypes = muscleTypes;
-                return ext;
+                    if (objectBindings.Length == 0 &&
+                        muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)
+                        && !muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) {
+                        ext.proxyClipPath = path;
+                        ext.proxyMuscleTypes = muscleTypes;
+                        return ext;
+                    }
+                }
             }
 
             // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
@@ -235,11 +239,6 @@ namespace VF.Utils {
                 .Select(binding => binding.GetMuscleBindingType())
                 .Where(type => type != EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)
                 .ToImmutableHashSet();
-        }
-
-        public static bool HasMuscles(this AnimationClip clip) {
-            return clip.IsProxyClip()
-                || clip.GetFloatBindings().Any(binding => binding.IsMuscle());
         }
 
         public static AnimationClip Evaluate(this AnimationClip clip, float time) {
