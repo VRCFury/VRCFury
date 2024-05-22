@@ -1,5 +1,6 @@
 using System.Linq;
 using UnityEngine;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Builder {
@@ -29,25 +30,24 @@ namespace VF.Builder {
 
             if (mesh == null) return null;
 
-            Vector3[] vertices;
-            Vector3[] normals;
-            if (origin) {
-                vertices = mesh.vertices
-                    .Select(v => origin.InverseTransformPoint(renderer.owner().TransformPoint(v))).ToArray();
-                normals = mesh.normals
-                    .Select(v => origin.InverseTransformDirection(renderer.owner().TransformDirection(v))).ToArray();
-            } else {
-                vertices = mesh.vertices;
-                normals = mesh.normals;
+            Vector3[] vertices = mesh.vertices;
+            Vector3[] normals = mesh.normals;
+            Vector3[] tangents = mesh.tangents.Select(t => new Vector3(t.x, t.y, t.z)).ToArray();
+            if (origin != null) {
+                vertices = vertices.Select(v => origin.InverseTransformPoint(renderer.owner().TransformPoint(v))).ToArray();
+                normals = normals.Select(v => origin.InverseTransformDirection(renderer.owner().TransformDirection(v))).ToArray();
+                tangents = tangents.Select(v => origin.InverseTransformDirection(renderer.owner().TransformDirection(v))).ToArray();
             }
 
             if (applyScale && origin != null) {
                 ApplyScale(vertices, origin.lossyScale);
+                // TODO: should scale also apply to normals and tangents?
             }
 
             return new BakedMesh() {
                 vertices = vertices,
-                normals = normals
+                normals = normals,
+                tangents = tangents
             };
         }
 
@@ -65,6 +65,7 @@ namespace VF.Builder {
         public class BakedMesh {
             public Vector3[] vertices;
             public Vector3[] normals;
+            public Vector3[] tangents;
         }
     }
 }

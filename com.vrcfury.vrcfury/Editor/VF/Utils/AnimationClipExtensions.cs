@@ -82,9 +82,14 @@ namespace VF.Utils {
         private static AnimationClipExt GetExt(AnimationClip clip) {
             if (!clipDb.TryGetValue(clip, out var ext)) {
                 clipDb[clip] = ext = new AnimationClipExt();
-                ext.curves = AnimationUtility.GetObjectReferenceCurveBindings(clip).Select(b => (b, (FloatOrObjectCurve)AnimationUtility.GetObjectReferenceCurve(clip, b)))
-                    .Concat(AnimationUtility.GetCurveBindings(clip).Select(b => (b, (FloatOrObjectCurve)AnimationUtility.GetEditorCurve(clip, b))))
-                    .ToDictionary(pair => pair.Item1, pair => pair.Item2);
+                // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
+                foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                    ext.curves[b] = AnimationUtility.GetObjectReferenceCurve(clip, b);
+                }
+                foreach (var b in AnimationUtility.GetCurveBindings(clip)) {
+                    ext.curves[b] = AnimationUtility.GetEditorCurve(clip, b);
+                }
+
                 var path = AssetDatabase.GetAssetPath(clip);
                 if (path != null && Path.GetFileName(path).StartsWith("proxy_")) {
                     ext.proxyClipPath = path;

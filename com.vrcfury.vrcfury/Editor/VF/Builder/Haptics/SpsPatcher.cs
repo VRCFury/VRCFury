@@ -7,13 +7,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.Rendering;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public static class SpsPatcher {
-        private const string HashBuster = "11";
+        private const string HashBuster = "12";
         
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
@@ -101,7 +102,7 @@ namespace VF.Builder.Haptics {
                 newShaderName = $"Hidden/SPSPatched/{hash}";
             }
             var alreadyExists = Shader.Find(newShaderName);
-            if (alreadyExists != null) {
+            if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
                 return new PatchResult {
                     shader = alreadyExists,
                     patchedPrograms = 0
@@ -176,7 +177,14 @@ namespace VF.Builder.Haptics {
 
             var newShader = Shader.Find(newShaderName);
             if (!newShader) {
-                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile. Check the unity log for compile error.\n\n" + newPath);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the unity log for compile error?");
+            }
+
+            if (ShaderUtil.ShaderHasError(newShader)) {
+                var error = ShaderUtil
+                    .GetShaderMessages(newShader)
+                    .First(x => x.severity == ShaderCompilerMessageSeverity.Error);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile.\n\n" + error.file+":"+error.line+" "+error.message);
             }
 
             return new PatchResult {
@@ -345,42 +353,53 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            var newStructBody = "";
-            if (!useStructExtends) newStructBody += oldStructBody;
-            (string type, string name) FindParam(string keyword, string defaultName, string defaultType) {
-                var match = GetRegex(@"([^ \t]+)[ \t]+([^ \t:]+)[ \t:]+" + Regex.Escape(keyword))
-                    .Match(oldStructBody);
-                if (match.Success) {
-                    return (match.Groups[1].ToString(), match.Groups[2].ToString());
+            var newStructBody = new List<string>();
+            if (!useStructExtends) newStructBody.Add(oldStructBody);
+
+            // Add type defines
+            {
+                var sinceLastIf = "";
+                void ProcessSinceLast() {
+                    var matches = GetRegex(@"([^\s:;]+)[\s]+([^\s:;]+)[\s]*:[\s]*([^\s:;]+)")
+                        .Matches(sinceLastIf)
+                        .Cast<Match>();
+                    foreach (var match in matches) {
+                        var type = match.Groups[1].ToString();
+                        var name = match.Groups[2].ToString();
+                        var keyword = match.Groups[3].ToString();
+                        newStructBody.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
+                        newStructBody.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
+                    }
+                    sinceLastIf = "";
                 }
-                newStructBody += $"  {defaultType} {defaultName} : {keyword};\n";
-                return (defaultType,defaultName);
+                foreach (var line in oldStructBody.Split('\n')) {
+                    if (line.TrimStart().StartsWith("#")) {
+                        ProcessSinceLast();
+                        newStructBody.Add(line);
+                    } else {
+                        sinceLastIf += "\n" + line;
+                    }
+                }
+                ProcessSinceLast();
             }
 
-            var vertexParam = FindParam("POSITION", "spsPosition", "float3");
-            var normalParam = FindParam("NORMAL", "spsNormal", "float3");
-            var vertexIdParam = FindParam("SV_VertexID", "spsVertexId", "uint");
-            var colorParam = FindParam("COLOR", "spsColor", "float4");
-            
-            var newHeader = new List<string>();
-            // Enable appdata features in shaders where they may be controlled by preprocessor defines
-            // liltoon
-            newHeader.Add("#define LIL_APP_POSITION");
-            newHeader.Add("#define LIL_APP_NORMAL");
-            newHeader.Add("#define LIL_APP_VERTEXID");
-            newHeader.Add("#define LIL_APP_COLOR");
-            // UnlitWF
-            newHeader.Add("#define _V2F_HAS_VERTEXCOLOR");
-            // Filamented
-            newHeader.Add("#define HAS_ATTRIBUTE_COLOR");
-            
-            var newBody = new List<string>();
-            newBody.Add(spsMain);
-            var extends = useStructExtends ? $" : {oldStructType}" : "";
-            newBody.Add($"struct SpsInputs{extends} {{");
-            newBody.Add(newStructBody);
-            newBody.Add("};");
+            void AddParamIfMissing(string keyword, string defaultName, string defaultType) {
+                newStructBody.Add($"#ifndef SPS_STRUCT_{keyword}_NAME");
+                newStructBody.Add($"  {defaultType} {defaultName} : {keyword};");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE_{defaultType}");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_NAME {defaultName}");
+                newStructBody.Add($"#endif");
+            }
+            newStructBody.Add("");
+            newStructBody.Add("// Add parameters needed by SPS if missing from the existing struct");
+            AddParamIfMissing("POSITION", "spsPosition", "float3");
+            AddParamIfMissing("NORMAL", "spsNormal", "float3");
+            AddParamIfMissing("TANGENT", "spsTangent", "float4");
+            AddParamIfMissing("SV_VertexID", "spsVertexId", "uint");
+            AddParamIfMissing("COLOR", "spsColor", "float4");
 
+            var newBody = new List<string>();
+            
             // Silent Crosstone
             var useEndif = false;
             if (flattenedProgram.Contains("SHADER_STAGE_VERTEX") && !isSurfaceShader) {
@@ -388,24 +407,16 @@ namespace VF.Builder.Haptics {
                 newBody.Add("#if (defined(SHADER_STAGE_VERTEX) || defined(SHADER_STAGE_GEOMETRY))");
             }
 
+            var extends = useStructExtends ? $" : {oldStructType}" : "";
+            newBody.Add($"struct SpsInputs{extends} {{");
+            newBody.AddRange(newStructBody);
+            newBody.Add("};");
+            
+            newBody.Add(spsMain);
+
             newBody.Add($"{returnType} {newVertFunction}({newInputParams}) {{");
-            var colorIsFloat3 = colorParam.type == "float3";
-            if (colorIsFloat3) {
-                newBody.Add($"  float4 color = float4({mainParamName}.{colorParam.name},1);");
-            }
-            newBody.Add($"  sps_apply(");
-            newBody.Add($"    {mainParamName}.{vertexParam.name}.xyz,");
-            newBody.Add($"    {mainParamName}.{normalParam.name},");
-            newBody.Add($"    {mainParamName}.{vertexIdParam.name},");
-            if (colorIsFloat3) {
-                newBody.Add($"    color");
-            } else {
-                newBody.Add($"    {mainParamName}.{colorParam.name}");
-            }
-            newBody.Add($"  );");
-            if (colorIsFloat3) {
-                newBody.Add($"  {mainParamName}.{colorParam.name} = color.xyz;");
-            }
+
+            newBody.Add($"  sps_apply({mainParamName});");
 
             if (newPassParams != null) {
                 var ret = returnType == "void" ? "" : "return ";
@@ -419,9 +430,7 @@ namespace VF.Builder.Haptics {
                 newBody.Add("#endif");
             }
             
-            program = "\n" +
-                      string.Join("\n", newHeader)
-                      + "\n"
+            program = "\n"
                       + program
                       + "\n"
                       + string.Join("\n", newBody)

@@ -12,6 +12,7 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -198,7 +199,7 @@ namespace VF.Builder.Haptics {
                         .SelectMany(v => v.GetAllFeatures())
                         .OfType<ArmatureLink>()
                     ) {
-                        var p = ArmatureLinkBuilder.GetProbableParent(armatureLink, avatarObject, current);
+                        var p = ArmatureLinkService.GetProbableParent(armatureLink, avatarObject, current);
                         if (p != null && !alreadyChecked.Contains(p)) {
                             foundParent = p;
                             break;
