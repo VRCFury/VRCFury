@@ -130,11 +130,11 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tange
 	}
 
 	float3 deformedVertex = bezierPos + bezierRight * bakedVertex.x * holeShrink + bezierUp * bakedVertex.y * holeShrink;
-	float3 deformedNormal = bezierRight * bakedNormal.x + bezierUp * bakedNormal.y + bezierForward * bakedNormal.z;
-
 	vertex = lerp(origVertex, deformedVertex, dumbLerp);
-	normal = lerp(origNormal, deformedNormal, dumbLerp);
-
+	if (length(bakedNormal) != 0) {
+		float3 deformedNormal = bezierRight * bakedNormal.x + bezierUp * bakedNormal.y + bezierForward * bakedNormal.z;
+		normal = lerp(origNormal, deformedNormal, dumbLerp);
+	}
 	if (length(bakedTangent) != 0) {
 		float3 deformedTangent = bezierRight * bakedTangent.x + bezierUp * bakedTangent.y + bezierForward * bakedTangent.z;
 		tangent.xyz = lerp(origTangent, deformedTangent, dumbLerp);
