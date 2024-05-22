@@ -375,6 +375,13 @@ namespace VF.Builder.Haptics {
             AddParamIfMissing("COLOR", "spsColor", "float4");
 
             var newBody = new List<string>();
+            
+            // Silent Crosstone
+            var useEndif = false;
+            if (flattenedProgram.Contains("SCSS_FORWARD_VERTEX_INCLUDED") && !isSurfaceShader) {
+                useEndif = true;
+                newBody.Add("#if (defined(SHADER_STAGE_VERTEX) || defined(SHADER_STAGE_GEOMETRY))");
+            }
 
             var extends = useStructExtends ? $" : {oldStructType}" : "";
             newBody.Add($"struct SpsInputs{extends} {{");
@@ -393,6 +400,11 @@ namespace VF.Builder.Haptics {
             }
 
             newBody.Add("}");
+            
+            // Silent Crosstone
+            if (useEndif) {
+                newBody.Add("#endif");
+            }
             
             program = "\n"
                       + program
