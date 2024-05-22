@@ -372,7 +372,7 @@ namespace VF.Builder.Haptics {
                     }
                     sinceLastIf = "";
                 }
-                foreach (var line in oldStructBody.Split("\n")) {
+                foreach (var line in oldStructBody.Split('\n')) {
                     if (line.TrimStart().StartsWith("#")) {
                         ProcessSinceLast();
                         newStructBody.Add(line);
