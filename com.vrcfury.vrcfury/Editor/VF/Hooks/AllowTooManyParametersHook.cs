@@ -29,9 +29,9 @@ namespace VF.Hooks {
         private static double lastCheck = 0;
 
         private static void Check() {
-            //try {
+            try {
                 CheckUnsafe();
-            //} catch (Exception) { /**/ }
+            } catch (Exception) { /**/ }
         }
         private static void CheckUnsafe() {
             var now = EditorApplication.timeSinceStartup;
