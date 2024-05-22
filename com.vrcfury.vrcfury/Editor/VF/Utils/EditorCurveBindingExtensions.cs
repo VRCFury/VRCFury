@@ -50,17 +50,17 @@ namespace VF.Utils {
         }
 
         public enum MuscleBindingType {
-            None,
-            Other,
+            NonMuscle,
+            Body,
             LeftHand,
             RightHand
         }
 
         public static MuscleBindingType GetMuscleBindingType(this EditorCurveBinding binding) {
-            if (!binding.IsMuscle()) return MuscleBindingType.None;
+            if (!binding.IsMuscle()) return MuscleBindingType.NonMuscle;
             if (binding.propertyName.Contains("LeftHand")) return MuscleBindingType.LeftHand;
             if (binding.propertyName.Contains("RightHand")) return MuscleBindingType.RightHand;
-            return MuscleBindingType.Other;
+            return MuscleBindingType.Body;
         }
 
         public static bool IsValid(this EditorCurveBinding binding, VFGameObject baseObject) {

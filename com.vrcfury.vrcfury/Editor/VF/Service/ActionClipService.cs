@@ -81,7 +81,8 @@ namespace VF.Service {
             var firstClip = actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip.Get())
-                .FirstOrDefault(clip => clip != null);
+                .NotNull()
+                .FirstOrDefault(clip => !clip.IsProxyClip());
             if (firstClip) {
                 var copy = firstClip.Clone();
                 copy.Rewrite(rewriter);
@@ -90,6 +91,18 @@ namespace VF.Service {
             }
 
             var physbonesToReset = new HashSet<VFGameObject>();
+
+            void AddFullBodyClip(AnimationClip clip) {
+                if (service == null) return;
+                var types = clip.GetMuscleBindingTypes();
+                if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)) {
+                    types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Body);
+                }
+                foreach (var muscleType in types) {
+                    var trigger = service.fullBodyEmoteService.AddClip(clip, muscleType);
+                    onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
+                }
+            }
 
             foreach (var action in actions) {
                 switch (action) {
@@ -178,11 +191,15 @@ namespace VF.Service {
                     }
                     case AnimationClipAction clipAction:
                         var clipActionClip = clipAction.clip.Get();
-                        if (clipActionClip && clipActionClip != firstClip) {
-                            var copy = clipActionClip.Clone();
-                            copy.Rewrite(rewriter);
-                            onClip.CopyFrom(copy);
+                        if (clipActionClip == null || clipActionClip == firstClip) break;
+
+                        var copy = clipActionClip.Clone();
+                        if (copy.IsProxyClip()) {
+                            AddFullBodyClip(copy);
+                            break;
                         }
+                        copy.Rewrite(rewriter);
+                        onClip.CopyFrom(copy);
                         break;
                     case ObjectToggleAction toggle: {
                         if (toggle.obj == null) {
@@ -351,15 +368,10 @@ namespace VF.Service {
                 onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
 
-            if (onClip.IsProxyClip()) {
-                throw new Exception(
-                    "VRChat proxy clips cannot be used within VRCFury actions. Please use an alternate clip.");
-            }
-
             if (service != null) {
                 var types = onClip.GetMuscleBindingTypes();
-                if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Other)) {
-                    types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Other);
+                if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)) {
+                    types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Body);
                 }
                 foreach (var muscleType in types) {
                     var trigger = service.fullBodyEmoteService.AddClip(onClip, muscleType);

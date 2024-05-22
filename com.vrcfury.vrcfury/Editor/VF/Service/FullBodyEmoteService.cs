@@ -22,7 +22,7 @@ namespace VF.Service {
 
         public VFAFloat AddClip(AnimationClip clip, EditorCurveBindingExtensions.MuscleBindingType type) {
             if (!addCache.ContainsKey(type)) {
-                if (type == EditorCurveBindingExtensions.MuscleBindingType.Other) {
+                if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
                     var action = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                     var layer = action.NewLayer("VRCFury Actions");
                     layer.mask = AvatarMaskExtensions.Empty();
@@ -53,7 +53,7 @@ namespace VF.Service {
             clip = clip.Clone();
             var nonActionBindings = clip.GetAllBindings()
                 .Where(b => {
-                    if (type == EditorCurveBindingExtensions.MuscleBindingType.Other) return !b.IsMuscle();
+                    if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) return !b.IsMuscle();
                     return b.GetMuscleBindingType() != type;
                 });
             clip.SetCurves(nonActionBindings.Select(b => (b,(FloatOrObjectCurve)null)));
@@ -76,7 +76,7 @@ namespace VF.Service {
             state.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not());
             outState.TransitionsToExit().When(ctrl.Always());
 
-            if (type == EditorCurveBindingExtensions.MuscleBindingType.Other) {
+            if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
                 var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                 weightOn.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 weightOn.goalWeight = 1;
