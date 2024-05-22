@@ -1,3 +1,4 @@
+#if VRC_NEW_PUBLIC_SDK
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3A.Editor;
 using Object = UnityEngine.Object;
+#endif
 
 namespace VF.Hooks {
     public static class AllowTooManyParametersHook {
