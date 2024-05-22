@@ -34,18 +34,32 @@ namespace VF.Builder {
 
         public static void ForEachTransitionRW(
             VFLayer root,
-            Func<AnimatorTransitionBase,IEnumerable<AnimatorTransitionBase>> action
+            Func<AnimatorTransitionBase, IList<AnimatorTransitionBase>> action
         ) {
             foreach (var sm in GetAllStateMachines(root)) {
-                sm.entryTransitions = sm.entryTransitions.SelectMany(action).OfType<AnimatorTransition>().ToArray();
-                sm.anyStateTransitions = sm.anyStateTransitions.SelectMany(action).OfType<AnimatorStateTransition>().ToArray();
+                ForEachTransitionRW(sm.entryTransitions, a => sm.entryTransitions = a, action);
+                ForEachTransitionRW(sm.anyStateTransitions, a => sm.anyStateTransitions = a, action);
                 foreach (var childSm in sm.stateMachines) {
-                    sm.SetStateMachineTransitions(childSm.stateMachine, sm.GetStateMachineTransitions(childSm.stateMachine).SelectMany(action).OfType<AnimatorTransition>().ToArray());
+                    ForEachTransitionRW(sm.GetStateMachineTransitions(childSm.stateMachine), a => sm.SetStateMachineTransitions(childSm.stateMachine, a), action);
                 }
             }
             foreach (var state in new States().From(root)) {
-                state.transitions = state.transitions.SelectMany(action).OfType<AnimatorStateTransition>().ToArray();
+                ForEachTransitionRW(state.transitions, a => state.transitions = a, action);
             }
+        }
+
+        private static void ForEachTransitionRW<T>(
+            T[] input,
+            Action<T[]> setter,
+            Func<AnimatorTransitionBase, IList<AnimatorTransitionBase>> action
+        ) where T : AnimatorTransitionBase {
+            var changed = false;
+            var output = input.SelectMany(oneTransition => {
+                var result = action(oneTransition);
+                changed |= result.Count != 1 || result[0] != oneTransition;
+                return result;
+            }).OfType<T>().ToArray();
+            if (changed) setter(output);
         }
 
         public static void ReplaceClips(AnimatorController controller, Func<AnimationClip, AnimationClip> replace) {
