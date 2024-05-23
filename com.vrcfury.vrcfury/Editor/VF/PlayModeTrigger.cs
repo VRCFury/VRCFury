@@ -112,7 +112,10 @@ namespace VF {
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         try {
                             var hapticContactsService = new HapticContactsService();
-                            VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
+                            var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
+                            foreach (var renderer in bakeResult.renderers) {
+                                SaveAssetsBuilder.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                            }
                         } catch (Exception e) {
                             throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
                         }
