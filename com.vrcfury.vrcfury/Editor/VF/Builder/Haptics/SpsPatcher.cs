@@ -198,9 +198,7 @@ namespace VF.Builder.Haptics {
                 // If lightmode is unset (the default of "Always"), set it to ForwardBase
                 // so that we actually receive light data
                 if (!pass.Contains("\"LightMode\"")) {
-                    pass = GetRegex(@"\{").Replace(pass, match => {
-                        return match.Groups[0] + "\n    Tags { \"LightMode\" = \"ForwardBase\" }\n";
-                    }, 1);
+                    pass = "\n    Tags { \"LightMode\" = \"ForwardBase\" }\n" + pass;
                 }
             }
 
