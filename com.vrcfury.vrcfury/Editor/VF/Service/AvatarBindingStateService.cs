@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -6,6 +7,7 @@ using VF.Builder;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
+using Object = UnityEngine.Object;
 
 namespace VF.Service {
     /**
@@ -73,7 +75,13 @@ namespace VF.Service {
                 }
             }
 
-            return AnimationUtility.GetFloatValue(avatarObject, binding, out data);
+            try {
+                return AnimationUtility.GetFloatValue(avatarObject, binding, out data);
+            } catch (Exception) {
+                // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa
+                data = 0;
+                return false;
+            }
         }
         public bool GetObject(EditorCurveBinding binding, out Object data, bool trustUnity = false) {
             if (!trustUnity) {
@@ -84,7 +92,13 @@ namespace VF.Service {
                 }
             }
 
-            return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+            try {
+                return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+            } catch (Exception) {
+                // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa
+                data = null;
+                return false;
+            }
         }
 
         private static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {

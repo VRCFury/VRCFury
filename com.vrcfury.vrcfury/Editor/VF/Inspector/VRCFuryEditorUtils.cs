@@ -556,7 +556,7 @@ public static class VRCFuryEditorUtils {
         if (refreshElement != null) {
             var holder = new VisualElement();
             rightColumn.Add(holder);
-            RefreshOnInterval(el, () => {
+            void Update() {
                 holder.Clear();
                 var show = false;
                 try {
@@ -570,12 +570,14 @@ public static class VRCFuryEditorUtils {
                     show = true;
                 }
                 el.SetVisible(show);
-            }, interval);
+            }
+            Update();
+            holder.schedule.Execute(Update).Every((long)(interval * 1000));
         } else {
             var label = WrappedLabel(message);
             rightColumn.Add(label);
             if (refreshMessage != null) {
-                RefreshOnInterval(el, () => {
+                void Update() {
                     var show = false;
                     try {
                         label.text = refreshMessage();
@@ -585,7 +587,10 @@ public static class VRCFuryEditorUtils {
                         show = true;
                     }
                     el.SetVisible(show);
-                }, interval);
+                }
+
+                Update();
+                label.schedule.Execute(Update).Every((long)(interval * 1000));
             }
         }
         
@@ -675,24 +680,6 @@ public static class VRCFuryEditorUtils {
         if (!scene.isLoaded) return;
         if (!scene.IsValid()) return;
         EditorSceneManager.MarkSceneDirty(scene);
-    }
-
-    public static void RefreshOnInterval(VisualElement el, Action run, float interval = 1) {
-        double lastUpdate = 0;
-        void Update() {
-            var now = EditorApplication.timeSinceStartup;
-            if (lastUpdate < now - interval) {
-                lastUpdate = now;
-                run();
-            }
-        }
-        el.RegisterCallback<AttachToPanelEvent>(e => {
-            EditorApplication.update += Update;
-        });
-        el.RegisterCallback<DetachFromPanelEvent>(e => {
-            EditorApplication.update -= Update;
-        });
-        Update();
     }
 
     public static string Rev(string s) {

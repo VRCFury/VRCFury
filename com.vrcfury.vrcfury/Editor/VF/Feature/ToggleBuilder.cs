@@ -596,7 +596,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
         toggleOffWarning.SetVisible(false);
         content.Add(toggleOffWarning);
-        VRCFuryEditorUtils.RefreshOnInterval(toggleOffWarning, () => {
+        void Update() {
             var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
 
             var turnsOff = model.state.actions
@@ -616,7 +616,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .ToImmutableHashSet();
             var overlap = turnsOff.Intersect(othersTurnOn);
             toggleOffWarning.SetVisible(overlap.Count > 0);
-        });
+        }
+        Update();
+        content.schedule.Execute(Update).Every(1000);
 
         return content;
     }

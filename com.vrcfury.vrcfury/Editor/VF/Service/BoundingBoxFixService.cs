@@ -6,6 +6,7 @@ using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Menu;
 
 namespace VF.Service {
     [VFService]
@@ -15,11 +16,19 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.BoundingBoxFix)]
         public void Apply() {
+            if (!BoundingBoxMenuItem.Get()) return;
+            
             var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()
                 .Where(skin => {
                     var usesLights = skin.sharedMaterials.Any(mat =>
                         DpsConfigurer.IsDps(mat) || TpsConfigurer.IsTps(mat) || SpsConfigurer.IsSps(mat));
-                    return !usesLights;
+                    if (usesLights) return false;
+                    
+                    // Some systems, like the VRLabs IsRendering system, use an empty renderer to determine if you're "looking" at an object or not
+                    // They don't have a mesh set at all
+                    if (skin.sharedMesh == null) return false;
+
+                    return true;
                 });
 
             float maxLinear = 0;

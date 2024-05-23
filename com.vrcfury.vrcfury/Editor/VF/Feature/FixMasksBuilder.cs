@@ -76,7 +76,6 @@ namespace VF.Feature {
 
                 // Remove muscle control from the fx copy
                 foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null,layerForFx.stateMachine))) {
-                    clip.ClearProxyClip();
                     clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
                         if (GetPropType(b) != PropType.Muscle) return b;
                         return null;
@@ -113,13 +112,8 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.FixMasks)]
         public void FixMasks() {
             foreach (var layer in GetFx().GetLayers()) {
-                // For any layers we added to FX without masks, give them the default FX mask
-                if (layer.mask == null) {
-                    layer.mask = AvatarMaskExtensions.DefaultFxMask();
-                }
-
                 // Remove redundant FX masks if they're not needed
-                if (layer.mask.AllowsAllTransforms() && !layer.HasMuscles()) {
+                if (layer.mask != null && layer.mask.AllowsAllTransforms()) {
                     layer.mask = null;
                 }
             }
