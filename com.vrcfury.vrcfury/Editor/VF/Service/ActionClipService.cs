@@ -82,7 +82,7 @@ namespace VF.Service {
                 if (service == null) return;
                 var types = clip.GetMuscleBindingTypes();
                 if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) {
-                    types.Remove(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle);
+                    types = types.Remove(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle);
                 }
                 if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)) {
                     types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Body);
