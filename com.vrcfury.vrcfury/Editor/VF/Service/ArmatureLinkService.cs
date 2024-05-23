@@ -505,10 +505,12 @@ namespace VF.Service {
                         var childAvatarBone = checkAvatarBone.Find(searchName);
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
+                        var recurseButDoNotLink = false;
                         if (!childAvatarBone) {
                             if (childPropBone.name.Contains("ChestUp")) {
                                 childAvatarBone = checkAvatarBone;
                                 links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
+                                recurseButDoNotLink = true;
                             } else {
                                 childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
                                 if (childAvatarBone) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
@@ -521,7 +523,9 @@ namespace VF.Service {
                         }
 
                         if (childAvatarBone != null) {
-                            links.mergeBones.Push((childPropBone, childAvatarBone));
+                            if (!recurseButDoNotLink) {
+                                links.mergeBones.Push((childPropBone, childAvatarBone));
+                            }
                             checkStack.Push((childPropBone, childAvatarBone));
                         } else {
                             links.unmergedChildren.Push((childPropBone, checkAvatarBone));
