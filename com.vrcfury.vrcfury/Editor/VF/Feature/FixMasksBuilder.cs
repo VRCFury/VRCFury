@@ -76,7 +76,6 @@ namespace VF.Feature {
 
                 // Remove muscle control from the fx copy
                 foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null,layerForFx.stateMachine))) {
-                    clip.ClearProxyClip();
                     clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
                         if (GetPropType(b) != PropType.Muscle) return b;
                         return null;

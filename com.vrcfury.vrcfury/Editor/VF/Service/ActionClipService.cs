@@ -77,24 +77,13 @@ namespace VF.Service {
 
             var offClip = VrcfObjectFactory.Create<AnimationClip>();
             var onClip = VrcfObjectFactory.Create<AnimationClip>();
-
-            var firstClip = actions
-                .OfType<AnimationClipAction>()
-                .Select(action => action.clip.Get())
-                .NotNull()
-                .FirstOrDefault(clip => !clip.IsProxyClip());
-            if (firstClip) {
-                var copy = firstClip.Clone();
-                copy.Rewrite(rewriter);
-                copy.name = onClip.name;
-                onClip = copy;
-            }
-
-            var physbonesToReset = new HashSet<VFGameObject>();
-
+            
             void AddFullBodyClip(AnimationClip clip) {
                 if (service == null) return;
                 var types = clip.GetMuscleBindingTypes();
+                if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) {
+                    types.Remove(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle);
+                }
                 if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)) {
                     types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Body);
                 }
@@ -103,6 +92,26 @@ namespace VF.Service {
                     onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
                 }
             }
+            bool IsStandaloneFullBodyClip(AnimationClip clip) {
+                var muscleTypes = clip.GetMuscleBindingTypes();
+                if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) return false;
+                if (!muscleTypes.Any()) return false;
+                return true;
+            }
+
+            var firstClip = actions
+                .OfType<AnimationClipAction>()
+                .Select(action => action.clip.Get())
+                .NotNull()
+                .FirstOrDefault(clip => !IsStandaloneFullBodyClip(clip));
+            if (firstClip) {
+                var copy = firstClip.Clone();
+                copy.Rewrite(rewriter);
+                copy.name = onClip.name;
+                onClip = copy;
+            }
+
+            var physbonesToReset = new HashSet<VFGameObject>();
 
             foreach (var action in actions) {
                 switch (action) {
@@ -194,7 +203,7 @@ namespace VF.Service {
                         if (clipActionClip == null || clipActionClip == firstClip) break;
 
                         var copy = clipActionClip.Clone();
-                        if (copy.IsProxyClip()) {
+                        if (IsStandaloneFullBodyClip(copy)) {
                             AddFullBodyClip(copy);
                             break;
                         }
@@ -368,16 +377,7 @@ namespace VF.Service {
                 onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
 
-            if (service != null) {
-                var types = onClip.GetMuscleBindingTypes();
-                if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)) {
-                    types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Body);
-                }
-                foreach (var muscleType in types) {
-                    var trigger = service.fullBodyEmoteService.AddClip(onClip, muscleType);
-                    onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
-                }
-            }
+            AddFullBodyClip(onClip);
 
             return new BuiltAction() {
                 onClip = onClip,

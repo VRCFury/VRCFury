@@ -20,14 +20,16 @@ namespace VF.Utils {
 
         private class AnimationClipExt {
             public Dictionary<EditorCurveBinding, FloatOrObjectCurve> curves = new Dictionary<EditorCurveBinding, FloatOrObjectCurve>();
-            public string proxyClipPath;
-            public IImmutableSet<EditorCurveBindingExtensions.MuscleBindingType> proxyMuscleTypes;
+            public AnimationClip originalSourceClip;
+            public bool changedFromOriginalSourceClip = false;
+            public bool originalSourceIsProxyClip = false;
             
             public AnimationClipExt Clone() {
                 var copy = new AnimationClipExt();
-                copy.proxyClipPath = proxyClipPath;
-                copy.proxyMuscleTypes = proxyMuscleTypes;
                 copy.curves = curves.ToDictionary(pair => pair.Key, pair => pair.Value.Clone());
+                copy.originalSourceClip = originalSourceClip;
+                copy.changedFromOriginalSourceClip = changedFromOriginalSourceClip;
+                copy.originalSourceIsProxyClip = originalSourceIsProxyClip;
                 return copy;
             }
         }
@@ -85,30 +87,14 @@ namespace VF.Utils {
             if (clipDb.TryGetValue(clip, out var cached)) return cached;
 
             var ext = clipDb[clip] = new AnimationClipExt();
-            
-            var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
-            var floatBindings = AnimationUtility.GetCurveBindings(clip);
-            
-            var muscleTypes = floatBindings
-                .Select(b => b.GetMuscleBindingType())
-                .ToImmutableHashSet();
 
             if (AssetDatabase.IsMainAsset(clip)) {
                 var path = AssetDatabase.GetAssetPath(clip);
                 if (!string.IsNullOrEmpty(path)) {
                     if (Path.GetFileName(path).StartsWith("proxy_")) {
-                        ext.proxyClipPath = path;
-                        ext.proxyMuscleTypes = muscleTypes;
-                        return ext;
+                        ext.originalSourceIsProxyClip = true;
                     }
-
-                    if (objectBindings.Length == 0 &&
-                        muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)
-                        && !muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) {
-                        ext.proxyClipPath = path;
-                        ext.proxyMuscleTypes = muscleTypes;
-                        return ext;
-                    }
+                    ext.originalSourceClip = clip;
                 }
             }
 
@@ -123,20 +109,14 @@ namespace VF.Utils {
         }
 
         public static bool IsProxyClip(this AnimationClip clip) {
-            return GetExt(clip).proxyClipPath != null;
+            return GetExt(clip).originalSourceIsProxyClip;
         }
-        
+
         [CanBeNull]
-        public static AnimationClip GetProxyClip(this AnimationClip clip) {
-            var path = GetExt(clip).proxyClipPath;
-            if (path == null) return null;
-            var proxyClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-            if (proxyClip == null) throw new Exception("Failed to find proxy clip at " + path);
-            return proxyClip;
-        }
-        
-        public static void ClearProxyClip(this AnimationClip clip) {
-            GetExt(clip).proxyClipPath = null;
+        public static AnimationClip GetUseOriginalUserClip(this AnimationClip clip) {
+            var ext = GetExt(clip);
+            if (ext.changedFromOriginalSourceClip) return null;
+            return ext.originalSourceClip;
         }
 
         public static EditorCurveBinding[] GetFloatBindings(this AnimationClip clip) {
@@ -179,8 +159,10 @@ namespace VF.Utils {
         }
 
         public static void SetCurves(this AnimationClip clip, IEnumerable<(EditorCurveBinding,FloatOrObjectCurve)> newCurves) {
-            var curves = GetExt(clip).curves;
+            var ext = GetExt(clip);
+            var curves = ext.curves;
             foreach (var (binding, curve) in newCurves) {
+                ext.changedFromOriginalSourceClip = true;
                 if (curve == null) {
                     curves.Remove(binding);
                 } else {
@@ -233,11 +215,8 @@ namespace VF.Utils {
         }
 
         public static IImmutableSet<EditorCurveBindingExtensions.MuscleBindingType> GetMuscleBindingTypes(this AnimationClip clip) {
-            var ext = GetExt(clip);
-            if (ext.proxyMuscleTypes != null) return ext.proxyMuscleTypes;
             return clip.GetFloatBindings()
                 .Select(binding => binding.GetMuscleBindingType())
-                .Where(type => type != EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)
                 .ToImmutableHashSet();
         }
 
