@@ -68,11 +68,9 @@ namespace VF.Utils {
                 var (newBinding, newCurve, curveUpdated) = RewriteOne(binding, curve);
                 if (newCurve == null) {
                     output.Add((binding, null));
-                } else if (binding != newBinding) {
+                } else if (binding != newBinding || curve != newCurve || curveUpdated) {
                     output.Add((binding, null));
                     output.Add((newBinding, newCurve));
-                } else if (curve != newCurve || curveUpdated) {
-                    output.Add((binding, newCurve));
                 }
             }
             clip.SetCurves(output);

@@ -49,9 +49,9 @@ namespace VF.Builder {
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (IsSaved(asset)) return false;
                 if (asset is AnimationClip vac) {
-                    var useOriginalClip = vac.GetUseOriginalUserClip();
-                    if (useOriginalClip != null) {
-                        clipReplacements[vac] = useOriginalClip;
+                    var proxyClip = vac.GetProxyClip();
+                    if (proxyClip != null) {
+                        clipReplacements[vac] = proxyClip;
                         return false;
                     }
                     vac.FinalizeAsset();
