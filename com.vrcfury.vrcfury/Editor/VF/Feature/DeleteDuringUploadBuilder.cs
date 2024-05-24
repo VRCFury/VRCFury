@@ -6,11 +6,6 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
     public class DeleteDuringUploadBuilder : FeatureBuilder<DeleteDuringUpload> {
-        [FeatureBuilderAction(FeatureOrder.DeleteDuringUpload)]
-        public void Apply() {
-            featureBaseObject.Destroy();
-        }
-        
         public override string GetEditorTitle() {
             return "Delete During Upload";
         }

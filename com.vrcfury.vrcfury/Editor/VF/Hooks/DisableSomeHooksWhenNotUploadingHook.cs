@@ -6,6 +6,8 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
+using VF.Feature;
+using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Debug = UnityEngine.Debug;
 
@@ -28,7 +30,9 @@ namespace VF.Hooks {
 
             foreach (var callback in callbacks.ToArray()) {
                 var typeName = callback.GetType().Name;
-                if (typeName == "LockMaterialsOnUpload" || typeName == "RemoveAvatarEditorOnly") {
+                if (typeName == "RemoveAvatarEditorOnly") {
+                    callbacks.Remove(callback);
+                } else if (typeName == "LockMaterialsOnUpload") {
                     Debug.Log($"VRCFury found {typeName} and is patching it to only run during actual uploads");
                     var newCallback = new InhibitWhenNotUploadingWrapper(callback);
                     callbacks.Remove(callback);
@@ -68,6 +72,20 @@ namespace VF.Hooks {
             }
         }
 
-
+        public class VrcfRemoveEditorOnlyObjects : IVRCSDKPreprocessAvatarCallback {
+            public int callbackOrder => -1024;
+            public bool OnPreprocessAvatar(GameObject obj) {
+                EditorOnlyUtils.RemoveEditorOnlyObjects(obj);
+                return true;
+            }
+        }
+        
+        public class VrcfRemoveEditorOnlyComponents : IVRCSDKPreprocessAvatarCallback {
+            public int callbackOrder => Int32.MaxValue;
+            public bool OnPreprocessAvatar(GameObject obj) {
+                EditorOnlyUtils.RemoveEditorOnlyComponents(obj);
+                return true;
+            }
+        }
     }
 }
