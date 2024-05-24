@@ -34,10 +34,10 @@ public class VRCFuryBuilder {
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 try {
-                    MaterialLocker.avatarObject = avatarObject;
+                    MaterialLocker.injectedAvatarObject = avatarObject;
                     Run(avatarObject);
                 } finally {
-                    MaterialLocker.avatarObject = null;
+                    MaterialLocker.injectedAvatarObject = null;
                 }
             });
         });
