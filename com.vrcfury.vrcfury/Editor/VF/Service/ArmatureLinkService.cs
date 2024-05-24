@@ -123,7 +123,6 @@ namespace VF.Service {
             var keepBoneOffsets = GetKeepBoneOffsets(model, linkMode);
 
             var (_, _, scalingFactor) = GetScalingFactor(model, links, linkMode);
-            Debug.Log("Detected scaling factor: " + scalingFactor);
 
             var rootName = GetRootName(links.propMain, avatarObject);
 
@@ -131,7 +130,6 @@ namespace VF.Service {
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 VRCFuryDebugInfo debugInfo = null;
                 if (saveDebugInfo) {
-                    Debug.Log($"Creating debug info on {propBone.GetPath(avatarObject, true)}");
                     debugInfo = propBone.AddComponent<VRCFuryDebugInfo>();
                 }
                 void AddDebugInfo(string text) {

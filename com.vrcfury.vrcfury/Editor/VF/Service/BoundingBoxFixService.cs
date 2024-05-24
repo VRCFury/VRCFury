@@ -27,7 +27,7 @@ namespace VF.Service {
                     
                     // Some systems, like the VRLabs IsRendering system, use an empty renderer to determine if you're "looking" at an object or not
                     // They don't have a mesh set at all
-                    if (skin.GetMesh() == null) return false;
+                    if (skin.sharedMesh == null) return false;
 
                     return true;
                 });
