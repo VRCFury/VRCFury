@@ -95,10 +95,12 @@ namespace VF.Menu {
             return MenuUtils.GetSelectedAvatar() != null;
         }
 
+        [MenuItem("GameObject/VRCFury/Build an Editor Test Copy", priority = 42)]
         [MenuItem(testCopy, priority = testCopyPriority)]
         private static void RunForceRun() {
             VRCFuryTestCopyMenuItem.RunBuildTestCopy();
         }
+        [MenuItem("GameObject/VRCFury/Build an Editor Test Copy", true)]
         [MenuItem(testCopy, true)]
         private static bool CheckForceRun() {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
