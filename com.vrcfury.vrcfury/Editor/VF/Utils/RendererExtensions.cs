@@ -37,7 +37,10 @@ namespace VF.Utils {
 
             if (mesh != null && !mesh.isReadable) {
                 var path = renderer.owner().GetPath();
-                throw new Exception($"{path} contains a mesh with Read/Write disabled. This must be enabled in the mesh import settings.");
+                throw new Exception(
+                    $"The object at {path} contains a mesh with Read/Write disabled. This must be enabled in the mesh import settings." +
+                    $"\n\n" +
+                    AssetDatabase.GetAssetPath(mesh));
             }
 
             return mesh;

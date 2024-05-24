@@ -43,7 +43,13 @@ namespace VF.Feature {
                 return PropType.Fx;
             }
 
-            var copyForFx = MutableManager.CopyRecursive(gesture.GetRaw().GetRaw(), false).layers;
+            var copyForFx = MutableManager.CopyRecursiveAdv(gesture.GetRaw().GetRaw(), false);
+            var copyForFxLayers = copyForFx.output.layers;
+            foreach (var pair in copyForFx.originalToCopy) {
+                if (pair.Key is VRCAnimatorLayerControl from && pair.Value is VRCAnimatorLayerControl to) {
+                    animatorLayerControlManager.Alias(from, to);
+                }
+            }
 
             gesture.GetRaw().layers = gesture.GetRaw().layers.Select((layerForGesture,i) => {
                 
@@ -59,7 +65,7 @@ namespace VF.Feature {
                     return layerForGesture;
                 }
 
-                var layerForFx = copyForFx[i];
+                var layerForFx = copyForFxLayers[i];
                 newFxLayers.Add(layerForFx);
                 animatorLayerControlManager.Alias(layerForGesture.stateMachine, layerForFx.stateMachine);
                 
