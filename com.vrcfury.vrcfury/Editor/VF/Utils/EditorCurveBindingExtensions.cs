@@ -10,9 +10,19 @@ namespace VF.Utils {
          * Used to make sure that two instances of EditorCurveBinding equal each other,
          * even if they have different discrete settings, etc
          */
-        public static EditorCurveBinding Normalize(this EditorCurveBinding binding) {
-            return EditorCurveBinding.FloatCurve(binding.path, binding.type, binding.propertyName);
+        public static EditorCurveBinding Normalize(this EditorCurveBinding binding, bool combineRotation = false) {
+            var propertyName = binding.propertyName;
+            if (combineRotation && binding.type == typeof(Transform)) {
+                // https://forum.unity.com/threads/new-animationclip-property-names.367288/
+                var lower = propertyName.ToLower();
+                if (lower.Contains("euler") || lower.Contains("rotation")) {
+                    propertyName = NormalizedRotationProperty;
+                }
+            }
+            return EditorCurveBinding.FloatCurve(binding.path, binding.type, propertyName);
         }
+
+        public const string NormalizedRotationProperty = "rotation";
         
         public static bool IsMuscle(this EditorCurveBinding binding) {
             if (binding.path != "") return false;

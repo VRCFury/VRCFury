@@ -8,6 +8,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -17,6 +18,7 @@ namespace VF.Feature {
     public class FixMasksBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
         private enum PropType {
             Muscle,
@@ -68,6 +70,7 @@ namespace VF.Feature {
                 var layerForFx = copyForFxLayers[i];
                 newFxLayers.Add(layerForFx);
                 animatorLayerControlManager.Alias(layerForGesture.stateMachine, layerForFx.stateMachine);
+                layerSourceService.CopySource(layerForGesture.stateMachine, layerForFx.stateMachine);
                 
                 // Remove fx bindings from the gesture copy
                 foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null,layerForGesture.stateMachine))) {

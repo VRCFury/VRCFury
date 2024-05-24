@@ -29,7 +29,7 @@ namespace VF.Feature {
             var applyToLayers = applyToUnmanaged ? fx.GetLayers() : fx.GetManagedLayers();
 
             var bindingsByLayer = fx.GetLayers()
-                .ToDictionary(layer => layer, layer => GetBindingsAnimatedInLayer(layer));
+                .ToDictionary(layer => layer, GetBindingsAnimatedInLayer);
 
             var floatTrue = fx.One();
             
@@ -103,8 +103,8 @@ namespace VF.Feature {
                     return new AnimatorIterator.Clips().From(state.state.motion)
                         .SelectMany(clip => clip.GetAllBindings())
                         .Where(binding => binding.IsValid(avatarObject))
-                        .Select(binding => binding.Normalize())
-                        .Any(b => b.propertyName.ToLower().Contains("localeulerangles"));
+                        .Select(binding => binding.Normalize(true))
+                        .Any(b => b.propertyName == EditorCurveBindingExtensions.NormalizedRotationProperty);
                 });
                 if (hasEulerRotation) {
                     AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
@@ -113,7 +113,10 @@ namespace VF.Feature {
                 
                 var usedBindings = bindingsByLayer[layer];
                 var otherLayersAnimateTheSameThing = bindingsByLayer
-                    .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
+                    .Where(pair => pair.Key != layer) // It's not the current layer
+                    .Where(pair => pair.Key.Exists()) // The other layer hasn't been deleted
+                    .Where(pair => pair.Key.GetLayerId() >= layer.GetLayerId()) // The other layer has higher priority
+                    .Where(pair => pair.Value.Any(b => usedBindings.Contains(b))) // The other layer animates the same thing we do
                     .Select(pair => pair.Key)
                     .ToArray();
                 if (otherLayersAnimateTheSameThing.Length > 0) {
@@ -317,7 +320,7 @@ namespace VF.Feature {
             return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
                 .Where(binding => binding.IsValid(avatarObject))
-                .Select(binding => binding.Normalize())
+                .Select(binding => binding.Normalize(true))
                 .ToImmutableHashSet();
         }
 
