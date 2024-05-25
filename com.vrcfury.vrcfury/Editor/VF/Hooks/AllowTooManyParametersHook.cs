@@ -1,3 +1,5 @@
+
+using VF.Utils;
 #if VRC_NEW_PUBLIC_SDK
 using System;
 using System.Collections;
@@ -24,11 +26,10 @@ namespace VF.Hooks {
                     builder = _builder;
                 }
             };
-            EditorApplication.update += Check;
+            Scheduler.Schedule(Check, 1000);
         }
 
         private static IVRCSdkAvatarBuilderApi builder;
-        private static double lastCheck = 0;
 
         private static void Check() {
             try {
@@ -36,10 +37,6 @@ namespace VF.Hooks {
             } catch (Exception) { /**/ }
         }
         private static void CheckUnsafe() {
-            var now = EditorApplication.timeSinceStartup;
-            if (now - lastCheck < 1) return;
-            lastCheck = now;
- 
             if (builder == null) return;
             var panel = builder.GetType().GetField("_builder",
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?

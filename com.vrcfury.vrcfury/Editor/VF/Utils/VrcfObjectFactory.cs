@@ -10,7 +10,7 @@ namespace VF.Utils {
 
         [InitializeOnLoadMethod]
         public static void OnLoad() {
-            EditorApplication.update += Prune;
+            Scheduler.Schedule(Prune, 0);
         }
 
         private static void Prune() {
