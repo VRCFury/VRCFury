@@ -182,6 +182,17 @@ namespace VF.Builder.Haptics {
             var followConstraints = true;
             var followArmatureLink = true;
 
+            IList<ArmatureLink> armatureLinks;
+            if (followArmatureLink) {
+                armatureLinks = avatarObject
+                    .GetComponentsInSelfAndChildren<VRCFury>()
+                    .SelectMany(v => v.GetAllFeatures())
+                    .OfType<ArmatureLink>()
+                    .ToList();
+            } else {
+                armatureLinks = new List<ArmatureLink>();
+            }
+
             var humanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject)
                 .ToDictionary(x => x.Value, x => x.Key);
             var alreadyChecked = new HashSet<VFGameObject>();
@@ -194,11 +205,7 @@ namespace VF.Builder.Haptics {
 
                 if (followArmatureLink) {
                     VFGameObject foundParent = null;
-                    foreach (var armatureLink in avatarObject
-                        .GetComponentsInSelfAndChildren<VRCFury>()
-                        .SelectMany(v => v.GetAllFeatures())
-                        .OfType<ArmatureLink>()
-                    ) {
+                    foreach (var armatureLink in armatureLinks) {
                         var p = ArmatureLinkService.GetProbableParent(armatureLink, avatarObject, current);
                         if (p != null && !alreadyChecked.Contains(p)) {
                             foundParent = p;
