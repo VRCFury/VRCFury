@@ -11,8 +11,8 @@ using VF.Service;
 
 namespace VF.Utils {
     public static class ClosestBoneUtils {
-        private static ConditionalWeakTable<Transform, Result> resultCache
-            = new ConditionalWeakTable<Transform, Result>();
+        private static Dictionary<VFGameObject, Result> resultCache
+            = new Dictionary<VFGameObject, Result>();
         private static Dictionary<VFGameObject, List<ArmatureLink>> armatureLinkCache
             = new Dictionary<VFGameObject, List<ArmatureLink>>();
 
@@ -44,7 +44,7 @@ namespace VF.Utils {
                 return cached.bone;
             }
             var bone = GetClosestHumanoidBoneUncached(obj);
-            resultCache.Add(obj, new Result() { bone = bone });
+            resultCache[obj] = new Result() { bone = bone };
             return bone;
         }
 
