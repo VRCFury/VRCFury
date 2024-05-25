@@ -111,6 +111,12 @@ namespace VF.Feature {
                 }
             }
         }
+        
+        public void Alias(VRCAnimatorLayerControl from, VRCAnimatorLayerControl to) {
+            foreach (var sm in mapping.Get(from)) {
+                mapping.Put(to, sm);
+            }
+        }
 
         public bool IsLayerTargeted(AnimatorStateMachine sm) {
             return mapping.ContainsValue(sm);

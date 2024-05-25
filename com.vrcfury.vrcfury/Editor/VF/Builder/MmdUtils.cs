@@ -190,20 +190,78 @@ your
 髪影消
 ｳｨﾝｸ右
 ｷﾘｯ
+ウィンク２
+ｳｨﾝｸ２右
+あ２
+あ３
+あ怒る
+あ狂った
+にやり２
+てへぺろ２
+下まぶた上げ
+恐ろしい
+星目2
+スターライト
+丸い目
+ｺｯﾁﾐﾝﾅ
+お小さい
+キッス
+トップリップ
+ボトムリップ
+ええ？
+いー！
+V
+ワアアア!
+ええ!
+左口角下げ
+左口角上げ
+右口角下げ
+右口角上げ
+口下げ
+口上げ
+口すぼめる
+右口横広げ
+左口横広げ
+上歯上げ
+下歯下げ
+上歯を隠す
+下歯を隠す
+犬歯右
+犬歯左
+歯右2
+歯左2
+怒り眉
+失望した
+にこり眉
+困った
+動揺
+眉上
+眉下
+右眉怒り
+左眉怒り
+眉毛を前方に
+右眉下げ
+左眉下げ
+右眉上げ
+左眉上げ
+照れ1
+照れ2
+右怒筋
+左怒筋
+眼鏡
 ";
             
         private static readonly ImmutableHashSet<string> mmdShapes;
 
         static MmdUtils() {
             mmdShapes = text.Split('\n')
-                .Select(line => line.Trim())
-                .Select(line => Normalize(line))
+                .Select(Normalize)
                 .Where(line => !string.IsNullOrWhiteSpace(line))
                 .ToImmutableHashSet();
         }
 
         private static string Normalize(string text) {
-            text = text.ToLower();
+            text = text.Trim().ToLower();
             text = text.Replace("2", "");
             text = text.Replace("２", "");
             text = text.Replace("_", "");

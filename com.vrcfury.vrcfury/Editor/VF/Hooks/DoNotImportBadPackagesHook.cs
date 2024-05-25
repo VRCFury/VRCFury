@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Hooks {
     /**
@@ -35,7 +36,7 @@ namespace VF.Hooks {
         [InitializeOnLoadMethod]
         public static void Init() {
             if (PackageImportWindow == null || m_ImportPackageItems == null || ImportPackageItem == null || AssetPath == null) return;
-            EditorApplication.update += Check;
+            Scheduler.Schedule(Check, 0);
         }
 
         private static EditorWindow lastCheckedWindow = null;

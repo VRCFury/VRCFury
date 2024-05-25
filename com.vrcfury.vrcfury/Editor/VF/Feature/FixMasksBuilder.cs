@@ -8,6 +8,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -17,6 +18,7 @@ namespace VF.Feature {
     public class FixMasksBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
         private enum PropType {
             Muscle,
@@ -43,7 +45,13 @@ namespace VF.Feature {
                 return PropType.Fx;
             }
 
-            var copyForFx = MutableManager.CopyRecursive(gesture.GetRaw().GetRaw(), false).layers;
+            var copyForFx = MutableManager.CopyRecursiveAdv(gesture.GetRaw().GetRaw(), false);
+            var copyForFxLayers = copyForFx.output.layers;
+            foreach (var pair in copyForFx.originalToCopy) {
+                if (pair.Key is VRCAnimatorLayerControl from && pair.Value is VRCAnimatorLayerControl to) {
+                    animatorLayerControlManager.Alias(from, to);
+                }
+            }
 
             gesture.GetRaw().layers = gesture.GetRaw().layers.Select((layerForGesture,i) => {
                 
@@ -59,9 +67,10 @@ namespace VF.Feature {
                     return layerForGesture;
                 }
 
-                var layerForFx = copyForFx[i];
+                var layerForFx = copyForFxLayers[i];
                 newFxLayers.Add(layerForFx);
                 animatorLayerControlManager.Alias(layerForGesture.stateMachine, layerForFx.stateMachine);
+                layerSourceService.CopySource(layerForGesture.stateMachine, layerForFx.stateMachine);
                 
                 // Remove fx bindings from the gesture copy
                 foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null,layerForGesture.stateMachine))) {

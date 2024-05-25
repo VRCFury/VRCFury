@@ -123,7 +123,6 @@ namespace VF.Service {
             var keepBoneOffsets = GetKeepBoneOffsets(model, linkMode);
 
             var (_, _, scalingFactor) = GetScalingFactor(model, links, linkMode);
-            Debug.Log("Detected scaling factor: " + scalingFactor);
 
             var rootName = GetRootName(links.propMain, avatarObject);
 
@@ -131,7 +130,6 @@ namespace VF.Service {
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 VRCFuryDebugInfo debugInfo = null;
                 if (saveDebugInfo) {
-                    Debug.Log($"Creating debug info on {propBone.GetPath(avatarObject, true)}");
                     debugInfo = propBone.AddComponent<VRCFuryDebugInfo>();
                 }
                 void AddDebugInfo(string text) {
@@ -505,10 +503,12 @@ namespace VF.Service {
                         var childAvatarBone = checkAvatarBone.Find(searchName);
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
+                        var recurseButDoNotLink = false;
                         if (!childAvatarBone) {
                             if (childPropBone.name.Contains("ChestUp")) {
                                 childAvatarBone = checkAvatarBone;
                                 links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
+                                recurseButDoNotLink = true;
                             } else {
                                 childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
                                 if (childAvatarBone) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
@@ -521,7 +521,9 @@ namespace VF.Service {
                         }
 
                         if (childAvatarBone != null) {
-                            links.mergeBones.Push((childPropBone, childAvatarBone));
+                            if (!recurseButDoNotLink) {
+                                links.mergeBones.Push((childPropBone, childAvatarBone));
+                            }
                             checkStack.Push((childPropBone, childAvatarBone));
                         } else {
                             links.unmergedChildren.Push((childPropBone, checkAvatarBone));

@@ -34,10 +34,10 @@ public class VRCFuryBuilder {
         var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 try {
-                    MaterialLocker.avatarObject = avatarObject;
+                    MaterialLocker.injectedAvatarObject = avatarObject;
                     Run(avatarObject);
                 } finally {
-                    MaterialLocker.avatarObject = null;
+                    MaterialLocker.injectedAvatarObject = null;
                 }
             });
         });
@@ -67,6 +67,8 @@ public class VRCFuryBuilder {
                 "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
                 " used to create this test instead.");
         }
+
+        EditorOnlyUtils.RemoveEditorOnlyObjects(avatarObject);
         
         if (!ShouldRun(avatarObject)) {
             Debug.Log("VRCFury components not found in avatar. Skipping.");

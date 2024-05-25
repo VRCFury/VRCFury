@@ -26,22 +26,28 @@ namespace VF.Builder {
                 }
                 SaveAssetAndChildren(
                     controller.GetRaw(),
-                    $"VRCFury {controller.GetType().ToString()} for {manager.AvatarObject.name}"
+                    $"VRCFury {controller.GetType().ToString()} for {manager.AvatarObject.name}",
+                    manager.tmpDir
                 );
             }
 
             // Save everything else
             foreach (var component in manager.AvatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                foreach (var asset in GetUnsavedChildren(component, recurse: false)) {
-                    SaveAssetAndChildren(
-                        asset,
-                        $"VRCFury {asset.GetType().Name} for {component.owner().name}"
-                    );
-                }
+                SaveUnsavedComponentAssets(component, manager.tmpDir);
             }
         }
 
-        private IList<Object> GetUnsavedChildren(Object obj, bool recurse = true) {
+        public static void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
+            foreach (var asset in GetUnsavedChildren(component, recurse: false)) {
+                SaveAssetAndChildren(
+                    asset,
+                    $"VRCFury {asset.GetType().Name} for {component.owner().name}",
+                    tmpDir
+                );
+            }
+        }
+
+        private static IList<Object> GetUnsavedChildren(Object obj, bool recurse = true) {
             var unsavedChildren = new List<Object>();
             var clipReplacements = new Dictionary<Object, Object>();
             MutableManager.ForEachChild(obj, asset => {
@@ -75,7 +81,7 @@ namespace VF.Builder {
             return false;
         }
 
-        private void SaveAssetAndChildren(Object asset, string filename) {
+        private static void SaveAssetAndChildren(Object asset, string filename, string tmpDir) {
             if (IsSaved(asset)) return;
 
             var unsavedChildren = GetUnsavedChildren(asset);
@@ -84,12 +90,12 @@ namespace VF.Builder {
             // If we don't save textures before the materials that use them, unity just throws them away
             foreach (var subAsset in unsavedChildren) {
                 if (subAsset is Texture2D) {
-                    VRCFuryAssetDatabase.SaveAsset(subAsset, manager.tmpDir, filename + "_" + subAsset.name);
+                    VRCFuryAssetDatabase.SaveAsset(subAsset, tmpDir, filename + "_" + subAsset.name);
                 }
             }
             
             // Save the main asset
-            VRCFuryAssetDatabase.SaveAsset(asset, manager.tmpDir, filename);
+            VRCFuryAssetDatabase.SaveAsset(asset, tmpDir, filename);
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {

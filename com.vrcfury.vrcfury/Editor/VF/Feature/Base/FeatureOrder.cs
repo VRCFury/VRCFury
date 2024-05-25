@@ -13,8 +13,6 @@ namespace VF.Feature.Base {
         FixAmbiguousObjectNames,
         
         // Needs to happen before toggles begin getting processed
-        DeleteDuringUpload,
-        RemoveEditorOnly,
         ApplyDuringUpload,
 
         // Needs to be the first thing to instantiate the ControllerManagers

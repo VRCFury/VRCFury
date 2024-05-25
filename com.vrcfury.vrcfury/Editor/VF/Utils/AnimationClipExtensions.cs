@@ -36,9 +36,9 @@ namespace VF.Utils {
 
         [InitializeOnLoadMethod]
         public static void Init() {
-            EditorApplication.update += () => {
+            Scheduler.Schedule(() => {
                 clipDb.Clear();
-            };
+            }, 0);
         }
 
         public static AnimationClip Clone(this AnimationClip clip) {

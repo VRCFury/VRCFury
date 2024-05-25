@@ -193,7 +193,7 @@ namespace VF.Service {
                     if (bundleSuffix == "g") color.g = val.GetFloat();
                     if (bundleSuffix == "b") color.b = val.GetFloat();
                     if (bundleSuffix == "a") color.a = val.GetFloat();
-                    mat.SetColor(propName, color);
+                    mat.SetColor(bundleName, color);
                     return mat;
                 }
                 if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
@@ -203,7 +203,7 @@ namespace VF.Service {
                     if (bundleSuffix == "y") vector.y = val.GetFloat();
                     if (bundleSuffix == "z") vector.z = val.GetFloat();
                     if (bundleSuffix == "w") vector.w = val.GetFloat();
-                    mat.SetVector(propName, vector);
+                    mat.SetVector(bundleName, vector);
                     return mat;
                 }
 

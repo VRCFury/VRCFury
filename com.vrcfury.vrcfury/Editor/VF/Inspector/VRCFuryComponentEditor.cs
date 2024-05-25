@@ -116,6 +116,13 @@ namespace VF.Inspector {
             notInAvatarError.schedule.Execute(UpdateNotInAvatarError).Every(1000);
             container.Add(notInAvatarError);
             
+            var deletedError = VRCFuryEditorUtils.Error(
+                "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!");
+            void UpdateDeletedError() => deletedError.SetVisible(EditorOnlyUtils.IsInsideEditorOnly(c.gameObject));
+            UpdateDeletedError();
+            deletedError.schedule.Execute(UpdateDeletedError).Every(1000);
+            container.Add(deletedError);
+
             return container;
         }
 

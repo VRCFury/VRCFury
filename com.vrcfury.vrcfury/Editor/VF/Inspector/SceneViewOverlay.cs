@@ -9,40 +9,11 @@ using VF.Builder;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
-    [InitializeOnLoad]
     public class SceneViewOverlay {
-        static SceneViewOverlay() {
-            //SceneView.duringSceneGui += DuringSceneGui;
-        }
-
-        private static void DuringSceneGui(SceneView view) {
-            Handles.BeginGUI();
-            try {
-                DuringSceneGuiUnsafe(view);
-            } catch (Exception e) {
-                Debug.LogWarning(e);
-            }
-            Handles.EndGUI();
-        }
-
-        private static void DuringSceneGuiUnsafe(SceneView view) {
-            var output = GetOutputString();
-
-            var bak = GUI.contentColor;
-            try {
-                GUILayout.BeginArea(new Rect(0, view.position.height-42, 100, 30));
-                GUI.contentColor = new Color(1, 1, 1, 0.1f);
-                if (!string.IsNullOrWhiteSpace(output)) {
-                    GUILayout.Label(output);
-                }
-                GUILayout.EndArea();
-            } finally {
-                GUI.contentColor = bak;
-            }
-        }
 
         private static bool ndmfPresent =
             ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;
@@ -63,6 +34,10 @@ namespace VF.Inspector {
                 .Any(fwd => fwd.mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled);
             if (wdDisabled) {
                 output += "W";
+            }
+
+            if (avatarObject != null && MaterialLocker.UsesD4rk(avatarObject, false)) {
+                output += "D";
             }
             
             if (!HapticsToggleMenuItem.Get()) {
