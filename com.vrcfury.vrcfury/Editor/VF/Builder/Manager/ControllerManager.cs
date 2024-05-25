@@ -82,14 +82,16 @@ namespace VF.Builder {
             return _NewClip(NewClipName(name));
         }
         private AnimationClip _NewClip(string name) {
-            var clip = new AnimationClip { name = name };
+            var clip = VrcfObjectFactory.Create<AnimationClip>();
+            clip.name = name;
             return clip;
         }
         public BlendTree NewBlendTree(string name) {
             return _NewBlendTree(NewClipName(name));
         }
         private BlendTree _NewBlendTree(string name) {
-            var tree = new BlendTree { name = name };
+            var tree = VrcfObjectFactory.Create<BlendTree>();
+            tree.name = name;
             return tree;
         }
 

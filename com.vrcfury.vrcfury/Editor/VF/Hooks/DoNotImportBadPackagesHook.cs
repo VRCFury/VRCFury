@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Hooks {
     /**
@@ -35,19 +36,15 @@ namespace VF.Hooks {
         [InitializeOnLoadMethod]
         public static void Init() {
             if (PackageImportWindow == null || m_ImportPackageItems == null || ImportPackageItem == null || AssetPath == null) return;
-            EditorApplication.update += Check;
+            Scheduler.Schedule(Check, 0);
         }
 
-        private static bool checkedContent = false;
+        private static EditorWindow lastCheckedWindow = null;
         private static void Check() {
-            var importWindow = Resources.FindObjectsOfTypeAll(PackageImportWindow).FirstOrDefault();
-            if (importWindow == null) {
-                checkedContent = false;
-                return;
-            }
-
-            if (checkedContent) return;
-            checkedContent = true;
+            var importWindow = EditorWindow.focusedWindow;
+            if (!PackageImportWindow.IsInstanceOfType(importWindow)) return;
+            if (importWindow == lastCheckedWindow) return;
+            lastCheckedWindow = importWindow;
 
             var items = m_ImportPackageItems.GetValue(importWindow) as object[];
             if (items == null) return;

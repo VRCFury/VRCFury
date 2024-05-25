@@ -12,8 +12,8 @@ namespace VF.Utils {
         }
 
         private static bool IsStatic(AnimationClip clip) {
+            if (clip.IsProxyClip()) return false;
             foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (binding.IsProxyBinding()) return false;
                 if (curve.IsFloat) {
                     var keys = curve.FloatCurve.keys;
                     if (keys.All(key => key.time != 0)) return false;
@@ -28,7 +28,7 @@ namespace VF.Utils {
         }
 
         public static bool IsEmptyOrZeroLength(this Motion motion) {
-            return new AnimatorIterator.Clips().From(motion).All(clip => clip.length == 0 || clip.GetAllBindings().Length == 0);
+            return new AnimatorIterator.Clips().From(motion).All(clip => clip.GetLengthInSeconds() == 0 || clip.GetAllBindings().Length == 0);
         }
 
         public static bool HasValidBinding(this Motion motion, VFGameObject avatarRoot) {
@@ -54,7 +54,7 @@ namespace VF.Utils {
                 foreach (var tree in new AnimatorIterator.Trees().From(motion)) {
                     tree.RewriteChildren(child => {
                         if (child.motion == null) {
-                            child.motion = new AnimationClip();
+                            child.motion = VrcfObjectFactory.Create<AnimationClip>();
                             child.motion.name = "Empty";
                         }
                         return child;

@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using Editor.VF.Utils;
-using UnityEditor;
 using UnityEditor.Animations;
-using UnityEngine;
 using VF.Builder;
-using VF.Inspector;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {

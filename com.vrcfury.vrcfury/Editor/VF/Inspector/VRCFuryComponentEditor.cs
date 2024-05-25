@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -10,6 +11,7 @@ using VF.Builder;
 using VF.Component;
 using VF.Model;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     public class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
@@ -98,6 +100,29 @@ namespace VF.Inspector {
             }
             
             container.Add(body);
+            
+#if UNITY_2022_1_OR_NEWER
+            var editingPrefab = PrefabStageUtility.GetCurrentPrefabStage() != null;
+#else
+            var editingPrefab = false;
+#endif
+
+            var notInAvatarError = VRCFuryEditorUtils.Error(
+                "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
+                "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
+                "object, and not just alongside it in the scene.");
+            void UpdateNotInAvatarError() => notInAvatarError.SetVisible(!editingPrefab && c.gameObject.asVf().GetComponentInSelfOrParent<VRCAvatarDescriptor>() == null);
+            UpdateNotInAvatarError();
+            notInAvatarError.schedule.Execute(UpdateNotInAvatarError).Every(1000);
+            container.Add(notInAvatarError);
+            
+            var deletedError = VRCFuryEditorUtils.Error(
+                "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!");
+            void UpdateDeletedError() => deletedError.SetVisible(EditorOnlyUtils.IsInsideEditorOnly(c.gameObject));
+            UpdateDeletedError();
+            deletedError.schedule.Execute(UpdateDeletedError).Every(1000);
+            container.Add(deletedError);
+
             return container;
         }
 

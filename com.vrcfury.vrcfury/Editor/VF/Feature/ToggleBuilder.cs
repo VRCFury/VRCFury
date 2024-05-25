@@ -24,6 +24,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateService restingState;
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
+    [VFAutowired] private readonly ClipRewriteService clipRewriteService;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;
@@ -203,7 +204,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
                 clip = clipBuilder.MergeSingleFrameClips(
-                    (0, new AnimationClip()),
+                    (0, VrcfObjectFactory.Create<AnimationClip>()),
                     (1, clip)
                 );
                 clip.UseLinearTangents();
@@ -211,7 +212,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
-            restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
+            restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction, toggleFeature: this);
             // if clip is empty, copy last frame of transition
@@ -278,10 +279,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (savedRestingClip == null) {
-            var copy = new AnimationClip();
-            copy.CopyFrom(restingClip);
+            var copy = restingClip.Clone();
             savedRestingClip = copy;
-            mover.AddAdditionalManagedClip(savedRestingClip);
+            clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
         }
     }
 
@@ -614,7 +614,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
         toggleOffWarning.SetVisible(false);
         content.Add(toggleOffWarning);
-        VRCFuryEditorUtils.RefreshOnInterval(toggleOffWarning, () => {
+        void Update() {
             var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
 
             var turnsOff = model.state.actions
@@ -634,7 +634,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .ToImmutableHashSet();
             var overlap = turnsOff.Intersect(othersTurnOn);
             toggleOffWarning.SetVisible(overlap.Count > 0);
-        });
+        }
+        Update();
+        content.schedule.Execute(Update).Every(1000);
 
         return content;
     }

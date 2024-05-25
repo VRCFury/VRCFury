@@ -25,7 +25,7 @@ namespace VF.Inspector {
             var configureTps = serializedObject.FindProperty("configureTps");
             var enableSps = serializedObject.FindProperty("enableSps");
             
-            container.Add(ConstraintWarning(target.gameObject));
+            container.Add(ConstraintWarning(target));
             
             var boneWarning = VRCFuryEditorUtils.Warn(
                 "WARNING: This renderer is rigged with bones, but you didn't put the SPS Plug inside a bone! When SPS is used" +
@@ -220,22 +220,53 @@ namespace VF.Inspector {
             }
         }
 
-        public static VisualElement ConstraintWarning(VFGameObject obj, bool isSocket = false) {
+        public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {
             var output = new VisualElement();
-            var warning = VRCFuryEditorUtils.Warn(
-                "This SPS component is used within a Constraint! " +
-                "AVOID using SPS within constraints if at all possible. " +
-                (isSocket
-                    ? "Sharing one socket in multiple locations will make your avatar LESS performant, not more! "
-                    : "") +
-                "\n\n" +
-                "Check out https://vrcfury.com/sps/constraints for details");
-            warning.SetVisible(false);
-            output.Add(warning);
-            VRCFuryEditorUtils.RefreshOnInterval(output, () => {
-                var found = obj.GetComponentsInSelfAndParents<IConstraint>().Length > 0;
-                warning.SetVisible(found);
-            });
+            {
+                var warning = VRCFuryEditorUtils.Warn(
+                    "This SPS component is used within a Constraint! " +
+                    "AVOID using SPS within constraints if at all possible. " +
+                    (isSocket
+                        ? "Sharing one socket in multiple locations will make your avatar LESS performant, not more! "
+                        : "") +
+                    "\n\n" +
+                    "Check out https://vrcfury.com/sps/constraints for details");
+                void Update() => warning.SetVisible(c.gameObject.asVf().GetComponentsInSelfAndParents<IConstraint>().Length > 0);
+                Update();
+                warning.schedule.Execute(Update).Every(1000);
+                output.Add(warning);
+            }
+            {
+                var holder = new VisualElement();
+                void Update() {
+                    var tipLightPaths = new List<string>();
+                    var avatar = VRCAvatarUtils.GuessAvatarObject(c);
+                    if (avatar != null) {
+                        tipLightPaths.AddRange(avatar.GetComponentsInSelfAndChildren<Light>()
+                            .Where(light => {
+                                var rangeId = light.range % 0.1;
+                                return rangeId >= 0.085f && rangeId < 0.095f;
+                            })
+                            .Select(light => light.owner().GetPath(avatar, true))
+                            .OrderBy(path => path));
+                    }
+
+                    holder.Clear();
+                    if (tipLightPaths.Any()) {
+                        var warning = VRCFuryEditorUtils.Warn(
+                            "This avatar still contains a DPS tip light! This means your avatar has not been fully converted to SPS," +
+                            " and your DPS penetrator may cause issues if too many sockets are on nearby." +
+                            "\n\n" +
+                            "Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                            string.Join("\n", tipLightPaths)
+                        );
+                        holder.Add(warning);
+                    }
+                }
+                Update();
+                holder.schedule.Execute(Update).Every(1000);
+                output.Add(holder);
+            }
             return output;
         }
 

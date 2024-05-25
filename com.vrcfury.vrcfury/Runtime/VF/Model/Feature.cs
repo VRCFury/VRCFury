@@ -550,6 +550,7 @@ namespace VF.Model.Feature {
         public string removeBoneSuffix;
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
+        [NonSerialized] public Func<bool> onlyIf;
         
         // legacy
         [Obsolete] public bool useOptimizedUpload;
@@ -624,8 +625,6 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BoundingBoxFix2 : NewFeatureModel {
-        [NonSerialized] public SkinnedMeshRenderer singleRenderer;
-        [NonSerialized] public SkinnedMeshRenderer skipRenderer;
     }
 
     [Serializable]

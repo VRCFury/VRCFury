@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -6,6 +7,7 @@ using VF.Builder;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
+using Object = UnityEngine.Object;
 
 namespace VF.Service {
     /**
@@ -18,7 +20,9 @@ namespace VF.Service {
         private VFGameObject avatarObject => globals.avatarObject;
 
         public void ApplyClip(AnimationClip clip) {
-            clip.SampleAnimation(avatarObject, 0);
+            var copy = clip.Clone();
+            copy.FinalizeAsset();
+            copy.SampleAnimation(avatarObject, 0);
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 var value = curve.GetFirst();
                 HandleMaterialSwaps(binding, value);
@@ -71,7 +75,13 @@ namespace VF.Service {
                 }
             }
 
-            return AnimationUtility.GetFloatValue(avatarObject, binding, out data);
+            try {
+                return AnimationUtility.GetFloatValue(avatarObject, binding, out data);
+            } catch (Exception) {
+                // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa
+                data = 0;
+                return false;
+            }
         }
         public bool GetObject(EditorCurveBinding binding, out Object data, bool trustUnity = false) {
             if (!trustUnity) {
@@ -82,7 +92,13 @@ namespace VF.Service {
                 }
             }
 
-            return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+            try {
+                return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+            } catch (Exception) {
+                // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa
+                data = null;
+                return false;
+            }
         }
 
         private static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
@@ -177,7 +193,7 @@ namespace VF.Service {
                     if (bundleSuffix == "g") color.g = val.GetFloat();
                     if (bundleSuffix == "b") color.b = val.GetFloat();
                     if (bundleSuffix == "a") color.a = val.GetFloat();
-                    mat.SetColor(propName, color);
+                    mat.SetColor(bundleName, color);
                     return mat;
                 }
                 if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
@@ -187,7 +203,7 @@ namespace VF.Service {
                     if (bundleSuffix == "y") vector.y = val.GetFloat();
                     if (bundleSuffix == "z") vector.z = val.GetFloat();
                     if (bundleSuffix == "w") vector.w = val.GetFloat();
-                    mat.SetVector(propName, vector);
+                    mat.SetVector(bundleName, vector);
                     return mat;
                 }
 

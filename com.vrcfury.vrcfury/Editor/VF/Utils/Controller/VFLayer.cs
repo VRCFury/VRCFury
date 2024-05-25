@@ -90,7 +90,8 @@ namespace VF.Utils.Controller {
             name = WrapStateName(name);
             name = name.Replace(".", "");
 
-            _stateMachine.AddState(name);
+            var s = _stateMachine.AddState(name);
+            VrcfObjectFactory.Register(s);
             var node = GetLastNode().Value;
             node.state.writeDefaultValues = true;
 
@@ -127,10 +128,6 @@ namespace VF.Utils.Controller {
                 .ToList();
             newList.Insert(newIndex, myLayer);
             ctrl.layers = newList.ToArray();
-        }
-
-        public bool HasMuscles() {
-            return new AnimatorIterator.Clips().From(this).Any(clip => clip.HasMuscles());
         }
 
         public void Remove() {

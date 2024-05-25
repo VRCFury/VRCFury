@@ -22,7 +22,7 @@ namespace VF.Feature {
     public class NoBadControllerParamsBuilder {
         [VFAutowired] private readonly AvatarManager manager;
         
-        [FeatureBuilderAction(FeatureOrder.RemoveBadControllerTransitions)]
+        [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in manager.GetAllUsedControllers()) {
                 UpgradeWrongParamTypes(c.GetRaw());
@@ -182,6 +182,7 @@ namespace VF.Feature {
             foreach (var layer in controller.GetLayers()) {
                 AnimatorIterator.ForEachTransitionRW(layer, transition => {
                     var output = new List<AnimatorCondition>();
+                    var changed = false;
                     var flip = new List<int>();
                     foreach (var _c in transition.conditions) {
                         var c = _c;
@@ -198,6 +199,7 @@ namespace VF.Feature {
                                 c.mode = AnimatorConditionMode.Less;
                                 c.threshold = _c.threshold + 0.001f;
                                 output.Add(c);
+                                changed = true;
                                 continue;
                             }
                             if (mode == AnimatorConditionMode.NotEqual) {
@@ -205,6 +207,7 @@ namespace VF.Feature {
                                 c.mode = AnimatorConditionMode.Greater;
                                 c.threshold = _c.threshold;
                                 output.Add(c);
+                                changed = true;
                                 continue;
                             }
                         }
@@ -212,15 +215,17 @@ namespace VF.Feature {
                             if (mode == AnimatorConditionMode.If) {
                                 c.mode = AnimatorConditionMode.Greater;
                                 c.threshold = 0;
+                                changed = true;
                             }
                             if (mode == AnimatorConditionMode.IfNot) {
                                 c.mode = AnimatorConditionMode.Less;
                                 c.threshold = (type == AnimatorControllerParameterType.Float ? 0.001f : 1f);
+                                changed = true;
                             }
                         }
                         output.Add(c);
                     }
-                    transition.conditions = output.ToArray();
+                    if (changed) transition.conditions = output.ToArray();
 
                     var outputTransitions = new List<AnimatorTransitionBase>();
                     outputTransitions.Add(transition);

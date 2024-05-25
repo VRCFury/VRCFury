@@ -12,6 +12,7 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -170,67 +171,6 @@ namespace VF.Builder.Haptics {
                 lastWasUpper = currentIsUpper;
             }
             return new string(arr);
-        }
-
-        public static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj) {
-            return GetClosestHumanoidBone(obj, VRCAvatarUtils.GuessAvatarObject(obj));
-        }
-
-        public static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj, VFGameObject avatarObject) {
-            if (avatarObject == null) return null;
-            var followConstraints = true;
-            var followArmatureLink = true;
-
-            var humanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject)
-                .ToDictionary(x => x.Value, x => x.Key);
-            var alreadyChecked = new HashSet<VFGameObject>();
-            var current = obj;
-            while (current != null) {
-                if (humanoidBones.TryGetValue(current, out var bone))
-                    return bone;
-
-                alreadyChecked.Add(current);
-
-                if (followArmatureLink) {
-                    VFGameObject foundParent = null;
-                    foreach (var armatureLink in avatarObject
-                        .GetComponentsInSelfAndChildren<VRCFury>()
-                        .SelectMany(v => v.GetAllFeatures())
-                        .OfType<ArmatureLink>()
-                    ) {
-                        var p = ArmatureLinkBuilder.GetProbableParent(armatureLink, avatarObject, obj);
-                        if (p != null && !alreadyChecked.Contains(p)) {
-                            foundParent = p;
-                            break;
-                        }
-                    }
-
-                    if (foundParent != null) {
-                        current = foundParent;
-                        continue;
-                    }
-                }
-                
-                if (followConstraints) {
-                    Transform foundConstraint = null;
-                    foreach (var constraint in current.GetComponents<IConstraint>()) {
-                        if (!(constraint is ParentConstraint) && !(constraint is PositionConstraint)) continue;
-                        if (constraint.sourceCount == 0) continue;
-                        var source = constraint.GetSource(0).sourceTransform;
-                        if (source != null && !alreadyChecked.Contains(source)) {
-                            foundConstraint = source;
-                            break;
-                        }
-                    }
-
-                    if (foundConstraint) {
-                        current = foundConstraint;
-                        continue;
-                    }
-                }
-                current = current.parent;
-            }
-            return null;
         }
     }
 }

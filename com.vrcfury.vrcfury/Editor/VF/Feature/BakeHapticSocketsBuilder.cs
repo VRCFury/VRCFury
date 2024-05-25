@@ -145,18 +145,17 @@ namespace VF.Feature {
                                 .ToArray();
                         }
 
-                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "VersionLocal",
-                                     "VersionBeacon", "Animations")) {
+                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "Animations")) {
                             child.active = false;
                         }
 
                         var onLocalClip = fx.NewClip($"{name} (Local)");
-                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "VersionLocal", "Animations")) {
+                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "Animations")) {
                             clipBuilder.Enable(onLocalClip, child.gameObject);
                         }
 
                         var onRemoteClip = fx.NewClip($"{name} (Remote)");
-                        foreach (var child in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
+                        foreach (var child in FindChildren("Senders", "Lights", "Animations")) {
                             clipBuilder.Enable(onRemoteClip, child.gameObject);
                         }
 
@@ -175,7 +174,7 @@ namespace VF.Feature {
                         }
 
                         var onStealthClip = fx.NewClip($"{name} (Stealth)");
-                        foreach (var child in FindChildren("Haptics", "VersionLocal")) {
+                        foreach (var child in FindChildren("Haptics")) {
                             clipBuilder.Enable(onStealthClip, child.gameObject);
                         }
 
@@ -261,10 +260,6 @@ namespace VF.Feature {
                             var plugWidthValid = math.SetValueWithConditions($"{name}/WidthSensor/Stable", (plugWidth, validWhenBuffered));
                             math.Buffer(plugWidthValid, socket.plugWidthParameterName, usePrefix: false);
                         }
-                    }
-                    
-                    foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(receiver.owner());
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);

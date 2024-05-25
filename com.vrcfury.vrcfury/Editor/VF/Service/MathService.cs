@@ -15,6 +15,7 @@ namespace VF.Service {
      * Performs math within an animator
      */
     [VFService]
+    [VFPrototypeScope]
     public class MathService {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
@@ -385,13 +386,8 @@ namespace VF.Service {
          * WARNING: If your aap is animated from a direct blendtree OUTSIDE of the main shared direct blendtree, you must set useWeightProtection to false
          * and ensure that you weight protect the variable in your own tree.
          */
-        private readonly Dictionary<BlendTree, AnimationClip> aapResetCache = new Dictionary<BlendTree, AnimationClip>();
         public void MakeAapSafe(BlendTree blendTree, VFAap aap) {
-            if (!aapResetCache.TryGetValue(blendTree, out var resetClip)) {
-                resetClip = aapResetCache[blendTree] = fx.NewClip("AAP Reset");
-                blendTree.Add(fx.One(), resetClip);
-            }
-            resetClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), aap.Name()), 0);
+            blendTree.Add(fx.One(), MakeSetter(aap, 0));
         }
     }
 }

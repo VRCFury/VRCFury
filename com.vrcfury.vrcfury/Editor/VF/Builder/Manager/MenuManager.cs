@@ -91,7 +91,7 @@ namespace VF.Builder {
                     MergeMenu(toPath, control.subMenu);
                 } else {
                     control.name = toName;
-                    var tmpMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                    var tmpMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                     tmpMenu.controls.Add(control);
                     MergeMenu(toPrefix, tmpMenu);
                 }
@@ -246,7 +246,7 @@ namespace VF.Builder {
 
         private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
-            var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+            var newMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
             newMenu.name = string.Join(" » ", cleanPath);
             return newMenu;
         }

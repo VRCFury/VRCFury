@@ -1,17 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
+using VF.Feature;
+using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
+using Debug = UnityEngine.Debug;
 
 namespace VF.Hooks {
     /**
      * Poiyomi tries to enforce mat lockdown when preprocessor hooks are run, even if they are run by the emulator.
      * Prevent that from happening if we're in play mode.
      */
-    internal static class NoPoiLockdownInPlayModeHook {
+    internal static class DisableSomeHooksWhenNotUploadingHook {
         [DidReloadScripts]
         public static void Init() {
             var callbacksClass =
@@ -24,9 +29,12 @@ namespace VF.Hooks {
             if (!(_callbacks is List<IVRCSDKPreprocessAvatarCallback> callbacks)) return;
 
             foreach (var callback in callbacks.ToArray()) {
-                if (callback.GetType().Name == "LockMaterialsOnUpload") {
-                    Debug.Log("VRCFury found LockMaterialsOnUpload and is patching it to not run in play mode");
-                    var newCallback = new PoiyomiLockdownDuringUploadWrapper(callback);
+                var typeName = callback.GetType().Name;
+                if (typeName == "RemoveAvatarEditorOnly") {
+                    callbacks.Remove(callback);
+                } else if (typeName == "LockMaterialsOnUpload") {
+                    Debug.Log($"VRCFury found {typeName} and is patching it to only run during actual uploads");
+                    var newCallback = new InhibitWhenNotUploadingWrapper(callback);
                     callbacks.Remove(callback);
                     callbacks.Add(newCallback);
                 }
@@ -35,23 +43,23 @@ namespace VF.Hooks {
             callbacksField.SetValue(null, callbacks);
         }
 
-        private class PoiyomiLockdownDuringUploadWrapper : IVRCSDKPreprocessAvatarCallback {
+        private class InhibitWhenNotUploadingWrapper : IVRCSDKPreprocessAvatarCallback {
             private IVRCSDKPreprocessAvatarCallback wrapped;
             
             // The VRCSDK makes an instance of this hook using the default constructor and we can't stop it >:(
-            public PoiyomiLockdownDuringUploadWrapper() {
+            public InhibitWhenNotUploadingWrapper() {
                 this.wrapped = null;
             }
 
-            public PoiyomiLockdownDuringUploadWrapper(IVRCSDKPreprocessAvatarCallback wrapped) {
+            public InhibitWhenNotUploadingWrapper(IVRCSDKPreprocessAvatarCallback wrapped) {
                 this.wrapped = wrapped;
             }
 
             public int callbackOrder => wrapped?.callbackOrder ?? 0;
             public bool OnPreprocessAvatar(GameObject avatarGameObject) {
                 if (wrapped == null) return true;
-                if (EditorApplication.isPlaying) {
-                    Debug.Log("VRCFury inhibited poiyomi from locking down all mats on the avatar");
+                if (!IsActuallyUploadingHook.Get()) {
+                    Debug.Log($"VRCFury inhibited IVRCSDKPreprocessAvatarCallback {wrapped.GetType().Name} from running because an upload isn't actually happening");
                     return true;
                 }
 
@@ -61,6 +69,22 @@ namespace VF.Hooks {
                     Debug.LogException(new Exception("Poiyomi failed to lockdown materials: " + e.Message, e));
                     throw e;
                 }
+            }
+        }
+
+        public class VrcfRemoveEditorOnlyObjects : IVRCSDKPreprocessAvatarCallback {
+            public int callbackOrder => -1024;
+            public bool OnPreprocessAvatar(GameObject obj) {
+                EditorOnlyUtils.RemoveEditorOnlyObjects(obj);
+                return true;
+            }
+        }
+        
+        public class VrcfRemoveEditorOnlyComponents : IVRCSDKPreprocessAvatarCallback {
+            public int callbackOrder => Int32.MaxValue;
+            public bool OnPreprocessAvatar(GameObject obj) {
+                EditorOnlyUtils.RemoveEditorOnlyComponents(obj);
+                return true;
             }
         }
     }

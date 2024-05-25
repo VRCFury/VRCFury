@@ -7,13 +7,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.Rendering;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Inspector;
 
 namespace VF.Builder.Haptics {
     public static class SpsPatcher {
-        private const string HashBuster = "9";
+        private const string HashBuster = "13";
         
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
@@ -21,6 +22,10 @@ namespace VF.Builder.Haptics {
                 var renderQueue = mat.renderQueue;
                 PatchUnsafe(mat, keepImports);
                 mat.renderQueue = renderQueue;
+            } catch(SpsErrorMatException) {
+                throw new SneakyException(
+                    $"Your avatar is using a material ({mat.name}) that couldn't load properly.\n\n" +
+                    $"The shader used by this material may be broken or out of date in your project. Ask the creator of this asset what shader and version should be used.");
             } catch (Exception e) {
                 throw new Exception(
                     "Failed to patch shader with SPS. Report this on the VRCFury discord. Maybe this shader isn't supported yet.\n\n" +
@@ -41,11 +46,11 @@ namespace VF.Builder.Haptics {
 
         public class PatchResult {
             public Shader shader;
-            public int patchedPasses;
+            public int patchedPrograms;
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
             var pathToSps = GetPathToSps();
-            var contents = ReadFile(shader);
+            var (contents,isBuiltIn) = ReadFile(shader);
 
             void Replace(string pattern, string replacement, int count) {
                 var startLen = contents.Length + "" + contents.GetHashCode();
@@ -78,6 +83,7 @@ namespace VF.Builder.Haptics {
             
             var md5 = MD5.Create();
             var hashContent = contents + spsMain + HashBuster;
+            if (isBuiltIn) hashContent += Application.unityVersion;
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
@@ -96,10 +102,10 @@ namespace VF.Builder.Haptics {
                 newShaderName = $"Hidden/SPSPatched/{hash}";
             }
             var alreadyExists = Shader.Find(newShaderName);
-            if (alreadyExists != null) {
+            if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
                 return new PatchResult {
                     shader = alreadyExists,
-                    patchedPasses = 0
+                    patchedPrograms = 0
                 };
             }
 
@@ -109,26 +115,32 @@ namespace VF.Builder.Haptics {
                 1
             );
 
-            var patchedPasses = 0;
+            var cgIncludes = "";
+            WithEachCgInclude(contents, include => {
+                cgIncludes += include + "\n";
+            });
+
+            var patchedPrograms = 0;
+            var passNum = 0;
             contents = WithEachPass(contents,
                 pass => {
-                    patchedPasses++;
+                    passNum++;
                     try {
-                        return PatchPass(pass, spsMain, false);
+                        var (newPass, num) = PatchPass(pass, spsMain, cgIncludes, false);
+                        patchedPrograms += num;
+                        return newPass;
                     } catch (Exception e) {
-                        throw new Exception($"Failed to patch pass #{patchedPasses}: " + e.Message, e);
+                        throw new Exception($"Failed to patch pass #{passNum}: " + e.Message, e);
                     }
                 },
                 rest => {
-                    if (GetRegex(@"\n[ \t]*#pragma[ \t]+surface").IsMatch(rest)) {
-                        patchedPasses++;
-                        try {
-                            return PatchPass(rest, spsMain, true);
-                        } catch (Exception e) {
-                            throw new Exception($"Failed to patch surface shader: " + e.Message, e);
-                        }
+                    try {
+                        var (newRest, num) = PatchPass(rest, spsMain, cgIncludes, true);
+                        patchedPrograms += num;
+                        return newRest;
+                    } catch (Exception e) {
+                        throw new Exception($"Failed to patch non-pass segment: " + e.Message, e);
                     }
-                    return rest;
                 }
             );
             var childShaders = new Dictionary<Shader, Shader>();
@@ -142,21 +154,21 @@ namespace VF.Builder.Haptics {
 
                 if (!childShaders.TryGetValue(includedShader, out var rewrittenIncludedShader)) {
                     var output = PatchUnsafe(includedShader, keepImports, hash);
-                    patchedPasses += output.patchedPasses;
+                    patchedPrograms += output.patchedPrograms;
                     rewrittenIncludedShader = output.shader;
                     childShaders[includedShader] = rewrittenIncludedShader;
                 }
                 
                 return $"\nUsePass \"{rewrittenIncludedShader.name}/{passName}\"\n";
             });
-            if (patchedPasses == 0) {
-                throw new Exception($"No passes found");
+            if (patchedPrograms == 0) {
+                throw new Exception($"No programs found");
             }
 
             var newPathDir = $"{TmpFilePackage.GetPath()}/SPS";
             var newPath = $"{newPathDir}/{hash}.shader";
             VRCFuryAssetDatabase.WithAssetEditing(() => {
-                Directory.CreateDirectory(newPathDir);
+                VRCFuryAssetDatabase.CreateFolder(newPathDir);
                 WriteFile(newPath, contents);
             });
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
@@ -165,21 +177,50 @@ namespace VF.Builder.Haptics {
 
             var newShader = Shader.Find(newShaderName);
             if (!newShader) {
-                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile. Check the unity log for compile error.\n\n" + newPath);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the unity log for compile error?\n\n" + newPath);
+            }
+
+            if (ShaderUtil.ShaderHasError(newShader)) {
+                var error = ShaderUtil
+                    .GetShaderMessages(newShader)
+                    .First(x => x.severity == ShaderCompilerMessageSeverity.Error);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile.\n\n" + error.file+":"+error.line+" "+error.message);
             }
 
             return new PatchResult {
                 shader = newShader,
-                patchedPasses = patchedPasses
+                patchedPrograms = patchedPrograms
             };
         }
 
-        private static string PatchPass(string pass, string spsMain, bool isSurfaceShader) {
+        private static (string,int) PatchPass(string pass, string spsMain, string cgIncludes, bool isSurfaceShader) {
+            if (!isSurfaceShader) {
+                // If lightmode is unset (the default of "Always"), set it to ForwardBase
+                // so that we actually receive light data
+                if (!pass.Contains("\"LightMode\"")) {
+                    pass = "\n    Tags { \"LightMode\" = \"ForwardBase\" }\n" + pass;
+                }
+            }
+
+            var patchedPrograms = 0;
+            pass = WithEachProgram(pass, (program, isCgProgram) => {
+                patchedPrograms++;
+                try {
+                    return PatchProgram(program, isCgProgram, spsMain, cgIncludes, isSurfaceShader);
+                } catch (Exception e) {
+                    throw new Exception($"Failed to patch program #{patchedPrograms}: " + e.Message, e);
+                }
+            });
+
+            return (pass, patchedPrograms);
+        }
+
+        private static string PatchProgram(string program, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
             var newVertFunction = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string oldVertFunction = null;
             var foundPragma = false;
-            pass = GetRegex(@"(#pragma[ \t]+" + pragmaKeyword + @"[ \t]+)([^\s]+)([^\n]*)").Replace(pass, match => {
+            program = GetRegex(@"(#pragma[ \t]+" + pragmaKeyword + @"[ \t]+)([^\s]+)([^\n]*)").Replace(program, match => {
                 string newPragma;
                 if (isSurfaceShader) {
                     var extraParams = match.Groups[3].ToString();
@@ -204,24 +245,24 @@ namespace VF.Builder.Haptics {
                 throw new Exception($"Failed to find #pragma {pragmaKeyword}");
             }
 
-            if (!isSurfaceShader) {
-                // If lightmode is unset (the default of "Always"), set it to ForwardBase
-                // so that we actually receive light data
-                if (!pass.Contains("\"LightMode\"")) {
-                    pass = GetRegex(@"\{").Replace(pass, match => {
-                        return match.Groups[0] + "\n    Tags { \"LightMode\" = \"ForwardBase\" }\n";
-                    }, 1);
+            var flattenedProgram = program;
+            if (isCgProgram) {
+                var autoCgHeader = "";
+                autoCgHeader += "#include \"HLSLSupport.cginc\"\n";
+                autoCgHeader += "#include \"UnityShaderVariables.cginc\"\n";
+                if (isSurfaceShader) {
+                    autoCgHeader += "#include \"Lighting.cginc\"\n";
                 }
+                autoCgHeader += cgIncludes + "\n";
+                flattenedProgram = autoCgHeader + flattenedProgram;
             }
-
-            var flattenedPass = ReadAndFlattenContent(pass, includeLibraryFiles: true);
+            flattenedProgram = ReadAndFlattenContent(flattenedProgram, includeLibraryFiles: true);
 
             string oldStructType;
             string returnType;
             string newInputParams;
             string newPassParams;
             string mainParamName;
-            string searchForOldStruct = flattenedPass;
             bool useStructExtends = !isSurfaceShader;
             if (oldVertFunction != null) {
                 var foundOldVert = GetRegex(
@@ -237,19 +278,19 @@ namespace VF.Builder.Haptics {
                         + ")"
                         + @"\)\s*\{" // end param list and start function bracket
                     )
-                    .Matches(flattenedPass)
+                    .Matches(flattenedProgram)
                     .Cast<Match>()
                     .Select(m => {
                         // The reason we search backward for the return type instead of just including it in the regex
                         // is because it makes the regex REALLY SLOW to have wildcards at the start.
                         var ps = m.Groups[1].ToString();
                         var i = m.Index - 1;
-                        if (!Char.IsWhiteSpace(flattenedPass[i])) return null;
-                        while (Char.IsWhiteSpace(flattenedPass[i])) i--;
+                        if (!Char.IsWhiteSpace(flattenedProgram[i])) return null;
+                        while (Char.IsWhiteSpace(flattenedProgram[i])) i--;
                         var endOfReturnType = i + 1;
-                        while (!Char.IsWhiteSpace(flattenedPass[i])) i--;
+                        while (!Char.IsWhiteSpace(flattenedProgram[i])) i--;
                         var startOfReturnType = i + 1;
-                        var r = flattenedPass.Substring(startOfReturnType, endOfReturnType - startOfReturnType);
+                        var r = flattenedProgram.Substring(startOfReturnType, endOfReturnType - startOfReturnType);
                         return Tuple.Create(ps, r);
                     })
                     .Where(t => t != null)
@@ -263,8 +304,8 @@ namespace VF.Builder.Haptics {
                 }
                 // Special case for Fast Fur
                 if (foundOldVert.Length > 1) {
-                    if (flattenedPass.Contains("FUR_SKIN_LAYER")) {
-                        var skinLayerDefined = flattenedPass.Contains("#define FUR_SKIN_LAYER");
+                    if (flattenedProgram.Contains("FUR_SKIN_LAYER")) {
+                        var skinLayerDefined = flattenedProgram.Contains("#define FUR_SKIN_LAYER");
                         foundOldVert = foundOldVert.Where(m => m.Item2 == (skinLayerDefined ? "fragInput" : "hullGeomInput")).ToArray();
                     }
                 }
@@ -301,76 +342,55 @@ namespace VF.Builder.Haptics {
 
             var oldStructBody = "";
             if (oldStructType != null) {
-                var foundOldParam = GetRegex(@"struct\s+" + Regex.Escape(oldStructType) + @"\s*{([^}]*)}")
-                    .Match(searchForOldStruct);
+                var foundOldParam = GetRegex(@"struct\s+" + Regex.Escape(oldStructType) + @"\s*{")
+                    .Match(flattenedProgram);
                 if (foundOldParam.Success) {
-                    oldStructBody = foundOldParam.Groups[1].ToString();
+                    var start = foundOldParam.Index + foundOldParam.Length;
+                    var end = IndexOfEndOfNextContext(flattenedProgram, foundOldParam.Index);
+                    oldStructBody = flattenedProgram.Substring(start, end - start);
                 } else {
                     throw new Exception("Failed to find old struct: " + oldStructType);
                 }
             }
 
-            var newStructBody = "";
-            if (!useStructExtends) newStructBody += oldStructBody;
-            (string type, string name) FindParam(string keyword, string defaultName, string defaultType) {
-                var match = GetRegex(@"([^ \t]+)[ \t]+([^ \t:]+)[ \t:]+" + Regex.Escape(keyword))
-                    .Match(oldStructBody);
-                if (match.Success) {
-                    return (match.Groups[1].ToString(), match.Groups[2].ToString());
-                }
-                newStructBody += $"  {defaultType} {defaultName} : {keyword};\n";
-                return (defaultType,defaultName);
+            var newStructBody = new List<string>();
+            if (!useStructExtends) newStructBody.Add(oldStructBody);
+            newStructBody.Add(GetKeywordDefinesFromStruct(oldStructBody));
+
+            void AddParamIfMissing(string keyword, string defaultName, string defaultType) {
+                newStructBody.Add($"#ifndef SPS_STRUCT_{keyword}_NAME");
+                newStructBody.Add($"  {defaultType} {defaultName} : {keyword};");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE_{defaultType}");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_NAME {defaultName}");
+                newStructBody.Add($"#endif");
             }
+            newStructBody.Add("");
+            newStructBody.Add("// Add parameters needed by SPS if missing from the existing struct");
+            AddParamIfMissing("POSITION", "spsPosition", "float3");
+            AddParamIfMissing("NORMAL", "spsNormal", "float3");
+            AddParamIfMissing("TANGENT", "spsTangent", "float4");
+            AddParamIfMissing("SV_VertexID", "spsVertexId", "uint");
+            AddParamIfMissing("COLOR", "spsColor", "float4");
 
-            var vertexParam = FindParam("POSITION", "spsPosition", "float3");
-            var normalParam = FindParam("NORMAL", "spsNormal", "float3");
-            var vertexIdParam = FindParam("SV_VertexID", "spsVertexId", "uint");
-            var colorParam = FindParam("COLOR", "spsColor", "float4");
-            
-            var newHeader = new List<string>();
-            // Enable appdata features in shaders where they may be controlled by preprocessor defines
-            // liltoon
-            newHeader.Add("#define LIL_APP_POSITION");
-            newHeader.Add("#define LIL_APP_NORMAL");
-            newHeader.Add("#define LIL_APP_VERTEXID");
-            newHeader.Add("#define LIL_APP_COLOR");
-            // UnlitWF
-            newHeader.Add("#define _V2F_HAS_VERTEXCOLOR");
-            // Filamented
-            newHeader.Add("#define HAS_ATTRIBUTE_COLOR");
-            
             var newBody = new List<string>();
-            newBody.Add(spsMain);
-            var extends = useStructExtends ? $" : {oldStructType}" : "";
-            newBody.Add($"struct SpsInputs{extends} {{");
-            newBody.Add(newStructBody);
-            newBody.Add("};");
-
+            
             // Silent Crosstone
             var useEndif = false;
-            if (flattenedPass.Contains("SHADER_STAGE_VERTEX") && !isSurfaceShader) {
+            if (flattenedProgram.Contains("SCSS_FORWARD_VERTEX_INCLUDED") && !isSurfaceShader) {
                 useEndif = true;
                 newBody.Add("#if (defined(SHADER_STAGE_VERTEX) || defined(SHADER_STAGE_GEOMETRY))");
             }
 
+            var extends = useStructExtends ? $" : {oldStructType}" : "";
+            newBody.Add($"struct SpsInputs{extends} {{");
+            newBody.AddRange(newStructBody);
+            newBody.Add("};");
+            
+            newBody.Add(spsMain);
+
             newBody.Add($"{returnType} {newVertFunction}({newInputParams}) {{");
-            var colorIsFloat3 = colorParam.type == "float3";
-            if (colorIsFloat3) {
-                newBody.Add($"  float4 color = float4({mainParamName}.{colorParam.name},1);");
-            }
-            newBody.Add($"  sps_apply(");
-            newBody.Add($"    {mainParamName}.{vertexParam.name}.xyz,");
-            newBody.Add($"    {mainParamName}.{normalParam.name},");
-            newBody.Add($"    {mainParamName}.{vertexIdParam.name},");
-            if (colorIsFloat3) {
-                newBody.Add($"    color");
-            } else {
-                newBody.Add($"    {mainParamName}.{colorParam.name}");
-            }
-            newBody.Add($"  );");
-            if (colorIsFloat3) {
-                newBody.Add($"  {mainParamName}.{colorParam.name} = color.xyz;");
-            }
+
+            newBody.Add($"  sps_apply({mainParamName});");
 
             if (newPassParams != null) {
                 var ret = returnType == "void" ? "" : "return ";
@@ -383,27 +403,44 @@ namespace VF.Builder.Haptics {
             if (useEndif) {
                 newBody.Add("#endif");
             }
+            
+            program = "\n"
+                      + program
+                      + "\n"
+                      + string.Join("\n", newBody)
+                      + "\n";
 
-            // We add the body to the end of the pass, since otherwise it may be too early and
-            // get inserted before includes that are needed for the base data types
-            var startCg = pass.IndexOf("CGPROGRAM");
-            if (startCg < 0) startCg = pass.IndexOf("HLSLPROGRAM");
-            if (startCg > 0) startCg = pass.IndexOf("\n", startCg);
-            if (startCg < 0) throw new Exception("Failed to find CGPROGRAM");
-            pass = pass.Substring(0, startCg) + "\n"
-                   + string.Join("\n", newHeader)
-                   + "\n" + pass.Substring(startCg);
+            return program;
+        }
 
-            // We add the body to the end of the pass, since otherwise it may be too early and
-            // get inserted before includes that are needed for the base data types
-            var endCg = pass.LastIndexOf("ENDCG");
-            if (endCg < 0) endCg = pass.LastIndexOf("ENDHLSL");
-            if (endCg < 0) throw new Exception("Failed to find ENDCG");
-            pass = pass.Substring(0, endCg) + "\n"
-                   + string.Join("\n", newBody)
-                   + "\n" + pass.Substring(endCg);
-
-            return pass;
+        public static string GetKeywordDefinesFromStruct(string structBody) {
+            // Remove comments
+            structBody = Regex.Replace(structBody, @"(//[^\n]*)|(/\*.*?\*/)", "", RegexOptions.Singleline);
+            var output = new List<string>();
+            var sinceLastIf = "";
+            void ProcessSinceLast() {
+                var matches = GetRegex(@"([^\s:;]+)[\s]+([^\s:;]+)[\s]*:[\s]*([^\s:;]+)")
+                    .Matches(sinceLastIf)
+                    .Cast<Match>();
+                foreach (var match in matches) {
+                    var type = match.Groups[1].ToString();
+                    var name = match.Groups[2].ToString();
+                    var keyword = match.Groups[3].ToString();
+                    output.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
+                    output.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
+                }
+                sinceLastIf = "";
+            }
+            foreach (var line in structBody.Split('\n')) {
+                if (line.TrimStart().StartsWith("#")) {
+                    ProcessSinceLast();
+                    output.Add(line);
+                } else {
+                    sinceLastIf += "\n" + line;
+                }
+            }
+            ProcessSinceLast();
+            return string.Join("\n", output);
         }
 
         public class RewriteParamListOutput {
@@ -443,6 +480,52 @@ namespace VF.Builder.Haptics {
                 rewritten = rewritten,
             };
         }
+        
+        private static void WithEachCgInclude(string content, Action<string> withInclude) {
+            var lastIncludeEnd = 0;
+            while (true) {
+                var nextProgramStart = GetRegex(@"\n\s*(CGINCLUDE)\s*\n").Match(content, lastIncludeEnd);
+                if (nextProgramStart.Success) {
+                    var start = nextProgramStart.Index + nextProgramStart.Length;
+                    var endMatch = GetRegex(@"\n\s*ENDCG\s*\n").Match(content, start);
+                    if (!endMatch.Success) {
+                        throw new Exception("Failed to find CGINCLUDE end marker");
+                    }
+                    var end = endMatch.Index;
+                    var oldProgram = content.Substring(start, end - start);
+                    withInclude(oldProgram);
+                    lastIncludeEnd = end;
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        private static string WithEachProgram(string content, Func<string, bool, string> withProgram) {
+            var output = "";
+            var lastProgramEnd = 0;
+            while (true) {
+                var nextProgramStart = GetRegex(@"\n\s*(CGPROGRAM|HLSLPROGRAM)\s*\n").Match(content, lastProgramEnd);
+                if (nextProgramStart.Success) {
+                    var start = nextProgramStart.Index + nextProgramStart.Length;
+                    var isCg = nextProgramStart.Groups[1].ToString() == "CGPROGRAM";
+                    output += content.Substring(lastProgramEnd, start - lastProgramEnd);
+                    var endMatch = GetRegex(@"\n\s*" + (isCg ? "ENDCG" : "ENDHLSL") + @"\s*\n").Match(content, start);
+                    if (!endMatch.Success) {
+                        throw new Exception($"Failed to find {nextProgramStart.Groups[1].ToString()} end marker");
+                    }
+                    var end = endMatch.Index;
+                    var oldProgram = content.Substring(start, end - start);
+                    var newProgram = withProgram(oldProgram, isCg);
+                    output += newProgram;
+                    lastProgramEnd = end;
+                } else {
+                    output += content.Substring(lastProgramEnd);
+                    break;
+                }
+            }
+            return output;
+        }
 
         private static string WithEachPass(string content, Func<string, string> withPass, Func<string, string> withRest) {
             var output = "";
@@ -451,12 +534,12 @@ namespace VF.Builder.Haptics {
             while (true) {
                 var nextPassStart = GetRegex(@"\n\s*Pass[\s{]*\s*\n").Match(content, lastPassEnd);
                 if (nextPassStart.Success) {
-                    var start = nextPassStart.Index;
+                    var start = nextPassStart.Index + nextPassStart.Length;
                     output += content.Substring(lastPassEnd, start - lastPassEnd);
-                    var end = IndexOfEndOfNextContext(content, start);
+                    var end = IndexOfEndOfNextContext(content, nextPassStart.Index);
                     var oldPass = content.Substring(start, end - start);
                     var newPass = withPass(oldPass);
-                    output += $"__PASS_{processedPasses.Count}__";
+                    output += $"\n__PASS_{processedPasses.Count}__\n";
                     processedPasses.Add(newPass);
                     lastPassEnd = end;
                 } else {
@@ -515,7 +598,7 @@ namespace VF.Builder.Haptics {
                     bracketLevel++;
                 } else if (c == '}') {
                     bracketLevel--;
-                    if (bracketLevel == 0) return i+1;
+                    if (bracketLevel == 0) return i;
                 } else if (c == '"') {
                     inString = true;
                 }
@@ -585,13 +668,6 @@ namespace VF.Builder.Haptics {
         }
         private static string ReadAndFlattenContent(string content, HashSet<string> included = null, bool includeLibraryFiles = false) {
             var output = new List<string>();
-            if (includeLibraryFiles && content.Contains("CGPROGRAM")) {
-                content = "#include \"HLSLSupport.cginc\"\n" + content;
-                content = "#include \"UnityShaderVariables.cginc\"\n" + content;
-                if (content.Contains("#pragma surface ")) {
-                    content = "#include \"Lighting.cginc\"\n" + content;
-                }
-            }
             content = WithEachInclude(content, null, includePath => {
                 return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
             }, includeLibraryFiles: includeLibraryFiles);
@@ -602,27 +678,28 @@ namespace VF.Builder.Haptics {
         private static string GetPathToSps() {
             return AssetDatabase.GUIDToAssetPath("6cf9adf85849489b97305dfeecc74768");
         }
-        private static string ReadFile(Shader shader) {
+        private static (string,bool) ReadFile(Shader shader) {
             var path = AssetDatabase.GetAssetPath(shader);
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new Exception("Failed to find source file for the shader");
             }
 
+            var isBuiltIn = false;
             if (path.StartsWith("Resources") || path.StartsWith("Library")) {
+                isBuiltIn = true;
                 if (shader.name == "Standard") {
                     path = $"{GetPathToSps()}/Standard.shader.orig";
                 } else if (shader.name == "Standard (Specular setup)") {
                     path = $"{GetPathToSps()}/StandardSpecular.shader.orig";
                 } else if (shader.name.Contains("Error")) {
-                    throw new VRCFBuilderException(
-                        "This is an error shader. Please verify that the base material actually loads.");
+                    throw new SpsErrorMatException();
                 } else {
                     throw new VRCFBuilderException(
                         "SPS does not yet support this built-in unity shader.");
                 }
             }
 
-            return ReadFile(path);
+            return (ReadFile(path), isBuiltIn);
         }
         private static string ReadFile(string path) {
             string content;

@@ -33,6 +33,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
+        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
 
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
@@ -122,9 +123,6 @@ namespace VF.Feature {
                         foreach (var r in renderers) {
                             var renderer = r.renderer;
                             addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
-                            if (renderer is SkinnedMeshRenderer skin) {
-                                addOtherFeature(new BoundingBoxFix2() { skipRenderer = skin });
-                            }
                         }
                     }
 
@@ -244,10 +242,6 @@ namespace VF.Feature {
                             plug.useHipAvoidance
                         );
                     }
-                    
-                    foreach (var r in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(r.owner());
-                    }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
@@ -326,14 +320,7 @@ namespace VF.Feature {
                         }
                     }
                 }
-                foreach (var c in manager.GetAllUsedControllers()) {
-                    foreach (var clip in c.GetClips()) {
-                        RewriteClip(clip);
-                    }
-                }
-                foreach (var clip in restingState.GetPendingClips()) {
-                    RewriteClip(clip);
-                }
+                clipRewriteService.ForAllClips(RewriteClip);
 
                 rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials.Select(rewrite.configureMaterial).ToArray();
             }

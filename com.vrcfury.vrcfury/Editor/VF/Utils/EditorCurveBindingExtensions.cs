@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VRC.SDK3.Avatars.Components;
-using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     public static class EditorCurveBindingExtensions {
@@ -12,9 +10,19 @@ namespace VF.Utils {
          * Used to make sure that two instances of EditorCurveBinding equal each other,
          * even if they have different discrete settings, etc
          */
-        public static EditorCurveBinding Normalize(this EditorCurveBinding binding) {
-            return EditorCurveBinding.FloatCurve(binding.path, binding.type, binding.propertyName);
+        public static EditorCurveBinding Normalize(this EditorCurveBinding binding, bool combineRotation = false) {
+            var propertyName = binding.propertyName;
+            if (combineRotation && binding.type == typeof(Transform)) {
+                // https://forum.unity.com/threads/new-animationclip-property-names.367288/
+                var lower = propertyName.ToLower();
+                if (lower.Contains("euler") || lower.Contains("rotation")) {
+                    propertyName = NormalizedRotationProperty;
+                }
+            }
+            return EditorCurveBinding.FloatCurve(binding.path, binding.type, propertyName);
         }
+
+        public const string NormalizedRotationProperty = "rotation";
         
         public static bool IsMuscle(this EditorCurveBinding binding) {
             if (binding.path != "") return false;
@@ -52,21 +60,20 @@ namespace VF.Utils {
         }
 
         public enum MuscleBindingType {
-            None,
-            Other,
+            NonMuscle,
+            Body,
             LeftHand,
             RightHand
         }
 
         public static MuscleBindingType GetMuscleBindingType(this EditorCurveBinding binding) {
-            if (!binding.IsMuscle()) return MuscleBindingType.None;
+            if (!binding.IsMuscle()) return MuscleBindingType.NonMuscle;
             if (binding.propertyName.Contains("LeftHand")) return MuscleBindingType.LeftHand;
             if (binding.propertyName.Contains("RightHand")) return MuscleBindingType.RightHand;
-            return MuscleBindingType.Other;
+            return MuscleBindingType.Body;
         }
 
         public static bool IsValid(this EditorCurveBinding binding, VFGameObject baseObject) {
-            if (binding.IsProxyBinding()) return true;
             var obj = baseObject.Find(binding.path);
             if (obj == null) return false;
             if (binding.type == null) return false;

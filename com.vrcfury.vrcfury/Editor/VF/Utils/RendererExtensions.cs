@@ -21,19 +21,29 @@ namespace VF.Utils {
 
         [CanBeNull]
         public static Mesh GetMesh(this Renderer renderer) {
+            Mesh mesh = null;
+
             if (renderer is SkinnedMeshRenderer skin) {
                 if (skin.sharedMesh == null) return null;
-                return skin.sharedMesh;
+                mesh = skin.sharedMesh;
             }
 
             if (renderer is MeshRenderer) {
                 var owner = renderer.owner();
                 var filter = owner.GetComponent<MeshFilter>();
                 if (filter == null || filter.sharedMesh == null) return null;
-                return filter.sharedMesh;
+                mesh = filter.sharedMesh;
             }
 
-            return null;
+            if (mesh != null && !mesh.isReadable) {
+                var path = renderer.owner().GetPath();
+                throw new Exception(
+                    $"The object at {path} contains a mesh with Read/Write disabled. This must be enabled in the mesh import settings." +
+                    $"\n\n" +
+                    AssetDatabase.GetAssetPath(mesh));
+            }
+
+            return mesh;
         }
         
         [CanBeNull]

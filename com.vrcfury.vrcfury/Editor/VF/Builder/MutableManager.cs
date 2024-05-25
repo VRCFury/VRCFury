@@ -53,7 +53,7 @@ namespace VF.Builder {
             return obj;
         }
 
-        private static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
+        public static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
             var serialized = new SerializedObject(obj);
             var changed = false;
             Iterate(serialized, prop => {
@@ -150,18 +150,16 @@ namespace VF.Builder {
         // Object.Instantiate
         private static T SafeInstantiate<T>(T original) where T : Object {
             if (original is Material || original is Mesh) {
-                return Object.Instantiate(original);
+                var c = Object.Instantiate(original);
+                VrcfObjectFactory.Register(c);
+                return c;
             }
 
-            T copy;
-            if (original is ScriptableObject) {
-                copy = ScriptableObject.CreateInstance(original.GetType()) as T;
-            } else {
-                copy = Activator.CreateInstance(original.GetType()) as T;
+            if (original is AnimationClip clip) {
+                return clip.Clone() as T;
             }
-            if (copy == null) {
-                throw new VRCFBuilderException("Failed to create copy of " + original);
-            }
+
+            var copy = VrcfObjectFactory.Create(original.GetType()) as T;
             EditorUtility.CopySerialized(original, copy);
             return copy;
         }
@@ -214,9 +212,6 @@ namespace VF.Builder {
                 if (string.IsNullOrWhiteSpace(copyMat.GetTag("thry_rename_suffix", false))) {
                     copyMat.SetOverrideTag("thry_rename_suffix", Regex.Replace(original.name, "[^a-zA-Z0-9_]", ""));
                 }
-            }
-            if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
-                copyClip.WriteProxyBinding(originalClip);
             }
             return copy;
         }

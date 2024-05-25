@@ -39,7 +39,7 @@ namespace VF.Inspector {
                     "Note: This is NOT NEEDED if this area contains a VRCFury Global Collider (which can already do the same)."
                 ));
 
-                container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject));
+                container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));
             
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));
 

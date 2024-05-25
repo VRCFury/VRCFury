@@ -7,6 +7,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -52,7 +53,7 @@ namespace VF.Service {
             }
             SetTags("");
 
-            if (HapticUtils.GetClosestHumanoidBone(obj, manager?.AvatarObject) != HumanBodyBones.Hips || !useHipAvoidance) {
+            if (ClosestBoneUtils.GetClosestHumanoidBone(obj) != HumanBodyBones.Hips || !useHipAvoidance) {
                 SetTags("", "_SelfNotOnHips");
             }
         }
@@ -116,7 +117,7 @@ namespace VF.Service {
                 }).ToList();
             }
             SetTags("");
-            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance && HapticUtils.GetClosestHumanoidBone(obj, manager.AvatarObject) == HumanBodyBones.Hips) {
+            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance && ClosestBoneUtils.GetClosestHumanoidBone(obj) == HumanBodyBones.Hips) {
                 SetTags("_SelfNotOnHips");
             }
 

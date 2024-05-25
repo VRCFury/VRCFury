@@ -10,6 +10,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 
 namespace VF.Feature {
     public class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
@@ -48,7 +49,7 @@ namespace VF.Feature {
 
             wrapper.active = false;
 
-            var clip = new AnimationClip();
+            var clip = VrcfObjectFactory.Create<AnimationClip>();
             clipBuilder.Enable(clip, wrapper);
             directTree.Add(security.GetEnabled().AsFloat(), clip);
         }

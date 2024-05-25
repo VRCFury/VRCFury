@@ -6,7 +6,7 @@ using VF.Builder;
 
 namespace VF.Utils {
     public static class MaterialLocker {
-        public static VFGameObject avatarObject = null;
+        public static VFGameObject injectedAvatarObject = null;
         
         /**
          * We need to lockdown materials (that support it) before we make a clone for several reasons:
@@ -22,26 +22,32 @@ namespace VF.Utils {
             try {
                 LockUnsafe(mat);
             } catch (Exception e) {
-                throw new Exception("Failed to lock material " + mat.name, e);
+                throw new Exception(
+                    "Failed to lock material " + mat.name + ". This usually means your Poiyomi is out of date. You can update it from https://poiyomi.github.io/vpm\n\n" + e.Message, e);
             }
         }
 
         private static void LockUnsafe(Material mat) {
             // If the avatar is setup to use d4rk optimizer lockdown, we SHOULD NOT lock it using poi, because it's intended
             // for all the mats to remain unlocked until d4rk locks them at the end of the build
-            if (UsesD4rkLockdown()) return;
+            if (UsesD4rk(injectedAvatarObject, true)) return;
 
             LockPoiyomi(mat);
         }
         
-        private static bool UsesD4rkLockdown() {
+        public static bool UsesD4rk(VFGameObject avatarObject, bool andLockdown) {
             if (avatarObject == null) return false;
             var d4rkOptimizerType = ReflectionUtils.GetTypeFromAnyAssembly("d4rkAvatarOptimizer");
             if (d4rkOptimizerType == null) return false;
-            var lockProp = d4rkOptimizerType.GetProperty("WritePropertiesAsStaticValues", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (lockProp == null) return false;
             var optimizers = avatarObject.GetComponentsInSelfAndChildren(d4rkOptimizerType);
-            return optimizers.Any(o => (bool)lockProp.GetValue(o));
+
+            if (andLockdown) {
+                var lockProp = d4rkOptimizerType.GetProperty("WritePropertiesAsStaticValues", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (lockProp == null) return false;
+                return optimizers.Any(o => (bool)lockProp.GetValue(o));
+            } else {
+                return optimizers.Any();
+            }
         }
 
         private static void LockPoiyomi(Material mat) {

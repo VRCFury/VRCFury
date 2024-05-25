@@ -10,6 +10,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Menu;
 using VF.Service;
+using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 
@@ -19,7 +20,7 @@ namespace VF.Inspector {
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
-            container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject, true));
+            container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target, true));
             
             container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
             
@@ -461,7 +462,7 @@ namespace VF.Inspector {
         }
 
         public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
-            if (HapticUtils.GetClosestHumanoidBone(socket.owner()) != HumanBodyBones.Hips) return false;
+            if (ClosestBoneUtils.GetClosestHumanoidBone(socket.owner()) != HumanBodyBones.Hips) return false;
 
             var name = GetName(socket).ToLower();
             if (name.Contains("rubbing") || name.Contains("job")) return false;
@@ -470,7 +471,7 @@ namespace VF.Inspector {
         }
 
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
-            var closestBone = HapticUtils.GetClosestHumanoidBone(socket.owner());
+            var closestBone = ClosestBoneUtils.GetClosestHumanoidBone(socket.owner());
             if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) return true;
             return ShouldProbablyHaveTouchZone(socket);
         }

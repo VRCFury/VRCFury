@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Menu;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
@@ -15,12 +16,12 @@ namespace VF.Feature {
             CleanFromAvatar();
 
             VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
-            Directory.CreateDirectory(tmpDir);
+            VRCFuryAssetDatabase.CreateFolder(tmpDir);
 
 #if UNITY_2022_1_OR_NEWER
             tempAsset = null;
 #else
-            tempAsset = new AnimatorController();
+            tempAsset = VrcfObjectFactory.Create<AnimatorController>();
             VRCFuryAssetDatabase.SaveAsset(tempAsset, tmpDir, "tempStorage");
 #endif
         }
