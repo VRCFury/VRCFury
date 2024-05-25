@@ -157,6 +157,7 @@ public class VRCFuryBuilder {
         injector.GetService(typeof(FinalizeControllerBuilder));
         injector.GetService(typeof(MarkThingsAsDirtyJustInCaseBuilder));
         injector.GetService(typeof(FixEmptyMotionBuilder));
+        injector.GetService(typeof(DriveParameterBuilder));
 
         foreach (var service in injector.GetAllServices()) {
             AddActionsFromObject(service, avatarObject);

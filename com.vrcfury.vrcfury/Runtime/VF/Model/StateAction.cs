@@ -194,4 +194,22 @@ namespace VF.Model.StateAction {
         public float loopTime = 5;
     }
 
+    
+    [Serializable]
+    public class SyncParamAction : Action {
+        public string param;
+        public float value = 0;
+    }
+
+    [Serializable]
+    public class ToggleStateAction : Action {
+        public string toggle;
+        public float value = 0;
+    }
+
+    [Serializable]
+    public class TagStateAction : Action {
+        public string tag;
+        public float value = 0;
+    }
 }

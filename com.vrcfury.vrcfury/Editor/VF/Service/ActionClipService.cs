@@ -27,14 +27,15 @@ namespace VF.Service {
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+        [VFAutowired] private readonly DriveParameterService driveParameterService;
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null) {
-            return LoadStateAdv(name, state, animObjectOverride).onClip;
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, ToggleBuilder toggleFeature = null) {
+            return LoadStateAdv(name, state, animObjectOverride, toggleFeature: toggleFeature).onClip;
         }
         
-        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null) {
+        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, ToggleBuilder toggleFeature = null) {
             var result = LoadStateAdv(name, state, avatarManager.AvatarObject, animObjectOverride ?? avatarManager.CurrentComponentObject, this);
             result.onClip.name = manager.GetFx().NewClipName(name);
             return result;
@@ -45,7 +46,9 @@ namespace VF.Service {
             public AnimationClip onClip = VrcfObjectFactory.Create<AnimationClip>();
             public AnimationClip implicitRestingClip = VrcfObjectFactory.Create<AnimationClip>();
         }
-        public static BuiltAction LoadStateAdv(string name, State state, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service = null) {
+        public static BuiltAction LoadStateAdv(string name, State state, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service = null, ToggleBuilder toggleFeature = null) {
+
+
             if (state == null) {
                 return new BuiltAction();
             }
@@ -367,6 +370,18 @@ namespace VF.Service {
 
                         onClip.SetLooping(true);
                         
+                        break;
+                    }
+                    case SyncParamAction syncParamAction: {
+                        service.driveParameterService.CreateParamTrigger(onClip, syncParamAction.param, syncParamAction.value);
+                        break;
+                    }
+                    case ToggleStateAction toggleStateAction: {
+                        service.driveParameterService.CreateToggleTrigger(onClip, toggleStateAction.toggle, toggleStateAction.value);
+                        break;
+                    }
+                    case TagStateAction tagStateAction: {
+                        service.driveParameterService.CreateTagTrigger(onClip, tagStateAction.tag, tagStateAction.value, toggleFeature);
                         break;
                     }
                 }

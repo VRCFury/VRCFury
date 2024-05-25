@@ -386,6 +386,40 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("loopTime"), "Loop time (seconds)"));
                 return output;
             }
+
+            case nameof(SyncParamAction): {
+                var col = new VisualElement();
+
+                var row = new VisualElement().Row();
+                row.Add(Title("Set a Synced Param").FlexBasis(150));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("param")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value")).FlexBasis(30));
+                col.Add(row);
+
+                return col;
+            }
+            case nameof(ToggleStateAction): {
+                var col = new VisualElement();
+
+                var row = new VisualElement().Row();
+                row.Add(Title("Set a Toggle State").FlexBasis(150));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggle")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value")).FlexBasis(30));
+                col.Add(row);
+
+                return col;
+            }
+            case nameof(TagStateAction): {
+                var col = new VisualElement();
+
+                var row = new VisualElement().Row();
+                row.Add(Title("Set a Tag State").FlexBasis(150));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("tag")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value")).FlexBasis(30));
+                col.Add(row);
+
+                return col;
+            }
         }
 
         return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
