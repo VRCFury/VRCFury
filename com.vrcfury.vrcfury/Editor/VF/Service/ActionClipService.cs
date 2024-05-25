@@ -36,7 +36,7 @@ namespace VF.Service {
         }
         
         public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, ToggleBuilder toggleFeature = null) {
-            var result = LoadStateAdv(name, state, avatarManager.AvatarObject, animObjectOverride ?? avatarManager.CurrentComponentObject, this);
+            var result = LoadStateAdv(name, state, avatarManager.AvatarObject, animObjectOverride ?? avatarManager.CurrentComponentObject, this, toggleFeature);
             result.onClip.name = manager.GetFx().NewClipName(name);
             return result;
         }
