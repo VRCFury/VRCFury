@@ -35,12 +35,10 @@ namespace VF.Utils {
                 mesh = filter.sharedMesh;
             }
 
-            if (mesh != null && !mesh.isReadable) {
-                var path = renderer.owner().GetPath();
-                throw new Exception(
-                    $"The object at {path} contains a mesh with Read/Write disabled. This must be enabled in the mesh import settings." +
-                    $"\n\n" +
-                    AssetDatabase.GetAssetPath(mesh));
+            if (mesh != null && !mesh.isReadable && Application.isPlaying) {
+                var copy = MutableManager.MakeMutable(mesh, true);
+                ForceReadWrite(copy);
+                return copy;
             }
 
             return mesh;
@@ -52,7 +50,16 @@ namespace VF.Utils {
             if (mesh == null) return null;
             var copy = MutableManager.MakeMutable(mesh);
             renderer.SetMesh(copy);
+            ForceReadWrite(copy);
             return copy;
+        }
+
+        private static void ForceReadWrite(Mesh mesh) {
+            var so = new SerializedObject(mesh);
+            so.Update();
+            var sp = so.FindProperty("m_IsReadable");
+            sp.boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         public static void SetMesh(this Renderer renderer, Mesh mesh) {
@@ -72,6 +79,7 @@ namespace VF.Utils {
                     );
                 filter.sharedMesh = mesh;
                 VRCFuryEditorUtils.MarkDirty(filter);
+                return;
             }
 
             throw new Exception("Cannot set mesh on renderer with unknown type: " + renderer.owner().GetPath());

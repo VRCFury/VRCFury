@@ -125,7 +125,8 @@ namespace VF.Builder.Haptics {
         private static Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);
 
         public static bool IsTps(Material mat) {
-            return mat && mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
+            if (mat == null) return false;
+            return mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
         }
 
         public static Quaternion GetTpsRotation(Material mat) {
