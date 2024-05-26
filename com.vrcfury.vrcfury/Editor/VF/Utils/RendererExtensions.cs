@@ -36,11 +36,19 @@ namespace VF.Utils {
             }
 
             if (mesh != null && !mesh.isReadable) {
-                var path = renderer.owner().GetPath();
-                throw new Exception(
-                    $"The object at {path} contains a mesh with Read/Write disabled. This must be enabled in the mesh import settings." +
-                    $"\n\n" +
-                    AssetDatabase.GetAssetPath(mesh));
+                if (AssetDatabase.IsMainAsset(mesh) && mesh.vertices.Length > 0) {
+                    var so = new SerializedObject(mesh);
+                    so.Update();
+                    var sp = so.FindProperty("m_IsReadable");
+                    sp.boolValue = true;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                } else {
+                    var path = renderer.owner().GetPath();
+                    throw new Exception(
+                        $"The object at {path} contains a mesh with Read/Write disabled. This must be enabled in the mesh import settings." +
+                        $"\n\n" +
+                        AssetDatabase.GetAssetPath(mesh));
+                }
             }
 
             return mesh;
