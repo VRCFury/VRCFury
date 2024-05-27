@@ -115,6 +115,8 @@ namespace VF.Service {
 
             var physbonesToReset = new HashSet<VFGameObject>();
 
+            VFAFloat triggerParam = null;
+
             foreach (var action in actions) {
                 switch (action) {
                     case FlipbookAction flipbook: {
@@ -369,15 +371,27 @@ namespace VF.Service {
                         break;
                     }
                     case SyncParamAction syncParamAction: {
-                        service.driveParameterService.CreateParamTrigger(onClip, syncParamAction.param, syncParamAction.value);
+                        if (triggerParam == null) {
+                            triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                            onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
+                        }
+                        service.driveParameterService.CreateParamTrigger(triggerParam, syncParamAction.param, syncParamAction.value);
                         break;
                     }
                     case ToggleStateAction toggleStateAction: {
-                        service.driveParameterService.CreateToggleTrigger(onClip, toggleStateAction.toggle, toggleStateAction.value);
+                         if (triggerParam == null) {
+                            triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                            onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
+                        }
+                        service.driveParameterService.CreateToggleTrigger(triggerParam, toggleStateAction.toggle, toggleStateAction.value);
                         break;
                     }
                     case TagStateAction tagStateAction: {
-                        service.driveParameterService.CreateTagTrigger(onClip, tagStateAction.tag, tagStateAction.value, toggleFeature);
+                        if (triggerParam == null) {
+                            triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                            onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
+                        }
+                        service.driveParameterService.CreateTagTrigger(triggerParam, tagStateAction.tag, tagStateAction.value, toggleFeature);
                         break;
                     }
                 }
