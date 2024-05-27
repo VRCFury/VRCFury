@@ -81,7 +81,8 @@ namespace VF.Service {
                     var clip = VrcfObjectFactory.Create<AnimationClip>();
                     clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 0);
                     var state = layer.NewState(triggerParam.Name()).WithAnimation(clip);
-                    start.TransitionsTo(state).When(triggerParam.IsGreaterThan(0.5f));
+                    start.TransitionsToExit().When(triggerParam.IsGreaterThan(0.5f));
+                    state.TransitionsFromEntry().When(triggerParam.IsGreaterThan(0.5f));
                     state.TransitionsToExit().When(triggerParam.IsLessThan(0.5f));
                     states[triggerParam] = state;
                 }
