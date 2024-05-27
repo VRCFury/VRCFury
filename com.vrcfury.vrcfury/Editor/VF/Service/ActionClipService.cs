@@ -89,25 +89,25 @@ namespace VF.Service {
                 if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)) {
                     types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Body);
                 }
+                var copy = clip.Clone();
                 foreach (var muscleType in types) {
-                    var trigger = service.fullBodyEmoteService.AddClip(clip, muscleType);
-                    onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
+                    var trigger = service.fullBodyEmoteService.AddClip(copy, muscleType);
+                    clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
                 }
-            }
-            bool IsStandaloneFullBodyClip(AnimationClip clip) {
-                var muscleTypes = clip.GetMuscleBindingTypes();
-                if (muscleTypes.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) return false;
-                if (!muscleTypes.Any()) return false;
-                return true;
+                clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
+                    if (b.IsMuscle()) return null;
+                    return b;
+                }));
             }
 
             var firstClip = actions
                 .OfType<AnimationClipAction>()
                 .Select(action => action.clip.Get())
                 .NotNull()
-                .FirstOrDefault(clip => !IsStandaloneFullBodyClip(clip));
+                .FirstOrDefault();
             if (firstClip) {
                 var copy = firstClip.Clone();
+                AddFullBodyClip(copy);
                 copy.Rewrite(rewriter);
                 copy.name = onClip.name;
                 onClip = copy;
@@ -205,10 +205,7 @@ namespace VF.Service {
                         if (clipActionClip == null || clipActionClip == firstClip) break;
 
                         var copy = clipActionClip.Clone();
-                        if (IsStandaloneFullBodyClip(copy)) {
-                            AddFullBodyClip(copy);
-                            break;
-                        }
+                        AddFullBodyClip(copy);
                         copy.Rewrite(rewriter);
                         onClip.CopyFrom(copy);
                         break;
@@ -390,8 +387,6 @@ namespace VF.Service {
                 var param = service.physboneResetService.CreatePhysBoneResetter(physbonesToReset, name);
                 onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
             }
-
-            AddFullBodyClip(onClip);
 
             return new BuiltAction() {
                 onClip = onClip,

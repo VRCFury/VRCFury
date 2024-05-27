@@ -219,11 +219,17 @@ namespace VF.Service {
 
             var output = MakeAap(name, def: def);
 
+            var clipCache = new Dictionary<float, AnimationClip>();
+            AnimationClip MakeCachedSetter(float multiplier) {
+                if (clipCache.TryGetValue(multiplier, out var cached)) return cached;
+                return clipCache[multiplier] = MakeSetter(output, multiplier);
+            }
+            
             foreach (var (input,multiplier) in components) {
                 if (input.param != null) {
-                    directTree.Add(input.param, MakeSetter(output, multiplier));
+                    directTree.Add(input.param, MakeCachedSetter(multiplier));
                 } else {
-                    directTree.Add(MakeSetter(output, input.constt * multiplier));
+                    directTree.Add(MakeCachedSetter(input.constt * multiplier));
                 }
             }
 

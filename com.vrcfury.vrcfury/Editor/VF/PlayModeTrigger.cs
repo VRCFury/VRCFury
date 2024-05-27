@@ -9,6 +9,7 @@ using VF.Inspector;
 using VF.Menu;
 using VF.Model;
 using VF.Service;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
@@ -17,6 +18,7 @@ namespace VF {
     public class PlayModeTrigger {
         private static string tmpDir;
         private const string TriggerObjectName = "__vrcf_play_mode_trigger";
+        private static bool scannedThisFrame = false;
 
         [InitializeOnLoadMethod]
         static void Init() {
@@ -25,9 +27,10 @@ namespace VF {
                 if (Application.isPlaying && !addedTriggerObjectThisPlayMode) {
                     addedTriggerObjectThisPlayMode = true;
                     var obj = new GameObject(TriggerObjectName);
-                    RescanOnStartComponent.AddToObject(obj);
+                    RescanOnStartComponent.AddToObject(obj, true);
                 }
             };
+            Scheduler.Schedule(() => scannedThisFrame = false, 0);
         }
 
         private static bool addedTriggerObjectThisPlayMode = false;
@@ -57,6 +60,8 @@ namespace VF {
         private static void Rescan() {
             if (!Application.isPlaying) return;
             if (!PlayModeMenuItem.Get()) return;
+            if (scannedThisFrame) return;
+            scannedThisFrame = true;
 
             if (tmpDir == null) {
                 var tmpDirParent = TmpFilePackage.GetPath() + "/PlayMode";
@@ -145,9 +150,10 @@ namespace VF {
                 }
             }
 
-            public static void AddToObject(VFGameObject obj) {
+            public static void AddToObject(VFGameObject obj, bool evenIfAlreadyEnabled = false) {
                 if (!Application.isPlaying) return;
                 if (obj.GetComponent<RescanOnStartComponent>() != null) return;
+                if (!evenIfAlreadyEnabled && obj.activeInHierarchy) return;
                 obj.AddComponent<RescanOnStartComponent>();
             }
         }

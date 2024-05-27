@@ -267,6 +267,37 @@ namespace VF.Inspector {
                 holder.schedule.Execute(Update).Every(1000);
                 output.Add(holder);
             }
+            {
+                var holder = new VisualElement();
+                void Update() {
+                    var legacyPaths = new List<string>();
+                    var avatar = VRCAvatarUtils.GuessAvatarObject(c);
+                    if (avatar != null) {
+                        foreach (var renderer in avatar.GetComponentsInSelfAndChildren<Renderer>()) {
+                            foreach (var m in renderer.sharedMaterials) {
+                                if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
+                                    legacyPaths.Add($"{m.name} in {renderer.owner().GetPath(avatar)}");
+                                }
+                            }
+                        }
+                    }
+
+                    holder.Clear();
+                    if (legacyPaths.Any()) {
+                        var warning = VRCFuryEditorUtils.Warn(
+                            "This avatar still contains a legacy DPS or TPS penetrator! This means your avatar has not been fully converted to SPS," +
+                            " and your legacy penetrator may cause issues if too many sockets are on nearby." +
+                            "\n\n" +
+                            "Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                            string.Join("\n", legacyPaths)
+                        );
+                        holder.Add(warning);
+                    }
+                }
+                Update();
+                holder.schedule.Execute(Update).Every(1000);
+                output.Add(holder);
+            }
             return output;
         }
 
