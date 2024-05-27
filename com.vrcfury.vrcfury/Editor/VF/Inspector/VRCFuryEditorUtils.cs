@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -9,6 +10,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Model;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -203,16 +205,29 @@ public static class VRCFuryEditorUtils {
         var newEntry = list.GetArrayElementAtIndex(list.arraySize-1);
         list.serializedObject.ApplyModifiedProperties();
 
-        var resetFlag = newEntry.FindPropertyRelative("ResetMePlease2");
-        if (resetFlag != null) {
-            resetFlag.boolValue = true;
+        // InsertArrayElementAtIndex makes a copy of the last element for some reason, instead of a fresh copy
+        // We fix that here by finding the raw array and creating a fresh object for the new element
+        if (newEntry.propertyType == SerializedPropertyType.ManagedReference) {
+            newEntry.managedReferenceValue = null;
             list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            UnitySerializationUtils.FindAndResetMarkedFields(list.serializedObject.targetObject);
-            list.serializedObject.Update();
+        } else {
+            if (list.GetObject() is IList listObj) {
+                var type = listObj[listObj.Count - 1].GetType();
+                if (type == typeof(string)) {
+                    listObj[listObj.Count - 1] = "";
+                } else {
+                    listObj[listObj.Count - 1] = Activator.CreateInstance(type);
+                }
+                list.serializedObject.Update();
+            } else {
+                UnityEngine.Debug.LogError("Failed to find list to reset new entry. This is likely a VRCFury bug, please report on the discord.");
+            }
         }
 
-        if (doWith != null) doWith(newEntry);
-        list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        if (doWith != null) {
+            doWith(newEntry);
+            list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         return newEntry;
     }
@@ -363,6 +378,18 @@ public static class VRCFuryEditorUtils {
     }
 
     public static VisualElement OnChange(SerializedProperty prop, Action changed) {
+
+        var c = changed;
+        changed = () => {
+            // Unity sometimes calls onchange when the SerializedProperty is no longer valid.
+            // Unfortunately the only way to detect this is to try to access it and catch an error, since isValid is internal
+            try {
+                var name = prop.name;
+            } catch (Exception) {
+                return;
+            }
+            c();
+        };
 
         switch(prop.propertyType) {
             case SerializedPropertyType.Boolean:
@@ -529,7 +556,7 @@ public static class VRCFuryEditorUtils {
         if (refreshElement != null) {
             var holder = new VisualElement();
             rightColumn.Add(holder);
-            RefreshOnInterval(el, () => {
+            void Update() {
                 holder.Clear();
                 var show = false;
                 try {
@@ -543,12 +570,14 @@ public static class VRCFuryEditorUtils {
                     show = true;
                 }
                 el.SetVisible(show);
-            }, interval);
+            }
+            Update();
+            holder.schedule.Execute(Update).Every((long)(interval * 1000));
         } else {
             var label = WrappedLabel(message);
             rightColumn.Add(label);
             if (refreshMessage != null) {
-                RefreshOnInterval(el, () => {
+                void Update() {
                     var show = false;
                     try {
                         label.text = refreshMessage();
@@ -558,7 +587,10 @@ public static class VRCFuryEditorUtils {
                         show = true;
                     }
                     el.SetVisible(show);
-                }, interval);
+                }
+
+                Update();
+                label.schedule.Execute(Update).Every((long)(interval * 1000));
             }
         }
         
@@ -603,6 +635,7 @@ public static class VRCFuryEditorUtils {
             // DexClone_worldSpace/CloneContainer0?
             if (obj.name.StartsWith("CloneContainer")) return true;
             if (obj.name == "DexClone_worldSpace") return true;
+            if (obj.name == "CCopy World Space") return true;
             obj = obj.parent;
         }
         return false;
@@ -626,6 +659,10 @@ public static class VRCFuryEditorUtils {
         });
     }
 
+    [InitializeOnLoadMethod]
+    public static void MakeMarkDirtyAvailableToRuntime() {
+        VRCFury.markDirty = MarkDirty;
+    }
     public static void MarkDirty(Object obj) {
         EditorUtility.SetDirty(obj);
         
@@ -643,24 +680,6 @@ public static class VRCFuryEditorUtils {
         if (!scene.isLoaded) return;
         if (!scene.IsValid()) return;
         EditorSceneManager.MarkSceneDirty(scene);
-    }
-
-    public static void RefreshOnInterval(VisualElement el, Action run, float interval = 1) {
-        double lastUpdate = 0;
-        void Update() {
-            var now = EditorApplication.timeSinceStartup;
-            if (lastUpdate < now - interval) {
-                lastUpdate = now;
-                run();
-            }
-        }
-        el.RegisterCallback<AttachToPanelEvent>(e => {
-            EditorApplication.update += Update;
-        });
-        el.RegisterCallback<DetachFromPanelEvent>(e => {
-            EditorApplication.update -= Update;
-        });
-        Update();
     }
 
     public static string Rev(string s) {

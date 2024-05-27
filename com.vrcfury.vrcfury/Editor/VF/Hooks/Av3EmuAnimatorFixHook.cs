@@ -1,9 +1,17 @@
-﻿using System;
+using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VRC.Dynamics;
+using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
+using VRC.SDKBase;
 using VRC.SDKBase.Editor.BuildPipeline;
+using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 
 namespace VF.Hooks {
@@ -14,8 +22,17 @@ namespace VF.Hooks {
      */
     internal class Av3EmuAnimatorFixHook : IVRCSDKPreprocessAvatarCallback {
         public int callbackOrder => int.MaxValue;
+        private static bool restartPending = false;
         public bool OnPreprocessAvatar(GameObject obj) {
-            if (Application.isPlaying) RestartAv3Emulator();
+            if (Application.isPlaying && !restartPending) {
+                restartPending = true;
+                EditorApplication.delayCall += () => {
+                    restartPending = false;
+                    if (Application.isPlaying) {
+                        RestartAv3Emulator();
+                    }
+                };
+            }
             return true;
         }
         
@@ -66,6 +83,19 @@ namespace VF.Hooks {
                     restartField.SetValue(emulator, true);
                 }
 
+                if (emulators.Length >= 1) {
+                    var avatars = Object.FindObjectsOfType<VRCAvatarDescriptor>();
+                    foreach (var avatar in avatars) {
+                        foreach (var component in avatar.GetComponentsInChildren<IParameterSetup>(true)) {
+                            foreach (var fieldInfo in component.GetType().GetFields()) {
+                                if (fieldInfo.FieldType == typeof(IAnimParameterAccess)) {
+                                    fieldInfo.SetValue(component, null);
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 foreach (var root in VFGameObject.GetRoots()) {
                     if (PlayModeTrigger.IsAv3EmulatorClone(root)) {
                         root.Destroy();

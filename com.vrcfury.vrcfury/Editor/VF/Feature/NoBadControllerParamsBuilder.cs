@@ -22,7 +22,7 @@ namespace VF.Feature {
     public class NoBadControllerParamsBuilder {
         [VFAutowired] private readonly AvatarManager manager;
         
-        [FeatureBuilderAction(FeatureOrder.RemoveBadControllerTransitions)]
+        [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in manager.GetAllUsedControllers()) {
                 UpgradeWrongParamTypes(c.GetRaw());
@@ -33,10 +33,12 @@ namespace VF.Feature {
         public static void RemoveWrongParamTypes(VFController controller) {
             var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam").Name());
             var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat").Name());
+            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true).Name());
 
             var paramTypes = controller.parameters
                 .ToImmutableDictionary(p => p.name, p => p.type);
             foreach (var transition in new AnimatorIterator.Transitions().From(controller)) {
+                var hasBadThreshold = false;
                 transition.RewriteConditions(condition => {
                     var mode = condition.mode;
                     var valid = true;
@@ -58,6 +60,15 @@ namespace VF.Feature {
                                     || mode == AnimatorConditionMode.NotEqual
                                     || mode == AnimatorConditionMode.Greater
                                     || mode == AnimatorConditionMode.Less;
+                            
+                             // When you use an int with a float threshold, the editor shows the floor value,
+                             // but evaluates the condition using the original value. Let's fix that so the editor
+                             // valus is actually the one that is used.
+                             var floored = (int)Math.Floor(condition.threshold);
+                             if (condition.threshold != floored) {
+                                 condition.threshold = floored;
+                                 hasBadThreshold = true;
+                             }
                         }
 
                         if (type == AnimatorControllerParameterType.Float) {
@@ -74,6 +85,10 @@ namespace VF.Feature {
 
                     return condition;
                 });
+
+                if (hasBadThreshold) {
+                    transition.AddCondition(AnimatorConditionMode.If, 0, badThreshold.Value);
+                }
             }
 
             bool IsFloat(string p) =>
@@ -151,7 +166,14 @@ namespace VF.Feature {
             // Change the param types
             controller.parameters = controller.parameters.Select(p => {
                 if (paramTypes.TryGetValue(p.name, out var type)) {
+                    float oldDefault = 0;
+                    if (p.type == AnimatorControllerParameterType.Bool) oldDefault = p.defaultBool ? 1 : 0;
+                    if (p.type == AnimatorControllerParameterType.Int) oldDefault = p.defaultInt;
+                    if (p.type == AnimatorControllerParameterType.Float) oldDefault = p.defaultFloat;
                     p.type = type;
+                    p.defaultBool = oldDefault > 0;
+                    p.defaultInt = (int)Math.Round(oldDefault);
+                    p.defaultFloat = oldDefault;
                 }
                 return p;
             }).ToArray();
@@ -160,6 +182,7 @@ namespace VF.Feature {
             foreach (var layer in controller.GetLayers()) {
                 AnimatorIterator.ForEachTransitionRW(layer, transition => {
                     var output = new List<AnimatorCondition>();
+                    var changed = false;
                     var flip = new List<int>();
                     foreach (var _c in transition.conditions) {
                         var c = _c;
@@ -176,6 +199,7 @@ namespace VF.Feature {
                                 c.mode = AnimatorConditionMode.Less;
                                 c.threshold = _c.threshold + 0.001f;
                                 output.Add(c);
+                                changed = true;
                                 continue;
                             }
                             if (mode == AnimatorConditionMode.NotEqual) {
@@ -183,6 +207,7 @@ namespace VF.Feature {
                                 c.mode = AnimatorConditionMode.Greater;
                                 c.threshold = _c.threshold;
                                 output.Add(c);
+                                changed = true;
                                 continue;
                             }
                         }
@@ -190,15 +215,17 @@ namespace VF.Feature {
                             if (mode == AnimatorConditionMode.If) {
                                 c.mode = AnimatorConditionMode.Greater;
                                 c.threshold = 0;
+                                changed = true;
                             }
                             if (mode == AnimatorConditionMode.IfNot) {
                                 c.mode = AnimatorConditionMode.Less;
                                 c.threshold = (type == AnimatorControllerParameterType.Float ? 0.001f : 1f);
+                                changed = true;
                             }
                         }
                         output.Add(c);
                     }
-                    transition.conditions = output.ToArray();
+                    if (changed) transition.conditions = output.ToArray();
 
                     var outputTransitions = new List<AnimatorTransitionBase>();
                     outputTransitions.Add(transition);

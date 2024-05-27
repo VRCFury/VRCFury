@@ -6,15 +6,13 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Builder.Haptics;
 using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public class MutableManager {
-        private readonly string tmpDir;
+    public static class MutableManager {
 
         private static readonly Type[] typesToMakeMutable = {
             // This has to be here because animator override controllers
@@ -42,10 +40,6 @@ namespace VF.Builder {
             typeof(StateMachineBehaviour),
         };
 
-        public MutableManager(string tmpDir) {
-            this.tmpDir = tmpDir;
-        }
-
         private static void Iterate(SerializedObject obj, Action<SerializedProperty> act) {
             var prop = obj.GetIterator();
             do {
@@ -59,7 +53,7 @@ namespace VF.Builder {
             return obj;
         }
 
-        private static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
+        public static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
             var serialized = new SerializedObject(obj);
             var changed = false;
             Iterate(serialized, prop => {
@@ -156,18 +150,16 @@ namespace VF.Builder {
         // Object.Instantiate
         private static T SafeInstantiate<T>(T original) where T : Object {
             if (original is Material || original is Mesh) {
-                return Object.Instantiate(original);
+                var c = Object.Instantiate(original);
+                VrcfObjectFactory.Register(c);
+                return c;
             }
 
-            T copy;
-            if (original is ScriptableObject) {
-                copy = ScriptableObject.CreateInstance(original.GetType()) as T;
-            } else {
-                copy = Activator.CreateInstance(original.GetType()) as T;
+            if (original is AnimationClip clip) {
+                return clip.Clone() as T;
             }
-            if (copy == null) {
-                throw new VRCFBuilderException("Failed to create copy of " + original);
-            }
+
+            var copy = VrcfObjectFactory.Create(original.GetType()) as T;
             EditorUtility.CopySerialized(original, copy);
             return copy;
         }
@@ -183,6 +175,10 @@ namespace VF.Builder {
                 visited.Add(o);
                 var enter = visit(o);
                 if (!enter) continue;
+                
+                // AnimationClips are really big and can't contain any object children, so no reason to iterate in them
+                if (o is AnimationClip) continue;
+                
                 Iterate(new SerializedObject(o), prop => {
                     if (prop.propertyType == SerializedPropertyType.ObjectReference) {
                         var objectReferenceValue = GetObjectReferenceValueSafe(prop);
@@ -221,14 +217,7 @@ namespace VF.Builder {
                     copyMat.SetOverrideTag("thry_rename_suffix", Regex.Replace(original.name, "[^a-zA-Z0-9_]", ""));
                 }
             }
-            if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
-                copyClip.WriteProxyBinding(originalClip);
-            }
             return copy;
-        }
-
-        public string GetTmpDir() {
-            return tmpDir;
         }
     }
 }

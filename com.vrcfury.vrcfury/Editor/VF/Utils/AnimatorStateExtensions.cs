@@ -2,6 +2,7 @@ using System;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Feature;
+using VF.Utils;
 
 namespace VF.Builder {
     public static class AnimatorStateExtensions {
@@ -10,6 +11,7 @@ namespace VF.Builder {
             StateMachineBehaviour added = null;
             CleanupLegacyBuilder.WithTemporaryPersistence(state, () => {
                 added = state.AddStateMachineBehaviour(type);
+                VrcfObjectFactory.Register(added);
             });
             if (added == null) {
                 AnimatorStateMachineExtensions.ThrowProbablyCompileErrorException($"Failed to create state behaviour of type {type.Name}.");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEngine;
 using VF.Component;
 using VF.Model.StateAction;
@@ -17,6 +18,18 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public abstract class FeatureModel {
+        public class MigrateRequest {
+            public GameObject gameObject;
+            public bool fakeUpgrade;
+        }
+        
+        /**
+         * If a vrcfury component is obsolete, and now needs to either be removed or split into one or more
+         * new components, it can do so by implementing this method.
+         */
+        public virtual IList<FeatureModel> Migrate(MigrateRequest request) {
+            return new [] { this };
+        }
     }
 
     [Serializable]
@@ -44,11 +57,9 @@ namespace VF.Model.Feature {
     [Serializable]
     public abstract class LegacyFeatureModel : FeatureModel {
         public abstract NewFeatureModel CreateNewInstance();
-    }
-    
-    [Serializable]
-    public abstract class LegacyFeatureModel2 : NewFeatureModel {
-        public abstract void CreateNewInstance(GameObject obj);
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            return new FeatureModel[] { CreateNewInstance() };
+        }
     }
 
     [Serializable]
@@ -66,6 +77,46 @@ namespace VF.Model.Feature {
         public State state;
         public float transitionTime = -1;
         public float holdTime = -1;
+        [NonSerialized] public bool needsRemover = false;
+
+        public override bool Upgrade(int fromVersion) {
+            if (fromVersion < 1) {
+                needsRemover = true;
+            }
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
+
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            var output = new List<FeatureModel>();
+            output.Add(this);
+            if (needsRemover && !request.fakeUpgrade) {
+                var avatarObject = request.gameObject.transform;
+                while (avatarObject != null && avatarObject.GetComponent<VRCAvatarDescriptor>() == null) {
+                    avatarObject = avatarObject.parent;
+                }
+                if (avatarObject != null) {
+                    var hasBlinkRemover = avatarObject.GetComponents<VRCFury>()
+                        .Where(c => c != null)
+                        .SelectMany(c => c.GetAllFeatures())
+                        .Any(feature => feature is RemoveBlinking);
+                    if (!hasBlinkRemover) {
+                        var vrcf = avatarObject.gameObject.AddComponent<VRCFury>();
+                        vrcf.content = new RemoveBlinking();
+                        VRCFury.MarkDirty(vrcf);
+                    }
+                }
+                needsRemover = false;
+            }
+            return output;
+        }
+    }
+
+    [Serializable]
+    public class RemoveBlinking : NewFeatureModel {
     }
 
     [Serializable]
@@ -92,7 +143,25 @@ namespace VF.Model.Feature {
         public override int GetLatestVersion() {
             return 1;
         }
-        
+
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            return new FeatureModel[] {
+                new Toggle() {
+                    name = "Breathing",
+                    defaultOn = true,
+                    state = new State() {
+                        actions = {
+                            new SmoothLoopAction() {
+                                state1 = outState,
+                                state2 = inState,
+                                loopTime = 5,
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
         // legacy
         public GameObject obj;
         public string blendshape;
@@ -110,7 +179,6 @@ namespace VF.Model.Feature {
         public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
         public string toggleParam;
-        public bool useSecurityForToggle = false;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
@@ -122,25 +190,23 @@ namespace VF.Model.Feature {
         [Obsolete] public string submenu;
         [Obsolete] public List<string> removePrefixes = new List<string>();
         [Obsolete] public string addPrefix = "";
+        [Obsolete] public bool useSecurityForToggle = false;
 
         [Serializable]
         public class ControllerEntry {
             public GuidController controller;
             public VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.FX;
-            public bool ResetMePlease2;
         }
 
         [Serializable]
         public class MenuEntry {
             public GuidMenu menu;
             public string prefix;
-            public bool ResetMePlease2;
         }
 
         [Serializable]
         public class ParamsEntry {
             public GuidParams parameters;
-            public bool ResetMePlease2;
         }
         
         [Serializable]
@@ -148,7 +214,6 @@ namespace VF.Model.Feature {
             public string from;
             public string to;
             public bool delete = false;
-            public bool ResetMePlease2;
         }
         
         public enum SmoothingRange {
@@ -162,11 +227,11 @@ namespace VF.Model.Feature {
             public string name;
             public float smoothingDuration = 0.2f;
             public SmoothingRange range = SmoothingRange.ZeroToInfinity;
-            public bool ResetMePlease2;
         }
 
-        public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
+        
+        public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
                 allNonsyncedAreGlobal = true;
             }
@@ -200,8 +265,27 @@ namespace VF.Model.Feature {
                 allowMissingAssets = true;
             }
             return false;
-#pragma warning restore 0612
         }
+
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            if (useSecurityForToggle && !request.fakeUpgrade) {
+                var obj = rootObjOverride;
+                if (obj == null) obj = request.gameObject;
+                var hasRestriction = obj.GetComponents<VRCFury>()
+                    .Where(c => c != null)
+                    .SelectMany(c => c.GetAllFeatures())
+                    .Any(feature => feature is SecurityRestricted);
+                if (!hasRestriction && !string.IsNullOrWhiteSpace(toggleParam)) {
+                    var vrcf = obj.AddComponent<VRCFury>();
+                    vrcf.content = new SecurityRestricted();
+                    VRCFury.MarkDirty(vrcf);
+                }
+                useSecurityForToggle = false;
+            }
+            return new FeatureModel[] { this };
+        }
+
+#pragma warning restore 0612
 
         public override int GetLatestVersion() {
             return 4;
@@ -240,13 +324,33 @@ namespace VF.Model.Feature {
             public Mode(State state) {
                 this.state = state;
             }
-            
-            public bool ResetMePlease2;
         }
+
+#pragma warning disable 0612
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            var tag = "mode_" + name.Replace(" ", "").Replace("/", "").Trim();
+            var modeNum = 0;
+            var output = new List<FeatureModel>();
+            foreach (var mode in modes) {
+                var toggle = new Toggle {
+                    name = name + "/Mode " + (++modeNum),
+                    saved = saved,
+                    securityEnabled = securityEnabled,
+                    resetPhysbones = new List<GameObject>(resetPhysbones),
+                    state = mode.state,
+                    enableExclusiveTag = true,
+                    exclusiveTag = tag,
+                    Version = 0
+                };
+                output.Add(toggle);
+            }
+            return output;
+        }
+#pragma warning restore 0612
     }
 
     [Serializable]
-    public class Toggle : LegacyFeatureModel2 {
+    public class Toggle : NewFeatureModel {
         public string name;
         public State state = new State();
         public bool saved;
@@ -286,9 +390,6 @@ namespace VF.Model.Feature {
         public string globalParam;
         public bool holdButton;
         public bool invertRestLogic;
-
-        public override void CreateNewInstance(GameObject obj) {
-        }
 
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
@@ -383,8 +484,9 @@ namespace VF.Model.Feature {
 
     [Serializable]
     public class Visemes : NewFeatureModel {
-        public float transitionTime = -1;
-        public State state_sil;
+        [Obsolete] public float transitionTime = -1;
+        [Obsolete] public State state_sil;
+        public bool instant = false;
         public State state_PP;
         public State state_FF;
         public State state_TH;
@@ -399,6 +501,19 @@ namespace VF.Model.Feature {
         public State state_I;
         public State state_O;
         public State state_U;
+
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                instant = transitionTime == 0;
+            }
+#pragma warning restore 0612
+            return false;
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]
@@ -433,6 +548,7 @@ namespace VF.Model.Feature {
         public string removeBoneSuffix;
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
+        [NonSerialized] public Func<bool> onlyIf;
         
         // legacy
         [Obsolete] public bool useOptimizedUpload;
@@ -507,8 +623,6 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class BoundingBoxFix2 : NewFeatureModel {
-        [NonSerialized] public SkinnedMeshRenderer singleRenderer;
-        [NonSerialized] public SkinnedMeshRenderer skipRenderer;
     }
 
     [Serializable]
@@ -640,8 +754,6 @@ namespace VF.Model.Feature {
             public string exclusiveTag;
             public bool enableWeight;
             
-            public bool ResetMePlease2;
-            
             public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
                 if (fromVersion < 1) {
@@ -693,12 +805,42 @@ namespace VF.Model.Feature {
         public class ObjState {
             public GameObject obj;
             public Action action = Action.DEACTIVATE;
-            public bool ResetMePlease2;
         }
         public enum Action {
             DEACTIVATE,
             ACTIVATE,
             DELETE
+        }
+
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            var apply = new ApplyDuringUpload();
+            apply.action = new State();
+            foreach (var s in states) {
+                if (s.obj == null) continue;
+                if (s.action == Action.DELETE) {
+                    if (!request.fakeUpgrade) {
+                        var vrcf = s.obj.AddComponent<VRCFury>();
+                        vrcf.content = new DeleteDuringUpload();
+                        VRCFury.MarkDirty(vrcf);
+                    }
+                } else if (s.action == ObjectState.Action.ACTIVATE) {
+                    apply.action.actions.Add(new ObjectToggleAction() {
+                        mode = ObjectToggleAction.Mode.TurnOn,
+                        obj = s.obj
+                    });
+                } else if (s.action == ObjectState.Action.DEACTIVATE) {
+                    apply.action.actions.Add(new ObjectToggleAction() {
+                        mode = ObjectToggleAction.Mode.TurnOff,
+                        obj = s.obj
+                    });
+                }
+            }
+
+            var output = new List<FeatureModel>();
+            if (apply.action.actions.Count > 0) {
+                output.Add(apply);
+            }
+            return output;
         }
     }
 
@@ -725,18 +867,15 @@ namespace VF.Model.Feature {
         [Serializable]
         public class LinkSkin {
             public SkinnedMeshRenderer renderer;
-            public bool ResetMePlease2;
         }
         [Serializable]
         public class Exclude {
             public string name;
-            public bool ResetMePlease2;
         }
         [Serializable]
         public class Include {
             public string nameOnBase;
             public string nameOnLinked;
-            public bool ResetMePlease2;
         }
         
         public override bool Upgrade(int fromVersion) {
@@ -806,6 +945,25 @@ namespace VF.Model.Feature {
     [Serializable]
     public class BlendshapeOptimizer : NewFeatureModel {
         [Obsolete] public bool keepMmdShapes;
+
+#pragma warning disable 0612
+        public override IList<FeatureModel> Migrate(MigrateRequest request) {
+            var output = new List<FeatureModel>();
+
+            if (keepMmdShapes && !request.fakeUpgrade) {
+                var hasMmdCompat = request.gameObject.GetComponents<VRCFury>()
+                    .Where(c => c != null)
+                    .SelectMany(c => c.GetAllFeatures())
+                    .Any(feature => feature is MmdCompatibility);
+                if (!hasMmdCompat) {
+                    output.Add(new MmdCompatibility());
+                }
+                keepMmdShapes = false;
+            }
+            output.Add(this);
+            return output;
+        }
+#pragma warning restore 0612
     }
 
     [Serializable]
@@ -824,6 +982,9 @@ namespace VF.Model.Feature {
     
     [Serializable]
     public class ShowInFirstPerson : NewFeatureModel {
+        [NonSerialized] public bool useObjOverride = false;
+        [NonSerialized] public GameObject objOverride = null;
+        [NonSerialized] public bool onlyIfChildOfHead = false;
     }
 
     [Serializable]
@@ -841,8 +1002,19 @@ namespace VF.Model.Feature {
         [Serializable]
         public class DisableLayer {
             public string name;
-            public bool ResetMePlease2;
         }
     }
 
+    [Serializable]
+    public class WorldConstraint : NewFeatureModel {
+        public string menuPath;
+    }
+    
+    [Serializable]
+    public class SecurityRestricted : NewFeatureModel {
+    }
+
+    [Serializable]
+    public class UnlimitedParameters : NewFeatureModel {
+    }
 }

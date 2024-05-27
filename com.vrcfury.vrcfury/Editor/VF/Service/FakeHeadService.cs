@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -15,33 +17,31 @@ namespace VF.Service {
     [VFService]
     public class FakeHeadService {
 
-        [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly AvatarManager manager;
 
-        private readonly HashSet<VFGameObject> objectsEligibleForFakeHead = new HashSet<VFGameObject>();
-
-        public void MarkEligible(VFGameObject obj) {
-            objectsEligibleForFakeHead.Add(obj);
+        private readonly Lazy<VFGameObject> fakeHead;
+        private readonly Lazy<VFGameObject> headChopObj;
+        public FakeHeadService() {
+            fakeHead = new Lazy<VFGameObject>(MakeFakeHead);
+            headChopObj = new Lazy<VFGameObject>(() => {
+                var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(manager.AvatarObject, HumanBodyBones.Head);
+                return GameObjects.Create("vrcfHeadChop", head);
+            });
         }
 
-        public bool IsEligible(VFGameObject obj) {
-            return objectsEligibleForFakeHead.Contains(obj);
+        public VFGameObject GetFakeHead() {
+            return fakeHead.Value;
         }
 
-        [FeatureBuilderAction(FeatureOrder.FakeHeadBuilder)]
-        public void Apply() {
+        public VFGameObject GetHeadChopObj() {
+            return headChopObj.Value;
+        }
+
+        private VFGameObject MakeFakeHead() {
+            var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(manager.AvatarObject, HumanBodyBones.Head);
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
-                return;
+                return head;
             }
-
-            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(manager.AvatarObject, HumanBodyBones.Head);
-            if (!head) return;
-            
-            var objectsForFakeHead = objectsEligibleForFakeHead
-                .NotNull()
-                .Where(obj => obj.parent == head)
-                .ToList();
-            if (objectsForFakeHead.Count == 0) return;
 
             var vrcfAlwaysVisibleHead = GameObjects.Create("vrcfAlwaysVisibleHead", head.parent, useTransformFrom: head);
             
@@ -54,9 +54,7 @@ namespace VF.Service {
             p.constraintActive = true;
             p.locked = true;
 
-            foreach (var obj in objectsForFakeHead) {
-                mover.Move(obj, vrcfAlwaysVisibleHead.gameObject);
-            }
+            return vrcfAlwaysVisibleHead;
         }
     }
 }

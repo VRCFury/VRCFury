@@ -7,8 +7,12 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Component;
+using VF.Feature;
 using VF.Inspector;
 using VF.Menu;
+using VF.Model;
+using VF.Model.Feature;
+using VF.Service;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
@@ -167,59 +171,6 @@ namespace VF.Builder.Haptics {
                 lastWasUpper = currentIsUpper;
             }
             return new string(arr);
-        }
-
-        public static bool IsDirectChildOfHips(VFGameObject obj) {
-            return IsChildOfBone(obj, HumanBodyBones.Hips)
-                   && !IsChildOfBone(obj, HumanBodyBones.Chest)
-                   && !IsChildOfBone(obj, HumanBodyBones.Spine)
-                   && !IsChildOfBone(obj, HumanBodyBones.LeftUpperArm)
-                   && !IsChildOfBone(obj, HumanBodyBones.LeftUpperLeg)
-                   && !IsChildOfBone(obj, HumanBodyBones.RightUpperArm)
-                   && !IsChildOfBone(obj, HumanBodyBones.RightUpperLeg);
-        }
-
-        public static bool IsChildOfHead(VFGameObject obj) {
-            return IsChildOfBone(obj, HumanBodyBones.Head, false);
-        }
-
-        public static bool IsChildOfBone(VFGameObject obj, HumanBodyBones bone, bool followConstraints = true) {
-            try {
-                VFGameObject avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
-                if (!avatarObject) return false;
-                var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
-                return boneObj && IsChildOf(boneObj, obj, followConstraints);
-            } catch (Exception) {
-                return false;
-            }
-        }
-
-        private static bool IsChildOf(VFGameObject parent, VFGameObject child, bool followConstraints) {
-            var alreadyChecked = new HashSet<VFGameObject>();
-            var current = child;
-            while (current != null) {
-                alreadyChecked.Add(current);
-                if (current == parent) return true;
-                if (followConstraints) {
-                    Transform foundConstraint = null;
-                    foreach (var constraint in current.GetComponents<IConstraint>()) {
-                        if (!(constraint is ParentConstraint) && !(constraint is PositionConstraint)) continue;
-                        if (constraint.sourceCount == 0) continue;
-                        var source = constraint.GetSource(0).sourceTransform;
-                        if (source != null && !alreadyChecked.Contains(source)) {
-                            foundConstraint = source;
-                            break;
-                        }
-                    }
-
-                    if (foundConstraint) {
-                        current = foundConstraint;
-                        continue;
-                    }
-                }
-                current = current.parent;
-            }
-            return false;
         }
     }
 }

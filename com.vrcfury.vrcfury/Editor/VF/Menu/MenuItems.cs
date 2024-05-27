@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -36,14 +37,16 @@ namespace VF.Menu {
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;
-        public const string ndmfFirst = prefix + "Settings/Force NDMF to run before VRCF";
-        public const int ndmfFirstPriority = 1322;
+        public const string uploadMode = prefix + "Settings/Enable VRCFury for uploads";
+        public const int uploadModePriority = 1322;
         public const string constrainedProportions = prefix + "Settings/Automatically enable Constrained Proportions";
         public const int constrainedProportionsPriority = 1323;
         public const string hapticToggle = prefix + "Settings/Enable SPS Haptics";
         public const int hapticTogglePriority = 1324;
         public const string dpsAutoUpgrade = prefix + "Settings/Auto-Upgrade DPS with contacts";
         public const int dpsAutoUpgradePriority = 1325;
+        public const string boundingBoxFix = prefix + "Settings/Automatically fix bounding boxes";
+        public const int boundingBoxFixPriority = 1326;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {
@@ -109,14 +112,19 @@ namespace VF.Menu {
                 var list = new List<string>();
                 foreach (var c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                     if (c == null || c is Transform) continue;
-                    list.Add(c.GetType().Name + " in " + c.owner().GetPath(obj));
+                    var type = c.GetType().Name;
+                    if (c is VRCFury vf) {
+                        type += " (" + string.Join(",", vf.GetAllFeatures().Select(f => f.GetType().Name)) + ")";
+                    }
+                    list.Add(type  + " in " + c.owner().GetPath(obj));
                 }
 
-                Debug.Log($"List of components on {obj}:\n" + string.Join("\n", list));
+                var output = $"List of components on {obj}:\n" + string.Join("\n", list);
+                GUIUtility.systemCopyBuffer = output;
 
                 EditorUtility.DisplayDialog(
                     "Debug",
-                    $"Found {list.Count} components in {obj.name} and logged them to the console",
+                    $"Found {list.Count} components in {obj.name} and copied them to clipboard",
                     "Ok"
                 );
             });

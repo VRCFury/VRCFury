@@ -21,19 +21,27 @@ namespace VF.Utils {
 
         [CanBeNull]
         public static Mesh GetMesh(this Renderer renderer) {
+            Mesh mesh = null;
+
             if (renderer is SkinnedMeshRenderer skin) {
                 if (skin.sharedMesh == null) return null;
-                return skin.sharedMesh;
+                mesh = skin.sharedMesh;
             }
 
             if (renderer is MeshRenderer) {
                 var owner = renderer.owner();
                 var filter = owner.GetComponent<MeshFilter>();
                 if (filter == null || filter.sharedMesh == null) return null;
-                return filter.sharedMesh;
+                mesh = filter.sharedMesh;
             }
 
-            return null;
+            if (mesh != null && !mesh.isReadable && Application.isPlaying) {
+                var copy = MutableManager.MakeMutable(mesh, true);
+                ForceReadWrite(copy);
+                return copy;
+            }
+
+            return mesh;
         }
         
         [CanBeNull]
@@ -42,7 +50,16 @@ namespace VF.Utils {
             if (mesh == null) return null;
             var copy = MutableManager.MakeMutable(mesh);
             renderer.SetMesh(copy);
+            ForceReadWrite(copy);
             return copy;
+        }
+
+        private static void ForceReadWrite(Mesh mesh) {
+            var so = new SerializedObject(mesh);
+            so.Update();
+            var sp = so.FindProperty("m_IsReadable");
+            sp.boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         public static void SetMesh(this Renderer renderer, Mesh mesh) {
@@ -62,6 +79,7 @@ namespace VF.Utils {
                     );
                 filter.sharedMesh = mesh;
                 VRCFuryEditorUtils.MarkDirty(filter);
+                return;
             }
 
             throw new Exception("Cannot set mesh on renderer with unknown type: " + renderer.owner().GetPath());

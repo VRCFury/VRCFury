@@ -11,8 +11,8 @@ namespace VF.Service {
      * Time-smooths a parameter within an animator
      */
     [VFService]
+    [VFPrototypeScope]
     public class SmoothingService {
-        [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
@@ -34,6 +34,11 @@ namespace VF.Service {
 
         private readonly Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
         private VFAFloat GetSpeed(float seconds, bool useAcceleration) {
+            var name = $"smoothingSpeed/{seconds}{(useAcceleration ? "/withAccel" : "")}";
+            if (cachedSpeeds.TryGetValue(name, out var output)) {
+                return output;
+            }
+
             var framerateForCalculation = 60; // closer to the in game framerate, the more technically accurate it will be
             var targetFrames = seconds * framerateForCalculation;
             var currentSpeed = 0.5f;
@@ -49,10 +54,6 @@ namespace VF.Service {
             }
             var fractionPerSecond = currentSpeed * framerateForCalculation;
             
-            var name = $"smoothingSpeed/{seconds}{(useAcceleration ? "/withAccel" : "")}";
-            if (cachedSpeeds.TryGetValue(name, out var output)) {
-                return output;
-            }
             output = math.Multiply(name, frameTimeService.GetFrameTime(), fractionPerSecond);
             cachedSpeeds[name] = output;
             return output;

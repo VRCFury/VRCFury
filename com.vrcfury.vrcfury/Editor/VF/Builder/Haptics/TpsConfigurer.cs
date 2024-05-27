@@ -25,7 +25,7 @@ namespace VF.Builder.Haptics {
         // Converts MeshRenderers or 0-bone SkinnedMeshRenderers to real weighted SkinnedMeshRenderers
         public static SkinnedMeshRenderer NormalizeRenderer(
             Renderer renderer,
-            VFGameObject rootTransform,
+            VFGameObject bakeRoot,
             float worldLength
         ) {
             // Convert MeshRenderer to SkinnedMeshRenderer
@@ -53,7 +53,8 @@ namespace VF.Builder.Haptics {
 
             // Convert unweighted (static) meshes, to true skinned, rigged meshes
             if (mesh.boneWeights.Length == 0) {
-                var mainBone = GameObjects.Create("MainBone", rootTransform, useTransformFrom: skin.owner());
+                // This is put on this skin instead of in the bake root so that it doesn't get shown by headchop
+                var mainBone = GameObjects.Create("SpsMainBone", skin.owner());
                 var meshCopy = MutableManager.MakeMutable(mesh);
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
@@ -66,7 +67,7 @@ namespace VF.Builder.Haptics {
                 VRCFuryEditorUtils.MarkDirty(skin);
             }
 
-            skin.rootBone = rootTransform;
+            skin.rootBone = bakeRoot;
             
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
             var bounds = new Bounds();
@@ -74,7 +75,7 @@ namespace VF.Builder.Haptics {
                 bounds.Encapsulate(vertex);
             }
 
-            var localLength = worldLength / rootTransform.worldScale.z;
+            var localLength = worldLength / bakeRoot.worldScale.z;
             bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * 2.5f));
             bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * 2.5f));
             bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * -0.5f));
@@ -124,7 +125,8 @@ namespace VF.Builder.Haptics {
         private static Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);
 
         public static bool IsTps(Material mat) {
-            return mat && mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
+            if (mat == null) return false;
+            return mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
         }
 
         public static Quaternion GetTpsRotation(Material mat) {

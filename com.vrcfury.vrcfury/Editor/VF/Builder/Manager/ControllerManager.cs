@@ -82,14 +82,16 @@ namespace VF.Builder {
             return _NewClip(NewClipName(name));
         }
         private AnimationClip _NewClip(string name) {
-            var clip = new AnimationClip { name = name };
+            var clip = VrcfObjectFactory.Create<AnimationClip>();
+            clip.name = name;
             return clip;
         }
         public BlendTree NewBlendTree(string name) {
             return _NewBlendTree(NewClipName(name));
         }
         private BlendTree _NewBlendTree(string name) {
-            var tree = new BlendTree { name = name };
+            var tree = VrcfObjectFactory.Create<BlendTree>();
+            tree.name = name;
             return tree;
         }
 
@@ -151,11 +153,7 @@ namespace VF.Builder {
 
         private static readonly FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
-        
-        public VFABool NewTrigger(string name, bool usePrefix = true) {
-            if (usePrefix) name = makeUniqueParamName(name);
-            return ctrl.NewTrigger(name);
-        }
+
         public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = makeUniqueParamName(name);
             if (synced) {

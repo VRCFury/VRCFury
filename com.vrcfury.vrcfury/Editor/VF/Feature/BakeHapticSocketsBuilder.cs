@@ -37,7 +37,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var fx = GetFx();
             var saved = spsOptions.GetOptions().saveSockets;
 
             var enableAuto = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
@@ -49,13 +48,11 @@ namespace VF.Feature {
             if (enableAuto) {
                 autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false, saved: saved);
                 manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
-                autoOnClip = fx.NewClip("EnableAutoReceivers");
-                var autoReceiverLayer = fx.NewLayer("Auto - Enable Receivers");
-                var off = autoReceiverLayer.NewState("Off");
-                var on = autoReceiverLayer.NewState("On").WithAnimation(autoOnClip);
-                var whenOn = autoOn.IsTrue().And(fx.IsLocal().IsTrue());
-                off.TransitionsTo(on).When(whenOn);
-                on.TransitionsTo(off).When(whenOn.Not());
+                autoOnClip = fx.NewClip("Enable SPS Auto Contacts");
+                directTree.Add(math.And(
+                    math.GreaterThan(fx.IsLocal().AsFloat(), 0.5f, name: "SPS: Auto Contacts"),
+                    math.GreaterThan(autoOn.AsFloat(), 0.5f, name: "When Local")
+                ).create(autoOnClip, null));
             }
             
             var enableStealth = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
@@ -83,23 +80,24 @@ namespace VF.Feature {
             }
 
             var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
-            var exclusiveTriggers = new List<Tuple<VFABool, VFState>>();
+            var exclusiveTriggers = new List<(string,VFABool)>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                 try {
                     VFGameObject obj = socket.owner();
-                    PhysboneUtils.RemoveFromPhysbones(socket.transform);
-                    fakeHead.MarkEligible(socket.owner());
-                    if (HapticUtils.IsChildOfHead(socket.owner())) {
-                        var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
-                        mover.Move(socket.owner(), head);
-                    }
-                    
+                    PhysboneUtils.RemoveFromPhysbones(socket.owner());
+
                     var name = VRCFuryHapticSocketEditor.GetName(socket);
                     name = uniqueHapticNamesService.GetUniqueName(name);
                     Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
 
                     var bakeRoot = VRCFuryHapticSocketEditor.Bake(socket, hapticContacts);
                     if (bakeRoot == null) continue;
+                    
+                    addOtherFeature(new ShowInFirstPerson {
+                        useObjOverride = true,
+                        objOverride = bakeRoot,
+                        onlyIfChildOfHead = true
+                    });
                     
                     if (HapticsToggleMenuItem.Get() && !socket.sendersOnly) {
                         // Haptic receivers
@@ -147,30 +145,36 @@ namespace VF.Feature {
                                 .ToArray();
                         }
 
-                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "VersionLocal",
-                                     "VersionBeacon", "Animations")) {
+                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "Animations")) {
                             child.active = false;
                         }
 
                         var onLocalClip = fx.NewClip($"{name} (Local)");
-                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "VersionLocal",
-                                     "Animations")) {
+                        foreach (var child in FindChildren("Senders", "Haptics", "Lights", "Animations")) {
                             clipBuilder.Enable(onLocalClip, child.gameObject);
                         }
 
                         var onRemoteClip = fx.NewClip($"{name} (Remote)");
-                        foreach (var child in FindChildren("Senders", "Lights", "VersionBeacon", "Animations")) {
+                        foreach (var child in FindChildren("Senders", "Lights", "Animations")) {
                             clipBuilder.Enable(onRemoteClip, child.gameObject);
                         }
 
                         if (socket.enableActiveAnimation) {
-                            var additionalActiveClip = actionClipService.LoadState("socketActive", socket.activeActions);
-                            onLocalClip.CopyFrom(additionalActiveClip);
-                            onRemoteClip.CopyFrom(additionalActiveClip);
+                            var activeAnimParam = fx.NewFloat($"SPS - Active Animation for {name}");
+                            var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {name}");
+                            var off = activeAnimLayer.NewState("Off");
+                            var clip = actionClipService.LoadState($"SPS - Active Animation for {name}", socket.activeActions);
+                            var on = activeAnimLayer.NewState("On").WithAnimation(clip);
+
+                            off.TransitionsTo(on).When(activeAnimParam.IsGreaterThan(0));
+                            on.TransitionsTo(off).When(activeAnimParam.IsLessThan(1));
+
+                            onLocalClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), activeAnimParam.Name()), 1);
+                            onRemoteClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), activeAnimParam.Name()), 1);
                         }
 
                         var onStealthClip = fx.NewClip($"{name} (Stealth)");
-                        foreach (var child in FindChildren("Haptics", "VersionLocal")) {
+                        foreach (var child in FindChildren("Haptics")) {
                             clipBuilder.Enable(onStealthClip, child.gameObject);
                         }
 
@@ -186,28 +190,15 @@ namespace VF.Feature {
                         var icon = socket.menuIcon?.Get();
                         manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", holeOn, icon: icon);
 
-                        var layer = fx.NewLayer(name);
-                        var offState = layer.NewState("Off");
-                        var stealthState = layer.NewState("On Local Stealth").WithAnimation(onStealthClip)
-                            .Move(offState, 1, 0);
-                        var onLocalMultiState = layer.NewState("On Local Multi").WithAnimation(onLocalClip);
-                        var onLocalState = layer.NewState("On Local").WithAnimation(onLocalClip);
-                        var onRemoteState = layer.NewState("On Remote").WithAnimation(onRemoteClip);
+                        var localTree = math.GreaterThan(stealthOn.AsFloat(), 0.5f, name: "When Local")
+                            .create(onStealthClip, onLocalClip);
+                        var remoteTree = math.GreaterThan(stealthOn.AsFloat(), 0.5f, name: "When Remote")
+                            .create(null, onRemoteClip);
+                        var onTree = math.GreaterThan(fx.IsLocal().AsFloat(), 0.5f, name: $"SPS: When {name} On")
+                            .create(localTree, remoteTree);
+                        directTree.Add(holeOn.AsFloat(), onTree);
 
-                        var whenOn = holeOn.IsTrue();
-                        var whenLocal = fx.IsLocal().IsTrue();
-                        var whenStealthEnabled = stealthOn?.IsTrue() ?? fx.Never();
-                        var whenMultiEnabled = multiOn?.IsTrue() ?? fx.Never();
-
-                        VFState.FakeAnyState(
-                            (stealthState, whenOn.And(whenLocal.And(whenStealthEnabled))),
-                            (onLocalMultiState, whenOn.And(whenLocal.And(whenMultiEnabled))),
-                            (onLocalState, whenOn.And(whenLocal)),
-                            (onRemoteState, whenOn.And(whenStealthEnabled.Not())),
-                            (offState, fx.Always())
-                        );
-
-                        exclusiveTriggers.Add(Tuple.Create(holeOn, onLocalState));
+                        exclusiveTriggers.Add((name, holeOn));
 
                         if (socket.enableAuto && autoOnClip) {
                             var autoReceiverObj = GameObjects.Create("AutoDistance", bakeRoot);
@@ -270,26 +261,31 @@ namespace VF.Feature {
                             math.Buffer(plugWidthValid, socket.plugWidthParameterName, usePrefix: false);
                         }
                     }
-                    
-                    foreach (var receiver in bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        _forceStateInAnimatorService.DisableDuringLoad(receiver.owner());
-                    }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);
                 }
             }
 
-            foreach (var i in Enumerable.Range(0, exclusiveTriggers.Count)) {
-                var (_, state) = exclusiveTriggers[i];
-                foreach (var j in Enumerable.Range(0, exclusiveTriggers.Count)) {
-                    if (i == j) continue;
-                    var (param, _) = exclusiveTriggers[j];
-                    state.Drives(param, false);
+            if (exclusiveTriggers.Count >= 2) {
+                var exclusiveLayer = fx.NewLayer("SPS - Socket Exclusivity");
+                exclusiveLayer.NewState("Start");
+                foreach (var i in Enumerable.Range(0, exclusiveTriggers.Count)) {
+                    var (name, on) = exclusiveTriggers[i];
+                    var state = exclusiveLayer.NewState(name);
+                    var when = on.IsTrue();
+                    if (multiOn != null) when = when.And(multiOn.IsFalse());
+                    if (stealthOn != null) when = when.And(stealthOn.IsFalse());
+                    state.TransitionsFromAny().When(when);
+                    foreach (var j in Enumerable.Range(0, exclusiveTriggers.Count)) {
+                        if (i == j) continue;
+                        var (_, otherOn) = exclusiveTriggers[j];
+                        state.Drives(otherOn, false);
+                    }
                 }
             }
 
             if (autoOn != null && autoSockets.Count > 0) {
-                var layer = fx.NewLayer("Auto Socket Mode");
+                var layer = fx.NewLayer("SPS - Auto Socket Comparison");
                 var remoteTrap = layer.NewState("Remote trap");
                 var stopped = layer.NewState("Stopped");
                 remoteTrap.TransitionsTo(stopped).When(fx.IsLocal().IsTrue());

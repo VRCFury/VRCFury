@@ -3,6 +3,8 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
+using VF.Inspector;
+using VF.Model;
 using VF.Upgradeable;
 
 namespace VF {
@@ -37,10 +39,10 @@ namespace VF {
             if (c.IsBroken()) return;
             if (PrefabUtility.IsPartOfPrefabInstance(c)) return;
             if (IUpgradeableUtility.UpgradeRecursive(c)) {
-                if (c != null) EditorUtility.SetDirty(c);
+                if (c != null) VRCFuryEditorUtils.MarkDirty(c);
             }
         }
-        
+
         public static bool IsBroken(this VRCFuryComponent c) {
             return c.GetBrokenMessage() != null;
         }
@@ -51,16 +53,26 @@ namespace VF {
             }
             
             var containsNull = false;
-            UnitySerializationUtils.Iterate(c, visit => {
-                if (visit.field?.Name == "content" && c.Version >= 0 && c.Version <= 2) {
-                    // Allow VRCFury content field to be null until it's upgraded
-                    return UnitySerializationUtils.IterateResult.Continue;
+
+            UnitySerializationUtils.IterateResult Check(UnitySerializationUtils.IterateVisit visit) {
+                if (visit.value is VRCFury vf) {
+                    // Old vrcfury components have a null content field, so we have to handle them specially
+#pragma warning disable 0612
+                    if (vf.content == null) {
+                        if ((c.Version >= 0 && c.Version <= 2) || (vf.config?.features?.Count ?? 0) > 0) {
+                            UnitySerializationUtils.Iterate(vf.config, Check);
+                            return UnitySerializationUtils.IterateResult.Skip;
+                        }
+                    }
+#pragma warning restore 0612
                 }
                 containsNull |=
                     visit.field?.GetCustomAttribute<SerializeReference>() != null
                     && visit.value == null;
                 return UnitySerializationUtils.IterateResult.Continue;
-            });
+            }
+            UnitySerializationUtils.Iterate(c, Check);
+
             if (containsNull) {
                 DelayReimport(c);
                 if (Application.unityVersion.StartsWith("2019")) {

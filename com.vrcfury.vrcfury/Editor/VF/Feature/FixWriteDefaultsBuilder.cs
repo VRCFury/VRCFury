@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -20,17 +21,28 @@ namespace VF.Feature {
     public class FixWriteDefaultsBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly OriginalAvatarService originalAvatar;
+        [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
 
-        public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat = true) {
+        public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat, bool force = false) {
             if (binding.type == typeof(Animator)) return;
+            if (GetDefaultClip().GetCurve(binding, isFloat) != null) return;
+            if (!bindingStateService.Get(binding, isFloat, out var value)) return;
+            
+            var shouldRecord = force;
+            if (!shouldRecord) {
+                // We must avoid recording our own defaults when WD is on, because a unity bug with WD on can cause our
+                // defaults to override lower layers even though the lower layers should be higher priority.
+                var settings = GetBuildSettings();
+                shouldRecord = !settings.useWriteDefaults;
+            }
+            if (!shouldRecord) {
+                // If our calculated default value doesn't match unity's default value, we record the default even if we're using WD on
+                // because if we don't, unity will use its own default value which will be wrong.
+                var found = bindingStateService.Get(binding, isFloat, out var valueDeterminedByUnity, true);
+                shouldRecord = !found || value != valueDeterminedByUnity;
+            }
 
-            if (isFloat) {
-                if (!binding.GetFloatFromGameObject(avatarObject, out var value)) return;
-                if (GetDefaultClip().GetFloatCurve(binding) != null) return;
-                GetDefaultClip().SetCurve(binding, value);
-            } else {
-                if (!binding.GetObjectFromGameObject(avatarObject, out var value)) return;
-                if (GetDefaultClip().GetObjectCurve(binding) != null) return;
+            if (shouldRecord) {
                 GetDefaultClip().SetCurve(binding, value);
             }
         }
@@ -49,8 +61,8 @@ namespace VF.Feature {
             }
             return _defaultClip;
         }
-        public VFLayer GetDefaultLayer() {
-            GetDefaultClip();
+
+        [CanBeNull] public VFLayer GetDefaultLayer() {
             return _defaultLayer;
         }
 
@@ -72,11 +84,6 @@ namespace VF.Feature {
                     }
                 }
             }
-            
-            // Note to self: Never record defaults when WD is on, because a unity bug with WD on can cause the defaults to override lower layers
-            // even though the lower layers should be higher priority.
-            var settings = GetBuildSettings();
-            if (settings.useWriteDefaults) return;
 
             foreach (var layer in GetMaintainedLayers(GetFx())) {
                 foreach (var state in new AnimatorIterator.States().From(layer)) {

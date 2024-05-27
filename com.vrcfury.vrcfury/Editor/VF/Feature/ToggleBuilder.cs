@@ -24,12 +24,14 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateService restingState;
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
+    [VFAutowired] private readonly ClipRewriteService clipRewriteService;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
-    private VFAParam exclusiveParam;
+    private VFCondition isOn;
+    private Action<VFState, bool> drive;
     private AnimationClip savedRestingClip;
 
-    private const string menuPathTooltip = "Menu Path is where you'd like the toggle to be located in the menu. This is unrelated"
+    public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
         + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
         + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
@@ -53,10 +55,6 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             return SeparateList(model.driveGlobalParam);
         }
         return new HashSet<string>(); 
-    }
-
-    public VFAParam GetExclusiveParam() {
-        return exclusiveParam;
     }
 
     private (string,bool) GetParamName() {
@@ -93,8 +91,10 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
             );
-            exclusiveParam = param;
             onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+            if (model.sliderInactiveAtZero) {
+                drive = (state,on) => { if (!on) state.Drives(param, 0); };
+            }
             defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
             weight = param;
             if (addMenuItem) {
@@ -106,13 +106,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         } else if (model.useInt) {
             var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-            exclusiveParam = param;
             onCase = param.IsNotEqualTo(0);
+            drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
         } else {
             var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-            exclusiveParam = param;
             onCase = param.IsTrue();
+            drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
             if (addMenuItem) {
                 if (model.holdButton) {
@@ -130,6 +130,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 }
             }
         }
+        
+        this.isOn = onCase;
 
         var layerName = model.name;
         if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
@@ -169,7 +171,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .Select(f => f.GetEnabled())
                 .FirstOrDefault();
             if (securityLockUnlocked != null) {
-                onCase = onCase.And(securityLockUnlocked);
+                onCase = onCase.And(securityLockUnlocked.IsTrue());
+            } else {
+                Debug.LogWarning("Security pin not set, restriction disabled");
             }
         }
 
@@ -181,14 +185,15 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
                 clip = clipBuilder.MergeSingleFrameClips(
-                    (0, new AnimationClip()),
+                    (0, VrcfObjectFactory.Create<AnimationClip>()),
                     (1, clip)
                 );
                 clip.UseLinearTangents();
             }
+            clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
-            restingClip = clip.Evaluate(model.defaultSliderValue * clip.length);
+            restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
@@ -255,10 +260,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         }
 
         if (savedRestingClip == null) {
-            var copy = new AnimationClip();
-            copy.CopyFrom(restingClip);
+            var copy = restingClip.Clone();
             savedRestingClip = copy;
-            mover.AddAdditionalManagedClip(savedRestingClip);
+            clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
         }
     }
 
@@ -276,23 +280,22 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             var otherTags = other.GetExclusiveTags();
             var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
             if (conflictsWithOther) {
-                var otherParam = other.GetExclusiveParam();
-                if (otherParam != null) {
+                if (other.isOn != null && other.drive != null) {
                     foreach (var state in exclusiveTagTriggeringStates) {
-                        state.Drives(otherParam, 0);
+                        other.drive(state, false);
                     }
-                    allOthersOffCondition = allOthersOffCondition.And(otherParam.IsFalse());
+                    allOthersOffCondition = allOthersOffCondition.And(other.isOn.Not());
                 }
             }
         }
 
-        if (model.exclusiveOffState && exclusiveParam != null) {
+        if (model.exclusiveOffState && isOn != null && drive != null) {
             var layer = fx.NewLayer(model.name + " - Off Trigger");
             var off = layer.NewState("Idle");
             var on = layer.NewState("Trigger");
             off.TransitionsTo(on).When(allOthersOffCondition);
-            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(exclusiveParam.IsFalse()));
-            on.Drives(exclusiveParam, 1);
+            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
+            drive(on, true);
         }
     }
 
@@ -316,9 +319,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (!savedRestingClip.IsStatic()) return;
 
         foreach (var b in savedRestingClip.GetFloatBindings())
-            writeDefaultsManager.RecordDefaultNow(b, true);
+            writeDefaultsManager.RecordDefaultNow(b, true, true);
         foreach (var b in savedRestingClip.GetObjectBindings())
-            writeDefaultsManager.RecordDefaultNow(b, false);
+            writeDefaultsManager.RecordDefaultNow(b, false, true);
         restingState.ApplyClipToRestingState(savedRestingClip);
     }
 
@@ -578,7 +581,7 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
         toggleOffWarning.SetVisible(false);
         content.Add(toggleOffWarning);
-        VRCFuryEditorUtils.RefreshOnInterval(toggleOffWarning, () => {
+        void Update() {
             var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
 
             var turnsOff = model.state.actions
@@ -598,7 +601,9 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
                 .ToImmutableHashSet();
             var overlap = turnsOff.Intersect(othersTurnOn);
             toggleOffWarning.SetVisible(overlap.Count > 0);
-        });
+        }
+        Update();
+        content.schedule.Execute(Update).Every(1000);
 
         return content;
     }

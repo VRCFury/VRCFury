@@ -38,7 +38,7 @@ public static class FeatureFinder {
                     }
                 }
             }
-            Debug.Log("VRCFury loaded " + allFeatures.Count + " features");
+            Debug.Log("VRCFury loaded " + allFeatures.Count + " component types");
         }
         return allFeatures;
     }
@@ -169,7 +169,7 @@ public static class FeatureFinder {
             throw new Exception("Failed to find feature implementation for " + modelType.Name + " while building");
         }
 
-        var builder = (FeatureBuilder)injector.CreateAndInject(builderType);
+        var builder = (FeatureBuilder)injector.GetService(builderType, useCache: false);
         if (builder.AvailableOnRootOnly() && !AllowRootFeatures(gameObject, avatarObject)) {
             throw new Exception($"This VRCFury component ({builder.GetEditorTitle()}) is only allowed on the root object of the avatar, but was found in {gameObject.GetPath(avatarObject)}.");
         }

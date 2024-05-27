@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace VF.Feature.Base {
     [AttributeUsage(AttributeTargets.Method)]
     [MeansImplicitUse]
-    public class FeatureBuilderActionAttribute : Attribute, IComparable<FeatureBuilderActionAttribute> {
+    public class FeatureBuilderActionAttribute : Attribute {
         private readonly FeatureOrder priority;
         private readonly int priorityOffset;
 
@@ -20,13 +20,12 @@ namespace VF.Feature.Base {
             this.priorityOffset = priorityOffset;
         }
 
-        public int CompareTo(FeatureBuilderActionAttribute other) {
-            return ((int)priority, priorityOffset).CompareTo(
-                ((int)other.priority, other.priorityOffset));
-        }
-
         public FeatureOrder GetPriority() {
             return priority;
+        }
+
+        public int GetPriorityOffset() {
+            return priorityOffset;
         }
     }
 }

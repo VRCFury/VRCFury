@@ -166,7 +166,6 @@ namespace VF.Model.StateAction {
         [Serializable]
         public class FlipBookPage {
             public State state;
-            public bool ResetMePlease2;
         }
 
         public override bool Upgrade(int fromVersion) {
@@ -186,6 +185,13 @@ namespace VF.Model.StateAction {
         public override int GetLatestVersion() {
             return 1;
         }
+    }
+
+    [Serializable]
+    public class SmoothLoopAction : Action {
+        public State state1;
+        public State state2;
+        public float loopTime = 5;
     }
 
 }

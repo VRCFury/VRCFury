@@ -20,6 +20,15 @@ namespace VF.Utils {
                 return new FloatOrObjectCurve(new [] { new ObjectReferenceKeyframe { time = 0, value = d.GetObject() } });
             }
         }
+        public static bool operator ==(FloatOrObjectCurve a, FloatOrObjectCurve b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
+        public static bool operator !=(FloatOrObjectCurve a, FloatOrObjectCurve b) => !(a == b);
+        public override bool Equals(object other) {
+            return (other is FloatOrObjectCurve a && floatCurve == a.floatCurve && objectCurve == a.objectCurve)
+                   || (other == null && floatCurve == null && objectCurve == null);
+        }
+        public override int GetHashCode() {
+            return Tuple.Create(floatCurve,objectCurve).GetHashCode();
+        }
 
         private FloatOrObjectCurve(AnimationCurve floatCurve) {
             this.isFloat = true;
@@ -36,6 +45,13 @@ namespace VF.Utils {
         public AnimationCurve FloatCurve => floatCurve;
 
         public ObjectReferenceKeyframe[] ObjectCurve => objectCurve;
+        
+        public float lengthInSeconds {
+            get {
+                if (isFloat) return floatCurve.keys.Select(k => k.time).DefaultIfEmpty(0).Max();
+                return 0;
+            }
+        }
 
         public FloatOrObject GetFirst() {
             if (isFloat) {
@@ -56,6 +72,22 @@ namespace VF.Utils {
                 if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
                 var length = objectCurve.Length;
                 return objectCurve[length - 1].value;
+            }
+        }
+
+        public FloatOrObjectCurve Clone() {
+            if (isFloat) {
+                var copy = new AnimationCurve();
+#if UNITY_2022_1_OR_NEWER
+                copy.CopyFrom(floatCurve);
+#else
+                copy.keys = floatCurve.keys.ToArray();
+                copy.preWrapMode = floatCurve.preWrapMode;
+                copy.postWrapMode = floatCurve.postWrapMode;
+#endif
+                return copy;
+            } else {
+                return objectCurve.ToArray();
             }
         }
     }

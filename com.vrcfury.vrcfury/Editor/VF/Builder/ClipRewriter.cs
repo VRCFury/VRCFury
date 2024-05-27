@@ -27,7 +27,7 @@ namespace VF.Builder {
                 if (binding.path != "") return noChange;
                 if (binding.type != typeof(Transform)) return noChange;
                 if (!binding.propertyName.StartsWith("m_LocalScale.")) return noChange;
-                if (!binding.GetFloatFromGameObject(rootObject, out var rootScale)) return noChange;
+                if (!AnimationUtility.GetFloatValue(rootObject, binding, out var rootScale)) return noChange;
                 if (rootScale == 1) return noChange;
 
                 curve.FloatCurve.keys = curve.FloatCurve.keys.Select(k => {

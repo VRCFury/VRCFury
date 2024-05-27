@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -8,40 +9,11 @@ using VF.Builder;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
-    [InitializeOnLoad]
     public class SceneViewOverlay {
-        static SceneViewOverlay() {
-            SceneView.duringSceneGui += DuringSceneGui;
-        }
-
-        private static void DuringSceneGui(SceneView view) {
-            Handles.BeginGUI();
-            try {
-                DuringSceneGuiUnsafe(view);
-            } catch (Exception e) {
-                Debug.LogWarning(e);
-            }
-            Handles.EndGUI();
-        }
-
-        private static void DuringSceneGuiUnsafe(SceneView view) {
-            var output = GetOutputString();
-
-            var bak = GUI.contentColor;
-            try {
-                GUILayout.BeginArea(new Rect(0, view.position.height-42, 100, 30));
-                GUI.contentColor = new Color(1, 1, 1, 0.1f);
-                if (!string.IsNullOrWhiteSpace(output)) {
-                    GUILayout.Label(output);
-                }
-                GUILayout.EndArea();
-            } finally {
-                GUI.contentColor = bak;
-            }
-        }
 
         private static bool ndmfPresent =
             ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;
@@ -63,6 +35,10 @@ namespace VF.Inspector {
             if (wdDisabled) {
                 output += "W";
             }
+
+            if (avatarObject != null && MaterialLocker.UsesD4rk(avatarObject, false)) {
+                output += "D";
+            }
             
             if (!HapticsToggleMenuItem.Get()) {
                 output += "H";
@@ -75,6 +51,10 @@ namespace VF.Inspector {
             if (!PlayModeMenuItem.Get()) {
                 output += "P";
             }
+            
+            if (!UseInUploadMenuItem.Get()) {
+                output += "U";
+            }
 
             if (!ConstrainedProportionsMenuItem.Get()) {
                 output += "C";
@@ -85,6 +65,17 @@ namespace VF.Inspector {
                 || !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath("cc05f54cef1ff194fb23f8c1d552c492"))) {
                 output += "B";
             }
+            
+            if (!File.Exists("Packages/vpm-manifest.json")) {
+                output += "V";
+            }
+            
+            output += " " + Application.unityVersion;
+
+            var vrcsdkAvatar = VRCFPackageUtils.GetVersionFromId("com.vrchat.avatars");
+            var vrcsdkBase = VRCFPackageUtils.GetVersionFromId("com.vrchat.base");
+            output += " " + vrcsdkAvatar;
+            if (vrcsdkBase != vrcsdkAvatar) output += "x" + vrcsdkBase;
 
             return output;
         }

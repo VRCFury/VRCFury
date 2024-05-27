@@ -1,4 +1,7 @@
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 
@@ -9,8 +12,8 @@ namespace VF.Utils {
         }
 
         private static bool IsStatic(AnimationClip clip) {
+            if (clip.IsProxyClip()) return false;
             foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (binding.IsProxyBinding()) return false;
                 if (curve.IsFloat) {
                     var keys = curve.FloatCurve.keys;
                     if (keys.All(key => key.time != 0)) return false;
@@ -25,7 +28,7 @@ namespace VF.Utils {
         }
 
         public static bool IsEmptyOrZeroLength(this Motion motion) {
-            return new AnimatorIterator.Clips().From(motion).All(clip => clip.length == 0 || clip.GetAllBindings().Length == 0);
+            return new AnimatorIterator.Clips().From(motion).All(clip => clip.GetLengthInSeconds() == 0 || clip.GetAllBindings().Length == 0);
         }
 
         public static bool HasValidBinding(this Motion motion, VFGameObject avatarRoot) {
@@ -36,6 +39,34 @@ namespace VF.Utils {
         private static bool HasValidBinding(AnimationClip clip, VFGameObject avatarRoot) {
             return clip.GetAllBindings()
                 .Any(binding => binding.IsValid(avatarRoot));
+        }
+
+        public static void MakeZeroLength(this Motion motion) {
+            if (motion is AnimationClip clip) {
+                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                    if (curve.lengthInSeconds == 0) return (binding, curve, false);
+                    return (binding, curve.GetFirst(), true);
+                }));
+                if (!clip.GetAllBindings().Any()) {
+                    clip.SetFloatCurve(
+                        EditorCurveBinding.FloatCurve("__ignored", typeof(GameObject), "m_IsActive"),
+                        AnimationCurve.Constant(0, 0, 0)
+                    );
+                }
+            } else {
+                foreach (var tree in new AnimatorIterator.Trees().From(motion)) {
+                    tree.RewriteChildren(child => {
+                        if (child.motion == null) {
+                            child.motion = VrcfObjectFactory.Create<AnimationClip>();
+                            child.motion.name = "Empty";
+                        }
+                        return child;
+                    });
+                }
+                foreach (var c in new AnimatorIterator.Clips().From(motion)) {
+                    c.MakeZeroLength();
+                }
+            }
         }
     }
 }

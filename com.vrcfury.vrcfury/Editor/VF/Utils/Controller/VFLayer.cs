@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -9,7 +10,10 @@ namespace VF.Utils.Controller {
     public class VFLayer {
         private readonly VFController ctrl;
         private readonly AnimatorStateMachine _stateMachine;
-        
+
+        private Vector2 nextOffset = new Vector2(1, 0);
+        private VFState lastCreatedState;
+
         public VFLayer(VFController ctrl, AnimatorStateMachine stateMachine) {
             this.ctrl = ctrl;
             this._stateMachine = stateMachine;
@@ -77,27 +81,31 @@ namespace VF.Utils.Controller {
             return string.Join("\n", lines);
         }
 
+        public void SetNextOffset(float x, float y) {
+            nextOffset = new Vector2(x, y);
+        }
+
         public VFState NewState(string name) {
             // Unity breaks if name contains .
             name = WrapStateName(name);
             name = name.Replace(".", "");
 
-            var lastNode = GetLastNodeForPositioning();
-            _stateMachine.AddState(name);
+            var s = _stateMachine.AddState(name);
+            VrcfObjectFactory.Register(s);
             var node = GetLastNode().Value;
             node.state.writeDefaultValues = true;
 
             var state = new VFState(node, _stateMachine);
-            if (lastNode.HasValue) state.Move(lastNode.Value.position, 0, 1);
-            else state.Move(_stateMachine.entryPosition, 1, 0);
-            return state;
-        }
+            
+            if (lastCreatedState != null) {
+                state.Move(lastCreatedState, nextOffset.x, nextOffset.y);
+            } else {
+                state.Move(_stateMachine.entryPosition, nextOffset.x, nextOffset.y);
+            }
 
-        private ChildAnimatorState? GetLastNodeForPositioning() {
-            var states = _stateMachine.states;
-            var index = Array.FindLastIndex(states, state => !state.state.name.StartsWith("_"));
-            if (index < 0) return null;
-            return states[index];
+            SetNextOffset(0, 1);
+            lastCreatedState = state;
+            return state;
         }
 
         private ChildAnimatorState? GetLastNode() {
@@ -120,10 +128,6 @@ namespace VF.Utils.Controller {
                 .ToList();
             newList.Insert(newIndex, myLayer);
             ctrl.layers = newList.ToArray();
-        }
-
-        public bool HasMuscles() {
-            return new AnimatorIterator.Clips().From(this).Any(clip => clip.HasMuscles());
         }
 
         public void Remove() {

@@ -142,7 +142,7 @@ namespace VF.Feature {
             }
         }
 
-        [FeatureBuilderAction(FeatureOrder.FullControllerToggle)]
+        [FeatureBuilderAction]
         public void ApplyOldToggle() {
             if (string.IsNullOrWhiteSpace(model.toggleParam)) {
                 return;
@@ -161,7 +161,6 @@ namespace VF.Feature {
                 state = new State {
                     actions = { new ObjectToggleAction { obj = GetBaseObject(), mode = ObjectToggleAction.Mode.TurnOn} }
                 },
-                securityEnabled = model.useSecurityForToggle,
                 addMenuItem = false,
                 paramOverride = toggleParam,
                 useInt = toggleIsInt
@@ -289,7 +288,7 @@ namespace VF.Feature {
                     var exists = toMain.GetRaw().GetParam(rewritten);
                     if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
-                    var target = new VFAFloat(exists);
+                    var target = new VFAFloat(exists.name, exists.defaultFloat);
 
                     float minSupported, maxSupported;
                     switch (smoothedParam.range) {
@@ -504,8 +503,8 @@ namespace VF.Feature {
             
             {
                 var (a, b) = VRCFuryEditorUtils.CreateTooltip(
-                    "Binding Rewrite Rules",
-                    "This allows you to rewrite the binding paths used in the animation clips of this controller. Useful if the animations" +
+                    "Path Rewrite Rules",
+                    "This allows you to rewrite the path to objects used in the animation clips of this controller. Useful if the animations" +
                     " in the controller were originally written to be based from a specific avatar root," +
                     " but you are now trying to use as a re-usable VRCFury prop."
                 );
@@ -517,7 +516,6 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("useSecurityForToggle"), "(Deprecated) Use security for toggle"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
@@ -531,6 +529,7 @@ namespace VF.Feature {
                 var missingFromBase = new HashSet<string>();
                 var missingFromAvatar = new HashSet<string>();
                 var usesWdOff = false;
+                var allPaths = new HashSet<string>();
                 foreach (var c in model.controllers) {
                     var c1 = c.controller?.Get() as AnimatorController;
                     if (c1 == null) continue;
@@ -540,28 +539,35 @@ namespace VF.Feature {
                             usesWdOff = true;
                         }
 
-                        var paths = new AnimatorIterator.Clips().From(state)
+                        allPaths.UnionWith(new AnimatorIterator.Clips().From(state)
                             .SelectMany(clip => clip.GetAllBindings())
                             .Select(binding => binding.path)
-                            .ToImmutableHashSet();
-                        foreach (var originalPath in paths) {
-                            var rewrittenPath = RewritePath(originalPath);
-                            if (rewrittenPath == null) {
-                                // binding was deleted by rules :)
-                                continue;
-                            }
-                            if (rewrittenPath.ToLower().Contains("ignore")) {
-                                continue;
-                            }
-                            if (baseObject.Find(rewrittenPath) == null) {
-                                if (avatarObject == baseObject) {
-                                    missingFromAvatar.Add(rewrittenPath);
-                                } else if (avatarObject != null && avatarObject.Find(originalPath) == null) {
-                                    missingFromAvatar.Add(originalPath);
-                                } else {
-                                    missingFromBase.Add(rewrittenPath);
-                                }
-                            }
+                        );
+                    }
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+                    allPaths.UnionWith(new AnimatorIterator.Behaviours().From(controller)
+                        .OfType<VRCAnimatorPlayAudio>()
+                        .Select(audio => audio.SourcePath)
+                        .Where(path => path != ""));
+#endif
+                }
+                
+                foreach (var originalPath in allPaths) {
+                    var rewrittenPath = RewritePath(originalPath);
+                    if (rewrittenPath == null) {
+                        // binding was deleted by rules :)
+                        continue;
+                    }
+                    if (rewrittenPath.ToLower().Contains("ignore")) {
+                        continue;
+                    }
+                    if (baseObject.Find(rewrittenPath) == null) {
+                        if (avatarObject == baseObject) {
+                            missingFromAvatar.Add(rewrittenPath);
+                        } else if (avatarObject != null && avatarObject.Find(originalPath) == null) {
+                            missingFromAvatar.Add(originalPath);
+                        } else {
+                            missingFromBase.Add(rewrittenPath);
                         }
                     }
                 }
@@ -578,7 +584,7 @@ namespace VF.Feature {
                 if (missingFromAvatar.Any()) {
                     text.Add(
                         "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything! " +
-                        "You may need to use 'Binding Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.");
+                        "You may need to use 'Path Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.");
                     text.Add("");
                     text.AddRange(missingFromAvatar.OrderBy(path => path));
                     text.Add("");
@@ -586,7 +592,7 @@ namespace VF.Feature {
                 if (missingFromBase.Any()) {
                     text.Add(
                         "These paths are animated in the controller, but not found as children of this object. " +
-                        "If you want this prop to be reusable, you should use 'Binding Rewrite Rules' in the Advanced Settings to rewrite " +
+                        "If you want this prop to be reusable, you should use 'Path Rewrite Rules' in the Advanced Settings to rewrite " +
                         "these paths so they work with how the objects are located within this object.");
                     text.Add("");
                     text.AddRange(missingFromBase.OrderBy(path => path));

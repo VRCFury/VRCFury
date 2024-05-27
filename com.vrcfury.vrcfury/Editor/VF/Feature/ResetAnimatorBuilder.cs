@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
@@ -48,6 +49,7 @@ namespace VF.Feature {
             // animator.WriteDefaultValues();
             VRCFArmatureUtils.ClearCache();
             VRCFArmatureUtils.WarmupCache(avatarObject);
+            ClosestBoneUtils.ClearCache();
             Object.DestroyImmediate(animator);
         }
 

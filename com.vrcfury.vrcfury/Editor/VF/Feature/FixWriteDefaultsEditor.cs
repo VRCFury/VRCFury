@@ -29,9 +29,15 @@ namespace VF.Feature {
                 "Force Off - Forces all states to WD off\n" +
                 "Disabled - Don't try to fix anything and don't warn even if it looks broken"));
             
+            string cached = null;
             container.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                if (cached != null) {
+                    return cached;
+                }
+                
                 var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
                 if (avatar == null) return "No avatar descriptor";
+
                 var avatarControllers = VRCAvatarUtils.GetAllControllers(avatar)
                     .Select(c => {
                         var ctrl = c.controller;
@@ -50,9 +56,15 @@ namespace VF.Feature {
                     output.Add("");
                     output.Add("Avatar base has broken mixed write defaults!");
                     output.Add("Here are the states that don't match:");
-                    output.Add(string.Join("\n", analysis.weirdStates));
+                    if (analysis.weirdStates.Count > 20) {
+                        output.Add(string.Join("\n", analysis.weirdStates.Take(20)));
+                        output.Add("... and " + (analysis.weirdStates.Count-20) + " others");
+                    } else {
+                        output.Add(string.Join("\n", analysis.weirdStates));
+                    }
                 }
-                return string.Join("\n", output);
+                cached = string.Join("\n", output);
+                return cached;
             }));
             
             return container;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
@@ -148,17 +149,21 @@ namespace VF.Builder {
             return output;
         }
 
-        public static IList<HumanBodyBones> GetAllBones() {
+        public static ISet<HumanBodyBones> GetAllBones() {
             return VRCFEnumUtils.GetValues<HumanBodyBones>()
                 .Where(bone => bone != HumanBodyBones.LastBone)
-                .ToArray();
+                .ToImmutableHashSet();
         }
 
-        public static IList<VFGameObject> GetAllBones(VFGameObject avatarObject) {
-            return GetAllBones()
-                .Select(bone => FindBoneOnArmatureOrNull(avatarObject, bone))
-                .Where(bone => bone != null)
-                .ToList();
+        public static IDictionary<HumanBodyBones, VFGameObject> GetAllBones(VFGameObject avatarObject) {
+            var dict = new Dictionary<HumanBodyBones, VFGameObject>();
+            foreach (var bone in GetAllBones()) {
+                var obj = FindBoneOnArmatureOrNull(avatarObject, bone);
+                if (obj != null) {
+                    dict[bone] = obj;
+                }
+            }
+            return dict;
         }
     }
 }

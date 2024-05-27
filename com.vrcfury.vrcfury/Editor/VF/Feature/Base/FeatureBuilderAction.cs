@@ -9,15 +9,13 @@ namespace VF.Feature.Base {
         private readonly MethodInfo method;
         private readonly object service;
         public int serviceNum { get; private set; }
-        public int menuSortOrder { get; private set; }
         public VFGameObject configObject { get; private set; }
 
-        public FeatureBuilderAction(FeatureBuilderActionAttribute attribute, MethodInfo method, object service, int serviceNum, int menuSortOrder, VFGameObject configObject) {
+        public FeatureBuilderAction(FeatureBuilderActionAttribute attribute, MethodInfo method, object service, int serviceNum, VFGameObject configObject) {
             this.attribute = attribute;
             this.method = method;
             this.service = service;
             this.serviceNum = serviceNum;
-            this.menuSortOrder = menuSortOrder;
             this.configObject = configObject;
         }
 
@@ -26,7 +24,15 @@ namespace VF.Feature.Base {
         }
 
         public int CompareTo(FeatureBuilderAction other) {
-            return attribute.CompareTo(other.attribute);
+            return (
+                (int)attribute.GetPriority(),
+                attribute.GetPriorityOffset(),
+                serviceNum
+            ).CompareTo((
+                (int)other.attribute.GetPriority(),
+                other.attribute.GetPriorityOffset(),
+                serviceNum
+            ));
         }
 
         public object GetService() {

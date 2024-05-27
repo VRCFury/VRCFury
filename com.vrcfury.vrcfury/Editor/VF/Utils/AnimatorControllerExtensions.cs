@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using Editor.VF.Utils;
-using UnityEditor;
 using UnityEditor.Animations;
-using UnityEngine;
 using VF.Builder;
-using VF.Inspector;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
@@ -27,6 +19,15 @@ namespace VF.Utils {
                     .Select(rewriter.RewritePath)
                     .Where(path => path != null));
             }
+            
+            // Rewrite VRCAnimatorPlayAudio
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+            foreach (var b in new AnimatorIterator.Behaviours().From(c)) {
+                if (b is VRCAnimatorPlayAudio audio) {
+                    audio.SourcePath = rewriter.RewritePath(audio.SourcePath);
+                }
+            }
+#endif
         }
     }
 }

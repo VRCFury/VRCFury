@@ -93,6 +93,7 @@ namespace VF.Service {
                     tree.AddChild(clip, 1);
                     on.WithAnimation(tree);
                 } else {
+                    clip.SetLooping(false);
                     on.WithAnimation(clip).MotionTime(smoothParam);
                 }
 
@@ -185,6 +186,7 @@ namespace VF.Service {
                     tree.AddChild(clip, 1);
                     on.WithAnimation(tree);
                 } else {
+                    clip.SetLooping(false);
                     on.WithAnimation(clip).MotionTime(smoothed);
                 }
 

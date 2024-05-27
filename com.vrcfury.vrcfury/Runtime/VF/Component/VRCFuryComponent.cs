@@ -17,7 +17,13 @@ namespace VF.Component {
                 return base.transform;
             }
         }
-        
+
+        public static Action _OnValidate;
+
+        private void OnValidate() {
+            _OnValidate?.Invoke();
+        }
+
         public override int GetLatestVersion() {
             return 1;
         }

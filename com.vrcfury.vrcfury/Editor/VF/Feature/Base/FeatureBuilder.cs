@@ -23,7 +23,6 @@ namespace VF.Feature.Base {
 
         [VFAutowired] protected readonly ClipBuilderService clipBuilder;
         [VFAutowired] protected readonly AvatarManager manager;
-        [VFAutowired] private readonly MutableManager mutableManager; 
         [VFAutowired] private readonly GlobalsService globals;
         protected string tmpDirParent => globals.tmpDirParent;
         protected string tmpDir => globals.tmpDir;
@@ -31,8 +30,8 @@ namespace VF.Feature.Base {
         protected List<FeatureModel> allFeaturesInRun => globals.allFeaturesInRun;
         protected List<FeatureBuilder> allBuildersInRun => globals.allBuildersInRun;
         public VFGameObject avatarObjectOverride = null;
-        public void addOtherFeature(FeatureModel model) {
-            globals.addOtherFeature(model, featureBaseObject);
+        protected void addOtherFeature(FeatureModel model) {
+            globals.addOtherFeature(model);
         }
 
         [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
@@ -61,6 +60,8 @@ namespace VF.Feature.Base {
         public ControllerManager GetFx() {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
+
+        public ControllerManager fx => GetFx();
 
         public virtual string GetClipPrefix() {
             return null;

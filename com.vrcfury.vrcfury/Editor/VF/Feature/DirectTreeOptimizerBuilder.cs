@@ -26,11 +26,10 @@ namespace VF.Feature {
                 .OfType<DirectTreeOptimizer>()
                 .Any(m => !m.managedOnly);
 
-            var fx = GetFx();
             var applyToLayers = applyToUnmanaged ? fx.GetLayers() : fx.GetManagedLayers();
 
             var bindingsByLayer = fx.GetLayers()
-                .ToDictionary(layer => layer, layer => GetBindingsAnimatedInLayer(layer));
+                .ToDictionary(layer => layer, GetBindingsAnimatedInLayer);
 
             var floatTrue = fx.One();
             
@@ -96,15 +95,28 @@ namespace VF.Feature {
 
                 var hasNonstaticClips = new AnimatorIterator.Clips().From(layer)
                     .Any(clip => !clip.IsStatic());
+                
+                var states = layer.stateMachine.states;
 
-                var usedBindings = bindingsByLayer[layer];
-                if (usedBindings.Any(b => b.propertyName.ToLower().Contains("localeulerangles"))) {
+                var hasEulerRotation = states.Any(state => {
+                    if (state.state.motion is BlendTree) return false;
+                    return new AnimatorIterator.Clips().From(state.state.motion)
+                        .SelectMany(clip => clip.GetAllBindings())
+                        .Where(binding => binding.IsValid(avatarObject))
+                        .Select(binding => binding.Normalize(true))
+                        .Any(b => b.propertyName == EditorCurveBindingExtensions.NormalizedRotationProperty);
+                });
+                if (hasEulerRotation) {
                     AddDebug($"Not optimizing (animates transform rotations, which work differently within blend trees)");
                     continue;
                 }
                 
+                var usedBindings = bindingsByLayer[layer];
                 var otherLayersAnimateTheSameThing = bindingsByLayer
-                    .Where(pair => pair.Key != layer && pair.Key.Exists() && pair.Key.GetLayerId() >= layer.GetLayerId() && pair.Value.Any(b => usedBindings.Contains(b)))
+                    .Where(pair => pair.Key != layer) // It's not the current layer
+                    .Where(pair => pair.Key.Exists()) // The other layer hasn't been deleted
+                    .Where(pair => pair.Key.GetLayerId() >= layer.GetLayerId()) // The other layer has higher priority
+                    .Where(pair => pair.Value.Any(b => usedBindings.Contains(b))) // The other layer animates the same thing we do
                     .Select(pair => pair.Key)
                     .ToArray();
                 if (otherLayersAnimateTheSameThing.Length > 0) {
@@ -115,9 +127,8 @@ namespace VF.Feature {
 
                 Motion onClip;
                 Motion offClip;
-                string param;
+                VFAFloat param;
 
-                var states = layer.stateMachine.states;
                 if (states.Length == 1) {
                     var state = states[0].state;
                     if (hasNonstaticClips) {
@@ -137,11 +148,11 @@ namespace VF.Feature {
                         offClip.name = state.motion.name + " (OFF)";
                         onClip = dualState.Item2;
                         onClip.name = state.motion.name + " (ON)";
-                        param = state.timeParameter;
+                        param = new VFAFloat(state.timeParameter, 0);
                     } else {
                         offClip = null;
                         onClip = states[0].state.motion;
-                        param = floatTrue.Name();
+                        param = floatTrue;
                     }
                 } else {
                     ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
@@ -237,24 +248,9 @@ namespace VF.Feature {
                         onClip = onState.motion;
                     }
                     
-                    param = state0Condition.Value.parameter;
+                    param = new VFAFloat(state0Condition.Value.parameter, 0);
                 }
 
-                if (param == fx.True().Name()) {
-                    AddDebug($"Not optimizing (VF_True)");
-                    continue;
-                }
-
-                var paramUsedInOtherLayer = fx.GetLayers()
-                    .Where(other => layer != other)
-                    .SelectMany(other => new AnimatorIterator.Conditions().From(other))
-                    .Any(c => c.parameter == param);
-
-                if (paramUsedInOtherLayer) {
-                    AddDebug($"Not optimizing (parameter used in some other layer)");
-                    continue;
-                }
-                
                 var paramType = fx.GetRaw().parameters
                     .Where(p => p.name == param)
                     .Select(p => p.type)
@@ -278,13 +274,16 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
-                var tree = fx.NewBlendTree("Optimized Toggles");
+                var tree = fx.NewBlendTree("Optimized DBT");
                 tree.blendType = BlendTreeType.Direct;
+                var layer = fx.NewLayer("Optimized DBT");
+                layer.NewState("DBT").WithAnimation(tree);
+
                 foreach (var toggle in eligibleLayers) {
                     var offEmpty = !toggle.offState.HasValidBinding(avatarObject);
                     var onEmpty = !toggle.onState.HasValidBinding(avatarObject);
                     if (offEmpty && onEmpty) continue;
-                    string param;
+                    VFAFloat param;
                     Motion motion;
                     if (!offEmpty) {
                         var subTree = fx.NewBlendTree("Layer " + toggle.offState.name);
@@ -294,13 +293,14 @@ namespace VF.Feature {
                         subTree.AddChild(
                             !onEmpty ? toggle.onState : fx.GetEmptyClip(), 1);
                         subTree.blendParameter = toggle.param;
-                        param = floatTrue.Name();
+                        param = floatTrue;
                         motion = subTree;
                     } else {
                         param = toggle.param;
                         motion = toggle.onState;
                     }
 
+                    //directTree.Add(param, motion);
                     tree.AddDirectChild(param, motion);
 
                     var fxRaw = fx.GetRaw();
@@ -313,9 +313,6 @@ namespace VF.Feature {
                         return p;
                     }).ToArray();
                 }
-                
-                var layer = fx.NewLayer("Optimized Toggles");
-                layer.NewState("Optimized Toggles").WithAnimation(tree);
             }
         }
 
@@ -323,11 +320,11 @@ namespace VF.Feature {
             return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
                 .Where(binding => binding.IsValid(avatarObject))
-                .Select(binding => binding.Normalize())
+                .Select(binding => binding.Normalize(true))
                 .ToImmutableHashSet();
         }
 
-        public enum EffectiveCondition {
+        private enum EffectiveCondition {
             WHEN_1,
             WHEN_0,
             INVALID
@@ -354,10 +351,10 @@ namespace VF.Feature {
             return allConditions[0];
         }
 
-        public class EligibleLayer {
+        private class EligibleLayer {
             public Motion offState;
             public Motion onState;
-            public string param;
+            public VFAFloat param;
         }
         
         public override string GetEditorTitle() {

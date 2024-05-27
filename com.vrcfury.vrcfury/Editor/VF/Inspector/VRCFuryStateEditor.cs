@@ -55,10 +55,10 @@ public class VRCFuryStateEditor : PropertyDrawer {
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ResetPhysboneAction()); });
             menu.AddItem(new GUIContent("Flipbook Builder"), false,
                 () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FlipBookBuilderAction()); });
+            menu.AddItem(new GUIContent("Smooth Loop Builder (Breathing, etc)"), false,
+                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SmoothLoopAction()); });
             menu.ShowAsContext();
         }
-
-        var actions = prop.FindPropertyRelative("actions");
 
         container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var body = new VisualElement();
@@ -106,7 +106,7 @@ public class VRCFuryStateEditor : PropertyDrawer {
             }
 
             return VRCFuryEditorUtils.AssembleProp(myLabel, tooltip, body, false, showList, labelWidth);
-        }, list, actions));
+        }, list));
 
         return container;
     }

@@ -63,7 +63,7 @@ namespace VF.Inspector {
                     "Haptic level will increase to 100% at the center of the sphere. " +
                     "This touch zone can be activated by Hands, Fingers, Feet, SPS Plugs, VRCF Haptic Touch Senders, and Heads (other players only)."));
 
-                container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject));
+                container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));
             
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in connected apps"));
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));

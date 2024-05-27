@@ -15,10 +15,17 @@ namespace VF.Builder {
         private readonly Func<int> currentMenuSortPosition;
         private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions
             = new Dictionary<VRCExpressionsMenu.Control, int>();
+        private int overrideMenuSortPosition = -1;
 
         public MenuManager(VRCExpressionsMenu menu, Func<int> currentMenuSortPosition) {
             rootMenu = menu;
             this.currentMenuSortPosition = currentMenuSortPosition;
+        }
+
+        public void OverrideSortPosition(int serviceId, Action with) {
+            this.overrideMenuSortPosition = serviceId;
+            with();
+            this.overrideMenuSortPosition = -1;
         }
 
         public VRCExpressionsMenu GetRaw() {
@@ -27,7 +34,7 @@ namespace VF.Builder {
 
         private VRCExpressionsMenu.Control NewControl() {
             var control = new VRCExpressionsMenu.Control();
-            sortPositions[control] = currentMenuSortPosition();
+            sortPositions[control] = overrideMenuSortPosition >= 0 ? overrideMenuSortPosition : currentMenuSortPosition();
             return control;
         }
 
@@ -108,7 +115,7 @@ namespace VF.Builder {
                     MergeMenu(toPath, control.subMenu, index: index);
                 } else {
                     control.name = toName;
-                    var tmpMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                    var tmpMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                     tmpMenu.controls.Add(control);
                     MergeMenu(toPrefix, tmpMenu, index: index);
                 }
@@ -250,7 +257,7 @@ namespace VF.Builder {
 
         private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
-            var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+            var newMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
             newMenu.name = string.Join(" » ", cleanPath);
             return newMenu;
         }
