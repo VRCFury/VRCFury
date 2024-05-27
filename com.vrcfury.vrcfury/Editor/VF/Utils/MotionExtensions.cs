@@ -43,7 +43,10 @@ namespace VF.Utils {
 
         public static void MakeZeroLength(this Motion motion) {
             if (motion is AnimationClip clip) {
-                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => (binding, curve.GetFirst(), true)));
+                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                    if (curve.lengthInSeconds == 0) return (binding, curve, false);
+                    return (binding, curve.GetFirst(), true);
+                }));
                 if (!clip.GetAllBindings().Any()) {
                     clip.SetFloatCurve(
                         EditorCurveBinding.FloatCurve("__ignored", typeof(GameObject), "m_IsActive"),

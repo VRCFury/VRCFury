@@ -67,6 +67,7 @@ namespace VF.Builder {
             });
             if (clipReplacements.Count > 0) {
                 foreach (var o in unsavedChildren) {
+                    if (o is AnimationClip) continue;
                     MutableManager.RewriteInternals(o, clipReplacements);
                 }
             }

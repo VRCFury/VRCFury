@@ -25,8 +25,6 @@ namespace VF.Service {
                 if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
                     var action = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                     var layer = action.NewLayer("VRCFury Actions");
-                    layer.mask = AvatarMaskExtensions.Empty();
-                    layer.mask.AllowAllMuscles();
                     var idle = layer.NewState("Idle");
                     addCache[type] = c => AddClip(c, action, idle, layer, type);
                 } else {
@@ -51,12 +49,6 @@ namespace VF.Service {
         
         private VFAFloat AddClip(AnimationClip clip, ControllerManager ctrl, VFState idle, VFLayer layer, EditorCurveBindingExtensions.MuscleBindingType type) {
             clip = clip.Clone();
-            var nonActionBindings = clip.GetAllBindings()
-                .Where(b => {
-                    if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) return !b.IsMuscle();
-                    return b.GetMuscleBindingType() != type;
-                });
-            clip.SetCurves(nonActionBindings.Select(b => (b,(FloatOrObjectCurve)null)));
             var state = layer.NewState(clip.name).WithAnimation(clip);
 
             var fx = manager.GetFx();
