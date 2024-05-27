@@ -105,8 +105,8 @@ namespace VF.Service {
                 .FirstOrDefault();
             if (firstClip) {
                 var copy = firstClip.Clone();
-                copy.Rewrite(rewriter);
                 AddFullBodyClip(copy);
+                copy.Rewrite(rewriter);
                 copy.name = onClip.name;
                 onClip = copy;
             }
@@ -203,8 +203,8 @@ namespace VF.Service {
                         if (clipActionClip == null || clipActionClip == firstClip) break;
 
                         var copy = clipActionClip.Clone();
-                        copy.Rewrite(rewriter);
                         AddFullBodyClip(copy);
+                        copy.Rewrite(rewriter);
                         onClip.CopyFrom(copy);
                         break;
                     case ObjectToggleAction toggle: {
