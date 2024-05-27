@@ -132,9 +132,9 @@ namespace VF.Feature {
 
                 AvatarMask expectedMask = null;
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                    expectedMask = GetGestureMask(c);
-                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    expectedMask = GetFxMask(c);
+                    expectedMask = AvatarMaskExtensions.Empty();
+                    expectedMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+                    expectedMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
                 }
 
                 var layer0 = ctrl.GetLayer(0);
@@ -158,10 +158,6 @@ namespace VF.Feature {
                 mask.UnionWith(layer.mask);
             }
             return mask;
-        }
-
-        private AvatarMask GetFxMask(ControllerManager fx) {
-            return null;
         }
     }
 }

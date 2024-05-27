@@ -175,6 +175,10 @@ namespace VF.Builder {
                 visited.Add(o);
                 var enter = visit(o);
                 if (!enter) continue;
+                
+                // AnimationClips are really big and can't contain any object children, so no reason to iterate in them
+                if (o is AnimationClip) continue;
+                
                 Iterate(new SerializedObject(o), prop => {
                     if (prop.propertyType == SerializedPropertyType.ObjectReference) {
                         var objectReferenceValue = GetObjectReferenceValueSafe(prop);
