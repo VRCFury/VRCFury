@@ -112,7 +112,8 @@ namespace VF.Builder {
             foreach (var control in fromControls) {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     GetSubmenu(toPath, createFromControl: control);
-                    MergeMenu(toPath, control.subMenu, index: index);
+                    MergeMenu(toPath, control.subMenu);
+                    Insert(toMenu, GetMenuItem(to), index);
                 } else {
                     control.name = toName;
                     var tmpMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
