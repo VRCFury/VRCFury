@@ -197,18 +197,21 @@ namespace VF.Model.StateAction {
     
     [Serializable]
     public class SyncParamAction : Action {
+        [DoNotApplyRestingState]
         public string param;
         public float value = 0;
     }
 
     [Serializable]
     public class ToggleStateAction : Action {
+        [DoNotApplyRestingState]
         public string toggle;
         public float value = 0;
     }
 
     [Serializable]
     public class TagStateAction : Action {
+        [DoNotApplyRestingState]
         public string tag;
         public float value = 0;
     }

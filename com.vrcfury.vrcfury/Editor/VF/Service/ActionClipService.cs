@@ -46,8 +46,8 @@ namespace VF.Service {
             public AnimationClip onClip = VrcfObjectFactory.Create<AnimationClip>();
             public AnimationClip implicitRestingClip = VrcfObjectFactory.Create<AnimationClip>();
         }
-        public static BuiltAction LoadStateAdv(string name, State state, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service = null, ToggleBuilder toggleFeature = null) {
 
+        public static BuiltAction LoadStateAdv(string name, State state, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service = null, ToggleBuilder toggleFeature = null) {
 
             if (state == null) {
                 return new BuiltAction();
@@ -108,13 +108,15 @@ namespace VF.Service {
                 .FirstOrDefault();
             if (firstClip) {
                 var copy = firstClip.Clone();
-                copy.Rewrite(rewriter);
                 AddFullBodyClip(copy);
+                copy.Rewrite(rewriter);
                 copy.name = onClip.name;
                 onClip = copy;
             }
 
             var physbonesToReset = new HashSet<VFGameObject>();
+
+            VFAFloat triggerParam = null;
 
             foreach (var action in actions) {
                 switch (action) {
@@ -206,8 +208,8 @@ namespace VF.Service {
                         if (clipActionClip == null || clipActionClip == firstClip) break;
 
                         var copy = clipActionClip.Clone();
-                        copy.Rewrite(rewriter);
                         AddFullBodyClip(copy);
+                        copy.Rewrite(rewriter);
                         onClip.CopyFrom(copy);
                         break;
                     case ObjectToggleAction toggle: {
@@ -370,15 +372,27 @@ namespace VF.Service {
                         break;
                     }
                     case SyncParamAction syncParamAction: {
-                        service.driveParameterService.CreateParamTrigger(onClip, syncParamAction.param, syncParamAction.value);
+                        if (triggerParam == null) {
+                            triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                            onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
+                        }
+                        service.driveParameterService.CreateParamTrigger(triggerParam, syncParamAction.param, syncParamAction.value);
                         break;
                     }
                     case ToggleStateAction toggleStateAction: {
-                        service.driveParameterService.CreateToggleTrigger(onClip, toggleStateAction.toggle, toggleStateAction.value);
+                         if (triggerParam == null) {
+                            triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                            onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
+                        }
+                        service.driveParameterService.CreateToggleTrigger(triggerParam, toggleStateAction.toggle, toggleStateAction.value);
                         break;
                     }
                     case TagStateAction tagStateAction: {
-                        service.driveParameterService.CreateTagTrigger(onClip, tagStateAction.tag, tagStateAction.value, toggleFeature);
+                        if (triggerParam == null) {
+                            triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                            onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
+                        }
+                        service.driveParameterService.CreateTagTrigger(triggerParam, tagStateAction.tag, tagStateAction.value, toggleFeature);
                         break;
                     }
                 }

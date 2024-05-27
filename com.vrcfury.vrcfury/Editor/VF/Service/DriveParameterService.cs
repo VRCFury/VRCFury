@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 using static VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control;
 
@@ -17,74 +19,74 @@ namespace VF.Service {
         [VFAutowired] private AvatarManager manager;
         [VFAutowired] private readonly GlobalsService globals;
 
-        private List<(AnimationClip, string, float)> paramTriggers = new ();
-        private List<(AnimationClip, string, float)> toggleTriggers = new ();
-        private List<(AnimationClip, string, float, FeatureBuilder)> tagTriggers = new ();
+        private List<(VFAFloat, string, float)> paramTriggers = new ();
+        private List<(VFAFloat, string, float)> toggleTriggers = new ();
+        private List<(VFAFloat, string, float, FeatureBuilder)> tagTriggers = new ();
 
-        public void CreateParamTrigger(AnimationClip clip, string param, float target) {
-            paramTriggers.Add((clip, param, target));
+        public void CreateParamTrigger(VFAFloat triggerParam, string param, float target) {
+            paramTriggers.Add((triggerParam, param, target));
         }
 
-        public void CreateToggleTrigger(AnimationClip clip, string toggle, float target) {
-            toggleTriggers.Add((clip, toggle, target));
+        public void CreateToggleTrigger(VFAFloat triggerParam, string toggle, float target) {
+            toggleTriggers.Add((triggerParam, toggle, target));
         }
 
-        public void CreateTagTrigger(AnimationClip clip, string tag, float target, FeatureBuilder feature = null) {
-            tagTriggers.Add((clip, tag, target, feature));
+        public void CreateTagTrigger(VFAFloat triggerParam, string tag, float target, FeatureBuilder feature = null) {
+            tagTriggers.Add((triggerParam, tag, target, feature));
         }
 
         public void ApplyTriggers() {
-
-            Dictionary<Motion, VFState> states = new();
-
-            foreach (var c in manager.GetAllUsedControllers()) {
-                foreach (var layer in c.GetLayers()) {
-                    var stateMachine = layer.stateMachine;
-                    foreach (var state in stateMachine.states) {
-                        if (state.state == null || state.state.motion == null) continue;
-                        if (state.state.speed == -1) continue; // ignore transition out is reverse of transition in
-                        states[state.state.motion] = new VFState(state, stateMachine);
-                    }
-                }
-            }
             
-            List<(VFState, string, float)> triggers = new();
+            List<(VFAFloat, string, float)> triggers = new();
             foreach (var trigger in tagTriggers) {
-                var (clip, tag, target, feature) = trigger;
-                if (!states.Keys.Contains(clip)) continue;
+                var (param, tag, target, feature) = trigger;
                 foreach (var other in globals.allBuildersInRun
                      .OfType<ToggleBuilder>()
                      .Where(b => b != feature)) {
                         var otherTags = other.GetTags();
                         
                         if (otherTags.Contains(tag)) {
-                            if (target == 0) triggers.Add((states[clip], other.getParam(), 0));
-                            else triggers.Add((states[clip], other.getParam(), other.model.slider ? target : 1));
+                            if (target == 0) triggers.Add((param, other.getParam(), 0));
+                            else triggers.Add((param, other.getParam(), other.model.slider ? target : 1));
                         }
-
                 }
             }
 
             foreach (var trigger in toggleTriggers) {
-                var (clip, path, target) = trigger;
-                if (!states.Keys.Contains(clip)) continue;
+                var (param, path, target) = trigger;
                 var control = manager.GetMenu().GetMenuItem(path);
                 if (control == null) continue;
-                if (target == 0) triggers.Add((states[clip], control.parameter.name, 0));
-                else if (control.type == ControlType.RadialPuppet) triggers.Add((states[clip], control.parameter.name, target));
-                else triggers.Add((states[clip], control.parameter.name, control.value));
+                if (target == 0) triggers.Add((param, control.parameter.name, 0));
+                else if (control.type == ControlType.RadialPuppet) triggers.Add((param, control.parameter.name, target));
+                else triggers.Add((param, control.parameter.name, control.value));
             }
 
             foreach (var trigger in paramTriggers) {
-                var (clip, param, target) = trigger;
-                if (!states.Keys.Contains(clip)) continue;
-                triggers.Add((states[clip], param, target));
+                var (triggerParam, param, target) = trigger;
+                triggers.Add((triggerParam, param, target));
             }
 
-            foreach (var trigger in triggers) {
-                var (state, param, value) = trigger;
+            if (triggers.Count() == 0) return;
 
-                state.Drives(param, value);
+            var fx = manager.GetFx();
+            var layer = fx.NewLayer("Drive Triggers");
+            var start = layer.NewState("Start");
+
+            Dictionary<VFAFloat, VFState> states = new ();
+
+            foreach (var trigger in triggers) {
+                var (triggerParam, param, value) = trigger;
+
+                if (!states.ContainsKey(triggerParam)) {
+                    var clip = VrcfObjectFactory.Create<AnimationClip>();
+                    clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 0);
+                    var state = layer.NewState(triggerParam.Name()).WithAnimation(clip);
+                    start.TransitionsTo(state).When(triggerParam.IsGreaterThan(0.5f));
+                    state.TransitionsToExit().When(triggerParam.IsLessThan(0.5f));
+                    states[triggerParam] = state;
+                }
+
+                states[triggerParam].Drives(param, value);
             }
         }
             
