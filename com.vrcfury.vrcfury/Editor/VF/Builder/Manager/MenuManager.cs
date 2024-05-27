@@ -112,7 +112,8 @@ namespace VF.Builder {
             foreach (var control in fromControls) {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     GetSubmenu(toPath, createFromControl: control);
-                    MergeMenu(toPath, control.subMenu, index: index);
+                    MergeMenu(toPath, control.subMenu);
+                    Insert(toMenu, GetMenuItem(to), index);
                 } else {
                     control.name = toName;
                     var tmpMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
@@ -121,6 +122,19 @@ namespace VF.Builder {
                 }
             }
             return true;
+        }
+
+        public VRCExpressionsMenu.Control GetMenuItem(string path) {
+            var split = SplitPath(path);
+            if (split.Count == 0) split = new[] { "" };
+            var name = split[split.Count-1];
+            var submenu = GetSubmenu(Slice(split, split.Count-1));
+            foreach (var control in submenu.controls) {
+                if (control.name == name) {
+                    return control;
+                }
+            }
+            return null;
         }
 
         private void GetSubmenuAndItem(
