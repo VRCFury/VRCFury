@@ -75,7 +75,7 @@ namespace VF.Service {
                         }
                         if (visit.value is State action) {
                             var tempState = new State {
-                                actions = action.actions.Where(a => a.GetType().GetCustomAttribute<DoNotApplyRestingStateAttribute>() != null).ToList()
+                                actions = action.actions.Where(a => a.GetType().GetCustomAttribute<DoNotApplyRestingStateAttribute>() == null).ToList()
                             };
                             var built = actionClipService.LoadStateAdv("", tempState);
                             ApplyClipToRestingState(built.implicitRestingClip, owner: $"{component.GetType().Name} on {path}");
