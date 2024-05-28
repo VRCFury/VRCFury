@@ -176,17 +176,24 @@ namespace VF.Builder {
                 var enter = visit(o);
                 if (!enter) continue;
                 
-                // AnimationClips are really big and can't contain any object children, so no reason to iterate in them
-                if (o is AnimationClip) continue;
-                
-                Iterate(new SerializedObject(o), prop => {
-                    if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                        var objectReferenceValue = GetObjectReferenceValueSafe(prop);
-                        if (objectReferenceValue != null) {
-                            stack.Push(objectReferenceValue);
+                // AnimationClips are really big, so we can just iterate the possible object children
+                if (o is AnimationClip clip) {
+                    foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                        var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
+                        foreach (var frame in curve) {
+                            if (frame.value != null) stack.Push(frame.value);
                         }
                     }
-                });
+                } else {
+                    Iterate(new SerializedObject(o), prop => {
+                        if (prop.propertyType == SerializedPropertyType.ObjectReference) {
+                            var objectReferenceValue = GetObjectReferenceValueSafe(prop);
+                            if (objectReferenceValue != null) {
+                                stack.Push(objectReferenceValue);
+                            }
+                        }
+                    });
+                }
             }
         }
 
