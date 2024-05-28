@@ -78,9 +78,8 @@ namespace VF.Feature {
                     .Select(id => new SavedBlendshape(mesh, id))
                     .ToArray();
 
-                var meshCopy = MutableManager.MakeMutable(mesh);
-                meshCopy.ClearBlendShapes();
-                skin.SetMesh(meshCopy);
+                mesh = skin.GetMutableMesh();
+                mesh.ClearBlendShapes();
 
                 for (var id = 0; id < blendshapeCount; id++) {
                     var savedBlendshape = savedBlendshapes[id];
@@ -88,14 +87,14 @@ namespace VF.Feature {
 
                     string logOutputDetail;
                     if (keep) {
-                        savedBlendshape.SaveTo(meshCopy, out logOutputDetail);
+                        savedBlendshape.SaveTo(mesh, out logOutputDetail);
                     } else {
-                        savedBlendshape.BakeTo(meshCopy, savedWeights[id], out logOutputDetail);
+                        savedBlendshape.BakeTo(mesh, savedWeights[id], out logOutputDetail);
                     }
                     // add ├ and └ for nicer looking log output
                     logOutput += (id != blendshapeCount-1 ? "\u251c" : "\u2514") + logOutputDetail;
                 }
-                VRCFuryEditorUtils.MarkDirty(meshCopy);
+                VRCFuryEditorUtils.MarkDirty(mesh);
 
                 var avatar = manager.Avatar;
 

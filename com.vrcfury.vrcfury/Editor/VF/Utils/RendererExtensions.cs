@@ -19,6 +19,13 @@ namespace VF.Utils {
                 .FirstOrDefault();
         }
 
+        private static Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
+
+        [InitializeOnLoadMethod]
+        public static void Init() {
+            Scheduler.Schedule(() => readWriteCache.Clear(), 0);
+        }
+
         [CanBeNull]
         public static Mesh GetMesh(this Renderer renderer) {
             Mesh mesh = null;
@@ -35,9 +42,13 @@ namespace VF.Utils {
                 mesh = filter.sharedMesh;
             }
 
+            // Meshes that aren't readable cannot have (basically anything) read from them
+            // while in play mode, so we make a copy that is readable and return that instead.
             if (mesh != null && !mesh.isReadable && Application.isPlaying) {
+                if (readWriteCache.TryGetValue(mesh, out var cached)) return cached;
                 var copy = MutableManager.MakeMutable(mesh, true);
                 ForceReadWrite(copy);
+                readWriteCache[mesh] = copy;
                 return copy;
             }
 
