@@ -100,7 +100,9 @@ namespace VF.Service {
             if (times.Count > 2) return null;
 
             var startClip = VrcfObjectFactory.Create<AnimationClip>();
+            startClip.name = $"{clip.name} - First Frame";
             var endClip = VrcfObjectFactory.Create<AnimationClip>();
+            endClip.name = $"{clip.name} - Last Frame";
             
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 if (curve.IsFloat) {

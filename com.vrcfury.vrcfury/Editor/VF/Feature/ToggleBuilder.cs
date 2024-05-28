@@ -184,11 +184,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (weight != null) {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
-                clip = clipBuilder.MergeSingleFrameClips(
+                var motionClip = clipBuilder.MergeSingleFrameClips(
                     (0, VrcfObjectFactory.Create<AnimationClip>()),
                     (1, clip)
                 );
-                clip.UseLinearTangents();
+                motionClip.UseLinearTangents();
+                motionClip.name = clip.name;
+                clip = motionClip;
             }
             clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
