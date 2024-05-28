@@ -17,7 +17,7 @@ namespace VF.Hooks {
 
         public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
             triggerReload = true;
-            EditorApplication.delayCall += DelayCall;
+            EditorApplication.delayCall += () => EditorApplication.delayCall += DelayCall;
             return true;
         }
 
