@@ -24,7 +24,7 @@ namespace VF.Service {
      * something is wrong (perhaps the user gave conflicting instructions?)
      */
     [VFService]
-    public class RestingStateService {
+    internal class RestingStateService {
 
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;

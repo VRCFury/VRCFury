@@ -19,7 +19,7 @@ namespace VF.Feature {
      * from loading entirely. Let's just remove those transitions.
      */
     [VFService]
-    public class NoBadControllerParamsBuilder {
+    internal class NoBadControllerParamsBuilder {
         [VFAutowired] private readonly AvatarManager manager;
         
         [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]

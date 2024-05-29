@@ -18,7 +18,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
 
-public static class FeatureFinder {
+internal static class FeatureFinder {
     private static Dictionary<Type,Type> allFeatures;
     private static Dictionary<Type,Type> GetAllFeatures() {
         if (allFeatures == null) {

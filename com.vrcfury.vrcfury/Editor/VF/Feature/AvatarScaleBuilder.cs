@@ -6,7 +6,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class AvatarScaleBuilder : FeatureBuilder<AvatarScale2> {
+internal class AvatarScaleBuilder : FeatureBuilder<AvatarScale2> {
     [FeatureBuilderAction]
     public void Apply() {
     }

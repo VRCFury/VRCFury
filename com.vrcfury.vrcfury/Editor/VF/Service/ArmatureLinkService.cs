@@ -19,7 +19,7 @@ using Random = System.Random;
 
 namespace VF.Service {
     [VFService]
-    public class ArmatureLinkService {
+    internal class ArmatureLinkService {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
         [VFAutowired] private readonly GlobalsService globals;

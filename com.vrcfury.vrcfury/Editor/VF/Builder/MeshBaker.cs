@@ -4,7 +4,7 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Builder {
-    public static class MeshBaker {
+    internal static class MeshBaker {
         /**
          * Returns a baked mesh, where the vertices are in local space in relation to the renderer's transform.
          * This is true even for skinned meshes (where in other places, the offsets are commonly in relation to the root bone)

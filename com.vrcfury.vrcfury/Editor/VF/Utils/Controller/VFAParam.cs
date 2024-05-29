@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace VF.Utils.Controller {
-    public abstract class VFAParam {
+    internal abstract class VFAParam {
         public static implicit operator string(VFAParam d) => d.Name();
         
         protected readonly string name;

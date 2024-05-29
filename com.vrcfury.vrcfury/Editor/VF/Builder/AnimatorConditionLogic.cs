@@ -13,7 +13,7 @@ namespace VF.Builder {
      * This class can take any arbitrary set of animator transform conditions,
      * and AND, OR, or NOT them cleanly with other conditions.
      */
-    public static class AnimatorConditionLogic {
+    internal static class AnimatorConditionLogic {
         private static AnimatorCondition Not(AnimatorCondition input) {
             var copy = input;
             switch (copy.mode) {

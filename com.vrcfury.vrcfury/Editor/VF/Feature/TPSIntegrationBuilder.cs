@@ -5,7 +5,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration2> {
+    internal class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration2> {
         [FeatureBuilderAction]
         public void Apply() {
 

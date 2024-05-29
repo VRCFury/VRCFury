@@ -5,7 +5,7 @@ using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
-    public static class EditorCurveBindingExtensions {
+    internal static class EditorCurveBindingExtensions {
         /**
          * Used to make sure that two instances of EditorCurveBinding equal each other,
          * even if they have different discrete settings, etc

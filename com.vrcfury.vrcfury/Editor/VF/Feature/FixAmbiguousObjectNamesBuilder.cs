@@ -8,7 +8,7 @@ using VF.Utils;
 
 namespace VF.Feature {
     [VFService]
-    public class FixAmbiguousObjectNamesBuilder {
+    internal class FixAmbiguousObjectNamesBuilder {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AvatarManager manager;
         private VFGameObject avatarObject => globals.avatarObject;

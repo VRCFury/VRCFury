@@ -12,7 +12,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public static class MutableManager {
+    internal static class MutableManager {
 
         private static readonly Type[] typesToMakeMutable = {
             // This has to be here because animator override controllers

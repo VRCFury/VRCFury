@@ -19,7 +19,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
     [VFService]
-    public class ActionClipService {
+    internal class ActionClipService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;

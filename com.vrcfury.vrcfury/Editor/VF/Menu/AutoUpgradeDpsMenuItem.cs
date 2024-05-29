@@ -1,11 +1,11 @@
 ﻿using UnityEditor;
 
 namespace VF.Menu {
-    public static class AutoUpgradeDpsMenuItem {
+    internal static class AutoUpgradeDpsMenuItem {
         private const string EditorPref = "com.vrcfury.autoUpgradeDps";
 
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             EditorApplication.delayCall += UpdateMenu;
         }
 

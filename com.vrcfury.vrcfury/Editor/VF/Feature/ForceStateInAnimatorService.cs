@@ -13,7 +13,7 @@ namespace VF.Feature {
      * until they are removed and then reintroduced to each other.
      */
     [VFService]
-    public class ForceStateInAnimatorService : FeatureBuilder {
+    internal class ForceStateInAnimatorService : FeatureBuilder {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
 

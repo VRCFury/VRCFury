@@ -15,7 +15,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     [VFService]
-    public class FixMasksBuilder : FeatureBuilder {
+    internal class FixMasksBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly LayerSourceService layerSourceService;

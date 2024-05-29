@@ -19,7 +19,7 @@ using VRC.Dynamics;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
-    public class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
+    internal class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");

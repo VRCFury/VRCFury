@@ -5,11 +5,11 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
-    public static class VrcfObjectFactory {
+    internal static class VrcfObjectFactory {
         private static readonly List<Object> created = new List<Object>();
 
         [InitializeOnLoadMethod]
-        public static void OnLoad() {
+        private static void OnLoad() {
             Scheduler.Schedule(Prune, 0);
         }
 

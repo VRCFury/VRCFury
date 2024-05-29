@@ -19,7 +19,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
-public class ToggleBuilder : FeatureBuilder<Toggle> {
+internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateService restingState;

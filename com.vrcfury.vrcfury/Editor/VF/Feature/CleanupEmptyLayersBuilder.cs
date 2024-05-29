@@ -13,7 +13,7 @@ namespace VF.Feature {
      * This builder removes animation bindings that do nothing, for cleanliness, to save space,
      * and to avoid including assets (like materials) that are referenced in animations but not actually used
      */
-    public class CleanupEmptyLayersBuilder : FeatureBuilder {
+    internal class CleanupEmptyLayersBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.CleanupEmptyLayers)]
         public void Apply() {
             foreach (var c in manager.GetAllUsedControllers()) {

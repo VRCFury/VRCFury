@@ -6,7 +6,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class SetIconBuilder : FeatureBuilder<SetIcon> {
+    internal class SetIconBuilder : FeatureBuilder<SetIcon> {
         public override string GetEditorTitle() {
             return "Override Menu Icon";
         }

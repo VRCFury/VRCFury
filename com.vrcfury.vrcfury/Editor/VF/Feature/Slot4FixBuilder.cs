@@ -12,7 +12,7 @@ using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
-    public class Slot4FixBuilder : FeatureBuilder<Slot4Fix> {
+    internal class Slot4FixBuilder : FeatureBuilder<Slot4Fix> {
         public override string GetEditorTitle() {
             return "Slot 4 Fix";
         }

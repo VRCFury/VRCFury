@@ -4,7 +4,7 @@ using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace VF.Utils {
-    public static class ErrorCatcher {
+    internal static class ErrorCatcher {
         private static readonly List<string> errors = new List<string>();
         
         [InitializeOnLoadMethod]

@@ -1,7 +1,7 @@
 using System;
 
 namespace VF.Utils {
-    public static class VrcfMath {
+    internal static class VrcfMath {
         public static float Clamp(float input, float min, float max) {
             input = Math.Max(input, Math.Min(min, max));
             input = Math.Min(input, Math.Max(min, max));

@@ -10,7 +10,7 @@ using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
-    public static class TpsConfigurer {
+    internal static class TpsConfigurer {
         private static readonly string TpsPenetratorKeyword = "TPS_Penetrator";
         private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
         private static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");

@@ -16,7 +16,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
-    public class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
+    internal class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
         
         static string logOutput = "";
         

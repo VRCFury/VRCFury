@@ -7,7 +7,7 @@ using VF.Model.Feature;
 using VF.Service;
 
 namespace VF.Feature {
-    public class ApplyDuringUploadBuilder : FeatureBuilder<ApplyDuringUpload> {
+    internal class ApplyDuringUploadBuilder : FeatureBuilder<ApplyDuringUpload> {
         [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly ActionClipService actionClipService;
         

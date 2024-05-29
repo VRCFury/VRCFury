@@ -15,7 +15,7 @@ namespace VF.Service {
      * objects onto it, if those objects should be visible in first person.
      */
     [VFService]
-    public class FakeHeadService {
+    internal class FakeHeadService {
 
         [VFAutowired] private readonly AvatarManager manager;
 

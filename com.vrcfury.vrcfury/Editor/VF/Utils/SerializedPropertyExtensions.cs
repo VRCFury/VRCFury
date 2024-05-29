@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 
 namespace VF.Utils {
-    public static class SerializedPropertyExtensions {
+    internal static class SerializedPropertyExtensions {
         [CanBeNull]
         public static object GetObject(this SerializedProperty prop) {
             var path = prop.propertyPath.Replace(".Array.data[", ".[");

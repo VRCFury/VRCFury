@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace VF.Upgradeable {
-    public abstract class VrcfUpgradeableMonoBehaviour : MonoBehaviour, IUpgradeable {
+    internal abstract class VrcfUpgradeableMonoBehaviour : MonoBehaviour, IUpgradeable {
         [SerializeField] private int version = -1;
         public string unityVersion;
         public string vrcfuryVersion;

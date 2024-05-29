@@ -11,7 +11,7 @@ using VF.Service;
 
 namespace VF.Inspector {
     [VFService]
-    public class VRCFuryHapticTouchReceiverBuilder {
+    internal class VRCFuryHapticTouchReceiverBuilder {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;

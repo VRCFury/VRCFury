@@ -6,7 +6,7 @@ using VF.Model;
 using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Menu {
-    public static class VRCFuryTestCopyMenuItem {
+    internal static class VRCFuryTestCopyMenuItem {
 
         public static void RunBuildTestCopy() {
             var originalObject = MenuUtils.GetSelectedAvatar();

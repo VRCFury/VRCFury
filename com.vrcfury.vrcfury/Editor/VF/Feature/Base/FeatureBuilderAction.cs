@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 using VF.Builder;
 
 namespace VF.Feature.Base {
-    public class FeatureBuilderAction : IComparable<FeatureBuilderAction> {
+    internal class FeatureBuilderAction : IComparable<FeatureBuilderAction> {
         private readonly FeatureBuilderActionAttribute attribute;
         private readonly MethodInfo method;
         private readonly object service;

@@ -8,7 +8,7 @@ namespace VF.Service {
     /**
      * Holds things that are otherwise hard to autowire
      */
-    public class GlobalsService {
+    internal class GlobalsService {
         public string tmpDirParent;
         public string tmpDir;
         public VFGameObject avatarObject;

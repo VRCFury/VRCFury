@@ -16,7 +16,7 @@ namespace VF.Service {
      * This can build the contacts needed for haptic component depth animations
      */
     [VFService]
-    public class HapticAnimContactsService {
+    internal class HapticAnimContactsService {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;

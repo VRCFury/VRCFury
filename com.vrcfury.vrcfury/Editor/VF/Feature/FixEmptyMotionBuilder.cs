@@ -14,7 +14,7 @@ namespace VF.Feature {
      * We replace them all with a fake, short 1-second-long clip.
      * (1 second long because that's how long a state lasts in unity if no motion is set)
      */
-    public class FixEmptyMotionBuilder : FeatureBuilder {
+    internal class FixEmptyMotionBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixEmptyMotions)]
         public void Apply() {
             foreach (var controller in manager.GetAllUsedControllers()) {

@@ -7,7 +7,7 @@ using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder.Haptics {
-    public static class SpsAutoRigger {
+    internal static class SpsAutoRigger {
         public static void AutoRig(SkinnedMeshRenderer skin, VFGameObject bakeRoot, float worldLength, float worldRadius, float[] activeFromMask) {
             float GetActive(int i) {
                 return activeFromMask == null ? 1 : activeFromMask[i];

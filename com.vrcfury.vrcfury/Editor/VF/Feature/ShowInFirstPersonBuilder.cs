@@ -13,7 +13,7 @@ using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
+    internal class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         

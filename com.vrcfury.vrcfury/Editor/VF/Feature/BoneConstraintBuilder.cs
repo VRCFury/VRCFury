@@ -6,7 +6,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
-    public class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
+    internal class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
         [FeatureBuilderAction]
         public void Link() {
             addOtherFeature(new ArmatureLink {

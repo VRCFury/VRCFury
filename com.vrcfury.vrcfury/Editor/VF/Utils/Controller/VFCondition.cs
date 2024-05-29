@@ -3,7 +3,7 @@ using UnityEditor.Animations;
 using VF.Builder;
 
 namespace VF.Utils.Controller {
-    public class VFCondition {
+    internal class VFCondition {
         internal IEnumerable<IEnumerable<AnimatorCondition>> transitions;
         private VFCondition() {
             transitions = new List<List<AnimatorCondition>>();

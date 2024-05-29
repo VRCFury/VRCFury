@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace VF.Inspector {
-    public static class VRCFuryGizmoUtils {
+    internal static class VRCFuryGizmoUtils {
         public static void DrawArrow(
             Vector3 worldStart,
             Vector3 worldEnd,

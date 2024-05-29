@@ -9,7 +9,7 @@ namespace VF.Injector {
      * Poor-mans Inversion of Control, because I don't want to have to import
      * an entire DI library into VRCF.
      */
-    public class VRCFuryInjector {
+    internal class VRCFuryInjector {
         private readonly Dictionary<(VFInjectorParent,Type), object> completedObjects = new Dictionary<(VFInjectorParent,Type), object>();
 
         public void SetService(object service) {

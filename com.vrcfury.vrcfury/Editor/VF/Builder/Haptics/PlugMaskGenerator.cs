@@ -7,7 +7,7 @@ using VF.Component;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
-    public static class PlugMaskGenerator {
+    internal static class PlugMaskGenerator {
         // Returns 1 if active, 0 if ignored
         public static float[] GetMask(Renderer renderer, VRCFuryHapticPlug plug) {
             var mesh = renderer.GetMesh();

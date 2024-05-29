@@ -5,7 +5,7 @@ using VF.Component;
 
 namespace VF.Model {
     [AddComponentMenu("")]
-    public class VRCFuryDebugInfo : VRCFuryComponent {
+    internal class VRCFuryDebugInfo : VRCFuryComponent {
         public string debugInfo;
     }
 }

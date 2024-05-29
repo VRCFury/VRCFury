@@ -14,7 +14,7 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
     [VFService]
-    public class HapticContactsService {
+    internal class HapticContactsService {
         [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
         [VFAutowired] [CanBeNull] private readonly MathService math;
 

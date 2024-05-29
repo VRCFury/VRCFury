@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 using VF.Utils;
 
 namespace VF.Inspector {
-    public static class VRCFuryComponentHeader {
+    internal static class VRCFuryComponentHeader {
         private static VisualElement FindEditor(VisualElement el) {
             if (el == null) return null;
             if (el is InspectorElement) return el.parent;

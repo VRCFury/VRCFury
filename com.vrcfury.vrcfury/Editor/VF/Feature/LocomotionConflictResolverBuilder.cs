@@ -11,7 +11,7 @@ namespace VF.Feature {
      * implementation if you've merged one in using a vrcfury Full Controller.
      */
     [VFService]
-    public class LocomotionConflictResolverBuilder {
+    internal class LocomotionConflictResolverBuilder {
         [VFAutowired] private readonly AvatarManager manager;
         
         [FeatureBuilderAction(FeatureOrder.LocomotionConflictResolver)]

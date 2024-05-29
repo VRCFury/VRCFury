@@ -2,7 +2,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 
 namespace VF.Utils.Controller {
-    public class VFABool : VFAParam {
+    internal class VFABool : VFAParam {
         private bool def;
 
         public VFABool(string name, bool def) : base(name) {

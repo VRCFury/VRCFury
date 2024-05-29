@@ -10,7 +10,7 @@ using VF.Utils;
 
 namespace VF.Service {
     [VFService]
-    public class DirectBlendTreeFlatteningService {
+    internal class DirectBlendTreeFlatteningService {
         [VFAutowired] private readonly AvatarManager manager;
         
         [FeatureBuilderAction(FeatureOrder.FlattenDbts)]

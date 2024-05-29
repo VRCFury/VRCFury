@@ -7,7 +7,7 @@ using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Builder {
-    public static class PhysboneUtils {
+    internal static class PhysboneUtils {
         public static void RemoveFromPhysbones(VFGameObject obj, bool force = false) {
             if (!force && ContainsBonesUsedExternally(obj)) {
                 return;

@@ -15,7 +15,7 @@ using VRC.SDKBase;
 
 namespace VF.Feature {
 
-public class VisemesBuilder : FeatureBuilder<Visemes> {
+internal class VisemesBuilder : FeatureBuilder<Visemes> {
     [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly DirectBlendTreeService directTree;

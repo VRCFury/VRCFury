@@ -13,7 +13,7 @@ using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Feature {
-    public class WorldConstraintBuilder : FeatureBuilder<WorldConstraint> {
+    internal class WorldConstraintBuilder : FeatureBuilder<WorldConstraint> {
 
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ObjectMoveService mover;

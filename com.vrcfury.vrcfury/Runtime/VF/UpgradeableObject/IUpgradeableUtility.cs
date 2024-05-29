@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 
 namespace VF.Upgradeable {
-    public static class IUpgradeableUtility {
+    internal static class IUpgradeableUtility {
         public static void IUpgradeableOnAfterDeserialize(this IUpgradeable upgradeable) {
             if (upgradeable.Version < 0) {
                 // Object was deserialized, but had no version. Default to version 0.

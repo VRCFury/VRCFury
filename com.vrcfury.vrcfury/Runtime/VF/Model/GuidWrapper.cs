@@ -9,49 +9,49 @@ namespace VF.Model {
     // https://forum.unity.com/threads/generics-serialization.746300/
 
     [Serializable]
-    public class GuidAnimationClip : GuidWrapper<AnimationClip> {
+    internal class GuidAnimationClip : GuidWrapper<AnimationClip> {
         public static implicit operator GuidAnimationClip(AnimationClip d) => new GuidAnimationClip {
             setter = d
         };
     }
     
     [Serializable]
-    public class GuidMaterial : GuidWrapper<Material> {
+    internal class GuidMaterial : GuidWrapper<Material> {
         public static implicit operator GuidMaterial(Material d) => new GuidMaterial {
             setter = d
         };
     }
     
     [Serializable]
-    public class GuidTexture2d : GuidWrapper<Texture2D> {
+    internal class GuidTexture2d : GuidWrapper<Texture2D> {
         public static implicit operator GuidTexture2d(Texture2D d) => new GuidTexture2d {
             setter = d
         };
     }
     
     [Serializable]
-    public class GuidController : GuidWrapper<RuntimeAnimatorController> {
+    internal class GuidController : GuidWrapper<RuntimeAnimatorController> {
         public static implicit operator GuidController(RuntimeAnimatorController d) => new GuidController {
             setter = d
         };
     }
     
     [Serializable]
-    public class GuidMenu : GuidWrapper<VRCExpressionsMenu> {
+    internal class GuidMenu : GuidWrapper<VRCExpressionsMenu> {
         public static implicit operator GuidMenu(VRCExpressionsMenu d) => new GuidMenu {
             setter = d
         };
     }
     
     [Serializable]
-    public class GuidParams : GuidWrapper<VRCExpressionParameters> {
+    internal class GuidParams : GuidWrapper<VRCExpressionParameters> {
         public static implicit operator GuidParams(VRCExpressionParameters d) => new GuidParams {
             setter = d
         };
     }
 
     [Serializable]
-    public class GuidWrapper<T> : GuidWrapper where T : Object {
+    internal class GuidWrapper<T> : GuidWrapper where T : Object {
         // This field is only here for scripts to use temporarily. It's not saved.
         [NonSerialized] public T typeDetector;
 
@@ -89,7 +89,7 @@ namespace VF.Model {
     }
 
     [Serializable]
-    public class GuidWrapper : VrcfUpgradeable {
+    internal class GuidWrapper : VrcfUpgradeable {
         [Obsolete] [SerializeField] protected long fileID;
         [Obsolete] [SerializeField] protected string guid;
         [SerializeField] public string id;

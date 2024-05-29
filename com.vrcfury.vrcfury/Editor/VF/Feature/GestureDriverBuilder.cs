@@ -17,7 +17,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
-    public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
+    internal class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();

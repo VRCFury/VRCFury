@@ -1,11 +1,11 @@
 ﻿using UnityEditor;
 
 namespace VF.Menu {
-    public class UseInUploadMenuItem {
+    internal class UseInUploadMenuItem {
         private const string Key = "com.vrcfury.useInUpload";
 
         [InitializeOnLoadMethod]
-        static void Init() {
+        private static void Init() {
             EditorApplication.delayCall += UpdateMenu;
         }
 

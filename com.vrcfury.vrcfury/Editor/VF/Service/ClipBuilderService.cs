@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 namespace VF.Service {
 
     [VFService]
-    public class ClipBuilderService {
+    internal class ClipBuilderService {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
         private VFGameObject baseObject => globals.avatarObject;

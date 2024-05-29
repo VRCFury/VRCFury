@@ -6,7 +6,7 @@ using VRC.SDKBase.Editor.BuildPipeline;
 using Debug = UnityEngine.Debug;
 
 namespace VF.Hooks {
-    public class IsActuallyUploadingHook : IVRCSDKPreprocessAvatarCallback {
+    internal class IsActuallyUploadingHook : IVRCSDKPreprocessAvatarCallback {
         public int callbackOrder => int.MinValue;
         private static bool actuallyUploading = false;
         public bool OnPreprocessAvatar(GameObject obj) {

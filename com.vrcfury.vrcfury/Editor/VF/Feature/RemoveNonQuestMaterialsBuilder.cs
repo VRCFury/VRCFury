@@ -9,7 +9,7 @@ using VF.Utils;
 
 namespace VF.Feature {
     [VFService]
-    public class RemoveNonQuestMaterialsBuilder {
+    internal class RemoveNonQuestMaterialsBuilder {
         [VFAutowired] private AvatarManager avatarManager;
         
         [FeatureBuilderAction(FeatureOrder.RemoveNonQuestMaterials)]

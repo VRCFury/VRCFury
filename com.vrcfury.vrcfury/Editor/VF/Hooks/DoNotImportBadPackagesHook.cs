@@ -11,7 +11,7 @@ namespace VF.Hooks {
      * Prevents people from importing bad things (like old versions of the VRCSDK or poiyomi)
      * from unitypackages when they are already installed in the project.
      */
-    public static class DoNotImportBadPackagesHook {
+    internal static class DoNotImportBadPackagesHook {
         private static readonly Type PackageImportWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.PackageImport");
         private static readonly FieldInfo m_ImportPackageItems = PackageImportWindow?.GetField("m_ImportPackageItems", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly FieldInfo m_Tree = PackageImportWindow?.GetField("m_Tree", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -34,7 +34,7 @@ namespace VF.Hooks {
         };
 
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             if (PackageImportWindow == null || m_ImportPackageItems == null || ImportPackageItem == null || AssetPath == null) return;
             Scheduler.Schedule(Check, 0);
         }

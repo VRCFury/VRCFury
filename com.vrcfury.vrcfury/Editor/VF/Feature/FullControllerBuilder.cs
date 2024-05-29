@@ -27,7 +27,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
-    public class FullControllerBuilder : FeatureBuilder<FullController> {
+    internal class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;

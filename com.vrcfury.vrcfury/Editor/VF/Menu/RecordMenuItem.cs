@@ -10,7 +10,7 @@ using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Menu {
-//     public class RecordMenuItem {
+     internal class RecordMenuItem {
 //         private static VFGameObject lastSelectedAvatar;
 //         private static Action onRecordingEnd;
 //
@@ -22,7 +22,7 @@ namespace VF.Menu {
 //             AnimationWindow.GetProperty("recording");
 //
 //         [InitializeOnLoadMethod]
-//         public static void Init() {
+//         private static void Init() {
 //             if (EditGameObject == null || recording == null) return;
 //
 //             Selection.selectionChanged += () => {
@@ -135,5 +135,5 @@ namespace VF.Menu {
 //             Debug.Log("Hello world");
 //             */
 //         }
-//     }
+     }
 }

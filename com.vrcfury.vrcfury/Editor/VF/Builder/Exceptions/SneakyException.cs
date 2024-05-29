@@ -6,7 +6,7 @@ namespace VF.Builder.Exceptions {
      * Mostly used for errors that are really unrelated to us, and we don't want users
      * coming and asking on the discord all the time.
      */
-    public class SneakyException : Exception {
+    internal class SneakyException : Exception {
         public SneakyException(string message) : base(message) {
         }
 

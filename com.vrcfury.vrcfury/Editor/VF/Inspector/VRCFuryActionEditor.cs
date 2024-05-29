@@ -17,7 +17,7 @@ using Object = UnityEngine.Object;
 namespace VF.Inspector {
 
 [CustomPropertyDrawer(typeof(VF.Model.StateAction.Action))]
-public class VRCFuryActionDrawer : PropertyDrawer {
+internal class VRCFuryActionDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
         var el = new VisualElement();
         el.AddToClassList("vfAction");

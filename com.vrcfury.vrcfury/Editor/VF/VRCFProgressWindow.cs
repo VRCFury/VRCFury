@@ -9,9 +9,9 @@ using VF.Inspector;
 using VF.Utils;
 
 namespace VF {
-    [InitializeOnLoad]
-    public class VRCFProgressWindow : EditorWindow {
-        static VRCFProgressWindow() {
+    internal class VRCFProgressWindow : EditorWindow {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             EditorApplication.delayCall += () => {
                 foreach (var w in Resources.FindObjectsOfTypeAll<VRCFProgressWindow>()) {
                     if (w) w.Close();

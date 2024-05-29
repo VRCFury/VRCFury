@@ -17,7 +17,7 @@ namespace VF.Service {
      * may add more animations to the avatar later on, and those may use the pre-moved paths.
      */
     [VFService]
-    public class ObjectMoveService {
+    internal class ObjectMoveService {
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;

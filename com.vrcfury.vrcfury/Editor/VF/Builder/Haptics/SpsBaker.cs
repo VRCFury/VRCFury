@@ -4,7 +4,7 @@ using VF.Builder.Exceptions;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
-    public static class SpsBaker {
+    internal static class SpsBaker {
         public static Texture2D Bake(
             SkinnedMeshRenderer skin,
             string tmpDir,

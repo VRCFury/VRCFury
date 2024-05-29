@@ -14,7 +14,7 @@ using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
-    public static class SpsUpgrader {
+    internal static class SpsUpgrader {
         private const string dialogTitle = "VRCFury Legacy Haptics Upgrader";
         
         public static void Run() {

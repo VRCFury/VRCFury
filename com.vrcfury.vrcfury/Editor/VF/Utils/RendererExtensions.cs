@@ -9,7 +9,7 @@ using VF.Builder;
 using VF.Inspector;
 
 namespace VF.Utils {
-    public static class RendererExtensions {
+    internal static class RendererExtensions {
         public static ShaderUtil.ShaderPropertyType? GetPropertyType(this Renderer renderer, string propertyName) {
             return renderer.sharedMaterials
                 .NotNull()
@@ -22,7 +22,7 @@ namespace VF.Utils {
         private static Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
 
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             Scheduler.Schedule(() => readWriteCache.Clear(), 0);
         }
 

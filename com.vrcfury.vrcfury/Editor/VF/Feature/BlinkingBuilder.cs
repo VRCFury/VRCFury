@@ -15,7 +15,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
 
-public class BlinkingBuilder : FeatureBuilder<Blinking> {
+internal class BlinkingBuilder : FeatureBuilder<Blinking> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
 

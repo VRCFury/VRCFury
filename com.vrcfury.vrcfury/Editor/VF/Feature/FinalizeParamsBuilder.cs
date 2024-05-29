@@ -12,7 +12,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
-    public class FinalizeParamsBuilder : FeatureBuilder {
+    internal class FinalizeParamsBuilder : FeatureBuilder {
         [VFAutowired] private readonly ExceptionService excService;
 
         [FeatureBuilderAction(FeatureOrder.FinalizeParams)]

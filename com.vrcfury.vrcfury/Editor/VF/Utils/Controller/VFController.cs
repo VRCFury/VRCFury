@@ -12,7 +12,7 @@ using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
-    public class VFController {
+    internal class VFController {
         private readonly AnimatorController ctrl;
 
         private VFController(AnimatorController ctrl) {

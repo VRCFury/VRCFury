@@ -16,7 +16,7 @@ using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Feature {
-    public class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
+    internal class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
         

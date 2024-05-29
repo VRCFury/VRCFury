@@ -7,7 +7,7 @@ using VF.Utils;
 namespace VF.Inspector {
 
 [CustomPropertyDrawer(typeof(VF.Model.State))]
-public class VRCFuryStateEditor : PropertyDrawer {
+internal class VRCFuryStateEditor : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty property) {
         return render(property);
     }

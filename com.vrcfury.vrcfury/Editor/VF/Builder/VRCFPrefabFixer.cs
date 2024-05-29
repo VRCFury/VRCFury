@@ -6,7 +6,7 @@ using VF.Inspector;
 using VF.Model;
 
 namespace VF.Builder {
-    public static class VRCFPrefabFixer {
+    internal static class VRCFPrefabFixer {
         /**
          * Unity has two big annoying bugs.
          * 1) If a change is made externally (like via git) to a nested prefab, the change

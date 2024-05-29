@@ -14,7 +14,7 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
+    internal class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         

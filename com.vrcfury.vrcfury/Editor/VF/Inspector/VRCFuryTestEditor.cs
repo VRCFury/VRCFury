@@ -5,7 +5,7 @@ using VF.Model;
 namespace VF.Inspector {
 
     [CustomEditor(typeof(VRCFuryTest), true)]
-    public class VRCFuryTestEditor : VRCFuryComponentEditor<VRCFuryTest> {
+    internal class VRCFuryTestEditor : VRCFuryComponentEditor<VRCFuryTest> {
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryTest target) {
             return VRCFuryEditorUtils.Error(
                 "This avatar is a VRCFury editor test copy. Do not upload test copies, they are intended for" +

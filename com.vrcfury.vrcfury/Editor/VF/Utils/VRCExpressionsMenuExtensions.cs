@@ -4,7 +4,7 @@ using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
-    public static class VRCExpressionsMenuExtensions {
+    internal static class VRCExpressionsMenuExtensions {
         /**
          * This method is our primary way of iterating through menus. It needs to be recursion-aware,
          * since many avatars have recursion in their menus for some reason.

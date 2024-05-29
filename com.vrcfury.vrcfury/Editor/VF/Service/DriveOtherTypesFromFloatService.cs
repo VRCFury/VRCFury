@@ -9,7 +9,7 @@ using VRC.SDKBase;
 
 namespace VF.Service {
     [VFService]
-    public class DriveOtherTypesFromFloatService {
+    internal class DriveOtherTypesFromFloatService {
         [VFAutowired] private readonly AvatarManager manager;
         private VFLayer layer;
         private VFState idle;

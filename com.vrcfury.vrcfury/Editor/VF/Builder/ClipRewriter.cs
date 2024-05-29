@@ -8,7 +8,7 @@ using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public static class ClipRewriter {
+    internal static class ClipRewriter {
         public static AnimationRewriter AnimatorBindingsAlwaysTargetRoot() {
             return AnimationRewriter.RewriteBinding(binding => {
                 if (binding.type == typeof(Animator)) {
