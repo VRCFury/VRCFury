@@ -6,7 +6,7 @@ using VF.Model.Feature;
 using VRC.SDKBase;
 
 namespace VF.Utils {
-    public static class EditorOnlyUtils {
+    internal static class EditorOnlyUtils {
 
         public static void RemoveEditorOnlyObjects(VFGameObject gameObject) {
             foreach (var child in gameObject.Children()) {

@@ -3,13 +3,13 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF {
-    [InitializeOnLoad]
-    public static class LegacyPrefabUnpacker {
-        static LegacyPrefabUnpacker() {
+    internal static class LegacyPrefabUnpacker {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             ScanAlways();
         }
 
-        public class PostProcessor : AssetPostprocessor {
+        internal class PostProcessor : AssetPostprocessor {
 #if UNITY_2021_3_OR_NEWER
             internal static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths, bool didDomainReload) {
 #else

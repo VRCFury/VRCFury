@@ -6,7 +6,7 @@ using JetBrains.Annotations;
 using UnityEngine;
 
 namespace VF.Utils {
-    public static class AvatarMaskExtensions {
+    internal static class AvatarMaskExtensions {
         private const string MagicEverythingString = "__vrcf_everything";
 
         public static AvatarMask Empty() {

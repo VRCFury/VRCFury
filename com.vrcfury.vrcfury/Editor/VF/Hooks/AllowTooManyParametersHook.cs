@@ -17,7 +17,7 @@ using Object = UnityEngine.Object;
 #endif
 
 namespace VF.Hooks {
-    public static class AllowTooManyParametersHook {
+    internal static class AllowTooManyParametersHook {
 #if VRC_NEW_PUBLIC_SDK
         [InitializeOnLoadMethod]
         private static void Init() {

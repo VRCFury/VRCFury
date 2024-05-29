@@ -2,7 +2,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 
 namespace VF.Utils.Controller {
-    public class VFAInteger : VFAParam {
+    internal class VFAInteger : VFAParam {
         private int def;
 
         public VFAInteger(string name, int def) : base(name) {

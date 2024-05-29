@@ -8,9 +8,9 @@ using UnityEngine;
 using VF.Component;
 
 namespace VF.VrcfEditorOnly {
-    public static class WhitelistPatch {
+    internal static class WhitelistPatch {
         [InitializeOnLoadMethod]
-        static void Init() {
+        private static void Init() {
 #if VRC_NEW_HOOK_API
             // Debug.Log("New VRC hook api is available, skipping whitelist patch.");
 #else

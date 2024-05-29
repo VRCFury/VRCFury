@@ -7,7 +7,7 @@ using VF.Inspector;
 using VF.Utils.Controller;
 
 namespace VF.Utils {
-    public static class BlendTreeExtensions {
+    internal static class BlendTreeExtensions {
         public static void AddDirectChild(this BlendTree tree, string param, Motion motion) {
             tree.AddChild(motion);
             var children = tree.children;

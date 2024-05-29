@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 
 namespace VF.Builder {
-    public static class VFGameObjectExtensions {
+    internal static class VFGameObjectExtensions {
         public static VFGameObject owner(this UnityEngine.Component component) {
             // Some components (ahem VrcFury) override gameObject for some cases, so we need to make sure
             // we call the overridden version

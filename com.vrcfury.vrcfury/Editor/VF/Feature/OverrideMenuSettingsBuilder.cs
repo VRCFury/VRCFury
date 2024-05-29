@@ -5,7 +5,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class OverrideMenuSettingsBuilder : FeatureBuilder<OverrideMenuSettings> {
+    internal class OverrideMenuSettingsBuilder : FeatureBuilder<OverrideMenuSettings> {
         public override string GetEditorTitle() {
             return "Override Menu Settings";
         }

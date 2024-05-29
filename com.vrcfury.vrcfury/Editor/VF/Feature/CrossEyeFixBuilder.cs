@@ -12,7 +12,7 @@ using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
+    internal class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
         [VFAutowired] private readonly ObjectMoveService mover;
         
         [FeatureBuilderAction]

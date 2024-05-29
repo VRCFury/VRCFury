@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 
 namespace VF {
-    public static class ReflectionUtils {
+    internal static class ReflectionUtils {
         public static Type GetTypeFromAnyAssembly(string type) {
             return AppDomain.CurrentDomain.GetAssemblies()
                 .Select(assembly => assembly.GetType(type))

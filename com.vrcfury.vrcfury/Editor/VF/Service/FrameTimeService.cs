@@ -10,7 +10,7 @@ namespace VF.Service {
      * This service gives you the current frametime. Woo!
      */
     [VFService]
-    public class FrameTimeService {
+    internal class FrameTimeService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;

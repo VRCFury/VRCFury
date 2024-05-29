@@ -15,7 +15,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
-    public class ControllerManager {
+    internal class ControllerManager {
         private readonly VFController ctrl;
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;

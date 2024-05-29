@@ -11,7 +11,7 @@ using VF.Utils;
 
 namespace VF.Service {
     [VFService]
-    public class BoundingBoxFixService {
+    internal class BoundingBoxFixService {
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 

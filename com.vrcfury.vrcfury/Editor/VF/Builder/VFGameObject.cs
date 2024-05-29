@@ -10,7 +10,7 @@ namespace VF.Builder {
      * VFGameObject is a wrapper around Transform and GameObject, combining the two into one object we can use
      * everywhere, and providing helper methods that are commonly used.
      */
-    public class VFGameObject {
+    internal class VFGameObject {
         private readonly GameObject _gameObject;
         private VFGameObject(GameObject gameObject) {
             _gameObject = gameObject;

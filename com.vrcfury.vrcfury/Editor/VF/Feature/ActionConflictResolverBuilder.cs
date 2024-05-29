@@ -18,7 +18,7 @@ namespace VF.Feature {
      * belonging to the caller.
      */
     [VFService]
-    public class ActionConflictResolverBuilder : FeatureBuilder {
+    internal class ActionConflictResolverBuilder : FeatureBuilder {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
 
         [FeatureBuilderAction(FeatureOrder.ActionConflictResolver)]

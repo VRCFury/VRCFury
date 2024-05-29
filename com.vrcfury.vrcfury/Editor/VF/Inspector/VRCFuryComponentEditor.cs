@@ -14,7 +14,7 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
-    public class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
+    internal class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
         private GameObject dummyObject;
 
         public sealed override VisualElement CreateInspectorGUI() {

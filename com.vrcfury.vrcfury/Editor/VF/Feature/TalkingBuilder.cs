@@ -8,7 +8,7 @@ using VF.Service;
 
 namespace VF.Feature {
 
-public class TalkingBuilder : FeatureBuilder<Talking> {
+internal class TalkingBuilder : FeatureBuilder<Talking> {
     [VFAutowired] private readonly ActionClipService actionClipService;
 
     [FeatureBuilderAction]

@@ -5,8 +5,7 @@ using VF.Model;
 using VF.Utils;
 
 namespace VF {
-    [InitializeOnLoad]
-    public static class GuidWrapperExtensions {
+    internal static class GuidWrapperExtensions {
         [CanBeNull]
         public static T Get<T>(this GuidWrapper<T> wrapper) where T : Object {
             if (wrapper == null) return null;
@@ -14,7 +13,8 @@ namespace VF {
             return VrcfObjectId.IdToObject<T>(wrapper.id);
         }
 
-        static GuidWrapperExtensions() {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             GuidWrapper.SyncExt = (wrapper,type) => {
                 var changed = false;
                 

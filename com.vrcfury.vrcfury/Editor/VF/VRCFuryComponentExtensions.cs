@@ -8,7 +8,7 @@ using VF.Model;
 using VF.Upgradeable;
 
 namespace VF {
-    public static class VRCFuryComponentExtensions {
+    internal static class VRCFuryComponentExtensions {
         private static readonly HashSet<string> reimported = new HashSet<string>();
 
         /**

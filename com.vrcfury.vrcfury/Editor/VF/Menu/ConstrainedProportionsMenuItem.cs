@@ -5,8 +5,7 @@ using UnityEngine;
 using VF.Builder.Haptics;
 
 namespace VF.Menu {
-    [InitializeOnLoad]
-    public class ConstrainedProportionsMenuItem : UnityEditor.AssetModificationProcessor {
+    internal class ConstrainedProportionsMenuItem : UnityEditor.AssetModificationProcessor {
         private const string EditorPref = "com.vrcfury.constrainedProportions";
 
         private static Action reset;
@@ -20,7 +19,8 @@ namespace VF.Menu {
             reset = null;
         }
 
-        static ConstrainedProportionsMenuItem() {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             EditorApplication.delayCall += UpdateMenu;
             AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
             Selection.selectionChanged += () => {

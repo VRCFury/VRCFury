@@ -8,7 +8,7 @@ using VF.Builder;
 using VF.Component;
 
 namespace VF {
-    public class PreSaveVerifier : UnityEditor.AssetModificationProcessor
+    internal class PreSaveVerifier : UnityEditor.AssetModificationProcessor
     {
         static string[] OnWillSaveAssets(string[] paths) {
             var blocked = new List<string>();

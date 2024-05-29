@@ -15,7 +15,7 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
-    public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
+    internal class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]

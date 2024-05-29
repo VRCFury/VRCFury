@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 namespace VF.Builder {
-    public static class MmdUtils {
+    internal static class MmdUtils {
 
         private const string text = @"
 a

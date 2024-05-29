@@ -16,7 +16,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
-    public class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
+    internal class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
@@ -155,9 +155,9 @@ namespace VF.Inspector {
         }
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
-        [InitializeOnLoad]
         public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
-            static VRCFuryHapticPlaySocketEditor() {
+            [InitializeOnLoadMethod]
+            private static void Init() {
                 VRCFurySocketGizmo.EnableSceneLighting = () => {
                     var sv = EditorWindow.GetWindow<SceneView>();
                     if (sv != null) {

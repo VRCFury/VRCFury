@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace VF.Utils {
-    public static class VfVisualElementExtensions {
+    internal static class VfVisualElementExtensions {
         public static T SetVisible<T>(this T el, bool visible) where T : VisualElement {
             el.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
             return el;

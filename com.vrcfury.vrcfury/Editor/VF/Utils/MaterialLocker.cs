@@ -5,7 +5,7 @@ using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils {
-    public static class MaterialLocker {
+    internal static class MaterialLocker {
         public static VFGameObject injectedAvatarObject = null;
         
         /**

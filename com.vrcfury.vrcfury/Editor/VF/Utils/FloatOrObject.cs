@@ -2,7 +2,7 @@ using JetBrains.Annotations;
 using UnityEngine;
 
 namespace VF.Utils {
-    public class FloatOrObject {
+    internal class FloatOrObject {
         private readonly bool isFloat;
         private readonly float floatVal;
         [CanBeNull] private readonly Object objectVal;

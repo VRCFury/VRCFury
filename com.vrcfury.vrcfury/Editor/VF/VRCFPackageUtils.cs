@@ -6,9 +6,9 @@ using UnityEngine;
 using VF.Upgradeable;
 
 namespace VF {
-    public static class VRCFPackageUtils {
+    internal static class VRCFPackageUtils {
         [InitializeOnLoadMethod]
-        static void SendToComponents() {
+        private static void SendToComponents() {
             VrcfUpgradeableMonoBehaviour.currentVrcfVersion = Version;
         }
 

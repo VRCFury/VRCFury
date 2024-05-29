@@ -4,11 +4,11 @@ using UnityEditor;
 using VF.Builder;
 
 namespace VF.Menu {
-    [InitializeOnLoad]
-    public class PlayModeMenuItem {
+    internal class PlayModeMenuItem {
         private const string EditorPref = "com.vrcfury.playMode";
 
-        static PlayModeMenuItem() {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             EditorApplication.delayCall += UpdateMenu;
         }
 

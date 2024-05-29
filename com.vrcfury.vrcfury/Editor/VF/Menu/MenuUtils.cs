@@ -4,7 +4,7 @@ using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Menu {
-    public static class MenuUtils {
+    internal static class MenuUtils {
         public static VFGameObject GetSelectedAvatar() {
             var obj = Selection.activeGameObject.asVf();
             while (obj != null) {

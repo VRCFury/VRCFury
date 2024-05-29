@@ -10,7 +10,7 @@ namespace VF.Service {
      * Creates a physbone resetter that can be triggered by triggering the returned bool
      */
     [VFService]
-    public class PhysboneResetService {
+    internal class PhysboneResetService {
         [VFAutowired] private AvatarManager avatarManager;
         [VFAutowired] private ClipBuilderService clipBuilder;
         [VFAutowired] private MathService mathService;

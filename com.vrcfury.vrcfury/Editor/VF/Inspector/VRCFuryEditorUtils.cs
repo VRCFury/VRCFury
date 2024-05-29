@@ -16,7 +16,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
 
-public static class VRCFuryEditorUtils {
+internal static class VRCFuryEditorUtils {
 
     public static VisualElement List(
         SerializedProperty list,
@@ -660,7 +660,7 @@ public static class VRCFuryEditorUtils {
     }
 
     [InitializeOnLoadMethod]
-    public static void MakeMarkDirtyAvailableToRuntime() {
+    private static void MakeMarkDirtyAvailableToRuntime() {
         VRCFury.markDirty = MarkDirty;
     }
     public static void MarkDirty(Object obj) {

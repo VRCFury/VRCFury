@@ -12,7 +12,7 @@ namespace VF.Service {
      * This can cause an issue if a physbone is placed on the hip bone (for dresses or tails), which will break sitting in chairs.
      */
     [VFService]
-    public class FixAnimatedPhysbonesService {
+    internal class FixAnimatedPhysbonesService {
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 

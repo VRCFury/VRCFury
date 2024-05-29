@@ -1,11 +1,11 @@
 using UnityEditor;
 
 namespace VF.Menu {
-    [InitializeOnLoad]
-    public class HapticsToggleMenuItem {
+    internal class HapticsToggleMenuItem {
         private const string EditorPref = "com.vrcfury.haptics";
 
-        static HapticsToggleMenuItem() {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             EditorApplication.delayCall += UpdateMenu;
         }
 

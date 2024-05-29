@@ -7,7 +7,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF.Builder.Exceptions {
-    public static class VRCFExceptionUtils {
+    internal static class VRCFExceptionUtils {
         public static Exception GetGoodCause(Exception e) {
             while (e is TargetInvocationException && e.InnerException != null) {
                 e = e.InnerException;

@@ -1,5 +1,5 @@
 ﻿namespace VF.Injector {
-    public class VFInjectorParent {
+    internal class VFInjectorParent {
         public object parent;
     }
 }

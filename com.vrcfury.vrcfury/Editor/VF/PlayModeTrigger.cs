@@ -15,13 +15,13 @@ using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 
 namespace VF {
-    public class PlayModeTrigger {
+    internal class PlayModeTrigger {
         private static string tmpDir;
         private const string TriggerObjectName = "__vrcf_play_mode_trigger";
         private static bool scannedThisFrame = false;
 
         [InitializeOnLoadMethod]
-        static void Init() {
+        private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             VRCFuryComponent._OnValidate = () => {
                 if (Application.isPlaying && !addedTriggerObjectThisPlayMode) {

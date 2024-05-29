@@ -15,7 +15,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Feature {
 
-public class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
+internal class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
 
     private enum Type { Canine, Anthro }
     

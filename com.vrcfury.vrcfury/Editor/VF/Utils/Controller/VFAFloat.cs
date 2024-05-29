@@ -2,7 +2,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 
 namespace VF.Utils.Controller {
-    public class VFAFloat : VFAParam {
+    internal class VFAFloat : VFAParam {
         private float def;
 
         public VFAFloat(string name, float def) : base(name) {

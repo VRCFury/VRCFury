@@ -18,7 +18,7 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class FixWriteDefaultsBuilder : FeatureBuilder {
+    internal class FixWriteDefaultsBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly OriginalAvatarService originalAvatar;
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;

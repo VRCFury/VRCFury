@@ -11,7 +11,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
     [VFService]
-    public class AvatarManager {
+    internal class AvatarManager {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
 

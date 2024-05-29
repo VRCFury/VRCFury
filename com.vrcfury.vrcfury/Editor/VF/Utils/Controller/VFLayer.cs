@@ -7,7 +7,7 @@ using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils.Controller {
-    public class VFLayer {
+    internal class VFLayer {
         private readonly VFController ctrl;
         private readonly AnimatorStateMachine _stateMachine;
 

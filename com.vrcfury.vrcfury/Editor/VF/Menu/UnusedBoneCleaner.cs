@@ -9,7 +9,7 @@ using VF.Feature;
 using VF.Service;
 
 namespace VF.Menu {
-    public static class UnusedBoneCleaner {
+    internal static class UnusedBoneCleaner {
         [MenuItem(MenuItems.unusedBones, priority = MenuItems.unusedBonesPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {

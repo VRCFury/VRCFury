@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 
 namespace VF.Builder.Haptics {
-    public class SpsBakedTexture {
+    internal class SpsBakedTexture {
         private readonly List<Color32> bakeArray = new List<Color32>();
         private readonly bool tpsCompatibility;
 

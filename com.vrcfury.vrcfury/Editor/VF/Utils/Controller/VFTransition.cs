@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEditor.Animations;
 
 namespace VF.Utils.Controller {
-    public class VFTransition {
+    internal class VFTransition {
         private readonly List<AnimatorStateTransition> createdTransitions = new List<AnimatorStateTransition>();
         private Func<AnimatorStateTransition> transitionProvider;
         public VFTransition(Func<AnimatorStateTransition> transitionProvider) {

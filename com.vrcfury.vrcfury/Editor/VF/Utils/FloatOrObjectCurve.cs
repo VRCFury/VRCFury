@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF.Utils {
-    public class FloatOrObjectCurve {
+    internal class FloatOrObjectCurve {
         private readonly bool isFloat;
         private readonly AnimationCurve floatCurve;
         private readonly ObjectReferenceKeyframe[] objectCurve;

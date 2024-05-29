@@ -7,7 +7,7 @@ using VF.Component;
 using VF.Inspector;
 
 namespace VF.Builder.Haptics {
-    public static class PlugSizeDetector {
+    internal static class PlugSizeDetector {
         public class SizeResult {
             public ICollection<Renderer> renderers;
             public float worldLength;

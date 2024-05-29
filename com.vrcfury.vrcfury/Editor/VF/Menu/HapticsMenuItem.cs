@@ -5,7 +5,7 @@ using VF.Component;
 using VF.Inspector;
 
 namespace VF.Menu {
-    public static class HapticsMenuItem {
+    internal static class HapticsMenuItem {
 
         private const string DialogTitle = "VRCFury SPS";
 

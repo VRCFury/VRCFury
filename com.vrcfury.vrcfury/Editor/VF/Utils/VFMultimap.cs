@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 
 namespace VF.Utils {
-    public class VFMultimap<KeyType,ValueType,CollectionType>
+    internal class VFMultimap<KeyType,ValueType,CollectionType>
         : IEnumerable<KeyValuePair<KeyType,ValueType>>
         where CollectionType : ICollection<ValueType>, new()
     {
@@ -52,9 +52,9 @@ namespace VF.Utils {
         }
     }
     
-    public class VFMultimapList<A, B> : VFMultimap<A, B, List<B>> {
+    internal class VFMultimapList<A, B> : VFMultimap<A, B, List<B>> {
     }
 
-    public class VFMultimapSet<A, B> : VFMultimap<A, B, HashSet<B>> {
+    internal class VFMultimapSet<A, B> : VFMultimap<A, B, HashSet<B>> {
     }
 }

@@ -13,7 +13,7 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class FixWriteDefaultsEditor : FeatureBuilder<FixWriteDefaults> {
+    internal class FixWriteDefaultsEditor : FeatureBuilder<FixWriteDefaults> {
         public override string GetEditorTitle() {
             return "Fix Write Defaults";
         }

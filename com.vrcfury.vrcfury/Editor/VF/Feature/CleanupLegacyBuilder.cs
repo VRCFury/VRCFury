@@ -10,7 +10,7 @@ using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
-    public class CleanupLegacyBuilder : FeatureBuilder {
+    internal class CleanupLegacyBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.CleanupLegacy)]
         public void Apply() {
             CleanFromAvatar();

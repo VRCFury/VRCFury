@@ -10,7 +10,7 @@ namespace VF.Hooks {
      * gameobject if that happens. We can't do this in our own play mode handler, because it's possible
      * that our IVRCSDKPreprocessAvatarCallback may be called by someone else before us, like Av3Emu.
      */
-    public static class PreProcessingFailureCheckHook {
+    internal static class PreProcessingFailureCheckHook {
         private static VFGameObject uploadingObject = null;
         
         private static void CheckForFailure() {

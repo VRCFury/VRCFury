@@ -21,7 +21,7 @@ namespace VF.Service {
      * by using local ScaleFactor to move a contact receiver, then syncing that contact receiver's proximity value
      */
     [VFService]
-    public class ScaleFactorService {
+    internal class ScaleFactorService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;

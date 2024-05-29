@@ -10,7 +10,7 @@ namespace VF.Service {
      * Gets a handle to the original avatar object, in case we are building on an upload clone
      */
     [VFService]
-    public class OriginalAvatarService {
+    internal class OriginalAvatarService {
 
         [VFAutowired] private readonly GlobalsService globals;
         

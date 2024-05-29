@@ -4,9 +4,9 @@ using UnityEditor;
 using VF.Updater;
 
 namespace VF {
-    [InitializeOnLoad]
-    public class BadInstallDetector {
-        static BadInstallDetector() {
+    internal static class BadInstallDetector {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             if (!UpdateMenuItem.IsVrcfuryALocalPackage()) return;
             var manifestPath = "Packages/manifest.json";
             if (!File.Exists(manifestPath)) return;

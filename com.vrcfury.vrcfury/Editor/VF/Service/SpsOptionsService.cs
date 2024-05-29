@@ -10,7 +10,7 @@ using VF.Model.Feature;
 
 namespace VF.Service {
     [VFService]
-    public class SpsOptionsService {
+    internal class SpsOptionsService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly MenuChangesService menuChanges;

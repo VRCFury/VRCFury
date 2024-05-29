@@ -6,7 +6,7 @@ using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils {
-    public static class MotionExtensions {
+    internal static class MotionExtensions {
         public static bool IsStatic(this Motion motion) {
             return new AnimatorIterator.Clips().From(motion).All(IsStatic);
         }

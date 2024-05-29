@@ -9,11 +9,11 @@ using VF.Model;
 using VF.Model.Feature;
 
 namespace VF.Hooks {
-    public static class AddComponentHook {
+    internal static class AddComponentHook {
         private static bool addedThisFrame = false;
         
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             EditorApplication.delayCall += AddToMenu;
             if (MenuChangedAddHandler != null) {
                 Action onMenuChange = () => {

@@ -10,11 +10,11 @@ using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.PlayMode {
-    [InitializeOnLoad]
-    public class FixWriteDefaultsLater {
+    internal static class FixWriteDefaultsLater {
         private const string Key = "vrcfFixWd";
         
-        static FixWriteDefaultsLater() {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingEditMode) {
                     EditorPrefs.DeleteKey(Key);

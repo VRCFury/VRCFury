@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace VF.Injector {
     [AttributeUsage(AttributeTargets.Class)]
     [MeansImplicitUse]
-    public class VFServiceAttribute : Attribute {
+    internal class VFServiceAttribute : Attribute {
         
     }
 }

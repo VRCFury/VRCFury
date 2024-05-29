@@ -9,7 +9,7 @@ using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils {
-    public static class AnimationClipExtensions {
+    internal static class AnimationClipExtensions {
         
         /**
          * Operating on AnimationClips directly is really expensive. Instead, we operate on these temp objects, then
@@ -35,7 +35,7 @@ namespace VF.Utils {
         }
 
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             Scheduler.Schedule(() => {
                 clipDb.Clear();
             }, 0);

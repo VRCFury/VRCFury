@@ -8,7 +8,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Utils.Controller {
-    public class VFState {
+    internal class VFState {
         private ChildAnimatorState node;
         private readonly AnimatorStateMachine stateMachine;
 
