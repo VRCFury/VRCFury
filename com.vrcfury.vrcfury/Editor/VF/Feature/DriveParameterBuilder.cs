@@ -3,7 +3,7 @@ using VF.Injector;
 using VF.Service;
 
 namespace VF.Feature {
-    public class DriveParameterBuilder : FeatureBuilder {
+    internal class DriveParameterBuilder : FeatureBuilder {
         [VFAutowired] private readonly DriveParameterService paramService;
         
         [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]

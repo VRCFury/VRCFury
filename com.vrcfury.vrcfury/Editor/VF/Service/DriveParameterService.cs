@@ -23,15 +23,15 @@ namespace VF.Service {
         private List<(VFAFloat, string, float)> toggleTriggers = new ();
         private List<(VFAFloat, string, float, FeatureBuilder)> tagTriggers = new ();
 
-        public void CreateParamTrigger(VFAFloat triggerParam, string param, float target) {
+        internal void CreateParamTrigger(VFAFloat triggerParam, string param, float target) {
             paramTriggers.Add((triggerParam, param, target));
         }
 
-        public void CreateToggleTrigger(VFAFloat triggerParam, string toggle, float target) {
+        internal void CreateToggleTrigger(VFAFloat triggerParam, string toggle, float target) {
             toggleTriggers.Add((triggerParam, toggle, target));
         }
 
-        public void CreateTagTrigger(VFAFloat triggerParam, string tag, float target, FeatureBuilder feature = null) {
+        internal void CreateTagTrigger(VFAFloat triggerParam, string tag, float target, FeatureBuilder feature = null) {
             tagTriggers.Add((triggerParam, tag, target, feature));
         }
 
