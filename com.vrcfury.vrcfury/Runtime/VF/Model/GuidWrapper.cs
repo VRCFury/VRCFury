@@ -23,7 +23,8 @@ namespace VF.Model {
     }
     
     [Serializable]
-    internal class GuidTexture2d : GuidWrapper<Texture2D> {
+    // Temporarily public for SPS Configurator
+    public class GuidTexture2d : GuidWrapper<Texture2D> {
         public static implicit operator GuidTexture2d(Texture2D d) => new GuidTexture2d {
             setter = d
         };
@@ -51,7 +52,8 @@ namespace VF.Model {
     }
 
     [Serializable]
-    internal class GuidWrapper<T> : GuidWrapper where T : Object {
+    // Temporarily public for SPS Configurator
+    public class GuidWrapper<T> : GuidWrapper where T : Object {
         // This field is only here for scripts to use temporarily. It's not saved.
         [NonSerialized] public T typeDetector;
 
@@ -89,7 +91,8 @@ namespace VF.Model {
     }
 
     [Serializable]
-    internal class GuidWrapper : VrcfUpgradeable {
+    // Temporarily public for SPS Configurator
+    public class GuidWrapper : VrcfUpgradeable {
         [Obsolete] [SerializeField] protected long fileID;
         [Obsolete] [SerializeField] protected string guid;
         [SerializeField] public string id;

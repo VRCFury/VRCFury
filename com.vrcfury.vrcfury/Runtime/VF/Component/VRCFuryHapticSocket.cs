@@ -5,7 +5,8 @@ using VF.Model;
 
 namespace VF.Component {
     [AddComponentMenu("VRCFury/VRCFury | SPS Socket")]
-    internal class VRCFuryHapticSocket : VRCFuryComponent {
+    // Temporarily public for SPS Configurator
+    public class VRCFuryHapticSocket : VRCFuryComponent {
         public enum AddLight {
             None,
             Hole,

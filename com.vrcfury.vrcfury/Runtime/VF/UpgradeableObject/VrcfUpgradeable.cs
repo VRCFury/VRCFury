@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace VF.Upgradeable {
     [Serializable]
-    internal abstract class VrcfUpgradeable : IUpgradeable {
+    // Temporarily public for SPS Configurator
+    public abstract class VrcfUpgradeable : IUpgradeable {
         [SerializeField] private int version = -1;
         public int Version { get => version; set => version = value; }
         void ISerializationCallbackReceiver.OnAfterDeserialize() { this.IUpgradeableOnAfterDeserialize(); }

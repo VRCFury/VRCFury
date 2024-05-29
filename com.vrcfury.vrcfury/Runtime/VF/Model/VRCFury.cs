@@ -98,7 +98,8 @@ namespace VF.Model {
     }
 
     [Serializable]
-    internal class State {
+    // Temporarily public for SPS Configurator
+    public class State {
         [SerializeReference] public List<Action> actions = new List<Action>();
     }
 }
