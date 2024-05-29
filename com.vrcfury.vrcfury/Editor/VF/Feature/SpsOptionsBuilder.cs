@@ -5,7 +5,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class SpsOptionsBuilder : FeatureBuilder<SpsOptions> {
+    internal class SpsOptionsBuilder : FeatureBuilder<SpsOptions> {
         public override string GetEditorTitle() {
             return "SPS Options";
         }

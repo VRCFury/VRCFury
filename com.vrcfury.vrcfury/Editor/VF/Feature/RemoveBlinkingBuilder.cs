@@ -6,7 +6,7 @@ using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class RemoveBlinkingBuilder : FeatureBuilder<RemoveBlinking> {
+    internal class RemoveBlinkingBuilder : FeatureBuilder<RemoveBlinking> {
         [FeatureBuilderAction]
         public void Apply() {
             var avatar = manager.Avatar;

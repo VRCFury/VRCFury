@@ -15,7 +15,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     [VFService]
-    public class FixMasksBuilder : FeatureBuilder {
+    internal class FixMasksBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
@@ -138,11 +138,20 @@ namespace VF.Feature {
                 }
 
                 var layer0 = ctrl.GetLayer(0);
-                // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a
-                //   controller with no layers
-                // On FX, ALWAYS make an empty base layer, because for some reason transition times can break
-                //   and animate immediately when performed within the base layer
-                if (layer0 == null || layer0.mask != expectedMask || c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
+                var createEmptyBaseLayer = false;
+                if (layer0 == null) {
+                    // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a controller with no layers
+                    createEmptyBaseLayer = true;
+                } else if (layer0.mask != expectedMask) {
+                    // If the mask on layer 0 doesn't match what the base mask needs to be, we need to correct it by making a new base layer
+                    createEmptyBaseLayer = true;
+                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && layer0.stateMachine.states.Length > 1) {
+                    // On FX, do not allow a layer with transitions to live as the base layer, because for some reason transition times can break
+                    //   and animate immediately when performed within the base layer
+                    createEmptyBaseLayer = true;
+                }
+
+                if (createEmptyBaseLayer) {
                     c.EnsureEmptyBaseLayer().mask = expectedMask;
                 }
             }

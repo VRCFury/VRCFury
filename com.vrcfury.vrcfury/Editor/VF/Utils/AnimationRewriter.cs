@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF.Utils {
-    public class AnimationRewriter {
+    internal class AnimationRewriter {
         public delegate (EditorCurveBinding, FloatOrObjectCurve, bool) CurveRewriter(EditorCurveBinding binding, FloatOrObjectCurve curve);
         public static AnimationRewriter RewritePath(Func<string, string> rewrite) {
             return RewriteBinding(binding => {

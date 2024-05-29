@@ -4,7 +4,7 @@ using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
-    public static class AnimatorControllerExtensions {
+    internal static class AnimatorControllerExtensions {
         public static void Rewrite(this AnimatorController c, AnimationRewriter rewriter) {
             // Rewrite clips
             foreach (var clip in new AnimatorIterator.Clips().From(c)) {

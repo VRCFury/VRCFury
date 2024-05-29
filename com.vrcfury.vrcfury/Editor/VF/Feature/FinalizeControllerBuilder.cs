@@ -6,7 +6,7 @@ using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class FinalizeControllerBuilder : FeatureBuilder {
+    internal class FinalizeControllerBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FinalizeController)]
         public void Apply() {
 #if ! VRC_NEW_PUBLIC_SDK

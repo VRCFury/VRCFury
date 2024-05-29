@@ -20,7 +20,7 @@ namespace VF.Feature {
      *    it would reset all the child transforms back to how they were before we built. To "lock them in," we need to
      *    reset the animator.
      */
-    public class ResetAnimatorBuilder : FeatureBuilder {
+    internal class ResetAnimatorBuilder : FeatureBuilder {
 
         private bool exists;
         private RuntimeAnimatorController controller;

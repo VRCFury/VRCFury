@@ -15,7 +15,7 @@ namespace VF.Service {
      * Typically, this would be trivial, but unfortunately there are a lot of small edges cases which must be handled.
      */
     [VFService]
-    public class AvatarBindingStateService {
+    internal class AvatarBindingStateService {
         [VFAutowired] private GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 

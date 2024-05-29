@@ -12,7 +12,7 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Menu {
-    public static class DuplicatePhysboneDetector {
+    internal static class DuplicatePhysboneDetector {
         [MenuItem(MenuItems.detectDuplicatePhysbones, priority = MenuItems.detectDuplicatePhysbonesPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(RunUnsafe);

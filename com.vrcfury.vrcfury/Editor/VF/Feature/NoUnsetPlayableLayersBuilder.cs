@@ -12,7 +12,7 @@ namespace VF.Feature {
      * was disabled and then re-enabled again.
      */
     [VFService]
-    public class NoUnsetPlayableLayersBuilder {
+    internal class NoUnsetPlayableLayersBuilder {
         [VFAutowired] private readonly AvatarManager manager;
         
         [FeatureBuilderAction(FeatureOrder.FixUnsetPlayableLayers)]

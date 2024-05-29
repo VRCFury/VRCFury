@@ -15,7 +15,7 @@ namespace VF.Service {
      * Handles creating the DirectTree for properties that need correction when scaling the avatar
      */
     [VFService]
-    public class ScalePropertyCompensationService {
+    internal class ScalePropertyCompensationService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
         [VFAutowired] private readonly DirectBlendTreeService directTree;

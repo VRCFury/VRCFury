@@ -6,7 +6,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
+    internal class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
         public override string GetEditorTitle() {
             return "Move Menu Item";
         }

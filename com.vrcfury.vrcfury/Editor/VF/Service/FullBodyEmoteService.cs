@@ -12,7 +12,7 @@ using VRC.SDKBase;
 
 namespace VF.Service {
     [VFService]
-    public class FullBodyEmoteService {
+    internal class FullBodyEmoteService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;

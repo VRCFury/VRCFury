@@ -11,7 +11,7 @@ using VF.Utils.Controller;
 
 namespace VF.Feature {
 
-public class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
+internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
     private MenuManager menu => manager.GetMenu();
     
     private VFABool _unlockedParam = null;

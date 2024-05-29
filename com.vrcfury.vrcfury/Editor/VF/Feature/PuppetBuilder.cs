@@ -7,7 +7,7 @@ using VF.Service;
 
 namespace VF.Feature {
 
-public class PuppetBuilder : FeatureBuilder<Puppet> {
+internal class PuppetBuilder : FeatureBuilder<Puppet> {
     [VFAutowired] private readonly ActionClipService actionClipService;
 
     [FeatureBuilderAction]

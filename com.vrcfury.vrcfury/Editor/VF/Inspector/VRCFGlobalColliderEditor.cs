@@ -5,7 +5,7 @@ using VF.Component;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryGlobalCollider), true)]
-    public class VRCFGlobalColliderEditor : VRCFuryComponentEditor<VRCFuryGlobalCollider> {
+    internal class VRCFGlobalColliderEditor : VRCFuryComponentEditor<VRCFuryGlobalCollider> {
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryGlobalCollider collider, GizmoType gizmoType) {
             var transform = collider.GetTransform();

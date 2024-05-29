@@ -8,7 +8,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
+    internal class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var controller in manager.GetAllUsedControllers()) {

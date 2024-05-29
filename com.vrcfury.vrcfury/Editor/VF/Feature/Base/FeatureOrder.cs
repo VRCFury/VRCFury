@@ -1,5 +1,5 @@
 namespace VF.Feature.Base {
-    public enum FeatureOrder {
+    internal enum FeatureOrder {
 
         CleanupLegacy,
 

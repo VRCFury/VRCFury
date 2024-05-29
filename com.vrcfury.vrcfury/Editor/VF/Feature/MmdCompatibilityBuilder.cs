@@ -14,7 +14,7 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
+    internal class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         
@@ -26,8 +26,7 @@ namespace VF.Feature {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Info(
                 "This component will improve MMD compatibility for your avatar, by maintaining MMD" +
-                " blendshapes, avoiding usage of layers that MMD worlds are known to interfere with, and disabling" +
-                " hand animations when MMD dances are active."));
+                " blendshapes and avoiding usage of layers that MMD worlds are known to interfere with."));
 
             var adv = new Foldout() {
                 text = "Advanced Settings",

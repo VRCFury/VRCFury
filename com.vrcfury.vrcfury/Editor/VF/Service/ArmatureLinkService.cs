@@ -19,7 +19,7 @@ using Random = System.Random;
 
 namespace VF.Service {
     [VFService]
-    public class ArmatureLinkService {
+    internal class ArmatureLinkService {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
         [VFAutowired] private readonly GlobalsService globals;
@@ -392,7 +392,8 @@ namespace VF.Service {
         public enum ChestUpHack {
             None,
             ClothesHaveChestUp,
-            AvatarHasChestUp
+            AvatarHasChestUp,
+            AvatarHasFakeChestUp
         }
 
         public class Links {
@@ -504,18 +505,29 @@ namespace VF.Service {
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                         var recurseButDoNotLink = false;
-                        if (!childAvatarBone) {
+                        if (childAvatarBone == null) {
+                            // Clothes have ChestUp, but avatar does not?
                             if (childPropBone.name.Contains("ChestUp")) {
                                 childAvatarBone = checkAvatarBone;
                                 links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
                                 recurseButDoNotLink = true;
-                            } else {
-                                childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
-                                if (childAvatarBone) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
+                            }
+                        }
+                        if (childAvatarBone == null) {
+                            // Avatar has ChestUp, but clothes do not?
+                            childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
+                            if (childAvatarBone != null) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
+                        }
+                        if (childAvatarBone == null) {
+                            // Clothes have real ChestUp, but avatar has ChestUp that is fake and empty?
+                            // (happens on some versions of rex)
+                            if (checkAvatarBone.name.Contains("ChestUp")) {
+                                childAvatarBone = checkAvatarBone.parent.Find(searchName);
+                                if (childAvatarBone != null) links.chestUpHack = ChestUpHack.AvatarHasFakeChestUp;
                             }
                         }
 
-                        if (childAvatarBone) {
+                        if (childAvatarBone != null) {
                             var marshmallowChild = GetMarshmallowChild(childAvatarBone);
                             if (marshmallowChild != null) childAvatarBone = marshmallowChild;
                         }

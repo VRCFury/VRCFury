@@ -13,7 +13,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
-    public static class VRCAvatarUtils {
+    internal static class VRCAvatarUtils {
         public class FoundController {
             public VRCAvatarDescriptor.AnimLayerType type;
             public bool isDefault;

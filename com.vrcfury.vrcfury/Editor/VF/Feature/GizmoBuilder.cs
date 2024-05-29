@@ -5,7 +5,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class GizmoBuilder : FeatureBuilder<Gizmo> {
+    internal class GizmoBuilder : FeatureBuilder<Gizmo> {
         [FeatureBuilderAction]
         public void Apply() {
         }

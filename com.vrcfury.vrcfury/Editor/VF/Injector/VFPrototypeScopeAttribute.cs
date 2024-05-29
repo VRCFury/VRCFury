@@ -2,7 +2,7 @@
 
 namespace VF.Injector {
     [AttributeUsage(AttributeTargets.Class)]
-    public class VFPrototypeScopeAttribute : Attribute {
+    internal class VFPrototypeScopeAttribute : Attribute {
         
     }
 }

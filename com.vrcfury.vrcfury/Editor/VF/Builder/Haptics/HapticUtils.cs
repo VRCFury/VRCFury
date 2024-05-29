@@ -19,7 +19,7 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using Random = System.Random;
 
 namespace VF.Builder.Haptics {
-    public static class HapticUtils {
+    internal static class HapticUtils {
         public const string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
         public const string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
         public const string CONTACT_PEN_CLOSE = "TPS_Pen_Close";

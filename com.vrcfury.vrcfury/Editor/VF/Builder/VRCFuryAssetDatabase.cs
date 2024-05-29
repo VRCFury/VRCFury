@@ -11,7 +11,7 @@ using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public static class VRCFuryAssetDatabase {
+    internal static class VRCFuryAssetDatabase {
         public static string MakeFilenameSafe(string str) {
             var output = "";
             foreach (var c in str) {

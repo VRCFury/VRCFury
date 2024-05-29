@@ -13,7 +13,7 @@ namespace VF.Builder {
     /**
      * Collects the resting value for every animated property in an animator, and puts them all into a clip.
      */
-    public static class AnimatorIterator {
+    internal static class AnimatorIterator {
         public static void ForEachBehaviourRW(
             VFLayer layer,
             Func<StateMachineBehaviour, Func<Type, StateMachineBehaviour>, bool> action

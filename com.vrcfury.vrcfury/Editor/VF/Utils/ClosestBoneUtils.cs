@@ -10,7 +10,7 @@ using VF.Model.Feature;
 using VF.Service;
 
 namespace VF.Utils {
-    public static class ClosestBoneUtils {
+    internal static class ClosestBoneUtils {
         private static Dictionary<VFGameObject, Result> resultCache
             = new Dictionary<VFGameObject, Result>();
         private static Dictionary<VFGameObject, List<ArmatureLink>> armatureLinkCache

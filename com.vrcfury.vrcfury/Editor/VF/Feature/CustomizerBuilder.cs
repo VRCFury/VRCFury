@@ -6,7 +6,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class CustomizerBuilder : FeatureBuilder<Customizer> {
+    internal class CustomizerBuilder : FeatureBuilder<Customizer> {
         public override string GetEditorTitle() {
             return "Customizer";
         }

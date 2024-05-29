@@ -12,7 +12,7 @@ using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
-    public class FinalizeMenuBuilder : FeatureBuilder {
+    internal class FinalizeMenuBuilder : FeatureBuilder {
         [VFAutowired] private readonly ExceptionService excService;
         
         [FeatureBuilderAction(FeatureOrder.FinalizeMenu)]

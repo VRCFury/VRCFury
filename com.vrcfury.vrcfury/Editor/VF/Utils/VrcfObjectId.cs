@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF.Utils {
-    public class VrcfObjectId {
+    internal class VrcfObjectId {
         public string guid { get; private set; } = "";
         public long fileId { get; private set; } = 0;
         public string fileName { get; private set; } = "";

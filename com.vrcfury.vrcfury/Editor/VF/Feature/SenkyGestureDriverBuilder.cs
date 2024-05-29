@@ -10,7 +10,7 @@ using VF.Service;
 
 namespace VF.Feature {
 
-public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
+internal class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
     [VFAutowired] private ActionClipService actionClipService;
     
     [FeatureBuilderAction(FeatureOrder.SenkyGestureDriver)]

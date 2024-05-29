@@ -10,7 +10,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
 
-    public class MenuManager {
+    internal class MenuManager {
         private readonly VRCExpressionsMenu rootMenu;
         private readonly Func<int> currentMenuSortPosition;
         private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions

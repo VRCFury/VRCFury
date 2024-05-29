@@ -6,7 +6,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
-    public class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix2> {
+    internal class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix2> {
         public override bool ShowInMenu() {
             return false;
         }

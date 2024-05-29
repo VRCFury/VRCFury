@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 
 namespace VF.Builder {
-    public static class MainWindowUtils {
+    internal static class MainWindowUtils {
         // https://discussions.unity.com/t/editor-window-how-to-center-a-window/137800/2
         // Temporary fix til unity 2020
         private static System.Type[] GetAllDerivedTypes(System.AppDomain aAppDomain, System.Type aType)

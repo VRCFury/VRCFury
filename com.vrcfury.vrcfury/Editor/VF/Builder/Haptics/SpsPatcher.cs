@@ -13,7 +13,7 @@ using VF.Builder.Exceptions;
 using VF.Inspector;
 
 namespace VF.Builder.Haptics {
-    public static class SpsPatcher {
+    internal static class SpsPatcher {
         private const string HashBuster = "13";
         
         public static void Patch(Material mat, bool keepImports) {

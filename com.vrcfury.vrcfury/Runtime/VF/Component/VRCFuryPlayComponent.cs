@@ -3,10 +3,10 @@ using UnityEngine;
 
 namespace VF.Component {
     [AddComponentMenu("")]
-    public class VRCFuryPlayComponent : MonoBehaviour {
+    internal class VRCFuryPlayComponent : MonoBehaviour {
     }
 
-    public class VRCFurySocketGizmo : VRCFuryPlayComponent {
+    internal class VRCFurySocketGizmo : VRCFuryPlayComponent {
         public VRCFuryHapticSocket.AddLight type;
         public Vector3 pos;
         public Quaternion rot;
@@ -24,7 +24,7 @@ namespace VF.Component {
         public static Action EnableSceneLighting;
     }
 
-    public class VRCFuryNoUpdateWhenOffscreen : VRCFuryPlayComponent {
+    internal class VRCFuryNoUpdateWhenOffscreen : VRCFuryPlayComponent {
         private void Update() {
             var skin = GetComponent<SkinnedMeshRenderer>();
             if (skin == null) return;

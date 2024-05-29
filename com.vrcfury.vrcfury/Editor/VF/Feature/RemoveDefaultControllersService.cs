@@ -10,7 +10,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     [VFService]
-    public class RemoveDefaultControllersService {
+    internal class RemoveDefaultControllersService {
         [VFAutowired] private readonly AvatarManager manager;
         
         [FeatureBuilderAction(FeatureOrder.RemoveDefaultControllers)]

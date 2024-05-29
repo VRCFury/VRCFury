@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     [VFService]
-    public class SaveAssetsBuilder {
+    internal class SaveAssetsBuilder {
         [VFAutowired] private readonly AvatarManager manager;
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]

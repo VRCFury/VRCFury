@@ -13,17 +13,18 @@ namespace VF.Model.StateAction {
      * However, if the action is annotated with this attribute, this behaviour will be skipped.
      */
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Class)]
-    public class DoNotApplyRestingStateAttribute : Attribute {
+    internal class DoNotApplyRestingStateAttribute : Attribute {
     }
     
     [Serializable]
+    // Temporarily public for SPS Configurator
     public class Action : VrcfUpgradeable {
         public bool desktopActive = false;
         public bool androidActive = false;
     }
 
     [Serializable]
-    public class ObjectToggleAction : Action {
+    internal class ObjectToggleAction : Action {
         public GameObject obj;
         public Mode mode = Mode.TurnOn;
 
@@ -46,7 +47,7 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
-    public class BlendShapeAction : Action {
+    internal class BlendShapeAction : Action {
         public string blendShape;
         public float blendShapeValue = 100;
         public Renderer renderer;
@@ -54,7 +55,7 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
-    public class MaterialAction : Action {
+    internal class MaterialAction : Action {
         [Obsolete] public GameObject obj;
         public Renderer renderer;
         public int materialIndex = 0;
@@ -77,29 +78,29 @@ namespace VF.Model.StateAction {
     }
 
     [Serializable]
-    public class SpsOnAction : Action {
+    internal class SpsOnAction : Action {
         public VRCFuryHapticPlug target;
     }
     
     [Serializable]
-    public class FxFloatAction : Action {
+    internal class FxFloatAction : Action {
         public string name;
         public float value = 1;
     }
     
     [Serializable]
-    public class AnimationClipAction : Action {
+    internal class AnimationClipAction : Action {
         public GuidAnimationClip clip;
     }
 
     [Serializable]
-    public class ShaderInventoryAction : Action {
+    internal class ShaderInventoryAction : Action {
         public Renderer renderer;
         public int slot = 1;
     }
 
     [Serializable]
-    public class PoiyomiUVTileAction : Action {
+    internal class PoiyomiUVTileAction : Action {
         public Renderer renderer;
         public int row = 0;
         public int column = 0;
@@ -108,7 +109,7 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
-    public class MaterialPropertyAction : Action {
+    internal class MaterialPropertyAction : Action {
         public Renderer renderer;
         public bool affectAllMeshes;
         public string propertyName;
@@ -118,7 +119,7 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
-    public class FlipbookAction : Action {
+    internal class FlipbookAction : Action {
         [Obsolete] public GameObject obj;
         public Renderer renderer;
         public int frame;
@@ -140,26 +141,26 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
-    public class ScaleAction : Action {
+    internal class ScaleAction : Action {
         public GameObject obj;
         public float scale = 1;
     }
     
     [Serializable]
-    public class BlockBlinkingAction : Action {
+    internal class BlockBlinkingAction : Action {
     }
         
     [Serializable]
-    public class BlockVisemesAction : Action {
+    internal class BlockVisemesAction : Action {
     }
     
     [Serializable]
-    public class ResetPhysboneAction : Action {
+    internal class ResetPhysboneAction : Action {
         public VRCPhysBone physBone;
     }
     
     [Serializable]
-    public class FlipBookBuilderAction : Action {
+    internal class FlipBookBuilderAction : Action {
         [Obsolete] public List<State> states;
         public List<FlipBookPage> pages;
 
@@ -188,7 +189,7 @@ namespace VF.Model.StateAction {
     }
 
     [Serializable]
-    public class SmoothLoopAction : Action {
+    internal class SmoothLoopAction : Action {
         public State state1;
         public State state2;
         public float loopTime = 5;
@@ -197,21 +198,21 @@ namespace VF.Model.StateAction {
     
     [Serializable]
     [DoNotApplyRestingState]
-    public class SyncParamAction : Action {
+    internal class SyncParamAction : Action {
         public string param;
         public float value = 0;
     }
 
     [Serializable]
     [DoNotApplyRestingState]
-    public class ToggleStateAction : Action {
+    internal class ToggleStateAction : Action {
         public string toggle;
         public float value = 0;
     }
 
     [Serializable]
     [DoNotApplyRestingState]
-    public class TagStateAction : Action {
+    internal class TagStateAction : Action {
         public string tag;
         public float value = 0;
     }

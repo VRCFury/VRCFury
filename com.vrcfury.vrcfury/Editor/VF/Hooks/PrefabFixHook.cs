@@ -14,11 +14,11 @@ namespace VF.Hooks {
      * This allows us to do certain behaviours on the original object before all
      * prefab connections are lost.
      */
-    public static class PrefabFixHook {
+    internal static class PrefabFixHook {
 
 #if VRC_NEW_PUBLIC_SDK
         [InitializeOnLoadMethod]
-        static void Init() {
+        private static void Init() {
             VRCSdkControlPanel.OnSdkPanelEnable += (sender, e) => {
                 if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder)) {
                     builder.OnSdkBuildStart += (sender2, target) => {
@@ -31,7 +31,7 @@ namespace VF.Hooks {
         }
 #else
         [InitializeOnLoadMethod]
-        static void Init() {
+        private static void Init() {
             try {
                 PatchPreuploadMethod("RunExportAndTestAvatarBlueprint");
                 PatchPreuploadMethod("RunExportAndUploadAvatarBlueprint");
@@ -66,7 +66,7 @@ namespace VF.Hooks {
         }
         
         [InitializeOnLoadMethod]
-        static void InitPlayMode() {
+        private static void InitPlayMode() {
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingEditMode) {
                     if (PlayModeMenuItem.Get()) {

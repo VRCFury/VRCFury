@@ -12,7 +12,7 @@ namespace VF.Service {
      */
     [VFService]
     [VFPrototypeScope]
-    public class SmoothingService {
+    internal class SmoothingService {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly FrameTimeService frameTimeService;

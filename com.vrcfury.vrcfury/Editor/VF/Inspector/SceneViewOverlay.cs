@@ -13,7 +13,7 @@ using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
-    public class SceneViewOverlay {
+    internal class SceneViewOverlay {
 
         private static bool ndmfPresent =
             ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;

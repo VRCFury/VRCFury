@@ -12,7 +12,7 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     [VFService]
-    public class SpsSendersForAllBuilder {
+    internal class SpsSendersForAllBuilder {
         [VFAutowired] private readonly GlobalsService globals;
         
         [FeatureBuilderAction(FeatureOrder.GiveEverythingSpsSenders)]

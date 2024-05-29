@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace VF.Feature.Base {
     [AttributeUsage(AttributeTargets.Method)]
     [MeansImplicitUse]
-    public class FeatureBuilderActionAttribute : Attribute {
+    internal class FeatureBuilderActionAttribute : Attribute {
         private readonly FeatureOrder priority;
         private readonly int priorityOffset;
 

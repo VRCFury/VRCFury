@@ -12,7 +12,7 @@ using VF.Utils.Controller;
 namespace VF.Service {
     [VFService]
     [VFPrototypeScope]
-    public class DirectBlendTreeService {
+    internal class DirectBlendTreeService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly VFInjectorParent parent;
         private VFLayer _layer;

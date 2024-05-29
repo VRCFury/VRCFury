@@ -13,7 +13,7 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
-    public class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
+    internal class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         

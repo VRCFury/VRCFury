@@ -83,7 +83,9 @@ namespace VF.Hooks {
         public class VrcfRemoveEditorOnlyComponents : IVRCSDKPreprocessAvatarCallback {
             public int callbackOrder => Int32.MaxValue;
             public bool OnPreprocessAvatar(GameObject obj) {
-                EditorOnlyUtils.RemoveEditorOnlyComponents(obj);
+                if (IsActuallyUploadingHook.Get()) {
+                    EditorOnlyUtils.RemoveEditorOnlyComponents(obj);
+                }
                 return true;
             }
         }

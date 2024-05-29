@@ -16,7 +16,7 @@ namespace VF.Service {
      */
     [VFService]
     [VFPrototypeScope]
-    public class MathService {
+    internal class MathService {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         private ControllerManager fx => avatarManager.GetFx();

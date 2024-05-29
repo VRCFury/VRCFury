@@ -12,9 +12,9 @@ namespace VF.Hooks {
      * We fix this by correcting the build target group to match whenever the vrcsdk dialog opens or
      * a build begins.
      */
-    public static class FixVrcsdkValidatorWrongPlatform {
+    internal static class FixVrcsdkValidatorWrongPlatform {
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             SyncBuildTargetGroup();
 #if VRC_NEW_PUBLIC_SDK
             VRCSdkControlPanel.OnSdkPanelEnable += (sender, e) => {

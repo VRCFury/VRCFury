@@ -8,7 +8,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-    public class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
+    internal class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
             VFGameObject root;

@@ -3,7 +3,7 @@ using VF.Injector;
 
 namespace VF.Service {
     [VFService]
-    public class UniqueHapticNamesService {
+    internal class UniqueHapticNamesService {
         private readonly List<string> usedNames = new List<string>();
 
         public string GetUniqueName(string prefix) {

@@ -13,7 +13,7 @@ namespace VF.Inspector {
     
 
 [CustomEditor(typeof(VRCFury), true)]
-public class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
+internal class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
     protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFury target) {
         return VRCFuryEditorUtils.Prop(serializedObject.FindProperty("content"));
     }

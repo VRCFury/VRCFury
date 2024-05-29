@@ -11,7 +11,7 @@ using VF.Model;
 using VF.Model.Feature;
 
 namespace VF.Menu {
-    public static class MenuItems {
+    internal static class MenuItems {
         private const string prefix = "Tools/VRCFury/";
 
         public const string testCopy = prefix + "Build an Editor Test Copy";

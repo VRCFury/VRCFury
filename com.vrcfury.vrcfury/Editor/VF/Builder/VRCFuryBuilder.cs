@@ -21,7 +21,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
 
-public class VRCFuryBuilder {
+internal class VRCFuryBuilder {
 
     internal enum Status {
         Success,

@@ -8,7 +8,7 @@ using VF.Utils;
 
 namespace VF.Inspector {
     [CustomPropertyDrawer(typeof(GuidWrapper<>), true)]
-    public class GuidWrapperPropertyDrawer : PropertyDrawer {
+    internal class GuidWrapperPropertyDrawer : PropertyDrawer {
         public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
             var id = prop.FindPropertyRelative("id");
             var objRef = prop.FindPropertyRelative("objRef");

@@ -6,7 +6,7 @@ namespace VF.Inspector {
     /**
      * Prevents children of this object from being re-bound by a parent
      */
-    public class BindingBlock : VisualElement {
+    internal class BindingBlock : VisualElement {
         private static Type bindEventType;
 
         static BindingBlock() {

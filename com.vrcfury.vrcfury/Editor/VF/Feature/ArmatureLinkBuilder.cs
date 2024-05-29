@@ -14,7 +14,7 @@ using VF.Utils;
 
 namespace VF.Feature {
 
-    public class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
+    internal class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
 
         public override string GetEditorTitle() {
             return "Armature Link";

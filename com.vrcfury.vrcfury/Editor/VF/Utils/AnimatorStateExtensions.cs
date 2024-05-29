@@ -5,7 +5,7 @@ using VF.Feature;
 using VF.Utils;
 
 namespace VF.Builder {
-    public static class AnimatorStateExtensions {
+    internal static class AnimatorStateExtensions {
         public static StateMachineBehaviour VAddStateMachineBehaviour(this AnimatorState state, Type type) {
             // Unity 2019 and lower log an error if this isn't persistent
             StateMachineBehaviour added = null;

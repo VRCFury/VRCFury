@@ -19,7 +19,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
-public class ToggleBuilder : FeatureBuilder<Toggle> {
+internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly RestingStateService restingState;
@@ -218,11 +218,13 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
         if (weight != null) {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
-                clip = clipBuilder.MergeSingleFrameClips(
+                var motionClip = clipBuilder.MergeSingleFrameClips(
                     (0, VrcfObjectFactory.Create<AnimationClip>()),
                     (1, clip)
                 );
-                clip.UseLinearTangents();
+                motionClip.UseLinearTangents();
+                motionClip.name = clip.name;
+                clip = motionClip;
             }
             clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);

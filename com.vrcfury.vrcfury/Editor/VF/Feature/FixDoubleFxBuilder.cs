@@ -6,7 +6,7 @@ using VF.Feature.Base;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class FixDoubleFxBuilder : FeatureBuilder {
+    internal class FixDoubleFxBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixDoubleFx)]
         public void Apply() {
             var avatar = manager.Avatar;

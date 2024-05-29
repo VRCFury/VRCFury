@@ -16,7 +16,7 @@ namespace VF.Feature {
      * Merges TrackingControl belonging to multiple owners
      */
     [VFService]
-    public class TrackingConflictResolverBuilder {
+    internal class TrackingConflictResolverBuilder {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly DirectBlendTreeService directTreeService;
         [VFAutowired] private readonly MathService mathService;

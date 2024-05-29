@@ -4,7 +4,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace VF.Inspector {
-    public class VrcfSearchWindow {
+    internal class VrcfSearchWindow {
         private readonly List<SearchTreeEntry> entries = new List<SearchTreeEntry>();
 
         public VrcfSearchWindow(string title) {

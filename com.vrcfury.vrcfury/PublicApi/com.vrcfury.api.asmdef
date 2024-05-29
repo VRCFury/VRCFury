@@ -1,0 +1,21 @@
+﻿{
+  "name": "com.vrcfury.api",
+  "rootNamespace": "com.vrcfury.api",
+  "references": [
+    "VRCFury-Editor",
+    "VRCFury"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "VRCSDK3A.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

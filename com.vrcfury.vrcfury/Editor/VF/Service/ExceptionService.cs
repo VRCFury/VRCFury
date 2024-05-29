@@ -5,7 +5,7 @@ using VF.Injector;
 
 namespace VF.Service {
     [VFService]
-    public class ExceptionService {
+    internal class ExceptionService {
         [VFAutowired] private readonly GlobalsService globals;
 
         public void ThrowIfActuallyUploading(Exception e) {

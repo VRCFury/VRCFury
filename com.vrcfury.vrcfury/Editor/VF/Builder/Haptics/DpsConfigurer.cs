@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace VF.Builder.Haptics {
-    public static class DpsConfigurer {
+    internal static class DpsConfigurer {
         private static readonly int RalivPenetratorEnabled = Shader.PropertyToID("_PenetratorEnabled");
 
         public static bool IsDps(Material mat) {

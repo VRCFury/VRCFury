@@ -7,9 +7,9 @@ namespace VF.Hooks {
     /**
      * Prevents the user from accidentally doing dumb things in their unity settings, then breaking their project.
      */
-    public static class SaneUnitySettingsHook {
+    internal static class SaneUnitySettingsHook {
         [InitializeOnLoadMethod]
-        public static void Apply() {
+        private static void Apply() {
             DoSafe(DisableErrorPause);
             DoSafe(TurnOffPause);
             DoSafe(EnableErrorLogs);

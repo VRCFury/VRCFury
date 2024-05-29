@@ -11,7 +11,7 @@ using Action = VF.Model.StateAction.Action;
 namespace VF.Model {
     [AddComponentMenu("")]
     [HelpURL("https://vrcfury.com")]
-    public class VRCFury : VRCFuryComponent {
+    internal class VRCFury : VRCFuryComponent {
         
         [Header("VRCFury failed to load")]
         [Header("Something is really broken. Do not edit anything in here, or you may make it worse.")]
@@ -93,11 +93,12 @@ namespace VF.Model {
     }
     
     [Serializable]
-    public class VRCFuryConfig {
+    internal class VRCFuryConfig {
         [SerializeReference] public List<FeatureModel> features = new List<FeatureModel>();
     }
 
     [Serializable]
+    // Temporarily public for SPS Configurator
     public class State {
         [SerializeReference] public List<Action> actions = new List<Action>();
     }

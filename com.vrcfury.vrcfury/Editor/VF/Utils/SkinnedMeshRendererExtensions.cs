@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 
 namespace VF.Utils {
-    public static class SkinnedMeshRendererExtensions {
+    internal static class SkinnedMeshRendererExtensions {
         public static float GetBlendShapeWeight(this SkinnedMeshRenderer skin, string name) {
             var id = skin.GetBlendShapeIndex(name);
             if (id < 0) throw new Exception("Blendshape does not exist");

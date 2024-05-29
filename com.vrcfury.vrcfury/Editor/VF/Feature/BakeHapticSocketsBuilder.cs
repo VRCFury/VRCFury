@@ -21,7 +21,7 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     [VFService]
-    public class BakeHapticSocketsBuilder : FeatureBuilder {
+    internal class BakeHapticSocketsBuilder : FeatureBuilder {
 
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;

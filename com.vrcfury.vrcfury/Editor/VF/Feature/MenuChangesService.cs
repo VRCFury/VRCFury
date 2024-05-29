@@ -10,7 +10,7 @@ using VF.Service;
 
 namespace VF.Feature {
     [VFService]
-    public class MenuChangesService {
+    internal class MenuChangesService {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AvatarManager manager;
         private readonly List<NewFeatureModel> extraPreActions = new List<NewFeatureModel>();

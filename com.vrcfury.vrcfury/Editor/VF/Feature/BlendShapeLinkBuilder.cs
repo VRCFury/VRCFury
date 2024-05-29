@@ -13,7 +13,7 @@ using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
-    public class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
+    internal class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
         public override string GetEditorTitle() {
             return "BlendShape Link";
         }

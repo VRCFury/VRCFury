@@ -6,7 +6,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
 
-    public class ParamManager {
+    internal class ParamManager {
         private readonly VRCExpressionParameters syncedParams;
 
         public ParamManager(VRCExpressionParameters syncedParams) {
