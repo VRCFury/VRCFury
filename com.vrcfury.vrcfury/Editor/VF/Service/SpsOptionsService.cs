@@ -18,21 +18,29 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.MoveSpsMenus)]
         public void MoveMenus() {
             var mainPath = GetMenuPath();
-            
-            menuChanges.AddExtraAction(new MoveMenuItem {
-                fromPath = "Holes",
-                toPath = mainPath
-            });
-            menuChanges.AddExtraAction(new MoveMenuItem {
-                fromPath = "Sockets",
-                toPath = mainPath
-            });
+
+            var legacySpsMenuItems = new List<MoveMenuItem.MenuItem> {
+             new MoveMenuItem.MenuItem {
+                 fromPath = "Holes",
+                 toPath = mainPath
+             },
+             new MoveMenuItem.MenuItem {
+                 fromPath = "Sockets",
+                 toPath = mainPath
+             }
+         };
+
             if (mainPath != "SPS") {
-                menuChanges.AddExtraAction(new MoveMenuItem {
+                legacySpsMenuItems.Add(new MoveMenuItem.MenuItem {
                     fromPath = "SPS",
                     toPath = mainPath
                 });
             }
+
+            menuChanges.AddExtraAction(new MoveMenuItem {
+                menuItems = legacySpsMenuItems
+            });
+
 
             var icon = GetOptions().menuIcon?.Get()
                        ?? VRCFuryEditorUtils.GetResource<Texture2D>("sps_icon.png");

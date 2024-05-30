@@ -706,26 +706,56 @@ namespace VF.Model.Feature {
     
     [Serializable]
     internal class MoveMenuItem : NewFeatureModel {
-        public string fromPath;
-        public string toPath;
-        
+        [Obsolete] public string fromPath = "";
+        [Obsolete] public string toPath = "";
+
+        [Serializable]
+        public class MenuItem {
+            public string fromPath = "";
+            public string toPath = "";
+        }
+
+        public List<MenuItem> menuItems = new();
+
         public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
-                if (fromPath.StartsWith("Holes/") || fromPath == "Holes") {
-                    fromPath = "Sockets" + fromPath.Substring(5);
+                for (int i = 0; i < menuItems.Count; i++) {
+                    if (menuItems[i].fromPath.StartsWith("Holes/") || menuItems[i].fromPath == "Holes") {
+                        menuItems[i].fromPath = "Sockets" + menuItems[i].fromPath.Substring(5);
+                    }
                 }
             }
+
             if (fromVersion < 2) {
-                if (fromPath.StartsWith("Sockets/") || fromPath == "Sockets") {
-                    fromPath = "SPS" + fromPath.Substring(7);
+                for (int i = 0; i < menuItems.Count; i++) {
+                    if (menuItems[i].fromPath.StartsWith("Sockets/") || menuItems[i].fromPath == "Sockets") {
+                        menuItems[i].fromPath = "SPS" + menuItems[i].fromPath.Substring(7);
+                    }
                 }
             }
 
             if (fromVersion < 3) {
-                if (toPath.StartsWith("Sockets/") || toPath == "Sockets") {
-                    toPath = "SPS" + toPath.Substring(7);
+                for (int i = 0; i < menuItems.Count; i++) {
+                    if (menuItems[i].toPath.StartsWith("Sockets/") || menuItems[i].toPath == "Sockets") {
+                        menuItems[i].toPath = "SPS" + menuItems[i].toPath.Substring(7);
+                    }
                 }
             }
+
+            //Keep compatibility with older
+#pragma warning disable CS0612
+            var isUsingSinglePaths =
+                !string.IsNullOrEmpty(fromPath)
+                && !string.IsNullOrEmpty(toPath)
+                && !menuItems.Any(f => (f.fromPath, f.toPath) == (fromPath, toPath));
+            if (isUsingSinglePaths) {
+                menuItems.Add(new MoveMenuItem.MenuItem {
+                    fromPath = fromPath,
+                    toPath = toPath
+                });
+            }
+#pragma warning restore CS0612
+
             return false;
         }
 
@@ -733,7 +763,7 @@ namespace VF.Model.Feature {
             return 3;
         }
     }
-    
+
     [Serializable]
     internal class GestureDriver : NewFeatureModel {
         public List<Gesture> gestures = new List<Gesture>();
