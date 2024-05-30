@@ -203,7 +203,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                 clip = fx.NewClip(onName);
                 clip.CopyFromLast(inClip);
             }
-            var outClip = model.simpleOutTransition ? inClip : actionClipService.LoadState(onName + " Out", outAction);
+            var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
             var outSpeed = model.simpleOutTransition ? -1 : 1;
             
             // Copy "object enabled" and "material" states to in and out clips if they don't already have them
