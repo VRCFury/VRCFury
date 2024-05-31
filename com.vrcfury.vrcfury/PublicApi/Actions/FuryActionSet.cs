@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿using JetBrains.Annotations;
+using UnityEngine;
 using VF.Model;
 using VF.Model.StateAction;
 
 namespace com.vrcfury.api.Actions {
+    [PublicAPI]
     public class FuryActionSet {
         private readonly State s;
 

@@ -1,9 +1,11 @@
-﻿using UnityEngine;
+﻿using JetBrains.Annotations;
+using UnityEngine;
 using VF.Model;
 using VF.Model.Feature;
 
 namespace com.vrcfury.api.Components {
     /** Create an instance using <see cref="FuryComponents"/> */
+    [PublicAPI]
     public class FuryArmatureLink {
         private readonly ArmatureLink c;
 

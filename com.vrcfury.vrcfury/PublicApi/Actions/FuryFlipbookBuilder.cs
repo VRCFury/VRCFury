@@ -1,6 +1,8 @@
-﻿using VF.Model.StateAction;
+﻿using JetBrains.Annotations;
+using VF.Model.StateAction;
 
 namespace com.vrcfury.api.Actions {
+    [PublicAPI]
     public class FuryFlipbookBuilder {
         private readonly FlipBookBuilderAction f;
 
@@ -14,6 +16,7 @@ namespace com.vrcfury.api.Actions {
             return new Page(p);
         }
 
+        [PublicAPI]
         public class Page {
             private readonly FlipBookBuilderAction.FlipBookPage p;
 

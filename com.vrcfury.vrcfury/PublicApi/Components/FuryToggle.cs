@@ -1,9 +1,12 @@
 ﻿using com.vrcfury.api.Actions;
+using JetBrains.Annotations;
 using UnityEngine;
 using VF.Model;
 using VF.Model.Feature;
 
 namespace com.vrcfury.api.Components {
+    /** Create an instance using <see cref="FuryComponents"/> */
+    [PublicAPI]
     public class FuryToggle {
         private readonly Toggle c;
 
