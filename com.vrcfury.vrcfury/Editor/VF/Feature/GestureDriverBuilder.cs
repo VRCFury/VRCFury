@@ -25,6 +25,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -89,11 +90,11 @@ namespace VF.Feature {
                 );
                 onCondition = smoothedWeight.IsGreaterThan(0.05f);
                 transitionTime = 0.05f;
-                var tree = fx.NewBlendTree(uid + "_blend");
+                var tree = clipFactory.NewBlendTree(uid + "_blend");
                 tree.blendType = BlendTreeType.Simple1D;
                 tree.useAutomaticThresholds = false;
                 tree.blendParameter = smoothedWeight.Name();
-                tree.AddChild(fx.GetEmptyClip(), 0);
+                tree.AddChild(clipFactory.GetEmptyClip(), 0);
                 tree.AddChild(clip, 1);
                 on.WithAnimation(tree);
             } else {

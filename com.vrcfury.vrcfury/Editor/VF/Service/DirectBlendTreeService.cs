@@ -15,6 +15,7 @@ namespace VF.Service {
     internal class DirectBlendTreeService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly VFInjectorParent parent;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         private VFLayer _layer;
         private BlendTree _tree;
 
@@ -31,7 +32,7 @@ namespace VF.Service {
                 var fx = manager.GetFx();
                 var directLayer = fx.NewLayer(name);
                 _layer = directLayer;
-                _tree = fx.NewBlendTree(name);
+                _tree = clipFactory.NewBlendTree(name);
                 _tree.blendType = BlendTreeType.Direct;
                 directLayer.NewState("DBT").WithAnimation(_tree);
             }

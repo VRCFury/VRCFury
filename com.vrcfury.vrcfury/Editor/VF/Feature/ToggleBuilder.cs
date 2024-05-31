@@ -25,6 +25,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly RestingStateService restingState;
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
     [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+    [VFAutowired] private readonly ClipFactoryService clipFactory;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;
@@ -185,7 +186,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             inState = onState = layer.NewState(onName);
             if (clip.IsStatic()) {
                 var motionClip = clipBuilder.MergeSingleFrameClips(
-                    (0, VrcfObjectFactory.Create<AnimationClip>()),
+                    (0, clipFactory.GetEmptyClip()),
                     (1, clip)
                 );
                 motionClip.UseLinearTangents();
@@ -200,7 +201,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
-                clip = fx.NewClip(onName);
+                clip = clipFactory.NewClip(onName);
                 clip.CopyFromLast(inClip);
             }
             var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
@@ -302,7 +303,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     }
 
     public override string GetClipPrefix() {
-        return "Toggle " + model.name.Replace('/', '_');
+        return model.name.Replace('/', '_');
     }
 
     [FeatureBuilderAction(FeatureOrder.ApplyToggleRestingState)]

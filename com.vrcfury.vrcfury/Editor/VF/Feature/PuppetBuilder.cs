@@ -9,15 +9,16 @@ namespace VF.Feature {
 
 internal class PuppetBuilder : FeatureBuilder<Puppet> {
     [VFAutowired] private readonly ActionClipService actionClipService;
+    [VFAutowired] private readonly ClipFactoryService clipFactory;
 
     [FeatureBuilderAction]
     public void Apply() {
         var fx = GetFx();
         var layerName = model.name;
         var layer = fx.NewLayer(layerName);
-        var tree = fx.NewBlendTree(model.name);
+        var tree = clipFactory.NewBlendTree(model.name);
         tree.blendType = BlendTreeType.FreeformDirectional2D;
-        tree.AddChild(fx.GetEmptyClip(), new Vector2(0,0));
+        tree.AddChild(clipFactory.GetEmptyClip(), new Vector2(0,0));
         var i = 0;
         var usesX = false;
         var usesY = false;

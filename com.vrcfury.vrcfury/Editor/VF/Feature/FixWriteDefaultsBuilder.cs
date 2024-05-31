@@ -23,6 +23,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly OriginalAvatarService originalAvatar;
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat, bool force = false) {
             if (binding.type == typeof(Animator)) return;
@@ -53,7 +54,7 @@ namespace VF.Feature {
         private AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
                 var fx = GetFx();
-                _defaultClip = fx.NewClip("Defaults");
+                _defaultClip = clipFactory.NewClip("Defaults");
                 _defaultLayer = fx.NewLayer("Defaults", 0);
                 _defaultLayer.NewState("Defaults").WithAnimation(_defaultClip);
             }

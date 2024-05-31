@@ -67,33 +67,6 @@ namespace VF.Builder {
             layerSourceService.SetSourceToCurrent(newLayer);
             return newLayer;
         }
-        
-        private AnimationClip _noopClip;
-        public AnimationClip GetEmptyClip() {
-            if (_noopClip == null) {
-                _noopClip = _NewClip("VFempty");
-            }
-            return _noopClip;
-        }
-        public string NewClipName(string name) {
-            return $"{currentFeatureClipPrefixProvider.Invoke()}/{name}";
-        }
-        public AnimationClip NewClip(string name) {
-            return _NewClip(NewClipName(name));
-        }
-        private AnimationClip _NewClip(string name) {
-            var clip = VrcfObjectFactory.Create<AnimationClip>();
-            clip.name = name;
-            return clip;
-        }
-        public BlendTree NewBlendTree(string name) {
-            return _NewBlendTree(NewClipName(name));
-        }
-        private BlendTree _NewBlendTree(string name) {
-            var tree = VrcfObjectFactory.Create<BlendTree>();
-            tree.name = name;
-            return tree;
-        }
 
         /**
          * BEWARE: This consumes the ENTIRE asset file containing "other"

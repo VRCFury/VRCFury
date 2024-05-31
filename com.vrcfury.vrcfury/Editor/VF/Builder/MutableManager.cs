@@ -84,11 +84,11 @@ namespace VF.Builder {
             public T output;
         }
 
-        public static T CopyRecursive<T>(T obj, bool addPrefix = true) where T : Object {
+        public static T CopyRecursive<T>(T obj, string addPrefix = "") where T : Object {
             return CopyRecursiveAdv(obj, addPrefix).output;
         }
 
-        public static CopyResults<T> CopyRecursiveAdv<T>(T obj, bool addPrefix = true) where T : Object {
+        public static CopyResults<T> CopyRecursiveAdv<T>(T obj, string addPrefix = "") where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
@@ -106,8 +106,8 @@ namespace VF.Builder {
 
                 if (IsType(copy, hiddenTypes)) {
                     copy.hideFlags |= HideFlags.HideInHierarchy;
-                } else if (addPrefix) {
-                    copy.name = $"{obj.name}/{original.name}";
+                } else {
+                    copy.name = $"{addPrefix}{original.name}";
                 }
 
                 originalToMutable[original] = copy;

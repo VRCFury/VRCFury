@@ -16,6 +16,7 @@ namespace VF.Feature {
     internal class ForceStateInAnimatorService : FeatureBuilder {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         private readonly List<VFGameObject> _forceEnable = new List<VFGameObject>();
         public void ForceEnable(VFGameObject t) {
@@ -24,7 +25,9 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.FixTouchingContacts)]
         public void Apply() {
-            var clip = fx.NewClip("Force On");
+            if (_forceEnable.Count == 0) return;
+
+            var clip = clipFactory.NewClip("Force On");
             directTree.Add(clip);
             foreach (var obj in _forceEnable) {
                 clipBuilder.Enable(clip, obj);

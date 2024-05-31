@@ -14,6 +14,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         private VFAFloat cachedFrameTime;
         public VFAFloat GetFrameTime() {
@@ -34,7 +35,7 @@ namespace VF.Service {
             var fx = manager.GetFx();
             var timeSinceStart = fx.NewFloat("timeSinceLoad");
             var layer = fx.NewLayer("FrameTime Counter");
-            var clip = fx.NewClip("FrameTime Counter");
+            var clip = clipFactory.NewClip("FrameTime Counter");
             clip.SetCurve(
                 EditorCurveBinding.FloatCurve("", typeof(Animator), timeSinceStart.Name()),
                 AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000)

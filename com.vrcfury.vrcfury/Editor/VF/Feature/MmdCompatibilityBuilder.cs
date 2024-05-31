@@ -17,6 +17,7 @@ namespace VF.Feature {
     internal class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         
         public override string GetEditorTitle() {
             return "MMD Compatibility";
@@ -82,7 +83,7 @@ namespace VF.Feature {
             }
 
             var mmdDetector = fx.NewFloat("MMDDetector", def: 1);
-            var mmdDetectorClip = VrcfObjectFactory.Create<AnimationClip>();
+            var mmdDetectorClip = clipFactory.NewClip("Detector");
             // MMD worlds will disable this layer, setting HandsActive back to the default of 0
             mmdDetectorClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), mmdDetector.Name()), 0);
             layer1.NewState("Mmd Detector").WithAnimation(mmdDetectorClip);

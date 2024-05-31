@@ -19,6 +19,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
     [VFService]
+    [VFPrototypeScope]
     internal class ActionClipService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly AvatarManager avatarManager;
@@ -27,6 +28,7 @@ namespace VF.Service {
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
@@ -36,7 +38,7 @@ namespace VF.Service {
         
         public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null) {
             var result = LoadStateAdv(name, state, avatarManager.AvatarObject, animObjectOverride ?? avatarManager.CurrentComponentObject, this);
-            result.onClip.name = manager.GetFx().NewClipName(name);
+            result.onClip.name = $"{clipFactory.GetPrefix()}/{name}";
             return result;
         }
 

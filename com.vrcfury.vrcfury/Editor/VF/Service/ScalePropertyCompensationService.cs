@@ -19,6 +19,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void AddScaledProp(VFGameObject scaleReference, IEnumerable<(VFGameObject obj, Type ComponentType, string PropertyName, float InitialValue)> properties) {
             var scaleFactor = scaleFactorService.Get(scaleReference);
@@ -26,10 +27,10 @@ namespace VF.Service {
                 return;
             }
 
-            var zeroClip = manager.GetFx().NewClip($"scaleComp_{scaleReference.name}_zero");
+            var zeroClip = clipFactory.NewClip($"scaleComp_{scaleReference.name}_zero");
             directTree.Add(zeroClip);
 
-            var scaleClip = manager.GetFx().NewClip($"scaleComp_{scaleReference.name}_one");
+            var scaleClip = clipFactory.NewClip($"scaleComp_{scaleReference.name}_one");
             directTree.Add(scaleFactor, scaleClip);
 
             foreach (var prop in properties) {

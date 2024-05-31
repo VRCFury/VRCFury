@@ -22,6 +22,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void CreatePlugAnims(
             ICollection<VRCFuryHapticPlug.PlugDepthAction> actions,
@@ -85,11 +86,11 @@ namespace VF.Service {
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, plugOwner);
                 if (clip.IsStatic()) {
-                    var tree = fx.NewBlendTree(prefix + " tree");
+                    var tree = clipFactory.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
                     tree.blendParameter = smoothParam.Name();
-                    tree.AddChild(fx.GetEmptyClip(), 0);
+                    tree.AddChild(clipFactory.GetEmptyClip(), 0);
                     tree.AddChild(clip, 1);
                     on.WithAnimation(tree);
                 } else {
@@ -178,11 +179,11 @@ namespace VF.Service {
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, socketOwner);
                 if (clip.IsStatic()) {
-                    var tree = fx.NewBlendTree(prefix + " tree");
+                    var tree = clipFactory.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
                     tree.blendParameter = smoothed.Name();
-                    tree.AddChild(fx.GetEmptyClip(), 0);
+                    tree.AddChild(clipFactory.GetEmptyClip(), 0);
                     tree.AddChild(clip, 1);
                     on.WithAnimation(tree);
                 } else {
