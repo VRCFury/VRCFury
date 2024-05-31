@@ -25,6 +25,7 @@ namespace VF.Service {
                 if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
                     var action = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                     var layer = action.NewLayer("VRCFury Actions");
+                    addedLayers.Add(layer);
                     var idle = layer.NewState("Idle");
                     addCache[type] = c => AddClip(c, action, idle, layer, type);
                 } else {
@@ -36,6 +37,7 @@ namespace VF.Service {
                             ? "Left Hand"
                             : "Right Hand")
                     );
+                    addedLayers.Add(layer);
                     layer.weight = 0;
                     layer.mask = AvatarMaskExtensions.Empty();
                     layer.mask.SetHumanoidBodyPartActive(isLeft ? AvatarMaskBodyPart.LeftFingers : AvatarMaskBodyPart.RightFingers, true);
@@ -45,6 +47,12 @@ namespace VF.Service {
             }
 
             return addCache[type](clip);
+        }
+
+        private static ISet<VFLayer> addedLayers = new HashSet<VFLayer>();
+
+        public bool DidAddLayer(VFLayer layer) {
+            return addedLayers.Contains(layer);
         }
         
         private VFAFloat AddClip(AnimationClip clip, ControllerManager ctrl, VFState idle, VFLayer layer, EditorCurveBindingExtensions.MuscleBindingType type) {

@@ -22,6 +22,7 @@ namespace VF.Feature {
 
         [VFAutowired] private readonly OriginalAvatarService originalAvatar;
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
+        [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
 
         public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat, bool force = false) {
             if (binding.type == typeof(Animator)) return;
@@ -78,9 +79,15 @@ namespace VF.Feature {
             var propsInNonFx = new HashSet<EditorCurveBinding>();
             foreach (var c in manager.GetAllUsedControllers()) {
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) continue;
-                foreach (var clip in c.GetClips()) {
-                    foreach (var binding in clip.GetAllBindings()) {
-                        propsInNonFx.Add(binding.Normalize());
+                foreach (var layer in c.GetLayers()) {
+                    // FullBodyEmoteService anims may have non-muscle properties, but they are ALWAYS
+                    // also present in the FX triggering layer, meaning they are safe to record defaults for, because any
+                    // time the full body anim is on, the fx clip will also be on.
+                    if (fullBodyEmoteService.DidAddLayer(layer)) continue;
+                    foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
+                        foreach (var binding in clip.GetAllBindings()) {
+                            propsInNonFx.Add(binding.Normalize());
+                        }
                     }
                 }
             }
