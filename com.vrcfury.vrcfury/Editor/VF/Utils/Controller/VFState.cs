@@ -27,10 +27,10 @@ namespace VF.Utils.Controller {
             return pos;
         }
         public VFState Move(Vector3 orig, float x, float y) {
-            SetPosition(CalculateOffsetPosition(orig, x, y));
+            SetRawPosition(CalculateOffsetPosition(orig, x, y));
             return this;
         }
-        private VFState SetPosition(Vector2 v) {
+        public VFState SetRawPosition(Vector2 v) {
             var pos = node.position;
             pos.x = v.x;
             pos.y = v.y;
