@@ -19,7 +19,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
     [VFService]
-    // This can't be prototype scope because it has a featurebuilderaction
+    [VFPrototypeScope]
     internal class ActionClipService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly AvatarManager avatarManager;

@@ -11,6 +11,7 @@ namespace VF.Injector {
      */
     internal class VRCFuryInjector {
         private readonly Dictionary<(VFInjectorParent,Type), object> completedObjects = new Dictionary<(VFInjectorParent,Type), object>();
+        private Action<object> onCachedServiceBuilt = (o) => { };
 
         public void SetService(object service) {
             if (completedObjects.ContainsKey((null, service.GetType()))) {
@@ -21,6 +22,10 @@ namespace VF.Injector {
 
         private static bool IsPrototypeScope(Type type) {
             return type.GetCustomAttribute<VFPrototypeScopeAttribute>() != null;
+        }
+
+        public void OnCachedServiceBuilt(Action<object> callback) {
+            onCachedServiceBuilt += callback;
         }
 
         public object GetService(Type type, List<Type> _parents = null, VFInjectorParent nearestNonPrototypeParent = null, bool useCache = true) {
@@ -63,6 +68,7 @@ namespace VF.Injector {
 
                 if (useCache) {
                     completedObjects[(nearestNonPrototypeParent, type)] = instance;
+                    onCachedServiceBuilt(instance);
                 }
 
                 return instance;
