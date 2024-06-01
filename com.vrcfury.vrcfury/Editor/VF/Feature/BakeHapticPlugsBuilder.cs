@@ -34,6 +34,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
 
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
@@ -252,7 +253,7 @@ namespace VF.Feature {
             public VFGameObject plugObject;
             public SkinnedMeshRenderer skin;
             public VFGameObject bakeRoot;
-            public Func<Material, Material> configureMaterial;
+            public Func<int, Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
         }
         private readonly List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
@@ -311,9 +312,9 @@ namespace VF.Feature {
                             }
                         }
 
-                        if (!curve.IsFloat && binding.path == pathToRenderer && binding.propertyName.StartsWith("m_Materials")) {
+                        if (!curve.IsFloat && binding.path == pathToRenderer && avatarBindingStateService.TryParseMaterialSlot(binding, out _, out var slotNum)) {
                             var newKeys = curve.ObjectCurve.Select(frame => {
-                                if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
+                                if (frame.value is Material m) frame.value = rewrite.configureMaterial(slotNum, m);
                                 return frame;
                             }).ToArray();
                             clip.SetCurve(binding, newKeys);
@@ -322,7 +323,9 @@ namespace VF.Feature {
                 }
                 clipRewriteService.ForAllClips(RewriteClip);
 
-                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials.Select(rewrite.configureMaterial).ToArray();
+                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
+                    .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
+                    .ToArray();
             }
         }
 

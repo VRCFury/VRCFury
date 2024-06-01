@@ -123,7 +123,7 @@ namespace VF.Service {
             return component != null;
         }
 
-        private bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
+        public bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
             renderer = null;
             slotNum = 0;
             var prefix = "m_Materials.Array.data[";

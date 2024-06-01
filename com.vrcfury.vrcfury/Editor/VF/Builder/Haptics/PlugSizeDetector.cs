@@ -5,6 +5,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Inspector;
+using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class PlugSizeDetector {
@@ -14,6 +15,7 @@ namespace VF.Builder.Haptics {
             public float worldRadius;
             public Quaternion localRotation;
             public Vector3 localPosition;
+            public VFMultimapSet<VFGameObject, int> matSlots;
         }
         
         public static SizeResult GetWorldSize(VRCFuryHapticPlug plug) {
@@ -35,7 +37,8 @@ namespace VF.Builder.Haptics {
 
             float worldLength = 0;
             float worldRadius = 0;
-            if (plug.autoRadius || plug.autoLength) {
+            VFMultimapSet<VFGameObject, int> matSlots = new VFMultimapSet<VFGameObject, int>();
+            if (plug.autoRadius || plug.autoLength || renderers.Count > 0) {
                 if (renderers.Count == 0) {
                     throw new VRCFBuilderException("Failed to find plug renderer");
                 }
@@ -43,6 +46,7 @@ namespace VF.Builder.Haptics {
                 if (autoSize != null) {
                     if (plug.autoLength) worldLength = autoSize.Item1;
                     if (plug.autoRadius) worldRadius = autoSize.Item2;
+                    matSlots = autoSize.Item3;
                 }
             }
 
@@ -65,7 +69,8 @@ namespace VF.Builder.Haptics {
                 worldLength = worldLength,
                 worldRadius = worldRadius,
                 localRotation = localRotation,
-                localPosition = localPosition
+                localPosition = localPosition,
+                matSlots = matSlots
             };
         }
 
@@ -78,7 +83,7 @@ namespace VF.Builder.Haptics {
             return HapticUtils.GetMeshRoot(renderer).worldPosition;
         }
 
-        public static Tuple<float, float> GetAutoWorldSize(Renderer renderer) {
+        public static Tuple<float, float, VFMultimapSet<VFGameObject,int>> GetAutoWorldSize(Renderer renderer) {
             return GetAutoWorldSize(
                 new[] { renderer },
                 GetAutoWorldPosition(renderer),
@@ -86,7 +91,7 @@ namespace VF.Builder.Haptics {
             );
         }
 
-        public static Tuple<float, float> GetAutoWorldSize(
+        public static Tuple<float, float, VFMultimapSet<VFGameObject,int>> GetAutoWorldSize(
             ICollection<Renderer> renderers,
             Vector3 worldPosition,
             Quaternion worldRotation,
@@ -95,33 +100,54 @@ namespace VF.Builder.Haptics {
             if (renderers.Count == 0) return null;
             var inverseWorldRotation = Quaternion.Inverse(worldRotation);
 
-            var allWorldVerts = renderers.SelectMany(renderer => {
+            var allLocalVerts = new List<Vector3>();
+            var matsUsed = new VFMultimapSet<VFGameObject, int>();
+            foreach (var renderer in renderers) {
                 var bakedMesh = MeshBaker.BakeMesh(renderer);
-                if (bakedMesh == null) return new Vector3[]{};
+                if (bakedMesh == null) continue;
                 var mask = plug ? PlugMaskGenerator.GetMask(renderer, plug) : null;
-                return bakedMesh.vertices
-                    .Select(vert => renderer.owner().TransformPoint(vert))
-                    .Where((vert, i) => mask == null || mask[i] > 0);
-            }).ToArray();
+                var matsUsedByVert = new VFMultimapSet<int, int>();
+                var mesh = renderer.GetMesh();
+                if (mesh != null) {
+                    var matCount = mesh.subMeshCount;
+                    for (var matI = 0; matI < matCount; matI++) {
+                        foreach (var vert in mesh.GetTriangles(matI)) {
+                            matsUsedByVert.Put(vert, matI);
+                        }
+                    }
+                }
 
-            var verts = allWorldVerts
-                .Select(v => inverseWorldRotation * (v - worldPosition))
-                .Where(v => v.z > 0)
-                .ToArray();
-            var length = verts
+                var localVertsUsedInRenderer = bakedMesh.vertices
+                    .Select(vert => renderer.owner().TransformPoint(vert))
+                    .Select(v => inverseWorldRotation * (v - worldPosition))
+                    .Select((v, i) => {
+                        var isUsed = mask == null || mask[i] > 0;
+                        isUsed &= v.z > 0;
+                        return (v, i, isUsed);
+                    });
+                foreach (var (v, index, isUsed) in localVertsUsedInRenderer) {
+                    if (!isUsed) continue;
+                    foreach (var matI in matsUsedByVert.Get(index)) {
+                        matsUsed.Put(renderer.owner(), matI);
+                    }
+                    allLocalVerts.Add(v);
+                }
+            }
+
+            var length = allLocalVerts
                 .Select(v => v.z)
                 .DefaultIfEmpty(0)
                 .Max();
-            var radius = verts
+            var radius = allLocalVerts
                 .Select(v => Vector3.Cross(v, Vector3.forward).magnitude)
                 .OrderBy(m => m)
-                .Where((m, i) => i <= verts.Length*0.75)
+                .Where((m, i) => i <= allLocalVerts.Count*0.75)
                 .DefaultIfEmpty(0)
                 .Max();
 
             if (length <= 0 || radius <= 0) return null;
 
-            return Tuple.Create(length, radius);
+            return Tuple.Create(length, radius, matsUsed);
         }
 
         private static Quaternion? GetMaterialDpsRotation(Renderer r) {
